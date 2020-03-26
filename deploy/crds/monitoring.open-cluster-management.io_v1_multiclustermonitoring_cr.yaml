@@ -1,0 +1,7 @@
+apiVersion: monitoring.open-cluster-management.io/v1
+kind: MultiClusterMonitoring
+metadata:
+  name: example-multiclustermonitoring
+spec:
+  # Add fields here
+  size: 3
