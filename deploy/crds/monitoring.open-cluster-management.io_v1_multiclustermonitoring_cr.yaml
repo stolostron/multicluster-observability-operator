@@ -3,5 +3,13 @@ kind: MultiClusterMonitoring
 metadata:
   name: example-multiclustermonitoring
 spec:
-  # Add fields here
-  size: 3
+  storageClass: {{storageClass}}
+  observatorium:
+    enabled: true
+    compactVolumeSize: 50Gi
+    receiversVolumeSize: 50Gi
+    ruleVolumeSize: 50Gi
+    storeVolumeSize: 50Gi
+  grafana:
+    enabled: true
+
