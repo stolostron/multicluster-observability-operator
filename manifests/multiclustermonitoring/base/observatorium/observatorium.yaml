@@ -20,7 +20,7 @@ spec:
         - ReadWriteOnce
         resources:
           requests:
-            storage: 50Gi
+            storage: 1Gi
   hashrings:
   - hashring: default
     tenants: []
@@ -38,7 +38,7 @@ spec:
         - ReadWriteOnce
         resources:
           requests:
-            storage: 50Gi
+            storage: 1Gi
   rule:
     volumeClaimTemplate:
       spec:
@@ -46,7 +46,7 @@ spec:
         - ReadWriteOnce
         resources:
           requests:
-            storage: 50Gi
+            storage: 1Gi
   store:
     shards: 1
     volumeClaimTemplate:
@@ -55,7 +55,7 @@ spec:
         - ReadWriteOnce
         resources:
           requests:
-            storage: 50Gi
+            storage: 1Gi
   thanosImage: quay.io/thanos/thanos:master-2020-03-24-4bd19b16
   thanosReceiveController:
     image: quay.io/observatorium/thanos-receive-controller:master-2020-02-06-b66e0c8

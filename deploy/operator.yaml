@@ -16,7 +16,7 @@ spec:
       containers:
         - name: multicluster-monitoring-operator
           # Replace this with the built image name
-          image: REPLACE_IMAGE
+          image: clyang/multicluster-monitoring-operator:v0.1.0
           command:
           - multicluster-monitoring-operator
           imagePullPolicy: Always
@@ -31,3 +31,5 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "multicluster-monitoring-operator"
+            - name: TEMPLATES_PATH
+              value: /usr/local/manifests

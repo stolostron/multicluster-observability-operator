@@ -1,6 +1,7 @@
 package v1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -12,6 +13,31 @@ type MultiClusterMonitoringSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+	// Version of the MultiClusterMonitor
+	Version string `json:"version"`
+
+	// Repository of the MultiClusterMonitor images
+	ImageRepository string `json:"imageRepository"`
+
+	// ImageTagSuffix of the MultiClusterMonitor images
+	ImageTagSuffix string `json:"imageTagSuffix"`
+
+	// Pull policy of the MultiClusterMonitor images
+	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy"`
+
+	// Pull secret of the MultiClusterMonitor images
+	// +optional
+	ImagePullSecret string `json:"imagePullSecret,omitempty"`
+
+	// Spec of NodeSelector
+	// +optional
+	NodeSelector *NodeSelector `json:"nodeSelector,omitempty"`
+
+	// Spec of Observatorium
+	Observatorium ObservatoriumSpec `json:"observatorium"`
+
+	// Spec of Grafana
+	Grafana GrafanaSpec `json:"grafana"`
 }
 
 // MultiClusterMonitoringStatus defines the observed state of MultiClusterMonitoring
@@ -45,4 +71,48 @@ type MultiClusterMonitoringList struct {
 
 func init() {
 	SchemeBuilder.Register(&MultiClusterMonitoring{}, &MultiClusterMonitoringList{})
+}
+
+// NodeSelector defines the desired state of NodeSelector
+type NodeSelector struct {
+	// Spec of OS
+	// +optional
+	OS string `json:"os,omitempty"`
+
+	// Spec of CustomLabelSelector
+	// +optional
+	CustomLabelSelector string `json:"customLabelSelector,omitempty"`
+
+	// Spec of CustomLabelValue
+	// +optional
+	CustomLabelValue string `json:"customLabelValue,omitempty"`
+}
+
+// ObservatoriumSpec defines the desired state of Observatorium
+type ObservatoriumSpec struct {
+	// Enabled for enable observatorium
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// StorageClass for Observatorium component
+	StorageClass string `json:"storageClass,omitempty"`
+
+	// CompactVolumeSize for compact volume size (ex. 50Gi)
+	CompactVolumeSize string `json:"compactVolumeSize,omitempty"`
+
+	// ReceiversVolumeSize for receivers volume size (ex. 50Gi)
+	ReceiversVolumeSize string `json:"receiversVolumeSize,omitempty"`
+
+	// RuleVolumeSize for rule volume size (ex. 50Gi)
+	RuleVolumeSize string `json:"ruleVolumeSize,omitempty"`
+
+	// StoreVolumeSize for store volume size (ex. 50Gi)
+	StoreVolumeSize string `json:"storeVolumeSize,omitempty"`
+}
+
+// GrafanaSpec defines the desired state of Grafana
+type GrafanaSpec struct {
+	// Enabled for enable grafana
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
 }

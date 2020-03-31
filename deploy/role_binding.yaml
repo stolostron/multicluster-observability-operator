@@ -1,11 +1,12 @@
-kind: RoleBinding
+kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: multicluster-monitoring-operator
 subjects:
 - kind: ServiceAccount
   name: multicluster-monitoring-operator
+  namespace: default
 roleRef:
-  kind: Role
+  kind: ClusterRole
   name: multicluster-monitoring-operator
   apiGroup: rbac.authorization.k8s.io

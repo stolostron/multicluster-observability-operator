@@ -4,6 +4,9 @@ ENV OPERATOR=/usr/local/bin/multicluster-monitoring-operator \
     USER_UID=1001 \
     USER_NAME=multicluster-monitoring-operator
 
+# install templates
+COPY manifests /usr/local/manifests
+
 # install operator binary
 COPY build/_output/bin/multicluster-monitoring-operator ${OPERATOR}
 

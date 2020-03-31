@@ -3,9 +3,14 @@ kind: MultiClusterMonitoring
 metadata:
   name: example-multiclustermonitoring
 spec:
-  storageClass: {{storageClass}}
+  version: latest
+  imageRepository: "quay.io/open-cluster-management"
+  imageTagSuffix: ""
+  imagePullPolicy: Always
+  imagePullSecret: quay-secret
   observatorium:
     enabled: true
+    storageClass: gp2
     compactVolumeSize: 50Gi
     receiversVolumeSize: 50Gi
     ruleVolumeSize: 50Gi

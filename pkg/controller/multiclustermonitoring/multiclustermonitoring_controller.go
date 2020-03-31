@@ -2,11 +2,13 @@ package multiclustermonitoring
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 
-	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,6 +19,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering"
 )
 
 var log = logf.Log.WithName("controller_multiclustermonitoring")
@@ -103,6 +108,26 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 	// Define a new Pod object
 	pod := newPodForCR(instance)
 
+	//Render the templates with a specified CR
+	renderer := rendering.NewRenderer(instance)
+	toDeploy, err := renderer.Render(r.client)
+	if err != nil {
+		reqLogger.Error(err, "Failed to render multiClusterMonitoring templates")
+		return reconcile.Result{}, err
+	}
+	//Deploy the resources
+	for _, res := range toDeploy {
+		if res.GetNamespace() == instance.Namespace {
+			if err := controllerutil.SetControllerReference(instance, res, r.scheme); err != nil {
+				reqLogger.Error(err, "Failed to set controller reference")
+			}
+		}
+		if err := deploy(r.client, res); err != nil {
+			reqLogger.Error(err, fmt.Sprintf("Failed to deploy %s %s/%s", res.GetKind(), instance.Namespace, res.GetName()))
+			return reconcile.Result{}, err
+		}
+	}
+
 	// Set MultiClusterMonitoring instance as the owner and controller
 	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
 		return reconcile.Result{}, err
@@ -127,6 +152,34 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 	// Pod already exists - don't requeue
 	reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
 	return reconcile.Result{}, nil
+}
+
+func deploy(c client.Client, obj *unstructured.Unstructured) error {
+	found := &unstructured.Unstructured{}
+	found.SetGroupVersionKind(obj.GroupVersionKind())
+	err := c.Get(context.TODO(), types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, found)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return c.Create(context.TODO(), obj)
+		}
+		return err
+	}
+
+	if found.GetKind() != "Deployment" {
+		return nil
+	}
+
+	oldSpec, oldSpecFound := found.Object["spec"]
+	newSpec, newSpecFound := obj.Object["spec"]
+	if !oldSpecFound || !newSpecFound {
+		return nil
+	}
+	if !reflect.DeepEqual(oldSpec, newSpec) {
+		newObj := found.DeepCopy()
+		newObj.Object["spec"] = newSpec
+		return c.Update(context.TODO(), newObj)
+	}
+	return nil
 }
 
 // newPodForCR returns a busybox pod with the same name/namespace as the cr
