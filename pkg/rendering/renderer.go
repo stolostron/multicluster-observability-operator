@@ -38,8 +38,9 @@ func NewRenderer(multipleClusterMonitoring *monitoringv1.MultiClusterMonitoring)
 		"ConfigMap":             renderer.renderNamespace,
 		"ClusterRoleBinding":    renderer.renderClusterRoleBinding,
 		"Secret":                renderer.renderNamespace,
+		"Role":                  renderer.renderNamespace,
+		"RoleBinding":           renderer.renderNamespace,
 		"PersistentVolumeClaim": renderer.renderNamespace,
-		"Observatorium":         renderer.renderObservatorium,
 	}
 	return renderer
 }
@@ -76,17 +77,6 @@ func (r *Renderer) renderTemplates(templates []*resource.Resource) ([]*unstructu
 	}
 
 	return uobjs, nil
-}
-
-// TODO: update this method to update Observatorium CR
-func (r *Renderer) renderObservatorium(res *resource.Resource) (*unstructured.Unstructured, error) {
-	err := patching.ApplyGlobalPatches(res, r.cr)
-	if err != nil {
-		return nil, err
-	}
-
-	res.SetNamespace(r.cr.Namespace)
-	return &unstructured.Unstructured{Object: res.Map()}, nil
 }
 
 func (r *Renderer) renderDeployments(res *resource.Resource) (*unstructured.Unstructured, error) {
@@ -137,7 +127,7 @@ func stringValueReplace(toReplace string, cr *monitoringv1.MultiClusterMonitorin
 	replaced = strings.ReplaceAll(replaced, "{{PULLSECRET}}", string(cr.Spec.ImagePullSecret))
 	replaced = strings.ReplaceAll(replaced, "{{NAMESPACE}}", string(cr.Namespace))
 	replaced = strings.ReplaceAll(replaced, "{{PULLPOLICY}}", string(cr.Spec.ImagePullPolicy))
-	replaced = strings.ReplaceAll(replaced, "{{STORAGECLASS}}", string(cr.Spec.Observatorium.StorageClass)) //Assuming this is specifically for Mongo.
+	//replaced = strings.ReplaceAll(replaced, "{{STORAGECLASS}}", string(cr.Spec.Observatorium.StorageClass)) //Assuming this is specifically for Mongo.
 
 	return replaced
 }

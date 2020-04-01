@@ -8,14 +8,8 @@ import (
 	"os"
 	"runtime"
 
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/client-go/rest"
-
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/version"
-
+	grafanaApis "github.com/integr8ly/grafana-operator/v3/pkg/apis"
+	observatoriumAPIs "github.com/observatorium/configuration/api/v1alpha1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
@@ -24,11 +18,18 @@ import (
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 	"github.com/spf13/pflag"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	"sigs.k8s.io/controller-runtime/pkg/scheme"
+
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/version"
 )
 
 // Change below variables to serve metrics on different host or port.
@@ -104,6 +105,20 @@ func main() {
 
 	// Setup Scheme for all resources
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
+		log.Error(err, "")
+		os.Exit(1)
+	}
+
+	// Setup Scheme for observatorium resources
+	if err := grafanaApis.AddToScheme(mgr.GetScheme()); err != nil {
+		log.Error(err, "")
+		os.Exit(1)
+	}
+
+	// Setup Scheme for observatorium resources
+	schemeBuilder := &scheme.Builder{GroupVersion: schema.GroupVersion{Group: "core.observatorium.io", Version: "v1alpha1"}}
+	schemeBuilder.Register(&observatoriumAPIs.Observatorium{}, &observatoriumAPIs.ObservatoriumList{})
+	if err := schemeBuilder.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}

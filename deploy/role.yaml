@@ -15,6 +15,7 @@ rules:
   - events
   - configmaps
   - secrets
+  - serviceaccounts
   verbs:
   - create
   - delete
@@ -53,12 +54,6 @@ rules:
   - deployments/finalizers
   verbs:
   - update
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
 - apiGroups:
   - apps
   resources:
@@ -108,4 +103,27 @@ rules:
   - patch
   - update
   - watch
-  
+- apiGroups:
+  - integreatly.org
+  resources:
+  - grafanas
+  - grafanas/status
+  - grafanas/finalizers
+  - grafanadashboards
+  - grafanadashboards/status
+  - grafanadatasources
+  - grafanadatasources/status
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - watch
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - '*'

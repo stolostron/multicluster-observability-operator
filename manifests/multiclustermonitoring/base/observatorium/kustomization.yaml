@@ -1,5 +1,5 @@
 resources:
+- crds/core.observatorium.io_observatoria.yaml
 - cluster_role.yaml
 - cluster_role_binding.yaml
 - operator.yaml
-- observatorium.yaml

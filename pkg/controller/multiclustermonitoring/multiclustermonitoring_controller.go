@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"reflect"
 
+	grafanav1alpha1 "github.com/integr8ly/grafana-operator/v3/pkg/apis/integreatly/v1alpha1"
+	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -105,9 +107,6 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
-	// Define a new Pod object
-	pod := newPodForCR(instance)
-
 	//Render the templates with a specified CR
 	renderer := rendering.NewRenderer(instance)
 	toDeploy, err := renderer.Render(r.client)
@@ -128,17 +127,43 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 		}
 	}
 
+	// Define a grafana CR
+	grafanaCR := newGrafanaCR(instance)
+
+	observatoriumCR := newObservatoriumCR(instance)
+
 	// Set MultiClusterMonitoring instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(instance, grafanaCR, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// Set MultiClusterMonitoring instance as the owner and controller
+	if err := controllerutil.SetControllerReference(instance, observatoriumCR, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
 
 	// Check if this Pod already exists
-	found := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
+	grafanaCRFound := &grafanav1alpha1.Grafana{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: grafanaCR.Name, Namespace: grafanaCR.Namespace}, grafanaCRFound)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-		err = r.client.Create(context.TODO(), pod)
+		reqLogger.Info("Creating a new grafana CR", "grafana.Namespace", grafanaCR.Namespace, "grafana.Name", grafanaCR.Name)
+		err = r.client.Create(context.TODO(), grafanaCR)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// Pod created successfully - don't requeue
+		return reconcile.Result{}, nil
+	} else if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// Check if this Pod already exists
+	observatoriumCRFound := &observatoriumv1alpha1.Observatorium{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: observatoriumCR.Name, Namespace: observatoriumCR.Namespace}, observatoriumCRFound)
+	if err != nil && errors.IsNotFound(err) {
+		reqLogger.Info("Creating a new observatorium CR", "observatorium.Namespace", observatoriumCR.Namespace, "observatorium.Name", observatoriumCR.Name)
+		err = r.client.Create(context.TODO(), observatoriumCR)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -150,7 +175,7 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 	}
 
 	// Pod already exists - don't requeue
-	reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
+	//reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
 	return reconcile.Result{}, nil
 }
 
@@ -182,25 +207,32 @@ func deploy(c client.Client, obj *unstructured.Unstructured) error {
 	return nil
 }
 
-// newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *monitoringv1.MultiClusterMonitoring) *corev1.Pod {
+// newGrafanaCR returns grafana cr defined in MultiClusterMonitoring
+func newGrafanaCR(cr *monitoringv1.MultiClusterMonitoring) *grafanav1alpha1.Grafana {
 	labels := map[string]string{
 		"app": cr.Name,
 	}
-	return &corev1.Pod{
+	return &grafanav1alpha1.Grafana{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-pod",
+			Name:      cr.Name + "-grafana",
 			Namespace: cr.Namespace,
 			Labels:    labels,
 		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
-				},
-			},
+		Spec: cr.Spec.Grafana,
+	}
+}
+
+// newObservatoriumCR returns Observatorium cr defined in MultiClusterMonitoring
+func newObservatoriumCR(cr *monitoringv1.MultiClusterMonitoring) *observatoriumv1alpha1.Observatorium {
+	labels := map[string]string{
+		"app": cr.Name,
+	}
+	return &observatoriumv1alpha1.Observatorium{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name + "-observatorium",
+			Namespace: cr.Namespace,
+			Labels:    labels,
 		},
+		Spec: cr.Spec.Observatorium,
 	}
 }

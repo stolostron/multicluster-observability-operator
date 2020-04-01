@@ -1,3 +1,4 @@
 resources:
 - minio
 - observatorium
+- grafana

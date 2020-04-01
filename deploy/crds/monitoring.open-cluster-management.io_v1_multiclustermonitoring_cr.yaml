@@ -1,7 +1,7 @@
 apiVersion: monitoring.open-cluster-management.io/v1
 kind: MultiClusterMonitoring
 metadata:
-  name: example-multiclustermonitoring
+  name: monitoring
 spec:
   version: latest
   imageRepository: "quay.io/open-cluster-management"
@@ -9,12 +9,78 @@ spec:
   imagePullPolicy: Always
   imagePullSecret: quay-secret
   observatorium:
-    enabled: true
-    storageClass: gp2
-    compactVolumeSize: 50Gi
-    receiversVolumeSize: 50Gi
-    ruleVolumeSize: 50Gi
-    storeVolumeSize: 50Gi
+    apiGateway:
+      image: quay.io/observatorium/observatorium:master-2020-03-19-62d4b8e
+      version: master-2020-03-19-62d4b8e
+    compact:
+      retentionResolution1h: 1s
+      retentionResolution5m: 1s
+      retentionResolutionRaw: 14d
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+    hashrings:
+    - hashring: default
+      tenants: []
+    objectStorageConfig:
+      key: thanos.yaml
+      name: thanos-objectstorage
+    queryCache:
+      image: quay.io/cortexproject/cortex:master-fdcd992f
+      replicas: 1
+      version: master-fdcd992f
+    receivers:
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+    rule:
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+    store:
+      shards: 1
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+    thanosImage: quay.io/thanos/thanos:master-2020-03-24-4bd19b16
+    thanosReceiveController:
+      image: quay.io/observatorium/thanos-receive-controller:master-2020-02-06-b66e0c8
+      version: master-2020-02-06-b66e0c8
+    thanosVersion: master-2020-03-24-4bd19b16
   grafana:
-    enabled: true
-
+    ingress:
+      enabled: True
+    config:
+      log:
+        mode: "console"
+        level: "warn"
+      security:
+        admin_user: "root"
+        admin_password: "secret"
+      auth:
+        disable_login_form: False
+        disable_signout_menu: True
+      auth.anonymous:
+        enabled: True
+    dashboardLabelSelector:
+      - matchExpressions:
+          - {key: app, operator: In, values: [grafana]}
+    compat:
+      fixAnnotations: true
+      fixHeights: false

@@ -1,0 +1,8 @@
+resources:
+- crds/Grafana.yaml
+- crds/GrafanaDashboard.yaml
+- crds/GrafanaDataSource.yaml
+- role.yaml
+- role_binding.yaml
+- service_account.yaml
+- operator.yaml

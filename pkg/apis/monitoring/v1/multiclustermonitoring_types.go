@@ -1,6 +1,8 @@
 package v1
 
 import (
+	grafanav1alpha1 "github.com/integr8ly/grafana-operator/v3/pkg/apis/integreatly/v1alpha1"
+	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -34,10 +36,10 @@ type MultiClusterMonitoringSpec struct {
 	NodeSelector *NodeSelector `json:"nodeSelector,omitempty"`
 
 	// Spec of Observatorium
-	Observatorium ObservatoriumSpec `json:"observatorium"`
+	Observatorium observatoriumv1alpha1.ObservatoriumSpec `json:"observatorium"`
 
 	// Spec of Grafana
-	Grafana GrafanaSpec `json:"grafana"`
+	Grafana grafanav1alpha1.GrafanaSpec `json:"grafana"`
 }
 
 // MultiClusterMonitoringStatus defines the observed state of MultiClusterMonitoring
@@ -86,33 +88,4 @@ type NodeSelector struct {
 	// Spec of CustomLabelValue
 	// +optional
 	CustomLabelValue string `json:"customLabelValue,omitempty"`
-}
-
-// ObservatoriumSpec defines the desired state of Observatorium
-type ObservatoriumSpec struct {
-	// Enabled for enable observatorium
-	// +optional
-	Enabled *bool `json:"enabled,omitempty"`
-
-	// StorageClass for Observatorium component
-	StorageClass string `json:"storageClass,omitempty"`
-
-	// CompactVolumeSize for compact volume size (ex. 50Gi)
-	CompactVolumeSize string `json:"compactVolumeSize,omitempty"`
-
-	// ReceiversVolumeSize for receivers volume size (ex. 50Gi)
-	ReceiversVolumeSize string `json:"receiversVolumeSize,omitempty"`
-
-	// RuleVolumeSize for rule volume size (ex. 50Gi)
-	RuleVolumeSize string `json:"ruleVolumeSize,omitempty"`
-
-	// StoreVolumeSize for store volume size (ex. 50Gi)
-	StoreVolumeSize string `json:"storeVolumeSize,omitempty"`
-}
-
-// GrafanaSpec defines the desired state of Grafana
-type GrafanaSpec struct {
-	// Enabled for enable grafana
-	// +optional
-	Enabled *bool `json:"enabled,omitempty"`
 }
