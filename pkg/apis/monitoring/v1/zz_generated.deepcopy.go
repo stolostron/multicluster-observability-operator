@@ -77,6 +77,7 @@ func (in *MultiClusterMonitoringSpec) DeepCopyInto(out *MultiClusterMonitoringSp
 		*out = new(NodeSelector)
 		**out = **in
 	}
+	in.Observatorium.DeepCopyInto(&out.Observatorium)
 	in.Grafana.DeepCopyInto(&out.Grafana)
 	return
 }

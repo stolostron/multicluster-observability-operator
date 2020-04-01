@@ -20,6 +20,7 @@ curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.
 ### Build the Operator
 
 - git clone this repository.
+- `go mod vendor`
 - `operator-sdk build <repo>/<component>:<tag>` for example: quay.io/multicluster-monitoring-operator:v0.1.0.
 - Replace the image in `deploy/operator.yaml`.
 
