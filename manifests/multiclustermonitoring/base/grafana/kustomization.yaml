@@ -6,3 +6,4 @@ resources:
 - role_binding.yaml
 - service_account.yaml
 - operator.yaml
+- ingress.yaml

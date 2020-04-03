@@ -23,6 +23,7 @@ curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.
 - `go mod vendor`
 - `operator-sdk build <repo>/<component>:<tag>` for example: quay.io/multicluster-monitoring-operator:v0.1.0.
 - Replace the image in `deploy/operator.yaml`.
+- Update your namespace in `deploy/role_binding.yaml`
 
 ### Deploy this Operator
 
@@ -55,7 +56,6 @@ spec:
 2. Apply the manifests
 ```
 kubectl apply -f deploy/crds/
-kubectl apply -f deploy/req_crds/
 kubectl apply -f deploy/
 
 ```

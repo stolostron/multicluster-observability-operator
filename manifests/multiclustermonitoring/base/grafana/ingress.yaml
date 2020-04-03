@@ -1,0 +1,15 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    icp.management.ibm.com/rewrite-target: "/"
+    kubernetes.io/ingress.class: "ibm-icp-management"
+  name: grafana
+spec:
+  rules:
+  - http:
+      paths:
+      - backend:
+          serviceName: grafana-service
+          servicePort: 3000
+        path: /grafana

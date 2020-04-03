@@ -8,6 +8,7 @@ spec:
   imageTagSuffix: ""
   imagePullPolicy: Always
   imagePullSecret: quay-secret
+  storageClass: gp2
   observatorium:
     apiGateway:
       image: quay.io/observatorium/observatorium:master-2020-03-19-62d4b8e
@@ -65,7 +66,7 @@ spec:
     thanosVersion: master-2020-03-24-4bd19b16
   grafana:
     ingress:
-      enabled: True
+      enabled: false
     config:
       log:
         mode: "console"
@@ -78,6 +79,9 @@ spec:
         disable_signout_menu: True
       auth.anonymous:
         enabled: True
+      server:
+        domain: "multicloud-console.apps.cyang-ocp1.dev05.red-chesterfield.com"
+        root_url: "%(protocol)s://%(domain)s/grafana/"
     dashboardLabelSelector:
       - matchExpressions:
           - {key: app, operator: In, values: [grafana]}

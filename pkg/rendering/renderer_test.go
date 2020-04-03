@@ -17,7 +17,7 @@ func TestRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get working dir %v", err)
 	}
-	templatesPath := path.Join(path.Dir(path.Dir(wd)), "templates")
+	templatesPath := path.Join(path.Dir(path.Dir(wd)), "manifests")
 	os.Setenv(templates.TemplatesPathEnvVar, templatesPath)
 	defer os.Unsetenv(templates.TemplatesPathEnvVar)
 
@@ -29,6 +29,7 @@ func TestRender(t *testing.T) {
 			ImageRepository: "quay.io/open-cluster-management",
 			ImagePullPolicy: "Always",
 			ImagePullSecret: "test",
+			StorageClass:    "gp2",
 			NodeSelector: &monitoringv1.NodeSelector{
 				OS:                  "test",
 				CustomLabelSelector: "test",

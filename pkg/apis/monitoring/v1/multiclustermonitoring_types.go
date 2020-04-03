@@ -35,6 +35,9 @@ type MultiClusterMonitoringSpec struct {
 	// +optional
 	NodeSelector *NodeSelector `json:"nodeSelector,omitempty"`
 
+	// Spec of StorageClass
+	StorageClass string `json:"storageClass"`
+
 	// Spec of Observatorium
 	Observatorium observatoriumv1alpha1.ObservatoriumSpec `json:"observatorium"`
 

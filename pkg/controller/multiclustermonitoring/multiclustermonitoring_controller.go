@@ -4,16 +4,22 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	grafanav1alpha1 "github.com/integr8ly/grafana-operator/v3/pkg/apis/integreatly/v1alpha1"
 	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
+	routev1 "github.com/openshift/api/route/v1"
+	routev1ClientSet "github.com/openshift/client-go/route/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -27,6 +33,12 @@ import (
 )
 
 var log = logf.Log.WithName("controller_multiclustermonitoring")
+
+const (
+	grafanaPartoOfName          = "-grafana"
+	observatoriumPartoOfName    = "-observatorium"
+	observatoriumAPIGatewayName = "observatorium-api-gateway"
+)
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -127,51 +139,29 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 		}
 	}
 
-	// Define a grafana CR
-	grafanaCR := newGrafanaCR(instance)
-
-	observatoriumCR := newObservatoriumCR(instance)
-
-	// Set MultiClusterMonitoring instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, grafanaCR, r.scheme); err != nil {
-		return reconcile.Result{}, err
+	// create a Observatorium CR
+	result, err := r.newObservatoriumCR(instance)
+	if result != nil {
+		return *result, err
 	}
 
-	// Set MultiClusterMonitoring instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, observatoriumCR, r.scheme); err != nil {
-		return reconcile.Result{}, err
+	// create a grafana CR
+	result, err = r.newGrafanaCR(instance)
+	if result != nil {
+		return *result, err
 	}
 
-	// Check if this Pod already exists
-	grafanaCRFound := &grafanav1alpha1.Grafana{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: grafanaCR.Name, Namespace: grafanaCR.Namespace}, grafanaCRFound)
-	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new grafana CR", "grafana.Namespace", grafanaCR.Namespace, "grafana.Name", grafanaCR.Name)
-		err = r.client.Create(context.TODO(), grafanaCR)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
-		// Pod created successfully - don't requeue
-		return reconcile.Result{}, nil
-	} else if err != nil {
-		return reconcile.Result{}, err
+	// expose observatorium api gateway
+	result, err = r.newAPIGatewayRoute(instance)
+	if result != nil {
+		return *result, err
 	}
+	// have a grafana ingress to integrate with management-ingress
 
-	// Check if this Pod already exists
-	observatoriumCRFound := &observatoriumv1alpha1.Observatorium{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: observatoriumCR.Name, Namespace: observatoriumCR.Namespace}, observatoriumCRFound)
-	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new observatorium CR", "observatorium.Namespace", observatoriumCR.Namespace, "observatorium.Name", observatoriumCR.Name)
-		err = r.client.Create(context.TODO(), observatoriumCR)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
-		// Pod created successfully - don't requeue
-		return reconcile.Result{}, nil
-	} else if err != nil {
-		return reconcile.Result{}, err
+	// generate grafana datasource CR to point to observatorium api gateway
+	result, err = r.newGrafanaDataSourceCR(instance)
+	if result != nil {
+		return *result, err
 	}
 
 	// Pod already exists - don't requeue
@@ -208,31 +198,211 @@ func deploy(c client.Client, obj *unstructured.Unstructured) error {
 }
 
 // newGrafanaCR returns grafana cr defined in MultiClusterMonitoring
-func newGrafanaCR(cr *monitoringv1.MultiClusterMonitoring) *grafanav1alpha1.Grafana {
+func (r *ReconcileMultiClusterMonitoring) newGrafanaCR(cr *monitoringv1.MultiClusterMonitoring) (*reconcile.Result, error) {
 	labels := map[string]string{
 		"app": cr.Name,
 	}
-	return &grafanav1alpha1.Grafana{
+	grafanaCR := &grafanav1alpha1.Grafana{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-grafana",
+			Name:      cr.Name + grafanaPartoOfName,
 			Namespace: cr.Namespace,
 			Labels:    labels,
 		},
 		Spec: cr.Spec.Grafana,
 	}
+	// Set MultiClusterMonitoring instance as the owner and controller
+	if err := controllerutil.SetControllerReference(cr, grafanaCR, r.scheme); err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	// Check if this Pod already exists
+	grafanaCRFound := &grafanav1alpha1.Grafana{}
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: grafanaCR.Name, Namespace: grafanaCR.Namespace}, grafanaCRFound)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Creating a new grafana CR", "grafana.Namespace", grafanaCR.Namespace, "grafana.Name", grafanaCR.Name)
+		err = r.client.Create(context.TODO(), grafanaCR)
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
+
+		// Pod created successfully - don't requeue
+		return nil, nil
+	} else if err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	return nil, nil
 }
 
 // newObservatoriumCR returns Observatorium cr defined in MultiClusterMonitoring
-func newObservatoriumCR(cr *monitoringv1.MultiClusterMonitoring) *observatoriumv1alpha1.Observatorium {
+func (r *ReconcileMultiClusterMonitoring) newObservatoriumCR(cr *monitoringv1.MultiClusterMonitoring) (*reconcile.Result, error) {
+
 	labels := map[string]string{
 		"app": cr.Name,
 	}
-	return &observatoriumv1alpha1.Observatorium{
+	observatoriumCR := &observatoriumv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-observatorium",
+			Name:      cr.Name + observatoriumPartoOfName,
 			Namespace: cr.Namespace,
 			Labels:    labels,
 		},
 		Spec: cr.Spec.Observatorium,
 	}
+
+	// Set MultiClusterMonitoring instance as the owner and controller
+	if err := controllerutil.SetControllerReference(cr, observatoriumCR, r.scheme); err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	// Check if this Pod already exists
+	observatoriumCRFound := &observatoriumv1alpha1.Observatorium{}
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: observatoriumCR.Name, Namespace: observatoriumCR.Namespace}, observatoriumCRFound)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Creating a new observatorium CR", "observatorium.Namespace", observatoriumCR.Namespace, "observatorium.Name", observatoriumCR.Name)
+		err = r.client.Create(context.TODO(), observatoriumCR)
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
+
+		// Pod created successfully - don't requeue
+		return nil, nil
+	} else if err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	return nil, nil
+}
+
+func createKubeClient() (kubernetes.Interface, error) {
+	config, err := config.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	kubeClient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return kubeClient, err
+}
+
+func (r *ReconcileMultiClusterMonitoring) newAPIGatewayRoute(cr *monitoringv1.MultiClusterMonitoring) (*reconcile.Result, error) {
+	labelSelector := fmt.Sprintf("app.kubernetes.io/component=%s, app.kubernetes.io/instance=%s", "api-gateway", cr.Name+observatoriumPartoOfName)
+	listOptions := metav1.ListOptions{
+		LabelSelector: labelSelector,
+	}
+	kubeClient, err := createKubeClient()
+	if err != nil {
+		log.Error(err, "Failed to create kube client")
+		return &reconcile.Result{}, err
+	}
+
+	apiGatewayServices, err := kubeClient.CoreV1().Services(cr.Namespace).List(listOptions)
+	if err == nil && len(apiGatewayServices.Items) > 0 {
+		apiGateway := &routev1.Route{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      observatoriumAPIGatewayName,
+				Namespace: cr.Namespace,
+			},
+			Spec: routev1.RouteSpec{
+				Port: &routev1.RoutePort{
+					TargetPort: intstr.FromString("http"),
+				},
+				To: routev1.RouteTargetReference{
+					Kind: "Service",
+					Name: apiGatewayServices.Items[0].GetName(),
+				},
+			},
+		}
+		err = r.client.Get(context.TODO(), types.NamespacedName{Name: apiGateway.Name, Namespace: apiGateway.Namespace}, &routev1.Route{})
+		if err != nil && errors.IsNotFound(err) {
+			log.Info("Creating a new route to expose observatorium api", "apiGateway.Namespace", apiGateway.Namespace, "apiGateway.Name", apiGateway.Name)
+			err = r.client.Create(context.TODO(), apiGateway)
+			if err != nil {
+				return &reconcile.Result{}, err
+			}
+		}
+
+	} else if err == nil && len(apiGatewayServices.Items) == 0 {
+		log.Info("Cannot find the service ", cr.Name+observatoriumPartoOfName+"-"+observatoriumAPIGatewayName)
+		return &reconcile.Result{RequeueAfter: time.Second * 10}, nil
+	} else {
+		return &reconcile.Result{}, err
+	}
+	return nil, nil
+}
+
+func createRoutev1Client() (routev1ClientSet.Interface, error) {
+	config, err := config.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	routev1Client, err := routev1ClientSet.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return routev1Client, err
+}
+
+func (r *ReconcileMultiClusterMonitoring) newGrafanaDataSourceCR(cr *monitoringv1.MultiClusterMonitoring) (*reconcile.Result, error) {
+
+	routev1Client, err := createRoutev1Client()
+	if err != nil {
+		log.Error(err, "Failed to create routev1 client")
+		return &reconcile.Result{}, nil
+	}
+
+	// Try to get route instance
+	obsRoute, err := routev1Client.RouteV1().Routes(cr.Namespace).Get(observatoriumAPIGatewayName, metav1.GetOptions{})
+	if err != nil {
+		log.Error(err, "Failed to get route", observatoriumAPIGatewayName)
+		return &reconcile.Result{}, err
+	}
+
+	labels := map[string]string{
+		"app": cr.Name,
+	}
+	grafanaDataSourceCR := &grafanav1alpha1.GrafanaDataSource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name + grafanaPartoOfName,
+			Namespace: cr.Namespace,
+			Labels:    labels,
+		},
+		Spec: grafanav1alpha1.GrafanaDataSourceSpec{
+			Name: observatoriumAPIGatewayName,
+			Datasources: []grafanav1alpha1.GrafanaDataSourceFields{
+				{
+					Name:   "Observatorium",
+					Type:   "prometheus",
+					Access: "proxy",
+					Url:    obsRoute.Spec.Host,
+				},
+			},
+		},
+	}
+	// Set MultiClusterMonitoring instance as the owner and controller
+	if err := controllerutil.SetControllerReference(cr, grafanaDataSourceCR, r.scheme); err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	// Check if this CR already exists
+	grafanaDSCRFound := &grafanav1alpha1.GrafanaDataSource{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: grafanaDataSourceCR.Name, Namespace: grafanaDataSourceCR.Namespace}, grafanaDSCRFound)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Creating a new grafana CR", "grafanaDataSource.Namespace", grafanaDataSourceCR.Namespace, "grafanaDataSource.Name", grafanaDataSourceCR.Name)
+		err = r.client.Create(context.TODO(), grafanaDataSourceCR)
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
+
+		// Pod created successfully - don't requeue
+		return nil, nil
+	} else if err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	return nil, nil
 }

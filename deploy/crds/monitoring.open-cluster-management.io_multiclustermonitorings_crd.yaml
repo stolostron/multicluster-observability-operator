@@ -3233,6 +3233,9 @@ spec:
               - thanosReceiveController
               - thanosVersion
               type: object
+            storageClass:
+              description: Spec of StorageClass
+              type: string
             version:
               description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
                 Important: Run "operator-sdk generate k8s" to regenerate code after
@@ -3246,6 +3249,7 @@ spec:
           - imageRepository
           - imageTagSuffix
           - observatorium
+          - storageClass
           - version
           type: object
         status:

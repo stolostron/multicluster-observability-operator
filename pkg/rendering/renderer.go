@@ -40,7 +40,8 @@ func NewRenderer(multipleClusterMonitoring *monitoringv1.MultiClusterMonitoring)
 		"Secret":                renderer.renderNamespace,
 		"Role":                  renderer.renderNamespace,
 		"RoleBinding":           renderer.renderNamespace,
-		"PersistentVolumeClaim": renderer.renderNamespace,
+		"Ingress":               renderer.renderNamespace,
+		"PersistentVolumeClaim": renderer.renderPersistentVolumeClaim,
 	}
 	return renderer
 }
@@ -99,6 +100,26 @@ func (r *Renderer) renderNamespace(res *resource.Resource) (*unstructured.Unstru
 	return &unstructured.Unstructured{Object: res.Map()}, nil
 }
 
+func (r *Renderer) renderPersistentVolumeClaim(res *resource.Resource) (*unstructured.Unstructured, error) {
+	u := &unstructured.Unstructured{Object: res.Map()}
+
+	if UpdateNamespace(u) {
+		res.SetNamespace(r.cr.Namespace)
+	}
+
+	// Update channel to prepend the CRs namespace
+	spec, ok := u.Object["spec"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("failed to find spec field")
+	}
+	err := replaceInValues(spec, r.cr)
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
+}
+
 func (r *Renderer) renderClusterRoleBinding(res *resource.Resource) (*unstructured.Unstructured, error) {
 	u := &unstructured.Unstructured{Object: res.Map()}
 
@@ -127,7 +148,7 @@ func stringValueReplace(toReplace string, cr *monitoringv1.MultiClusterMonitorin
 	replaced = strings.ReplaceAll(replaced, "{{PULLSECRET}}", string(cr.Spec.ImagePullSecret))
 	replaced = strings.ReplaceAll(replaced, "{{NAMESPACE}}", string(cr.Namespace))
 	replaced = strings.ReplaceAll(replaced, "{{PULLPOLICY}}", string(cr.Spec.ImagePullPolicy))
-	//replaced = strings.ReplaceAll(replaced, "{{STORAGECLASS}}", string(cr.Spec.Observatorium.StorageClass)) //Assuming this is specifically for Mongo.
+	replaced = strings.ReplaceAll(replaced, "{{STORAGECLASS}}", string(cr.Spec.StorageClass))
 
 	return replaced
 }
@@ -164,8 +185,8 @@ func UpdateNamespace(u *unstructured.Unstructured) bool {
 	updateNamespace := true
 	if ok {
 		annotations, ok := metadata["annotations"].(map[string]interface{})
-		if ok {
-			if annotations["update-namespace"] != "" {
+		if ok && annotations != nil {
+			if annotations["update-namespace"] != nil && annotations["update-namespace"].(string) != "" {
 				updateNamespace, _ = strconv.ParseBool(annotations["update-namespace"].(string))
 			}
 		}
