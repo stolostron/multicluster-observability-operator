@@ -348,20 +348,6 @@ func createRoutev1Client() (routev1ClientSet.Interface, error) {
 }
 
 func (r *ReconcileMultiClusterMonitoring) newGrafanaDataSourceCR(cr *monitoringv1.MultiClusterMonitoring) (*reconcile.Result, error) {
-
-	routev1Client, err := createRoutev1Client()
-	if err != nil {
-		log.Error(err, "Failed to create routev1 client")
-		return &reconcile.Result{}, nil
-	}
-
-	// Try to get route instance
-	obsRoute, err := routev1Client.RouteV1().Routes(cr.Namespace).Get(observatoriumAPIGatewayName, metav1.GetOptions{})
-	if err != nil {
-		log.Error(err, "Failed to get route", observatoriumAPIGatewayName)
-		return &reconcile.Result{}, err
-	}
-
 	labels := map[string]string{
 		"app": cr.Name,
 	}
@@ -378,7 +364,7 @@ func (r *ReconcileMultiClusterMonitoring) newGrafanaDataSourceCR(cr *monitoringv
 					Name:   "Observatorium",
 					Type:   "prometheus",
 					Access: "proxy",
-					Url:    obsRoute.Spec.Host,
+					Url:    "http://" + cr.Name + observatoriumPartoOfName + "-observatorium-api-gateway:8080/api/metrics/v1",
 				},
 			},
 		},
@@ -390,7 +376,7 @@ func (r *ReconcileMultiClusterMonitoring) newGrafanaDataSourceCR(cr *monitoringv
 
 	// Check if this CR already exists
 	grafanaDSCRFound := &grafanav1alpha1.GrafanaDataSource{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: grafanaDataSourceCR.Name, Namespace: grafanaDataSourceCR.Namespace}, grafanaDSCRFound)
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: grafanaDataSourceCR.Name, Namespace: grafanaDataSourceCR.Namespace}, grafanaDSCRFound)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating a new grafana CR", "grafanaDataSource.Namespace", grafanaDataSourceCR.Namespace, "grafanaDataSource.Name", grafanaDataSourceCR.Name)
 		err = r.client.Create(context.TODO(), grafanaDataSourceCR)
