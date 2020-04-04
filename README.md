@@ -91,6 +91,35 @@ monitoring-grafana   165m
 NAME                       AGE
 monitoring-observatorium   163m
 ```
+### View metrics in dashboard
+1. Enable remote write for OCP prometheus
+Create the configmap in openshift-monitoring namespace. Replace the url with the your route value.
+```
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-monitoring-config
+  namespace: openshift-monitoring
+data:
+  config.yaml: |
+    prometheusK8s:
+      remoteWrite:
+        - url: "http://observatorium-api-gateway-acm-monitoring.apps.one-chimp.dev05.red-chesterfield.com/api/metrics/v1/write"
+          writeRelabelConfigs:
+          - sourceLabels: [__name__]
+            replacement: test_cluster
+            targetLabel: cluster_name
+```
+Then apply the changes by invoking command below
+```
+oc scale --replicas=2 statefulset --all -n openshift-monitoring; oc scale --replicas=1 deployment --all -n openshift-monitoring
+```
+2. Install the dashboard CR
+```
+kubectl apply -f deploy/grafana/dashboard.yaml
+```
+3. Access Grafana console, view the metrics in the dashboard named "MCM:Managed Cluster Monitoring"
+
 
 [install_kind]: https://github.com/kubernetes-sigs/kind
 [install_guide]: https://github.com/operator-framework/operator-sdk/blob/master/doc/user/install-operator-sdk.md
