@@ -4,6 +4,10 @@ metadata:
   annotations:
     icp.management.ibm.com/rewrite-target: "/"
     kubernetes.io/ingress.class: "ibm-icp-management"
+    icp.management.ibm.com/configuration-snippet: |
+      rewrite_by_lua_block {
+        ngx.req.set_header("Authorization", "Basic cm9vdDpzZWNyZXQ=")
+      }
   name: grafana
 spec:
   rules:
