@@ -24,6 +24,7 @@ curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.
 - `operator-sdk build <repo>/<component>:<tag>` for example: quay.io/multicluster-monitoring-operator:v0.1.0.
 - Replace the image in `deploy/operator.yaml`.
 - Update your namespace in `deploy/role_binding.yaml`
+- Update your grafana.server.domain in `deploy/crds/monitoring.open-cluster-management.io_v1_multiclustermonitoring_cr.yaml`
 
 ### Deploy this Operator
 
@@ -118,7 +119,7 @@ oc scale --replicas=2 statefulset --all -n openshift-monitoring; oc scale --repl
 ```
 kubectl apply -f deploy/grafana/dashboard.yaml
 ```
-3. Access Grafana console, view the metrics in the dashboard named "MCM:Managed Cluster Monitoring"
+3. Access Grafana console at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "MCM:Managed Cluster Monitoring"
 
 
 [install_kind]: https://github.com/kubernetes-sigs/kind
