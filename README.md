@@ -28,7 +28,7 @@ curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.
 
 ### Deploy this Operator
 
-1. Prepare the `StorageClass` and `PersistentVolume` to apply into the existing environment. For example:
+1. If you are using aws environment, skip this step. the `StorageClass` is set as `gp2` by default. Prepare the `StorageClass` and `PersistentVolume` to apply into the existing environment. For example:
 ```
 kind: StorageClass
 apiVersion: storage.k8s.io/v1
