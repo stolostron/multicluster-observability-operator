@@ -113,7 +113,7 @@ data:
             replacement: test_cluster
             targetLabel: cluster_name
 ```
-Then apply the changes by invoking command below
+The changes will be applied automatically after several minutes. You can apply the changes immediately by invoking command below
 ```
 oc scale --replicas=2 statefulset --all -n openshift-monitoring; oc scale --replicas=1 deployment --all -n openshift-monitoring
 ```
