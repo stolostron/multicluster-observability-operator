@@ -115,11 +115,8 @@ Then apply the changes by invoking command below
 ```
 oc scale --replicas=2 statefulset --all -n openshift-monitoring; oc scale --replicas=1 deployment --all -n openshift-monitoring
 ```
-2. Install the dashboard CR
-```
-kubectl apply -f deploy/grafana/dashboard.yaml
-```
-3. Access Grafana console at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "MCM:Managed Cluster Monitoring"
+
+2. Access Grafana console at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "MCM:Managed Cluster Monitoring"
 
 
 [install_kind]: https://github.com/kubernetes-sigs/kind

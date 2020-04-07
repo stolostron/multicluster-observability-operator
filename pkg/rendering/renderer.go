@@ -42,6 +42,7 @@ func NewRenderer(multipleClusterMonitoring *monitoringv1.MultiClusterMonitoring)
 		"RoleBinding":           renderer.renderNamespace,
 		"Ingress":               renderer.renderNamespace,
 		"PersistentVolumeClaim": renderer.renderPersistentVolumeClaim,
+		"GrafanaDashboard":      renderer.renderNamespace,
 	}
 	return renderer
 }

@@ -1,11 +1,11 @@
 apiVersion: integreatly.org/v1alpha1
 kind: GrafanaDashboard
 metadata:
-    name: acm-dashboard
+    name: managed-clusters-dashboard
     labels:
         app: grafana
 spec:
-    name: acm-dashboard
+    name: managed-clusters-dashboard
     datasources:
         - inputName: "DS_PROMETHEUS"
           datasourceName: "Observatorium"
@@ -34,7 +34,7 @@ spec:
               }
           ]
           },
-          "description": "Monitors managed cluster using Prometheus. Shows overall cluster CPU / Memory / Filesystem usage as well as individual pod, containers, systemd services statistics. Uses cAdvisor metrics only.",
+          "description": "Monitors hub cluster using Prometheus. Shows overall cluster CPU / Memory / Filesystem usage as well as individual pod, containers, systemd services statistics. Uses cAdvisor metrics only.",
           "editable": true,
           "gnetId": 315,
           "graphTooltip": 0,
@@ -1728,7 +1728,7 @@ spec:
           ]
           },
           "timezone": "browser",
-          "title": "MCM: Managed Cluster Monitoring",
+          "title": "ACM: Managed Cluster Monitoring",
           "version": 1
         }
     
