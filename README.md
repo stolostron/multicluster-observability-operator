@@ -93,7 +93,9 @@ NAME                       AGE
 monitoring-observatorium   163m
 ```
 ### View metrics in dashboard
-1. Enable remote write for OCP prometheus
+1. The Prometheus in hub cluster already enabled remoteWrite to send metrics. Access Grafana console at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "ACM:Managed Cluster Monitoring"
+
+2. Enable remote write for OCP prometheus in spoke clusters
 Create the configmap in openshift-monitoring namespace. Replace the url with the your route value.
 ```
 apiVersion: v1
@@ -115,9 +117,6 @@ Then apply the changes by invoking command below
 ```
 oc scale --replicas=2 statefulset --all -n openshift-monitoring; oc scale --replicas=1 deployment --all -n openshift-monitoring
 ```
-
-2. Access Grafana console at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "MCM:Managed Cluster Monitoring"
-
 
 [install_kind]: https://github.com/kubernetes-sigs/kind
 [install_guide]: https://github.com/operator-framework/operator-sdk/blob/master/doc/user/install-operator-sdk.md
