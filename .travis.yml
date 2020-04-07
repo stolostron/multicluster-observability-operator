@@ -62,7 +62,7 @@ jobs:
           make 
           make component/pull 
           make component/test/unit
-          make sonar/go
+      #    make sonar/go
     - stage: test-e2e
       name: "Deploy the image to a cluster and run e2e tests"
       script:
