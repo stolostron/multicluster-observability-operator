@@ -11,6 +11,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	routev1ClientSet "github.com/openshift/client-go/route/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -29,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/multiclustermonitoring/util"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering"
 )
 
@@ -160,6 +162,12 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 
 	// generate grafana datasource CR to point to observatorium api gateway
 	result, err = r.newGrafanaDataSourceCR(instance)
+	if result != nil {
+		return *result, err
+	}
+
+	// generate/update the configmap cluster-monitoring-config
+	result, err = r.newOCPMonitoringCM(instance)
 	if result != nil {
 		return *result, err
 	}
@@ -385,6 +393,43 @@ func (r *ReconcileMultiClusterMonitoring) newGrafanaDataSourceCR(cr *monitoringv
 		}
 
 		// Pod created successfully - don't requeue
+		return nil, nil
+	} else if err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	return nil, nil
+}
+
+func (r *ReconcileMultiClusterMonitoring) newOCPMonitoringCM(cr *monitoringv1.MultiClusterMonitoring) (*reconcile.Result, error) {
+
+	routev1Client, err := createRoutev1Client()
+	if err != nil {
+		log.Error(err, "Failed to create routev1 client")
+		return &reconcile.Result{}, nil
+	}
+
+	// Try to get route instance
+	obsRoute, err := routev1Client.RouteV1().Routes(cr.Namespace).Get(observatoriumAPIGatewayName, metav1.GetOptions{})
+	if err != nil {
+		log.Error(err, "Failed to get route", observatoriumAPIGatewayName)
+		return &reconcile.Result{}, err
+	}
+
+	ocpMonitoringCM, err := util.CreateConfigMap(obsRoute.Spec.Host)
+	if err != nil {
+		log.Error(err, "Failed to create configmap")
+		return &reconcile.Result{}, err
+	}
+
+	existingCM := &v1.ConfigMap{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: ocpMonitoringCM.Name, Namespace: ocpMonitoringCM.Namespace}, existingCM)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Creating the configmap for cluster monitoring")
+		err = r.client.Create(context.TODO(), ocpMonitoringCM)
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
 		return nil, nil
 	} else if err != nil {
 		return &reconcile.Result{}, err

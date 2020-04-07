@@ -3,10 +3,12 @@ module github.com/open-cluster-management/multicluster-monitoring-operator
 go 1.13
 
 require (
+	github.com/coreos/prometheus-operator v0.38.0
 	github.com/integr8ly/grafana-operator/v3 v3.1.0
 	github.com/observatorium/configuration v0.0.0-20200401101849-a6da9e477da4
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
-	github.com/openshift/client-go v0.0.0-20190923180330-3b6373338c9b
+	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
+	github.com/openshift/cluster-monitoring-operator v0.1.1-0.20200406225945-844f960a2a8d
 	github.com/operator-framework/operator-sdk v0.15.1
 	github.com/spf13/pflag v1.0.5
 	k8s.io/api v0.17.3
