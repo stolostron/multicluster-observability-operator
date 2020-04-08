@@ -11,7 +11,6 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	routev1ClientSet "github.com/openshift/client-go/route/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -55,7 +54,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileMultiClusterMonitoring{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileMultiClusterMonitoring{client: mgr.GetClient(), apiReader: mgr.GetAPIReader(), scheme: mgr.GetScheme()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -92,8 +91,9 @@ var _ reconcile.Reconciler = &ReconcileMultiClusterMonitoring{}
 type ReconcileMultiClusterMonitoring struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	client    client.Client
+	apiReader client.Reader
+	scheme    *runtime.Scheme
 }
 
 // Reconcile reads that state of the cluster for a MultiClusterMonitoring object and makes changes based on the state read
@@ -422,8 +422,8 @@ func (r *ReconcileMultiClusterMonitoring) newOCPMonitoringCM(cr *monitoringv1.Mu
 		return &reconcile.Result{}, err
 	}
 
-	existingCM := &v1.ConfigMap{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: ocpMonitoringCM.Name, Namespace: ocpMonitoringCM.Namespace}, existingCM)
+	existingCM := &corev1.ConfigMap{}
+	err = r.apiReader.Get(context.TODO(), types.NamespacedName{Name: ocpMonitoringCM.Name, Namespace: ocpMonitoringCM.Namespace}, existingCM)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating the configmap for cluster monitoring")
 		err = r.client.Create(context.TODO(), ocpMonitoringCM)
