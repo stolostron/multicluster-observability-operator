@@ -3,14 +3,15 @@ package multiclustermonitoring
 import (
 	"context"
 	"fmt"
-	"reflect"
-	"time"
-
 	grafanav1alpha1 "github.com/integr8ly/grafana-operator/v3/pkg/apis/integreatly/v1alpha1"
 	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
+	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/multiclustermonitoring/util"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering"
 	routev1 "github.com/openshift/api/route/v1"
 	routev1ClientSet "github.com/openshift/client-go/route/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -18,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
+	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -27,10 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/multiclustermonitoring/util"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering"
+	"time"
 )
 
 var log = logf.Log.WithName("controller_multiclustermonitoring")
