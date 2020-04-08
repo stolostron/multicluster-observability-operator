@@ -96,7 +96,7 @@ monitoring-observatorium   163m
 1. The Prometheus in hub cluster already enabled remoteWrite to send metrics. Access Grafana console at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "ACM:Managed Cluster Monitoring"
 
 2. Enable remote write for OCP prometheus in spoke clusters
-Create the configmap in openshift-monitoring namespace. Replace the url with the your route value.
+Create the configmap in openshift-monitoring namespace. Replace the url with the your route value. Also need to replace the value of "targetLabel" with the spoke cluster's name
 ```
 apiVersion: v1
 kind: ConfigMap
