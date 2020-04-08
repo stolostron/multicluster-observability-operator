@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -93,8 +94,9 @@ func main() {
 	}
 
 	// Create a new Cmd to provide shared dependencies and start components
+	namespaces := []string{namespace, "openshift-monitoring"}
 	mgr, err := manager.New(cfg, manager.Options{
-		Namespace:          namespace,
+		NewCache:           cache.MultiNamespacedCacheBuilder(namespaces),
 		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
 	})
 	if err != nil {

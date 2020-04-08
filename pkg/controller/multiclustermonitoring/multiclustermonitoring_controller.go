@@ -333,7 +333,7 @@ func (r *ReconcileMultiClusterMonitoring) newAPIGatewayRoute(cr *monitoringv1.Mu
 		}
 
 	} else if err == nil && len(apiGatewayServices.Items) == 0 {
-		log.Info("Cannot find the service ", cr.Name+observatoriumPartoOfName+"-"+observatoriumAPIGatewayName)
+		log.Info("Cannot find the service ", "serviceName", cr.Name+observatoriumPartoOfName+"-"+observatoriumAPIGatewayName)
 		return &reconcile.Result{RequeueAfter: time.Second * 10}, nil
 	} else {
 		return &reconcile.Result{}, err
@@ -422,16 +422,31 @@ func (r *ReconcileMultiClusterMonitoring) newOCPMonitoringCM(cr *monitoringv1.Mu
 		return &reconcile.Result{}, err
 	}
 
-	existingCM := &corev1.ConfigMap{}
-	err = r.apiReader.Get(context.TODO(), types.NamespacedName{Name: ocpMonitoringCM.Name, Namespace: ocpMonitoringCM.Namespace}, existingCM)
-	if err != nil && errors.IsNotFound(err) {
+	existingCM := &v1.ConfigMap{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: ocpMonitoringCM.Name, Namespace: ocpMonitoringCM.Namespace}, existingCM)
+	if err == nil {
+		log.Info("Updating the configmap for cluster monitoring")
+		err = util.UpdateConfigMap(existingCM, obsRoute.Spec.Host)
+		if err != nil {
+			log.Error(err, "Failed to update the configmap")
+			return &reconcile.Result{}, err
+		}
+		err = r.client.Update(context.TODO(), existingCM)
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
+	} else if errors.IsNotFound(err) {
 		log.Info("Creating the configmap for cluster monitoring")
+		ocpMonitoringCM, err := util.CreateConfigMap(obsRoute.Spec.Host)
+		if err != nil {
+			log.Error(err, "Failed to create configmap")
+			return &reconcile.Result{}, err
+		}
 		err = r.client.Create(context.TODO(), ocpMonitoringCM)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
-		return nil, nil
-	} else if err != nil {
+	} else {
 		return &reconcile.Result{}, err
 	}
 
