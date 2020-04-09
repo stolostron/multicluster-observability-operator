@@ -9,10 +9,10 @@ services:
   - docker
 
 # need to onboard in sonarcloud later
-#addons:
-#  sonarcloud:
-#    organization: "open-cluster-management"
-#    token:
+addons:
+  sonarcloud:
+    organization: "open-cluster-management"
+    token: ”HfA7DCfNXnRbQ2J7U1XyxKrsuij3eDQM5aFvyugYN/cpa0nGnJKn3ncKg475D4U8Y5fMdbLw2XOOQpOnLVZUfvpNSTw35P+ziIOrMSX9JQoITG9L1l8XkpIkW8Xi30jhnuLs3QUwnNGLm5evTRWnp3EgNOoMh/5N7GHn9BDJOcponTEZLYDGIVn+ob5Sypua4/PfGSfuFNyVIMaOsNGUnHNwTsKQkOtVgwy+essvNZVfCGmSM1dpM8vFptyhAZrf6yRqAuHHfzlKQcPEk1hc0h+e22AeokgTCnAYn6hxFJ2//BIzhYT7X6ooRZua/pJQhvNHhLgJ/eQ0f1cEqWEJuROHJZGCWsZQP+++LkPpNc121QxhPNqX2y1DBiqvD8411nVI6Ojg+uR7ri36cZ4dUDaB+zAMwzHehmk83a/KT9Gvk0fX080vuZ1rVy1hg6HOAKwkRBOUVKpMKImy9DHZhL51ggCwiJH0lKGZVT+LhUxjGKcS+Mf+KcbCr+I+oZhFpfWJtPp7fFbqJ63ozmdFix6q2mLbpJtAZzrEjyWs1/cgGtW9+CKsZn6FrYWD5tt37O1lr+XEp3JiOOELJuixoy31ku/Zwu2Y4dOlJCqoS56OqHkUqk8g1iOW7gc8U66wRgTbEv8ggI54a4b0ccv4lG5TNVD6putafF1BxiTXbV4=“
 
 branches:
   only:
@@ -62,7 +62,7 @@ jobs:
           make 
           make component/pull 
           make component/test/unit
-      #    make sonar/go
+          make sonar/go
     - stage: test-e2e
       name: "Deploy the image to a cluster and run e2e tests"
       script:
