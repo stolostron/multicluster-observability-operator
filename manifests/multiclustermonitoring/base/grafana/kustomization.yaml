@@ -7,4 +7,5 @@ resources:
 - service_account.yaml
 - operator.yaml
 - ingress.yaml
-- dashboards/managed-cluster-dashboard.yaml
+- dashboards/hub-cluster-dashboard.yaml
+- dashboards/spoke-cluster-dashboard.yaml
