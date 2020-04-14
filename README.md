@@ -1,4 +1,12 @@
 # multicluster-monitoring-operator
+
+## Overview
+
+The multicluster-monitoring-operator is a component of ACM observability feature. It is designed to install into Hub Cluster.
+
+![Overview](./multicluster-monitoring-operator.png)
+
+## Developer Guide
 The guide is used for developer to build and install the multicluster-monitoring-operator. It can be running in [kind][install_kind] if you don't have a OCP environment.
 
 ### Prerequisites
