@@ -80,8 +80,8 @@ spec:
       auth.anonymous:
         enabled: false
       server:
-        domain: "multicloud-console.apps.cyang-ocp1.dev05.red-chesterfield.com"
         root_url: "%(protocol)s://%(domain)s/grafana/"
+        domain: "localhost"
     dashboardLabelSelector:
       - matchExpressions:
           - {key: app, operator: In, values: [grafana]}
