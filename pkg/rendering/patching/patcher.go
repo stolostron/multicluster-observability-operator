@@ -66,6 +66,7 @@ func generateImagePatch(res *resource.Resource, mch *monitoringv1.MultiClusterMo
 	}), nil
 }
 
+/* #nosec */
 const imagePullSecretsTemplate = `
 kind: __kind__
 spec:
