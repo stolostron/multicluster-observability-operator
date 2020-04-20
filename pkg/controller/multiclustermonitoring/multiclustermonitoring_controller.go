@@ -6,12 +6,11 @@ import (
 	grafanav1alpha1 "github.com/integr8ly/grafana-operator/v3/pkg/apis/integreatly/v1alpha1"
 	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
 	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/multiclustermonitoring/util"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 	routev1 "github.com/openshift/api/route/v1"
 	routev1ClientSet "github.com/openshift/client-go/route/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -415,37 +414,8 @@ func (r *ReconcileMultiClusterMonitoring) newOCPMonitoringCM(cr *monitoringv1.Mu
 		return &reconcile.Result{}, err
 	}
 
-	ocpMonitoringCM, err := util.CreateConfigMap(obsRoute.Spec.Host)
+	err = util.UpdateHubClusterMonitoringConfig(obsRoute.Spec.Host)
 	if err != nil {
-		log.Error(err, "Failed to create configmap")
-		return &reconcile.Result{}, err
-	}
-
-	existingCM := &v1.ConfigMap{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: ocpMonitoringCM.Name, Namespace: ocpMonitoringCM.Namespace}, existingCM)
-	if err == nil {
-		log.Info("Updating the configmap for cluster monitoring")
-		err = util.UpdateConfigMap(existingCM, obsRoute.Spec.Host)
-		if err != nil {
-			log.Error(err, "Failed to update the configmap")
-			return &reconcile.Result{}, err
-		}
-		err = r.client.Update(context.TODO(), existingCM)
-		if err != nil {
-			return &reconcile.Result{}, err
-		}
-	} else if errors.IsNotFound(err) {
-		log.Info("Creating the configmap for cluster monitoring")
-		ocpMonitoringCM, err := util.CreateConfigMap(obsRoute.Spec.Host)
-		if err != nil {
-			log.Error(err, "Failed to create configmap")
-			return &reconcile.Result{}, err
-		}
-		err = r.client.Create(context.TODO(), ocpMonitoringCM)
-		if err != nil {
-			return &reconcile.Result{}, err
-		}
-	} else {
 		return &reconcile.Result{}, err
 	}
 
