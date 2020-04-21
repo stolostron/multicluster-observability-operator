@@ -64,9 +64,9 @@ spec:
 ```
 2. Apply the manifests
 ```
-kubectl apply -f deploy/crds/
+kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_multiclustermonitorings_crd.yaml
+kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_v1_multiclustermonitoring_cr.yaml
 kubectl apply -f deploy/
-
 ```
 After installed successfully, you will see the following output:
 `oc get pod`
