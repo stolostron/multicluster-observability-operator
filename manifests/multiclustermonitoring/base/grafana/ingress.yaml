@@ -2,12 +2,12 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   annotations:
-    icp.management.ibm.com/rewrite-target: "/"
-    kubernetes.io/ingress.class: "ibm-icp-management"
-    icp.management.ibm.com/configuration-snippet: |
+    ingress.open-cluster-management.io/configuration-snippet: |
       rewrite_by_lua_block {
         ngx.req.set_header("Authorization", "Basic cm9vdDpzZWNyZXQ=")
       }
+    ingress.open-cluster-management.io/rewrite-target: /
+    kubernetes.io/ingress.class: ingress-open-cluster-management
   name: grafana
 spec:
   rules:
