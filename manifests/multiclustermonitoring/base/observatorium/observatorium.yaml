@@ -20,7 +20,7 @@ spec:
         - ReadWriteOnce
         resources:
           requests:
-            storage: 50Gi
+            storage: 1Gi
   hashrings:
   - hashring: default
     tenants: []
@@ -38,7 +38,7 @@ spec:
         - ReadWriteOnce
         resources:
           requests:
-            storage: 50Gi
+            storage: 1Gi
   rule:
     volumeClaimTemplate:
       spec:
@@ -46,7 +46,7 @@ spec:
         - ReadWriteOnce
         resources:
           requests:
-            storage: 50Gi
+            storage: 1Gi
   store:
     cache:
       exporterImage: prom/memcached-exporter:v0.6.0
@@ -62,7 +62,7 @@ spec:
         - ReadWriteOnce
         resources:
           requests:
-            storage: 50Gi
+            storage: 1Gi
   thanosImage: quay.io/thanos/thanos:v0.12.0-rc.1
   thanosReceiveController:
     image: quay.io/observatorium/thanos-receive-controller:master-2020-02-06-b66e0c8
