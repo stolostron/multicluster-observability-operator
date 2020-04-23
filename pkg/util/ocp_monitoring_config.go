@@ -35,8 +35,14 @@ func getConfigMap(client kubernetes.Interface) (*v1.ConfigMap, error) {
 }
 
 func createRemoteWriteSpec(url string, labelConfigs *[]monv1.RelabelConfig) *monv1.RemoteWriteSpec {
+	if !strings.HasPrefix(url, "http") {
+		url = protocol + url
+	}
+	if !strings.HasSuffix(url, urlSubPath) {
+		url = url + urlSubPath
+	}
 	return &monv1.RemoteWriteSpec{
-		URL:                 protocol + url + urlSubPath,
+		URL:                 url,
 		WriteRelabelConfigs: *labelConfigs,
 	}
 }
