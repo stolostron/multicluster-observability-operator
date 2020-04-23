@@ -836,6 +836,8 @@ github.com/neelance/sourcemap v0.0.0-20151028013722-8c68805598ab/go.mod h1:Qr6/a
 github.com/observatorium/configuration v0.0.0-20200401101849-a6da9e477da4 h1:OBOV12USKvL7l2nbU4sgsqXuVvVa/Zj97RfLUoY7Law=
 github.com/observatorium/configuration v0.0.0-20200401101849-a6da9e477da4/go.mod h1:NGHK0P199At1pfG473uD8AN2hbgdvXrkAqdfiTcgPH0=
 github.com/observatorium/configuration v0.0.0-20200409074724-d1516bace8da h1:/a5H8svxhEGXQt2xgJPpDrF+M4qf2OJJDXR83jtLdng=
+github.com/observatorium/configuration v0.0.0-20200422133523-8d20d0440fdc h1:wduANLrxcE03dFToqG9was34nXpce37i/6shqNsh874=
+github.com/observatorium/configuration v0.0.0-20200422133523-8d20d0440fdc/go.mod h1:NGHK0P199At1pfG473uD8AN2hbgdvXrkAqdfiTcgPH0=
 github.com/oklog/oklog v0.0.0-20170918173356-f857583a70c3/go.mod h1:FCV+B7mhrz4o+ueLpx+KqkyXRGMWOYEvfiXtdGtbWGs=
 github.com/oklog/run v1.0.0/go.mod h1:dlhp/R75TPv97u0XWUtDeV/lRKWPKSdTuV0TZvrmrQA=
 github.com/oklog/ulid v0.0.0-20170117200651-66bb6560562f/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
