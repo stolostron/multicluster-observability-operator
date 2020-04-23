@@ -61,6 +61,9 @@ func createConfigMap(client kubernetes.Interface, url string, labelConfigs *[]mo
 		Data: map[string]string{configKey: string(configYaml)},
 	}
 	_, err = client.CoreV1().ConfigMaps(Namespace).Create(cm)
+	if err == nil {
+		log.Info("Configmap created")
+	}
 	return err
 }
 
@@ -97,6 +100,9 @@ func updateConfigMap(client kubernetes.Interface, configmap *v1.ConfigMap, url s
 	}
 	configmap.Data[configKey] = string(updateConfigYaml)
 	_, err = client.CoreV1().ConfigMaps(Namespace).Update(configmap)
+	if err == nil {
+		log.Info("Configmap updated")
+	}
 	return err
 }
 
