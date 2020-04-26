@@ -1,7 +1,6 @@
 package v1
 
 import (
-	grafanav1alpha1 "github.com/integr8ly/grafana-operator/v3/pkg/apis/integreatly/v1alpha1"
 	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,7 +41,7 @@ type MultiClusterMonitoringSpec struct {
 	Observatorium observatoriumv1alpha1.ObservatoriumSpec `json:"observatorium"`
 
 	// Spec of Grafana
-	Grafana grafanav1alpha1.GrafanaSpec `json:"grafana"`
+	Grafana *GrafanaSpec `json:"grafana"`
 }
 
 // MultiClusterMonitoringStatus defines the observed state of MultiClusterMonitoring
@@ -91,4 +90,9 @@ type NodeSelector struct {
 	// Spec of CustomLabelValue
 	// +optional
 	CustomLabelValue string `json:"customLabelValue,omitempty"`
+}
+
+// GrafanaSpec defines the desired state of GrafanaSpec
+type GrafanaSpec struct {
+	Hostport     string            `json:"hostport"`
 }

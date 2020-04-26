@@ -72,26 +72,4 @@ spec:
       version: master-2020-02-06-b66e0c8
     thanosVersion: v0.12.0-rc.1
   grafana:
-    ingress:
-      enabled: false
-    config:
-      log:
-        mode: "console"
-        level: "warn"
-      security:
-        admin_user: "root"
-        admin_password: "secret"
-      auth:
-        disable_login_form: true
-        disable_signout_menu: true
-      auth.anonymous:
-        enabled: false
-      server:
-        root_url: "%(protocol)s://%(domain)s/grafana/"
-        domain: "localhost"
-    dashboardLabelSelector:
-      - matchExpressions:
-          - {key: app, operator: In, values: [grafana]}
-    compat:
-      fixAnnotations: true
-      fixHeights: false
+    hostport: "3000"

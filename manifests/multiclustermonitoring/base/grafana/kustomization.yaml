@@ -1,10 +1,11 @@
 resources:
-- crds/Grafana.yaml
-- crds/GrafanaDashboard.yaml
-- crds/GrafanaDataSource.yaml
-- role.yaml
-- role_binding.yaml
-- service_account.yaml
-- operator.yaml
+- cluster-role.yaml
+- cluster-role-binding.yaml
+- service-account.yaml
+- config.yaml
+- dashboard-definitions.yaml
+- dashboard-sources.yaml
+- deployment.yaml
+- service-monitor.yaml
 - ingress.yaml
-- dashboards/managed-cluster-dashboard.yaml
+- service.yaml

@@ -4,7 +4,7 @@ metadata:
   annotations:
     ingress.open-cluster-management.io/configuration-snippet: |
       rewrite_by_lua_block {
-        ngx.req.set_header("Authorization", "Basic cm9vdDpzZWNyZXQ=")
+        ngx.req.set_header("Authorization", "Basic YWRtaW46c2VjcmV0")
       }
     ingress.open-cluster-management.io/rewrite-target: /
     kubernetes.io/ingress.class: ingress-open-cluster-management
@@ -14,6 +14,6 @@ spec:
   - http:
       paths:
       - backend:
-          serviceName: grafana-service
-          servicePort: 3000
+          serviceName: grafana
+          servicePort: 3001
         path: /grafana

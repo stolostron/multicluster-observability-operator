@@ -4,15 +4,12 @@ go 1.13
 
 require (
 	github.com/coreos/prometheus-operator v0.38.0
-	github.com/integr8ly/grafana-operator v2.0.0+incompatible
-	github.com/integr8ly/grafana-operator/v3 v3.1.0
 	github.com/observatorium/configuration v0.0.0-20200422133523-8d20d0440fdc
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
 	github.com/openshift/cluster-monitoring-operator v0.1.1-0.20200406225945-844f960a2a8d
 	github.com/operator-framework/operator-sdk v0.16.0
 	github.com/spf13/pflag v1.0.5
-	gopkg.in/yaml.v2 v2.2.8 // indirect
 	k8s.io/api v0.17.3
 	k8s.io/apimachinery v0.17.3
 	k8s.io/client-go v12.0.0+incompatible
