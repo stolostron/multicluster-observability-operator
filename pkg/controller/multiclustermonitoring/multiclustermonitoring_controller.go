@@ -3,23 +3,15 @@ package multiclustermonitoring
 import (
 	"context"
 	"fmt"
-	"encoding/json"
+	"reflect"
 	"time"
 
-	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
-	routev1 "github.com/openshift/api/route/v1"
-	routev1ClientSet "github.com/openshift/client-go/route/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -30,16 +22,9 @@ import (
 
 	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 var log = logf.Log.WithName("controller_multiclustermonitoring")
-
-const (
-	grafanaPartoOfName          = "-grafana"
-	observatoriumPartoOfName    = "-observatorium"
-	observatoriumAPIGatewayName = "observatorium-api-gateway"
-)
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -142,33 +127,49 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 	}
 
 	// create a Observatorium CR
-	result, err := r.newObservatoriumCR(instance)
+	result, err := GenerateObservatoriumCR(r.client, r.scheme, instance)
 	if result != nil {
 		return *result, err
 	}
 
 	// expose observatorium api gateway
-	result, err = r.newAPIGatewayRoute(instance)
+	result, err = GenerateAPIGatewayRoute(r.client, r.scheme, instance)
 	if result != nil {
 		return *result, err
 	}
-	// have a grafana ingress to integrate with management-ingress
-
 	// generate grafana datasource to point to observatorium api gateway
-	result, err = r.newGrafanaDataSource(instance)
+	result, err = GenerateGrafanaDataSource(r.client, r.scheme, instance)
 	if result != nil {
 		return *result, err
 	}
 
 	// generate/update the configmap cluster-monitoring-config
-	result, err = r.newOCPMonitoringCM(instance)
+	result, err = UpdateOCPMonitoringCM(instance)
 	if result != nil {
 		return *result, err
 	}
 
-	// Pod already exists - don't requeue
-	//reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
-	return reconcile.Result{}, nil
+	result, err = r.UpdateStatus(instance)
+	if result != nil {
+		return *result, err
+	}
+
+	return reconcile.Result{Requeue: true}, nil
+}
+
+func (r *ReconcileMultiClusterMonitoring) UpdateStatus(mcm *monitoringv1.MultiClusterMonitoring) (*reconcile.Result, error) {
+	err := r.client.Status().Update(context.TODO(), mcm)
+	if err != nil {
+		if errors.IsConflict(err) {
+			// Error from object being modified is normal behavior and should not be treated like an error
+			log.Info("Failed to update status", "Reason", "Object has been modified")
+			return &reconcile.Result{RequeueAfter: time.Second}, nil
+		}
+
+		log.Error(err, fmt.Sprintf("Failed to update %s/%s status ", mcm.Namespace, mcm.Name))
+		return &reconcile.Result{}, err
+	}
+	return &reconcile.Result{}, nil
 }
 
 func deploy(c client.Client, obj *unstructured.Unstructured) error {
@@ -197,210 +198,4 @@ func deploy(c client.Client, obj *unstructured.Unstructured) error {
 		return c.Update(context.TODO(), newObj)
 	}
 	return nil
-}
-
-// newObservatoriumCR returns Observatorium cr defined in MultiClusterMonitoring
-func (r *ReconcileMultiClusterMonitoring) newObservatoriumCR(cr *monitoringv1.MultiClusterMonitoring) (*reconcile.Result, error) {
-
-	labels := map[string]string{
-		"app": cr.Name,
-	}
-	observatoriumCR := &observatoriumv1alpha1.Observatorium{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + observatoriumPartoOfName,
-			Namespace: cr.Namespace,
-			Labels:    labels,
-		},
-		Spec: cr.Spec.Observatorium,
-	}
-
-	// Set MultiClusterMonitoring instance as the owner and controller
-	if err := controllerutil.SetControllerReference(cr, observatoriumCR, r.scheme); err != nil {
-		return &reconcile.Result{}, err
-	}
-
-	// Check if this Pod already exists
-	observatoriumCRFound := &observatoriumv1alpha1.Observatorium{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: observatoriumCR.Name, Namespace: observatoriumCR.Namespace}, observatoriumCRFound)
-	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating a new observatorium CR", "observatorium.Namespace", observatoriumCR.Namespace, "observatorium.Name", observatoriumCR.Name)
-		err = r.client.Create(context.TODO(), observatoriumCR)
-		if err != nil {
-			return &reconcile.Result{}, err
-		}
-
-		// Pod created successfully - don't requeue
-		return nil, nil
-	} else if err != nil {
-		return &reconcile.Result{}, err
-	}
-
-	return nil, nil
-}
-
-func createKubeClient() (kubernetes.Interface, error) {
-	config, err := config.GetConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	kubeClient, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return kubeClient, err
-}
-
-func (r *ReconcileMultiClusterMonitoring) newAPIGatewayRoute(cr *monitoringv1.MultiClusterMonitoring) (*reconcile.Result, error) {
-	labelSelector := fmt.Sprintf("app.kubernetes.io/component=%s, app.kubernetes.io/instance=%s", "api-gateway", cr.Name+observatoriumPartoOfName)
-	listOptions := metav1.ListOptions{
-		LabelSelector: labelSelector,
-	}
-	kubeClient, err := createKubeClient()
-	if err != nil {
-		log.Error(err, "Failed to create kube client")
-		return &reconcile.Result{}, err
-	}
-
-	apiGatewayServices, err := kubeClient.CoreV1().Services(cr.Namespace).List(listOptions)
-	if err == nil && len(apiGatewayServices.Items) > 0 {
-		apiGateway := &routev1.Route{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      observatoriumAPIGatewayName,
-				Namespace: cr.Namespace,
-			},
-			Spec: routev1.RouteSpec{
-				Port: &routev1.RoutePort{
-					TargetPort: intstr.FromString("http"),
-				},
-				To: routev1.RouteTargetReference{
-					Kind: "Service",
-					Name: apiGatewayServices.Items[0].GetName(),
-				},
-			},
-		}
-		err = r.client.Get(context.TODO(), types.NamespacedName{Name: apiGateway.Name, Namespace: apiGateway.Namespace}, &routev1.Route{})
-		if err != nil && errors.IsNotFound(err) {
-			log.Info("Creating a new route to expose observatorium api", "apiGateway.Namespace", apiGateway.Namespace, "apiGateway.Name", apiGateway.Name)
-			err = r.client.Create(context.TODO(), apiGateway)
-			if err != nil {
-				return &reconcile.Result{}, err
-			}
-		}
-
-	} else if err == nil && len(apiGatewayServices.Items) == 0 {
-		log.Info("Cannot find the service ", "serviceName", cr.Name+observatoriumPartoOfName+"-"+observatoriumAPIGatewayName)
-		return &reconcile.Result{RequeueAfter: time.Second * 10}, nil
-	} else {
-		return &reconcile.Result{}, err
-	}
-	return nil, nil
-}
-
-func createRoutev1Client() (routev1ClientSet.Interface, error) {
-	config, err := config.GetConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	routev1Client, err := routev1ClientSet.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return routev1Client, err
-}
-
-type GrafanaDatasources struct {
-	ApiVersion  int                  `json:"apiVersion"`
-	Datasources []*GrafanaDatasource `json:"datasources"`
-}
-
-type GrafanaDatasource struct {
-	Access            string           `json:"access"`
-	BasicAuth         bool             `json:"basicAuth"`
-	BasicAuthPassword string           `json:"basicAuthPassword"`
-	BasicAuthUser     string           `json:"basicAuthUser"`
-	Editable          bool             `json:"editable"`
-	Name              string           `json:"name"`
-	OrgId             int              `json:"orgId"`
-	Type              string           `json:"type"`
-	Url               string           `json:"url"`
-	Version           int              `json:"version"`
-}
-
-func (r *ReconcileMultiClusterMonitoring) newGrafanaDataSource(cr *monitoringv1.MultiClusterMonitoring) (*reconcile.Result, error) {
-
-	grafanaDatasources, err := json.MarshalIndent(GrafanaDatasources{
-		ApiVersion: 1,
-		Datasources: []*GrafanaDatasource{
-			{
-				Name:   "Observatorium",
-				Type:   "prometheus",
-				Access: "proxy",
-				Url:    "http://" + cr.Name + observatoriumPartoOfName + "-observatorium-api-gateway:8080/api/metrics/v1",
-			},
-		},
-	}, "", "    ")
-    if err != nil {
-        return &reconcile.Result{}, err
-	}
-
-	grafanaDataSourceSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "grafana-datasources",
-			Namespace: cr.Namespace,
-		},
-		Type: "Opaque",
-		StringData: map[string]string{
-			"datasources.yaml": string(grafanaDatasources),
-		},
-	}
-	
-	// Set MultiClusterMonitoring instance as the owner and controller
-	if err = controllerutil.SetControllerReference(cr, grafanaDataSourceSecret, r.scheme); err != nil {
-		return &reconcile.Result{}, err
-	}
-
-	// Check if this already exists
-	grafanaDSFound := &corev1.Secret{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: grafanaDataSourceSecret.Name, Namespace: grafanaDataSourceSecret.Namespace}, grafanaDSFound)
-	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating a new grafana datasource secret", "grafanaDataSourceSecret.Namespace", grafanaDataSourceSecret.Namespace, "grafanaDataSourceSecret.Name", grafanaDataSourceSecret.Name)
-		err = r.client.Create(context.TODO(), grafanaDataSourceSecret)
-		if err != nil {
-			return &reconcile.Result{}, err
-		}
-
-		// Pod created successfully - don't requeue
-		return nil, nil
-	} else if err != nil {
-		return &reconcile.Result{}, err
-	}
-
-	return nil, nil
-}
-
-func (r *ReconcileMultiClusterMonitoring) newOCPMonitoringCM(cr *monitoringv1.MultiClusterMonitoring) (*reconcile.Result, error) {
-
-	routev1Client, err := createRoutev1Client()
-	if err != nil {
-		log.Error(err, "Failed to create routev1 client")
-		return &reconcile.Result{}, nil
-	}
-
-	// Try to get route instance
-	obsRoute, err := routev1Client.RouteV1().Routes(cr.Namespace).Get(observatoriumAPIGatewayName, metav1.GetOptions{})
-	if err != nil {
-		log.Error(err, "Failed to get route", observatoriumAPIGatewayName)
-		return &reconcile.Result{}, err
-	}
-
-	err = util.UpdateHubClusterMonitoringConfig(obsRoute.Spec.Host)
-	if err != nil {
-		return &reconcile.Result{}, err
-	}
-
-	return nil, nil
 }
