@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   labels:
     app: grafana
+    monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
   name: grafana
   namespace: open-cluster-management
 spec:
@@ -10,10 +11,12 @@ spec:
   selector:
     matchLabels:
       app: grafana
+      monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
   template:
     metadata:
       labels:
         app: grafana
+        monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
     spec:
       containers:
       - args:
@@ -47,7 +50,6 @@ spec:
         - mountPath: /etc/grafana
           name: grafana-config
           readOnly: false
-      priorityClassName: system-cluster-critical
       securityContext: {}
       serviceAccountName: grafana
       volumes:

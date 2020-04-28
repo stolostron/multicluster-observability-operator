@@ -3,16 +3,20 @@ kind: Deployment
 metadata:
   name: minio
   namespace: observatorium
+  labels:
+    monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
 spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: minio
+      monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
         app.kubernetes.io/name: minio
+        monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
     spec:
       containers:
       - command:

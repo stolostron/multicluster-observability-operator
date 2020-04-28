@@ -23,7 +23,7 @@ func TestRender(t *testing.T) {
 
 	mchcr := &monitoringv1.MultiClusterMonitoring{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterMonitoring"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: "test"},
+		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
 		Spec: monitoringv1.MultiClusterMonitoringSpec{
 			Version:         "latest",
 			ImageRepository: "quay.io/open-cluster-management",

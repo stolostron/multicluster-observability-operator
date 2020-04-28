@@ -2,6 +2,7 @@ package v1
 
 import (
 	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -49,6 +50,19 @@ type MultiClusterMonitoringStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+
+	// Represents the status of each deployment
+	// +optional
+	Deployments []DeploymentResult `json:"deployments,omitempty"`
+}
+
+// DeploymentResult defines the observed state of Deployment
+type DeploymentResult struct {
+	// Name of the deployment
+	Name string `json:"name"`
+
+	// The most recently observed status of the Deployment
+	Status appsv1.DeploymentStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -94,5 +108,5 @@ type NodeSelector struct {
 
 // GrafanaSpec defines the desired state of GrafanaSpec
 type GrafanaSpec struct {
-	Hostport     string            `json:"hostport"`
+	Hostport string `json:"hostport"`
 }

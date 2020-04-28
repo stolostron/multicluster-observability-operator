@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"time"
 
+	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -56,12 +58,36 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner MultiClusterMonitoring
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
+	// Watch for changes to secondary resource Deployment and requeue the owner MultiClusterMonitoring
+	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &monitoringv1.MultiClusterMonitoring{},
 	})
+
+	// Watch for changes to secondary resource ConfigMap and requeue the owner MultiClusterMonitoring
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &monitoringv1.MultiClusterMonitoring{},
+	})
+
+	// Watch for changes to secondary resource Secret and requeue the owner MultiClusterMonitoring
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &monitoringv1.MultiClusterMonitoring{},
+	})
+
+	// Watch for changes to secondary resource Service and requeue the owner MultiClusterMonitoring
+	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &monitoringv1.MultiClusterMonitoring{},
+	})
+
+	// Watch for changes to secondary Observatorium CR and requeue the owner MultiClusterMonitoring
+	err = c.Watch(&source.Kind{Type: &observatoriumv1alpha1.Observatorium{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &monitoringv1.MultiClusterMonitoring{},
+	})
+
 	if err != nil {
 		return err
 	}
@@ -158,7 +184,29 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 }
 
 func (r *ReconcileMultiClusterMonitoring) UpdateStatus(mcm *monitoringv1.MultiClusterMonitoring) (*reconcile.Result, error) {
-	err := r.client.Status().Update(context.TODO(), mcm)
+	reqLogger := log.WithValues("Request.Namespace", mcm.Namespace, "Request.Name", mcm.Name)
+
+	deployList := &appsv1.DeploymentList{}
+	listOpts := []client.ListOption{
+		client.InNamespace(mcm.Namespace),
+		client.MatchingLabels(labelsForMultiClusterMonitoring(mcm.Name)),
+	}
+	err := r.client.List(context.TODO(), deployList, listOpts...)
+	if err != nil {
+		reqLogger.Error(err, "Failed to list deployments.", "MultiClusterMonitoring.Namespace", mcm.Namespace, "MemcaMultiClusterMonitoringched.Name", mcm.Name)
+		return &reconcile.Result{}, err
+	}
+
+	statedDeploys := []monitoringv1.DeploymentResult{}
+	for _, deployment := range deployList.Items {
+		statedDeploys = append(statedDeploys, monitoringv1.DeploymentResult{
+			Name:   deployment.Name,
+			Status: deployment.Status,
+		})
+	}
+	mcm.Status.Deployments = statedDeploys
+
+	err = r.client.Status().Update(context.TODO(), mcm)
 	if err != nil {
 		if errors.IsConflict(err) {
 			// Error from object being modified is normal behavior and should not be treated like an error
@@ -198,4 +246,10 @@ func deploy(c client.Client, obj *unstructured.Unstructured) error {
 		return c.Update(context.TODO(), newObj)
 	}
 	return nil
+}
+
+// labelsForMultiClusterMonitoring returns the labels for selecting the resources
+// belonging to the given MultiClusterMonitoring CR name.
+func labelsForMultiClusterMonitoring(name string) map[string]string {
+	return map[string]string{"monitoring.open-cluster-management.io/name": name}
 }

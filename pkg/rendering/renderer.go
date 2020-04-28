@@ -42,7 +42,6 @@ func NewRenderer(multipleClusterMonitoring *monitoringv1.MultiClusterMonitoring)
 		"RoleBinding":           renderer.renderNamespace,
 		"Ingress":               renderer.renderNamespace,
 		"PersistentVolumeClaim": renderer.renderPersistentVolumeClaim,
-		"GrafanaDashboard":      renderer.renderNamespace,
 	}
 	return renderer
 }
@@ -88,7 +87,42 @@ func (r *Renderer) renderDeployments(res *resource.Resource) (*unstructured.Unst
 	}
 
 	res.SetNamespace(r.cr.Namespace)
-	return &unstructured.Unstructured{Object: res.Map()}, nil
+
+	u := &unstructured.Unstructured{Object: res.Map()}
+
+	metadata, ok := u.Object["metadata"].(map[string]interface{})
+	if ok {
+		err = replaceInValues(metadata, r.cr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Update channel to prepend the CRs namespace
+	spec, ok := u.Object["spec"].(map[string]interface{})
+	if ok {
+		selector, ok := spec["selector"].(map[string]interface{})
+		if ok {
+			err = replaceInValues(selector, r.cr)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		template, ok := spec["template"].(map[string]interface{})
+		if ok {
+			metadata, ok := template["metadata"].(map[string]interface{})
+			if ok {
+				err = replaceInValues(metadata, r.cr)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+
+	}
+
+	return u, nil
 }
 
 func (r *Renderer) renderNamespace(res *resource.Resource) (*unstructured.Unstructured, error) {
@@ -150,6 +184,7 @@ func stringValueReplace(toReplace string, cr *monitoringv1.MultiClusterMonitorin
 	replaced = strings.ReplaceAll(replaced, "{{NAMESPACE}}", string(cr.Namespace))
 	replaced = strings.ReplaceAll(replaced, "{{PULLPOLICY}}", string(cr.Spec.ImagePullPolicy))
 	replaced = strings.ReplaceAll(replaced, "{{STORAGECLASS}}", string(cr.Spec.StorageClass))
+	replaced = strings.ReplaceAll(replaced, "{{MULTICLUSTERMONITORING_CR_NAME}}", string(cr.Name))
 
 	return replaced
 }
