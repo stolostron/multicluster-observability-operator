@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1"
+	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
 
 const (
@@ -27,7 +27,7 @@ const (
 )
 
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterMonitoring
-func GenerateObservatoriumCR(client client.Client, scheme *runtime.Scheme, monitoring *monitoringv1.MultiClusterMonitoring) (*reconcile.Result, error) {
+func GenerateObservatoriumCR(client client.Client, scheme *runtime.Scheme, monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
 
 	labels := map[string]string{
 		"app": monitoring.Name,
@@ -79,7 +79,7 @@ func createKubeClient() (kubernetes.Interface, error) {
 	return kubeClient, err
 }
 
-func GenerateAPIGatewayRoute(client client.Client, scheme *runtime.Scheme, monitoring *monitoringv1.MultiClusterMonitoring) (*reconcile.Result, error) {
+func GenerateAPIGatewayRoute(client client.Client, scheme *runtime.Scheme, monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
 	labelSelector := fmt.Sprintf("app.kubernetes.io/component=%s, app.kubernetes.io/instance=%s", "api-gateway", monitoring.Name+observatoriumPartoOfName)
 	listOptions := metav1.ListOptions{
 		LabelSelector: labelSelector,

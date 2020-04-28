@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1"
+	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering"
 )
 
@@ -53,7 +53,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource MultiClusterMonitoring
-	err = c.Watch(&source.Kind{Type: &monitoringv1.MultiClusterMonitoring{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &monitoringv1alpha1.MultiClusterMonitoring{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -61,31 +61,31 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watch for changes to secondary resource Deployment and requeue the owner MultiClusterMonitoring
 	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1.MultiClusterMonitoring{},
+		OwnerType:    &monitoringv1alpha1.MultiClusterMonitoring{},
 	})
 
 	// Watch for changes to secondary resource ConfigMap and requeue the owner MultiClusterMonitoring
 	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1.MultiClusterMonitoring{},
+		OwnerType:    &monitoringv1alpha1.MultiClusterMonitoring{},
 	})
 
 	// Watch for changes to secondary resource Secret and requeue the owner MultiClusterMonitoring
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1.MultiClusterMonitoring{},
+		OwnerType:    &monitoringv1alpha1.MultiClusterMonitoring{},
 	})
 
 	// Watch for changes to secondary resource Service and requeue the owner MultiClusterMonitoring
 	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1.MultiClusterMonitoring{},
+		OwnerType:    &monitoringv1alpha1.MultiClusterMonitoring{},
 	})
 
 	// Watch for changes to secondary Observatorium CR and requeue the owner MultiClusterMonitoring
 	err = c.Watch(&source.Kind{Type: &observatoriumv1alpha1.Observatorium{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1.MultiClusterMonitoring{},
+		OwnerType:    &monitoringv1alpha1.MultiClusterMonitoring{},
 	})
 
 	if err != nil {
@@ -119,7 +119,7 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 	reqLogger.Info("Reconciling MultiClusterMonitoring")
 
 	// Fetch the MultiClusterMonitoring instance
-	instance := &monitoringv1.MultiClusterMonitoring{}
+	instance := &monitoringv1alpha1.MultiClusterMonitoring{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -183,7 +183,7 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 	return reconcile.Result{Requeue: true}, nil
 }
 
-func (r *ReconcileMultiClusterMonitoring) UpdateStatus(mcm *monitoringv1.MultiClusterMonitoring) (*reconcile.Result, error) {
+func (r *ReconcileMultiClusterMonitoring) UpdateStatus(mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", mcm.Namespace, "Request.Name", mcm.Name)
 
 	deployList := &appsv1.DeploymentList{}
@@ -197,9 +197,9 @@ func (r *ReconcileMultiClusterMonitoring) UpdateStatus(mcm *monitoringv1.MultiCl
 		return &reconcile.Result{}, err
 	}
 
-	statedDeploys := []monitoringv1.DeploymentResult{}
+	statedDeploys := []monitoringv1alpha1.DeploymentResult{}
 	for _, deployment := range deployList.Items {
-		statedDeploys = append(statedDeploys, monitoringv1.DeploymentResult{
+		statedDeploys = append(statedDeploys, monitoringv1alpha1.DeploymentResult{
 			Name:   deployment.Name,
 			Status: deployment.Status,
 		})

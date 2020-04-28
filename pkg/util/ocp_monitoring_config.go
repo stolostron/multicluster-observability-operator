@@ -1,6 +1,8 @@
 package util
 
 import (
+	"strings"
+
 	monv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	manifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	v1 "k8s.io/api/core/v1"
@@ -10,7 +12,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
-	"strings"
 )
 
 var log = logf.Log.WithName("ocp_monitoring_config")

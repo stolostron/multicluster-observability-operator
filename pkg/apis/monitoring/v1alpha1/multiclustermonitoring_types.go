@@ -1,4 +1,4 @@
-package v1
+package v1alpha1
 
 import (
 	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"

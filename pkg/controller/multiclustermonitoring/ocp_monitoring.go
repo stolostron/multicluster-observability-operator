@@ -6,7 +6,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1"
+	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
@@ -24,7 +24,7 @@ func createRoutev1Client() (routev1ClientSet.Interface, error) {
 	return routev1Client, err
 }
 
-func UpdateOCPMonitoringCM(monitoring *monitoringv1.MultiClusterMonitoring) (*reconcile.Result, error) {
+func UpdateOCPMonitoringCM(monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
 
 	routev1Client, err := createRoutev1Client()
 	if err != nil {

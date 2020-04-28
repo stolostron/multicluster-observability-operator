@@ -12,12 +12,12 @@ import (
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 	"sigs.k8s.io/yaml"
 
-	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1"
+	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
 
-type patchGenerateFn func(res *resource.Resource, multipleClusterMonitoring *monitoringv1.MultiClusterMonitoring) (ifc.Kunstructured, error)
+type patchGenerateFn func(res *resource.Resource, multipleClusterMonitoring *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error)
 
-func ApplyGlobalPatches(res *resource.Resource, multipleClusterMonitoring *monitoringv1.MultiClusterMonitoring) error {
+func ApplyGlobalPatches(res *resource.Resource, multipleClusterMonitoring *monitoringv1alpha1.MultiClusterMonitoring) error {
 
 	for _, generate := range []patchGenerateFn{
 		//generateImagePatch,
@@ -38,7 +38,7 @@ func ApplyGlobalPatches(res *resource.Resource, multipleClusterMonitoring *monit
 	return nil
 }
 
-func generateImagePatch(res *resource.Resource, mch *monitoringv1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
+func generateImagePatch(res *resource.Resource, mch *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
 	imageFromTemplate, err := res.GetString("spec.template.spec.containers[0].image") // need to loop through all images
 	if err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ spec:
       - name: __pullsecrets__
 `
 
-func generateImagePullSecretsPatch(res *resource.Resource, mch *monitoringv1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
+func generateImagePullSecretsPatch(res *resource.Resource, mch *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
 	pullSecret := mch.Spec.ImagePullSecret
 	if pullSecret == "" {
 		return nil, nil
@@ -100,7 +100,7 @@ spec:
       nodeSelector: {__selector__}
 `
 
-func generateNodeSelectorPatch(res *resource.Resource, mch *monitoringv1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
+func generateNodeSelectorPatch(res *resource.Resource, mch *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
 	nodeSelectorOptions := mch.Spec.NodeSelector
 	if nodeSelectorOptions == nil {
 		return nil, nil

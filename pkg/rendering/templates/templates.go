@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 	"sigs.k8s.io/kustomize/v3/pkg/target"
 
-	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1"
+	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
 
 const TemplatesPathEnvVar = "TEMPLATES_PATH"
@@ -45,7 +45,7 @@ func GetTemplateRenderer() *TemplateRenderer {
 	return templateRenderer
 }
 
-func (r *TemplateRenderer) GetTemplates(multiclustermonitoring *monitoringv1.MultiClusterMonitoring) ([]*resource.Resource, error) {
+func (r *TemplateRenderer) GetTemplates(multiclustermonitoring *monitoringv1alpha1.MultiClusterMonitoring) ([]*resource.Resource, error) {
 	var err error
 	kind := strings.ToLower(multiclustermonitoring.Kind)
 	version := multiclustermonitoring.Spec.Version

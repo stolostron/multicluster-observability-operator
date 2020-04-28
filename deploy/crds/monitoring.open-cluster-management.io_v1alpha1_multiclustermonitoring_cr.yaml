@@ -1,4 +1,4 @@
-apiVersion: monitoring.open-cluster-management.io/v1
+apiVersion: monitoring.open-cluster-management.io/v1alpha1
 kind: MultiClusterMonitoring
 metadata:
   name: monitoring

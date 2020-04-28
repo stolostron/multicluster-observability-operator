@@ -8,7 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1"
+	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering/templates"
 )
 
@@ -21,16 +21,16 @@ func TestRender(t *testing.T) {
 	os.Setenv(templates.TemplatesPathEnvVar, templatesPath)
 	defer os.Unsetenv(templates.TemplatesPathEnvVar)
 
-	mchcr := &monitoringv1.MultiClusterMonitoring{
+	mchcr := &monitoringv1alpha1.MultiClusterMonitoring{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterMonitoring"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
-		Spec: monitoringv1.MultiClusterMonitoringSpec{
+		Spec: monitoringv1alpha1.MultiClusterMonitoringSpec{
 			Version:         "latest",
 			ImageRepository: "quay.io/open-cluster-management",
 			ImagePullPolicy: "Always",
 			ImagePullSecret: "test",
 			StorageClass:    "gp2",
-			NodeSelector: &monitoringv1.NodeSelector{
+			NodeSelector: &monitoringv1alpha1.NodeSelector{
 				OS:                  "test",
 				CustomLabelSelector: "test",
 				CustomLabelValue:    "test",

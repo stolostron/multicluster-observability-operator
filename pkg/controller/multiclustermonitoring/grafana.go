@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1"
+	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
 
 type GrafanaDatasources struct {
@@ -36,7 +36,7 @@ type GrafanaDatasource struct {
 
 // GenerateGrafanaDataSource is used to generate the GrafanaDatasource as a secret.
 // the GrafanaDatasource points to observatorium api gateway service
-func GenerateGrafanaDataSource(client client.Client, scheme *runtime.Scheme, monitoring *monitoringv1.MultiClusterMonitoring) (*reconcile.Result, error) {
+func GenerateGrafanaDataSource(client client.Client, scheme *runtime.Scheme, monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
 
 	grafanaDatasources, err := json.MarshalIndent(GrafanaDatasources{
 		APIVersion: 1,
