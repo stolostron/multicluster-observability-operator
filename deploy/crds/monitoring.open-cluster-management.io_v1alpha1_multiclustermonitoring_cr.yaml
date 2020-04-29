@@ -10,7 +10,7 @@ spec:
   imagePullSecret: quay-secret
   storageClass: gp2
   observatorium:
-    apiGateway:
+    api:
       image: quay.io/observatorium/observatorium:latest
       version: latest
     compact:
