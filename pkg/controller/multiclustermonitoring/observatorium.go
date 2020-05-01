@@ -23,7 +23,7 @@ import (
 
 const (
 	observatoriumPartoOfName    = "-observatorium"
-	observatoriumAPIGatewayName = "observatorium-api-gateway"
+	observatoriumAPIGatewayName = "observatorium-api"
 )
 
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterMonitoring
@@ -80,7 +80,7 @@ func createKubeClient() (kubernetes.Interface, error) {
 }
 
 func GenerateAPIGatewayRoute(client client.Client, scheme *runtime.Scheme, monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
-	labelSelector := fmt.Sprintf("app.kubernetes.io/component=%s, app.kubernetes.io/instance=%s", "api-gateway", monitoring.Name+observatoriumPartoOfName)
+	labelSelector := fmt.Sprintf("app.kubernetes.io/component=%s, app.kubernetes.io/instance=%s", "api", monitoring.Name+observatoriumPartoOfName)
 	listOptions := metav1.ListOptions{
 		LabelSelector: labelSelector,
 	}
