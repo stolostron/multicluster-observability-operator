@@ -25,9 +25,9 @@ spec:
         - mkdir -p /storage/thanos && /usr/bin/minio server /storage
         env:
         - name: MINIO_ACCESS_KEY
-          value: minio
+          value: "{{OBJ_STORAGE_ACCESSKEY}}"
         - name: MINIO_SECRET_KEY
-          value: minio123
+          value: "{{OBJ_STORAGE_SECRETKEY}}"
         image: minio/minio
         name: minio
         ports:

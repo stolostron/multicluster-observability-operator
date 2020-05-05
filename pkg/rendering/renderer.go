@@ -98,7 +98,6 @@ func (r *Renderer) renderDeployments(res *resource.Resource) (*unstructured.Unst
 		}
 	}
 
-	// Update channel to prepend the CRs namespace
 	spec, ok := u.Object["spec"].(map[string]interface{})
 	if ok {
 		selector, ok := spec["selector"].(map[string]interface{})
@@ -118,8 +117,16 @@ func (r *Renderer) renderDeployments(res *resource.Resource) (*unstructured.Unst
 					return nil, err
 				}
 			}
-		}
 
+			// update MINIO_ACCESS_KEY and MINIO_SECRET_KEY
+			templateSpec, ok := template["spec"].(map[string]interface{})
+			if ok {
+				err = replaceInValues(templateSpec, r.cr)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
 	}
 
 	return u, nil
@@ -148,6 +155,26 @@ func (r *Renderer) renderPersistentVolumeClaim(res *resource.Resource) (*unstruc
 		return nil, fmt.Errorf("failed to find spec field")
 	}
 	err := replaceInValues(spec, r.cr)
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
+}
+
+// render object storage secret config
+func (r *Renderer) renderSecret(res *resource.Resource) (*unstructured.Unstructured, error) {
+	u := &unstructured.Unstructured{Object: res.Map()}
+
+	if UpdateNamespace(u) {
+		res.SetNamespace(r.cr.Namespace)
+	}
+
+	stringData, ok := u.Object["stringData"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("failed to find stringData field")
+	}
+	err := replaceInValues(stringData, r.cr)
 	if err != nil {
 		return nil, err
 	}
@@ -185,6 +212,24 @@ func stringValueReplace(toReplace string, cr *monitoringv1.MultiClusterMonitorin
 	replaced = strings.ReplaceAll(replaced, "{{PULLPOLICY}}", string(cr.Spec.ImagePullPolicy))
 	replaced = strings.ReplaceAll(replaced, "{{STORAGECLASS}}", string(cr.Spec.StorageClass))
 	replaced = strings.ReplaceAll(replaced, "{{MULTICLUSTERMONITORING_CR_NAME}}", string(cr.Name))
+
+	// Object storage config
+	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_TYPE}}", string(cr.Spec.ObjectStorageConfigSpec.Type))
+	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_BUCKET}}", string(cr.Spec.ObjectStorageConfigSpec.Config.Bucket))
+	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_ENDPOINT}}", string(cr.Spec.ObjectStorageConfigSpec.Config.Endpoint))
+
+	if cr.Spec.ObjectStorageConfigSpec.Config.Insecure {
+		replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_INSECURE}}", "true")
+	} else {
+		replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_INSECURE}}", "false")
+	}
+
+	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_ACCESSKEY}}", string(cr.Spec.ObjectStorageConfigSpec.Config.AccessKey))
+	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_SECRETKEY}}", string(cr.Spec.ObjectStorageConfigSpec.Config.SecretKey))
+
+	if cr.Spec.ObjectStorageConfigSpec.Type == "minio" {
+		replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_STORAGE}}", string(cr.Spec.ObjectStorageConfigSpec.Config.Storage))
+	}
 
 	return replaced
 }

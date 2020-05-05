@@ -9,6 +9,15 @@ spec:
   imagePullPolicy: Always
   imagePullSecret: quay-secret
   storageClass: gp2
+  objectStorageConfig:
+  type: minio
+  config:
+    bucket: thanos
+    endpoint: minio:9000
+    insecure: false
+    access_key: minio
+    secret_key: minio123
+    storage: 1Gi # just for minio only, ignore it if type is s3
   observatorium:
     api:
       image: quay.io/observatorium/observatorium:master-2020-04-29-v0.1.1-14-gceac185

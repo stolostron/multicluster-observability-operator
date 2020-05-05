@@ -65,6 +65,35 @@ spec:
                   description: Spec of OS
                   type: string
               type: object
+            objectStorageConfigSpec:
+              description: Spec of object storage config
+              properties:
+                config:
+                  description: Object storage configuration
+                  properties:
+                    access_key:
+                      description: Object storage server access key
+                      type: string
+                    bucket:
+                      description: Object storage bucket name
+                      type: string
+                    endpoint:
+                      description: Object storage server endpoint
+                      type: string
+                    insecure:
+                      description: Configure object storage server use HTTP or HTTPs
+                      type: boolean
+                    secret_key:
+                      description: Object storage server secret key
+                      type: string
+                    storage:
+                      description: Minio local PVC storage size
+                      type: string
+                  type: object
+                type:
+                  description: Type of object storage [s3 minio]
+                  type: string
+              type: object
             observatorium:
               description: Spec of Observatorium
               properties:
