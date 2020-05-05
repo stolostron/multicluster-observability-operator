@@ -4,15 +4,15 @@ echo "This script will install kind (https://kind.sigs.k8s.io/) on your machine.
 
 curl -Lo ./kind "https://kind.sigs.k8s.io/dl/v0.7.0/kind-$(uname)-amd64"
 chmod +x ./kind
-mv ./kind /usr/local/bin/kind
+sudo mv ./kind /usr/local/bin/kind
 
 echo "This script will install kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your machine"
 curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.18.0/bin/linux/amd64/kubectl
 chmod +x ./kubectl
-mv ./kubectl /usr/local/bin/kubectl
+sudo mv ./kubectl /usr/local/bin/kubectl
 
 echo "Delete the KinD cluster if exists"
-kind delete cluster | true
+kind delete cluster || true
 
 echo "Start KinD cluster with the default cluster name - kind"
 kind create cluster

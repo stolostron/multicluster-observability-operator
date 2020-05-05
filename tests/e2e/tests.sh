@@ -1,4 +1,21 @@
 #!/bin/bash
+function wait_for_popup() {
+    n=1
+    while true
+    do
+        entity=`kubectl get $1 $2 | grep -v Name | awk '{ print $1}'`
+        if [ ! -z $entity ]; then
+            return
+        fi
+        if [ $n -ge 5 ]; then
+            exit 1
+        fi
+        n=$((n+1))
+        echo "Retrying in 10s..."
+        sleep 10
+    done
+}
+
 export WAIT_TIMEOUT=${WAIT_TIMEOUT:-5m}
 
 echo "Test to ensure all critical pods are running"
@@ -22,9 +39,9 @@ for depl in ${MULTICLUSTER_MONITORING_DEPLOYMENTS}; do
 done
 
 echo "wait for operator is ready for reconciling..."
-sleep 60
 
 for depl in ${MINIO_DEPLOYMENTS}; do
+    wait_for_popup "deployments" $depl
     if ! kubectl -n open-cluster-management rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then 
         echo "$depl is not ready after $WAIT_TIMEOUT"
         exit 1
@@ -33,6 +50,7 @@ done
 
 
 for depl in ${OBSERVATORIUM_DEPLOYMENTS}; do
+    wait_for_popup "deployments" $depl
     if ! kubectl -n open-cluster-management rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then 
         echo "$depl is not ready after $WAIT_TIMEOUT"
         exit 1
@@ -41,6 +59,7 @@ done
 
 
 for depl in ${OBSERVATORIUM_STATEFULSET}; do
+    wait_for_popup "statefulset" $depl
     if ! kubectl -n open-cluster-management rollout status statefulset $depl --timeout=$WAIT_TIMEOUT; then 
         echo "$depl is not ready after $WAIT_TIMEOUT"
         exit 1
@@ -48,6 +67,7 @@ for depl in ${OBSERVATORIUM_STATEFULSET}; do
 done
 
 for depl in ${GRAFANA_DEPLOYMENTS}; do
+    wait_for_popup "deployments" $depl
     if ! kubectl -n open-cluster-management rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then 
         echo "$depl is not ready after $WAIT_TIMEOUT"
         exit 1
