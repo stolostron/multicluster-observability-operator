@@ -5,11 +5,11 @@ function wait_for_popup() {
     n=1
     while true
     do
-        entity=`kubectl get $1 $2 | grep -v Name | awk '{ print $1}'`
-        if [ ! -z $entity ]; then
+        entity=`kubectl get $1 $2 | grep -v Name | awk '{ print $1 }'`
+        if [[ ! -z $entity ]]; then
             return
         fi
-        if [ $n -ge 5 ]; then
+        if [[ $n -ge 5 ]]; then
             exit 1
         fi
         n=$((n+1))
