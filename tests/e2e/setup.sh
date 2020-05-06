@@ -1,4 +1,5 @@
 #!/bin/bash
+# Copyright (c) 2020 Red Hat, Inc.
 
 echo "This script will install kind (https://kind.sigs.k8s.io/) on your machine."
 
@@ -40,7 +41,10 @@ sed -i "s/gp2/local/g" deploy/crds/monitoring.open-cluster-management.io_v1alpha
 # Install the multicluster-monitoring-operator
 kubectl create ns open-cluster-management
 kubectl config set-context --current --namespace open-cluster-management
-# TODO: create image pull secret
+# create image pull secret
+kubectl create secret docker-registry multiclustermonitoring-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
+sed -i -e "\$aimagePullSecrets:\n- name: multiclustermonitoring-operator-pull-secret" deploy/service_account.yaml
+
 kubectl apply -f tests/e2e/samples
 kubectl apply -f deploy/req_crds
 kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_multiclustermonitorings_crd.yaml
