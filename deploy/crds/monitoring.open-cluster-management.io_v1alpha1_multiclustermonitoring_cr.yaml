@@ -13,10 +13,15 @@ spec:
     api:
       image: quay.io/observatorium/observatorium:latest
       version: latest
+    apiQuery:
+      image: quay.io/thanos/thanos:v0.12.0
+      version: v0.12.0
     compact:
+      image: quay.io/thanos/thanos:v0.12.0
       retentionResolution1h: 1s
       retentionResolution5m: 1s
       retentionResolutionRaw: 14d
+      version: v0.12.0
       volumeClaimTemplate:
         spec:
           accessModes:
@@ -30,11 +35,16 @@ spec:
     objectStorageConfig:
       key: thanos.yaml
       name: thanos-objectstorage
+    query:
+      image: quay.io/thanos/thanos:v0.12.0
+      version: v0.12.0
     queryCache:
       image: quay.io/cortexproject/cortex:master-fdcd992f
       replicas: 1
       version: master-fdcd992f
     receivers:
+      image: quay.io/thanos/thanos:v0.12.0
+      version: v0.12.0
       volumeClaimTemplate:
         spec:
           accessModes:
@@ -43,6 +53,8 @@ spec:
             requests:
               storage: 1Gi
     rule:
+      image: quay.io/thanos/thanos:v0.12.0
+      version: v0.12.0
       volumeClaimTemplate:
         spec:
           accessModes:
@@ -59,6 +71,7 @@ spec:
         replicas: 1
         version: 1.6.3-alpine
       shards: 1
+      version: v0.12.0
       volumeClaimTemplate:
         spec:
           accessModes:
@@ -66,10 +79,8 @@ spec:
           resources:
             requests:
               storage: 1Gi
-    thanosImage: quay.io/thanos/thanos:v0.12.0
     thanosReceiveController:
       image: quay.io/observatorium/thanos-receive-controller:latest
       version: latest
-    thanosVersion: v0.12.0
   grafana:
     hostport: "3000"
