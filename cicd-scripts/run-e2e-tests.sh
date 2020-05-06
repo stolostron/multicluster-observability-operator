@@ -1,6 +1,11 @@
 #!/bin/bash
 # Copyright (c) 2020 Red Hat, Inc.
 
+set -o errexi
+set -o nounset
+set -o pipefail
+set -o xtrace
+
 echo "<repo>/<component>:<tag> : $1"
 
 ./tests/e2e/setup.sh $1

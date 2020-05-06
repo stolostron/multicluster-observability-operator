@@ -24,6 +24,9 @@ git clone https://github.com/coreos/kube-prometheus.git
 cd kube-prometheus
 kubectl create -f manifests/setup
 until kubectl get servicemonitors --all-namespaces ; do date; sleep 1; echo ""; done
+echo "Remove alertmanager and grafana to free up resource"
+rm -rf manifests/alertmanager-*.yaml
+rm -rf manifests/grafana-*.yaml
 kubectl create -f manifests/
 
 echo "Install openshift route"
