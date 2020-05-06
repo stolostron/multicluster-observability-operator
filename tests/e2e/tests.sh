@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (c) 2020 Red Hat, Inc.
+
 function wait_for_popup() {
     n=1
     while true
