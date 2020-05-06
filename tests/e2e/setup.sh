@@ -27,6 +27,7 @@ until kubectl get servicemonitors --all-namespaces ; do date; sleep 1; echo ""; 
 echo "Remove alertmanager and grafana to free up resource"
 rm -rf manifests/alertmanager-*.yaml
 rm -rf manifests/grafana-*.yaml
+sed -i "s~replicas:.*$~replicas: 1~g" manifests/prometheus-prometheus.yaml
 kubectl create -f manifests/
 
 echo "Install openshift route"

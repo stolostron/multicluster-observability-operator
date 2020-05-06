@@ -9,7 +9,7 @@ function wait_for_popup() {
         if [[ ! -z $entity ]]; then
             return
         fi
-        if [[ $n -ge 5 ]]; then
+        if [[ $n -ge 10 ]]; then
             exit 1
         fi
         n=$((n+1))
@@ -28,8 +28,11 @@ MULTICLUSTER_MONITORING_DEPLOYMENTS="multicluster-monitoring-operator"
 GRAFANA_DEPLOYMENTS="grafana"
 MINIO_DEPLOYMENTS="minio"
 
-
-OBSERVATORIUM_DEPLOYMENTS="$MULTICLUSTER_MONITORING_CR_NAME-observatorium-cortex-query-frontend $MULTICLUSTER_MONITORING_CR_NAME-observatorium-observatorium-api $MULTICLUSTER_MONITORING_CR_NAME-observatorium-observatorium-api-thanos-query $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-query $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-receive-controller"
+# $MULTICLUSTER_MONITORING_CR_NAME-observatorium-observatorium-api cannot be ready
+# kubectl get route
+# NAME                HOST   ADMITTED   SERVICE                                      TLS
+# observatorium-api          False      monitoring-observatorium-observatorium-api
+OBSERVATORIUM_DEPLOYMENTS="$MULTICLUSTER_MONITORING_CR_NAME-observatorium-observatorium-api-thanos-query $MULTICLUSTER_MONITORING_CR_NAME-observatorium-cortex-query-frontend $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-query $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-receive-controller"
 
 OBSERVATORIUM_STATEFULSET="$MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-compact $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-receive-default $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-rule $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-store-memcached $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-store-shard-0"
 
