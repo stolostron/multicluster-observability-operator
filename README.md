@@ -64,6 +64,7 @@ spec:
 ```
 2. Apply the manifests
 ```
+kubectl apply -f deploy/req_crds/
 kubectl apply -f deploy/crds/
 kubectl apply -f deploy/
 
