@@ -148,7 +148,7 @@ type ObjectStorageConfig struct {
 	// +optional
 	SecretKey string `json:"secret_key,omitempty"`
 
-	// Minio local PVC storage size
+	// Minio local PVC storage size, just for minio only, ignore it if type is s3
 	// +optional
 	Storage string `json:"storage,omitempty"`
 }

@@ -37,7 +37,7 @@ func NewRenderer(multipleClusterMonitoring *monitoringv1.MultiClusterMonitoring)
 		"ServiceAccount":        renderer.renderNamespace,
 		"ConfigMap":             renderer.renderNamespace,
 		"ClusterRoleBinding":    renderer.renderClusterRoleBinding,
-		"Secret":                renderer.renderNamespace,
+		"Secret":                renderer.renderSecret,
 		"Role":                  renderer.renderNamespace,
 		"RoleBinding":           renderer.renderNamespace,
 		"Ingress":               renderer.renderNamespace,
@@ -119,11 +119,21 @@ func (r *Renderer) renderDeployments(res *resource.Resource) (*unstructured.Unst
 			}
 
 			// update MINIO_ACCESS_KEY and MINIO_SECRET_KEY
-			templateSpec, ok := template["spec"].(map[string]interface{})
-			if ok {
-				err = replaceInValues(templateSpec, r.cr)
-				if err != nil {
-					return nil, err
+			if res.GetName() == "minio" {
+				containers, _ := template["spec"].(map[string]interface{})["containers"].([]interface{})
+				if len(containers) == 0 {
+					return nil, nil
+				}
+
+				envList, ok := containers[0].(map[string]interface{})["env"].([]interface{})
+				if ok {
+					for idx := range envList {
+						env := envList[idx].(map[string]interface{})
+						err = replaceInValues(env, r.cr)
+						if err != nil {
+							return nil, err
+						}
+					}
 				}
 			}
 		}
@@ -170,13 +180,18 @@ func (r *Renderer) renderSecret(res *resource.Resource) (*unstructured.Unstructu
 		res.SetNamespace(r.cr.Namespace)
 	}
 
-	stringData, ok := u.Object["stringData"].(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("failed to find stringData field")
-	}
-	err := replaceInValues(stringData, r.cr)
-	if err != nil {
-		return nil, err
+	name := res.GetName()
+	switch name {
+
+	case "thanos-objectstorage":
+		stringData, ok := u.Object["stringData"].(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("failed to find stringData field")
+		}
+		err := replaceInValues(stringData, r.cr)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return u, nil
@@ -217,13 +232,7 @@ func stringValueReplace(toReplace string, cr *monitoringv1.MultiClusterMonitorin
 	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_TYPE}}", string(cr.Spec.ObjectStorageConfigSpec.Type))
 	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_BUCKET}}", string(cr.Spec.ObjectStorageConfigSpec.Config.Bucket))
 	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_ENDPOINT}}", string(cr.Spec.ObjectStorageConfigSpec.Config.Endpoint))
-
-	if cr.Spec.ObjectStorageConfigSpec.Config.Insecure {
-		replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_INSECURE}}", "true")
-	} else {
-		replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_INSECURE}}", "false")
-	}
-
+	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_INSECURE}}", strconv.FormatBool(cr.Spec.ObjectStorageConfigSpec.Config.Insecure))
 	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_ACCESSKEY}}", string(cr.Spec.ObjectStorageConfigSpec.Config.AccessKey))
 	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_SECRETKEY}}", string(cr.Spec.ObjectStorageConfigSpec.Config.SecretKey))
 
