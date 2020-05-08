@@ -17,11 +17,21 @@ const (
 	DEFAULT_OBJ_STORAGE_ENDPOINT  = "minio:9000"
 	DEFAULT_OBJ_STORAGE_INSECURE  = false
 	DEFAULT_OBJ_STORAGE_ACCESSKEY = "minio"
-	DEFAULT_OBJ_STORAGE_SECRETKEY = "minio"
+	DEFAULT_OBJ_STORAGE_SECRETKEY = "minio123"
 	DEFAULT_OBJ_STORAGE_STORAGE   = "1Gi"
 )
 
-func updateDefaultObjStorageConfig(c client.Client, mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+func checkObjStorageConfig(c client.Client, mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+	// Check valid object storage type
+	if mcm.Spec.ObjectStorageConfigSpec != nil {
+		objStorageType := mcm.Spec.ObjectStorageConfigSpec.Type
+		if objStorageType != "minio" && objStorageType != "s3" {
+			return &reconcile.Result{}, fmt.Errorf("Invalid object storage type, support s3 and minio only")
+		}
+		return nil, nil
+	}
+
+	log.Info("Add default object storage configuration")
 	mcm.Spec.ObjectStorageConfigSpec = &monitoringv1alpha1.ObjectStorageConfigSpec{}
 	mcm.Spec.ObjectStorageConfigSpec.Type = DEFAULT_OBJ_STORAGE_TYPE
 	mcm.Spec.ObjectStorageConfigSpec.Config.Bucket = DEFAULT_OBJ_STORAGE_BUCKET

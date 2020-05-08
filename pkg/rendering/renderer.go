@@ -229,7 +229,6 @@ func stringValueReplace(toReplace string, cr *monitoringv1.MultiClusterMonitorin
 	replaced = strings.ReplaceAll(replaced, "{{MULTICLUSTERMONITORING_CR_NAME}}", string(cr.Name))
 
 	// Object storage config
-	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_TYPE}}", string(cr.Spec.ObjectStorageConfigSpec.Type))
 	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_BUCKET}}", string(cr.Spec.ObjectStorageConfigSpec.Config.Bucket))
 	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_ENDPOINT}}", string(cr.Spec.ObjectStorageConfigSpec.Config.Endpoint))
 	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_INSECURE}}", strconv.FormatBool(cr.Spec.ObjectStorageConfigSpec.Config.Insecure))

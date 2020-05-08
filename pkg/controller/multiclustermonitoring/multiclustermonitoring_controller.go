@@ -132,12 +132,8 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
-	// Update default object storage configuration
-	if instance.Spec.ObjectStorageConfigSpec == nil {
-		result, err := updateDefaultObjStorageConfig(r.client, instance)
-		if result != nil {
-			return *result, err
-		}
+	if result, err := checkObjStorageConfig(r.client, instance); result != nil {
+		return *result, err
 	}
 
 	//Render the templates with a specified CR
