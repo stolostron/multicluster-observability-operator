@@ -87,7 +87,8 @@ spec:
                       description: Object storage server secret key
                       type: string
                     storage:
-                      description: Minio local PVC storage size
+                      description: Minio local PVC storage size, just for minio only,
+                        ignore it if type is s3
                       type: string
                   type: object
                 type:
