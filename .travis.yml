@@ -51,8 +51,11 @@ jobs:
         - if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then export COMPONENT_TAG_EXTENSION="-PR${TRAVIS_PULL_REQUEST}-${TRAVIS_COMMIT}"; fi;
         - |
           make
+          make copyright-check TRAVIS_BRANCH=${TRAVIS_BRANCH} TRAVIS_PULL_REQUEST_BRANCH=${TRAVIS_PULL_REQUEST_BRANCH}
           make component/build
           make component/push
+          make imagescan/status
+          make security/scans
     - stage: unit-test
       name: "Run unit tests"
       script:
@@ -61,7 +64,6 @@ jobs:
         # Bootstrap the build harness, pull test image, and run unit tests.  
         - | 
           make 
-          make component/pull 
           make component/test/unit
           make sonar/go
     - stage: test-e2e
@@ -73,7 +75,6 @@ jobs:
           make 
           make component/pull 
           make component/test/e2e
-          make security/scans
     - stage: release-ff
       name: "Push commits to current release branch"
       if: type = push AND branch =~ /^master$/
