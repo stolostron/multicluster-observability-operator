@@ -20,7 +20,7 @@ const (
 	Name       = "cluster-monitoring-config"
 	Namespace  = "openshift-monitoring"
 	configKey  = "config.yaml"
-	labelKey   = "cluster_name"
+	labelKey   = "cluster"
 	labelValue = "hub_cluster"
 	protocol   = "http://"
 	urlSubPath = "/api/metrics/v1/write"
