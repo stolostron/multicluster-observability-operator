@@ -1,8 +1,11 @@
+// Copyright (c) 2020 Red Hat, Inc.
+
 package multiclustermonitoring
 
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
@@ -60,6 +63,17 @@ func GenerateObservatoriumCR(client client.Client, scheme *runtime.Scheme, monit
 		return nil, nil
 	} else if err != nil {
 		return &reconcile.Result{}, err
+	}
+
+	oldSpec := observatoriumCRFound.Spec
+	newSpec := observatoriumCR.Spec
+	if !reflect.DeepEqual(oldSpec, newSpec) {
+		newObj := observatoriumCRFound.DeepCopy()
+		newObj.Spec = newSpec
+		err = client.Update(context.TODO(), newObj)
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
 	}
 
 	return nil, nil

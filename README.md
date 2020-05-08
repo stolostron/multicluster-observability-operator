@@ -60,7 +60,7 @@ spec:
     - ReadWriteOnce
   persistentVolumeReclaimPolicy: Delete
   hostPath:
-    path: "/tmp/thanos/teamcitydata1"
+    path: "/mnt/thanos/teamcitydata1"
 ```
 2. Apply the manifests
 ```
