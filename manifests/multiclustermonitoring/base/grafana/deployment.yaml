@@ -47,23 +47,68 @@ spec:
         - mountPath: /grafana-dashboard-definitions/0/managed-clusters
           name: grafana-dashboard-managed-clusters
           readOnly: false
+        - name: grafana-dashboard-cluster-total
+          mountPath: /grafana-dashboard-definitions/0/cluster-tota
+        - name: grafana-dashboard-k8s-resources-cluster
+          mountPath: /grafana-dashboard-definitions/0/k8s-resources-cluster
+        - name: grafana-dashboard-k8s-resources-namespace
+          mountPath: /grafana-dashboard-definitions/0/k8s-resources-namespace
+        - name: grafana-dashboard-k8s-resources-node
+          mountPath: /grafana-dashboard-definitions/0/k8s-resources-node
+        - name: grafana-dashboard-k8s-resources-pod
+          mountPath: /grafana-dashboard-definitions/0/k8s-resources-pod
+        - name: grafana-dashboard-k8s-resources-workload
+          mountPath: /grafana-dashboard-definitions/0/k8s-resources-workload
+        - name: grafana-dashboard-k8s-resources-workloads-namespace
+          mountPath: grafana-dashboard-definitions/0/k8s-resources-workloads-namespace
+        - name: grafana-dashboard-node-cluster-rsrc-use
+          mountPath: /grafana-dashboard-definitions/0/node-cluster-rsrc-use
+        - name: grafana-dashboard-node-rsrc-use
+          mountPath: /grafana-dashboard-definitions/0/node-rsrc-use
         - mountPath: /etc/grafana
           name: grafana-config
           readOnly: false
       securityContext: {}
       serviceAccountName: grafana
       volumes:
-      - emptyDir: {}
-        name: grafana-storage
+      - name: grafana-storage
+        emptyDir: {}
       - name: grafana-datasources
         secret:
           secretName: grafana-datasources
-      - configMap:
+      - name: grafana-dashboards
+        configMap:
           name: grafana-dashboards
-        name: grafana-dashboards
-      - configMap:
+      - name: grafana-dashboard-managed-clusters
+        configMap:
           name: grafana-dashboard-managed-clusters
-        name: grafana-dashboard-managed-clusters
+      - name: grafana-dashboard-cluster-total
+        configMap:
+          name: grafana-dashboard-cluster-total
+      - name: grafana-dashboard-k8s-resources-cluster
+        configMap:
+          name: grafana-dashboard-k8s-resources-cluster
+      - name: grafana-dashboard-k8s-resources-namespace
+        configMap:
+          name: grafana-dashboard-k8s-resources-namespace
+      - name: grafana-dashboard-k8s-resources-node
+        configMap:
+          name: grafana-dashboard-k8s-resources-node
+      - name: grafana-dashboard-k8s-resources-pod
+        configMap:
+          name: grafana-dashboard-k8s-resources-pod
+      - name: grafana-dashboard-k8s-resources-workload
+        configMap:
+          name: grafana-dashboard-k8s-resources-workload
+      - name: grafana-dashboard-k8s-resources-workloads-namespace
+        configMap:
+          name: grafana-dashboard-k8s-resources-workloads-namespace
+      - name: grafana-dashboard-node-cluster-rsrc-use
+        configMap:
+          name: grafana-dashboard-node-cluster-rsrc-use
+      - name: grafana-dashboard-node-rsrc-use
+        configMap:
+          name: grafana-dashboard-node-rsrc-use
       - name: grafana-config
         secret:
           secretName: grafana-config

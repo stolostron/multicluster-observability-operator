@@ -9,3 +9,4 @@ resources:
 - service-monitor.yaml
 - ingress.yaml
 - service.yaml
+- ocp-dashboards.yaml

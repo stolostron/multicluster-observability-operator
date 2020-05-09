@@ -45,7 +45,7 @@ func GenerateGrafanaDataSource(client client.Client, scheme *runtime.Scheme, mon
 				Name:   "Observatorium",
 				Type:   "prometheus",
 				Access: "proxy",
-				URL:    "http://" + monitoring.Name + observatoriumPartoOfName + "-observatorium-api-gateway:8080/api/metrics/v1",
+				URL:    "http://" + monitoring.Name + observatoriumPartoOfName + "-observatorium-api:8080/api/metrics/v1",
 			},
 		},
 	}, "", "    ")
