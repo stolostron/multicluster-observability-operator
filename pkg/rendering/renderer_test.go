@@ -35,6 +35,18 @@ func TestRender(t *testing.T) {
 				CustomLabelSelector: "test",
 				CustomLabelValue:    "test",
 			},
+
+			ObjectStorageConfigSpec: &monitoringv1alpha1.ObjectStorageConfigSpec{
+				Type: "minio",
+				Config: monitoringv1alpha1.ObjectStorageConfig{
+					Bucket:    "Bucket",
+					Endpoint:  "Endpoint",
+					Insecure:  true,
+					AccessKey: "AccessKey",
+					SecretKey: "SecretKey",
+					Storage:   "Storage",
+				},
+			},
 		},
 	}
 

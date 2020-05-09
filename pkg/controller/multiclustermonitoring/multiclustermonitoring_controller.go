@@ -1,3 +1,5 @@
+// Copyright (c) 2020 Red Hat, Inc.
+
 package multiclustermonitoring
 
 import (
@@ -130,6 +132,10 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 		}
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
+	}
+
+	if result, err := checkObjStorageConfig(r.client, instance); result != nil {
+		return *result, err
 	}
 
 	//Render the templates with a specified CR
