@@ -39,7 +39,7 @@ func TestGetCoreTemplates(t *testing.T) {
 				Config: monitoringv1alpha1.ObjectStorageConfig{
 					Bucket:    "Bucket",
 					Endpoint:  "Endpoint",
-					Insecure:  false,
+					Insecure:  true,
 					AccessKey: "AccessKey",
 					SecretKey: "SecretKey",
 					Storage:   "Storage",
