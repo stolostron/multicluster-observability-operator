@@ -27,7 +27,7 @@ items:
           "panels": [
             {
               "columns": [],
-              "datasource": "Observatorium",
+              "datasource": "$datasource",
               "fontSize": "100%",
               "gridPos": {
                 "h": 8,
@@ -61,7 +61,7 @@ items:
                   "decimals": 2,
                   "link": true,
                   "linkTooltip": "drill down to cluster",
-                  "linkUrl": "./d/efa86fd1d0c121a26444b636a3f509a8/kubernetes-compute-resources-cluster?var-datasource=$datasource&var-cluster=$__cell_1",
+                  "linkUrl": "./d/efa86fd1d0c121a26444b636a3f509a8/kubernetes-compute-resources-cluster?var-cluster=$__cell_1",
                   "pattern": "cluster",
                   "thresholds": [],
                   "type": "string",
@@ -125,7 +125,7 @@ items:
             },
             {
               "columns": [],
-              "datasource": "Observatorium",
+              "datasource": "$datasource",
               "fontSize": "100%",
               "gridPos": {
                 "h": 9,
@@ -160,7 +160,7 @@ items:
                   "link": true,
                   "linkTargetBlank": false,
                   "linkTooltip": "drill down to cluster",
-                  "linkUrl": "./d/efa86fd1d0c121a26444b636a3f509a8/kubernetes-compute-resources-cluster?var-datasource=$datasource&var-cluster=$__cell_1",
+                  "linkUrl": "./d/efa86fd1d0c121a26444b636a3f509a8/kubernetes-compute-resources-cluster?var-cluster=$__cell_1",
                   "pattern": "cluster",
                   "thresholds": [],
                   "type": "string",
@@ -246,7 +246,7 @@ items:
             },
             {
               "columns": [],
-              "datasource": "Observatorium",
+              "datasource": "$datasource",
               "fontSize": "100%",
               "gridPos": {
                 "h": 8,
@@ -280,7 +280,7 @@ items:
                   "decimals": 2,
                   "link": true,
                   "linkTooltip": "drill down to cluster",
-                  "linkUrl": "./d/efa86fd1d0c121a26444b636a3f509a8/kubernetes-compute-resources-cluster?var-datasource=$datasource&var-cluster=$__cell_1",
+                  "linkUrl": "./d/efa86fd1d0c121a26444b636a3f509a8/kubernetes-compute-resources-cluster?var-cluster=$__cell_1",
                   "pattern": "cluster",
                   "thresholds": [],
                   "type": "string",
@@ -349,7 +349,24 @@ items:
           "ACM"
           ],
           "templating": {
-          "list": []
+          "list": [
+            {
+              "current": {
+                  "text": "default",
+                  "value": "default"
+              },
+              "hide": 2,
+              "label": null,
+              "name": "datasource",
+              "options": [
+
+              ],
+              "query": "prometheus",
+              "refresh": 1,
+              "regex": "",
+              "type": "datasource"
+          }
+          ]
           },
           "time": {
           "from": "now-5m",

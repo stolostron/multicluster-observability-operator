@@ -1,9 +1,10 @@
 # From https://github.com/openshift/cluster-monitoring-operator/blob/master/manifests/0000_90_cluster_monitoring_operator_01-dashboards.yaml
 # Updates:
-# 1. remove dashboards "etcd" & "prometheus"
-# 2. update "hide" value for var "cluster" in several dashboards, from 2 to 0
-# 3. add "cluster" var for dashboards: USE METHOD/Node, USE METHOD/Cluster, also update expr in those dashboards
-# 4. remove duplicate "cluster" var in dashboard k8s-resources-cluster
+# - remove dashboards "etcd" & "prometheus"
+# - update "hide" value for var "cluster" in several dashboards, from 2 to 0 (enable cluster selection)
+# - update "hide" value for var "cluster" in several dashboards, from 0 to 2 (disable datasource selection)
+# - add "cluster" var for dashboards: USE METHOD/Node, USE METHOD/Cluster, also update expr in those dashboards
+# - remove duplicate "cluster" var in dashboard k8s-resources-cluster
 ---
 apiVersion: v1
 data:
@@ -1767,7 +1768,7 @@ data:
                         "text": "default",
                         "value": "default"
                     },
-                    "hide": 0,
+                    "hide": 2,
                     "label": null,
                     "name": "datasource",
                     "options": [
@@ -4284,7 +4285,7 @@ data:
                         "text": "default",
                         "value": "default"
                     },
-                    "hide": 0,
+                    "hide": 2,
                     "label": null,
                     "name": "datasource",
                     "options": [
@@ -6507,7 +6508,7 @@ data:
                         "text": "default",
                         "value": "default"
                     },
-                    "hide": 0,
+                    "hide": 2,
                     "label": null,
                     "name": "datasource",
                     "options": [
@@ -7457,7 +7458,7 @@ data:
                         "text": "default",
                         "value": "default"
                     },
-                    "hide": 0,
+                    "hide": 2,
                     "label": null,
                     "name": "datasource",
                     "options": [
@@ -9168,7 +9169,7 @@ data:
                         "text": "default",
                         "value": "default"
                     },
-                    "hide": 0,
+                    "hide": 2,
                     "label": null,
                     "name": "datasource",
                     "options": [
@@ -11142,7 +11143,7 @@ data:
                         "text": "default",
                         "value": "default"
                     },
-                    "hide": 0,
+                    "hide": 2,
                     "label": null,
                     "name": "datasource",
                     "options": [
@@ -13321,7 +13322,7 @@ data:
                         "text": "default",
                         "value": "default"
                     },
-                    "hide": 0,
+                    "hide": 2,
                     "label": null,
                     "name": "datasource",
                     "options": [
@@ -14358,7 +14359,7 @@ data:
                         "text": "default",
                         "value": "default"
                     },
-                    "hide": 0,
+                    "hide": 2,
                     "label": null,
                     "name": "datasource",
                     "options": [
@@ -15336,7 +15337,7 @@ data:
                         "text": "default",
                         "value": "default"
                     },
-                    "hide": 0,
+                    "hide": 2,
                     "label": null,
                     "name": "datasource",
                     "options": [
