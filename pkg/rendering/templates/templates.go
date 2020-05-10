@@ -1,11 +1,9 @@
 package templates
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path"
-	"strings"
 	"sync"
 
 	"sigs.k8s.io/kustomize/v3/k8sdeps/kunstruct"
@@ -45,20 +43,51 @@ func GetTemplateRenderer() *TemplateRenderer {
 	return templateRenderer
 }
 
-func (r *TemplateRenderer) GetTemplates(multiclustermonitoring *monitoringv1alpha1.MultiClusterMonitoring) ([]*resource.Resource, error) {
-	var err error
-	kind := strings.ToLower(multiclustermonitoring.Kind)
-	version := multiclustermonitoring.Spec.Version
-	key := fmt.Sprintf("%s-%s", kind, version)
-	resMap, ok := r.templates[key]
-	if !ok {
-		resMap, err = r.render(path.Join(r.templatesPath, kind, "version", version))
-		if err != nil {
-			return nil, err
-		}
-		r.templates[key] = resMap
+func (r *TemplateRenderer) GetTemplates(mcm *monitoringv1alpha1.MultiClusterMonitoring) ([]*resource.Resource, error) {
+	basePath := path.Join(r.templatesPath, "base")
+	// resourceList contains all kustomize resources
+	resourceList := []*resource.Resource{}
+
+	// add grafana template
+	if err := r.addTemplateFromPath(basePath+"/grafana", &resourceList); err != nil {
+		return resourceList, err
 	}
-	return resMap.Resources(), err
+
+	// add observatorium template
+	if err := r.addTemplateFromPath(basePath+"/observatorium", &resourceList); err != nil {
+		return resourceList, err
+	}
+
+	objStorageType := mcm.Spec.ObjectStorageConfigSpec.Type
+	// add minio template
+	if objStorageType == "minio" {
+		if err := r.addTemplateFromPath(basePath+"/object_storage/minio", &resourceList); err != nil {
+			return resourceList, err
+		}
+	}
+
+	// add s3 template
+	if objStorageType == "s3" {
+		if err := r.addTemplateFromPath(basePath+"/object_storage/s3", &resourceList); err != nil {
+			return resourceList, err
+		}
+	}
+	return resourceList, nil
+}
+
+func (r *TemplateRenderer) addTemplateFromPath(kustomizationPath string, resourceList *[]*resource.Resource) error {
+	var err error
+	resMap, ok := r.templates[kustomizationPath]
+	if !ok {
+		resMap, err = r.render(kustomizationPath)
+		if err != nil {
+			return err
+		}
+		r.templates[kustomizationPath] = resMap
+		*resourceList = append(*resourceList, resMap.Resources()...)
+	}
+
+	return nil
 }
 
 func (r *TemplateRenderer) render(kustomizationPath string) (resmap.ResMap, error) {

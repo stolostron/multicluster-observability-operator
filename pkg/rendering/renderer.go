@@ -37,7 +37,7 @@ func NewRenderer(multipleClusterMonitoring *monitoringv1.MultiClusterMonitoring)
 		"ServiceAccount":        renderer.renderNamespace,
 		"ConfigMap":             renderer.renderNamespace,
 		"ClusterRoleBinding":    renderer.renderClusterRoleBinding,
-		"Secret":                renderer.renderNamespace,
+		"Secret":                renderer.renderSecret,
 		"Role":                  renderer.renderNamespace,
 		"RoleBinding":           renderer.renderNamespace,
 		"Ingress":               renderer.renderNamespace,
@@ -98,7 +98,6 @@ func (r *Renderer) renderDeployments(res *resource.Resource) (*unstructured.Unst
 		}
 	}
 
-	// Update channel to prepend the CRs namespace
 	spec, ok := u.Object["spec"].(map[string]interface{})
 	if ok {
 		selector, ok := spec["selector"].(map[string]interface{})
@@ -118,8 +117,26 @@ func (r *Renderer) renderDeployments(res *resource.Resource) (*unstructured.Unst
 					return nil, err
 				}
 			}
-		}
 
+			// update MINIO_ACCESS_KEY and MINIO_SECRET_KEY
+			if res.GetName() == "minio" {
+				containers, _ := template["spec"].(map[string]interface{})["containers"].([]interface{})
+				if len(containers) == 0 {
+					return nil, nil
+				}
+
+				envList, ok := containers[0].(map[string]interface{})["env"].([]interface{})
+				if ok {
+					for idx := range envList {
+						env := envList[idx].(map[string]interface{})
+						err = replaceInValues(env, r.cr)
+						if err != nil {
+							return nil, err
+						}
+					}
+				}
+			}
+		}
 	}
 
 	return u, nil
@@ -155,6 +172,31 @@ func (r *Renderer) renderPersistentVolumeClaim(res *resource.Resource) (*unstruc
 	return u, nil
 }
 
+// render object storage secret config
+func (r *Renderer) renderSecret(res *resource.Resource) (*unstructured.Unstructured, error) {
+	u := &unstructured.Unstructured{Object: res.Map()}
+
+	if UpdateNamespace(u) {
+		res.SetNamespace(r.cr.Namespace)
+	}
+
+	name := res.GetName()
+	switch name {
+
+	case "thanos-objectstorage":
+		stringData, ok := u.Object["stringData"].(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("failed to find stringData field")
+		}
+		err := replaceInValues(stringData, r.cr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return u, nil
+}
+
 func (r *Renderer) renderClusterRoleBinding(res *resource.Resource) (*unstructured.Unstructured, error) {
 	u := &unstructured.Unstructured{Object: res.Map()}
 
@@ -185,6 +227,17 @@ func stringValueReplace(toReplace string, cr *monitoringv1.MultiClusterMonitorin
 	replaced = strings.ReplaceAll(replaced, "{{PULLPOLICY}}", string(cr.Spec.ImagePullPolicy))
 	replaced = strings.ReplaceAll(replaced, "{{STORAGECLASS}}", string(cr.Spec.StorageClass))
 	replaced = strings.ReplaceAll(replaced, "{{MULTICLUSTERMONITORING_CR_NAME}}", string(cr.Name))
+
+	// Object storage config
+	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_BUCKET}}", string(cr.Spec.ObjectStorageConfigSpec.Config.Bucket))
+	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_ENDPOINT}}", string(cr.Spec.ObjectStorageConfigSpec.Config.Endpoint))
+	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_INSECURE}}", strconv.FormatBool(cr.Spec.ObjectStorageConfigSpec.Config.Insecure))
+	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_ACCESSKEY}}", string(cr.Spec.ObjectStorageConfigSpec.Config.AccessKey))
+	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_SECRETKEY}}", string(cr.Spec.ObjectStorageConfigSpec.Config.SecretKey))
+
+	if cr.Spec.ObjectStorageConfigSpec.Type == "minio" {
+		replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_STORAGE}}", string(cr.Spec.ObjectStorageConfigSpec.Config.Storage))
+	}
 
 	return replaced
 }

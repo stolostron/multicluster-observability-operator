@@ -21,8 +21,31 @@ func TestGetCoreTemplates(t *testing.T) {
 
 	mchcr := &monitoringv1alpha1.MultiClusterMonitoring{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterMonitoring"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: "test"},
-		Spec:       monitoringv1alpha1.MultiClusterMonitoringSpec{Version: "latest"},
+		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
+		Spec: monitoringv1alpha1.MultiClusterMonitoringSpec{
+			Version:         "latest",
+			ImageRepository: "quay.io/open-cluster-management",
+			ImagePullPolicy: "Always",
+			ImagePullSecret: "test",
+			StorageClass:    "gp2",
+			NodeSelector: &monitoringv1alpha1.NodeSelector{
+				OS:                  "test",
+				CustomLabelSelector: "test",
+				CustomLabelValue:    "test",
+			},
+
+			ObjectStorageConfigSpec: &monitoringv1alpha1.ObjectStorageConfigSpec{
+				Type: "minio",
+				Config: monitoringv1alpha1.ObjectStorageConfig{
+					Bucket:    "Bucket",
+					Endpoint:  "Endpoint",
+					Insecure:  true,
+					AccessKey: "AccessKey",
+					SecretKey: "SecretKey",
+					Storage:   "Storage",
+				},
+			},
+		},
 	}
 	_, err = GetTemplateRenderer().GetTemplates(mchcr)
 
