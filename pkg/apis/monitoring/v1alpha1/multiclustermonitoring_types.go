@@ -39,9 +39,11 @@ type MultiClusterMonitoringSpec struct {
 	StorageClass string `json:"storageClass"`
 
 	// Spec of Observatorium
-	Observatorium observatoriumv1alpha1.ObservatoriumSpec `json:"observatorium"`
+	// +optional
+	Observatorium *observatoriumv1alpha1.ObservatoriumSpec `json:"observatorium"`
 
 	// Spec of Grafana
+	// +optional
 	Grafana *GrafanaSpec `json:"grafana"`
 
 	// Spec of object storage config
@@ -112,40 +114,33 @@ type NodeSelector struct {
 
 // GrafanaSpec defines the desired state of GrafanaSpec
 type GrafanaSpec struct {
-	Hostport string `json:"hostport"`
+	Hostport int32 `json:"hostport"`
 }
 
 // ObjectStorageConfigSpec defines the desired state of ObjectStorageConfigSpec
 type ObjectStorageConfigSpec struct {
 	// Type of object storage [s3 minio]
-	// +optional
 	Type string `json:"type,omitempty"`
 
 	// Object storage configuration
-	// +optional
 	Config ObjectStorageConfig `json:"config,omitempty"`
 }
 
 // ObjectStorageConfig defines s3 object storage configuration
 type ObjectStorageConfig struct {
 	// Object storage bucket name
-	// +optional
 	Bucket string `json:"bucket,omitempty"`
 
 	// Object storage server endpoint
-	// +optional
 	Endpoint string `json:"endpoint,omitempty"`
 
 	// Configure object storage server use HTTP or HTTPs
-	// +optional
 	Insecure bool `json:"insecure,omitempty"`
 
 	// Object storage server access key
-	// +optional
 	AccessKey string `json:"access_key,omitempty"`
 
 	// Object storage server secret key
-	// +optional
 	SecretKey string `json:"secret_key,omitempty"`
 
 	// Minio local PVC storage size, just for minio only, ignore it if type is s3

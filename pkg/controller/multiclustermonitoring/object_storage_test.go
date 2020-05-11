@@ -40,36 +40,35 @@ func TestCheckObjStorageConfig(t *testing.T) {
 		},
 	}
 
-	result, err := checkObjStorageConfig(NewFakeClient(mcm), mcm)
+	result, err := updateObjStorageConfig(NewFakeClient(mcm), mcm)
 	if result != nil || err != nil {
 		t.Errorf("should return nil for result (%v) and err (%v)", result, err)
 	}
 
 	mcm.Spec.ObjectStorageConfigSpec.Type = "invalid"
-	result, err = checkObjStorageConfig(NewFakeClient(mcm), mcm)
+	result, err = updateObjStorageConfig(NewFakeClient(mcm), mcm)
 	if result == nil || err == nil {
 		t.Errorf("failed to check valid object storage type: result: (%v) err: (%v)", result, err)
 	}
 
 	mcm.Spec.ObjectStorageConfigSpec.Type = "minio"
-	result, err = checkObjStorageConfig(NewFakeClient(mcm), mcm)
+	result, err = updateObjStorageConfig(NewFakeClient(mcm), mcm)
 	if result != nil || err != nil {
 		t.Errorf("minio should be a valid type")
 	}
 
 	mcm.Spec.ObjectStorageConfigSpec.Type = "s3"
-	result, err = checkObjStorageConfig(NewFakeClient(mcm), mcm)
+	result, err = updateObjStorageConfig(NewFakeClient(mcm), mcm)
 	if result != nil || err != nil {
 		t.Errorf("s3 should be a valid type")
 	}
 
-	checkObjStorageConfig(NewFakeClient(mcm), mcm)
+	updateObjStorageConfig(NewFakeClient(mcm), mcm)
 	if mcm.Spec.ObjectStorageConfigSpec.Config.Bucket != "test" {
 		t.Errorf("bucket (%v) is not the expected (test)", mcm.Spec.ObjectStorageConfigSpec.Config.Bucket)
 	}
 
-	mcm.Spec.ObjectStorageConfigSpec = nil
-	checkObjStorageConfig(NewFakeClient(mcm), mcm)
+	mcm.Spec.ObjectStorageConfigSpec = newDefaultObjectStorageConfigSpec()
 	if mcm.Spec.ObjectStorageConfigSpec.Config.Endpoint != "minio:9000" {
 		t.Errorf("endpoint (%v) is not the expected (minio:9000)", mcm.Spec.ObjectStorageConfigSpec.Config.Endpoint)
 	}

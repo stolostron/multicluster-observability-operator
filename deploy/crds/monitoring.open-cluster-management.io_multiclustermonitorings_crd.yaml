@@ -36,7 +36,8 @@ spec:
               description: Spec of Grafana
               properties:
                 hostport:
-                  type: string
+                  format: int32
+                  type: integer
               required:
               - hostport
               type: object
@@ -824,11 +825,9 @@ spec:
                 Version of the MultiClusterMonitor'
               type: string
           required:
-          - grafana
           - imagePullPolicy
           - imageRepository
           - imageTagSuffix
-          - observatorium
           - storageClass
           - version
           type: object
