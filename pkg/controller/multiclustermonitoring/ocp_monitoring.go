@@ -41,7 +41,13 @@ func UpdateOCPMonitoringCM(monitoring *monitoringv1alpha1.MultiClusterMonitoring
 		return &reconcile.Result{}, err
 	}
 
-	err = util.UpdateHubClusterMonitoringConfig(obsRoute.Spec.Host)
+	remoteRriteURL := obsRoute.Spec.Host
+
+	if remoteRriteURL == "" {
+		remoteRriteURL = monitoring.Name + observatoriumPartoOfName + "-" + observatoriumAPIGatewayName + "." + monitoring.Namespace + ".svc"
+	}
+
+	err = util.UpdateHubClusterMonitoringConfig(remoteRriteURL)
 	if err != nil {
 		return &reconcile.Result{}, err
 	}

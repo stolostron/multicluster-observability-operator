@@ -8,6 +8,44 @@ The multicluster-monitoring-operator is a component of ACM observability feature
 <img src="./docs/images/multicluster-monitoring-operator.png">
 </div>
 
+## Installation
+
+We provided an easy way to install this operator into KinD cluster to verify some basic functionalities.
+
+1. Clone this repo locally
+
+```
+git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
+```
+
+2. Provide the username and password for downloading multicluster-monitoring-operator image from quay.io.
+
+```
+export DOCKER_USER=<quay.io username>
+export DOCKER_PASS=<quay.io password>
+```
+
+3. Deploy using the ./tests/e2e/setup.sh script
+```
+./tests/e2e/setup.sh
+```
+If you want to install the latest multicluster-monitoring-operator image, you can find the latest tag here https://quay.io/repository/open-cluster-management/multicluster-monitoring-operator?tab=tags. Then install by
+```
+./tests/e2e/setup.sh quay.io/open-cluster-management/multicluster-monitoring-operator:<latest tag>
+```
+
+4. Access the grafana dashboard
+- Option 1: Edit /etc/hosts to add 
+```
+127.0.0.1 grafana.local
+```
+Then access grafana dashboard by `http://grafana.local`
+- Option 2: Forward the grafana port into local machine
+```
+kubectl port-forward -n open-cluster-management $(oc get pod -n open-cluster-management -lapp=grafana-test -o jsonpath='{.items[0].metadata.name}') 3001
+```
+Then access grafana dashboard by `http://127.0.0.1:3001`
+
 ## Developer Guide
 The guide is used for developer to build and install the multicluster-monitoring-operator. It can be running in [kind][install_kind] if you don't have a OCP environment.
 

@@ -16,7 +16,7 @@ spec:
       containers:
         - name: multicluster-monitoring-operator
           # Replace this with the built image name
-          image: clyang/multicluster-monitoring-operator:v0.1.0
+          image: quay.io/open-cluster-management/multicluster-monitoring-operator:0.1.0-4db27de3a3528cd714604341be35aa5c571b2065 
           command:
           - multicluster-monitoring-operator
           imagePullPolicy: Always
