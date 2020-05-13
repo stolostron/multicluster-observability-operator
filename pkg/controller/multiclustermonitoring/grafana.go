@@ -38,7 +38,10 @@ type GrafanaDatasource struct {
 
 // GenerateGrafanaDataSource is used to generate the GrafanaDatasource as a secret.
 // the GrafanaDatasource points to observatorium api gateway service
-func GenerateGrafanaDataSource(client client.Client, scheme *runtime.Scheme, monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+func GenerateGrafanaDataSource(
+	client client.Client,
+	scheme *runtime.Scheme,
+	monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
 
 	grafanaDatasources, err := json.MarshalIndent(GrafanaDatasources{
 		APIVersion: 1,
@@ -47,7 +50,7 @@ func GenerateGrafanaDataSource(client client.Client, scheme *runtime.Scheme, mon
 				Name:   "Observatorium",
 				Type:   "prometheus",
 				Access: "proxy",
-				URL:    "http://" + monitoring.Name + observatoriumPartoOfName + "-observatorium-api:8080/api/metrics/v1",
+				URL:    "http://" + monitoring.Name + obsPartoOfName + "-observatorium-api:8080/api/metrics/v1",
 			},
 		},
 	}, "", "    ")
@@ -55,7 +58,7 @@ func GenerateGrafanaDataSource(client client.Client, scheme *runtime.Scheme, mon
 		return &reconcile.Result{}, err
 	}
 
-	grafanaDataSourceSecret := &corev1.Secret{
+	dsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "grafana-datasources",
 			Namespace: monitoring.Namespace,
@@ -67,16 +70,28 @@ func GenerateGrafanaDataSource(client client.Client, scheme *runtime.Scheme, mon
 	}
 
 	// Set MultiClusterMonitoring instance as the owner and controller
-	if err = controllerutil.SetControllerReference(monitoring, grafanaDataSourceSecret, scheme); err != nil {
+	if err = controllerutil.SetControllerReference(monitoring, dsSecret, scheme); err != nil {
 		return &reconcile.Result{}, err
 	}
 
 	// Check if this already exists
 	grafanaDSFound := &corev1.Secret{}
-	err = client.Get(context.TODO(), types.NamespacedName{Name: grafanaDataSourceSecret.Name, Namespace: grafanaDataSourceSecret.Namespace}, grafanaDSFound)
+	err = client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      dsSecret.Name,
+			Namespace: dsSecret.Namespace,
+		},
+		grafanaDSFound,
+	)
+
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating a new grafana datasource secret", "grafanaDataSourceSecret.Namespace", grafanaDataSourceSecret.Namespace, "grafanaDataSourceSecret.Name", grafanaDataSourceSecret.Name)
-		err = client.Create(context.TODO(), grafanaDataSourceSecret)
+		log.Info("Creating a new grafana datasource secret",
+			"dsSecret.Namespace", dsSecret.Namespace,
+			"dsSecret.Name", dsSecret.Name,
+		)
+
+		err = client.Create(context.TODO(), dsSecret)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}

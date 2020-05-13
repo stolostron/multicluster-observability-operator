@@ -118,7 +118,12 @@ func main() {
 	}
 
 	// Setup Scheme for observatorium resources
-	schemeBuilder := &scheme.Builder{GroupVersion: schema.GroupVersion{Group: "core.observatorium.io", Version: "v1alpha1"}}
+	schemeBuilder := &scheme.Builder{
+		GroupVersion: schema.GroupVersion{
+			Group:   "core.observatorium.io",
+			Version: "v1alpha1",
+		},
+	}
 	schemeBuilder.Register(&observatoriumAPIs.Observatorium{}, &observatoriumAPIs.ObservatoriumList{})
 	if err := schemeBuilder.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
@@ -156,8 +161,24 @@ func addMetrics(ctx context.Context, cfg *rest.Config, namespace string) {
 
 	// Add to the below struct any other metrics ports you want to expose.
 	servicePorts := []v1.ServicePort{
-		{Port: metricsPort, Name: metrics.OperatorPortName, Protocol: v1.ProtocolTCP, TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: metricsPort}},
-		{Port: operatorMetricsPort, Name: metrics.CRPortName, Protocol: v1.ProtocolTCP, TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: operatorMetricsPort}},
+		{
+			Port:     metricsPort,
+			Name:     metrics.OperatorPortName,
+			Protocol: v1.ProtocolTCP,
+			TargetPort: intstr.IntOrString{
+				Type:   intstr.Int,
+				IntVal: metricsPort,
+			},
+		},
+		{
+			Port:     operatorMetricsPort,
+			Name:     metrics.CRPortName,
+			Protocol: v1.ProtocolTCP,
+			TargetPort: intstr.IntOrString{
+				Type:   intstr.Int,
+				IntVal: operatorMetricsPort,
+			},
+		},
 	}
 
 	// Create Service object to expose the metrics port(s).

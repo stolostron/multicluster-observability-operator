@@ -28,30 +28,34 @@ import (
 )
 
 const (
-	observatoriumPartoOfName    = "-observatorium"
-	observatoriumAPIGatewayName = "observatorium-api"
+	obsPartoOfName = "-observatorium"
+	obsAPIGateway  = "observatorium-api"
 )
 
 const (
-	DEFAULT_STORAGE_SIZE = "1Gi"
+	defaultStorageSize = "1Gi"
 
-	DEFAULT_RETENTIONRESOLUTION1H  = "1s"
-	DEFAULT_RETENTIONRESOLUTION5M  = "1s"
-	DEFAULT_RETENTIONRESOLUTIONRAW = "14d"
+	retentionResolution1h  = "1s"
+	retentionResolution5m  = "1s"
+	retentionResolutionRaw = "14d"
 
-	DEFAULT_THANOS_IMAGE   = "quay.io/thanos/thanos:v0.12.0"
-	DEFAULT_THANOS_VERSION = "v0.12.0"
+	defaultThanosImage   = "quay.io/thanos/thanos:v0.12.0"
+	defaultThanosVersion = "v0.12.0"
 )
 
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterMonitoring
-func GenerateObservatoriumCR(client client.Client, scheme *runtime.Scheme, monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+func GenerateObservatoriumCR(
+	client client.Client,
+	scheme *runtime.Scheme,
+	monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+
 	labels := map[string]string{
 		"app": monitoring.Name,
 	}
 
 	observatoriumCR := &observatoriumv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      monitoring.Name + observatoriumPartoOfName,
+			Name:      monitoring.Name + obsPartoOfName,
 			Namespace: monitoring.Namespace,
 			Labels:    labels,
 		},
@@ -65,9 +69,20 @@ func GenerateObservatoriumCR(client client.Client, scheme *runtime.Scheme, monit
 
 	// Check if this Observatorium CR already exists
 	observatoriumCRFound := &observatoriumv1alpha1.Observatorium{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: observatoriumCR.Name, Namespace: observatoriumCR.Namespace}, observatoriumCRFound)
+	err := client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      observatoriumCR.Name,
+			Namespace: observatoriumCR.Namespace,
+		},
+		observatoriumCRFound,
+	)
+
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating a new observatorium CR", "observatorium.Namespace", observatoriumCR.Namespace, "observatorium.Name", observatoriumCR.Name)
+		log.Info("Creating a new observatorium CR",
+			"observatorium.Namespace", observatoriumCR.Namespace,
+			"observatorium.Name", observatoriumCR.Name,
+		)
 		err = client.Create(context.TODO(), observatoriumCR)
 		if err != nil {
 			return &reconcile.Result{}, err
@@ -110,8 +125,17 @@ func createKubeClient() (kubernetes.Interface, error) {
 	return kubeClient, err
 }
 
-func GenerateAPIGatewayRoute(client client.Client, scheme *runtime.Scheme, monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
-	labelSelector := fmt.Sprintf("app.kubernetes.io/component=%s, app.kubernetes.io/instance=%s", "api", monitoring.Name+observatoriumPartoOfName)
+func GenerateAPIGatewayRoute(
+	client client.Client,
+	scheme *runtime.Scheme,
+	monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+
+	labelSelector := fmt.Sprintf(
+		"app.kubernetes.io/component=%s, app.kubernetes.io/instance=%s",
+		"api",
+		monitoring.Name+obsPartoOfName,
+	)
+
 	listOptions := metav1.ListOptions{
 		LabelSelector: labelSelector,
 	}
@@ -125,7 +149,7 @@ func GenerateAPIGatewayRoute(client client.Client, scheme *runtime.Scheme, monit
 	if err == nil && len(apiGatewayServices.Items) > 0 {
 		apiGateway := &routev1.Route{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      observatoriumAPIGatewayName,
+				Name:      obsAPIGateway,
 				Namespace: monitoring.Namespace,
 			},
 			Spec: routev1.RouteSpec{
@@ -138,9 +162,15 @@ func GenerateAPIGatewayRoute(client client.Client, scheme *runtime.Scheme, monit
 				},
 			},
 		}
-		err = client.Get(context.TODO(), types.NamespacedName{Name: apiGateway.Name, Namespace: apiGateway.Namespace}, &routev1.Route{})
+		err = client.Get(
+			context.TODO(),
+			types.NamespacedName{Name: apiGateway.Name, Namespace: apiGateway.Namespace},
+			&routev1.Route{})
 		if err != nil && errors.IsNotFound(err) {
-			log.Info("Creating a new route to expose observatorium api", "apiGateway.Namespace", apiGateway.Namespace, "apiGateway.Name", apiGateway.Name)
+			log.Info("Creating a new route to expose observatorium api",
+				"apiGateway.Namespace", apiGateway.Namespace,
+				"apiGateway.Name", apiGateway.Name,
+			)
 			err = client.Create(context.TODO(), apiGateway)
 			if err != nil {
 				return &reconcile.Result{}, err
@@ -148,7 +178,10 @@ func GenerateAPIGatewayRoute(client client.Client, scheme *runtime.Scheme, monit
 		}
 
 	} else if err == nil && len(apiGatewayServices.Items) == 0 {
-		log.Info("Cannot find the service ", "serviceName", monitoring.Name+observatoriumPartoOfName+"-"+observatoriumAPIGatewayName)
+		log.Info("Cannot find the service ",
+			"serviceName",
+			monitoring.Name+obsPartoOfName+"-"+obsAPIGateway,
+		)
 		return &reconcile.Result{RequeueAfter: time.Second * 10}, nil
 	} else {
 		return &reconcile.Result{}, err
@@ -162,8 +195,8 @@ func newDefaultObservatoriumSpec() *observatoriumv1alpha1.ObservatoriumSpec {
 	obs.API.Image = "quay.io/observatorium/observatorium:master-2020-04-29-v0.1.1-14-gceac185"
 	obs.API.Version = "master-2020-04-29-v0.1.1-14-gceac185"
 
-	obs.APIQuery.Image = DEFAULT_THANOS_IMAGE
-	obs.APIQuery.Version = DEFAULT_THANOS_VERSION
+	obs.APIQuery.Image = defaultThanosImage
+	obs.APIQuery.Version = defaultThanosVersion
 
 	obs.Compact = newCompactSpec()
 
@@ -174,8 +207,8 @@ func newDefaultObservatoriumSpec() *observatoriumv1alpha1.ObservatoriumSpec {
 	obs.ObjectStorageConfig.Name = "thanos-objectstorage"
 	obs.ObjectStorageConfig.Key = "thanos.yaml"
 
-	obs.Query.Image = DEFAULT_THANOS_IMAGE
-	obs.Query.Version = DEFAULT_THANOS_VERSION
+	obs.Query.Image = defaultThanosImage
+	obs.Query.Version = defaultThanosVersion
 
 	replicas := int32(1)
 	obs.QueryCache.Image = "quay.io/cortexproject/cortex:master-fdcd992f"
@@ -193,18 +226,18 @@ func newDefaultObservatoriumSpec() *observatoriumv1alpha1.ObservatoriumSpec {
 
 func newReceiversSpec() observatoriumv1alpha1.ReceiversSpec {
 	receSpec := observatoriumv1alpha1.ReceiversSpec{}
-	receSpec.Image = DEFAULT_THANOS_IMAGE
-	receSpec.Version = DEFAULT_THANOS_VERSION
-	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(DEFAULT_STORAGE_SIZE)
+	receSpec.Image = defaultThanosImage
+	receSpec.Version = defaultThanosVersion
+	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(defaultStorageSize)
 
 	return receSpec
 }
 
 func newRuleSpec() observatoriumv1alpha1.RuleSpec {
 	ruleSpec := observatoriumv1alpha1.RuleSpec{}
-	ruleSpec.Image = DEFAULT_THANOS_IMAGE
-	ruleSpec.Version = DEFAULT_THANOS_VERSION
-	ruleSpec.VolumeClaimTemplate = newVolumeClaimTemplate(DEFAULT_STORAGE_SIZE)
+	ruleSpec.Image = defaultThanosImage
+	ruleSpec.Version = defaultThanosVersion
+	ruleSpec.VolumeClaimTemplate = newVolumeClaimTemplate(defaultStorageSize)
 
 	return ruleSpec
 }
@@ -212,9 +245,9 @@ func newRuleSpec() observatoriumv1alpha1.RuleSpec {
 func newStoreSpec() observatoriumv1alpha1.StoreSpec {
 	storeSpec := observatoriumv1alpha1.StoreSpec{}
 
-	storeSpec.Image = DEFAULT_THANOS_IMAGE
-	storeSpec.Version = DEFAULT_THANOS_VERSION
-	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(DEFAULT_STORAGE_SIZE)
+	storeSpec.Image = defaultThanosImage
+	storeSpec.Version = defaultThanosVersion
+	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(defaultStorageSize)
 	shards := int32(1)
 	storeSpec.Shards = &shards
 	storeSpec.Cache = newStoreCacheSpec()
@@ -238,12 +271,12 @@ func newStoreCacheSpec() observatoriumv1alpha1.StoreCacheSpec {
 
 func newCompactSpec() observatoriumv1alpha1.CompactSpec {
 	compactSpec := observatoriumv1alpha1.CompactSpec{}
-	compactSpec.Image = DEFAULT_THANOS_IMAGE
-	compactSpec.Version = DEFAULT_THANOS_VERSION
-	compactSpec.RetentionResolutionRaw = DEFAULT_RETENTIONRESOLUTIONRAW
-	compactSpec.RetentionResolution5m = DEFAULT_RETENTIONRESOLUTION5M
-	compactSpec.RetentionResolution1h = DEFAULT_RETENTIONRESOLUTION1H
-	compactSpec.VolumeClaimTemplate = newVolumeClaimTemplate(DEFAULT_STORAGE_SIZE)
+	compactSpec.Image = defaultThanosImage
+	compactSpec.Version = defaultThanosVersion
+	compactSpec.RetentionResolutionRaw = retentionResolutionRaw
+	compactSpec.RetentionResolution5m = retentionResolution5m
+	compactSpec.RetentionResolution1h = retentionResolution1h
+	compactSpec.VolumeClaimTemplate = newVolumeClaimTemplate(defaultStorageSize)
 
 	return compactSpec
 }

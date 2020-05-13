@@ -12,15 +12,15 @@ import (
 func TestNewVolumeClaimTemplate(t *testing.T) {
 	vct := newVolumeClaimTemplate("1Gi")
 	if vct.Spec.AccessModes[0] != v1.ReadWriteOnce ||
-		vct.Spec.Resources.Requests[v1.ResourceStorage] != resource.MustParse(DEFAULT_STORAGE_SIZE) {
+		vct.Spec.Resources.Requests[v1.ResourceStorage] != resource.MustParse(defaultStorageSize) {
 		t.Errorf("Failed to newVolumeClaimTemplate")
 	}
 }
 
 func TestNewDefaultObservatorium(t *testing.T) {
 	obs := newDefaultObservatoriumSpec()
-	if obs.Query.Image != DEFAULT_THANOS_IMAGE ||
-		obs.Query.Version != DEFAULT_THANOS_VERSION {
+	if obs.Query.Image != defaultThanosImage ||
+		obs.Query.Version != defaultThanosVersion {
 		t.Errorf("Failed to newDefaultObservatorium")
 	}
 }

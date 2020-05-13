@@ -17,29 +17,32 @@ import (
 )
 
 const (
-	DEFAULT_OBJ_STORAGE_TYPE      = "minio"
-	DEFAULT_OBJ_STORAGE_BUCKET    = "thanos"
-	DEFAULT_OBJ_STORAGE_ENDPOINT  = "minio:9000"
-	DEFAULT_OBJ_STORAGE_INSECURE  = true
-	DEFAULT_OBJ_STORAGE_ACCESSKEY = "minio"
-	DEFAULT_OBJ_STORAGE_SECRETKEY = "minio123"
-	DEFAULT_OBJ_STORAGE_STORAGE   = "1Gi"
+	defaultObjStorageType      = "minio"
+	defaultObjStorageBucket    = "thanos"
+	defaultObjStorageEndpoint  = "minio:9000"
+	defaultObjStorageInsecure  = true
+	defaultObjStorageAccesskey = "minio"
+	defaultObjStorageSecretkey = "minio123"
+	defaultObjStorageStorage   = "1Gi"
 )
 
 func newDefaultObjectStorageConfigSpec() *monitoringv1alpha1.ObjectStorageConfigSpec {
 	spec := &monitoringv1alpha1.ObjectStorageConfigSpec{}
-	spec.Type = DEFAULT_OBJ_STORAGE_TYPE
-	spec.Config.Bucket = DEFAULT_OBJ_STORAGE_BUCKET
-	spec.Config.Endpoint = DEFAULT_OBJ_STORAGE_ENDPOINT
-	spec.Config.Insecure = DEFAULT_OBJ_STORAGE_INSECURE
-	spec.Config.AccessKey = DEFAULT_OBJ_STORAGE_ACCESSKEY
-	spec.Config.SecretKey = DEFAULT_OBJ_STORAGE_SECRETKEY
-	spec.Config.Storage = DEFAULT_OBJ_STORAGE_STORAGE
+	spec.Type = defaultObjStorageType
+	spec.Config.Bucket = defaultObjStorageBucket
+	spec.Config.Endpoint = defaultObjStorageEndpoint
+	spec.Config.Insecure = defaultObjStorageInsecure
+	spec.Config.AccessKey = defaultObjStorageAccesskey
+	spec.Config.SecretKey = defaultObjStorageSecretkey
+	spec.Config.Storage = defaultObjStorageStorage
 
 	return spec
 }
 
-func updateObjStorageConfig(c client.Client, mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+func updateObjStorageConfig(
+	c client.Client,
+	mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+
 	// Check valid object storage type
 	if mcm.Spec.ObjectStorageConfigSpec != nil {
 		objStorageType := mcm.Spec.ObjectStorageConfigSpec.Type
