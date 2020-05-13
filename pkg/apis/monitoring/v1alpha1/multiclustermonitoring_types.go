@@ -16,15 +16,19 @@ type MultiClusterMonitoringSpec struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 	// Version of the MultiClusterMonitor
+	// +optional
 	Version string `json:"version"`
 
 	// Repository of the MultiClusterMonitor images
+	// +optional
 	ImageRepository string `json:"imageRepository"`
 
 	// ImageTagSuffix of the MultiClusterMonitor images
+	// +optional
 	ImageTagSuffix string `json:"imageTagSuffix"`
 
 	// Pull policy of the MultiClusterMonitor images
+	// +optional
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy"`
 
 	// Pull secret of the MultiClusterMonitor images
@@ -36,6 +40,7 @@ type MultiClusterMonitoringSpec struct {
 	NodeSelector *NodeSelector `json:"nodeSelector,omitempty"`
 
 	// Spec of StorageClass
+	// +optional
 	StorageClass string `json:"storageClass"`
 
 	// Spec of Observatorium

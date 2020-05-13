@@ -23,7 +23,4 @@ func TestNewDefaultObservatorium(t *testing.T) {
 		obs.Query.Version != DEFAULT_THANOS_VERSION {
 		t.Errorf("Failed to newDefaultObservatorium")
 	}
-
-	// yamlData, _ := yaml.Marshal(obs)
-	// fmt.Println(string(yamlData))
 }

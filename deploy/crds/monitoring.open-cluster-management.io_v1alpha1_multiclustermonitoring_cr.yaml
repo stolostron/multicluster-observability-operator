@@ -2,10 +2,3 @@ apiVersion: monitoring.open-cluster-management.io/v1alpha1
 kind: MultiClusterMonitoring
 metadata:
   name: monitoring
-spec:
-  version: latest
-  imageRepository: "quay.io/open-cluster-management"
-  imageTagSuffix: ""
-  imagePullPolicy: Always
-  imagePullSecret: quay-secret
-  storageClass: gp2
