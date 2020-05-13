@@ -11,7 +11,7 @@ import (
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
 
-func TestddDefaultConfig(t *testing.T) {
+func TestAddDefaultConfig(t *testing.T) {
 	mcm := &monitoringv1alpha1.MultiClusterMonitoring{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterMonitoring"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
