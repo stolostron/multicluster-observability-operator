@@ -92,7 +92,8 @@ if [[ ! -z "$1" ]]; then
     # replace the operator image with the latest image
     $sed_command "s~image:.*$~image: $1~g" deploy/operator.yaml
 fi
-$sed_command "s/gp2/local/g" deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml
+# Add storage class config
+printf "spec:\n  storageClass: local\n" >> deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml
 # Install the multicluster-monitoring-operator
 kubectl create ns open-cluster-management
 kubectl config set-context --current --namespace open-cluster-management

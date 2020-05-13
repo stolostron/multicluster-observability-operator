@@ -5,6 +5,7 @@
 package v1alpha1
 
 import (
+	apiv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -110,7 +111,11 @@ func (in *MultiClusterMonitoringSpec) DeepCopyInto(out *MultiClusterMonitoringSp
 		*out = new(NodeSelector)
 		**out = **in
 	}
-	in.Observatorium.DeepCopyInto(&out.Observatorium)
+	if in.Observatorium != nil {
+		in, out := &in.Observatorium, &out.Observatorium
+		*out = new(apiv1alpha1.ObservatoriumSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Grafana != nil {
 		in, out := &in.Grafana, &out.Grafana
 		*out = new(GrafanaSpec)

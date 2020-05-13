@@ -2,10 +2,6 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   annotations:
-    ingress.open-cluster-management.io/configuration-snippet: |
-      rewrite_by_lua_block {
-        ngx.req.set_header("Authorization", "Basic YWRtaW46c2VjcmV0")
-      }
     ingress.open-cluster-management.io/rewrite-target: /
     kubernetes.io/ingress.class: ingress-open-cluster-management
   name: grafana
