@@ -97,14 +97,7 @@ $sed_command "s/gp2/local/g" deploy/crds/monitoring.open-cluster-management.io_v
 kubectl create ns open-cluster-management
 kubectl config set-context --current --namespace open-cluster-management
 # create image pull secret
-kubectl create secret docker-registry multiclustermonitoring-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
-if [[ "$(uname)" == "Darwin" ]]; then
-    $sed_command "\$a\\
-    imagePullSecrets:\\
-    - name: multiclustermonitoring-operator-pull-secret" deploy/service_account.yaml
-elif [[ "$(uname)" == "Linux" ]]; then
-    $sed_command "\$aimagePullSecrets:\n- name: multiclustermonitoring-operator-pull-secret" deploy/service_account.yaml
-fi
+kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
 
 # for mac, there is no /mnt
 if [[ "$(uname)" == "Darwin" ]]; then
@@ -129,7 +122,7 @@ kubectl apply -f manifests/base/grafana/deployment.yaml
 kubectl apply -f manifests/base/grafana/service.yaml
 kubectl apply -f tests/e2e/grafana
 
-CHANGED_FILES="manifests/base/grafana/deployment.yaml manifests/base/grafana/service.yaml tests/e2e/samples/persistentVolume.yaml deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml deploy/operator.yaml deploy/service_account.yaml"
+CHANGED_FILES="manifests/base/grafana/deployment.yaml manifests/base/grafana/service.yaml tests/e2e/samples/persistentVolume.yaml deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml deploy/operator.yaml"
 # revert the changes
 for file in ${CHANGED_FILES}; do
     if [[ -f "${file}-e" ]]; then
