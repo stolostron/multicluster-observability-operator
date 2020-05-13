@@ -8,9 +8,12 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/imdario/mergo"
 	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -29,19 +32,30 @@ const (
 	observatoriumAPIGatewayName = "observatorium-api"
 )
 
+const (
+	DEFAULT_STORAGE_SIZE = "1Gi"
+
+	DEFAULT_RETENTIONRESOLUTION1H  = "1s"
+	DEFAULT_RETENTIONRESOLUTION5M  = "1s"
+	DEFAULT_RETENTIONRESOLUTIONRAW = "14d"
+
+	DEFAULT_THANOS_IMAGE   = "quay.io/thanos/thanos:v0.12.0"
+	DEFAULT_THANOS_VERSION = "v0.12.0"
+)
+
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterMonitoring
 func GenerateObservatoriumCR(client client.Client, scheme *runtime.Scheme, monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
-
 	labels := map[string]string{
 		"app": monitoring.Name,
 	}
+
 	observatoriumCR := &observatoriumv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      monitoring.Name + observatoriumPartoOfName,
 			Namespace: monitoring.Namespace,
 			Labels:    labels,
 		},
-		Spec: monitoring.Spec.Observatorium,
+		Spec: *monitoring.Spec.Observatorium,
 	}
 
 	// Set MultiClusterMonitoring instance as the owner and controller
@@ -68,8 +82,11 @@ func GenerateObservatoriumCR(client client.Client, scheme *runtime.Scheme, monit
 	oldSpec := observatoriumCRFound.Spec
 	newSpec := observatoriumCR.Spec
 	if !reflect.DeepEqual(oldSpec, newSpec) {
+		if err := mergo.Merge(&oldSpec, newSpec, mergo.WithOverride); err != nil {
+			return &reconcile.Result{}, err
+		}
 		newObj := observatoriumCRFound.DeepCopy()
-		newObj.Spec = newSpec
+		newObj.Spec = oldSpec
 		err = client.Update(context.TODO(), newObj)
 		if err != nil {
 			return &reconcile.Result{}, err
@@ -137,4 +154,109 @@ func GenerateAPIGatewayRoute(client client.Client, scheme *runtime.Scheme, monit
 		return &reconcile.Result{}, err
 	}
 	return nil, nil
+}
+
+func newDefaultObservatoriumSpec() *observatoriumv1alpha1.ObservatoriumSpec {
+	obs := &observatoriumv1alpha1.ObservatoriumSpec{}
+
+	obs.API.Image = "quay.io/observatorium/observatorium:master-2020-04-29-v0.1.1-14-gceac185"
+	obs.API.Version = "master-2020-04-29-v0.1.1-14-gceac185"
+
+	obs.APIQuery.Image = DEFAULT_THANOS_IMAGE
+	obs.APIQuery.Version = DEFAULT_THANOS_VERSION
+
+	obs.Compact = newCompactSpec()
+
+	obs.Hashrings = []*observatoriumv1alpha1.Hashring{
+		{Hashring: "default", Tenants: []string{}},
+	}
+
+	obs.ObjectStorageConfig.Name = "thanos-objectstorage"
+	obs.ObjectStorageConfig.Key = "thanos.yaml"
+
+	obs.Query.Image = DEFAULT_THANOS_IMAGE
+	obs.Query.Version = DEFAULT_THANOS_VERSION
+
+	replicas := int32(1)
+	obs.QueryCache.Image = "quay.io/cortexproject/cortex:master-fdcd992f"
+	obs.QueryCache.Version = "master-fdcd992f"
+	obs.QueryCache.Replicas = &replicas
+
+	obs.Receivers = newReceiversSpec()
+	obs.Rule = newRuleSpec()
+	obs.Store = newStoreSpec()
+
+	obs.ThanosReceiveController.Image = "quay.io/observatorium/thanos-receive-controller:latest"
+	obs.ThanosReceiveController.Version = "latest"
+	return obs
+}
+
+func newReceiversSpec() observatoriumv1alpha1.ReceiversSpec {
+	receSpec := observatoriumv1alpha1.ReceiversSpec{}
+	receSpec.Image = DEFAULT_THANOS_IMAGE
+	receSpec.Version = DEFAULT_THANOS_VERSION
+	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(DEFAULT_STORAGE_SIZE)
+
+	return receSpec
+}
+
+func newRuleSpec() observatoriumv1alpha1.RuleSpec {
+	ruleSpec := observatoriumv1alpha1.RuleSpec{}
+	ruleSpec.Image = DEFAULT_THANOS_IMAGE
+	ruleSpec.Version = DEFAULT_THANOS_VERSION
+	ruleSpec.VolumeClaimTemplate = newVolumeClaimTemplate(DEFAULT_STORAGE_SIZE)
+
+	return ruleSpec
+}
+
+func newStoreSpec() observatoriumv1alpha1.StoreSpec {
+	storeSpec := observatoriumv1alpha1.StoreSpec{}
+
+	storeSpec.Image = DEFAULT_THANOS_IMAGE
+	storeSpec.Version = DEFAULT_THANOS_VERSION
+	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(DEFAULT_STORAGE_SIZE)
+	shards := int32(1)
+	storeSpec.Shards = &shards
+	storeSpec.Cache = newStoreCacheSpec()
+
+	return storeSpec
+}
+
+func newStoreCacheSpec() observatoriumv1alpha1.StoreCacheSpec {
+	storeCacheSpec := observatoriumv1alpha1.StoreCacheSpec{}
+	storeCacheSpec.Image = "docker.io/memcached:1.6.3-alpine"
+	storeCacheSpec.Version = "1.6.3-alpine"
+	storeCacheSpec.ExporterImage = "prom/memcached-exporter:v0.6.0"
+	storeCacheSpec.ExporterVersion = "v0.6.0"
+	replicas := int32(1)
+	storeCacheSpec.Replicas = &replicas
+	limit := int32(1024)
+	storeCacheSpec.MemoryLimitMB = &limit
+
+	return storeCacheSpec
+}
+
+func newCompactSpec() observatoriumv1alpha1.CompactSpec {
+	compactSpec := observatoriumv1alpha1.CompactSpec{}
+	compactSpec.Image = DEFAULT_THANOS_IMAGE
+	compactSpec.Version = DEFAULT_THANOS_VERSION
+	compactSpec.RetentionResolutionRaw = DEFAULT_RETENTIONRESOLUTIONRAW
+	compactSpec.RetentionResolution5m = DEFAULT_RETENTIONRESOLUTION5M
+	compactSpec.RetentionResolution1h = DEFAULT_RETENTIONRESOLUTION1H
+	compactSpec.VolumeClaimTemplate = newVolumeClaimTemplate(DEFAULT_STORAGE_SIZE)
+
+	return compactSpec
+}
+
+func newVolumeClaimTemplate(size string) observatoriumv1alpha1.VolumeClaimTemplate {
+	vct := observatoriumv1alpha1.VolumeClaimTemplate{}
+	vct.Spec = v1.PersistentVolumeClaimSpec{
+		AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
+		Resources: v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceName(v1.ResourceStorage): resource.MustParse(size),
+			},
+		},
+	}
+	return vct
 }

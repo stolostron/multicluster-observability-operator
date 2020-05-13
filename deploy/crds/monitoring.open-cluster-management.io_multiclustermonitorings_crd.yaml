@@ -36,7 +36,8 @@ spec:
               description: Spec of Grafana
               properties:
                 hostport:
-                  type: string
+                  format: int32
+                  type: integer
               required:
               - hostport
               type: object
@@ -823,14 +824,6 @@ spec:
                 https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
                 Version of the MultiClusterMonitor'
               type: string
-          required:
-          - grafana
-          - imagePullPolicy
-          - imageRepository
-          - imageTagSuffix
-          - observatorium
-          - storageClass
-          - version
           type: object
         status:
           description: MultiClusterMonitoringStatus defines the observed state of
