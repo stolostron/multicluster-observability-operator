@@ -11,14 +11,14 @@ import (
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
 
-func TestAddDefaultConfig(t *testing.T) {
+func TestUpdateMonitoringCR(t *testing.T) {
 	mcm := &monitoringv1alpha1.MultiClusterMonitoring{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterMonitoring"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
 		Spec:       monitoringv1alpha1.MultiClusterMonitoringSpec{},
 	}
 
-	result, err := addDefaultConfig(NewFakeClient(mcm), mcm)
+	result, err := UpdateMonitoringCR(NewFakeClient(mcm), mcm)
 	if result != nil || err != nil {
 		t.Errorf("Should return nil for result (%v) and err (%v)", result, err)
 	}
