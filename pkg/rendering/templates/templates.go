@@ -91,7 +91,13 @@ func (r *TemplateRenderer) addTemplateFromPath(kustomizationPath string, resourc
 }
 
 func (r *TemplateRenderer) render(kustomizationPath string) (resmap.ResMap, error) {
-	ldr, err := loader.NewLoader(loader.RestrictionRootOnly, validator.NewKustValidator(), kustomizationPath, fs.MakeFsOnDisk())
+	ldr, err := loader.NewLoader(
+		loader.RestrictionRootOnly,
+		validator.NewKustValidator(),
+		kustomizationPath,
+		fs.MakeFsOnDisk(),
+	)
+
 	if err != nil {
 		return nil, err
 	}

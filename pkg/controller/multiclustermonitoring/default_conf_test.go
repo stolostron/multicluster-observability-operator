@@ -23,28 +23,28 @@ func TestAddDefaultConfig(t *testing.T) {
 		t.Errorf("Should return nil for result (%v) and err (%v)", result, err)
 	}
 
-	if mcm.Spec.Version != DEFAULT_VERSION {
-		t.Errorf("Version (%v) is not the expected (%v)", mcm.Spec.Version, DEFAULT_VERSION)
+	if mcm.Spec.Version != defaultVersion {
+		t.Errorf("Version (%v) is not the expected (%v)", mcm.Spec.Version, defaultVersion)
 	}
 
-	if mcm.Spec.ImageRepository != DEFAULT_IMG_REPO {
-		t.Errorf("ImageRepository (%v) is not the expected (%v)", mcm.Spec.ImageRepository, DEFAULT_IMG_REPO)
+	if mcm.Spec.ImageRepository != defaultImgRepo {
+		t.Errorf("ImageRepository (%v) is not the expected (%v)", mcm.Spec.ImageRepository, defaultImgRepo)
 	}
 
 	if string(mcm.Spec.ImagePullPolicy) != string(corev1.PullAlways) {
 		t.Errorf("ImagePullPolicy (%v) is not the expected (%v)", mcm.Spec.ImagePullPolicy, corev1.PullAlways)
 	}
 
-	if mcm.Spec.ImagePullSecret != DEFAULT_IMG_PULL_SECRET {
-		t.Errorf("ImagePullSecret (%v) is not the expected (%v)", mcm.Spec.ImagePullSecret, DEFAULT_IMG_PULL_SECRET)
+	if mcm.Spec.ImagePullSecret != defaultImgPullSecret {
+		t.Errorf("ImagePullSecret (%v) is not the expected (%v)", mcm.Spec.ImagePullSecret, defaultImgPullSecret)
 	}
 
 	if mcm.Spec.NodeSelector == nil {
 		t.Errorf("NodeSelector (%v) is not the expected (non-nil)", mcm.Spec.NodeSelector)
 	}
 
-	if mcm.Spec.StorageClass != DEFAULT_STORAGE_CLASS {
-		t.Errorf("StorageClass (%v) is not the expected (%v)", mcm.Spec.StorageClass, DEFAULT_STORAGE_CLASS)
+	if mcm.Spec.StorageClass != defaultStorageClass {
+		t.Errorf("StorageClass (%v) is not the expected (%v)", mcm.Spec.StorageClass, defaultStorageClass)
 	}
 
 	if mcm.Spec.Observatorium == nil {

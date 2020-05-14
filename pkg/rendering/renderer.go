@@ -229,14 +229,42 @@ func stringValueReplace(toReplace string, cr *monitoringv1.MultiClusterMonitorin
 	replaced = strings.ReplaceAll(replaced, "{{MULTICLUSTERMONITORING_CR_NAME}}", string(cr.Name))
 
 	// Object storage config
-	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_BUCKET}}", string(cr.Spec.ObjectStorageConfigSpec.Config.Bucket))
-	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_ENDPOINT}}", string(cr.Spec.ObjectStorageConfigSpec.Config.Endpoint))
-	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_INSECURE}}", strconv.FormatBool(cr.Spec.ObjectStorageConfigSpec.Config.Insecure))
-	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_ACCESSKEY}}", string(cr.Spec.ObjectStorageConfigSpec.Config.AccessKey))
-	replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_SECRETKEY}}", string(cr.Spec.ObjectStorageConfigSpec.Config.SecretKey))
+	replaced = strings.ReplaceAll(
+		replaced,
+		"{{OBJ_STORAGE_BUCKET}}",
+		string(cr.Spec.ObjectStorageConfigSpec.Config.Bucket),
+	)
+
+	replaced = strings.ReplaceAll(
+		replaced,
+		"{{OBJ_STORAGE_ENDPOINT}}",
+		string(cr.Spec.ObjectStorageConfigSpec.Config.Endpoint),
+	)
+
+	replaced = strings.ReplaceAll(
+		replaced,
+		"{{OBJ_STORAGE_INSECURE}}",
+		strconv.FormatBool(cr.Spec.ObjectStorageConfigSpec.Config.Insecure),
+	)
+
+	replaced = strings.ReplaceAll(
+		replaced,
+		"{{OBJ_STORAGE_ACCESSKEY}}",
+		string(cr.Spec.ObjectStorageConfigSpec.Config.AccessKey),
+	)
+
+	replaced = strings.ReplaceAll(
+		replaced,
+		"{{OBJ_STORAGE_SECRETKEY}}",
+		string(cr.Spec.ObjectStorageConfigSpec.Config.SecretKey),
+	)
 
 	if cr.Spec.ObjectStorageConfigSpec.Type == "minio" {
-		replaced = strings.ReplaceAll(replaced, "{{OBJ_STORAGE_STORAGE}}", string(cr.Spec.ObjectStorageConfigSpec.Config.Storage))
+		replaced = strings.ReplaceAll(
+			replaced,
+			"{{OBJ_STORAGE_STORAGE}}",
+			string(cr.Spec.ObjectStorageConfigSpec.Config.Storage),
+		)
 	}
 
 	return replaced
@@ -244,7 +272,10 @@ func stringValueReplace(toReplace string, cr *monitoringv1.MultiClusterMonitorin
 
 func replaceInValues(values map[string]interface{}, cr *monitoringv1.MultiClusterMonitoring) error {
 	for inKey := range values {
-		isPrimitiveType := reflect.TypeOf(values[inKey]).String() == "string" || reflect.TypeOf(values[inKey]).String() == "bool" || reflect.TypeOf(values[inKey]).String() == "int"
+		isPrimitiveType := reflect.TypeOf(values[inKey]).String() == "string" ||
+			reflect.TypeOf(values[inKey]).String() == "bool" ||
+			reflect.TypeOf(values[inKey]).String() == "int"
+
 		if isPrimitiveType {
 			if reflect.TypeOf(values[inKey]).String() == "string" {
 				values[inKey] = stringValueReplace(values[inKey].(string), cr)
@@ -252,7 +283,8 @@ func replaceInValues(values map[string]interface{}, cr *monitoringv1.MultiCluste
 		} else if reflect.TypeOf(values[inKey]).Kind().String() == "slice" {
 			stringSlice := values[inKey].([]interface{})
 			for i := range stringSlice {
-				stringSlice[i] = stringValueReplace(stringSlice[i].(string), cr) // assumes only slices of strings, which is OK for now
+				// assumes only slices of strings, which is OK for now
+				stringSlice[i] = stringValueReplace(stringSlice[i].(string), cr)
 			}
 		} else { // reflect.TypeOf(values[inKey]).Kind().String() == "map"
 			inValue, ok := values[inKey].(map[string]interface{})

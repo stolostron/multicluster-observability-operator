@@ -24,32 +24,32 @@ func NewFakeClient(mcm *monitoringv1alpha1.MultiClusterMonitoring) client.Client
 func TestNewDefaultObjectStorageConfigSpec(t *testing.T) {
 	spec := newDefaultObjectStorageConfigSpec()
 
-	if spec.Type != DEFAULT_OBJ_STORAGE_TYPE {
-		t.Errorf("Type (%v) is not the expected (%v)", spec.Type, DEFAULT_OBJ_STORAGE_TYPE)
+	if spec.Type != defaultObjStorageType {
+		t.Errorf("Type (%v) is not the expected (%v)", spec.Type, defaultObjStorageType)
 	}
 
-	if spec.Config.Bucket != DEFAULT_OBJ_STORAGE_BUCKET {
-		t.Errorf("Bucket (%v) is not the expected (%v)", spec.Config.Bucket, DEFAULT_OBJ_STORAGE_BUCKET)
+	if spec.Config.Bucket != defaultObjStorageBucket {
+		t.Errorf("Bucket (%v) is not the expected (%v)", spec.Config.Bucket, defaultObjStorageBucket)
 	}
 
-	if spec.Config.Endpoint != DEFAULT_OBJ_STORAGE_ENDPOINT {
-		t.Errorf("Endpoint (%v) is not the expected (%v)", spec.Config.Endpoint, DEFAULT_OBJ_STORAGE_ENDPOINT)
+	if spec.Config.Endpoint != defaultObjStorageEndpoint {
+		t.Errorf("Endpoint (%v) is not the expected (%v)", spec.Config.Endpoint, defaultObjStorageEndpoint)
 	}
 
-	if spec.Config.Insecure != DEFAULT_OBJ_STORAGE_INSECURE {
-		t.Errorf("Insecure (%v) is not the expected (%v)", spec.Config.Insecure, DEFAULT_OBJ_STORAGE_INSECURE)
+	if spec.Config.Insecure != defaultObjStorageInsecure {
+		t.Errorf("Insecure (%v) is not the expected (%v)", spec.Config.Insecure, defaultObjStorageInsecure)
 	}
 
-	if spec.Config.AccessKey != DEFAULT_OBJ_STORAGE_ACCESSKEY {
-		t.Errorf("AccessKey (%v) is not the expected (%v)", spec.Config.AccessKey, DEFAULT_OBJ_STORAGE_ACCESSKEY)
+	if spec.Config.AccessKey != defaultObjStorageAccesskey {
+		t.Errorf("AccessKey (%v) is not the expected (%v)", spec.Config.AccessKey, defaultObjStorageAccesskey)
 	}
 
-	if spec.Config.SecretKey != DEFAULT_OBJ_STORAGE_SECRETKEY {
-		t.Errorf("SecretKey (%v) is not the expected (%v)", spec.Config.SecretKey, DEFAULT_OBJ_STORAGE_SECRETKEY)
+	if spec.Config.SecretKey != defaultObjStorageSecretkey {
+		t.Errorf("SecretKey (%v) is not the expected (%v)", spec.Config.SecretKey, defaultObjStorageSecretkey)
 	}
 
-	if spec.Config.Storage != DEFAULT_OBJ_STORAGE_STORAGE {
-		t.Errorf("Storage (%v) is not the expected (%v)", spec.Config.Storage, DEFAULT_OBJ_STORAGE_STORAGE)
+	if spec.Config.Storage != defaultObjStorageStorage {
+		t.Errorf("Storage (%v) is not the expected (%v)", spec.Config.Storage, defaultObjStorageStorage)
 	}
 
 }
@@ -74,10 +74,10 @@ func TestCheckObjStorageConfig(t *testing.T) {
 		t.Errorf("Failed to check valid object storage type: result: (%v) err: (%v)", result, err)
 	}
 
-	mcm.Spec.ObjectStorageConfigSpec.Type = DEFAULT_OBJ_STORAGE_TYPE
+	mcm.Spec.ObjectStorageConfigSpec.Type = defaultObjStorageType
 	result, err = updateObjStorageConfig(NewFakeClient(mcm), mcm)
 	if result != nil || err != nil {
-		t.Errorf("(%v) should be a valid type", DEFAULT_OBJ_STORAGE_TYPE)
+		t.Errorf("(%v) should be a valid type", defaultObjStorageType)
 	}
 
 	mcm.Spec.ObjectStorageConfigSpec.Type = "s3"
@@ -87,12 +87,12 @@ func TestCheckObjStorageConfig(t *testing.T) {
 	}
 
 	updateObjStorageConfig(NewFakeClient(mcm), mcm)
-	if mcm.Spec.ObjectStorageConfigSpec.Config.Bucket != DEFAULT_OBJ_STORAGE_BUCKET {
-		t.Errorf("Bucket (%v) is not the expected (%v)", mcm.Spec.ObjectStorageConfigSpec.Config.Bucket, DEFAULT_OBJ_STORAGE_BUCKET)
+	if mcm.Spec.ObjectStorageConfigSpec.Config.Bucket != defaultObjStorageBucket {
+		t.Errorf("Bucket (%v) is not the expected (%v)", mcm.Spec.ObjectStorageConfigSpec.Config.Bucket, defaultObjStorageBucket)
 	}
 
 	mcm.Spec.ObjectStorageConfigSpec = newDefaultObjectStorageConfigSpec()
-	if mcm.Spec.ObjectStorageConfigSpec.Config.Endpoint != DEFAULT_OBJ_STORAGE_ENDPOINT {
-		t.Errorf("Endpoint (%v) is not the expected (%v)", mcm.Spec.ObjectStorageConfigSpec.Config.Endpoint, DEFAULT_OBJ_STORAGE_ENDPOINT)
+	if mcm.Spec.ObjectStorageConfigSpec.Config.Endpoint != defaultObjStorageEndpoint {
+		t.Errorf("Endpoint (%v) is not the expected (%v)", mcm.Spec.ObjectStorageConfigSpec.Config.Endpoint, defaultObjStorageEndpoint)
 	}
 }

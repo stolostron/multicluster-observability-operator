@@ -13,19 +13,19 @@ import (
 )
 
 const (
-	DEFAULT_VERSION         = "latest"
-	DEFAULT_IMG_REPO        = "quay.io/open-cluster-management"
-	DEFAULT_IMG_PULL_SECRET = "quay-secret"
-	DEFAULT_STORAGE_CLASS   = "gp2"
+	defaultVersion       = "latest"
+	defaultImgRepo       = "quay.io/open-cluster-management"
+	defaultImgPullSecret = "quay-secret"
+	defaultStorageClass  = "gp2"
 )
 
 func addDefaultConfig(c client.Client, mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
 	if mcm.Spec.Version == "" {
-		mcm.Spec.Version = DEFAULT_VERSION
+		mcm.Spec.Version = defaultVersion
 	}
 
 	if mcm.Spec.ImageRepository == "" {
-		mcm.Spec.ImageRepository = DEFAULT_IMG_REPO
+		mcm.Spec.ImageRepository = defaultImgRepo
 	}
 
 	if string(mcm.Spec.ImagePullPolicy) == "" {
@@ -33,7 +33,7 @@ func addDefaultConfig(c client.Client, mcm *monitoringv1alpha1.MultiClusterMonit
 	}
 
 	if mcm.Spec.ImagePullSecret == "" {
-		mcm.Spec.ImagePullSecret = DEFAULT_IMG_PULL_SECRET
+		mcm.Spec.ImagePullSecret = defaultImgPullSecret
 	}
 
 	if mcm.Spec.NodeSelector == nil {
@@ -41,7 +41,7 @@ func addDefaultConfig(c client.Client, mcm *monitoringv1alpha1.MultiClusterMonit
 	}
 
 	if mcm.Spec.StorageClass == "" {
-		mcm.Spec.StorageClass = DEFAULT_STORAGE_CLASS
+		mcm.Spec.StorageClass = defaultStorageClass
 	}
 
 	if mcm.Spec.Observatorium == nil {
