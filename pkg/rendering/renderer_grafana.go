@@ -29,7 +29,6 @@ func (r *Renderer) renderGrafanaDeployments(res *resource.Resource) (*unstructur
 	}
 	spec, ok := u.Object["spec"].(map[string]interface{})
 	if ok {
-		log.Info("grafana replicas", "spec", spec["replicas"], "cr", r.cr.Spec.Grafana.Replicas)
 		if r.cr.Spec.Grafana.Replicas != spec["replicas"] {
 			spec["replicas"] = r.cr.Spec.Grafana.Replicas
 		}

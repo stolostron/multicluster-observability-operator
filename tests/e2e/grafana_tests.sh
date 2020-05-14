@@ -8,7 +8,7 @@ n=1
 while true
 do
     # check there are 2 grafana pods here
-    replicas=`oc get deployment grafana | grep -v AVAILABLE | awk '{ print $4 }'`
+    replicas=`kubectl get deployment grafana | grep -v AVAILABLE | awk '{ print $4 }'`
     if [[ $replicas -eq 2 ]]; then
         echo "grafana replicas is update to 2 successfully."
         break
