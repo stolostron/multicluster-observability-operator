@@ -59,10 +59,10 @@ The guide is used for developer to build and install the multicluster-monitoring
 
 ### Install the Operator SDK CLI
 
-Follow the steps in the [installation guide][install_guide] to learn how to install the Operator SDK CLI tool. It requires version v0.16.0.
+Follow the steps in the [installation guide][install_guide] to learn how to install the Operator SDK CLI tool. It requires [version v0.17.0][operator_sdk_v0.17.0].
 Or just use this command to download `operator-sdk` for Mac:
 ```
-curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.16.0/operator-sdk-v0.16.0-x86_64-apple-darwin -o operator-sdk
+curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.17.0/operator-sdk-v0.17.0-x86_64-apple-darwin -o operator-sdk
 ```
 
 ### Build the Operator
@@ -173,3 +173,4 @@ oc scale --replicas=2 statefulset --all -n openshift-monitoring; oc scale --repl
 [go_tool]:https://golang.org/dl/
 [docker_tool]:https://docs.docker.com/install/
 [kubectl_tool]:https://kubernetes.io/docs/tasks/tools/install-kubectl/
+[operator_sdk_v0.17.0]:https://github.com/operator-framework/operator-sdk/releases/tag/v0.17.0
