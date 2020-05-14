@@ -25,8 +25,10 @@ var log = logf.Log.WithName("renderer")
 type renderFn func(*resource.Resource) (*unstructured.Unstructured, error)
 
 type Renderer struct {
-	cr        *monitoringv1.MultiClusterMonitoring
-	renderFns map[string]renderFn
+	cr               *monitoringv1.MultiClusterMonitoring
+	renderFns        map[string]renderFn
+	renderGrafanaFns map[string]renderFn
+	renderMinioFns   map[string]renderFn
 }
 
 func NewRenderer(multipleClusterMonitoring *monitoringv1.MultiClusterMonitoring) *Renderer {
@@ -43,19 +45,44 @@ func NewRenderer(multipleClusterMonitoring *monitoringv1.MultiClusterMonitoring)
 		"Ingress":               renderer.renderNamespace,
 		"PersistentVolumeClaim": renderer.renderPersistentVolumeClaim,
 	}
+	renderer.newGranfanaRenderer()
+	renderer.newMinioRenderer()
 	return renderer
 }
 
 func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured, error) {
-	templates, err := templates.GetTemplateRenderer().GetTemplates(r.cr)
+
+	genericTemplates, err := templates.GetTemplateRenderer().GetTemplates(r.cr)
 	if err != nil {
 		return nil, err
 	}
-	resources, err := r.renderTemplates(templates)
+	resources, err := r.renderTemplates(genericTemplates)
 	if err != nil {
 		return nil, err
 	}
-	return resources, nil
+
+	// render grafana templates
+	grafanaTemplates, err := templates.GetTemplateRenderer().GetGrafanaTemplates(r.cr)
+	if err != nil {
+		return nil, err
+	}
+	grafanaResources, err := r.renderGrafanaTemplates(grafanaTemplates)
+	if err != nil {
+		return nil, err
+	}
+	resources = append(resources, grafanaResources...)
+
+	// render grafana templates
+	minioTemplates, err := templates.GetTemplateRenderer().GetMinioTemplates(r.cr)
+	if err != nil {
+		return nil, err
+	}
+	minioResources, err := r.renderMinioTemplates(minioTemplates)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(resources, minioResources...), nil
 }
 
 func (r *Renderer) renderTemplates(templates []*resource.Resource) ([]*unstructured.Unstructured, error) {
@@ -115,25 +142,6 @@ func (r *Renderer) renderDeployments(res *resource.Resource) (*unstructured.Unst
 				err = replaceInValues(metadata, r.cr)
 				if err != nil {
 					return nil, err
-				}
-			}
-
-			// update MINIO_ACCESS_KEY and MINIO_SECRET_KEY
-			if res.GetName() == "minio" {
-				containers, _ := template["spec"].(map[string]interface{})["containers"].([]interface{})
-				if len(containers) == 0 {
-					return nil, nil
-				}
-
-				envList, ok := containers[0].(map[string]interface{})["env"].([]interface{})
-				if ok {
-					for idx := range envList {
-						env := envList[idx].(map[string]interface{})
-						err = replaceInValues(env, r.cr)
-						if err != nil {
-							return nil, err
-						}
-					}
 				}
 			}
 		}

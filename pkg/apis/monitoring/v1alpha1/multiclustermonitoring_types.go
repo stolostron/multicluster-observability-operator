@@ -119,7 +119,13 @@ type NodeSelector struct {
 
 // GrafanaSpec defines the desired state of GrafanaSpec
 type GrafanaSpec struct {
+	// Hostport of grafana
+	// +optional
 	Hostport int32 `json:"hostport"`
+
+	// replicas of grafana
+	// +optional
+	Replicas int32 `json:"replicas,omitempty"`
 }
 
 // ObjectStorageConfigSpec defines the desired state of ObjectStorageConfigSpec

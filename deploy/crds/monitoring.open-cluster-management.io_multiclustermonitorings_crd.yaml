@@ -36,10 +36,13 @@ spec:
               description: Spec of Grafana
               properties:
                 hostport:
+                  description: Hostport of grafana
                   format: int32
                   type: integer
-              required:
-              - hostport
+                replicas:
+                  description: replicas of grafana
+                  format: int32
+                  type: integer
               type: object
             imagePullPolicy:
               description: Pull policy of the MultiClusterMonitor images

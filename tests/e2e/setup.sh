@@ -87,6 +87,7 @@ rm -rf router
 #kubectl apply -f contour/examples/contour
 #rm -rf contour
 
+# ------------------ Deploy multicluster monitoring----------------------------- #
 cd multicluster-monitoring-operator
 if [[ ! -z "$1" ]]; then
     # replace the operator image with the latest image
