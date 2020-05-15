@@ -87,12 +87,14 @@ rm -rf router
 #kubectl apply -f contour/examples/contour
 #rm -rf contour
 
+# ------------------ Deploy multicluster monitoring----------------------------- #
 cd multicluster-monitoring-operator
 if [[ ! -z "$1" ]]; then
     # replace the operator image with the latest image
     $sed_command "s~image:.*$~image: $1~g" deploy/operator.yaml
 fi
 # Add storage class config
+cp deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml-e
 printf "spec:\n  storageClass: local\n" >> deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml
 # Install the multicluster-monitoring-operator
 kubectl create ns open-cluster-management

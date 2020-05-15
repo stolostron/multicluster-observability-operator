@@ -74,3 +74,5 @@ for depl in ${GRAFANA_DEPLOYMENTS}; do
         exit 1
     fi
 done
+
+./tests/e2e/grafana_tests.sh

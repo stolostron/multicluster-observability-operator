@@ -166,7 +166,7 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 		}
 	}
 
-	// create a Observatorium CR
+	// create an Observatorium CR
 	result, err := GenerateObservatoriumCR(r.client, r.scheme, instance)
 	if result != nil {
 		return *result, err
@@ -245,6 +245,7 @@ func deploy(c client.Client, obj *unstructured.Unstructured) error {
 	err := c.Get(context.TODO(), types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			log.Info("Create", "Kind:", obj.GroupVersionKind(), "Name:", obj.GetName())
 			return c.Create(context.TODO(), obj)
 		}
 		return err
@@ -262,6 +263,7 @@ func deploy(c client.Client, obj *unstructured.Unstructured) error {
 	if !reflect.DeepEqual(oldSpec, newSpec) {
 		newObj := found.DeepCopy()
 		newObj.Object["spec"] = newSpec
+		log.Info("Update", "Kind:", obj.GroupVersionKind(), "Name:", obj.GetName())
 		return c.Update(context.TODO(), newObj)
 	}
 	return nil

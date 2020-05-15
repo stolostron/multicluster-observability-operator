@@ -56,7 +56,7 @@ func addDefaultConfig(c client.Client, mcm *monitoringv1alpha1.MultiClusterMonit
 
 	if mcm.Spec.Grafana == nil {
 		log.Info("Add default grafana config")
-		mcm.Spec.Grafana = &monitoringv1alpha1.GrafanaSpec{Hostport: 3000}
+		mcm.Spec.Grafana = newGrafanaConfigSpec()
 	}
 
 	log.Info("Add default config to CR")

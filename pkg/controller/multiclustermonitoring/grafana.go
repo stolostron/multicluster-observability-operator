@@ -36,6 +36,13 @@ type GrafanaDatasource struct {
 	Version           int    `json:"version"`
 }
 
+func newGrafanaConfigSpec() *monitoringv1alpha1.GrafanaSpec {
+	spec := &monitoringv1alpha1.GrafanaSpec{}
+	spec.Hostport = 3001
+	spec.Replicas = 1
+	return spec
+}
+
 // GenerateGrafanaDataSource is used to generate the GrafanaDatasource as a secret.
 // the GrafanaDatasource points to observatorium api gateway service
 func GenerateGrafanaDataSource(
