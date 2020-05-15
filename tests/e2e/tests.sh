@@ -105,7 +105,7 @@ run_test_teardown() {
     kubectl delete -n open-cluster-management deployment/grafana-test
     kubectl delete -n open-cluster-management service/grafana-test
     kubectl delete -n open-cluster-management -f deploy/
-    target_count="1"
+    target_count="0"
     timeout=$true
     interval=0
     intervals=600

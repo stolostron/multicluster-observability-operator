@@ -94,20 +94,6 @@ func GenerateObservatoriumCR(
 		return &reconcile.Result{}, err
 	}
 
-	oldSpec := observatoriumCRFound.Spec
-	newSpec := observatoriumCR.Spec
-	if !reflect.DeepEqual(oldSpec, newSpec) {
-		if err := mergo.Merge(&oldSpec, newSpec, mergo.WithOverride); err != nil {
-			return &reconcile.Result{}, err
-		}
-		newObj := observatoriumCRFound.DeepCopy()
-		newObj.Spec = oldSpec
-		err = client.Update(context.TODO(), newObj)
-		if err != nil {
-			return &reconcile.Result{}, err
-		}
-	}
-
 	return nil, nil
 }
 
@@ -292,4 +278,38 @@ func newVolumeClaimTemplate(size string) observatoriumv1alpha1.VolumeClaimTempla
 		},
 	}
 	return vct
+}
+
+func updateObservatoriumSpec(
+	c client.Client,
+	mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+
+	found := &observatoriumv1alpha1.Observatorium{}
+	err := c.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      mcm.Name + obsPartoOfName,
+			Namespace: mcm.Namespace,
+		},
+		found,
+	)
+
+	// if Observatorium CR already exists, update new config to CR
+	if err != nil && errors.IsAlreadyExists(err) {
+		oldSpec := found.Spec
+		newSpec := mcm.Spec.Observatorium
+		if !reflect.DeepEqual(oldSpec, newSpec) {
+			if err := mergo.Merge(&oldSpec, newSpec, mergo.WithOverride); err != nil {
+				return &reconcile.Result{}, err
+			}
+			newObj := found.DeepCopy()
+			newObj.Spec = oldSpec
+			err = c.Update(context.TODO(), newObj)
+			if err != nil {
+				return &reconcile.Result{}, err
+			}
+		}
+	}
+
+	return nil, nil
 }

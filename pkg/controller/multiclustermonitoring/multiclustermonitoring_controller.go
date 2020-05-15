@@ -138,11 +138,7 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
-	if result, err := addDefaultConfig(r.client, instance); result != nil {
-		return *result, err
-	}
-
-	if result, err := updateObjStorageConfig(r.client, instance); result != nil {
+	if result, err := UpdateMonitoringCR(r.client, instance); result != nil {
 		return *result, err
 	}
 
