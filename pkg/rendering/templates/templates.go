@@ -44,7 +44,8 @@ func GetTemplateRenderer() *TemplateRenderer {
 }
 
 // GetGrafanaTemplates reads the grafana manifests
-func (r *TemplateRenderer) GetGrafanaTemplates(mcm *monitoringv1alpha1.MultiClusterMonitoring) ([]*resource.Resource, error) {
+func (r *TemplateRenderer) GetGrafanaTemplates(
+	mcm *monitoringv1alpha1.MultiClusterMonitoring) ([]*resource.Resource, error) {
 	basePath := path.Join(r.templatesPath, "base")
 	// resourceList contains all kustomize resources
 	resourceList := []*resource.Resource{}
@@ -57,7 +58,8 @@ func (r *TemplateRenderer) GetGrafanaTemplates(mcm *monitoringv1alpha1.MultiClus
 }
 
 // GetMinioTemplates reads the minio manifests
-func (r *TemplateRenderer) GetMinioTemplates(mcm *monitoringv1alpha1.MultiClusterMonitoring) ([]*resource.Resource, error) {
+func (r *TemplateRenderer) GetMinioTemplates(
+	mcm *monitoringv1alpha1.MultiClusterMonitoring) ([]*resource.Resource, error) {
 	basePath := path.Join(r.templatesPath, "base")
 	// resourceList contains all kustomize resources
 	resourceList := []*resource.Resource{}
