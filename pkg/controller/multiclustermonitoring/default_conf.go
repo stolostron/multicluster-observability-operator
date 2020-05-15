@@ -19,7 +19,10 @@ const (
 	defaultStorageClass  = "gp2"
 )
 
-func addDefaultConfig(c client.Client, mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+func UpdateMonitoringCR(
+	c client.Client,
+	mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+
 	if mcm.Spec.Version == "" {
 		mcm.Spec.Version = defaultVersion
 	}
@@ -47,11 +50,21 @@ func addDefaultConfig(c client.Client, mcm *monitoringv1alpha1.MultiClusterMonit
 	if mcm.Spec.Observatorium == nil {
 		log.Info("Add default object storage configuration")
 		mcm.Spec.Observatorium = newDefaultObservatoriumSpec()
+	} else {
+		result, err := updateObservatoriumSpec(c, mcm)
+		if result != nil {
+			return result, err
+		}
 	}
 
 	if mcm.Spec.ObjectStorageConfigSpec == nil {
 		log.Info("Add default observatorium spec")
 		mcm.Spec.ObjectStorageConfigSpec = newDefaultObjectStorageConfigSpec()
+	} else {
+		result, err := updateObjStorageConfig(c, mcm)
+		if result != nil {
+			return result, err
+		}
 	}
 
 	if mcm.Spec.Grafana == nil {
