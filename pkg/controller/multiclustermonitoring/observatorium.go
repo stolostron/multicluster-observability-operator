@@ -35,9 +35,9 @@ const (
 const (
 	defaultStorageSize = "1Gi"
 
-	retentionResolution1h  = "1s"
-	retentionResolution5m  = "1s"
-	retentionResolutionRaw = "14d"
+	retentionResolution1h  = "30d"
+	retentionResolution5m  = "14d"
+	retentionResolutionRaw = "5d"
 
 	defaultThanosImage   = "quay.io/thanos/thanos:v0.12.0"
 	defaultThanosVersion = "v0.12.0"
