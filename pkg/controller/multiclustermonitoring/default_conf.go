@@ -4,8 +4,11 @@ package multiclustermonitoring
 
 import (
 	"context"
+	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -74,10 +77,26 @@ func UpdateMonitoringCR(
 		updateGrafanaConfig(mcm)
 	}
 
-	log.Info("Add default config to CR")
-	err := c.Update(context.TODO(), mcm)
-	if err != nil {
-		return &reconcile.Result{}, err
+	found := &monitoringv1alpha1.MultiClusterMonitoring{}
+	err := c.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      mcm.Name,
+			Namespace: mcm.Namespace,
+		},
+		found,
+	)
+	// if MultiClusterMonitoring CR already exists, update new config to CR
+	if err != nil && errors.IsAlreadyExists(err) {
+		oldSpec := found.Spec
+		newSpec := mcm.Spec
+		if !reflect.DeepEqual(oldSpec, newSpec) {
+			log.Info("Update MultiClusterMonitoring CR with default values.")
+			err := c.Update(context.TODO(), mcm)
+			if err != nil {
+				return &reconcile.Result{}, err
+			}
+		}
 	}
 
 	return nil, nil
