@@ -48,7 +48,7 @@ func UpdateMonitoringCR(
 	}
 
 	if mcm.Spec.Observatorium == nil {
-		log.Info("Add default object storage configuration")
+		log.Info("Add default observatorium spec")
 		mcm.Spec.Observatorium = newDefaultObservatoriumSpec()
 	} else {
 		result, err := updateObservatoriumSpec(c, mcm)
@@ -58,7 +58,7 @@ func UpdateMonitoringCR(
 	}
 
 	if mcm.Spec.ObjectStorageConfigSpec == nil {
-		log.Info("Add default observatorium spec")
+		log.Info("Add default object storage configuration")
 		mcm.Spec.ObjectStorageConfigSpec = newDefaultObjectStorageConfigSpec()
 	} else {
 		result, err := updateObjStorageConfig(c, mcm)
@@ -70,6 +70,8 @@ func UpdateMonitoringCR(
 	if mcm.Spec.Grafana == nil {
 		log.Info("Add default grafana config")
 		mcm.Spec.Grafana = newGrafanaConfigSpec()
+	} else {
+		updateGrafanaConfig(mcm)
 	}
 
 	log.Info("Add default config to CR")

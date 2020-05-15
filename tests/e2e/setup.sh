@@ -145,9 +145,9 @@ deploy() {
     create_kind_cluster
     deploy_prometheus_operator
     deploy_openshift_router
-    deploy_mcm_operator
+    deploy_mcm_operator $1
     deploy_grafana
     revert_changes
 }
 
-deploy
+deploy $1

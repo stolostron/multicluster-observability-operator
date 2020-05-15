@@ -18,6 +18,11 @@ import (
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
 
+const (
+	defaultHostport int32 = 3001
+	defaultReplicas int32 = 1
+)
+
 type GrafanaDatasources struct {
 	APIVersion  int                  `json:"apiVersion"`
 	Datasources []*GrafanaDatasource `json:"datasources"`
@@ -38,9 +43,18 @@ type GrafanaDatasource struct {
 
 func newGrafanaConfigSpec() *monitoringv1alpha1.GrafanaSpec {
 	spec := &monitoringv1alpha1.GrafanaSpec{}
-	spec.Hostport = 3001
-	spec.Replicas = 1
+	spec.Hostport = defaultHostport
+	spec.Replicas = defaultReplicas
 	return spec
+}
+
+func updateGrafanaConfig(mcm *monitoringv1alpha1.MultiClusterMonitoring) {
+	if mcm.Spec.Grafana.Hostport == 0 {
+		mcm.Spec.Grafana.Hostport = defaultHostport
+	}
+	if mcm.Spec.Grafana.Replicas == 0 {
+		mcm.Spec.Grafana.Replicas = defaultReplicas
+	}
 }
 
 // GenerateGrafanaDataSource is used to generate the GrafanaDatasource as a secret.
