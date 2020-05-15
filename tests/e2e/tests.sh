@@ -100,5 +100,33 @@ run_test_scale_grafana() {
     done
 }
 
+run_test_teardown() {
+    kubectl delete -n open-cluster-management MultiClusterMonitoring monitoring
+    kubectl delete -n open-cluster-management deployment/grafana-test
+    kubectl delete -n open-cluster-management service/grafana-test
+    kubectl delete -n open-cluster-management -f deploy/
+    target_count="1"
+    timeout=$true
+    interval=0
+    intervals=600
+    while [ $interval -ne $intervals ]; do
+      echo "Waiting for cleaning"
+      count=$(kubectl -n open-cluster-management get all | wc -l)
+      if [ "$count" = "$target_count" ]; then
+        echo NS count is now: $count
+	    timeout=$false
+	    break
+	  fi
+	  sleep 5
+	  interval=$((interval+5))
+    done
+
+    if [ $timeout ]; then
+      echo "Timeout waiting for namespace to be empty"
+      exit 1
+    fi
+}
+
 run_test_readiness
 run_test_scale_grafana
+run_test_teardown
