@@ -155,3 +155,24 @@ rules:
   - deletecollection
   - watch
   - create
+- apiGroups:
+  - apps.open-cluster-management.io
+  resources:
+  - '*'
+  - placementrules
+  verbs:
+  - '*'
+- apiGroups:
+  - work.open-cluster-management.io
+  resources:
+  - '*'
+  - manifestworks
+  verbs:
+  - '*'
+- apiGroups:
+  - config.openshift.io
+  resources:
+  - '*'
+  - infrastructures
+  verbs:
+  - '*'
