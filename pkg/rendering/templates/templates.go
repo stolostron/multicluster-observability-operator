@@ -88,7 +88,7 @@ func (r *TemplateRenderer) GetTemplates(mcm *monitoringv1alpha1.MultiClusterMoni
 	resourceList := []*resource.Resource{}
 
 	// add observatorium template
-	if err := r.addTemplateFromPath(basePath+"/observatorium", &resourceList); err != nil {
+	if err := r.AddTemplateFromPath(basePath+"/observatorium", &resourceList); err != nil {
 		return resourceList, err
 	}
 
