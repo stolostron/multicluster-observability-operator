@@ -14,7 +14,11 @@ const (
 func loadTemplates() ([]runtime.RawExtension, error) {
 	templateRenderer := templates.NewTemplateRenderer(Path)
 	resourceList := []*resource.Resource{}
-	templateRenderer.AddTemplateFromPath(Path, &resourceList)
+	err := templateRenderer.AddTemplateFromPath(Path, &resourceList)
+	if err != nil {
+		log.Error(err, "Failed to load templates")
+		return nil, err
+	}
 	rawExtensionList := []runtime.RawExtension{}
 	for _, r := range resourceList {
 		r.SetNamespace(SpokeNameSpace)
