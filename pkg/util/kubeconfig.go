@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	KubeConfigSecretName = "hub-kube-config"
+	KubeConfigName = "hub-kube-config"
 )
 
 func createKubeConfig(client client.Client, namespace string) (*clientv1.Config, error) {
@@ -70,7 +70,7 @@ func CreateKubeSecret(client client.Client, namespace string) (*corev1.Secret, e
 			Kind:       "Secret",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      KubeConfigSecretName,
+			Name:      KubeConfigName,
 			Namespace: SpokeNameSpace,
 		},
 		Data: map[string][]byte{
