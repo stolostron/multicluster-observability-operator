@@ -1,0 +1,12 @@
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: endpoint-metrics-operator
+subjects:
+- kind: ServiceAccount
+  name: endpoint-metrics-operator
+  namespace: acm-monitoring
+roleRef:
+  kind: ClusterRole
+  name: endpoint-metrics-operator
+  apiGroup: rbac.authorization.k8s.io

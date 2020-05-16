@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var log = logf.Log.WithName("ocp_monitoring_config")
+var log = logf.Log.WithName("util")
 
 const (
 	Name       = "cluster-monitoring-config"

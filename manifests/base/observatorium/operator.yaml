@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: observatorium-operator
-        image: quay.io/observatorium/observatorium-operator:latest
+        image: quay.io/observatorium/observatorium-operator:master-2020-05-07-e07bb8e
         imagePullPolicy: IfNotPresent
         args:
           - "--log-level=debug"
