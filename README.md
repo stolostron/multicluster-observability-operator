@@ -4,7 +4,47 @@
 
 The multicluster-monitoring-operator is a component of ACM observability feature. It is designed to install into Hub Cluster.
 
-![Overview](./multicluster-monitoring-operator.png)
+<div align="center">
+<img src="./docs/images/multicluster-monitoring-operator.png">
+</div>
+
+## Installation
+
+We provided an easy way to install this operator into KinD cluster to verify some basic functionalities.
+
+1. Clone this repo locally
+
+```
+git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
+```
+
+2. Provide the username and password for downloading multicluster-monitoring-operator image from quay.io.
+
+```
+export DOCKER_USER=<quay.io username>
+export DOCKER_PASS=<quay.io password>
+```
+
+3. Deploy using the ./tests/e2e/setup.sh script
+```
+./tests/e2e/setup.sh
+```
+If you want to install the latest multicluster-monitoring-operator image, you can find the latest tag here https://quay.io/repository/open-cluster-management/multicluster-monitoring-operator?tab=tags. Then install by
+```
+./tests/e2e/setup.sh quay.io/open-cluster-management/multicluster-monitoring-operator:<latest tag>
+```
+
+4. Access the grafana dashboard
+- Option 1: Edit /etc/hosts to add 
+```
+127.0.0.1 grafana.local
+```
+Then access grafana dashboard by `http://grafana.local`
+- Option 2: Forward the grafana port into local machine
+```
+kubectl port-forward -n open-cluster-management $(oc get pod -n open-cluster-management -lapp=grafana-test -o jsonpath='{.items[0].metadata.name}') 3001
+```
+Then access grafana dashboard by `http://127.0.0.1:3001`
 
 ## Developer Guide
 The guide is used for developer to build and install the multicluster-monitoring-operator. It can be running in [kind][install_kind] if you don't have a OCP environment.
@@ -19,10 +59,10 @@ The guide is used for developer to build and install the multicluster-monitoring
 
 ### Install the Operator SDK CLI
 
-Follow the steps in the [installation guide][install_guide] to learn how to install the Operator SDK CLI tool. It requires version v0.16.0.
+Follow the steps in the [installation guide][install_guide] to learn how to install the Operator SDK CLI tool. It requires [version v0.17.0][operator_sdk_v0.17.0].
 Or just use this command to download `operator-sdk` for Mac:
 ```
-curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.16.0/operator-sdk-v0.16.0-x86_64-apple-darwin -o operator-sdk
+curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.17.0/operator-sdk-v0.17.0-x86_64-apple-darwin -o operator-sdk
 ```
 
 ### Build the Operator
@@ -133,3 +173,4 @@ oc scale --replicas=2 statefulset --all -n openshift-monitoring; oc scale --repl
 [go_tool]:https://golang.org/dl/
 [docker_tool]:https://docs.docker.com/install/
 [kubectl_tool]:https://kubernetes.io/docs/tasks/tools/install-kubectl/
+[operator_sdk_v0.17.0]:https://github.com/operator-framework/operator-sdk/releases/tag/v0.17.0

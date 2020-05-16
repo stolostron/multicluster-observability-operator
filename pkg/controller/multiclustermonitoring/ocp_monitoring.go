@@ -35,13 +35,19 @@ func UpdateOCPMonitoringCM(monitoring *monitoringv1alpha1.MultiClusterMonitoring
 	}
 
 	// Try to get route instance
-	obsRoute, err := routev1Client.RouteV1().Routes(monitoring.Namespace).Get(observatoriumAPIGatewayName, metav1.GetOptions{})
+	obsRoute, err := routev1Client.RouteV1().Routes(monitoring.Namespace).Get(obsAPIGateway, metav1.GetOptions{})
 	if err != nil {
-		log.Error(err, "Failed to get route", observatoriumAPIGatewayName)
+		log.Error(err, "Failed to get route", obsAPIGateway)
 		return &reconcile.Result{}, err
 	}
 
-	err = util.UpdateHubClusterMonitoringConfig(obsRoute.Spec.Host)
+	remoteRriteURL := obsRoute.Spec.Host
+
+	if remoteRriteURL == "" {
+		remoteRriteURL = monitoring.Name + obsPartoOfName + "-" + obsAPIGateway + "." + monitoring.Namespace + ".svc"
+	}
+
+	err = util.UpdateHubClusterMonitoringConfig(remoteRriteURL)
 	if err != nil {
 		return &reconcile.Result{}, err
 	}

@@ -21,56 +21,78 @@ func NewFakeClient(mcm *monitoringv1alpha1.MultiClusterMonitoring) client.Client
 	return fake.NewFakeClient(objs...)
 }
 
+func TestNewDefaultObjectStorageConfigSpec(t *testing.T) {
+	spec := newDefaultObjectStorageConfigSpec()
+
+	if spec.Type != defaultObjStorageType {
+		t.Errorf("Type (%v) is not the expected (%v)", spec.Type, defaultObjStorageType)
+	}
+
+	if spec.Config.Bucket != defaultObjStorageBucket {
+		t.Errorf("Bucket (%v) is not the expected (%v)", spec.Config.Bucket, defaultObjStorageBucket)
+	}
+
+	if spec.Config.Endpoint != defaultObjStorageEndpoint {
+		t.Errorf("Endpoint (%v) is not the expected (%v)", spec.Config.Endpoint, defaultObjStorageEndpoint)
+	}
+
+	if spec.Config.Insecure != defaultObjStorageInsecure {
+		t.Errorf("Insecure (%v) is not the expected (%v)", spec.Config.Insecure, defaultObjStorageInsecure)
+	}
+
+	if spec.Config.AccessKey != defaultObjStorageAccesskey {
+		t.Errorf("AccessKey (%v) is not the expected (%v)", spec.Config.AccessKey, defaultObjStorageAccesskey)
+	}
+
+	if spec.Config.SecretKey != defaultObjStorageSecretkey {
+		t.Errorf("SecretKey (%v) is not the expected (%v)", spec.Config.SecretKey, defaultObjStorageSecretkey)
+	}
+
+	if spec.Config.Storage != defaultObjStorageStorage {
+		t.Errorf("Storage (%v) is not the expected (%v)", spec.Config.Storage, defaultObjStorageStorage)
+	}
+
+}
+
 func TestCheckObjStorageConfig(t *testing.T) {
 	mcm := &monitoringv1alpha1.MultiClusterMonitoring{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterMonitoring"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
 		Spec: monitoringv1alpha1.MultiClusterMonitoringSpec{
-			ObjectStorageConfigSpec: &monitoringv1alpha1.ObjectStorageConfigSpec{
-				Type: "minio",
-				Config: monitoringv1alpha1.ObjectStorageConfig{
-					Bucket:    "test",
-					Endpoint:  "test",
-					Insecure:  false,
-					AccessKey: "test",
-					SecretKey: "test",
-					Storage:   "test",
-				},
-			},
+			ObjectStorageConfigSpec: newDefaultObjectStorageConfigSpec(),
 		},
 	}
 
-	result, err := checkObjStorageConfig(NewFakeClient(mcm), mcm)
+	result, err := updateObjStorageConfig(NewFakeClient(mcm), mcm)
 	if result != nil || err != nil {
-		t.Errorf("should return nil for result (%v) and err (%v)", result, err)
+		t.Errorf("Should return nil for result (%v) and err (%v)", result, err)
 	}
 
 	mcm.Spec.ObjectStorageConfigSpec.Type = "invalid"
-	result, err = checkObjStorageConfig(NewFakeClient(mcm), mcm)
+	result, err = updateObjStorageConfig(NewFakeClient(mcm), mcm)
 	if result == nil || err == nil {
-		t.Errorf("failed to check valid object storage type: result: (%v) err: (%v)", result, err)
+		t.Errorf("Failed to check valid object storage type: result: (%v) err: (%v)", result, err)
 	}
 
-	mcm.Spec.ObjectStorageConfigSpec.Type = "minio"
-	result, err = checkObjStorageConfig(NewFakeClient(mcm), mcm)
+	mcm.Spec.ObjectStorageConfigSpec.Type = defaultObjStorageType
+	result, err = updateObjStorageConfig(NewFakeClient(mcm), mcm)
 	if result != nil || err != nil {
-		t.Errorf("minio should be a valid type")
+		t.Errorf("(%v) should be a valid type", defaultObjStorageType)
 	}
 
 	mcm.Spec.ObjectStorageConfigSpec.Type = "s3"
-	result, err = checkObjStorageConfig(NewFakeClient(mcm), mcm)
+	result, err = updateObjStorageConfig(NewFakeClient(mcm), mcm)
 	if result != nil || err != nil {
-		t.Errorf("s3 should be a valid type")
+		t.Errorf("(s3) should be a valid type")
 	}
 
-	checkObjStorageConfig(NewFakeClient(mcm), mcm)
-	if mcm.Spec.ObjectStorageConfigSpec.Config.Bucket != "test" {
-		t.Errorf("bucket (%v) is not the expected (test)", mcm.Spec.ObjectStorageConfigSpec.Config.Bucket)
+	updateObjStorageConfig(NewFakeClient(mcm), mcm)
+	if mcm.Spec.ObjectStorageConfigSpec.Config.Bucket != defaultObjStorageBucket {
+		t.Errorf("Bucket (%v) is not the expected (%v)", mcm.Spec.ObjectStorageConfigSpec.Config.Bucket, defaultObjStorageBucket)
 	}
 
-	mcm.Spec.ObjectStorageConfigSpec = nil
-	checkObjStorageConfig(NewFakeClient(mcm), mcm)
-	if mcm.Spec.ObjectStorageConfigSpec.Config.Endpoint != "minio:9000" {
-		t.Errorf("endpoint (%v) is not the expected (minio:9000)", mcm.Spec.ObjectStorageConfigSpec.Config.Endpoint)
+	mcm.Spec.ObjectStorageConfigSpec = newDefaultObjectStorageConfigSpec()
+	if mcm.Spec.ObjectStorageConfigSpec.Config.Endpoint != defaultObjStorageEndpoint {
+		t.Errorf("Endpoint (%v) is not the expected (%v)", mcm.Spec.ObjectStorageConfigSpec.Config.Endpoint, defaultObjStorageEndpoint)
 	}
 }

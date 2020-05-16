@@ -47,6 +47,10 @@ func TestRender(t *testing.T) {
 					Storage:   "Storage",
 				},
 			},
+			Grafana: &monitoringv1alpha1.GrafanaSpec{
+				Hostport: 3001,
+				Replicas: 1,
+			},
 		},
 	}
 

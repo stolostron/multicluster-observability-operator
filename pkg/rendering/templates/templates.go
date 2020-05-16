@@ -50,7 +50,9 @@ func GetTemplateRenderer() *TemplateRenderer {
 	return templateRenderer
 }
 
-func (r *TemplateRenderer) GetTemplates(mcm *monitoringv1alpha1.MultiClusterMonitoring) ([]*resource.Resource, error) {
+// GetGrafanaTemplates reads the grafana manifests
+func (r *TemplateRenderer) GetGrafanaTemplates(
+	mcm *monitoringv1alpha1.MultiClusterMonitoring) ([]*resource.Resource, error) {
 	basePath := path.Join(r.templatesPath, "base")
 	// resourceList contains all kustomize resources
 	resourceList := []*resource.Resource{}
@@ -59,20 +61,38 @@ func (r *TemplateRenderer) GetTemplates(mcm *monitoringv1alpha1.MultiClusterMoni
 	if err := r.AddTemplateFromPath(basePath+"/grafana", &resourceList); err != nil {
 		return resourceList, err
 	}
+	return resourceList, nil
+}
 
-	// add observatorium template
-	if err := r.AddTemplateFromPath(basePath+"/observatorium", &resourceList); err != nil {
-		return resourceList, err
-	}
+// GetMinioTemplates reads the minio manifests
+func (r *TemplateRenderer) GetMinioTemplates(
+	mcm *monitoringv1alpha1.MultiClusterMonitoring) ([]*resource.Resource, error) {
+	basePath := path.Join(r.templatesPath, "base")
+	// resourceList contains all kustomize resources
+	resourceList := []*resource.Resource{}
 
-	objStorageType := mcm.Spec.ObjectStorageConfigSpec.Type
-	// add minio template
-	if objStorageType == "minio" {
+	if mcm.Spec.ObjectStorageConfigSpec.Type == "minio" {
+		// add minio template
 		if err := r.AddTemplateFromPath(basePath+"/object_storage/minio", &resourceList); err != nil {
 			return resourceList, err
 		}
 	}
 
+	return resourceList, nil
+}
+
+// GetTemplates reads base manifest
+func (r *TemplateRenderer) GetTemplates(mcm *monitoringv1alpha1.MultiClusterMonitoring) ([]*resource.Resource, error) {
+	basePath := path.Join(r.templatesPath, "base")
+	// resourceList contains all kustomize resources
+	resourceList := []*resource.Resource{}
+
+	// add observatorium template
+	if err := r.addTemplateFromPath(basePath+"/observatorium", &resourceList); err != nil {
+		return resourceList, err
+	}
+
+	objStorageType := mcm.Spec.ObjectStorageConfigSpec.Type
 	// add s3 template
 	if objStorageType == "s3" {
 		if err := r.AddTemplateFromPath(basePath+"/object_storage/s3", &resourceList); err != nil {
@@ -93,12 +113,18 @@ func (r *TemplateRenderer) AddTemplateFromPath(kustomizationPath string, resourc
 		r.templates[kustomizationPath] = resMap
 		*resourceList = append(*resourceList, resMap.Resources()...)
 	}
-
+	*resourceList = append(*resourceList, resMap.Resources()...)
 	return nil
 }
 
 func (r *TemplateRenderer) render(kustomizationPath string) (resmap.ResMap, error) {
-	ldr, err := loader.NewLoader(loader.RestrictionRootOnly, validator.NewKustValidator(), kustomizationPath, fs.MakeFsOnDisk())
+	ldr, err := loader.NewLoader(
+		loader.RestrictionRootOnly,
+		validator.NewKustValidator(),
+		kustomizationPath,
+		fs.MakeFsOnDisk(),
+	)
+
 	if err != nil {
 		return nil, err
 	}

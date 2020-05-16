@@ -35,15 +35,19 @@ var log = logf.Log.WithName("controller_multiclustermonitoring")
 * business logic.  Delete these comments after modifying this file.*
  */
 
-// Add creates a new MultiClusterMonitoring Controller and adds it to the Manager. The Manager will set fields on the Controller
-// and Start it when the Manager is Started.
+// Add creates a new MultiClusterMonitoring Controller and adds it to the Manager. The Manager will set fields on
+// the Controller and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
 }
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileMultiClusterMonitoring{client: mgr.GetClient(), apiReader: mgr.GetAPIReader(), scheme: mgr.GetScheme()}
+	return &ReconcileMultiClusterMonitoring{
+		client:    mgr.GetClient(),
+		apiReader: mgr.GetAPIReader(),
+		scheme:    mgr.GetScheme(),
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -109,9 +113,9 @@ type ReconcileMultiClusterMonitoring struct {
 	scheme    *runtime.Scheme
 }
 
-// Reconcile reads that state of the cluster for a MultiClusterMonitoring object and makes changes based on the state read
-// and what is in the MultiClusterMonitoring.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
+// Reconcile reads that state of the cluster for a MultiClusterMonitoring object and makes changes
+// based on the state read and what is in the MultiClusterMonitoring.Spec
+// Modify this Reconcile function to implement your Controller logic.  This example creates
 // a Pod as an example
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
@@ -134,7 +138,7 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
-	if result, err := checkObjStorageConfig(r.client, instance); result != nil {
+	if result, err := UpdateMonitoringCR(r.client, instance); result != nil {
 		return *result, err
 	}
 
@@ -158,7 +162,7 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 		}
 	}
 
-	// create a Observatorium CR
+	// create an Observatorium CR
 	result, err := GenerateObservatoriumCR(r.client, r.scheme, instance)
 	if result != nil {
 		return *result, err
@@ -189,7 +193,9 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 	return reconcile.Result{Requeue: true}, nil
 }
 
-func (r *ReconcileMultiClusterMonitoring) UpdateStatus(mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+func (r *ReconcileMultiClusterMonitoring) UpdateStatus(
+	mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+
 	reqLogger := log.WithValues("Request.Namespace", mcm.Namespace, "Request.Name", mcm.Name)
 
 	deployList := &appsv1.DeploymentList{}
@@ -199,7 +205,10 @@ func (r *ReconcileMultiClusterMonitoring) UpdateStatus(mcm *monitoringv1alpha1.M
 	}
 	err := r.client.List(context.TODO(), deployList, listOpts...)
 	if err != nil {
-		reqLogger.Error(err, "Failed to list deployments.", "MultiClusterMonitoring.Namespace", mcm.Namespace, "MemcaMultiClusterMonitoringched.Name", mcm.Name)
+		reqLogger.Error(err, "Failed to list deployments.",
+			"MultiClusterMonitoring.Namespace", mcm.Namespace,
+			"MemcaMultiClusterMonitoringched.Name", mcm.Name,
+		)
 		return &reconcile.Result{}, err
 	}
 
@@ -232,6 +241,7 @@ func deploy(c client.Client, obj *unstructured.Unstructured) error {
 	err := c.Get(context.TODO(), types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			log.Info("Create", "Kind:", obj.GroupVersionKind(), "Name:", obj.GetName())
 			return c.Create(context.TODO(), obj)
 		}
 		return err
@@ -249,6 +259,7 @@ func deploy(c client.Client, obj *unstructured.Unstructured) error {
 	if !reflect.DeepEqual(oldSpec, newSpec) {
 		newObj := found.DeepCopy()
 		newObj.Object["spec"] = newSpec
+		log.Info("Update", "Kind:", obj.GroupVersionKind(), "Name:", obj.GetName())
 		return c.Update(context.TODO(), newObj)
 	}
 	return nil

@@ -15,16 +15,18 @@ import (
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
 
-type patchGenerateFn func(res *resource.Resource, multipleClusterMonitoring *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error)
+type patchGenerateFn func(
+	res *resource.Resource,
+	mcm *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error)
 
-func ApplyGlobalPatches(res *resource.Resource, multipleClusterMonitoring *monitoringv1alpha1.MultiClusterMonitoring) error {
+func ApplyGlobalPatches(res *resource.Resource, mcm *monitoringv1alpha1.MultiClusterMonitoring) error {
 
 	for _, generate := range []patchGenerateFn{
 		//generateImagePatch,
 		//generateImagePullSecretsPatch,
 		generateNodeSelectorPatch,
 	} {
-		patch, err := generate(res, multipleClusterMonitoring)
+		patch, err := generate(res, mcm)
 		if err != nil {
 			return err
 		}
@@ -38,13 +40,15 @@ func ApplyGlobalPatches(res *resource.Resource, multipleClusterMonitoring *monit
 	return nil
 }
 
-func generateImagePatch(res *resource.Resource, mch *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
+func generateImagePatch(
+	res *resource.Resource,
+	mcm *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
 	imageFromTemplate, err := res.GetString("spec.template.spec.containers[0].image") // need to loop through all images
 	if err != nil {
 		return nil, err
 	}
-	imageRepo := mch.Spec.ImageRepository
-	imageTagSuffix := mch.Spec.ImageTagSuffix
+	imageRepo := mcm.Spec.ImageRepository
+	imageTagSuffix := mcm.Spec.ImageTagSuffix
 	if imageTagSuffix != "" {
 		imageTagSuffix = "-" + imageTagSuffix
 	}
@@ -53,7 +57,7 @@ func generateImagePatch(res *resource.Resource, mch *monitoringv1alpha1.MultiClu
 	container, _ := res.GetFieldValue("spec.template.spec.containers[0]") // need to loop through all images
 	containerMap, _ := container.(map[string]interface{})
 	containerMap["image"] = generatedImage
-	containerMap["imagePullPolicy"] = mch.Spec.ImagePullPolicy
+	containerMap["imagePullPolicy"] = mcm.Spec.ImagePullPolicy
 
 	return kunstruct.NewKunstructuredFactoryImpl().FromMap(map[string]interface{}{
 		"spec": map[string]interface{}{
@@ -76,8 +80,11 @@ spec:
       - name: __pullsecrets__
 `
 
-func generateImagePullSecretsPatch(res *resource.Resource, mch *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
-	pullSecret := mch.Spec.ImagePullSecret
+func generateImagePullSecretsPatch(
+	res *resource.Resource,
+	mcm *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
+
+	pullSecret := mcm.Spec.ImagePullSecret
 	if pullSecret == "" {
 		return nil, nil
 	}
@@ -100,8 +107,11 @@ spec:
       nodeSelector: {__selector__}
 `
 
-func generateNodeSelectorPatch(res *resource.Resource, mch *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
-	nodeSelectorOptions := mch.Spec.NodeSelector
+func generateNodeSelectorPatch(
+	res *resource.Resource,
+	mcm *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
+
+	nodeSelectorOptions := mcm.Spec.NodeSelector
 	if nodeSelectorOptions == nil {
 		return nil, nil
 	}
