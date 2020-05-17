@@ -48,7 +48,7 @@ items:
                 "rgba(237, 129, 40, 0.89)",
                 "#d44a3a"
               ],
-              "datasource": "Observatorium",
+              "datasource": "$datasource",
               "format": "none",
               "gauge": {
                 "maxValue": 100,
@@ -133,7 +133,7 @@ items:
                 "rgba(237, 129, 40, 0.89)",
                 "#d44a3a"
               ],
-              "datasource": "Observatorium",
+              "datasource": "$datasource",
               "format": "none",
               "gauge": {
                 "maxValue": 100,
@@ -219,7 +219,7 @@ items:
                 "rgba(237, 129, 40, 0.89)",
                 "#d44a3a"
               ],
-              "datasource": "Observatorium",
+              "datasource": "$datasource",
               "format": "bytes",
               "gauge": {
                 "maxValue": 100,
@@ -296,7 +296,7 @@ items:
               "valueName": "avg"
             },
             {
-              "datasource": "Observatorium",
+              "datasource": "$datasource",
               "gridPos": {
                 "h": 5,
                 "w": 4,
@@ -348,7 +348,7 @@ items:
               "type": "bargauge"
             },
             {
-              "datasource": "Observatorium",
+              "datasource": "$datasource",
               "gridPos": {
                 "h": 5,
                 "w": 4,
@@ -401,7 +401,7 @@ items:
             },
             {
               "columns": [],
-              "datasource": "Observatorium",
+              "datasource": "$datasource",
               "fontSize": "100%",
               "gridPos": {
                 "h": 7,
@@ -477,7 +477,7 @@ items:
             },
             {
               "columns": [],
-              "datasource": "Observatorium",
+              "datasource": "$datasource",
               "fontSize": "100%",
               "gridPos": {
                 "h": 8,
@@ -840,6 +840,13 @@ items:
               ],
               "targets": [
                 {
+                  "expr": "sum(cluster:capacity_cpu_cores:sum) by (cluster)",
+                  "format": "table",
+                  "instant": true,
+                  "intervalFactor": 2,
+                  "refId": "C"
+                },
+                {
                   "expr": "sum(cluster:container_cpu_usage:ratio) by (cluster)",
                   "format": "table",
                   "instant": true,
@@ -852,13 +859,6 @@ items:
                   "instant": true,
                   "intervalFactor": 2,
                   "refId": "B"
-                },
-                {
-                  "expr": "sum(cluster:capacity_cpu_cores:sum) by (cluster)",
-                  "format": "table",
-                  "instant": true,
-                  "intervalFactor": 2,
-                  "refId": "C"
                 }
               ],
               "timeFrom": null,
@@ -869,7 +869,7 @@ items:
             },
             {
               "columns": [],
-              "datasource": "Observatorium",
+              "datasource": "$datasource",
               "fontSize": "100%",
               "gridPos": {
                 "h": 8,
@@ -965,6 +965,13 @@ items:
               ],
               "targets": [
                 {
+                  "expr": "sum(cluster:capacity_memory_bytes:sum) by (cluster)",
+                  "format": "table",
+                  "hide": false,
+                  "instant": true,
+                  "refId": "C"
+                },
+                {
                   "expr": "sum(cluster:memory_usage:ratio) by (cluster)",
                   "format": "table",
                   "hide": false,
@@ -978,14 +985,7 @@ items:
                   "hide": false,
                   "instant": true,
                   "refId": "A"
-                },
-                {
-                  "expr": "sum(cluster:capacity_memory_bytes:sum) by (cluster)",
-                  "format": "table",
-                  "hide": false,
-                  "instant": true,
-                  "refId": "C"
-                }                
+                }               
               ],
               "timeFrom": null,
               "timeShift": null,
@@ -995,7 +995,7 @@ items:
             },
             {
               "columns": [],
-              "datasource": "Observatorium",
+              "datasource": "$datasource",
               "fontSize": "100%",
               "gridPos": {
                 "h": 8,
@@ -1252,6 +1252,7 @@ items:
           },
           "timezone": "browser",
           "title": "ACM: Clusters Monitoring",
+          "uid": "b07f8252cbbd0f9571c87942486f3107",
           "version": 1
         }
   kind: ConfigMap
