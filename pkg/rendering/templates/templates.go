@@ -29,6 +29,13 @@ type TemplateRenderer struct {
 	templates     map[string]resmap.ResMap
 }
 
+func NewTemplateRenderer(path string) *TemplateRenderer {
+	return &TemplateRenderer{
+		templatesPath: path,
+		templates:     map[string]resmap.ResMap{},
+	}
+}
+
 func GetTemplateRenderer() *TemplateRenderer {
 	loadTemplateRendererOnce.Do(func() {
 		templatesPath, found := os.LookupEnv(TemplatesPathEnvVar)
@@ -51,7 +58,7 @@ func (r *TemplateRenderer) GetGrafanaTemplates(
 	resourceList := []*resource.Resource{}
 
 	// add grafana template
-	if err := r.addTemplateFromPath(basePath+"/grafana", &resourceList); err != nil {
+	if err := r.AddTemplateFromPath(basePath+"/grafana", &resourceList); err != nil {
 		return resourceList, err
 	}
 	return resourceList, nil
@@ -66,7 +73,7 @@ func (r *TemplateRenderer) GetMinioTemplates(
 
 	if mcm.Spec.ObjectStorageConfigSpec.Type == "minio" {
 		// add minio template
-		if err := r.addTemplateFromPath(basePath+"/object_storage/minio", &resourceList); err != nil {
+		if err := r.AddTemplateFromPath(basePath+"/object_storage/minio", &resourceList); err != nil {
 			return resourceList, err
 		}
 	}
@@ -81,21 +88,21 @@ func (r *TemplateRenderer) GetTemplates(mcm *monitoringv1alpha1.MultiClusterMoni
 	resourceList := []*resource.Resource{}
 
 	// add observatorium template
-	if err := r.addTemplateFromPath(basePath+"/observatorium", &resourceList); err != nil {
+	if err := r.AddTemplateFromPath(basePath+"/observatorium", &resourceList); err != nil {
 		return resourceList, err
 	}
 
 	objStorageType := mcm.Spec.ObjectStorageConfigSpec.Type
 	// add s3 template
 	if objStorageType == "s3" {
-		if err := r.addTemplateFromPath(basePath+"/object_storage/s3", &resourceList); err != nil {
+		if err := r.AddTemplateFromPath(basePath+"/object_storage/s3", &resourceList); err != nil {
 			return resourceList, err
 		}
 	}
 	return resourceList, nil
 }
 
-func (r *TemplateRenderer) addTemplateFromPath(kustomizationPath string, resourceList *[]*resource.Resource) error {
+func (r *TemplateRenderer) AddTemplateFromPath(kustomizationPath string, resourceList *[]*resource.Resource) error {
 	var err error
 	resMap, ok := r.templates[kustomizationPath]
 	if !ok {

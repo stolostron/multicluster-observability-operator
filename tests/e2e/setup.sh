@@ -123,6 +123,7 @@ deploy_mcm_operator() {
     kubectl apply -f tests/e2e/samples
     kubectl apply -f deploy/req_crds
     kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_multiclustermonitorings_crd.yaml
+    kubectl apply -f tests/e2e/req_crds/apps.open-cluster-management.io_placementrules_crd.yaml
     kubectl apply -f deploy
 
     echo "sleep 10s to wait for CRD ready"
