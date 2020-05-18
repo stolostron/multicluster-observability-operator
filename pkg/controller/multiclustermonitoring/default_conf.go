@@ -7,7 +7,6 @@ import (
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -22,8 +21,9 @@ const (
 	defaultStorageClass  = "gp2"
 )
 
-func UpdateMonitoringCR(
-	c client.Client,
+// GenerateMonitoringCR is used to generate monitoring CR with the default values
+// w/ or w/o customized values
+func GenerateMonitoringCR(c client.Client,
 	mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
 
 	if mcm.Spec.Version == "" {
@@ -63,11 +63,6 @@ func UpdateMonitoringCR(
 	if mcm.Spec.ObjectStorageConfigSpec == nil {
 		log.Info("Add default object storage configuration")
 		mcm.Spec.ObjectStorageConfigSpec = newDefaultObjectStorageConfigSpec()
-	} else {
-		result, err := updateObjStorageConfig(c, mcm)
-		if result != nil {
-			return result, err
-		}
 	}
 
 	if mcm.Spec.Grafana == nil {
@@ -86,16 +81,18 @@ func UpdateMonitoringCR(
 		},
 		found,
 	)
+	if err != nil {
+		return &reconcile.Result{}, err
+	}
+
 	// if MultiClusterMonitoring CR already exists, update new config to CR
-	if err != nil && errors.IsAlreadyExists(err) {
-		oldSpec := found.Spec
-		newSpec := mcm.Spec
-		if !reflect.DeepEqual(oldSpec, newSpec) {
-			log.Info("Update MultiClusterMonitoring CR with default values.")
-			err := c.Update(context.TODO(), mcm)
-			if err != nil {
-				return &reconcile.Result{}, err
-			}
+	if !reflect.DeepEqual(found.Spec, mcm.Spec) {
+		log.Info("Update MultiClusterMonitoring CR with default values.")
+		newObj := found.DeepCopy()
+		newObj.Spec = mcm.Spec
+		err := c.Update(context.TODO(), newObj)
+		if err != nil {
+			return &reconcile.Result{}, err
 		}
 	}
 

@@ -134,7 +134,7 @@ run_test_reconciling() {
     while true
     do
         # check the changes were applied into observatorium
-        retention=`oc get observatorium monitoring-observatorium -ojsonpath='{.spec.compact.retentionResolutionRaw}'`
+        retention=`kubectl get observatorium monitoring-observatorium -ojsonpath='{.spec.compact.retentionResolutionRaw}'`
         if [[ $retention == '14d' ]]; then
             echo "Change retentionResolutionRaw to 14d successfully."
             break
@@ -169,7 +169,7 @@ run_test_access_grafana() {
 }
 
 run_test_access_grafana_dashboard() {
-    RESULT=$(curl -s -w "%{json}" -H "Host: grafana.local" -H "X-Forwarded-User: test"  http://127.0.0.1/api/search?folderIds=1 | jq '. | length')
+    RESULT=$(curl -s -H "Host: grafana.local" -H "X-Forwarded-User: test"  http://127.0.0.1/api/search?folderIds=1 | jq '. | length')
     if [ "$RESULT" -eq 10  ]; then
         echo "There are 10 dashboards in default folder."
     else

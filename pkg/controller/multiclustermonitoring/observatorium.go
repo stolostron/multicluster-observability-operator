@@ -45,8 +45,7 @@ const (
 
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterMonitoring
 func GenerateObservatoriumCR(
-	client client.Client,
-	scheme *runtime.Scheme,
+	client client.Client, scheme *runtime.Scheme,
 	monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
 
 	labels := map[string]string{
@@ -87,11 +86,19 @@ func GenerateObservatoriumCR(
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
-
-		// Pod created successfully - don't requeue
-		return nil, nil
 	} else if err != nil {
 		return &reconcile.Result{}, err
+	}
+
+	oldSpec := observatoriumCRFound
+	newSpec := observatoriumCR.Spec
+	if !reflect.DeepEqual(oldSpec, newSpec) {
+		newObj := observatoriumCRFound.DeepCopy()
+		newObj.Spec = newSpec
+		err = client.Update(context.TODO(), newObj)
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
 	}
 
 	return nil, nil
@@ -112,8 +119,7 @@ func createKubeClient() (kubernetes.Interface, error) {
 }
 
 func GenerateAPIGatewayRoute(
-	client client.Client,
-	scheme *runtime.Scheme,
+	client client.Client, scheme *runtime.Scheme,
 	monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
 
 	labelSelector := fmt.Sprintf(
@@ -284,32 +290,13 @@ func updateObservatoriumSpec(
 	c client.Client,
 	mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
 
-	found := &observatoriumv1alpha1.Observatorium{}
-	err := c.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      mcm.Name + obsPartoOfName,
-			Namespace: mcm.Namespace,
-		},
-		found,
-	)
-
-	// if Observatorium CR already exists, update new config to CR
-	if err != nil && errors.IsAlreadyExists(err) {
-		oldSpec := found.Spec
-		newSpec := mcm.Spec.Observatorium
-		if !reflect.DeepEqual(oldSpec, newSpec) {
-			if err := mergo.Merge(&oldSpec, newSpec, mergo.WithOverride); err != nil {
-				return &reconcile.Result{}, err
-			}
-			newObj := found.DeepCopy()
-			newObj.Spec = oldSpec
-			err = c.Update(context.TODO(), newObj)
-			if err != nil {
-				return &reconcile.Result{}, err
-			}
+	// Merge observatorium Spec with the default values and customized values
+	newSpec := newDefaultObservatoriumSpec()
+	oldSpec := mcm.Spec.Observatorium
+	if !reflect.DeepEqual(oldSpec, newSpec) {
+		if err := mergo.Merge(oldSpec, newSpec); err != nil {
+			return &reconcile.Result{}, err
 		}
 	}
-
 	return nil, nil
 }
