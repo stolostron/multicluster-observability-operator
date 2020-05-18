@@ -127,6 +127,60 @@ run_test_teardown() {
     fi
 }
 
+run_test_reconciling() {
+    kubectl patch MultiClusterMonitoring monitoring --patch '{"spec":{"observatorium":{"compact":{"retentionResolutionRaw":"14d"}}}}' --type=merge
+
+    n=1
+    while true
+    do
+        # check the changes were applied into observatorium
+        retention=`kubectl get observatorium monitoring-observatorium -ojsonpath='{.spec.compact.retentionResolutionRaw}'`
+        if [[ $retention == '14d' ]]; then
+            echo "Change retentionResolutionRaw to 14d successfully."
+            break
+        fi
+        if [[ $n -ge 5 ]]; then
+            echo "Change retentionResolutionRaw is failed."
+            exit 1
+        fi
+        n=$((n+1))
+        echo "Retrying in 2s..."
+        sleep 2
+    done
+}
+
+run_test_access_grafana() {
+    n=1
+    while true
+    do
+        RESULT=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: grafana.local" -H "X-Forwarded-User: test" http://127.0.0.1/)
+        if [ "$RESULT" -eq "200"  ]; then
+            echo "grafana can be accessible."
+            break
+        fi
+        if [ $n -ge 5 ]; then
+            exit 1
+        fi
+        n=$((n+1))
+        echo "Retrying in 10s..."
+        sleep 10
+    done
+    
+}
+
+run_test_access_grafana_dashboard() {
+    RESULT=$(curl -s -H "Host: grafana.local" -H "X-Forwarded-User: test"  http://127.0.0.1/api/search?folderIds=1 | jq '. | length')
+    if [ "$RESULT" -eq 10  ]; then
+        echo "There are 10 dashboards in default folder."
+    else
+        echo "The dashboard number is not equal to 10 in default folder."
+        exit 1
+    fi
+}
+
 run_test_readiness
+run_test_reconciling
 run_test_scale_grafana
+run_test_access_grafana
+run_test_access_grafana_dashboard
 run_test_teardown

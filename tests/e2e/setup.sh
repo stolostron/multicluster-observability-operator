@@ -56,6 +56,18 @@ setup_kubectl_command() {
     fi
 }
 
+install_jq() {
+    if [[ ! -f /usr/local/bin/jq ]]; then
+        if [[ "$(uname)" == "Linux" ]]; then
+            curl -o jq -LO https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
+        elif [[ "$(uname)" == "Darwin" ]]; then
+            curl -o jq -LO https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64
+        fi  
+        chmod +x ./jq
+        sudo mv ./jq /usr/local/bin/jq
+    fi
+}
+
 deploy_prometheus_operator() {
     echo "Install prometheus operator. Observatorium requires it."
     cd ${WORKDIR}/..
