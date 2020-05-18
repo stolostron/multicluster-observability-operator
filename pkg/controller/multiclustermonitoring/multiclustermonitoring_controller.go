@@ -4,8 +4,8 @@ package multiclustermonitoring
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"reflect"
 	"time"
 
 	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
@@ -157,7 +157,7 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 				reqLogger.Error(err, "Failed to set controller reference")
 			}
 		}
-		if err := deploy(r.client, res); err != nil {
+		if err := deploy(instance, r.client, res); err != nil {
 			reqLogger.Error(err, fmt.Sprintf("Failed to deploy %s %s/%s", res.GetKind(), instance.Namespace, res.GetName()))
 			return reconcile.Result{}, err
 		}
@@ -236,7 +236,8 @@ func (r *ReconcileMultiClusterMonitoring) UpdateStatus(
 	return &reconcile.Result{}, nil
 }
 
-func deploy(c client.Client, obj *unstructured.Unstructured) error {
+func deploy(instance *monitoringv1alpha1.MultiClusterMonitoring,
+	c client.Client, obj *unstructured.Unstructured) error {
 	found := &unstructured.Unstructured{}
 	found.SetGroupVersionKind(obj.GroupVersionKind())
 	err := c.Get(context.TODO(), types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, found)
@@ -252,18 +253,91 @@ func deploy(c client.Client, obj *unstructured.Unstructured) error {
 		return nil
 	}
 
-	oldSpec, oldSpecFound := found.Object["spec"]
-	newSpec, newSpecFound := obj.Object["spec"]
-	if !oldSpecFound || !newSpecFound {
-		return nil
-	}
-	if !reflect.DeepEqual(oldSpec, newSpec) {
-		newObj := found.DeepCopy()
-		newObj.Object["spec"] = newSpec
-		log.Info("Update", "Kind:", obj.GroupVersionKind(), "Name:", obj.GetName())
-		return c.Update(context.TODO(), newObj)
+	depjson, _ := found.MarshalJSON()
+	depoly := &appsv1.Deployment{}
+	json.Unmarshal(depjson, depoly)
+
+	desired, needsUpdate := validateDeployment(instance, depoly)
+	if needsUpdate {
+		err = c.Update(context.TODO(), desired)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+func validateDeployment(m *monitoringv1alpha1.MultiClusterMonitoring,
+	dep *appsv1.Deployment) (*appsv1.Deployment, bool) {
+	found := dep.DeepCopy()
+
+	pod := &found.Spec.Template.Spec
+	container := &found.Spec.Template.Spec.Containers[0]
+	needsUpdate := false
+
+	// verify image pull secret
+	if m.Spec.ImagePullSecret != "" {
+		ps := corev1.LocalObjectReference{Name: m.Spec.ImagePullSecret}
+		if !ContainsPullSecret(pod.ImagePullSecrets, ps) {
+			log.Info("Enforcing imagePullSecret from CR spec")
+			pod.ImagePullSecrets = append(pod.ImagePullSecrets, ps)
+			needsUpdate = true
+		}
+	}
+
+	// // verify image repository and suffix
+	// if container.Image != Image(m, cache) {
+	// 	log.Info("Enforcing image repo and suffix from CR spec")
+	// 	container.Image = Image(m, cache)
+	// 	needsUpdate = true
+	// }
+
+	// verify image pull policy
+	if container.ImagePullPolicy != m.Spec.ImagePullPolicy {
+		log.Info("Enforcing imagePullPolicy from CR spec")
+		container.ImagePullPolicy = m.Spec.ImagePullPolicy
+		needsUpdate = true
+	}
+
+	// verify node selectors
+	desiredSelectors := m.Spec.NodeSelector
+	if !ContainsMap(pod.NodeSelector, desiredSelectors) {
+		log.Info("Enforcing node selectors from CR spec")
+		pod.NodeSelector = desiredSelectors
+		needsUpdate = true
+	}
+
+	// verify replica count
+	// if *found.Spec.Replicas != int32(*m.Spec.ReplicaCount) {
+	// 	log.Info("Enforcing replicaCount from CR spec")
+	// 	replicas := int32(*m.Spec.ReplicaCount)
+	// 	found.Spec.Replicas = &replicas
+	// 	needsUpdate = true
+	// }
+
+	return found, needsUpdate
+}
+
+// ContainsPullSecret returns whether a list of pullSecrets contains a given pull secret
+func ContainsPullSecret(pullSecrets []corev1.LocalObjectReference, ps corev1.LocalObjectReference) bool {
+	for _, v := range pullSecrets {
+		if v == ps {
+			return true
+		}
+	}
+	return false
+}
+
+// ContainsMap returns whether the expected map entries are included in the map
+func ContainsMap(all map[string]string, expected map[string]string) bool {
+	for key, exval := range expected {
+		allval, ok := all[key]
+		if !ok || allval != exval {
+			return false
+		}
+
+	}
+	return true
 }
 
 // labelsForMultiClusterMonitoring returns the labels for selecting the resources
