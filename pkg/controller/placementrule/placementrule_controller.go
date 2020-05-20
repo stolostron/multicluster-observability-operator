@@ -2,9 +2,8 @@ package placementrule
 
 import (
 	"context"
+	"strings"
 
-	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -16,7 +15,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"strings"
+
+	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
+	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 var log = logf.Log.WithName("controller_placementrule")
@@ -34,7 +36,11 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcilePlacementRule{client: mgr.GetClient(), apiReader: mgr.GetAPIReader(), scheme: mgr.GetScheme()}
+	return &ReconcilePlacementRule{
+		client:    mgr.GetClient(),
+		apiReader: mgr.GetAPIReader(),
+		scheme:    mgr.GetScheme(),
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -105,6 +111,19 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 
-	err = util.CreateManifestWork(r.client, instance.Namespace)
-	return reconcile.Result{}, err
+	clusterList := &clusterv1.SpokeClusterList{}
+	err = r.client.List(context.TODO(), clusterList)
+	if err != nil {
+		reqLogger.Error(err, "Failed to list clusters.")
+		return reconcile.Result{}, err
+	}
+
+	for _, cluster := range clusterList.Items {
+		err = util.CreateManifestWork(r.client, cluster.GetNamespace())
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
+	return reconcile.Result{}, nil
 }
