@@ -36,7 +36,11 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcilePlacementRule{client: mgr.GetClient(), apiReader: mgr.GetAPIReader(), scheme: mgr.GetScheme()}
+	return &ReconcilePlacementRule{
+		client:    mgr.GetClient(),
+		apiReader: mgr.GetAPIReader(),
+		scheme:    mgr.GetScheme(),
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler

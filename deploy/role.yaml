@@ -170,6 +170,12 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - cluster.open-cluster-management.io
+  resources:
+  - spokeclusters
+  verbs:
+  - list
+- apiGroups:
   - config.openshift.io
   resources:
   - '*'
