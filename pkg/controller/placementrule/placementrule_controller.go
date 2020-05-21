@@ -1,10 +1,11 @@
+// Copyright (c) 2020 Red Hat, Inc.
+
 package placementrule
 
 import (
 	"context"
+	"strings"
 
-	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -16,7 +17,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"strings"
+
+	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 )
 
 var log = logf.Log.WithName("controller_placementrule")
@@ -105,6 +107,17 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 
-	err = util.CreateManifestWork(r.client, instance.Namespace)
+	for _, decision := range instance.Status.Decisions {
+		err = createEndpointConfigCR(r.client, decision.ClusterNamespace, decision.ClusterName)
+		if err != nil {
+			reqLogger.Error(err, "Failed to create endpointmetrics")
+			continue
+		}
+		err = createManifestWork(r.client, instance.Namespace)
+		if err != nil {
+			reqLogger.Error(err, "Failed to create manifestwork")
+		}
+	}
+
 	return reconcile.Result{}, err
 }

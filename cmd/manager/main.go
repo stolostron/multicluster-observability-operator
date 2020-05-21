@@ -5,9 +5,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"os"
+	"runtime"
 
 	observatoriumAPIs "github.com/observatorium/configuration/api/v1alpha1"
-	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
@@ -21,8 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/rest"
-	"os"
-	"runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -30,6 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/scheme"
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
+	epv1 "github.com/open-cluster-management/endpoint-metrics-operator/pkg/apis/monitoring/v1"
+	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/version"
@@ -131,6 +132,11 @@ func main() {
 	}
 
 	if err := placementv1.AddToScheme(mgr.GetScheme()); err != nil {
+		log.Error(err, "")
+		os.Exit(1)
+	}
+
+	if err := epv1.SchemeBuilder.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}

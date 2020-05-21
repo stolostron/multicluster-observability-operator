@@ -1,4 +1,6 @@
-package util
+// Copyright (c) 2020 Red Hat, Inc.
+
+package placementrule
 
 import (
 	"context"
@@ -8,7 +10,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const infrastructureConfigName = "cluster"
+const (
+	infrastructureConfigName = "cluster"
+)
 
 func infrastructureConfigNameNsN() types.NamespacedName {
 	return types.NamespacedName{
@@ -16,7 +20,7 @@ func infrastructureConfigNameNsN() types.NamespacedName {
 	}
 }
 
-func GetKubeAPIServerAddress(client client.Client) (string, error) {
+func getKubeAPIServerAddress(client client.Client) (string, error) {
 	infraConfig := &ocinfrav1.Infrastructure{}
 
 	if err := client.Get(context.TODO(), infrastructureConfigNameNsN(), infraConfig); err != nil {

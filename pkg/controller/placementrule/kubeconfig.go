@@ -1,4 +1,6 @@
-package util
+// Copyright (c) 2020 Red Hat, Inc.
+
+package placementrule
 
 import (
 	corev1 "k8s.io/api/core/v1"
@@ -9,7 +11,7 @@ import (
 )
 
 const (
-	KubeConfigName = "hub-kube-config"
+	kubeConfigName = "hub-kube-config"
 )
 
 func createKubeConfig(client client.Client, namespace string) (*clientv1.Config, error) {
@@ -17,7 +19,7 @@ func createKubeConfig(client client.Client, namespace string) (*clientv1.Config,
 	if error != nil {
 		return nil, error
 	}
-	apiServer, error := GetKubeAPIServerAddress(client)
+	apiServer, error := getKubeAPIServerAddress(client)
 	if error != nil {
 		return nil, error
 	}
@@ -55,7 +57,7 @@ func createKubeConfig(client client.Client, namespace string) (*clientv1.Config,
 	}, nil
 }
 
-func CreateKubeSecret(client client.Client, namespace string) (*corev1.Secret, error) {
+func createKubeSecret(client client.Client, namespace string) (*corev1.Secret, error) {
 	config, err := createKubeConfig(client, namespace)
 	if err != nil {
 		return nil, err
@@ -70,8 +72,8 @@ func CreateKubeSecret(client client.Client, namespace string) (*corev1.Secret, e
 			Kind:       "Secret",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      KubeConfigName,
-			Namespace: SpokeNameSpace,
+			Name:      kubeConfigName,
+			Namespace: spokeNameSpace,
 		},
 		Data: map[string][]byte{
 			"config": configYaml,
