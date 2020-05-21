@@ -5,6 +5,7 @@
 # - update "hide" value for var "cluster" in several dashboards, from 0 to 2 (disable datasource selection)
 # - add "cluster" var for dashboards: USE METHOD/Node, USE METHOD/Cluster, also update expr in those dashboards
 # - remove duplicate "cluster" var in dashboard k8s-resources-cluster
+# - update refresh interval from 10s to 1m
 
 ---
 apiVersion: v1
@@ -1673,7 +1674,7 @@ data:
                 "type": "row"
             }
         ],
-        "refresh": "10s",
+        "refresh": "1m",
         "rows": [
 
         ],
@@ -1839,7 +1840,7 @@ data:
         "links": [
 
         ],
-        "refresh": "10s",
+        "refresh": "1m",
         "rows": [
             {
                 "collapse": false,
@@ -4383,7 +4384,7 @@ data:
         "links": [
 
         ],
-        "refresh": "10s",
+        "refresh": "1m",
         "rows": [
             {
                 "collapse": false,
@@ -6633,7 +6634,7 @@ data:
         "links": [
 
         ],
-        "refresh": "10s",
+        "refresh": "1m",
         "rows": [
             {
                 "collapse": false,
@@ -7583,7 +7584,7 @@ data:
         "links": [
 
         ],
-        "refresh": "10s",
+        "refresh": "1m",
         "rows": [
             {
                 "collapse": false,
@@ -9321,7 +9322,7 @@ data:
         "links": [
 
         ],
-        "refresh": "10s",
+        "refresh": "1m",
         "rows": [
             {
                 "collapse": false,
@@ -11322,7 +11323,7 @@ data:
         "links": [
 
         ],
-        "refresh": "10s",
+        "refresh": "1m",
         "rows": [
             {
                 "collapse": false,
@@ -13479,7 +13480,7 @@ data:
         "links": [
 
         ],
-        "refresh": "10s",
+        "refresh": "1m",
         "rows": [
             {
                 "collapse": false,
@@ -14457,7 +14458,7 @@ data:
         "links": [
 
         ],
-        "refresh": "10s",
+        "refresh": "1m",
         "rows": [
             {
                 "collapse": false,

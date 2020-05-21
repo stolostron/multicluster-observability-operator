@@ -1,4 +1,6 @@
-package util
+// Copyright (c) 2020 Red Hat, Inc.
+
+package placementrule
 
 import (
 	corev1 "k8s.io/api/core/v1"
@@ -6,7 +8,7 @@ import (
 )
 
 const (
-	SpokeNameSpace = "rhacm-monitoring"
+	spokeNameSpace = "rhacm-monitoring"
 )
 
 func createNameSpace() *corev1.Namespace {
@@ -16,7 +18,7 @@ func createNameSpace() *corev1.Namespace {
 			Kind:       "Namespace",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: SpokeNameSpace,
+			Name: spokeNameSpace,
 		},
 	}
 }

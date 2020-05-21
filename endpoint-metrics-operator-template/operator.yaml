@@ -31,3 +31,13 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "endpoint-metrics-operator"
+            - name: KUBECONFIG
+              value: "/spoke/hub-kubeconfig/config"
+          volumeMounts:
+            - name: hub-kubeconfig-secret
+              mountPath: "/spoke/hub-kubeconfig"
+              readOnly: true
+      volumes:
+        - name: hub-kubeconfig-secret
+          secret:
+            secretName: hub-kube-config

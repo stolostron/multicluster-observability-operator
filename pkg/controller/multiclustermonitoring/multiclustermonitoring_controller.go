@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering"
 )
 
@@ -180,7 +181,7 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 	}
 
 	// generate/update the configmap cluster-monitoring-config
-	result, err = UpdateOCPMonitoringCM(instance)
+	result, err = util.UpdateHubClusterMonitoringConfig(r.client, instance.Namespace)
 	if result != nil {
 		return *result, err
 	}

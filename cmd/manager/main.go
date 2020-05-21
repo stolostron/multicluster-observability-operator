@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-
 	"os"
 	"runtime"
 
@@ -29,8 +28,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 	"sigs.k8s.io/controller-runtime/pkg/scheme"
 
-	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
 	workv1 "github.com/open-cluster-management/api/work/v1"
+	epv1 "github.com/open-cluster-management/endpoint-metrics-operator/pkg/apis/monitoring/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller"
@@ -137,7 +136,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := clusterv1.AddToScheme(mgr.GetScheme()); err != nil {
+	if err := epv1.SchemeBuilder.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}
