@@ -9,3 +9,6 @@ nodes:
   - containerPort: 443
     hostPort: 443
     listenAddress: "0.0.0.0"
+  - containerPort: 6443
+    hostPort: 32806
+    listenAddress: "0.0.0.0"

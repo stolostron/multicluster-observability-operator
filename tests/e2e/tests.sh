@@ -2,6 +2,8 @@
 # Copyright (c) 2020 Red Hat, Inc.
 
 export WAIT_TIMEOUT=${WAIT_TIMEOUT:-5m}
+export KUBECONFIG=$HOME/.kube/kind-config-hub
+kubectl config set-context --current --namespace open-cluster-management
 
 wait_for_popup() {
     n=1
