@@ -158,10 +158,11 @@ revert_changes() {
 
 deploy_hub_core() {
     cd ${WORKDIR}/..
-    git clone git@github.com:qiujian16/nucleus.git
+    git clone https://github.com/qiujian16/nucleus.git
     cd nucleus/
     git checkout origin/gen-csv
     $sed_command "s~namespace: open-cluster-management-core~namespace: open-cluster-management~g" deploy/nucleus-hub/*.yaml
+    $sed_command "s~replicas: 3~replicas: 1~g" deploy/nucleus-hub/*.yaml
 if [[ "$(uname)" == "Darwin" ]]; then
     $sed_command "\$a\\
     imagePullSecrets:\\
@@ -178,6 +179,7 @@ deploy_spoke_core() {
     cd ${WORKDIR}/../nucleus
     $sed_command "s~namespace: open-cluster-management-core~namespace: default~g" deploy/nucleus-spoke/*.yaml
     $sed_command "s~namespace: open-cluster-management~namespace: default~g" deploy/nucleus-spoke/*.yaml
+    $sed_command "s~replicas: 3~replicas: 1~g" deploy/nucleus-hub/*.yaml
 kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
 if [[ "$(uname)" == "Darwin" ]]; then
     $sed_command "\$a\\
