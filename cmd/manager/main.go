@@ -8,9 +8,6 @@ import (
 	"os"
 	"runtime"
 
-	"os"
-	"runtime"
-
 	observatoriumAPIs "github.com/observatorium/configuration/api/v1alpha1"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
