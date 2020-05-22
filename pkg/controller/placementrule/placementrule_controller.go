@@ -112,7 +112,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	}
 
 	for _, decision := range instance.Status.Decisions {
-		err = createEndpointConfigCR(r.client, decision.ClusterNamespace, decision.ClusterName)
+		err = createEndpointConfigCR(r.client, instance.Namespace, decision.ClusterNamespace, decision.ClusterName)
 		if err != nil {
 			reqLogger.Error(err, "Failed to create endpointmetrics")
 			continue

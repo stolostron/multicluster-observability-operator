@@ -160,7 +160,6 @@ deploy_hub_core() {
     cd ${WORKDIR}/..
     git clone https://github.com/qiujian16/nucleus.git
     cd nucleus/
-    git checkout origin/gen-csv
     $sed_command "s~namespace: open-cluster-management-core~namespace: open-cluster-management~g" deploy/nucleus-hub/*.yaml
     $sed_command "s~replicas: 3~replicas: 1~g" deploy/nucleus-hub/*.yaml
 if [[ "$(uname)" == "Darwin" ]]; then
