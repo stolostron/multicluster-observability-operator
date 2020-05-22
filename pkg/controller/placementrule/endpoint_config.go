@@ -16,12 +16,12 @@ import (
 )
 
 const (
-	epConfigName  = "endpoint_config"
+	epConfigName  = "endpoint-config"
 	collectorType = "OCP_PROMETHEUS"
 )
 
-func createEndpointConfigCR(client client.Client, namespace string, cluster string) error {
-	url, err := util.GetObsAPIUrl(client, namespace)
+func createEndpointConfigCR(client client.Client, obsNamespace string, namespace string, cluster string) error {
+	url, err := util.GetObsAPIUrl(client, obsNamespace)
 	if err != nil {
 		return err
 	}
@@ -41,7 +41,7 @@ func createEndpointConfigCR(client client.Client, namespace string, cluster stri
 					RelabelConfigs: []monv1.RelabelConfig{
 						{
 							SourceLabels: []string{"__name__"},
-							TargetLabel:  util.LabelKey,
+							TargetLabel:  util.ClusterNameLabelKey,
 							Replacement:  cluster,
 						},
 					},

@@ -19,16 +19,16 @@ import (
 )
 
 const (
-	// LabelKey is the key for the injected label
-	LabelKey                 = "cluster"
-	collectorType            = "OCP_PROMETHEUS"
-	infrastructureConfigName = "cluster"
-	cmName                   = "cluster-monitoring-config"
-	cmNamespace              = "openshift-monitoring"
-	configKey                = "config.yaml"
-	labelValue               = "hub_cluster"
-	protocol                 = "http://"
-	urlSubPath               = "/api/metrics/v1/write"
+	// ClusterNameLabelKey is the key for the injected label
+	ClusterNameLabelKey = "cluster"
+	clusterIDLabelKey   = "cluster_id"
+	collectorType       = "OCP_PROMETHEUS"
+	cmName              = "cluster-monitoring-config"
+	cmNamespace         = "openshift-monitoring"
+	configKey           = "config.yaml"
+	labelValue          = "hub_cluster"
+	protocol            = "http://"
+	urlSubPath          = "/api/metrics/v1/write"
 )
 
 var log = logf.Log.WithName("util")
@@ -37,29 +37,43 @@ func getConfigMap(client kubernetes.Interface) (*v1.ConfigMap, error) {
 	cm, err := client.CoreV1().ConfigMaps(cmNamespace).Get(cmName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
-	} else {
-		return cm, err
 	}
+	return cm, err
 }
 
-func createRemoteWriteSpec(url string, labelConfigs *[]monv1.RelabelConfig) *monv1.RemoteWriteSpec {
+func createRemoteWriteSpec(url string, labelConfigs *[]monv1.RelabelConfig) (*monv1.RemoteWriteSpec, error) {
+	clusterID, err := GetClusterID()
+	if err != nil {
+		return nil, err
+	}
+	relabelConfig := monv1.RelabelConfig{
+		SourceLabels: []string{"__name__"},
+		TargetLabel:  clusterIDLabelKey,
+		Replacement:  clusterID,
+	}
+	newlabelConfigs := append(*labelConfigs, relabelConfig)
 	if !strings.HasPrefix(url, "http") {
 		url = protocol + url
 	}
 	if !strings.HasSuffix(url, urlSubPath) {
 		url = url + urlSubPath
 	}
+
 	return &monv1.RemoteWriteSpec{
 		URL:                 url,
-		WriteRelabelConfigs: *labelConfigs,
-	}
+		WriteRelabelConfigs: newlabelConfigs,
+	}, nil
 }
 
 func createConfigMap(client kubernetes.Interface, url string, labelConfigs *[]monv1.RelabelConfig) error {
+	rwSpec, err := createRemoteWriteSpec(url, labelConfigs)
+	if err != nil {
+		return err
+	}
 	config := &manifests.Config{
 		PrometheusK8sConfig: &manifests.PrometheusK8sConfig{
 			RemoteWrite: []monv1.RemoteWriteSpec{
-				*createRemoteWriteSpec(url, labelConfigs),
+				*rwSpec,
 			},
 		},
 	}
@@ -88,24 +102,29 @@ func updateConfigMap(client kubernetes.Interface, configmap *v1.ConfigMap, url s
 	if err != nil {
 		return err
 	}
+
+	rwSpec, err := createRemoteWriteSpec(url, labelConfigs)
+	if err != nil {
+		return err
+	}
 	if config.PrometheusK8sConfig == nil {
 		config.PrometheusK8sConfig = &manifests.PrometheusK8sConfig{}
 	}
 	if config.PrometheusK8sConfig.RemoteWrite == nil || len(config.PrometheusK8sConfig.RemoteWrite) == 0 {
 		config.PrometheusK8sConfig.RemoteWrite = []monv1.RemoteWriteSpec{
-			*createRemoteWriteSpec(url, labelConfigs),
+			*rwSpec,
 		}
 	} else {
 		flag := false
 		for i, spec := range config.PrometheusK8sConfig.RemoteWrite {
 			if strings.Contains(spec.URL, url) {
 				flag = true
-				config.PrometheusK8sConfig.RemoteWrite[i] = *createRemoteWriteSpec(url, labelConfigs)
+				config.PrometheusK8sConfig.RemoteWrite[i] = *rwSpec
 				break
 			}
 		}
 		if !flag {
-			config.PrometheusK8sConfig.RemoteWrite = append(config.PrometheusK8sConfig.RemoteWrite, *createRemoteWriteSpec(url, labelConfigs))
+			config.PrometheusK8sConfig.RemoteWrite = append(config.PrometheusK8sConfig.RemoteWrite, *rwSpec)
 		}
 	}
 	updateConfigYaml, err := yaml.Marshal(config)
@@ -122,7 +141,7 @@ func updateConfigMap(client kubernetes.Interface, configmap *v1.ConfigMap, url s
 
 // UpdateClusterMonitoringConfig is used to update cluster-monitoring-config configmap on spoke clusters
 func UpdateClusterMonitoringConfig(url string, labelConfigs *[]monv1.RelabelConfig) error {
-	client, err := CreateKubeClient()
+	client, err := createKubeClient()
 	if err != nil {
 		return err
 	}
@@ -131,13 +150,11 @@ func UpdateClusterMonitoringConfig(url string, labelConfigs *[]monv1.RelabelConf
 		if errors.IsNotFound(err) {
 			err = createConfigMap(client, url, labelConfigs)
 			return err
-		} else {
-			return err
 		}
-	} else {
-		err = updateConfigMap(client, cm, url, labelConfigs)
 		return err
 	}
+	err = updateConfigMap(client, cm, url, labelConfigs)
+	return err
 }
 
 // UpdateHubClusterMonitoringConfig is used to cluster-monitoring-config configmap on hub clusters
@@ -150,7 +167,7 @@ func UpdateHubClusterMonitoringConfig(client client.Client, namespace string) (*
 	labelConfigs := []monv1.RelabelConfig{
 		{
 			SourceLabels: []string{"__name__"},
-			TargetLabel:  LabelKey,
+			TargetLabel:  ClusterNameLabelKey,
 			Replacement:  labelValue,
 		},
 	}

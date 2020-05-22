@@ -8,6 +8,8 @@ import (
 	clientv1 "k8s.io/client-go/tools/clientcmd/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
+
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
 )
 
 const (
@@ -19,7 +21,7 @@ func createKubeConfig(client client.Client, namespace string) (*clientv1.Config,
 	if error != nil {
 		return nil, error
 	}
-	apiServer, error := getKubeAPIServerAddress(client)
+	apiServer, error := util.GetKubeAPIServerAddress(client)
 	if error != nil {
 		return nil, error
 	}

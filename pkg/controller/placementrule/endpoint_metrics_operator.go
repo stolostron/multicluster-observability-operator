@@ -26,12 +26,12 @@ func loadTemplates() ([]runtime.RawExtension, error) {
 	rawExtensionList := []runtime.RawExtension{}
 	for _, r := range resourceList {
 		r.SetNamespace(spokeNameSpace)
-		rJson, err := json.Marshal(r.Map())
+		rJSON, err := json.Marshal(r.Map())
 		if err != nil {
 			return nil, err
 		}
-		log.Info("rJson", "string", string(rJson))
-		rawExtensionList = append(rawExtensionList, runtime.RawExtension{Raw: rJson})
+		log.Info("rJson", "string", string(rJSON))
+		rawExtensionList = append(rawExtensionList, runtime.RawExtension{Raw: rJSON})
 	}
 	return rawExtensionList, nil
 }
