@@ -4,7 +4,6 @@ package placementrule
 
 import (
 	"context"
-	"strings"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -55,13 +54,13 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if strings.TrimSpace(e.Meta.GetLabels()["monitoring"]) == "true" && e.Meta.GetNamespace() == watchNamespace {
+			if e.Meta.GetNamespace() == watchNamespace {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if strings.TrimSpace(e.MetaNew.GetLabels()["monitoring"]) == "true" && e.MetaNew.GetNamespace() == watchNamespace {
+			if e.MetaNew.GetNamespace() == watchNamespace {
 				return true
 			}
 			return false
