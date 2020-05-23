@@ -42,6 +42,19 @@ func createRole(client client.Client, namespace string) error {
 					epRsGroup,
 				},
 			},
+			{
+				Resources: []string{
+					"pods",
+				},
+				Verbs: []string{
+					"watch",
+					"list",
+					"get",
+				},
+				APIGroups: []string{
+					"",
+				},
+			},
 		},
 	}
 
