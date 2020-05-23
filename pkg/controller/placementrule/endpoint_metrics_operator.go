@@ -13,8 +13,8 @@ import (
 )
 
 const (
+	endpointImage = "quay.io/open-cluster-management/endpoint-metrics-operator:0.1.0-786316d667660ad0a22729b092ce56c2d1830d86"
 	templatePath  = "/usr/local/endpoint-metrics-operator-template"
-	endpointImage = "quay.io/open-cluster-management/endpoint-metrics-operator:0.1.0"
 	deployName    = "endpoint-metrics-operator"
 )
 
@@ -38,8 +38,11 @@ func loadTemplates() ([]runtime.RawExtension, error) {
 	}
 	rawExtensionList := []runtime.RawExtension{}
 	for _, r := range resourceList {
-		r.SetNamespace(spokeNameSpace)
-		obj := getK8sObj(r.GetKind())
+		kind := r.GetKind()
+		if kind != "ClusterRole" && kind != "ClusterRoleBinding" {
+			r.SetNamespace(spokeNameSpace)
+		}
+		obj := getK8sObj(kind)
 		err := runtime.DefaultUnstructuredConverter.FromUnstructured(r.Map(), obj)
 		if err != nil {
 			log.Error(err, "failed to convert the resource", r.GetName())
@@ -50,6 +53,12 @@ func loadTemplates() ([]runtime.RawExtension, error) {
 		if r.GetKind() == "Deployment" && r.GetName() == deployName {
 			spec := obj.(*v1.Deployment).Spec.Template.Spec
 			spec.Containers[0].Image = endpointImage
+			for _, env := range spec.Containers[0].Env {
+				if env.Name == "WATCH_NAMESPACE" {
+					env.Value = spokeNameSpace
+					break
+				}
+			}
 		}
 
 		rawExtensionList = append(rawExtensionList, runtime.RawExtension{Object: obj})

@@ -5,7 +5,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: endpoint-metrics-operator
-  namespace: acm-monitoring
+  namespace: rhacm-monitoring
 roleRef:
   kind: ClusterRole
   name: endpoint-metrics-operator

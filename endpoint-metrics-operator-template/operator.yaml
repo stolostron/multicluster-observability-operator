@@ -16,22 +16,20 @@ spec:
       containers:
         - name: endpoint-metrics-operator
           # Replace this with the built image name
-          image: REPLACE_IMAGE
+          image: REPLACE_WITH_IMAGE
           command:
           - endpoint-metrics-operator
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
+              value: REPLACE_WITH_HUB_CLUSTER_NAMESPACE
             - name: POD_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "endpoint-metrics-operator"
-            - name: KUBECONFIG
+            - name: HUB_KUBECONFIG
               value: "/spoke/hub-kubeconfig/config"
           volumeMounts:
             - name: hub-kubeconfig-secret
