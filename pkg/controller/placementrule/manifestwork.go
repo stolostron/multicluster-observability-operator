@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/yaml"
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
 )
@@ -60,11 +59,6 @@ func createManifestWork(client client.Client, namespace string) error {
 			manifests = append(manifests, workv1.Manifest{raw})
 		}
 		work.Spec.Workload.Manifests = manifests
-		rYaml, err := yaml.Marshal(work)
-		if err != nil {
-			return err
-		}
-		log.Info("Debug", "work", rYaml)
 		err = client.Create(context.TODO(), work)
 		if err != nil {
 			log.Error(err, "Failed to create monitoring-endpoint-metrics-work work")

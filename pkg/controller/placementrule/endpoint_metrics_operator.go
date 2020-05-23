@@ -3,8 +3,9 @@
 package placementrule
 
 import (
-	"encoding/json"
-
+	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
@@ -12,8 +13,20 @@ import (
 )
 
 const (
-	templatePath = "/usr/local/endpoint-metrics-operator-template"
+	templatePath  = "/usr/local/endpoint-metrics-operator-template"
+	endpointImage = "quay.io/open-cluster-management/endpoint-metrics-operator:0.1.0"
+	deployName    = "endpoint-metrics-operator"
 )
+
+func getK8sObj(kind string) runtime.Object {
+	objs := map[string]runtime.Object{
+		"Deployment":         &v1.Deployment{},
+		"ClusterRole":        &rbacv1.ClusterRole{},
+		"ClusterRoleBinding": &rbacv1.ClusterRoleBinding{},
+		"ServiceAccount":     &corev1.ServiceAccount{},
+	}
+	return objs[kind]
+}
 
 func loadTemplates() ([]runtime.RawExtension, error) {
 	templateRenderer := templates.NewTemplateRenderer(templatePath)
@@ -26,12 +39,20 @@ func loadTemplates() ([]runtime.RawExtension, error) {
 	rawExtensionList := []runtime.RawExtension{}
 	for _, r := range resourceList {
 		r.SetNamespace(spokeNameSpace)
-		rJSON, err := json.Marshal(r.Map())
+		obj := getK8sObj(r.GetKind())
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(r.Map(), obj)
 		if err != nil {
+			log.Error(err, "failed to convert the resource", r.GetName())
 			return nil, err
 		}
-		log.Info("rJson", "string", string(rJSON))
-		rawExtensionList = append(rawExtensionList, runtime.RawExtension{Raw: rJSON})
+
+		// set the image for endpoint metrics operator
+		if r.GetKind() == "Deployment" && r.GetName() == deployName {
+			spec := obj.(*v1.Deployment).Spec.Template.Spec
+			spec.Containers[0].Image = endpointImage
+		}
+
+		rawExtensionList = append(rawExtensionList, runtime.RawExtension{Object: obj})
 	}
 	return rawExtensionList, nil
 }

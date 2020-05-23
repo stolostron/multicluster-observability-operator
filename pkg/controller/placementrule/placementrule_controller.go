@@ -6,6 +6,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -22,6 +23,7 @@ import (
 )
 
 var log = logf.Log.WithName("controller_placementrule")
+var watchNamespace, _ = k8sutil.GetWatchNamespace()
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -53,12 +55,15 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if strings.TrimSpace(e.Meta.GetLabels()["agent"]) == "monitoring" {
+			if strings.TrimSpace(e.Meta.GetLabels()["monitoring"]) == "true" && e.Meta.GetNamespace() == watchNamespace {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
+			if strings.TrimSpace(e.MetaNew.GetLabels()["monitoring"]) == "true" && e.MetaNew.GetNamespace() == watchNamespace {
+				return true
+			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
@@ -112,12 +117,13 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	}
 
 	for _, decision := range instance.Status.Decisions {
+		log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
 		err = createEndpointConfigCR(r.client, instance.Namespace, decision.ClusterNamespace, decision.ClusterName)
 		if err != nil {
 			reqLogger.Error(err, "Failed to create endpointmetrics")
 			continue
 		}
-		err = createManifestWork(r.client, instance.Namespace)
+		err = createManifestWork(r.client, decision.ClusterNamespace)
 		if err != nil {
 			reqLogger.Error(err, "Failed to create manifestwork")
 		}

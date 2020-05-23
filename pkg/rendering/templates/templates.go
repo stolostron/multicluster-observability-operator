@@ -111,7 +111,6 @@ func (r *TemplateRenderer) AddTemplateFromPath(kustomizationPath string, resourc
 			return err
 		}
 		r.templates[kustomizationPath] = resMap
-		*resourceList = append(*resourceList, resMap.Resources()...)
 	}
 	*resourceList = append(*resourceList, resMap.Resources()...)
 	return nil
