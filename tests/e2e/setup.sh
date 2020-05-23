@@ -128,10 +128,6 @@ deploy_mcm_operator() {
     kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_multiclustermonitorings_crd.yaml
     kubectl apply -f tests/e2e/req_crds/apps.open-cluster-management.io_placementrules_crd.yaml
     kubectl apply -f deploy
-
-    echo "sleep 10s to wait for CRD ready"
-    sleep 10
-
     kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml
 }
 
@@ -158,7 +154,7 @@ revert_changes() {
 
 deploy_hub_core() {
     cd ${WORKDIR}/..
-    git clone https://github.com/qiujian16/nucleus.git
+    git clone https://github.com/open-cluster-management/nucleus.git
     cd nucleus/
     $sed_command "s~namespace: open-cluster-management-core~namespace: open-cluster-management~g" deploy/nucleus-hub/*.yaml
     $sed_command "s~replicas: 3~replicas: 1~g" deploy/nucleus-hub/*.yaml
@@ -170,6 +166,7 @@ elif [[ "$(uname)" == "Linux" ]]; then
     $sed_command "\$aimagePullSecrets:\n- name: multiclusterhub-operator-pull-secret" deploy/nucleus-hub/service_account.yaml
 fi
     kubectl apply -f deploy/nucleus-hub/
+    kubectl apply -f deploy/nucleus-hub/crds/*crd.yaml
     kubectl apply -f deploy/nucleus-hub/crds
     kubectl apply -f ${WORKDIR}/tests/e2e/nucleus/hubcore.yaml
 }
@@ -188,6 +185,7 @@ elif [[ "$(uname)" == "Linux" ]]; then
     $sed_command "\$aimagePullSecrets:\n- name: multiclusterhub-operator-pull-secret" deploy/nucleus-spoke/service_account.yaml
 fi
     kubectl apply -f deploy/nucleus-spoke/
+    kubectl apply -f deploy/nucleus-spoke/crds/*crd.yaml
     kubectl apply -f deploy/nucleus-spoke/crds
     kubectl apply -f ${WORKDIR}/tests/e2e/nucleus/spokecore.yaml
     rm -rf ${WORKDIR}/../nucleus
