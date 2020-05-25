@@ -3,7 +3,7 @@ apiVersion: route.openshift.io/v1
 metadata:
   name: grafana-test
 spec:
-  host: grafana.local
+  host: grafana.test.local
   wildcardPolicy: None
   to:
     name: grafana-test

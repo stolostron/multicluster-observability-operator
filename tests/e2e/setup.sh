@@ -15,18 +15,24 @@ fi
 
 # update prometheus CR to enable remote write to thanos
 update_prometheus_remote_write() {
+    obs_url="http://monitoring-observatorium-observatorium-api.open-cluster-management.svc:8080/api/metrics/v1/write"
+    cluster_replacement="hub_cluster"
+    if [[ ! -z "$1" ]]; then
+       obs_url="http://$1/api/metrics/v1/write"
+       cluster_replacement="cluster1"
+    fi
     if [[ "$(uname)" == "Darwin" ]]; then
         $sed_command "\$a\\
         \ \ remoteWrite:\\
-        \ \ - url: http://monitoring-observatorium-observatorium-api.open-cluster-management.svc:8080/api/metrics/v1/write\\
+        \ \ - url: ${obs_url}\\
         \ \ \ \ remoteTimeout: 30s\\
         \ \ \ \ writeRelabelConfigs:\\
         \ \ \ \ - sourceLabels:\\
         \ \ \ \ \ \ - __name__\\
         \ \ \ \ \ \ targetLabel: cluster\\
-        \ \ \ \ \ \ replacement: hub_cluster" kube-prometheus/manifests/prometheus-prometheus.yaml
+        \ \ \ \ \ \ replacement: $cluster_replacement" $WORKDIR/../kube-prometheus/manifests/prometheus-prometheus.yaml
     elif [[ "$(uname)" == "Linux" ]]; then
-        $sed_command "\$a\ \ remoteWrite:\n\ \ - url: http://monitoring-observatorium-observatorium-api.open-cluster-management.svc:8080/api/metrics/v1/write\n\ \ \ \ remoteTimeout: 30s\n\ \ \ \ writeRelabelConfigs:\n\ \ \ \ - sourceLabels:\n\ \ \ \ \ \ - __name__\n\ \ \ \ \ \ targetLabel: cluster\n\ \ \ \ \ \ replacement: hub_cluster" kube-prometheus/manifests/prometheus-prometheus.yaml
+        $sed_command "\$a\ \ remoteWrite:\n\ \ - url: ${obs_url}\n\ \ \ \ remoteTimeout: 30s\n\ \ \ \ writeRelabelConfigs:\n\ \ \ \ - sourceLabels:\n\ \ \ \ \ \ - __name__\n\ \ \ \ \ \ targetLabel: cluster\n\ \ \ \ \ \ replacement: $cluster_replacement" $WORKDIR/../kube-prometheus/manifests/prometheus-prometheus.yaml
     fi
 }
 
@@ -40,7 +46,7 @@ create_kind_cluster() {
     echo "Delete the KinD cluster if exists"
     kind delete cluster --name $1 || true
 
-    echo "Start KinD cluster with the default cluster name - kind"
+    echo "Start KinD cluster with the default cluster name - $1"
     kind create cluster --kubeconfig $HOME/.kube/kind-config-$1 --name $1 --config ${WORKDIR}/tests/e2e/kind/kind-$1.config.yaml
     export KUBECONFIG=$HOME/.kube/kind-config-$1
 
@@ -84,8 +90,11 @@ deploy_prometheus_operator() {
     echo "Remove alertmanager and grafana to free up resource"
     rm -rf kube-prometheus/manifests/alertmanager-*.yaml
     rm -rf kube-prometheus/manifests/grafana-*.yaml
-
-    update_prometheus_remote_write
+    if [[ ! -z "$1" ]]; then
+        update_prometheus_remote_write $1
+    else
+        update_prometheus_remote_write
+    fi
 
     kubectl create -f kube-prometheus/manifests/setup
     until kubectl get servicemonitors --all-namespaces ; do date; sleep 1; echo ""; done
@@ -133,7 +142,7 @@ deploy_mcm_operator() {
     kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml
     
     # expose grafana to test accessible
-    kubectl apply -f tests/e2e/grafana/grafana-test-route.yaml
+    kubectl apply -f tests/e2e/grafana/grafana-route.yaml
 }
 
 # deploy the new grafana to check the dashboards from browsers
@@ -245,6 +254,15 @@ approve_csr_joinrequest() {
     kubectl --kubeconfig $HUB_KUBECONFIG apply -f $WORKDIR/tests/e2e/nucleus/rolebinding.yaml
 }
 
+patch_for_remote_write() {
+    # patch observatorium route
+    kubectl --kubeconfig $HUB_KUBECONFIG patch route observatorium-api --patch '{"spec":{"host": "observatorium.hub", "wildcardPolicy": "None"}}' --type=merge
+    obser_hub=`kind get kubeconfig --name hub --internal | grep server: | awk -F '://' '{print $2}' | awk -F ':' '{print $1}'`
+
+    hub_docker_id=`docker ps | grep hub-control-plane | awk -F ' ' '{print $1}'`
+    docker exec -it $hub_docker_id /bin/bash -c 'echo "$obser_hub observatorium.hub" >> /etc/hosts'
+}
+
 deploy() {
     setup_kubectl_command
     create_kind_cluster hub
@@ -253,12 +271,13 @@ deploy() {
     deploy_mcm_operator $1
     if [[ "$2" == "grafana" ]]; then
         deploy_grafana
-    fi    
+    fi
     deploy_hub_core
     create_kind_cluster spoke
-    deploy_prometheus_operator
+    deploy_prometheus_operator observatorium.hub
     deploy_spoke_core
     approve_csr_joinrequest
+    patch_for_remote_write
     revert_changes
 }
 
