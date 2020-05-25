@@ -28,7 +28,7 @@ func getK8sObj(kind string) runtime.Object {
 	return objs[kind]
 }
 
-func loadTemplates() ([]runtime.RawExtension, error) {
+func loadTemplates(namespace string) ([]runtime.RawExtension, error) {
 	templateRenderer := templates.NewTemplateRenderer(templatePath)
 	resourceList := []*resource.Resource{}
 	err := templateRenderer.AddTemplateFromPath(templatePath, &resourceList)
@@ -53,9 +53,9 @@ func loadTemplates() ([]runtime.RawExtension, error) {
 		if r.GetKind() == "Deployment" && r.GetName() == deployName {
 			spec := obj.(*v1.Deployment).Spec.Template.Spec
 			spec.Containers[0].Image = endpointImage
-			for _, env := range spec.Containers[0].Env {
+			for i, env := range spec.Containers[0].Env {
 				if env.Name == "WATCH_NAMESPACE" {
-					env.Value = spokeNameSpace
+					spec.Containers[0].Env[i].Value = namespace
 					break
 				}
 			}

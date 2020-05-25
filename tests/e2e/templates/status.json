@@ -1,0 +1,10 @@
+{
+  "status": {
+    "decisions": [
+      {
+        "clusterName": "cluster1",
+        "clusterNamespace": "cluster1"
+      }
+    ]
+  }
+}

@@ -54,13 +54,13 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Meta.GetNamespace() == watchNamespace {
+			if strings.TrimSpace(e.Meta.GetLabels()["agent"]) == "monitoring" && e.Meta.GetNamespace() == watchNamespace {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetNamespace() == watchNamespace {
+			if strings.TrimSpace(e.Meta.GetLabels()["agent"]) == "monitoring" && e.Meta.GetNamespace() == watchNamespace {
 				return true
 			}
 			return false
