@@ -7,9 +7,6 @@ ENV OPERATOR=/usr/local/bin/multicluster-monitoring-operator \
 # install templates
 COPY manifests /usr/local/manifests
 
-# install templates for endpoint metrics operator
-COPY endpoint-metrics-operator-template /usr/local/endpoint-metrics-operator-template
-
 # install operator binary
 COPY build/_output/bin/multicluster-monitoring-operator ${OPERATOR}
 
