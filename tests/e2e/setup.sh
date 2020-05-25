@@ -130,8 +130,12 @@ deploy_mcm_operator() {
     kubectl apply -f tests/e2e/req_crds/hub_cr
     kubectl apply -f deploy
     kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml
+    
+    # expose grafana to test accessible
+    kubectl apply -f tests/e2e/grafana/grafana-test-route.yaml
 }
 
+# deploy the new grafana to check the dashboards from browsers
 deploy_grafana() {
     cd ${WORKDIR}
     $sed_command "s~name: grafana$~name: grafana-test~g; s~app: grafana$~app: grafana-test~g; s~secretName: grafana-config$~secretName: grafana-config-test~g; /MULTICLUSTERMONITORING_CR_NAME/d" manifests/base/grafana/deployment.yaml
@@ -243,7 +247,9 @@ deploy() {
     deploy_prometheus_operator
     deploy_openshift_router
     deploy_mcm_operator $1
-    deploy_grafana
+    if [[ "$2" == "grafana" ]]; then
+        deploy_grafana
+    fi    
     deploy_hub_core
     create_kind_cluster spoke
     deploy_prometheus_operator

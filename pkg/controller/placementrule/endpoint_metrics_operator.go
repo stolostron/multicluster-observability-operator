@@ -14,7 +14,7 @@ import (
 
 const (
 	endpointImage = "quay.io/open-cluster-management/endpoint-metrics-operator:0.1.0-786316d667660ad0a22729b092ce56c2d1830d86"
-	templatePath  = "/usr/local/endpoint-metrics-operator-template"
+	templatePath  = "/usr/local/manifests/endpoint-metrics"
 	deployName    = "endpoint-metrics-operator"
 )
 
