@@ -4,6 +4,7 @@ package placementrule
 
 import (
 	"context"
+	"strings"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -60,7 +61,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if strings.TrimSpace(e.Meta.GetLabels()["agent"]) == "monitoring" && e.Meta.GetNamespace() == watchNamespace {
+			if strings.TrimSpace(e.MetaNew.GetLabels()["agent"]) == "monitoring" && e.MetaNew.GetNamespace() == watchNamespace {
 				return true
 			}
 			return false
