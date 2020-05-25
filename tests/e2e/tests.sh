@@ -3,13 +3,20 @@
 
 export WAIT_TIMEOUT=${WAIT_TIMEOUT:-5m}
 export KUBECONFIG=$HOME/.kube/kind-config-hub
+export SPOKE_KUBECONFIG=$HOME/.kube/kind-config-spoke
 kubectl config set-context --current --namespace open-cluster-management
 
 wait_for_popup() {
+    CONFIG=""
+    NAMESPACE=""
+    if [ "$#" -eq 4 ]; then
+        CONFIG="--kubeconfig $HOME/.kube/$3"
+        NAMESPACE="-n $4"
+    fi
     n=1
     while true
     do
-        entity=`kubectl get $1 $2 | grep -v Name | awk '{ print $1 }'`
+        entity=`kubectl get $1 $2 $CONFIG $NAMESPACE| grep -v Name | awk '{ print $1 }'`
         if [[ ! -z $entity ]]; then
             return
         fi
@@ -180,9 +187,94 @@ run_test_access_grafana_dashboard() {
     fi
 }
 
+run_test_endpoint_operator_installation() {
+
+    SPOKE_NAMESPACE="rhacm-monitoring"
+
+    # Workaround for placementrules operator
+    echo "Patch allclusters placementrule"
+    cat ~/.kube/kind-config-hub|grep certificate-authority-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d  >> ca
+    cat ~/.kube/kind-config-hub|grep client-certificate-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> crt
+    cat ~/.kube/kind-config-hub|grep client-key-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> key
+    SERVER=$(cat ~/.kube/kind-config-hub|grep server|awk '{split($0, a, ": "); print a[2]}')
+    curl -s --cert ./crt --key ./key --cacert ./ca -X PATCH -H "Content-Type:application/merge-patch+json" \
+        $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/open-cluster-management/placementrules/allclusters/status \
+        -d @./tests/e2e/templates/status.json   
+    rm ca crt key
+
+    wait_for_popup manifestwork monitoring-endpoint-metrics-work kind-config-hub cluster1
+    if [ $? -ne 0 ]; then
+        echo "The manifestwork monitoring-endpoint-metrics-work not created"
+        exit 1
+    else
+        echo "The manifestwork monitoring-endpoint-metrics-work created"
+    fi
+
+    wait_for_popup secret hub-kube-config kind-config-spoke $SPOKE_NAMESPACE
+    if [ $? -ne 0 ]; then
+        echo "The secret hub-kube-config not created"
+        exit 1
+    else
+        echo "The secret hub-kube-config created"
+    fi
+
+    kubectl create secret --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE docker-registry\
+        endpoint-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
+    kubectl patch serviceaccount --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE endpoint-metrics-operator\
+        -p '{"imagePullSecrets": [{"name": "endpoint-operator-pull-secret"}]}'
+    if [ $? -ne 0 ]; then
+        echo "Failed to add pull secret for rhacm namespace in spoke cluster"
+        exit 1
+    else
+        echo "Added pull secret for rhacm namespace in spoke cluster"
+    fi
+    # Workaround to apply pull secret
+    kubectl delete po --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE --all
+
+    wait_for_popup deployment endpoint-metrics-operator kind-config-spoke $SPOKE_NAMESPACE
+    if [ $? -ne 0 ]; then
+        echo "The deployment endpoint-metrics-operator not created"
+        exit 1
+    else
+        echo "The deployment endpoint-metrics-operator created"
+    fi
+
+    wait_for_popup configmap cluster-monitoring-config kind-config-spoke openshift-monitoring
+    if [ $? -ne 0 ]; then
+        echo "The configmap cluster-monitoring-config is not created"
+        exit 1
+    else
+        echo "The configmap cluster-monitoring-config created"
+    fi
+    RESULT=$(kubectl get configmap --kubeconfig $SPOKE_KUBECONFIG -n openshift-monitoring cluster-monitoring-config -o yaml)
+    if [[ $RESULT == *"replacement: cluster1"* ]] && [[ $RESULT == *"replacement: 3650eda1-66fe-4aba-bfbc-d398638f3022"* ]]; then
+        echo "configmap cluster-monitoring-config has correct configuration"
+    else
+        echo "configmap cluster-monitoring-config doesn't have correct configuration"
+    fi
+
+    kubectl apply -n cluster1 -f ./tests/e2e/templates/endpoint.yaml
+    if [ $? -ne 0 ]; then
+        echo "Failed to update endpointmetrics endpoint-config"
+        exit 1
+    else
+        echo "New changes applied to endpointmetrics endpoint-config"
+    fi
+    sleep 5
+    RESULT=$(kubectl get configmap --kubeconfig $SPOKE_KUBECONFIG -n openshift-monitoring cluster-monitoring-config -o yaml)
+    if [[ $RESULT == *"replacement: test_value"* ]] && [[ $RESULT == *"replacement: cluster1"* ]] && [[ $RESULT == *"replacement: 3650eda1-66fe-4aba-bfbc-d398638f3022"* ]]; then
+        echo "Latest changes synched to configmap cluster-monitoring-config"
+    else
+        echo "Latest changes not synched to configmap cluster-monitoring-config"
+        exit 1
+    fi
+
+}
+
 run_test_readiness
 run_test_reconciling
 run_test_scale_grafana
 run_test_access_grafana
 run_test_access_grafana_dashboard
+run_test_endpoint_operator_installation
 run_test_teardown

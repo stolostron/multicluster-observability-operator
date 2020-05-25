@@ -49,7 +49,7 @@ func createManifestWork(client client.Client, namespace string) error {
 				},
 			},
 		}
-		templates, err := loadTemplates()
+		templates, err := loadTemplates(namespace)
 		if err != nil {
 			log.Error(err, "Failed to load templates")
 			return err

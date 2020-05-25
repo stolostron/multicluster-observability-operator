@@ -126,7 +126,9 @@ deploy_mcm_operator() {
     kubectl apply -f tests/e2e/samples
     kubectl apply -f deploy/req_crds
     kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_multiclustermonitorings_crd.yaml
-    kubectl apply -f tests/e2e/req_crds/apps.open-cluster-management.io_placementrules_crd.yaml
+    kubectl apply -f tests/e2e/req_crds
+    sleep 2
+    kubectl apply -f tests/e2e/req_crds/hub_cr
     kubectl apply -f deploy
     kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml
     
@@ -171,6 +173,7 @@ elif [[ "$(uname)" == "Linux" ]]; then
 fi
     kubectl apply -f deploy/nucleus-hub/
     kubectl apply -f deploy/nucleus-hub/crds/*crd.yaml
+    sleep 2
     kubectl apply -f deploy/nucleus-hub/crds
     kubectl apply -f ${WORKDIR}/tests/e2e/nucleus/hubcore.yaml
 }
@@ -190,11 +193,15 @@ elif [[ "$(uname)" == "Linux" ]]; then
 fi
     kubectl apply -f deploy/nucleus-spoke/
     kubectl apply -f deploy/nucleus-spoke/crds/*crd.yaml
+    sleep 2
     kubectl apply -f deploy/nucleus-spoke/crds
     kubectl apply -f ${WORKDIR}/tests/e2e/nucleus/spokecore.yaml
+    kubectl apply -f ${WORKDIR}/tests/e2e/req_crds
+    sleep 2
+    kubectl apply -f ${WORKDIR}/tests/e2e/req_crds/spoke_cr
     rm -rf ${WORKDIR}/../nucleus
-    kind get kubeconfig --name hub --internal > $HOME/.kube/kind-config-hub
-    kubectl create secret generic bootstrap-hub-kubeconfig --from-file=kubeconfig=$HOME/.kube/kind-config-hub
+    kind get kubeconfig --name hub --internal > $HOME/.kube/kind-config-hub-internal
+    kubectl create secret generic bootstrap-hub-kubeconfig --from-file=kubeconfig=$HOME/.kube/kind-config-hub-internal
 }
 
 approve_csr_joinrequest() {

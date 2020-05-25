@@ -5,3 +5,5 @@ metadata:
 spec:
   cloudConfig:
     name: ""
+status:
+  apiServerURL: https://172.17.0.2:6443
