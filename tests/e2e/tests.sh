@@ -215,6 +215,18 @@ run_test_endpoint_operator_installation() {
     else
         echo "The secret hub-kube-config created"
     fi
+
+    kubectl create secret --kubeconfig=$HOME/.kube/kind-config-kind-config-spoke -n $SPOKE_NAMESPACE docker-registry\
+        endpoint-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
+    kubectl patch serviceaccount --kubeconfig=$HOME/.kube/kind-config-kind-config-spoke -n $SPOKE_NAMESPACE endpoint-metrics-operator\
+        -p '{"imagePullSecrets": [{"name": "endpoint-operator-pull-secret"}]}'
+    if [ $? -ne 0 ]; then
+        echo "Failed to add pull secret for rhacm namespace in spoke cluster"
+        exit 1
+    else
+        echo "Added pull secret for rhacm namespace in spoke cluster"
+    fi
+
     wait_for_popup deployment endpoint-metrics-operator kind-config-spoke $SPOKE_NAMESPACE
     if [ $? -ne 0 ]; then
         echo "The deployment endpoint-metrics-operator not created"
