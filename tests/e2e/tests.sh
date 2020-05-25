@@ -3,6 +3,7 @@
 
 export WAIT_TIMEOUT=${WAIT_TIMEOUT:-5m}
 export KUBECONFIG=$HOME/.kube/kind-config-hub
+export SPOKE_KUBECONFIG=$HOME/.kube/kind-config-spoke
 kubectl config set-context --current --namespace open-cluster-management
 
 wait_for_popup() {
@@ -188,6 +189,20 @@ run_test_access_grafana_dashboard() {
 
 run_test_endpoint_operator_installation() {
 
+    SPOKE_NAMESPACE="rhacm-monitoring"
+
+    kubectl create namespace $SPOKE_NAMESPACE --kubeconfig=$SPOKE_KUBECONFIG
+    kubectl create secret --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE docker-registry\
+        endpoint-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
+    kubectl patch serviceaccount --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE endpoint-metrics-operator\
+        -p '{"imagePullSecrets": [{"name": "endpoint-operator-pull-secret"}]}'
+    if [ $? -ne 0 ]; then
+        echo "Failed to add pull secret for rhacm namespace in spoke cluster"
+        exit 1
+    else
+        echo "Added pull secret for rhacm namespace in spoke cluster"
+    fi
+
     # Workaround for placementrules operator
     echo "Patch allclusters placementrule"
     cat ~/.kube/kind-config-hub|grep certificate-authority-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d  >> ca
@@ -207,24 +222,12 @@ run_test_endpoint_operator_installation() {
         echo "The manifestwork monitoring-endpoint-metrics-work created"
     fi
 
-    SPOKE_NAMESPACE="rhacm-monitoring"
     wait_for_popup secret hub-kube-config kind-config-spoke $SPOKE_NAMESPACE
     if [ $? -ne 0 ]; then
         echo "The secret hub-kube-config not created"
         exit 1
     else
         echo "The secret hub-kube-config created"
-    fi
-
-    kubectl create secret --kubeconfig=$HOME/.kube/kind-config-spoke -n $SPOKE_NAMESPACE docker-registry\
-        endpoint-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
-    kubectl patch serviceaccount --kubeconfig=$HOME/.kube/kind-config-spoke -n $SPOKE_NAMESPACE endpoint-metrics-operator\
-        -p '{"imagePullSecrets": [{"name": "endpoint-operator-pull-secret"}]}'
-    if [ $? -ne 0 ]; then
-        echo "Failed to add pull secret for rhacm namespace in spoke cluster"
-        exit 1
-    else
-        echo "Added pull secret for rhacm namespace in spoke cluster"
     fi
 
     wait_for_popup deployment endpoint-metrics-operator kind-config-spoke $SPOKE_NAMESPACE
@@ -242,7 +245,7 @@ run_test_endpoint_operator_installation() {
     else
         echo "The configmap cluster-monitoring-config created"
     fi
-    RESULT=$(kubectl get configmap --kubeconfig $HOME/.kube/kind-config-spoke -n openshift-monitoring cluster-monitoring-config -o yaml)
+    RESULT=$(kubectl get configmap --kubeconfig $SPOKE_KUBECONFIG -n openshift-monitoring cluster-monitoring-config -o yaml)
     if [[ $RESULT == *"replacement: cluster1"* ]] && [[ $RESULT == *"replacement: 3650eda1-66fe-4aba-bfbc-d398638f3022"* ]]; then
         echo "configmap cluster-monitoring-config has correct configuration"
     else
@@ -257,7 +260,7 @@ run_test_endpoint_operator_installation() {
         echo "New changes applied to endpointmetrics endpoint-config"
     fi
     sleep 5
-    RESULT=$(kubectl get configmap --kubeconfig $HOME/.kube/kind-config-spoke -n openshift-monitoring cluster-monitoring-config -o yaml)
+    RESULT=$(kubectl get configmap --kubeconfig $SPOKE_KUBECONFIG -n openshift-monitoring cluster-monitoring-config -o yaml)
     if [[ $RESULT == *"replacement: test_value"* ]] && [[ $RESULT == *"replacement: cluster1"* ]] && [[ $RESULT == *"replacement: 3650eda1-66fe-4aba-bfbc-d398638f3022"* ]]; then
         echo "Latest changes synched to configmap cluster-monitoring-config"
     else
