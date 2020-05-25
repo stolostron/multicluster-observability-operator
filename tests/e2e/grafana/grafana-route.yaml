@@ -1,0 +1,9 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: grafana
+spec:
+  host: grafana.local
+  wildcardPolicy: None
+  to:
+    name: grafana
