@@ -8,7 +8,6 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
-	"sigs.k8s.io/yaml"
 
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering/templates"
@@ -75,12 +74,6 @@ func loadTemplates(namespace string,
 				}
 			}
 		}
-		objStr, err := yaml.Marshal(obj)
-		if err != nil {
-			return nil, err
-		}
-		log.Info("failed to convert the resource", "obj", objStr)
-
 		rawExtensionList = append(rawExtensionList, runtime.RawExtension{Object: obj})
 	}
 	return rawExtensionList, nil
