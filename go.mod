@@ -9,6 +9,8 @@ require (
 	github.com/imdario/mergo v0.3.9
 	github.com/observatorium/configuration v0.0.0-20200505130827-23ee12780d4c
 	github.com/open-cluster-management/api v0.0.0-20200602195039-a516cac2e038
+	github.com/onsi/ginkgo v1.11.0
+	github.com/onsi/gomega v1.8.1
 	github.com/open-cluster-management/endpoint-metrics-operator v0.0.0-20200514072421-c428f130164c
 	github.com/open-cluster-management/multicloud-operators-placementrule v1.0.0-2020-05-08-20-30-09
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
