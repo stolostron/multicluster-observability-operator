@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
+	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering/templates"
 )
 
@@ -17,6 +18,7 @@ const (
 	endpointImageTag = "0.1.0-786316d667660ad0a22729b092ce56c2d1830d86"
 	templatePath     = "/usr/local/manifests/endpoint-metrics"
 	deployName       = "endpoint-metrics-operator"
+	saName           = "endpoint-metrics-operator"
 )
 
 func getK8sObj(kind string) runtime.Object {
@@ -29,7 +31,8 @@ func getK8sObj(kind string) runtime.Object {
 	return objs[kind]
 }
 
-func loadTemplates(namespace string) ([]runtime.RawExtension, error) {
+func loadTemplates(namespace string,
+	mcm *monitoringv1alpha1.MultiClusterMonitoring) ([]runtime.RawExtension, error) {
 	templateRenderer := templates.NewTemplateRenderer(templatePath)
 	resourceList := []*resource.Resource{}
 	err := templateRenderer.AddTemplateFromPath(templatePath, &resourceList)
@@ -61,7 +64,16 @@ func loadTemplates(namespace string) ([]runtime.RawExtension, error) {
 				}
 			}
 		}
-
+		// set the imagepullsecrets for sa
+		if r.GetKind() == "ServiceAccount" && r.GetName() == saName {
+			imageSecrets := obj.(*corev1.ServiceAccount).ImagePullSecrets
+			for i, imageSecret := range imageSecrets {
+				if imageSecret.Name == "REPLACE_WITH_IMAGEPULLSECRET" {
+					imageSecrets[i].Name = mcm.Spec.ImagePullSecret
+					break
+				}
+			}
+		}
 		rawExtensionList = append(rawExtensionList, runtime.RawExtension{Object: obj})
 	}
 	return rawExtensionList, nil

@@ -5,6 +5,7 @@ package placementrule
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -12,13 +13,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
+	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
 
 const (
 	workName = "monitoring-endpoint-metrics-work"
 )
 
-func createManifestWork(client client.Client, namespace string) error {
+func createManifestWork(client client.Client, namespace string,
+	mcm *monitoringv1alpha1.MultiClusterMonitoring,
+	imagePullSecret *corev1.Secret) error {
 	found := &workv1.ManifestWork{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
@@ -49,7 +53,7 @@ func createManifestWork(client client.Client, namespace string) error {
 				},
 			},
 		}
-		templates, err := loadTemplates(namespace)
+		templates, err := loadTemplates(namespace, mcm)
 		if err != nil {
 			log.Error(err, "Failed to load templates")
 			return err
@@ -58,6 +62,28 @@ func createManifestWork(client client.Client, namespace string) error {
 		for _, raw := range templates {
 			manifests = append(manifests, workv1.Manifest{raw})
 		}
+
+		//create image pull secret
+		manifests = append(manifests,
+			workv1.Manifest{
+				runtime.RawExtension{
+					Object: &corev1.Secret{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: corev1.SchemeGroupVersion.String(),
+							Kind:       "Secret",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      imagePullSecret.Name,
+							Namespace: spokeNameSpace,
+						},
+						Data: map[string][]byte{
+							".dockerconfigjson": imagePullSecret.Data[".dockerconfigjson"],
+						},
+						Type: corev1.SecretTypeDockerConfigJson,
+					},
+				},
+			})
+
 		work.Spec.Workload.Manifests = manifests
 		err = client.Create(context.TODO(), work)
 		if err != nil {

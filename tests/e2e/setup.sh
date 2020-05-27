@@ -173,13 +173,13 @@ deploy_hub_core() {
     cd nucleus/
     $sed_command "s~namespace: open-cluster-management-core~namespace: open-cluster-management~g" deploy/nucleus-hub/*.yaml
     $sed_command "s~replicas: 3~replicas: 1~g" deploy/nucleus-hub/*.yaml
-if [[ "$(uname)" == "Darwin" ]]; then
-    $sed_command "\$a\\
-    imagePullSecrets:\\
-    - name: multiclusterhub-operator-pull-secret" deploy/nucleus-hub/service_account.yaml
-elif [[ "$(uname)" == "Linux" ]]; then
-    $sed_command "\$aimagePullSecrets:\n- name: multiclusterhub-operator-pull-secret" deploy/nucleus-hub/service_account.yaml
-fi
+    if [[ "$(uname)" == "Darwin" ]]; then
+        $sed_command "\$a\\
+        imagePullSecrets:\\
+        - name: multiclusterhub-operator-pull-secret" deploy/nucleus-hub/service_account.yaml
+    elif [[ "$(uname)" == "Linux" ]]; then
+        $sed_command "\$aimagePullSecrets:\n- name: multiclusterhub-operator-pull-secret" deploy/nucleus-hub/service_account.yaml
+    fi
     kubectl apply -f deploy/nucleus-hub/
     kubectl apply -f deploy/nucleus-hub/crds/*crd.yaml
     sleep 2
@@ -192,14 +192,14 @@ deploy_spoke_core() {
     $sed_command "s~namespace: open-cluster-management-core~namespace: default~g" deploy/nucleus-spoke/*.yaml
     $sed_command "s~namespace: open-cluster-management~namespace: default~g" deploy/nucleus-spoke/*.yaml
     $sed_command "s~replicas: 3~replicas: 1~g" deploy/nucleus-hub/*.yaml
-kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
-if [[ "$(uname)" == "Darwin" ]]; then
-    $sed_command "\$a\\
-    imagePullSecrets:\\
-    - name: multiclusterhub-operator-pull-secret" deploy/nucleus-spoke/service_account.yaml
-elif [[ "$(uname)" == "Linux" ]]; then
-    $sed_command "\$aimagePullSecrets:\n- name: multiclusterhub-operator-pull-secret" deploy/nucleus-spoke/service_account.yaml
-fi
+    kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
+    if [[ "$(uname)" == "Darwin" ]]; then
+        $sed_command "\$a\\
+        imagePullSecrets:\\
+        - name: multiclusterhub-operator-pull-secret" deploy/nucleus-spoke/service_account.yaml
+    elif [[ "$(uname)" == "Linux" ]]; then
+        $sed_command "\$aimagePullSecrets:\n- name: multiclusterhub-operator-pull-secret" deploy/nucleus-spoke/service_account.yaml
+    fi
     kubectl apply -f deploy/nucleus-spoke/
     kubectl apply -f deploy/nucleus-spoke/crds/*crd.yaml
     sleep 2
@@ -259,8 +259,8 @@ patch_for_remote_write() {
     kubectl --kubeconfig $HUB_KUBECONFIG patch route observatorium-api --patch '{"spec":{"host": "observatorium.hub", "wildcardPolicy": "None"}}' --type=merge
     obser_hub=`kind get kubeconfig --name hub --internal | grep server: | awk -F '://' '{print $2}' | awk -F ':' '{print $1}'`
 
-    hub_docker_id=`docker ps | grep hub-control-plane | awk -F ' ' '{print $1}'`
-    docker exec -it $hub_docker_id /bin/bash -c 'echo "$obser_hub observatorium.hub" >> /etc/hosts'
+    spoke_docker_id=`docker ps | grep spoke-control-plane | awk -F ' ' '{print $1}'`
+    docker exec --env obser_hub=$obser_hub -it $spoke_docker_id /bin/bash -c 'echo "$obser_hub observatorium.hub" >> /etc/hosts'
 }
 
 deploy() {
