@@ -95,7 +95,12 @@ func createConfigMap(client kubernetes.Interface, url string, labelConfigs *[]mo
 	return err
 }
 
-func updateConfigMap(client kubernetes.Interface, configmap *v1.ConfigMap, url string, labelConfigs *[]monv1.RelabelConfig) error {
+func updateConfigMap(
+	client kubernetes.Interface,
+	configmap *v1.ConfigMap,
+	url string,
+	labelConfigs *[]monv1.RelabelConfig) error {
+
 	configYaml := configmap.Data[configKey]
 	config := &manifests.Config{}
 	err := k8syaml.NewYAMLOrJSONDecoder(strings.NewReader(configYaml), 100).Decode(&config)
