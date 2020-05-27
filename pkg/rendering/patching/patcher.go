@@ -15,6 +15,10 @@ import (
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
 
+const (
+	specFirstContainer = "spec.template.spec.containers[0]"
+)
+
 type patchGenerateFn func(
 	res *resource.Resource,
 	mcm *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error)
@@ -43,7 +47,7 @@ func ApplyGlobalPatches(res *resource.Resource, mcm *monitoringv1alpha1.MultiClu
 func generateImagePatch(
 	res *resource.Resource,
 	mcm *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
-	imageFromTemplate, err := res.GetString("spec.template.spec.containers[0].image") // need to loop through all images
+	imageFromTemplate, err := res.GetString(specFirstContainer + ".image") // need to loop through all images
 	if err != nil {
 		return nil, err
 	}
@@ -54,20 +58,12 @@ func generateImagePatch(
 	}
 	generatedImage := fmt.Sprintf("%s/%s%s", imageRepo, imageFromTemplate, imageTagSuffix)
 
-	container, _ := res.GetFieldValue("spec.template.spec.containers[0]") // need to loop through all images
+	container, _ := res.GetFieldValue(specFirstContainer)
 	containerMap, _ := container.(map[string]interface{})
 	containerMap["image"] = generatedImage
 	containerMap["imagePullPolicy"] = mcm.Spec.ImagePullPolicy
 
-	return kunstruct.NewKunstructuredFactoryImpl().FromMap(map[string]interface{}{
-		"spec": map[string]interface{}{
-			"template": map[string]interface{}{
-				"spec": map[string]interface{}{
-					"containers": []interface{}{containerMap},
-				},
-			},
-		},
-	}), nil
+	return newKunstructuredForSpecContainers(containerMap), nil
 }
 
 /* #nosec */
@@ -149,7 +145,7 @@ func generateReplicasPatch(replicas int32) ifc.Kunstructured {
 }
 
 func generateContainerArgsPatch(r *resource.Resource, newArgs map[string]string) (ifc.Kunstructured, error) {
-	originalArgs, err := r.Kunstructured.GetStringSlice("spec.template.spec.containers[0].args")
+	originalArgs, err := r.Kunstructured.GetStringSlice(specFirstContainer + ".args")
 	if err != nil {
 		return nil, err
 	}
@@ -175,23 +171,15 @@ func generateContainerArgsPatch(r *resource.Resource, newArgs map[string]string)
 		args = append([]string{cmd}, args...)
 	}
 
-	container, _ := r.GetFieldValue("spec.template.spec.containers[0]")
+	container, _ := r.GetFieldValue(specFirstContainer)
 	containerMap, _ := container.(map[string]interface{})
 	containerMap["args"] = args
 
-	return kunstruct.NewKunstructuredFactoryImpl().FromMap(map[string]interface{}{
-		"spec": map[string]interface{}{
-			"template": map[string]interface{}{
-				"spec": map[string]interface{}{
-					"containers": []interface{}{containerMap},
-				},
-			},
-		},
-	}), nil
+	return newKunstructuredForSpecContainers(containerMap), nil
 }
 
 func generateEnvVarsPatch(r *resource.Resource, newEnvs []corev1.EnvVar) (ifc.Kunstructured, error) {
-	origianl, err := r.GetSlice("spec.template.spec.containers[0].env")
+	origianl, err := r.GetSlice(specFirstContainer + ".env")
 	if err != nil {
 		return nil, err
 	}
@@ -206,19 +194,11 @@ func generateEnvVarsPatch(r *resource.Resource, newEnvs []corev1.EnvVar) (ifc.Ku
 		envs = append(envs, envMap[envName])
 	}
 
-	container, _ := r.GetFieldValue("spec.template.spec.containers[0]")
+	container, _ := r.GetFieldValue(specFirstContainer)
 	containerMap, _ := container.(map[string]interface{})
 	containerMap["env"] = envs
 
-	return kunstruct.NewKunstructuredFactoryImpl().FromMap(map[string]interface{}{
-		"spec": map[string]interface{}{
-			"template": map[string]interface{}{
-				"spec": map[string]interface{}{
-					"containers": []interface{}{containerMap},
-				},
-			},
-		},
-	}), nil
+	return newKunstructuredForSpecContainers(containerMap), nil
 }
 
 func generateVolumesPatch(r *resource.Resource, newVolumes []corev1.Volume) (ifc.Kunstructured, error) {
@@ -249,7 +229,7 @@ func generateVolumesPatch(r *resource.Resource, newVolumes []corev1.Volume) (ifc
 }
 
 func generateVolumeMountPatch(r *resource.Resource, newVolumeMounts []corev1.VolumeMount) (ifc.Kunstructured, error) {
-	origianl, err := r.GetSlice("spec.template.spec.containers[0].volumeMounts")
+	origianl, err := r.GetSlice(specFirstContainer + ".volumeMounts")
 	if err != nil {
 		return nil, err
 	}
@@ -257,24 +237,17 @@ func generateVolumeMountPatch(r *resource.Resource, newVolumeMounts []corev1.Vol
 	for _, newVolumeMount := range newVolumeMounts {
 		volumeMountMap[newVolumeMount.Name] = newVolumeMount
 	}
+
 	envs := []interface{}{}
 	for _, envName := range getSortedKeys(volumeMountMap) {
 		envs = append(envs, volumeMountMap[envName])
 	}
 
-	container, _ := r.GetFieldValue("spec.template.spec.containers[0]")
+	container, _ := r.GetFieldValue(specFirstContainer)
 	containerMap, _ := container.(map[string]interface{})
 	containerMap["volumeMounts"] = envs
 
-	return kunstruct.NewKunstructuredFactoryImpl().FromMap(map[string]interface{}{
-		"spec": map[string]interface{}{
-			"template": map[string]interface{}{
-				"spec": map[string]interface{}{
-					"containers": []interface{}{containerMap},
-				},
-			},
-		},
-	}), nil
+	return newKunstructuredForSpecContainers(containerMap), nil
 }
 
 func splitArgs(args []string) (string, []string) {
@@ -321,4 +294,16 @@ func getSortedKeys(objMap map[string]interface{}) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+func newKunstructuredForSpecContainers(srcMap map[string]interface{}) ifc.Kunstructured {
+	return kunstruct.NewKunstructuredFactoryImpl().FromMap(map[string]interface{}{
+		"spec": map[string]interface{}{
+			"template": map[string]interface{}{
+				"spec": map[string]interface{}{
+					"containers": []interface{}{srcMap},
+				},
+			},
+		},
+	})
 }

@@ -18,6 +18,8 @@ import (
 
 const (
 	metadataErr = "failed to find metadata field"
+
+	nsUpdateAnnoKey = "update-namespace"
 )
 
 var log = logf.Log.WithName("renderer")
@@ -315,8 +317,8 @@ func UpdateNamespace(u *unstructured.Unstructured) bool {
 	if ok {
 		annotations, ok := metadata["annotations"].(map[string]interface{})
 		if ok && annotations != nil {
-			if annotations["update-namespace"] != nil && annotations["update-namespace"].(string) != "" {
-				updateNamespace, _ = strconv.ParseBool(annotations["update-namespace"].(string))
+			if annotations[nsUpdateAnnoKey] != nil && annotations[nsUpdateAnnoKey].(string) != "" {
+				updateNamespace, _ = strconv.ParseBool(annotations[nsUpdateAnnoKey].(string))
 			}
 		}
 	}

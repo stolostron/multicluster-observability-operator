@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	endpointImage = "quay.io/open-cluster-management/endpoint-metrics-operator:0.1.0-786316d667660ad0a22729b092ce56c2d1830d86"
-	templatePath  = "/usr/local/manifests/endpoint-metrics"
-	deployName    = "endpoint-metrics-operator"
+	endpointImage    = "quay.io/open-cluster-management/endpoint-metrics-operator"
+	endpointImageTag = "0.1.0-786316d667660ad0a22729b092ce56c2d1830d86"
+	templatePath     = "/usr/local/manifests/endpoint-metrics"
+	deployName       = "endpoint-metrics-operator"
 )
 
 func getK8sObj(kind string) runtime.Object {
@@ -52,7 +53,7 @@ func loadTemplates(namespace string) ([]runtime.RawExtension, error) {
 		// set the image for endpoint metrics operator
 		if r.GetKind() == "Deployment" && r.GetName() == deployName {
 			spec := obj.(*v1.Deployment).Spec.Template.Spec
-			spec.Containers[0].Image = endpointImage
+			spec.Containers[0].Image = endpointImage + ":" + endpointImageTag
 			for i, env := range spec.Containers[0].Env {
 				if env.Name == "WATCH_NAMESPACE" {
 					spec.Containers[0].Env[i].Value = namespace

@@ -29,25 +29,31 @@ func (r *Renderer) renderMinioDeployments(res *resource.Resource) (*unstructured
 	}
 
 	spec, ok := u.Object["spec"].(map[string]interface{})
-	if ok {
-		template, ok := spec["template"].(map[string]interface{})
-		if ok {
-			// update MINIO_ACCESS_KEY and MINIO_SECRET_KEY
-			containers, _ := template["spec"].(map[string]interface{})["containers"].([]interface{})
-			if len(containers) == 0 {
-				return nil, nil
-			}
+	if !ok {
+		return u, nil
+	}
 
-			envList, ok := containers[0].(map[string]interface{})["env"].([]interface{})
-			if ok {
-				for idx := range envList {
-					env := envList[idx].(map[string]interface{})
-					err = replaceInValues(env, r.cr)
-					if err != nil {
-						return nil, err
-					}
-				}
-			}
+	template, ok := spec["template"].(map[string]interface{})
+	if !ok {
+		return u, nil
+	}
+
+	// update MINIO_ACCESS_KEY and MINIO_SECRET_KEY
+	containers, _ := template["spec"].(map[string]interface{})["containers"].([]interface{})
+	if len(containers) == 0 {
+		return nil, nil
+	}
+
+	envList, ok := containers[0].(map[string]interface{})["env"].([]interface{})
+	if !ok {
+		return u, nil
+	}
+
+	for idx := range envList {
+		env := envList[idx].(map[string]interface{})
+		err = replaceInValues(env, r.cr)
+		if err != nil {
+			return nil, err
 		}
 	}
 
