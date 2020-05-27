@@ -7,8 +7,10 @@ import (
 	"strings"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -19,7 +21,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
 	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
+	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
 
 var log = logf.Log.WithName("controller_placementrule")
@@ -102,9 +106,32 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling PlacementRule")
 
+	// Fetch the MultiClusterMonitoring instance
+	mcm := &monitoringv1alpha1.MultiClusterMonitoring{}
+	err := r.client.Get(context.TODO(),
+		types.NamespacedName{
+			Name:      "monitoring",
+			Namespace: request.Namespace,
+		}, mcm)
+	if err != nil {
+		// Error reading the object - requeue the request.
+		return reconcile.Result{}, err
+	}
+
+	imagePullSecret := &corev1.Secret{}
+	err = r.client.Get(context.TODO(),
+		types.NamespacedName{
+			Name:      mcm.Spec.ImagePullSecret,
+			Namespace: request.Namespace,
+		}, imagePullSecret)
+	if err != nil {
+		// Error reading the object - requeue the request.
+		return reconcile.Result{}, err
+	}
+
 	// Fetch the PlacementRule instance
 	instance := &appsv1.PlacementRule{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	err = r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -123,9 +150,31 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 			reqLogger.Error(err, "Failed to create endpointmetrics")
 			continue
 		}
-		err = createManifestWork(r.client, decision.ClusterNamespace)
+		err = createManifestWork(r.client, decision.ClusterNamespace, mcm, imagePullSecret)
 		if err != nil {
 			reqLogger.Error(err, "Failed to create manifestwork")
+		}
+	}
+
+	//TODO: should be removed once the placementrule adopted the new API
+	if len(instance.Status.Decisions) == 0 {
+		clusterList := &clusterv1.SpokeClusterList{}
+		err = r.client.List(context.TODO(), clusterList)
+		if err != nil {
+			reqLogger.Error(err, "Failed to list clusters.")
+			return reconcile.Result{}, err
+		}
+
+		for _, cluster := range clusterList.Items {
+			err = createEndpointConfigCR(r.client, instance.Namespace, cluster.GetName(), cluster.GetName())
+			if err != nil {
+				reqLogger.Error(err, "Failed to create endpointmetrics")
+				continue
+			}
+			err = createManifestWork(r.client, cluster.GetName(), mcm, imagePullSecret)
+			if err != nil {
+				reqLogger.Error(err, "Failed to create manifestwork")
+			}
 		}
 	}
 

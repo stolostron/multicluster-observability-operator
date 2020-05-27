@@ -17,7 +17,7 @@ import (
 const (
 	defaultVersion       = "latest"
 	defaultImgRepo       = "quay.io/open-cluster-management"
-	defaultImgPullSecret = "quay-secret"
+	defaultImgPullSecret = "multiclusterhub-operator-pull-secret"
 	defaultStorageClass  = "gp2"
 )
 
