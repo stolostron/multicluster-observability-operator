@@ -189,7 +189,7 @@ run_test_access_grafana_dashboard() {
 
 run_test_endpoint_operator_installation() {
 
-    SPOKE_NAMESPACE="rhacm-monitoring"
+    SPOKE_NAMESPACE="open-cluster-management-monitoring"
 
     # Workaround for placementrules operator
     echo "Patch allclusters placementrule"

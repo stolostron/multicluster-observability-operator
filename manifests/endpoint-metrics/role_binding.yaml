@@ -5,7 +5,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: endpoint-metrics-operator
-  namespace: rhacm-monitoring
+  namespace: open-cluster-management-monitoring
 roleRef:
   kind: ClusterRole
   name: endpoint-metrics-operator

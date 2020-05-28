@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	spokeNameSpace = "rhacm-monitoring"
+	spokeNameSpace = "open-cluster-management-monitoring"
 )
 
 func createNameSpace() *corev1.Namespace {
