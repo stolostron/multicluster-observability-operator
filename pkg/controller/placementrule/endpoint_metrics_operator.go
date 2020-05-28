@@ -18,8 +18,8 @@ const (
 	endpointImageTag = "0.1.0-786316d667660ad0a22729b092ce56c2d1830d86"
 	templatePath     = "/usr/local/manifests/endpoint-metrics"
 	deployName       = "endpoint-metrics-operator"
-	saName           = "endpoint-metrics-operator"
-	rolebindingName  = "endpoint-metrics-operator"
+	saName           = "endpoint-metrics-operator-sa"
+	rolebindingName  = "endpoint-metrics-operator-rb"
 )
 
 func getK8sObj(kind string) runtime.Object {
