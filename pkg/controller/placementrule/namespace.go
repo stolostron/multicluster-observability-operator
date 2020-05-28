@@ -3,12 +3,14 @@
 package placementrule
 
 import (
+	"os"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-	spokeNameSpace = "open-cluster-management-monitoring"
+var (
+	spokeNameSpace = os.Getenv("SPOKE_NAMESPACE")
 )
 
 func createNameSpace() *corev1.Namespace {
