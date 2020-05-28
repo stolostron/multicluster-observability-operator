@@ -218,18 +218,18 @@ run_test_endpoint_operator_installation() {
         echo "The secret hub-kube-config created"
     fi
 
-    kubectl create secret --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE docker-registry\
-        endpoint-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
-    kubectl patch serviceaccount --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE endpoint-metrics-operator\
-        -p '{"imagePullSecrets": [{"name": "endpoint-operator-pull-secret"}]}'
-    if [ $? -ne 0 ]; then
-        echo "Failed to add pull secret for rhacm namespace in spoke cluster"
-        exit 1
-    else
-        echo "Added pull secret for rhacm namespace in spoke cluster"
-    fi
+    #kubectl create secret --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE docker-registry\
+    #    endpoint-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
+    #kubectl patch serviceaccount --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE endpoint-metrics-operator\
+    #    -p '{"imagePullSecrets": [{"name": "endpoint-operator-pull-secret"}]}'
+    #if [ $? -ne 0 ]; then
+    #    echo "Failed to add pull secret for rhacm namespace in spoke cluster"
+    #    exit 1
+    #else
+    #    echo "Added pull secret for rhacm namespace in spoke cluster"
+    #fi
     # Workaround to apply pull secret
-    kubectl delete po --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE --all
+    #kubectl delete po --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE --all
 
     wait_for_popup deployment endpoint-metrics-operator kind-config-spoke $SPOKE_NAMESPACE
     if [ $? -ne 0 ]; then
