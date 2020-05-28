@@ -256,6 +256,20 @@ approve_csr_joinrequest() {
 
 patch_for_remote_write() {
     # patch observatorium route
+    n=1
+    while true
+    do
+        entity=`kubectl --kubeconfig $HUB_KUBECONFIG get route observatorium-api`
+        if [[ ! -z $entity ]]; then
+            break
+        fi
+        if [[ $n -ge 20 ]]; then
+            exit 1
+        fi
+        n=$((n+1))
+        echo "Retrying in 10s..."
+        sleep 10
+    done
     kubectl --kubeconfig $HUB_KUBECONFIG patch route observatorium-api --patch '{"spec":{"host": "observatorium.hub", "wildcardPolicy": "None"}}' --type=merge
     obser_hub=`kind get kubeconfig --name hub --internal | grep server: | awk -F '://' '{print $2}' | awk -F ':' '{print $1}'`
 
@@ -281,4 +295,4 @@ deploy() {
     revert_changes
 }
 
-deploy $1
+deploy $1 $2
