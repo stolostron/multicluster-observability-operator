@@ -11,6 +11,7 @@ import (
 	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -253,91 +254,20 @@ func deploy(instance *monitoringv1alpha1.MultiClusterMonitoring,
 		return nil
 	}
 
-	depjson, _ := found.MarshalJSON()
-	depoly := &appsv1.Deployment{}
-	json.Unmarshal(depjson, depoly)
+	runtimeJSON, _ := found.MarshalJSON()
+	runtimeDepoly := &appsv1.Deployment{}
+	json.Unmarshal(runtimeJSON, runtimeDepoly)
 
-	desired, needsUpdate := validateDeployment(instance, depoly)
-	if needsUpdate {
-		err = c.Update(context.TODO(), desired)
-		if err != nil {
-			return err
-		}
+	desiredJSON, _ := obj.MarshalJSON()
+	desiredDepoly := &appsv1.Deployment{}
+	json.Unmarshal(desiredJSON, desiredDepoly)
+
+	if !apiequality.Semantic.DeepDerivative(desiredDepoly.Spec, runtimeDepoly.Spec) {
+		log.Info("Update", "Kind:", obj.GroupVersionKind(), "Name:", obj.GetName())
+		return c.Update(context.TODO(), desiredDepoly)
 	}
+
 	return nil
-}
-
-func validateDeployment(m *monitoringv1alpha1.MultiClusterMonitoring,
-	dep *appsv1.Deployment) (*appsv1.Deployment, bool) {
-	found := dep.DeepCopy()
-
-	pod := &found.Spec.Template.Spec
-	container := &found.Spec.Template.Spec.Containers[0]
-	needsUpdate := false
-
-	// verify image pull secret
-	if m.Spec.ImagePullSecret != "" {
-		ps := corev1.LocalObjectReference{Name: m.Spec.ImagePullSecret}
-		if !ContainsPullSecret(pod.ImagePullSecrets, ps) {
-			log.Info("Enforcing imagePullSecret from CR spec")
-			pod.ImagePullSecrets = append(pod.ImagePullSecrets, ps)
-			needsUpdate = true
-		}
-	}
-
-	// // verify image repository and suffix
-	// if container.Image != Image(m, cache) {
-	// 	log.Info("Enforcing image repo and suffix from CR spec")
-	// 	container.Image = Image(m, cache)
-	// 	needsUpdate = true
-	// }
-
-	// verify image pull policy
-	if container.ImagePullPolicy != m.Spec.ImagePullPolicy {
-		log.Info("Enforcing imagePullPolicy from CR spec")
-		container.ImagePullPolicy = m.Spec.ImagePullPolicy
-		needsUpdate = true
-	}
-
-	// verify node selectors
-	desiredSelectors := m.Spec.NodeSelector
-	if !ContainsMap(pod.NodeSelector, desiredSelectors) {
-		log.Info("Enforcing node selectors from CR spec")
-		pod.NodeSelector = desiredSelectors
-		needsUpdate = true
-	}
-
-	// verify replica count
-	// if *found.Spec.Replicas != int32(*m.Spec.ReplicaCount) {
-	// 	log.Info("Enforcing replicaCount from CR spec")
-	// 	replicas := int32(*m.Spec.ReplicaCount)
-	// 	found.Spec.Replicas = &replicas
-	// 	needsUpdate = true
-	// }
-
-	return found, needsUpdate
-}
-
-// ContainsPullSecret returns whether a list of pullSecrets contains a given pull secret
-func ContainsPullSecret(pullSecrets []corev1.LocalObjectReference, ps corev1.LocalObjectReference) bool {
-	for _, v := range pullSecrets {
-		if v == ps {
-			return true
-		}
-	}
-	return false
-}
-
-// ContainsMap returns whether the expected map entries are included in the map
-func ContainsMap(all map[string]string, expected map[string]string) bool {
-	for key, exval := range expected {
-		allval, ok := all[key]
-		if !ok || allval != exval {
-			return false
-		}
-
-	}
-	return true
 }
 
 // labelsForMultiClusterMonitoring returns the labels for selecting the resources

@@ -22,7 +22,6 @@ spec:
       - args:
         - -config=/etc/grafana/grafana.ini
         image: grafana/grafana:6.6.0
-        imagePullPolicy: IfNotPresent
         name: grafana
         ports:
         - containerPort: 3001
@@ -64,7 +63,6 @@ spec:
           name: grafana-dashboard-node-rsrc-use
         - mountPath: /etc/grafana
           name: grafana-config
-      securityContext: {}
       serviceAccount: grafana
       serviceAccountName: grafana
       volumes:
