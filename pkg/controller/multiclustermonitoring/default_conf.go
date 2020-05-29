@@ -3,13 +3,14 @@
 package multiclustermonitoring
 
 import (
+	"bytes"
 	"context"
-	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/yaml"
 
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
@@ -43,7 +44,7 @@ func GenerateMonitoringCR(c client.Client,
 	}
 
 	if mcm.Spec.NodeSelector == nil {
-		mcm.Spec.NodeSelector = &monitoringv1alpha1.NodeSelector{}
+		mcm.Spec.NodeSelector = map[string]string{}
 	}
 
 	if mcm.Spec.StorageClass == "" {
@@ -85,12 +86,20 @@ func GenerateMonitoringCR(c client.Client,
 		return &reconcile.Result{}, err
 	}
 
-	// if MultiClusterMonitoring CR already exists, update new config to CR
-	if !reflect.DeepEqual(found.Spec, mcm.Spec) {
+	desired, err := yaml.Marshal(mcm.Spec)
+	if err != nil {
+		log.Error(err, "issue parsing desired MultiClusterMonitoring values")
+	}
+	current, err := yaml.Marshal(found.Spec)
+	if err != nil {
+		log.Error(err, "issue parsing current MultiClusterMonitoring values")
+	}
+
+	if res := bytes.Compare(desired, current); res != 0 {
 		log.Info("Update MultiClusterMonitoring CR with default values.")
 		newObj := found.DeepCopy()
 		newObj.Spec = mcm.Spec
-		err := c.Update(context.TODO(), newObj)
+		err = c.Update(context.TODO(), newObj)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}

@@ -4,13 +4,14 @@ package multiclustermonitoring
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"reflect"
 	"time"
 
 	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -157,7 +158,7 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 				reqLogger.Error(err, "Failed to set controller reference")
 			}
 		}
-		if err := deploy(r.client, res); err != nil {
+		if err := deploy(instance, r.client, res); err != nil {
 			reqLogger.Error(err, fmt.Sprintf("Failed to deploy %s %s/%s", res.GetKind(), instance.Namespace, res.GetName()))
 			return reconcile.Result{}, err
 		}
@@ -236,7 +237,8 @@ func (r *ReconcileMultiClusterMonitoring) UpdateStatus(
 	return &reconcile.Result{}, nil
 }
 
-func deploy(c client.Client, obj *unstructured.Unstructured) error {
+func deploy(instance *monitoringv1alpha1.MultiClusterMonitoring,
+	c client.Client, obj *unstructured.Unstructured) error {
 	found := &unstructured.Unstructured{}
 	found.SetGroupVersionKind(obj.GroupVersionKind())
 	err := c.Get(context.TODO(), types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, found)
@@ -252,17 +254,19 @@ func deploy(c client.Client, obj *unstructured.Unstructured) error {
 		return nil
 	}
 
-	oldSpec, oldSpecFound := found.Object["spec"]
-	newSpec, newSpecFound := obj.Object["spec"]
-	if !oldSpecFound || !newSpecFound {
-		return nil
-	}
-	if !reflect.DeepEqual(oldSpec, newSpec) {
-		newObj := found.DeepCopy()
-		newObj.Object["spec"] = newSpec
+	runtimeJSON, _ := found.MarshalJSON()
+	runtimeDepoly := &appsv1.Deployment{}
+	json.Unmarshal(runtimeJSON, runtimeDepoly)
+
+	desiredJSON, _ := obj.MarshalJSON()
+	desiredDepoly := &appsv1.Deployment{}
+	json.Unmarshal(desiredJSON, desiredDepoly)
+
+	if !apiequality.Semantic.DeepDerivative(desiredDepoly.Spec, runtimeDepoly.Spec) {
 		log.Info("Update", "Kind:", obj.GroupVersionKind(), "Name:", obj.GetName())
-		return c.Update(context.TODO(), newObj)
+		return c.Update(context.TODO(), desiredDepoly)
 	}
+
 	return nil
 }
 

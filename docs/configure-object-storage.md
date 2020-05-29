@@ -12,7 +12,7 @@ spec:
   imageRepository: "quay.io/open-cluster-management"
   imageTagSuffix: ""
   imagePullPolicy: Always
-  imagePullSecret: quay-secret
+  imagePullSecret: multiclusterhub-operator-pull-secret
   storageClass: gp2
   objectStorageConfig:
     type: minio

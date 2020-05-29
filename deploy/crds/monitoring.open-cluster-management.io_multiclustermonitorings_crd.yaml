@@ -57,17 +57,9 @@ spec:
               description: ImageTagSuffix of the MultiClusterMonitor images
               type: string
             nodeSelector:
+              additionalProperties:
+                type: string
               description: Spec of NodeSelector
-              properties:
-                customLabelSelector:
-                  description: Spec of CustomLabelSelector
-                  type: string
-                customLabelValue:
-                  description: Spec of CustomLabelValue
-                  type: string
-                os:
-                  description: Spec of OS
-                  type: string
               type: object
             objectStorageConfigSpec:
               description: Spec of object storage config

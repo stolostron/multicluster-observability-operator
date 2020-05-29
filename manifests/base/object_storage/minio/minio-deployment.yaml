@@ -6,6 +6,7 @@ metadata:
   labels:
     monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: minio
@@ -29,9 +30,11 @@ spec:
         - name: MINIO_SECRET_KEY
           value: "{{OBJ_STORAGE_SECRETKEY}}"
         image: minio/minio
+        imagePullPolicy: IfNotPresent
         name: minio
         ports:
         - containerPort: 9000
+          protocol: TCP
         volumeMounts:
         - mountPath: /storage
           name: storage

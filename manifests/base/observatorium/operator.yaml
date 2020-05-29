@@ -9,11 +9,11 @@ metadata:
     control-plane: observatorium-operator
     monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
 spec:
+  replicas: 1
   selector:
     matchLabels:
       control-plane: observatorium-operator
       monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
-  replicas: 1
   template:
     metadata:
       labels:
@@ -21,11 +21,11 @@ spec:
         monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
     spec:
       containers:
-      - name: observatorium-operator
+      - args:
+        - --log-level=debug
         image: quay.io/observatorium/observatorium-operator:master-2020-05-07-e07bb8e
         imagePullPolicy: IfNotPresent
-        args:
-          - "--log-level=debug"
+        name: observatorium-operator
         resources:
           limits:
             cpu: 100m
@@ -33,4 +33,3 @@ spec:
           requests:
             cpu: 100m
             memory: 600Mi
-      terminationGracePeriodSeconds: 10

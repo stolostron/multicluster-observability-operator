@@ -25,22 +25,22 @@ type patchGenerateFn func(
 
 func ApplyGlobalPatches(res *resource.Resource, mcm *monitoringv1alpha1.MultiClusterMonitoring) error {
 
-	for _, generate := range []patchGenerateFn{
-		//generateImagePatch,
-		//generateImagePullSecretsPatch,
-		generateNodeSelectorPatch,
-	} {
-		patch, err := generate(res, mcm)
-		if err != nil {
-			return err
-		}
-		if patch == nil {
-			continue
-		}
-		if err = res.Patch(patch); err != nil {
-			return err
-		}
-	}
+	// for _, generate := range []patchGenerateFn{
+	// 	//generateImagePatch,
+	// 	//generateImagePullSecretsPatch,
+	// 	generateNodeSelectorPatch,
+	// } {
+	// 	patch, err := generate(res, mcm)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	if patch == nil {
+	// 		continue
+	// 	}
+	// 	if err = res.Patch(patch); err != nil {
+	// 		return err
+	// 	}
+	// }
 	return nil
 }
 
@@ -95,46 +95,46 @@ func generateImagePullSecretsPatch(
 	return &kunstruct.UnstructAdapter{Unstructured: u}, err
 }
 
-const nodeSelectorTemplate = `
-kind: __kind__
-spec:
-  template:
-    spec:
-      nodeSelector: {__selector__}
-`
+// const nodeSelectorTemplate = `
+// kind: __kind__
+// spec:
+//   template:
+//     spec:
+//       nodeSelector: {__selector__}
+// `
 
-func generateNodeSelectorPatch(
-	res *resource.Resource,
-	mcm *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
+// func generateNodeSelectorPatch(
+// 	res *resource.Resource,
+// 	mcm *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
 
-	nodeSelectorOptions := mcm.Spec.NodeSelector
-	if nodeSelectorOptions == nil {
-		return nil, nil
-	}
-	template := strings.Replace(nodeSelectorTemplate, "__kind__", res.GetKind(), 1)
-	selectormap := map[string]string{}
-	if nodeSelectorOptions.OS != "" {
-		selectormap["beta.kubernetes.io/os"] = nodeSelectorOptions.OS
-	}
-	if nodeSelectorOptions.CustomLabelSelector != "" && nodeSelectorOptions.CustomLabelValue != "" {
-		selectormap[nodeSelectorOptions.CustomLabelSelector] = nodeSelectorOptions.CustomLabelValue
-	}
-	if len(selectormap) == 0 {
-		return nil, nil
-	}
-	selectors := []string{}
-	for k, v := range selectormap {
-		selectors = append(selectors, fmt.Sprintf("\"%s\":\"%s\"", k, v))
-	}
-	template = strings.Replace(template, "__selector__", strings.Join(selectors, ","), 1)
-	json, err := yaml.YAMLToJSON([]byte(template))
-	if err != nil {
-		return nil, err
-	}
-	var u unstructured.Unstructured
-	err = u.UnmarshalJSON(json)
-	return &kunstruct.UnstructAdapter{Unstructured: u}, err
-}
+// 	nodeSelectorOptions := mcm.Spec.NodeSelector
+// 	if nodeSelectorOptions == nil {
+// 		return nil, nil
+// 	}
+// 	template := strings.Replace(nodeSelectorTemplate, "__kind__", res.GetKind(), 1)
+// 	selectormap := map[string]string{}
+// 	if nodeSelectorOptions.OS != "" {
+// 		selectormap["beta.kubernetes.io/os"] = nodeSelectorOptions.OS
+// 	}
+// 	if nodeSelectorOptions.CustomLabelSelector != "" && nodeSelectorOptions.CustomLabelValue != "" {
+// 		selectormap[nodeSelectorOptions.CustomLabelSelector] = nodeSelectorOptions.CustomLabelValue
+// 	}
+// 	if len(selectormap) == 0 {
+// 		return nil, nil
+// 	}
+// 	selectors := []string{}
+// 	for k, v := range selectormap {
+// 		selectors = append(selectors, fmt.Sprintf("\"%s\":\"%s\"", k, v))
+// 	}
+// 	template = strings.Replace(template, "__selector__", strings.Join(selectors, ","), 1)
+// 	json, err := yaml.YAMLToJSON([]byte(template))
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	var u unstructured.Unstructured
+// 	err = u.UnmarshalJSON(json)
+// 	return &kunstruct.UnstructAdapter{Unstructured: u}, err
+// }
 
 func generateReplicasPatch(replicas int32) ifc.Kunstructured {
 	return kunstruct.NewKunstructuredFactoryImpl().FromMap(map[string]interface{}{

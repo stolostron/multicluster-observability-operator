@@ -30,11 +30,6 @@ func TestRender(t *testing.T) {
 			ImagePullPolicy: "Always",
 			ImagePullSecret: "test",
 			StorageClass:    "gp2",
-			NodeSelector: &monitoringv1alpha1.NodeSelector{
-				OS:                  "test",
-				CustomLabelSelector: "test",
-				CustomLabelValue:    "test",
-			},
 
 			ObjectStorageConfigSpec: &monitoringv1alpha1.ObjectStorageConfigSpec{
 				Type: "minio",
