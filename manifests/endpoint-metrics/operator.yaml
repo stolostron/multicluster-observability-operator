@@ -12,7 +12,7 @@ spec:
       labels:
         name: endpoint-metrics-operator
     spec:
-      serviceAccountName: endpoint-metrics-operator
+      serviceAccountName: endpoint-metrics-operator-sa
       containers:
         - name: endpoint-metrics-operator
           # Replace this with the built image name

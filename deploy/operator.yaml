@@ -33,3 +33,5 @@ spec:
               value: "multicluster-monitoring-operator"
             - name: TEMPLATES_PATH
               value: /usr/local/manifests
+            - name: SPOKE_NAMESPACE
+              value: open-cluster-management-monitoring

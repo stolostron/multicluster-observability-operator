@@ -1,11 +1,11 @@
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: endpoint-metrics-operator
+  name: endpoint-metrics-operator-rb
 subjects:
 - kind: ServiceAccount
-  name: endpoint-metrics-operator
-  namespace: rhacm-monitoring
+  name: endpoint-metrics-operator-sa
+  namespace: open-cluster-management-monitoring
 roleRef:
   kind: ClusterRole
   name: endpoint-metrics-operator

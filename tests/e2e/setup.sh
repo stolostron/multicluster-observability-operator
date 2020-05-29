@@ -193,6 +193,11 @@ deploy_spoke_core() {
     $sed_command "s~namespace: open-cluster-management~namespace: default~g" deploy/nucleus-spoke/*.yaml
     $sed_command "s~replicas: 3~replicas: 1~g" deploy/nucleus-hub/*.yaml
     kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
+    
+    SPOKE_NAMESPACE="open-cluster-management-monitoring"
+    kubectl create namespace $SPOKE_NAMESPACE
+    kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS -n $SPOKE_NAMESPACE
+    
     if [[ "$(uname)" == "Darwin" ]]; then
         $sed_command "\$a\\
         imagePullSecrets:\\
