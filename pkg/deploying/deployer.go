@@ -55,9 +55,11 @@ func (d *Deployer) Deploy(obj *unstructured.Unstructured) error {
 		return err
 	}
 
-	deployerFn, _ := d.deployerFns[found.GetKind()]
-
-	return deployerFn(obj, found)
+	deployerFn, ok := d.deployerFns[found.GetKind()]
+	if ok {
+		return deployerFn(obj, found)
+	}
+	return nil
 }
 
 func (d *Deployer) updateDeployment(desiredObj, runtimeObj *unstructured.Unstructured) error {
