@@ -233,8 +233,8 @@ approve_csr_joinrequest() {
             exit 1
         fi
         n=$((n+1))
-        echo "Retrying in 5s..."
-        sleep 5
+        echo "Retrying in 10s..."
+        sleep 10
     done
     n=1
     while true
@@ -243,7 +243,7 @@ approve_csr_joinrequest() {
         if [[ ! -z $cluster ]]; then
             clustername=`kubectl --kubeconfig $HUB_KUBECONFIG get spokecluster | grep -v Name | awk 'NR==2' | awk '{ print $1 }'`
             echo "Approve joinrequest for $clustername"
-              kubectl --kubeconfig $HUB_KUBECONFIG patch spokecluster $clustername --patch '{"spec":{"hubAcceptsClient":true}}' --type=merge
+            kubectl --kubeconfig $HUB_KUBECONFIG patch spokecluster $clustername --patch '{"spec":{"hubAcceptsClient":true}}' --type=merge
             break
         fi
         if [[ $n -ge 20 ]]; then
@@ -254,9 +254,6 @@ approve_csr_joinrequest() {
         sleep 5
     done
 
-    # apply the temporary fix for RBAC
-    kubectl --kubeconfig $HUB_KUBECONFIG apply -f $WORKDIR/tests/e2e/nucleus/role.yaml
-    kubectl --kubeconfig $HUB_KUBECONFIG apply -f $WORKDIR/tests/e2e/nucleus/rolebinding.yaml
 }
 
 patch_for_remote_write() {
@@ -264,7 +261,7 @@ patch_for_remote_write() {
     n=1
     while true
     do
-        entity=`kubectl --kubeconfig $HUB_KUBECONFIG get route observatorium-api`
+        entity=$(kubectl --kubeconfig $HUB_KUBECONFIG get route | grep observatorium-api) || true
         if [[ ! -z $entity ]]; then
             break
         fi
@@ -276,10 +273,11 @@ patch_for_remote_write() {
         sleep 10
     done
     kubectl --kubeconfig $HUB_KUBECONFIG patch route observatorium-api --patch '{"spec":{"host": "observatorium.hub", "wildcardPolicy": "None"}}' --type=merge
-    obser_hub=`kind get kubeconfig --name hub --internal | grep server: | awk -F '://' '{print $2}' | awk -F ':' '{print $1}'`
+    #obser_hub=`kind get kubeconfig --name hub --internal | grep server: | awk -F '://' '{print $2}' | awk -F ':' '{print $1}'`
 
-    spoke_docker_id=`docker ps | grep spoke-control-plane | awk -F ' ' '{print $1}'`
-    docker exec --env obser_hub=$obser_hub -it $spoke_docker_id /bin/bash -c 'echo "$obser_hub observatorium.hub" >> /etc/hosts'
+    #spoke_docker_id=`docker ps | grep spoke-control-plane | awk -F ' ' '{print $1}'`
+    #docker exec --env obser_hub=$obser_hub -it $spoke_docker_id /bin/bash -c 'echo "$obser_hub observatorium.hub" >> /etc/hosts'
+
 }
 
 deploy() {

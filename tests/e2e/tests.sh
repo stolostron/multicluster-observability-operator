@@ -16,7 +16,7 @@ wait_for_popup() {
     n=1
     while true
     do
-        entity=`kubectl get $1 $2 $CONFIG $NAMESPACE| grep -v Name | awk '{ print $1 }'`
+        entity=$(kubectl get $1 $2 $CONFIG $NAMESPACE| grep -v Name | awk '{ print $1 }') || true
         if [[ ! -z $entity ]]; then
             return
         fi
@@ -94,7 +94,7 @@ run_test_scale_grafana() {
     while true
     do
         # check there are 2 grafana pods here
-        replicas=`kubectl get deployment grafana | grep -v AVAILABLE | awk '{ print $4 }'`
+        replicas=$(kubectl get deployment grafana | grep -v AVAILABLE | awk '{ print $4 }') || true
         if [[ $replicas -eq 2 ]]; then
             echo "grafana replicas is update to 2 successfully."
             break
@@ -143,7 +143,7 @@ run_test_reconciling() {
     while true
     do
         # check the changes were applied into observatorium
-        retention=`kubectl get observatorium monitoring-observatorium -ojsonpath='{.spec.compact.retentionResolutionRaw}'`
+        retention=$(kubectl get observatorium monitoring-observatorium -ojsonpath='{.spec.compact.retentionResolutionRaw}') || true
         if [[ $retention == '14d' ]]; then
             echo "Change retentionResolutionRaw to 14d successfully."
             break
