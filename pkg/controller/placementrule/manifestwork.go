@@ -11,10 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
-	placev1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
 
@@ -22,9 +20,7 @@ const (
 	workName = "monitoring-endpoint-metrics-work"
 )
 
-func createManifestWork(client client.Client,
-	p *placev1.PlacementRule, scheme *runtime.Scheme,
-	namespace string,
+func createManifestWork(client client.Client, namespace string,
 	mcm *monitoringv1alpha1.MultiClusterMonitoring,
 	imagePullSecret *corev1.Secret) error {
 	found := &workv1.ManifestWork{}
@@ -57,12 +53,6 @@ func createManifestWork(client client.Client,
 				},
 			},
 		}
-
-		// Set PlacementRule instance as the owner and controller
-		if err := controllerutil.SetControllerReference(p, work, scheme); err != nil {
-			return err
-		}
-
 		templates, err := loadTemplates(namespace, mcm)
 		if err != nil {
 			log.Error(err, "Failed to load templates")

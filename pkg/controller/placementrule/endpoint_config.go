@@ -8,13 +8,10 @@ import (
 	monv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	epv1 "github.com/open-cluster-management/endpoint-metrics-operator/pkg/apis/monitoring/v1"
-	placev1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
 )
 
@@ -23,9 +20,7 @@ const (
 	collectorType = "OCP_PROMETHEUS"
 )
 
-func createEndpointConfigCR(client client.Client,
-	p *placev1.PlacementRule, scheme *runtime.Scheme,
-	obsNamespace string, namespace string, cluster string) error {
+func createEndpointConfigCR(client client.Client, obsNamespace string, namespace string, cluster string) error {
 	url, err := util.GetObsAPIUrl(client, obsNamespace)
 	if err != nil {
 		return err
@@ -54,12 +49,6 @@ func createEndpointConfigCR(client client.Client,
 			},
 		},
 	}
-
-	// Set PlacementRule instance as the owner and controller
-	if err := controllerutil.SetControllerReference(p, ec, scheme); err != nil {
-		return err
-	}
-
 	found := &epv1.EndpointMetrics{}
 	err = client.Get(context.TODO(), types.NamespacedName{Name: epConfigName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
