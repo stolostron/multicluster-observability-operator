@@ -3,11 +3,6 @@
 
 echo "<repo>/<component>:<tag> : $1"
 
-git config credential.helper store
-git config user.name ${GITHUB_USER}
-echo "https://${GITHUB_TOKEN}:x-oauth-basic@github.com" >> ~/.git-credentials
-git config -l
-
 ./tests/e2e/setup.sh $1
 if [ $? -ne 0 ]; then
     echo "Cannot setup environment successfully."
