@@ -165,12 +165,12 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 
 	for _, decision := range instance.Status.Decisions {
 		log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
-		err = createEndpointConfigCR(r.client, instance.Namespace, decision.ClusterNamespace, decision.ClusterName)
+		err = createEndpointConfigCR(r.client, instance, r.scheme, mcm.Namespace, decision.ClusterNamespace, decision.ClusterName)
 		if err != nil {
 			reqLogger.Error(err, "Failed to create endpointmetrics")
 			continue
 		}
-		err = createManifestWork(r.client, decision.ClusterNamespace, mcm, imagePullSecret)
+		err = createManifestWork(r.client, instance, r.scheme, decision.ClusterNamespace, mcm, imagePullSecret)
 		if err != nil {
 			reqLogger.Error(err, "Failed to create manifestwork")
 		}
@@ -186,12 +186,12 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		}
 
 		for _, cluster := range clusterList.Items {
-			err = createEndpointConfigCR(r.client, instance.Namespace, cluster.GetName(), cluster.GetName())
+			err = createEndpointConfigCR(r.client, instance, r.scheme, mcm.Namespace, cluster.GetName(), cluster.GetName())
 			if err != nil {
 				reqLogger.Error(err, "Failed to create endpointmetrics")
 				continue
 			}
-			err = createManifestWork(r.client, cluster.GetName(), mcm, imagePullSecret)
+			err = createManifestWork(r.client, instance, r.scheme, cluster.GetName(), mcm, imagePullSecret)
 			if err != nil {
 				reqLogger.Error(err, "Failed to create manifestwork")
 			}
