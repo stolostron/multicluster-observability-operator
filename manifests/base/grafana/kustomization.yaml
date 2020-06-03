@@ -6,7 +6,6 @@ resources:
 - dashboard-definitions.yaml
 - dashboard-sources.yaml
 - deployment.yaml
-- service-monitor.yaml
 - ingress.yaml
 - service.yaml
 - ocp-dashboards.yaml
