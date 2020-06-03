@@ -1,9 +1,0 @@
-apiVersion: apps.open-cluster-management.io/v1
-kind: PlacementRule
-metadata:
-  labels:
-    agent: monitoring
-  name: allclusters
-  namespace: open-cluster-management
-spec:
-  clusterSelector: {}

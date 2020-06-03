@@ -4,7 +4,6 @@ package placementrule
 
 import (
 	"context"
-	"strings"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	corev1 "k8s.io/api/core/v1"
@@ -26,6 +25,10 @@ import (
 	epv1 "github.com/open-cluster-management/endpoint-metrics-operator/pkg/apis/monitoring/v1"
 	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+)
+
+const (
+	placementRuleName = "open-cluster-management-rule"
 )
 
 var log = logf.Log.WithName("controller_placementrule")
@@ -61,13 +64,13 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if strings.TrimSpace(e.Meta.GetLabels()["agent"]) == "monitoring" && e.Meta.GetNamespace() == watchNamespace {
+			if e.Meta.GetName() == placementRuleName && e.Meta.GetNamespace() == watchNamespace {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if strings.TrimSpace(e.MetaNew.GetLabels()["agent"]) == "monitoring" && e.MetaNew.GetNamespace() == watchNamespace {
+			if e.MetaNew.GetName() == placementRuleName && e.MetaNew.GetNamespace() == watchNamespace {
 				return true
 			}
 			return false
@@ -165,7 +168,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 
 	for _, decision := range instance.Status.Decisions {
 		log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
-		err = createEndpointConfigCR(r.client, instance.Namespace, decision.ClusterNamespace, decision.ClusterName)
+		err = createEndpointConfigCR(r.client, mcm.Namespace, decision.ClusterNamespace, decision.ClusterName)
 		if err != nil {
 			reqLogger.Error(err, "Failed to create endpointmetrics")
 			continue
@@ -186,7 +189,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		}
 
 		for _, cluster := range clusterList.Items {
-			err = createEndpointConfigCR(r.client, instance.Namespace, cluster.GetName(), cluster.GetName())
+			err = createEndpointConfigCR(r.client, mcm.Namespace, cluster.GetName(), cluster.GetName())
 			if err != nil {
 				reqLogger.Error(err, "Failed to create endpointmetrics")
 				continue
