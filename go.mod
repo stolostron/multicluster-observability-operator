@@ -8,7 +8,8 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/imdario/mergo v0.3.9
 	github.com/observatorium/configuration v0.0.0-20200505130827-23ee12780d4c
-	github.com/open-cluster-management/api v0.0.0-20200512175145-bed9ce79e17e
+	github.com/open-cluster-management/api v0.0.0-20200602195039-a516cac2e038
+	github.com/open-cluster-management/endpoint-metrics-operator v0.0.0-20200514072421-c428f130164c
 	github.com/open-cluster-management/multicloud-operators-placementrule v1.0.0-2020-05-08-20-30-09
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
@@ -22,9 +23,9 @@ require (
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
 	golang.org/x/tools v0.0.0-20200428211428-0c9eba77bc32 // indirect
 	google.golang.org/appengine v1.6.6 // indirect
-	k8s.io/api v0.18.2
+	k8s.io/api v0.18.3
 	k8s.io/apiextensions-apiserver v0.18.2 // indirect
-	k8s.io/apimachinery v0.18.2
+	k8s.io/apimachinery v0.18.3
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/utils v0.0.0-20200414100711-2df71ebbae66 // indirect
 	sigs.k8s.io/controller-runtime v0.5.2
