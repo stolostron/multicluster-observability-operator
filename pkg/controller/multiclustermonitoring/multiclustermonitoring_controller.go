@@ -4,18 +4,14 @@ package multiclustermonitoring
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -27,6 +23,7 @@ import (
 
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/deploying"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering"
 )
 
@@ -151,6 +148,7 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 		reqLogger.Error(err, "Failed to render multiClusterMonitoring templates")
 		return reconcile.Result{}, err
 	}
+	deployer := deploying.NewDeployer(r.client)
 	//Deploy the resources
 	for _, res := range toDeploy {
 		if res.GetNamespace() == instance.Namespace {
@@ -158,7 +156,7 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 				reqLogger.Error(err, "Failed to set controller reference")
 			}
 		}
-		if err := deploy(instance, r.client, res); err != nil {
+		if err := deployer.Deploy(res); err != nil {
 			reqLogger.Error(err, fmt.Sprintf("Failed to deploy %s %s/%s", res.GetKind(), instance.Namespace, res.GetName()))
 			return reconcile.Result{}, err
 		}
@@ -235,39 +233,6 @@ func (r *ReconcileMultiClusterMonitoring) UpdateStatus(
 		return &reconcile.Result{}, err
 	}
 	return &reconcile.Result{}, nil
-}
-
-func deploy(instance *monitoringv1alpha1.MultiClusterMonitoring,
-	c client.Client, obj *unstructured.Unstructured) error {
-	found := &unstructured.Unstructured{}
-	found.SetGroupVersionKind(obj.GroupVersionKind())
-	err := c.Get(context.TODO(), types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, found)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("Create", "Kind:", obj.GroupVersionKind(), "Name:", obj.GetName())
-			return c.Create(context.TODO(), obj)
-		}
-		return err
-	}
-
-	if found.GetKind() != "Deployment" {
-		return nil
-	}
-
-	runtimeJSON, _ := found.MarshalJSON()
-	runtimeDepoly := &appsv1.Deployment{}
-	json.Unmarshal(runtimeJSON, runtimeDepoly)
-
-	desiredJSON, _ := obj.MarshalJSON()
-	desiredDepoly := &appsv1.Deployment{}
-	json.Unmarshal(desiredJSON, desiredDepoly)
-
-	if !apiequality.Semantic.DeepDerivative(desiredDepoly.Spec, runtimeDepoly.Spec) {
-		log.Info("Update", "Kind:", obj.GroupVersionKind(), "Name:", obj.GetName())
-		return c.Update(context.TODO(), desiredDepoly)
-	}
-
-	return nil
 }
 
 // labelsForMultiClusterMonitoring returns the labels for selecting the resources
