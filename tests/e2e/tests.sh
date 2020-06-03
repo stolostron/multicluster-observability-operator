@@ -192,13 +192,13 @@ run_test_endpoint_operator_installation() {
     SPOKE_NAMESPACE="open-cluster-management-monitoring"
 
     # Workaround for placementrules operator
-    echo "Patch open-cluster-management-rule placementrule"
+    echo "Patch open-cluster-management-monitoring placementrule"
     cat ~/.kube/kind-config-hub|grep certificate-authority-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d  >> ca
     cat ~/.kube/kind-config-hub|grep client-certificate-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> crt
     cat ~/.kube/kind-config-hub|grep client-key-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> key
     SERVER=$(cat ~/.kube/kind-config-hub|grep server|awk '{split($0, a, ": "); print a[2]}')
     curl -s --cert ./crt --key ./key --cacert ./ca -X PATCH -H "Content-Type:application/merge-patch+json" \
-        $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/open-cluster-management/placementrules/open-cluster-management-rule/status \
+        $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/open-cluster-management/placementrules/open-cluster-management-monitoring/status \
         -d @./tests/e2e/templates/status.json   
     rm ca crt key
 

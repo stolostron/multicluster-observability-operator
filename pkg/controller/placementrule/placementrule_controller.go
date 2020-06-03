@@ -21,14 +21,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
-	workv1 "github.com/open-cluster-management/api/work/v1"
-	epv1 "github.com/open-cluster-management/endpoint-metrics-operator/pkg/apis/monitoring/v1"
 	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
 
 const (
-	placementRuleName = "open-cluster-management-rule"
+	placementRuleName = "open-cluster-management-monitoring"
 )
 
 var log = logf.Log.WithName("controller_placementrule")
@@ -83,24 +81,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// Watch for changes to primary resource PlacementRule
 	err = c.Watch(&source.Kind{Type: &appsv1.PlacementRule{}}, &handler.EnqueueRequestForObject{}, pred)
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to secondary Endpoint CR and requeue the owner PlacementRule
-	err = c.Watch(&source.Kind{Type: &epv1.EndpointMetrics{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &appsv1.PlacementRule{},
-	})
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to secondary Manifestwork CR and requeue the owner PlacementRule
-	err = c.Watch(&source.Kind{Type: &workv1.ManifestWork{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &appsv1.PlacementRule{},
-	})
 	if err != nil {
 		return err
 	}
