@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	roleName           = "monitoring-endpoint-metrics"
-	roleBindingName    = "monitoring-endpoint-metrics"
-	serviceAccountName = "monitoring-endpoint-metrics-sa"
-	epRsName           = "endpointmetrics"
+	roleName           = "monitoring-endpoint-monitoring"
+	roleBindingName    = "monitoring-endpoint-monitoring"
+	serviceAccountName = "monitoring-endpoint-monitoring-sa"
+	epRsName           = "endpointmonitoring"
 	epRsGroup          = "monitoring.open-cluster-management.io"
 )
 
@@ -61,15 +61,15 @@ func createRole(client client.Client, namespace string) error {
 	found := &rbacv1.Role{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating monitoring-endpoint-metrics role", "namespace", namespace)
+		log.Info("Creating monitoring-endpoint-monitoring role", "namespace", namespace)
 		err = client.Create(context.TODO(), role)
 		if err != nil {
-			log.Error(err, "Failed to create monitoring-endpoint-metrics role")
+			log.Error(err, "Failed to create monitoring-endpoint-monitoring role")
 			return err
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check monitoring-endpoint-metrics role")
+		log.Error(err, "Failed to check monitoring-endpoint-monitoring role")
 		return err
 	}
 
@@ -99,15 +99,15 @@ func createRoleBinding(client client.Client, namespace string) error {
 	found := &rbacv1.RoleBinding{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating monitoring-endpoint-metrics rolebinding", "namespace", namespace)
+		log.Info("Creating monitoring-endpoint-monitoring rolebinding", "namespace", namespace)
 		err = client.Create(context.TODO(), rb)
 		if err != nil {
-			log.Error(err, "Failed to create monitoring-endpoint-metrics rolebinding")
+			log.Error(err, "Failed to create monitoring-endpoint-monitoring rolebinding")
 			return err
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check monitoring-endpoint-metrics rolebinding")
+		log.Error(err, "Failed to check monitoring-endpoint-monitoring rolebinding")
 		return err
 	}
 
@@ -125,15 +125,15 @@ func createServiceAccount(client client.Client, namespace string) error {
 	found := &corev1.ServiceAccount{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating monitoring-endpoint-metrics-sa serviceaccount", "namespace", namespace)
+		log.Info("Creating monitoring-endpoint-monitoring-sa serviceaccount", "namespace", namespace)
 		err = client.Create(context.TODO(), sa)
 		if err != nil {
-			log.Error(err, "Failed to create monitoring-endpoint-metrics-sa serviceaccount")
+			log.Error(err, "Failed to create monitoring-endpoint-monitoring-sa serviceaccount")
 			return err
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check monitoring-endpoint-metrics-sa serviceaccount")
+		log.Error(err, "Failed to check monitoring-endpoint-monitoring-sa serviceaccount")
 		return err
 	}
 
@@ -157,7 +157,7 @@ func getSAToken(client client.Client, namespace string) ([]byte, []byte, error) 
 	saFound := &corev1.ServiceAccount{}
 	err = client.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, saFound)
 	if err != nil {
-		log.Error(err, "Failed to get monitoring-endpoint-metrics-sa serviceaccount", "namespace", namespace)
+		log.Error(err, "Failed to get monitoring-endpoint-monitoring-sa serviceaccount", "namespace", namespace)
 		return nil, nil, err
 	}
 	secrets := saFound.Secrets

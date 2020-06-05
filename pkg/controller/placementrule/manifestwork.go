@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	workName = "monitoring-endpoint-metrics-work"
+	workName = "monitoring-endpoint-monitoring-work"
 )
 
 func createManifestWork(client client.Client, namespace string,
@@ -26,7 +26,7 @@ func createManifestWork(client client.Client, namespace string,
 	found := &workv1.ManifestWork{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating monitoring-endpoint-metrics-work work", "namespace", namespace)
+		log.Info("Creating monitoring-endpoint-monitoring-work work", "namespace", namespace)
 		secret, err := createKubeSecret(client, namespace)
 		if err != nil {
 			return err
@@ -87,12 +87,12 @@ func createManifestWork(client client.Client, namespace string,
 		work.Spec.Workload.Manifests = manifests
 		err = client.Create(context.TODO(), work)
 		if err != nil {
-			log.Error(err, "Failed to create monitoring-endpoint-metrics-work work")
+			log.Error(err, "Failed to create monitoring-endpoint-monitoring-work work")
 			return err
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check monitoring-endpoint-metrics-work work")
+		log.Error(err, "Failed to check monitoring-endpoint-monitoring-work work")
 		return err
 	}
 	log.Info("manifestwork already existed", "namespace", namespace)

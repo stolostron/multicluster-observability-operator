@@ -202,12 +202,12 @@ run_test_endpoint_operator_installation() {
         -d @./tests/e2e/templates/status.json   
     rm ca crt key
 
-    wait_for_popup manifestwork monitoring-endpoint-metrics-work kind-config-hub cluster1
+    wait_for_popup manifestwork monitoring-endpoint-monitoring-work kind-config-hub cluster1
     if [ $? -ne 0 ]; then
-        echo "The manifestwork monitoring-endpoint-metrics-work not created"
+        echo "The manifestwork monitoring-endpoint-monitoring-work not created"
         exit 1
     else
-        echo "The manifestwork monitoring-endpoint-metrics-work created"
+        echo "The manifestwork monitoring-endpoint-monitoring-work created"
     fi
 
     wait_for_popup secret hub-kube-config kind-config-spoke $SPOKE_NAMESPACE
@@ -220,7 +220,7 @@ run_test_endpoint_operator_installation() {
 
     #kubectl create secret --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE docker-registry\
     #    endpoint-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
-    #kubectl patch serviceaccount --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE endpoint-metrics-operator\
+    #kubectl patch serviceaccount --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE endpoint-monitoring-operator\
     #    -p '{"imagePullSecrets": [{"name": "endpoint-operator-pull-secret"}]}'
     #if [ $? -ne 0 ]; then
     #    echo "Failed to add pull secret for rhacm namespace in spoke cluster"
@@ -231,12 +231,12 @@ run_test_endpoint_operator_installation() {
     # Workaround to apply pull secret
     #kubectl delete po --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE --all
 
-    wait_for_popup deployment endpoint-metrics-operator kind-config-spoke $SPOKE_NAMESPACE
+    wait_for_popup deployment endpoint-monitoring-operator kind-config-spoke $SPOKE_NAMESPACE
     if [ $? -ne 0 ]; then
-        echo "The deployment endpoint-metrics-operator not created"
+        echo "The deployment endpoint-monitoring-operator not created"
         exit 1
     else
-        echo "The deployment endpoint-metrics-operator created"
+        echo "The deployment endpoint-monitoring-operator created"
     fi
 
     wait_for_popup configmap cluster-monitoring-config kind-config-spoke openshift-monitoring
@@ -255,10 +255,10 @@ run_test_endpoint_operator_installation() {
 
     kubectl apply -n cluster1 -f ./tests/e2e/templates/endpoint.yaml
     if [ $? -ne 0 ]; then
-        echo "Failed to update endpointmetrics endpoint-config"
+        echo "Failed to update endpointmonitoring endpoint-config"
         exit 1
     else
-        echo "New changes applied to endpointmetrics endpoint-config"
+        echo "New changes applied to endpointmonitoring endpoint-config"
     fi
     sleep 5
     RESULT=$(kubectl get configmap --kubeconfig $SPOKE_KUBECONFIG -n openshift-monitoring cluster-monitoring-config -o yaml)

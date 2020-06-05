@@ -1,5 +1,5 @@
 apiVersion: monitoring.open-cluster-management.io/v1
-kind: EndpointMetrics
+kind: EndpointMonitoring
 metadata:
   name: endpoint-config
 spec:

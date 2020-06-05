@@ -25,12 +25,12 @@ func createEndpointConfigCR(client client.Client, obsNamespace string, namespace
 	if err != nil {
 		return err
 	}
-	ec := &epv1.EndpointMetrics{
+	ec := &epv1.EndpointMonitoring{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      epConfigName,
 			Namespace: namespace,
 		},
-		Spec: epv1.EndpointMetricsSpec{
+		Spec: epv1.EndpointMonitoringSpec{
 			GlobalConfig: epv1.GlobalConfigSpec{
 				SeverURL: url,
 			},
@@ -49,7 +49,7 @@ func createEndpointConfigCR(client client.Client, obsNamespace string, namespace
 			},
 		},
 	}
-	found := &epv1.EndpointMetrics{}
+	found := &epv1.EndpointMonitoring{}
 	err = client.Get(context.TODO(), types.NamespacedName{Name: epConfigName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating endpoint config cr", "namespace", namespace)

@@ -1,20 +1,20 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: endpointmetrics.monitoring.open-cluster-management.io
+  name: endpointmonitoring.monitoring.open-cluster-management.io
 spec:
   group: monitoring.open-cluster-management.io
   names:
-    kind: EndpointMetrics
-    listKind: EndpointMetricsList
-    plural: endpointmetrics
-    singular: endpointmetrics
+    kind: EndpointMonitoring
+    listKind: EndpointMonitoringList
+    plural: endpointmonitoring
+    singular: endpointmonitoring
   scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: EndpointMetrics is the Schema for the endpointmetrics API
+      description: EndpointMonitoring is the Schema for the endpointmonitoring API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -29,7 +29,7 @@ spec:
         metadata:
           type: object
         spec:
-          description: EndpointMetricsSpec defines the desired state of EndpointMetrics
+          description: EndpointMonitoringSpec defines the desired state of EndpointMonitoring
           properties:
             global:
               description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
@@ -222,7 +222,7 @@ spec:
           - metricsCollectors
           type: object
         status:
-          description: EndpointMetricsStatus defines the observed state of EndpointMetrics
+          description: EndpointMonitoringStatus defines the observed state of EndpointMonitoring
           type: object
       type: object
   version: v1

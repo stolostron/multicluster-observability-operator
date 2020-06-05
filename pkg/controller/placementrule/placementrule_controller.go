@@ -150,7 +150,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
 		err = createEndpointConfigCR(r.client, mcm.Namespace, decision.ClusterNamespace, decision.ClusterName)
 		if err != nil {
-			reqLogger.Error(err, "Failed to create endpointmetrics")
+			reqLogger.Error(err, "Failed to create endpointmonitoring")
 			continue
 		}
 		err = createManifestWork(r.client, decision.ClusterNamespace, mcm, imagePullSecret)
@@ -171,7 +171,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		for _, cluster := range clusterList.Items {
 			err = createEndpointConfigCR(r.client, mcm.Namespace, cluster.GetName(), cluster.GetName())
 			if err != nil {
-				reqLogger.Error(err, "Failed to create endpointmetrics")
+				reqLogger.Error(err, "Failed to create endpointmonitoring")
 				continue
 			}
 			err = createManifestWork(r.client, cluster.GetName(), mcm, imagePullSecret)
