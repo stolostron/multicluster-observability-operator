@@ -960,10 +960,6 @@ github.com/onsi/gomega v1.8.1/go.mod h1:Ho0h+IUsWyvy1OpqCwxlQ/21gkhVunqlU8fDGcoT
 github.com/op/go-logging v0.0.0-20160315200505-970db520ece7/go.mod h1:HzydrMdWErDVzsI23lYNej1Htcns9BCg93Dk0bBINWk=
 github.com/open-cluster-management/api v0.0.0-20200512175145-bed9ce79e17e h1:WIzt0Bs7g0PIrVAVSobXAbDqvC2P5VjEwFTpjB4777I=
 github.com/open-cluster-management/api v0.0.0-20200512175145-bed9ce79e17e/go.mod h1:RgKeB8PJ7upe2QXy/MpCejU/xm2G6/i0Y+/itWuPugs=
-github.com/open-cluster-management/endpoint-metrics-operator v0.0.0-20200514072421-c428f130164c h1:rOsRlZ0bueYc6v+AwGiHDTPv+Mzk/DQI0fBWEu2eBC0=
-github.com/open-cluster-management/endpoint-metrics-operator v0.0.0-20200514072421-c428f130164c/go.mod h1:wDbb4YR2RAh6W0WGhhgtkpnSMorM550Uu+l5gFqZckQ=
-github.com/open-cluster-management/endpoint-metrics-operator v0.0.0-20200605180312-e3be509df8de h1:ueMlsn+dW4N1ZH+HFVlXbnGqPljuzLkngcP9y2Mc+Co=
-github.com/open-cluster-management/endpoint-metrics-operator v0.0.0-20200605180312-e3be509df8de/go.mod h1:7ZhxNH9Y43qUzqI4oBn9o5+1uAlZcyRsPkVM5SYotG4=
 github.com/open-cluster-management/multicloud-operators-placementrule v1.0.0-2020-05-08-20-30-09 h1:q/M6OOhPvvVtaN7nXlDxLwddGYitiXoPu2KMiIixAuk=
 github.com/open-cluster-management/multicloud-operators-placementrule v1.0.0-2020-05-08-20-30-09/go.mod h1:mgU+3nfxS4FgPcywx9VpQiQosWY+o0XXHhBJiT3fr2o=
 github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20200420232746-73973c11a321/go.mod h1:F9fEih5Bl7tmGBih+Y8qeuMR+FotHFxcxWl06oEZSJ4=
