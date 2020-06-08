@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	epv1 "github.com/open-cluster-management/endpoint-metrics-operator/pkg/apis/monitoring/v1"
+	epv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
 )
 
@@ -25,16 +25,19 @@ func createEndpointConfigCR(client client.Client, obsNamespace string, namespace
 	if err != nil {
 		return err
 	}
-	ec := &epv1.EndpointMetrics{
+	ec := &epv1alpha1.EndpointMonitoring{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      epConfigName,
 			Namespace: namespace,
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
 		},
-		Spec: epv1.EndpointMetricsSpec{
-			GlobalConfig: epv1.GlobalConfigSpec{
+		Spec: epv1alpha1.EndpointMonitoringSpec{
+			GlobalConfig: epv1alpha1.GlobalConfigSpec{
 				SeverURL: url,
 			},
-			MetricsCollectorList: []epv1.MetricsCollectorSpec{
+			MetricsCollectorList: []epv1alpha1.MetricsCollectorSpec{
 				{
 					Enable: true,
 					Type:   collectorType,
@@ -49,7 +52,7 @@ func createEndpointConfigCR(client client.Client, obsNamespace string, namespace
 			},
 		},
 	}
-	found := &epv1.EndpointMetrics{}
+	found := &epv1alpha1.EndpointMonitoring{}
 	err = client.Get(context.TODO(), types.NamespacedName{Name: epConfigName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating endpoint config cr", "namespace", namespace)

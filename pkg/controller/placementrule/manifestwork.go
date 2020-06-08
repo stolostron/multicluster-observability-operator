@@ -4,6 +4,7 @@ package placementrule
 
 import (
 	"context"
+	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -17,84 +18,101 @@ import (
 )
 
 const (
-	workName = "monitoring-endpoint-metrics-work"
+	workName = "monitoring-endpoint-monitoring-work"
 )
 
 func createManifestWork(client client.Client, namespace string,
 	mcm *monitoringv1alpha1.MultiClusterMonitoring,
 	imagePullSecret *corev1.Secret) error {
+
+	secret, err := createKubeSecret(client, namespace)
+	if err != nil {
+		return err
+	}
+	work := &workv1.ManifestWork{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      workName,
+			Namespace: namespace,
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
+		},
+		Spec: workv1.ManifestWorkSpec{
+			Workload: workv1.ManifestsTemplate{
+				Manifests: []workv1.Manifest{
+					{
+						runtime.RawExtension{
+							Object: createNameSpace(),
+						},
+					},
+					{
+						runtime.RawExtension{
+							Object: secret,
+						},
+					},
+				},
+			},
+		},
+	}
+	templates, err := loadTemplates(namespace, mcm)
+	if err != nil {
+		log.Error(err, "Failed to load templates")
+		return err
+	}
+	manifests := work.Spec.Workload.Manifests
+	for _, raw := range templates {
+		manifests = append(manifests, workv1.Manifest{raw})
+	}
+
+	//create image pull secret
+	manifests = append(manifests,
+		workv1.Manifest{
+			runtime.RawExtension{
+				Object: &corev1.Secret{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: corev1.SchemeGroupVersion.String(),
+						Kind:       "Secret",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      imagePullSecret.Name,
+						Namespace: spokeNameSpace,
+					},
+					Data: map[string][]byte{
+						".dockerconfigjson": imagePullSecret.Data[".dockerconfigjson"],
+					},
+					Type: corev1.SecretTypeDockerConfigJson,
+				},
+			},
+		})
+	work.Spec.Workload.Manifests = manifests
+
 	found := &workv1.ManifestWork{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	err = client.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating monitoring-endpoint-metrics-work work", "namespace", namespace)
-		secret, err := createKubeSecret(client, namespace)
-		if err != nil {
-			return err
-		}
-		work := &workv1.ManifestWork{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      workName,
-				Namespace: namespace,
-			},
-			Spec: workv1.ManifestWorkSpec{
-				Workload: workv1.ManifestsTemplate{
-					Manifests: []workv1.Manifest{
-						{
-							runtime.RawExtension{
-								Object: createNameSpace(),
-							},
-						},
-						{
-							runtime.RawExtension{
-								Object: secret,
-							},
-						},
-					},
-				},
-			},
-		}
-		templates, err := loadTemplates(namespace, mcm)
-		if err != nil {
-			log.Error(err, "Failed to load templates")
-			return err
-		}
-		manifests := work.Spec.Workload.Manifests
-		for _, raw := range templates {
-			manifests = append(manifests, workv1.Manifest{raw})
-		}
+		log.Info("Creating monitoring-endpoint-monitoring-work work", "namespace", namespace)
 
-		//create image pull secret
-		manifests = append(manifests,
-			workv1.Manifest{
-				runtime.RawExtension{
-					Object: &corev1.Secret{
-						TypeMeta: metav1.TypeMeta{
-							APIVersion: corev1.SchemeGroupVersion.String(),
-							Kind:       "Secret",
-						},
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      imagePullSecret.Name,
-							Namespace: spokeNameSpace,
-						},
-						Data: map[string][]byte{
-							".dockerconfigjson": imagePullSecret.Data[".dockerconfigjson"],
-						},
-						Type: corev1.SecretTypeDockerConfigJson,
-					},
-				},
-			})
-
-		work.Spec.Workload.Manifests = manifests
 		err = client.Create(context.TODO(), work)
 		if err != nil {
-			log.Error(err, "Failed to create monitoring-endpoint-metrics-work work")
+			log.Error(err, "Failed to create monitoring-endpoint-monitoring-work work")
 			return err
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check monitoring-endpoint-metrics-work work")
+		log.Error(err, "Failed to check monitoring-endpoint-monitoring-work work")
 		return err
 	}
+
+	if !reflect.DeepEqual(found.Spec.Workload.Manifests, manifests) {
+		log.Info("Updating monitoring-endpoint-monitoring-work work", "namespace", namespace)
+		work.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		err = client.Update(context.TODO(), work)
+		if err != nil {
+			log.Error(err, "Failed to update monitoring-endpoint-monitoring-work work")
+			return err
+		}
+		return nil
+	}
+
 	log.Info("manifestwork already existed", "namespace", namespace)
 	return nil
 }

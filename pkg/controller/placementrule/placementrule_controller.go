@@ -4,7 +4,6 @@ package placementrule
 
 import (
 	"context"
-	"strings"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	corev1 "k8s.io/api/core/v1"
@@ -22,8 +21,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
+	workv1 "github.com/open-cluster-management/api/work/v1"
 	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+)
+
+const (
+	placementRuleName = "open-cluster-management-monitoring"
+	ownerLabelKey     = "owner"
+	ownerLabelValue   = "multicluster-operator"
 )
 
 var log = logf.Log.WithName("controller_placementrule")
@@ -59,13 +65,13 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if strings.TrimSpace(e.Meta.GetLabels()["agent"]) == "monitoring" && e.Meta.GetNamespace() == watchNamespace {
+			if e.Meta.GetName() == placementRuleName && e.Meta.GetNamespace() == watchNamespace {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if strings.TrimSpace(e.MetaNew.GetLabels()["agent"]) == "monitoring" && e.MetaNew.GetNamespace() == watchNamespace {
+			if e.MetaNew.GetName() == placementRuleName && e.MetaNew.GetNamespace() == watchNamespace {
 				return true
 			}
 			return false
@@ -78,6 +84,70 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// Watch for changes to primary resource PlacementRule
 	err = c.Watch(&source.Kind{Type: &appsv1.PlacementRule{}}, &handler.EnqueueRequestForObject{}, pred)
+	if err != nil {
+		return err
+	}
+
+	mapFn := handler.ToRequestsFunc(
+		func(a handler.MapObject) []reconcile.Request {
+			return []reconcile.Request{
+				{NamespacedName: types.NamespacedName{
+					Name:      placementRuleName,
+					Namespace: watchNamespace,
+				}},
+			}
+		})
+
+	// Only handle delete event for endpointmonitoring
+	epPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Meta.GetName() == epConfigName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+				return true
+			}
+			return false
+		},
+	}
+
+	// secondary watch for endpointmonitoring
+	err = c.Watch(&source.Kind{Type: &monitoringv1alpha1.EndpointMonitoring{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: mapFn,
+		},
+		epPred)
+	if err != nil {
+		return err
+	}
+
+	workPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetName() == workName && e.MetaNew.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Meta.GetName() == workName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+				return true
+			}
+			return false
+		},
+	}
+
+	// secondary watch for manifestwork
+	err = c.Watch(&source.Kind{Type: &workv1.ManifestWork{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: mapFn,
+		},
+		workPred)
 	if err != nil {
 		return err
 	}
@@ -145,9 +215,9 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 
 	for _, decision := range instance.Status.Decisions {
 		log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
-		err = createEndpointConfigCR(r.client, instance.Namespace, decision.ClusterNamespace, decision.ClusterName)
+		err = createEndpointConfigCR(r.client, mcm.Namespace, decision.ClusterNamespace, decision.ClusterName)
 		if err != nil {
-			reqLogger.Error(err, "Failed to create endpointmetrics")
+			reqLogger.Error(err, "Failed to create endpointmonitoring")
 			continue
 		}
 		err = createManifestWork(r.client, decision.ClusterNamespace, mcm, imagePullSecret)
@@ -166,9 +236,9 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		}
 
 		for _, cluster := range clusterList.Items {
-			err = createEndpointConfigCR(r.client, instance.Namespace, cluster.GetName(), cluster.GetName())
+			err = createEndpointConfigCR(r.client, mcm.Namespace, cluster.GetName(), cluster.GetName())
 			if err != nil {
-				reqLogger.Error(err, "Failed to create endpointmetrics")
+				reqLogger.Error(err, "Failed to create endpointmonitoring")
 				continue
 			}
 			err = createManifestWork(r.client, cluster.GetName(), mcm, imagePullSecret)

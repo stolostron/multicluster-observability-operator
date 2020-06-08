@@ -4,6 +4,7 @@ package placementrule
 
 import (
 	"context"
+	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -14,10 +15,10 @@ import (
 )
 
 const (
-	roleName           = "monitoring-endpoint-metrics"
-	roleBindingName    = "monitoring-endpoint-metrics"
-	serviceAccountName = "monitoring-endpoint-metrics-sa"
-	epRsName           = "endpointmetrics"
+	roleName           = "monitoring-endpoint-monitoring"
+	roleBindingName    = "monitoring-endpoint-monitoring"
+	serviceAccountName = "monitoring-endpoint-monitoring-sa"
+	epRsName           = "endpointmonitoring"
 	epRsGroup          = "monitoring.open-cluster-management.io"
 )
 
@@ -27,6 +28,9 @@ func createRole(client client.Client, namespace string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      roleName,
 			Namespace: namespace,
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
 		},
 		Rules: []rbacv1.PolicyRule{
 			{
@@ -61,16 +65,27 @@ func createRole(client client.Client, namespace string) error {
 	found := &rbacv1.Role{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating monitoring-endpoint-metrics role", "namespace", namespace)
+		log.Info("Creating monitoring-endpoint-monitoring role", "namespace", namespace)
 		err = client.Create(context.TODO(), role)
 		if err != nil {
-			log.Error(err, "Failed to create monitoring-endpoint-metrics role")
+			log.Error(err, "Failed to create monitoring-endpoint-monitoring role")
 			return err
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check monitoring-endpoint-metrics role")
+		log.Error(err, "Failed to check monitoring-endpoint-monitoring role")
 		return err
+	}
+
+	if !reflect.DeepEqual(found.Rules, role.Rules) {
+		log.Info("Updating monitoring-endpoint-monitoring role", "namespace", namespace)
+		role.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		err = client.Update(context.TODO(), role)
+		if err != nil {
+			log.Error(err, "Failed to update monitoring-endpoint-monitoring role")
+			return err
+		}
+		return nil
 	}
 
 	log.Info("role already existed", "namespace", namespace)
@@ -82,6 +97,9 @@ func createRoleBinding(client client.Client, namespace string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      roleBindingName,
 			Namespace: namespace,
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
 		},
 		RoleRef: rbacv1.RoleRef{
 			Kind:     "Role",
@@ -99,16 +117,27 @@ func createRoleBinding(client client.Client, namespace string) error {
 	found := &rbacv1.RoleBinding{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating monitoring-endpoint-metrics rolebinding", "namespace", namespace)
+		log.Info("Creating monitoring-endpoint-monitoring rolebinding", "namespace", namespace)
 		err = client.Create(context.TODO(), rb)
 		if err != nil {
-			log.Error(err, "Failed to create monitoring-endpoint-metrics rolebinding")
+			log.Error(err, "Failed to create monitoring-endpoint-monitoring rolebinding")
 			return err
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check monitoring-endpoint-metrics rolebinding")
+		log.Error(err, "Failed to check monitoring-endpoint-monitoring rolebinding")
 		return err
+	}
+
+	if !reflect.DeepEqual(found.Subjects, rb.Subjects) && !reflect.DeepEqual(found.RoleRef, rb.RoleRef) {
+		log.Info("Updating monitoring-endpoint-monitoring rolebinding", "namespace", namespace)
+		rb.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		err = client.Update(context.TODO(), rb)
+		if err != nil {
+			log.Error(err, "Failed to update monitoring-endpoint-monitoring rolebinding")
+			return err
+		}
+		return nil
 	}
 
 	log.Info("rolebinding already existed", "namespace", namespace)
@@ -120,20 +149,23 @@ func createServiceAccount(client client.Client, namespace string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      serviceAccountName,
 			Namespace: namespace,
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
 		},
 	}
 	found := &corev1.ServiceAccount{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating monitoring-endpoint-metrics-sa serviceaccount", "namespace", namespace)
+		log.Info("Creating monitoring-endpoint-monitoring-sa serviceaccount", "namespace", namespace)
 		err = client.Create(context.TODO(), sa)
 		if err != nil {
-			log.Error(err, "Failed to create monitoring-endpoint-metrics-sa serviceaccount")
+			log.Error(err, "Failed to create monitoring-endpoint-monitoring-sa serviceaccount")
 			return err
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check monitoring-endpoint-metrics-sa serviceaccount")
+		log.Error(err, "Failed to check monitoring-endpoint-monitoring-sa serviceaccount")
 		return err
 	}
 
@@ -157,7 +189,7 @@ func getSAToken(client client.Client, namespace string) ([]byte, []byte, error) 
 	saFound := &corev1.ServiceAccount{}
 	err = client.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, saFound)
 	if err != nil {
-		log.Error(err, "Failed to get monitoring-endpoint-metrics-sa serviceaccount", "namespace", namespace)
+		log.Error(err, "Failed to get monitoring-endpoint-monitoring-sa serviceaccount", "namespace", namespace)
 		return nil, nil, err
 	}
 	secrets := saFound.Secrets

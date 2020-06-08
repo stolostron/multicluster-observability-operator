@@ -78,6 +78,7 @@ rules:
   resources:
   - '*'
   - multiclustermonitorings
+  - endpointmonitorings
   verbs:
   - create
   - delete

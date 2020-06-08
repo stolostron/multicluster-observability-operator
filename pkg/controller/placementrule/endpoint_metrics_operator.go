@@ -14,12 +14,12 @@ import (
 )
 
 const (
-	endpointImage    = "quay.io/open-cluster-management/endpoint-metrics-operator"
+	endpointImage    = "quay.io/open-cluster-management/endpoint-monitoring-operator"
 	endpointImageTag = "0.1.0-786316d667660ad0a22729b092ce56c2d1830d86"
-	templatePath     = "/usr/local/manifests/endpoint-metrics"
-	deployName       = "endpoint-metrics-operator"
-	saName           = "endpoint-metrics-operator-sa"
-	rolebindingName  = "endpoint-metrics-operator-rb"
+	templatePath     = "/usr/local/manifests/endpoint-monitoring"
+	deployName       = "endpoint-monitoring-operator"
+	saName           = "endpoint-monitoring-operator-sa"
+	rolebindingName  = "endpoint-monitoring-operator-rb"
 )
 
 func getK8sObj(kind string) runtime.Object {
