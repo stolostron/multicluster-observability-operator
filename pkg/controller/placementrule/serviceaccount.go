@@ -4,6 +4,7 @@ package placementrule
 
 import (
 	"context"
+	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -27,6 +28,9 @@ func createRole(client client.Client, namespace string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      roleName,
 			Namespace: namespace,
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
 		},
 		Rules: []rbacv1.PolicyRule{
 			{
@@ -73,6 +77,17 @@ func createRole(client client.Client, namespace string) error {
 		return err
 	}
 
+	if !reflect.DeepEqual(found.Rules, role.Rules) {
+		log.Info("Updating monitoring-endpoint-monitoring role", "namespace", namespace)
+		role.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		err = client.Update(context.TODO(), role)
+		if err != nil {
+			log.Error(err, "Failed to update monitoring-endpoint-monitoring role")
+			return err
+		}
+		return nil
+	}
+
 	log.Info("role already existed", "namespace", namespace)
 	return nil
 }
@@ -82,6 +97,9 @@ func createRoleBinding(client client.Client, namespace string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      roleBindingName,
 			Namespace: namespace,
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
 		},
 		RoleRef: rbacv1.RoleRef{
 			Kind:     "Role",
@@ -111,6 +129,17 @@ func createRoleBinding(client client.Client, namespace string) error {
 		return err
 	}
 
+	if !reflect.DeepEqual(found.Subjects, rb.Subjects) && !reflect.DeepEqual(found.RoleRef, rb.RoleRef) {
+		log.Info("Updating monitoring-endpoint-monitoring rolebinding", "namespace", namespace)
+		rb.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		err = client.Update(context.TODO(), rb)
+		if err != nil {
+			log.Error(err, "Failed to update monitoring-endpoint-monitoring rolebinding")
+			return err
+		}
+		return nil
+	}
+
 	log.Info("rolebinding already existed", "namespace", namespace)
 	return nil
 }
@@ -120,6 +149,9 @@ func createServiceAccount(client client.Client, namespace string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      serviceAccountName,
 			Namespace: namespace,
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
 		},
 	}
 	found := &corev1.ServiceAccount{}

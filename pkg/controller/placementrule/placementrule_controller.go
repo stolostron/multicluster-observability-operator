@@ -21,12 +21,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
+	workv1 "github.com/open-cluster-management/api/work/v1"
 	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
 
 const (
 	placementRuleName = "open-cluster-management-monitoring"
+	ownerLabelKey     = "owner"
+	ownerLabelValue   = "multicluster-operator"
 )
 
 var log = logf.Log.WithName("controller_placementrule")
@@ -81,6 +84,70 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// Watch for changes to primary resource PlacementRule
 	err = c.Watch(&source.Kind{Type: &appsv1.PlacementRule{}}, &handler.EnqueueRequestForObject{}, pred)
+	if err != nil {
+		return err
+	}
+
+	mapFn := handler.ToRequestsFunc(
+		func(a handler.MapObject) []reconcile.Request {
+			return []reconcile.Request{
+				{NamespacedName: types.NamespacedName{
+					Name:      placementRuleName,
+					Namespace: watchNamespace,
+				}},
+			}
+		})
+
+	// Only handle delete event for endpointmonitoring
+	epPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Meta.GetName() == epConfigName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+				return true
+			}
+			return false
+		},
+	}
+
+	// secondary watch for endpointmonitoring
+	err = c.Watch(&source.Kind{Type: &monitoringv1alpha1.EndpointMonitoring{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: mapFn,
+		},
+		epPred)
+	if err != nil {
+		return err
+	}
+
+	workPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetName() == workName && e.MetaNew.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Meta.GetName() == workName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+				return true
+			}
+			return false
+		},
+	}
+
+	// secondary watch for manifestwork
+	err = c.Watch(&source.Kind{Type: &workv1.ManifestWork{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: mapFn,
+		},
+		workPred)
 	if err != nil {
 		return err
 	}

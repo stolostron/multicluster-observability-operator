@@ -29,6 +29,9 @@ func createEndpointConfigCR(client client.Client, obsNamespace string, namespace
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      epConfigName,
 			Namespace: namespace,
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
 		},
 		Spec: epv1alpha1.EndpointMonitoringSpec{
 			GlobalConfig: epv1alpha1.GlobalConfigSpec{
