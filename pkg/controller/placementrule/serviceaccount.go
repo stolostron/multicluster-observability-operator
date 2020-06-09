@@ -18,7 +18,7 @@ const (
 	roleName           = "monitoring-endpoint-monitoring"
 	roleBindingName    = "monitoring-endpoint-monitoring"
 	serviceAccountName = "monitoring-endpoint-monitoring-sa"
-	epRsName           = "endpointmonitoring"
+	epRsName           = "endpointmonitorings"
 	epRsGroup          = "monitoring.open-cluster-management.io"
 )
 
