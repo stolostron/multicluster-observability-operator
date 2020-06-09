@@ -3,6 +3,8 @@
 package placementrule
 
 import (
+	"os"
+
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -14,12 +16,10 @@ import (
 )
 
 const (
-	endpointImage    = "quay.io/open-cluster-management/endpoint-monitoring-operator"
-	endpointImageTag = "0.1.0-786316d667660ad0a22729b092ce56c2d1830d86"
-	templatePath     = "/usr/local/manifests/endpoint-monitoring"
-	deployName       = "endpoint-monitoring-operator"
-	saName           = "endpoint-monitoring-operator-sa"
-	rolebindingName  = "endpoint-monitoring-operator-rb"
+	templatePath    = "/usr/local/manifests/endpoint-monitoring"
+	deployName      = "endpoint-monitoring-operator"
+	saName          = "endpoint-monitoring-operator-sa"
+	rolebindingName = "endpoint-monitoring-operator-rb"
 )
 
 func getK8sObj(kind string) runtime.Object {
@@ -57,7 +57,7 @@ func loadTemplates(namespace string,
 		// set the image and watch_namespace for endpoint metrics operator
 		if r.GetKind() == "Deployment" && r.GetName() == deployName {
 			spec := obj.(*v1.Deployment).Spec.Template.Spec
-			spec.Containers[0].Image = endpointImage + ":" + endpointImageTag
+			spec.Containers[0].Image = os.Getenv("ENDPOINT_OPERATOR_IMAGE")
 			for i, env := range spec.Containers[0].Env {
 				if env.Name == "WATCH_NAMESPACE" {
 					spec.Containers[0].Env[i].Value = namespace
