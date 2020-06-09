@@ -169,9 +169,10 @@ revert_changes() {
 
 deploy_hub_core() {
     cd ${WORKDIR}/..
-    git clone https://github.com/open-cluster-management/nucleus.git
-    cd nucleus/
+    git clone https://github.com/open-cluster-management/registration-operator.git
+    cd registration-operator/
     $sed_command "s~replicas: 3~replicas: 1~g" deploy/cluster-manager/*.yaml
+
     if [[ "$(uname)" == "Darwin" ]]; then
         $sed_command "\$a\\
         imagePullSecrets:\\
@@ -186,7 +187,7 @@ deploy_hub_core() {
 }
 
 deploy_spoke_core() {
-    cd ${WORKDIR}/../nucleus
+    cd ${WORKDIR}/../registration-operator
     kubectl create ns open-cluster-management
     $sed_command "s~replicas: 3~replicas: 1~g" deploy/klusterlet/*.yaml
     kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
@@ -209,7 +210,7 @@ deploy_spoke_core() {
     kubectl apply -f ${WORKDIR}/tests/e2e/req_crds
     sleep 2
     kubectl apply -f ${WORKDIR}/tests/e2e/req_crds/spoke_cr
-    rm -rf ${WORKDIR}/../nucleus
+    rm -rf ${WORKDIR}/../registration-operator
     kind get kubeconfig --name hub --internal > $HOME/.kube/kind-config-hub-internal
     kubectl create namespace open-cluster-management-agent
     kubectl create secret generic bootstrap-hub-kubeconfig --from-file=kubeconfig=$HOME/.kube/kind-config-hub-internal -n open-cluster-management-agent

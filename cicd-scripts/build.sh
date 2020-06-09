@@ -3,4 +3,6 @@ echo "BUILD GOES HERE!"
 
 echo "<repo>/<component>:<tag> : $1"
 
+git config --global url."https://$GITHUB_TOKEN@github.com/open-cluster-management".insteadOf  "https://github.com/open-cluster-management"
+
 operator-sdk build $1
