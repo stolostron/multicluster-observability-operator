@@ -184,7 +184,7 @@ spec:
     serverUrl: observatorium-api-acm-monitoring.apps.marco.dev05.red-chesterfield.com
   metricsCollectors:
   - enable: true
-    reabelConfigs:
+    relabelConfigs:
     - replacement: spoke1
       sourceLabels:
       - __name__

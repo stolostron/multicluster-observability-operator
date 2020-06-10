@@ -8,7 +8,7 @@ spec:
   metricsCollectors:
   - enable: true
     type: OCP_PROMETHEUS
-    reabelConfigs:
+    relabelConfigs:
     - replacement: cluster1
       sourceLabels:
       - __name__
