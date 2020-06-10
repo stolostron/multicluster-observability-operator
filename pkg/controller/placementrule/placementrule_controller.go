@@ -20,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
@@ -223,28 +222,6 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		err = createManifestWork(r.client, decision.ClusterNamespace, mcm, imagePullSecret)
 		if err != nil {
 			reqLogger.Error(err, "Failed to create manifestwork")
-		}
-	}
-
-	//TODO: should be removed once the placementrule adopted the new API
-	if len(instance.Status.Decisions) == 0 {
-		clusterList := &clusterv1.ManagedClusterList{}
-		err = r.client.List(context.TODO(), clusterList)
-		if err != nil {
-			reqLogger.Error(err, "Failed to list clusters.")
-			return reconcile.Result{}, err
-		}
-
-		for _, cluster := range clusterList.Items {
-			err = createEndpointConfigCR(r.client, mcm.Namespace, cluster.GetName(), cluster.GetName())
-			if err != nil {
-				reqLogger.Error(err, "Failed to create endpointmonitoring")
-				continue
-			}
-			err = createManifestWork(r.client, cluster.GetName(), mcm, imagePullSecret)
-			if err != nil {
-				reqLogger.Error(err, "Failed to create manifestwork")
-			}
 		}
 	}
 
