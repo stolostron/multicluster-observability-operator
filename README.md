@@ -71,6 +71,7 @@ curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.
 - `go mod vendor`
 - `operator-sdk build <repo>/<component>:<tag>` for example: quay.io/multicluster-monitoring-operator:v0.1.0.
 - Replace the image in `deploy/operator.yaml`.
+- Update the value for env ENDPOINT_OPERATOR_IMAGE with endpoint operator image in `deploy/operator.yaml`
 - Update your namespace in `deploy/role_binding.yaml`
 - Update your grafana.server.domain in `deploy/crds/monitoring.open-cluster-management.io_v1_multiclustermonitoring_cr.yaml`
 
@@ -144,7 +145,7 @@ monitoring-observatorium   163m
 ### View metrics in dashboard
 1. The Prometheus in hub cluster already enabled remoteWrite to send metrics. Access Grafana console at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "ACM:Managed Cluster Monitoring"
 
-2. Enable remote write for OCP prometheus in spoke clusters
+2. Manually Enable remote write for OCP prometheus in managed clusters
 Create the configmap in openshift-monitoring namespace. Replace the url with the your route value. Also need to replace the value of "replacement" with the spoke cluster's name
 ```
 apiVersion: v1
@@ -160,11 +161,35 @@ data:
           writeRelabelConfigs:
           - sourceLabels: [__name__]
             replacement: test_cluster
-            targetLabel: cluster_name
+            targetLabel: cluster
 ```
 The changes will be applied automatically after several minutes. You can apply the changes immediately by invoking command below
 ```
 oc scale --replicas=2 statefulset --all -n openshift-monitoring; oc scale --replicas=1 deployment --all -n openshift-monitoring
+```
+
+### Endpoint monitoring operator installation & endpoint monitoring configuration
+1. By default, the endpoint monitoring operator will be installed on any managed clusters. If want to disable this in a clusteer, need to add label using key/value "monitoring"/"disabled" on it.
+2. Once the endpoint monitoring operator installed in the managed cluster, it will update the configmap cluster-monitoring-config automatically, and then the metrics will be pushed to hub side.
+3. In cluster's namespace in hub side, one default endpointmonitoring resource named as "endpoint-config"  will be created automatically. Users can edit section "relabelConfigs" in this resource to update the configuration for metrics collect in managed cluster side, such as filtering the metrics collected, injecting addtional labels([Prometheus relabel configuration]). A sample endpointmonitoring resource is as below:
+```
+apiVersion: monitoring.open-cluster-management.io/v1alpha1
+kind: EndpointMonitoring
+metadata:
+  annotations:
+    owner: multicluster-operator
+  name: endpoint-config
+spec:
+  global:
+    serverUrl: observatorium-api-acm-monitoring.apps.marco.dev05.red-chesterfield.com
+  metricsCollectors:
+  - enable: true
+    reabelConfigs:
+    - replacement: spoke1
+      sourceLabels:
+      - __name__
+      targetLabel: cluster
+    type: OCP_PROMETHEUS
 ```
 
 [install_kind]: https://github.com/kubernetes-sigs/kind
@@ -174,3 +199,4 @@ oc scale --replicas=2 statefulset --all -n openshift-monitoring; oc scale --repl
 [docker_tool]:https://docs.docker.com/install/
 [kubectl_tool]:https://kubernetes.io/docs/tasks/tools/install-kubectl/
 [operator_sdk_v0.17.0]:https://github.com/operator-framework/operator-sdk/releases/tag/v0.17.0
+[Prometheus relabel configuration]:https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
