@@ -36,4 +36,4 @@ spec:
             - name: SPOKE_NAMESPACE
               value: open-cluster-management-monitoring
             - name: ENDPOINT_OPERATOR_IMAGE
-              value: "quay.io/open-cluster-management/endpoint-monitoring-operator:0.1.0-8056b1cce03b48290f9e2d7c29b1fcedcdf1aa37"
+              value: "quay.io/open-cluster-management/endpoint-monitoring-operator:0.1.0-f885431ab051e590ae3c26c5ebd46b3aa64b0863"
