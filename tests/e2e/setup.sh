@@ -258,14 +258,14 @@ patch_placement_rule() {
     cd ${WORKDIR}
     # Workaround for placementrules operator
     echo "Patch open-cluster-management-monitoring placementrule"
-    cat ~/.kube/kind-config-hub-internal|grep certificate-authority-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d  >> ca
-    cat ~/.kube/kind-config-hub-internal|grep client-certificate-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> crt
-    cat ~/.kube/kind-config-hub-internal|grep client-key-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> key
-    SERVER=$(cat ~/.kube/kind-config-hub-internal|grep server|awk '{split($0, a, ": "); print a[2]}')
-    curl -s --cert ./crt --key ./key --cacert ./ca -X PATCH -H "Content-Type:application/merge-patch+json" \
+    cat ~/.kube/kind-config-hub|grep certificate-authority-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d  >> ca
+    cat ~/.kube/kind-config-hub|grep client-certificate-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> crt
+    cat ~/.kube/kind-config-hub|grep client-key-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> key
+    SERVER=$(cat ~/.kube/kind-config-hub|grep server|awk '{split($0, a, ": "); print a[2]}')
+    curl --cert ./crt --key ./key --cacert ./ca -X PATCH -H "Content-Type:application/merge-patch+json" \
         $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/open-cluster-management/placementrules/open-cluster-management-monitoring/status \
         -d @./tests/e2e/templates/status.json   
-    rm -rf ca crt key
+    rm ca crt key
 
 }
 
