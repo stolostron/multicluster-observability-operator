@@ -1,4 +1,4 @@
-apiVersion: monitoring.open-cluster-management.io/v1
+apiVersion: monitoring.open-cluster-management.io/v1alpha1
 kind: EndpointMonitoring
 metadata:
   name: endpoint-config
@@ -16,4 +16,4 @@ spec:
     - replacement: test_value
       sourceLabels:
       - __name__
-      targetLabel: test_key
+      targetLabel: test_key 

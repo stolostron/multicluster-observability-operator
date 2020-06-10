@@ -187,20 +187,9 @@ run_test_access_grafana_dashboard() {
     fi
 }
 
-run_test_endpoint_operator_installation() {
+run_test_endpoint_operator() {
 
     SPOKE_NAMESPACE="open-cluster-management-monitoring"
-
-    # Workaround for placementrules operator
-    echo "Patch open-cluster-management-monitoring placementrule"
-    cat ~/.kube/kind-config-hub|grep certificate-authority-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d  >> ca
-    cat ~/.kube/kind-config-hub|grep client-certificate-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> crt
-    cat ~/.kube/kind-config-hub|grep client-key-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> key
-    SERVER=$(cat ~/.kube/kind-config-hub|grep server|awk '{split($0, a, ": "); print a[2]}')
-    curl -s --cert ./crt --key ./key --cacert ./ca -X PATCH -H "Content-Type:application/merge-patch+json" \
-        $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/open-cluster-management/placementrules/open-cluster-management-monitoring/status \
-        -d @./tests/e2e/templates/status.json   
-    rm ca crt key
 
     wait_for_popup manifestwork monitoring-endpoint-monitoring-work kind-config-hub cluster1
     if [ $? -ne 0 ]; then
@@ -217,19 +206,6 @@ run_test_endpoint_operator_installation() {
     else
         echo "The secret hub-kube-config created"
     fi
-
-    #kubectl create secret --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE docker-registry\
-    #    endpoint-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
-    #kubectl patch serviceaccount --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE endpoint-monitoring-operator\
-    #    -p '{"imagePullSecrets": [{"name": "endpoint-operator-pull-secret"}]}'
-    #if [ $? -ne 0 ]; then
-    #    echo "Failed to add pull secret for rhacm namespace in spoke cluster"
-    #    exit 1
-    #else
-    #    echo "Added pull secret for rhacm namespace in spoke cluster"
-    #fi
-    # Workaround to apply pull secret
-    #kubectl delete po --kubeconfig=$SPOKE_KUBECONFIG -n $SPOKE_NAMESPACE --all
 
     wait_for_popup deployment endpoint-monitoring-operator kind-config-spoke $SPOKE_NAMESPACE
     if [ $? -ne 0 ]; then
@@ -276,5 +252,5 @@ run_test_reconciling
 run_test_scale_grafana
 run_test_access_grafana
 run_test_access_grafana_dashboard
-run_test_endpoint_operator_installation
+run_test_endpoint_operator
 run_test_teardown
