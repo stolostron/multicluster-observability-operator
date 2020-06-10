@@ -169,29 +169,27 @@ revert_changes() {
 
 deploy_hub_core() {
     cd ${WORKDIR}/..
-    git clone https://github.com/open-cluster-management/nucleus.git
-    cd nucleus/
-    $sed_command "s~namespace: open-cluster-management-core~namespace: open-cluster-management~g" deploy/nucleus-hub/*.yaml
-    $sed_command "s~replicas: 3~replicas: 1~g" deploy/nucleus-hub/*.yaml
+    git clone https://github.com/open-cluster-management/registration-operator.git
+    cd registration-operator/
+    $sed_command "s~replicas: 3~replicas: 1~g" deploy/cluster-manager/*.yaml
+
     if [[ "$(uname)" == "Darwin" ]]; then
         $sed_command "\$a\\
         imagePullSecrets:\\
-        - name: multiclusterhub-operator-pull-secret" deploy/nucleus-hub/service_account.yaml
+        - name: multiclusterhub-operator-pull-secret" deploy/cluster-manager/service_account.yaml
     elif [[ "$(uname)" == "Linux" ]]; then
-        $sed_command "\$aimagePullSecrets:\n- name: multiclusterhub-operator-pull-secret" deploy/nucleus-hub/service_account.yaml
+        $sed_command "\$aimagePullSecrets:\n- name: multiclusterhub-operator-pull-secret" deploy/cluster-manager/service_account.yaml
     fi
-    kubectl apply -f deploy/nucleus-hub/
-    kubectl apply -f deploy/nucleus-hub/crds/*crd.yaml
+    kubectl apply -f deploy/cluster-manager/
+    kubectl apply -f deploy/cluster-manager/crds/*crd.yaml
     sleep 2
-    kubectl apply -f deploy/nucleus-hub/crds
-    kubectl apply -f ${WORKDIR}/tests/e2e/nucleus/hubcore.yaml
+    kubectl apply -f deploy/cluster-manager/crds
 }
 
 deploy_spoke_core() {
-    cd ${WORKDIR}/../nucleus
-    $sed_command "s~namespace: open-cluster-management-core~namespace: default~g" deploy/nucleus-spoke/*.yaml
-    $sed_command "s~namespace: open-cluster-management~namespace: default~g" deploy/nucleus-spoke/*.yaml
-    $sed_command "s~replicas: 3~replicas: 1~g" deploy/nucleus-hub/*.yaml
+    cd ${WORKDIR}/../registration-operator
+    kubectl create ns open-cluster-management
+    $sed_command "s~replicas: 3~replicas: 1~g" deploy/klusterlet/*.yaml
     kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
     
     SPOKE_NAMESPACE="open-cluster-management-monitoring"
@@ -201,21 +199,21 @@ deploy_spoke_core() {
     if [[ "$(uname)" == "Darwin" ]]; then
         $sed_command "\$a\\
         imagePullSecrets:\\
-        - name: multiclusterhub-operator-pull-secret" deploy/nucleus-spoke/service_account.yaml
+        - name: multiclusterhub-operator-pull-secret" deploy/klusterlet/service_account.yaml
     elif [[ "$(uname)" == "Linux" ]]; then
-        $sed_command "\$aimagePullSecrets:\n- name: multiclusterhub-operator-pull-secret" deploy/nucleus-spoke/service_account.yaml
+        $sed_command "\$aimagePullSecrets:\n- name: multiclusterhub-operator-pull-secret" deploy/klusterlet/service_account.yaml
     fi
-    kubectl apply -f deploy/nucleus-spoke/
-    kubectl apply -f deploy/nucleus-spoke/crds/*crd.yaml
+    kubectl apply -f deploy/klusterlet/
+    kubectl apply -f deploy/klusterlet/crds/*crd.yaml
     sleep 2
-    kubectl apply -f deploy/nucleus-spoke/crds
-    kubectl apply -f ${WORKDIR}/tests/e2e/nucleus/spokecore.yaml
+    kubectl apply -f deploy/klusterlet/crds
     kubectl apply -f ${WORKDIR}/tests/e2e/req_crds
     sleep 2
     kubectl apply -f ${WORKDIR}/tests/e2e/req_crds/spoke_cr
-    rm -rf ${WORKDIR}/../nucleus
+    rm -rf ${WORKDIR}/../registration-operator
     kind get kubeconfig --name hub --internal > $HOME/.kube/kind-config-hub-internal
-    kubectl create secret generic bootstrap-hub-kubeconfig --from-file=kubeconfig=$HOME/.kube/kind-config-hub-internal
+    kubectl create namespace open-cluster-management-agent
+    kubectl create secret generic bootstrap-hub-kubeconfig --from-file=kubeconfig=$HOME/.kube/kind-config-hub-internal -n open-cluster-management-agent
 }
 
 approve_csr_joinrequest() {
@@ -233,17 +231,17 @@ approve_csr_joinrequest() {
             exit 1
         fi
         n=$((n+1))
-        echo "Retrying in 5s..."
-        sleep 5
+        echo "Retrying in 10s..."
+        sleep 10
     done
     n=1
     while true
     do
-        cluster=`kubectl --kubeconfig $HUB_KUBECONFIG get spokecluster`
+        cluster=`kubectl --kubeconfig $HUB_KUBECONFIG get managedcluster`
         if [[ ! -z $cluster ]]; then
-            clustername=`kubectl --kubeconfig $HUB_KUBECONFIG get spokecluster | grep -v Name | awk 'NR==2' | awk '{ print $1 }'`
+            clustername=`kubectl --kubeconfig $HUB_KUBECONFIG get managedcluster | grep -v Name | awk 'NR==2' | awk '{ print $1 }'`
             echo "Approve joinrequest for $clustername"
-              kubectl --kubeconfig $HUB_KUBECONFIG patch spokecluster $clustername --patch '{"spec":{"hubAcceptsClient":true}}' --type=merge
+            kubectl --kubeconfig $HUB_KUBECONFIG patch managedcluster $clustername --patch '{"spec":{"hubAcceptsClient":true}}' --type=merge
             break
         fi
         if [[ $n -ge 20 ]]; then
@@ -254,9 +252,6 @@ approve_csr_joinrequest() {
         sleep 5
     done
 
-    # apply the temporary fix for RBAC
-    kubectl --kubeconfig $HUB_KUBECONFIG apply -f $WORKDIR/tests/e2e/nucleus/role.yaml
-    kubectl --kubeconfig $HUB_KUBECONFIG apply -f $WORKDIR/tests/e2e/nucleus/rolebinding.yaml
 }
 
 patch_for_remote_write() {
@@ -264,7 +259,7 @@ patch_for_remote_write() {
     n=1
     while true
     do
-        entity=`kubectl --kubeconfig $HUB_KUBECONFIG get route observatorium-api`
+        entity=$(kubectl --kubeconfig $HUB_KUBECONFIG get route | grep observatorium-api) || true
         if [[ ! -z $entity ]]; then
             break
         fi
@@ -276,10 +271,11 @@ patch_for_remote_write() {
         sleep 10
     done
     kubectl --kubeconfig $HUB_KUBECONFIG patch route observatorium-api --patch '{"spec":{"host": "observatorium.hub", "wildcardPolicy": "None"}}' --type=merge
-    obser_hub=`kind get kubeconfig --name hub --internal | grep server: | awk -F '://' '{print $2}' | awk -F ':' '{print $1}'`
+    #obser_hub=`kind get kubeconfig --name hub --internal | grep server: | awk -F '://' '{print $2}' | awk -F ':' '{print $1}'`
 
-    spoke_docker_id=`docker ps | grep spoke-control-plane | awk -F ' ' '{print $1}'`
-    docker exec --env obser_hub=$obser_hub -it $spoke_docker_id /bin/bash -c 'echo "$obser_hub observatorium.hub" >> /etc/hosts'
+    #spoke_docker_id=`docker ps | grep spoke-control-plane | awk -F ' ' '{print $1}'`
+    #docker exec --env obser_hub=$obser_hub -it $spoke_docker_id /bin/bash -c 'echo "$obser_hub observatorium.hub" >> /etc/hosts'
+
 }
 
 deploy() {

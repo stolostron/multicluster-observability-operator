@@ -228,7 +228,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 
 	//TODO: should be removed once the placementrule adopted the new API
 	if len(instance.Status.Decisions) == 0 {
-		clusterList := &clusterv1.SpokeClusterList{}
+		clusterList := &clusterv1.ManagedClusterList{}
 		err = r.client.List(context.TODO(), clusterList)
 		if err != nil {
 			reqLogger.Error(err, "Failed to list clusters.")
