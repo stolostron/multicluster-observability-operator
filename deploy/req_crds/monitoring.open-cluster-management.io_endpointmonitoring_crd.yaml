@@ -168,7 +168,7 @@ spec:
                 properties:
                   enable:
                     type: boolean
-                  reabelConfigs:
+                  relabelConfigs:
                     items:
                       description: 'RelabelConfig allows dynamic rewriting of the
                         label set, being applied to samples before ingestion. It defines

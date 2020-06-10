@@ -27,7 +27,7 @@ type GlobalConfigSpec struct {
 type MetricsCollectorSpec struct {
 	Enable         bool                  `json:"enable"`
 	Type           string                `json:"type"`
-	RelabelConfigs []monv1.RelabelConfig `json:"reabelConfigs,omitempty"`
+	RelabelConfigs []monv1.RelabelConfig `json:"relabelConfigs,omitempty"`
 }
 
 // EndpointMonitoringStatus defines the observed state of EndpointMonitoring
