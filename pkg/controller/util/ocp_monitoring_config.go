@@ -42,6 +42,9 @@ func getConfigMap(client kubernetes.Interface) (*v1.ConfigMap, error) {
 }
 
 func createRemoteWriteSpec(url string, labelConfigs *[]monv1.RelabelConfig) (*monv1.RemoteWriteSpec, error) {
+	if labelConfigs == nil {
+		return nil, nil
+	}
 	clusterID, err := GetClusterID()
 	if err != nil {
 		return nil, err
@@ -113,24 +116,36 @@ func updateConfigMap(
 		return err
 	}
 	if config.PrometheusK8sConfig == nil {
+		if labelConfigs == nil {
+			return nil
+		}
 		config.PrometheusK8sConfig = &manifests.PrometheusK8sConfig{}
 	}
 	if config.PrometheusK8sConfig.RemoteWrite == nil || len(config.PrometheusK8sConfig.RemoteWrite) == 0 {
+		if labelConfigs == nil {
+			return nil
+		}
 		config.PrometheusK8sConfig.RemoteWrite = []monv1.RemoteWriteSpec{
 			*rwSpec,
 		}
 	} else {
 		flag := false
-		for i, spec := range config.PrometheusK8sConfig.RemoteWrite {
-			if strings.Contains(spec.URL, url) {
-				flag = true
-				config.PrometheusK8sConfig.RemoteWrite[i] = *rwSpec
+		specs := []monv1.RemoteWriteSpec{}
+		for _, spec := range config.PrometheusK8sConfig.RemoteWrite {
+			if !strings.Contains(spec.URL, url) {
+				specs = append(specs, spec)
+			} else {
+				if labelConfigs != nil {
+					flag = true
+					specs = append(specs, *rwSpec)
+				}
 				break
 			}
 		}
-		if !flag {
-			config.PrometheusK8sConfig.RemoteWrite = append(config.PrometheusK8sConfig.RemoteWrite, *rwSpec)
+		if !flag && labelConfigs != nil {
+			specs = append(specs, *rwSpec)
 		}
+		config.PrometheusK8sConfig.RemoteWrite = specs
 	}
 	updateConfigYaml, err := yaml.Marshal(config)
 	if err != nil {
@@ -153,6 +168,10 @@ func UpdateClusterMonitoringConfig(url string, labelConfigs *[]monv1.RelabelConf
 	cm, err := getConfigMap(client)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			if labelConfigs == nil {
+				log.Info("No cluster-monitoring-config configmap found")
+				return nil
+			}
 			err = createConfigMap(client, url, labelConfigs)
 			return err
 		}
