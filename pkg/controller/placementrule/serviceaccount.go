@@ -88,7 +88,7 @@ func createRole(client client.Client, namespace string) error {
 		return nil
 	}
 
-	log.Info("role already existed", "namespace", namespace)
+	log.Info("role already existed/unchanged", "namespace", namespace)
 	return nil
 }
 
@@ -140,7 +140,7 @@ func createRoleBinding(client client.Client, namespace string) error {
 		return nil
 	}
 
-	log.Info("rolebinding already existed", "namespace", namespace)
+	log.Info("rolebinding already existed/unchanged", "namespace", namespace)
 	return nil
 }
 
@@ -169,7 +169,7 @@ func createServiceAccount(client client.Client, namespace string) error {
 		return err
 	}
 
-	log.Info("serviceaccount already existed", "namespace", namespace)
+	log.Info("serviceaccount already existed/unchanged", "namespace", namespace)
 	return nil
 }
 
@@ -200,8 +200,6 @@ func getSAToken(client client.Client, namespace string) ([]byte, []byte, error) 
 			log.Error(err, "Failed to get secret", "secret", s.Name)
 			return nil, nil, err
 		}
-		log.Info("Secret Name", "name", s.Name)
-		log.Info("Secret Type", "type", secretFound.Type)
 		if secretFound.Type == corev1.SecretTypeServiceAccountToken {
 			token := secretFound.Data["token"]
 			ca := secretFound.Data["ca.crt"]

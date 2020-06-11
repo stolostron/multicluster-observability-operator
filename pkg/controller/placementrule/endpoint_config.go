@@ -67,6 +67,6 @@ func createEndpointConfigCR(client client.Client, obsNamespace string, namespace
 		return err
 	}
 
-	log.Info("endponitmetrics already existed", "namespace", namespace)
+	log.Info("endponitmetrics already existed/unchanged", "namespace", namespace)
 	return nil
 }

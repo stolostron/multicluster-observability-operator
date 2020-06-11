@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering/templates"
 )
 
@@ -21,16 +22,6 @@ const (
 	saName          = "endpoint-monitoring-operator-sa"
 	rolebindingName = "endpoint-monitoring-operator-rb"
 )
-
-func getK8sObj(kind string) runtime.Object {
-	objs := map[string]runtime.Object{
-		"Deployment":         &v1.Deployment{},
-		"ClusterRole":        &rbacv1.ClusterRole{},
-		"ClusterRoleBinding": &rbacv1.ClusterRoleBinding{},
-		"ServiceAccount":     &corev1.ServiceAccount{},
-	}
-	return objs[kind]
-}
 
 func loadTemplates(namespace string,
 	mcm *monitoringv1alpha1.MultiClusterMonitoring) ([]runtime.RawExtension, error) {
@@ -47,7 +38,7 @@ func loadTemplates(namespace string,
 		if kind != "ClusterRole" && kind != "ClusterRoleBinding" {
 			r.SetNamespace(spokeNameSpace)
 		}
-		obj := getK8sObj(kind)
+		obj := util.GetK8sObj(kind)
 		err := runtime.DefaultUnstructuredConverter.FromUnstructured(r.Map(), obj)
 		if err != nil {
 			log.Error(err, "failed to convert the resource", r.GetName())

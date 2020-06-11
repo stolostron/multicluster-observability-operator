@@ -4,7 +4,6 @@ package placementrule
 
 import (
 	"context"
-	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,6 +14,7 @@ import (
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
 )
 
 const (
@@ -102,8 +102,20 @@ func createManifestWork(client client.Client, namespace string,
 		return err
 	}
 
-	if !reflect.DeepEqual(found.Spec.Workload.Manifests, manifests) {
-		log.Info("Updating monitoring-endpoint-monitoring-work work", "namespace", namespace)
+	updated := false
+	if len(found.Spec.Workload.Manifests) == len(manifests) {
+		for i, m := range found.Spec.Workload.Manifests {
+			if !util.CompareObject(m.RawExtension, manifests[i].RawExtension) {
+				updated = true
+				break
+			}
+		}
+	} else {
+		updated = true
+	}
+
+	if updated {
+		log.Info("Reverting monitoring-endpoint-monitoring-work work", "namespace", namespace)
 		work.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 		err = client.Update(context.TODO(), work)
 		if err != nil {
@@ -113,6 +125,6 @@ func createManifestWork(client client.Client, namespace string,
 		return nil
 	}
 
-	log.Info("manifestwork already existed", "namespace", namespace)
+	log.Info("manifestwork already existed/unchanged", "namespace", namespace)
 	return nil
 }
