@@ -41,6 +41,7 @@ func createRole(client client.Client, namespace string) error {
 					"watch",
 					"list",
 					"get",
+					"update",
 				},
 				APIGroups: []string{
 					epRsGroup,

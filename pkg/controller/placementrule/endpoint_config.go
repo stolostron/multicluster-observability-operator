@@ -20,6 +20,24 @@ const (
 	collectorType = "OCP_PROMETHEUS"
 )
 
+func deleteEndpointConfigCR(client client.Client, namespace string) error {
+	found := &epv1alpha1.EndpointMonitoring{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: epConfigName, Namespace: namespace}, found)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		log.Error(err, "Failed to check endpoint config cr", "namespace", namespace)
+		return err
+	}
+	err = client.Delete(context.TODO(), found)
+	if err != nil {
+		log.Error(err, "Failed to delete endpointmonitoring", "namespace", namespace)
+	}
+	log.Info("endpointmonitoring is deleted", "namespace", namespace)
+	return err
+}
+
 func createEndpointConfigCR(client client.Client, obsNamespace string, namespace string, cluster string) error {
 	url, err := util.GetObsAPIUrl(client, obsNamespace)
 	if err != nil {
