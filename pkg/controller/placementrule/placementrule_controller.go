@@ -23,6 +23,7 @@ import (
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
 )
 
 const (
@@ -76,8 +77,10 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Meta.GetName() == placementRuleName && e.Meta.GetNamespace() == watchNamespace {
+				return e.DeleteStateUnknown
+			}
 			return false
-			//return !e.DeleteStateUnknown
 		},
 	}
 
@@ -212,18 +215,48 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 
+	epList := &monitoringv1alpha1.EndpointMonitoringList{}
+	err = r.client.List(context.TODO(), epList)
+	if err != nil {
+		reqLogger.Error(err, "Failed to list endpointmonitoring resource")
+		return reconcile.Result{}, err
+	}
+	currentClusters := []string{}
+	for _, ep := range epList.Items {
+		if ep.Name == epConfigName && ep.Annotations[ownerLabelKey] == ownerLabelValue {
+			currentClusters = append(currentClusters, ep.Namespace)
+		}
+	}
+
 	for _, decision := range instance.Status.Decisions {
-		log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
+		reqLogger.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
+		currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
 		err = createEndpointConfigCR(r.client, mcm.Namespace, decision.ClusterNamespace, decision.ClusterName)
 		if err != nil {
 			reqLogger.Error(err, "Failed to create endpointmonitoring")
-			continue
+			return reconcile.Result{}, err
 		}
 		err = createManifestWork(r.client, decision.ClusterNamespace, mcm, imagePullSecret)
 		if err != nil {
 			reqLogger.Error(err, "Failed to create manifestwork")
+			return reconcile.Result{}, err
 		}
 	}
 
-	return reconcile.Result{}, err
+	for _, cluster := range currentClusters {
+		reqLogger.Info("Monitoring opearator will be uninstalled", "namespace", cluster)
+		err = deleteEndpointConfigCR(r.client, cluster)
+		if err != nil {
+			reqLogger.Error(err, "Failed to delete endpointmonitoring", "namespace", cluster)
+			return reconcile.Result{}, err
+		}
+		err = deleteManifestWork(r.client, cluster)
+		if err != nil {
+			reqLogger.Error(err, "Failed to create manifestwork")
+			return reconcile.Result{}, err
+		}
+
+	}
+
+	return reconcile.Result{}, nil
 }

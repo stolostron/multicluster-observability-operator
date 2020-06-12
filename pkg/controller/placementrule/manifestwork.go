@@ -21,6 +21,24 @@ const (
 	workName = "monitoring-endpoint-monitoring-work"
 )
 
+func deleteManifestWork(client client.Client, namespace string) error {
+	found := &workv1.ManifestWork{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		log.Error(err, "Failed to check monitoring-endpoint-monitoring-work work", "namespace", namespace)
+		return err
+	}
+	err = client.Delete(context.TODO(), found)
+	if err != nil {
+		log.Error(err, "Failed to delete monitoring-endpoint-monitoring-work work", "namespace", namespace)
+	}
+	log.Info("manifestwork is deleted", "namespace", namespace)
+	return err
+}
+
 func createManifestWork(client client.Client, namespace string,
 	mcm *monitoringv1alpha1.MultiClusterMonitoring,
 	imagePullSecret *corev1.Secret) error {
