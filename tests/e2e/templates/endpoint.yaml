@@ -4,7 +4,7 @@ metadata:
   name: endpoint-config
 spec:
   global:
-    serverUrl: "https://172.17.0.2:6443/api/metrics/v1/write"
+    serverUrl: "observatorium.hub"
   metricsCollectors:
   - enable: true
     type: OCP_PROMETHEUS
