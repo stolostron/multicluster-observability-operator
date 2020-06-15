@@ -7,6 +7,10 @@ set -o pipefail
 WORKDIR=`pwd`
 HUB_KUBECONFIG=$HOME/.kube/kind-config-hub
 SPOKE_KUBECONFIG=$HOME/.kube/kind-config-spoke
+MONITORING_NS="open-cluster-management-monitoring"
+DEFAULT_NS="open-cluster-management"
+AGENT_NS="open-cluster-management-agent"
+HUB_NS="open-cluster-management-hub"
 
 sed_command='sed -i-e -e'
 if [[ "$(uname)" == "Darwin" ]]; then
@@ -15,7 +19,7 @@ fi
 
 # update prometheus CR to enable remote write to thanos
 update_prometheus_remote_write() {
-    obs_url="http://monitoring-observatorium-observatorium-api.open-cluster-management.svc:8080/api/metrics/v1/write"
+    obs_url="http://monitoring-observatorium-observatorium-api.$DEFAULT_NS.svc:8080/api/metrics/v1/write"
     cluster_replacement="hub_cluster"
     if [[ ! -z "$1" ]]; then
        obs_url="http://$1/api/metrics/v1/write"
@@ -47,6 +51,7 @@ create_kind_cluster() {
     kind delete cluster --name $1 || true
 
     echo "Start KinD cluster with the default cluster name - $1"
+    rm -rf $HOME/.kube/kind-config-$1
     kind create cluster --kubeconfig $HOME/.kube/kind-config-$1 --name $1 --config ${WORKDIR}/tests/e2e/kind/kind-$1.config.yaml
     export KUBECONFIG=$HOME/.kube/kind-config-$1
 
@@ -122,8 +127,8 @@ deploy_mcm_operator() {
     cp deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml-e
     printf "spec:\n  storageClass: local\n" >> deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml
     # Install the multicluster-monitoring-operator
-    kubectl create ns open-cluster-management
-    kubectl config set-context --current --namespace open-cluster-management
+    kubectl create ns ${MONITORING_NS}
+    kubectl config set-context --current --namespace ${MONITORING_NS}
     # create image pull secret
     kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
 
@@ -180,6 +185,8 @@ deploy_hub_core() {
     elif [[ "$(uname)" == "Linux" ]]; then
         $sed_command "\$aimagePullSecrets:\n- name: multiclusterhub-operator-pull-secret" deploy/cluster-manager/service_account.yaml
     fi
+    kubectl create ns $DEFAULT_NS || true
+    kubectl config set-context --current --namespace $DEFAULT_NS
     kubectl apply -f deploy/cluster-manager/
     kubectl apply -f deploy/cluster-manager/crds/*crd.yaml
     sleep 2
@@ -188,13 +195,13 @@ deploy_hub_core() {
 
 deploy_spoke_core() {
     cd ${WORKDIR}/../registration-operator
-    kubectl create ns open-cluster-management
     $sed_command "s~replicas: 3~replicas: 1~g" deploy/klusterlet/*.yaml
+    kubectl create ns ${DEFAULT_NS}
+    kubectl config set-context --current --namespace ${DEFAULT_NS}
     kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
     
-    SPOKE_NAMESPACE="open-cluster-management-monitoring"
-    kubectl create namespace $SPOKE_NAMESPACE
-    kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS -n $SPOKE_NAMESPACE
+    kubectl create namespace $MONITORING_NS
+    kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS -n $MONITORING_NS
     
     if [[ "$(uname)" == "Darwin" ]]; then
         $sed_command "\$a\\
@@ -212,8 +219,8 @@ deploy_spoke_core() {
     kubectl apply -f ${WORKDIR}/tests/e2e/req_crds/spoke_cr
     rm -rf ${WORKDIR}/../registration-operator
     kind get kubeconfig --name hub --internal > $HOME/.kube/kind-config-hub-internal
-    kubectl create namespace open-cluster-management-agent
-    kubectl create secret generic bootstrap-hub-kubeconfig --from-file=kubeconfig=$HOME/.kube/kind-config-hub-internal -n open-cluster-management-agent
+    kubectl create namespace $AGENT_NS
+    kubectl create secret generic bootstrap-hub-kubeconfig --from-file=kubeconfig=$HOME/.kube/kind-config-hub-internal -n $AGENT_NS
 }
 
 approve_csr_joinrequest() {
@@ -263,7 +270,7 @@ patch_placement_rule() {
     cat ~/.kube/kind-config-hub|grep client-key-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> key
     SERVER=$(cat ~/.kube/kind-config-hub|grep server|awk '{split($0, a, ": "); print a[2]}')
     curl --cert ./crt --key ./key --cacert ./ca -X PATCH -H "Content-Type:application/merge-patch+json" \
-        $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/open-cluster-management/placementrules/open-cluster-management-monitoring/status \
+        $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/$MONITORING_NS/placementrules/open-cluster-management-monitoring/status \
         -d @./tests/e2e/templates/status.json   
     rm ca crt key
 
