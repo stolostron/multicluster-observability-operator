@@ -7,18 +7,32 @@ export SPOKE_KUBECONFIG=$HOME/.kube/kind-config-spoke
 kubectl config set-context --current --namespace open-cluster-management
 
 wait_for_popup() {
+    wait_for_event popup $@
+}
+
+wait_for_vanish() {
+    wait_for_event vanish $@
+}
+
+wait_for_event() {
     CONFIG=""
     NAMESPACE=""
-    if [ "$#" -eq 4 ]; then
-        CONFIG="--kubeconfig $HOME/.kube/$3"
-        NAMESPACE="-n $4"
+    if [ "$#" -eq 5 ]; then
+        CONFIG="--kubeconfig $HOME/.kube/$4"
+        NAMESPACE="-n $5"
     fi
     n=1
     while true
     do
-        entity=$(kubectl get $1 $2 $CONFIG $NAMESPACE| grep -v Name | awk '{ print $1 }') || true
-        if [[ ! -z $entity ]]; then
-            return
+        entity=$(kubectl get $2 $3 $CONFIG $NAMESPACE| grep -v Name | awk '{ print $1 }') || true
+        if [[ "$1" == "popup" ]]; then
+            if [[ ! -z $entity ]]; then
+                return
+            fi
+        elif [[ "$1" == "vanish" ]]; then
+            if [[ -z $entity ]]; then
+                return
+            fi        
         fi
         if [[ $n -ge 10 ]]; then
             exit 1
@@ -26,7 +40,7 @@ wait_for_popup() {
         n=$((n+1))
         echo "Retrying in 10s..."
         sleep 10
-    done
+    done  
 }
 
 run_test_readiness() {
@@ -191,6 +205,14 @@ run_test_endpoint_operator() {
 
     SPOKE_NAMESPACE="open-cluster-management-monitoring"
 
+    wait_for_popup endpointmonitoring endpoint-config kind-config-hub cluster1
+    if [ $? -ne 0 ]; then
+        echo "The manifestwork monitoring-endpoint-monitoring-work not created"
+        exit 1
+    else
+        echo "The manifestwork monitoring-endpoint-monitoring-work created"
+    fi
+
     wait_for_popup manifestwork monitoring-endpoint-monitoring-work kind-config-hub cluster1
     if [ $? -ne 0 ]; then
         echo "The manifestwork monitoring-endpoint-monitoring-work not created"
@@ -247,10 +269,73 @@ run_test_endpoint_operator() {
 
 }
 
-run_test_readiness
-run_test_reconciling
-run_test_scale_grafana
-run_test_access_grafana
-run_test_access_grafana_dashboard
+run_test_monitoring_disable() {
+    # Workaround for placementrules operator
+    echo "Patch open-cluster-management-monitoring placementrule"
+    cat ~/.kube/kind-config-hub|grep certificate-authority-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d  >> ca
+    cat ~/.kube/kind-config-hub|grep client-certificate-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> crt
+    cat ~/.kube/kind-config-hub|grep client-key-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> key
+    SERVER=$(cat ~/.kube/kind-config-hub|grep server|awk '{split($0, a, ": "); print a[2]}')
+    curl --cert ./crt --key ./key --cacert ./ca -X PATCH -H "Content-Type:application/merge-patch+json" \
+        $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/open-cluster-management/placementrules/open-cluster-management-monitoring/status \
+        -d @./tests/e2e/templates/empty_status.json   
+    rm ca crt key
+  
+    n=1
+    while true
+    do
+        RESULT=$(kubectl get configmap --kubeconfig $SPOKE_KUBECONFIG -n openshift-monitoring cluster-monitoring-config -o yaml)
+        if [[ $RESULT != *"replacement: cluster1"* ]] && [[ $RESULT != *"replacement: 3650eda1-66fe-4aba-bfbc-d398638f3022"* ]]; then
+            echo "configmap cluster-monitoring-config has been reverted"
+            break
+        fi  
+        if [[ $n -ge 10 ]]; then
+            echo "configmap cluster-monitoring-config not reverted"
+            exit 1
+        fi
+        n=$((n+1))
+        echo "Retrying in 10s..."
+        sleep 10
+    done
+
+    wait_for_vanish endpointmonitoring endpoint-config kind-config-hub cluster1
+    if [ $? -ne 0 ]; then
+        echo "The manifestwork monitoring-endpoint-monitoring-work not removed"
+        exit 1
+    else
+        echo "The manifestwork monitoring-endpoint-monitoring-work removed"
+    fi
+
+    wait_for_vanish manifestwork monitoring-endpoint-monitoring-work kind-config-hub cluster1
+    if [ $? -ne 0 ]; then
+        echo "The manifestwork monitoring-endpoint-monitoring-work not removed"
+        exit 1
+    else
+        echo "The manifestwork monitoring-endpoint-monitoring-work removed"
+    fi
+
+    wait_for_vanish secret hub-kube-config kind-config-spoke $SPOKE_NAMESPACE
+    if [ $? -ne 0 ]; then
+        echo "The secret hub-kube-config not removed"
+        exit 1
+    else
+        echo "The secret hub-kube-config removed"
+    fi
+
+    wait_for_vanish deployment endpoint-monitoring-operator kind-config-spoke $SPOKE_NAMESPACE
+    if [ $? -ne 0 ]; then
+        echo "The deployment endpoint-monitoring-operator not removed"
+        exit 1
+    else
+        echo "The deployment endpoint-monitoring-operator removed"
+    fi
+}
+
+#run_test_readiness
+#run_test_reconciling
+#run_test_scale_grafana
+#run_test_access_grafana
+#run_test_access_grafana_dashboard
 run_test_endpoint_operator
-run_test_teardown
+run_test_monitoring_disable
+#run_test_teardown
