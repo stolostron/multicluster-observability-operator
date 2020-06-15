@@ -228,7 +228,7 @@ run_test_endpoint_operator() {
         echo "configmap cluster-monitoring-config doesn't have correct configuration"
     fi
 
-    kubectl apply cluster1 -f ./tests/e2e/templates/endpoint.yaml
+    kubectl apply -n cluster1 -f ./tests/e2e/templates/endpoint.yaml
     if [ $? -ne 0 ]; then
         echo "Failed to update endpointmonitoring endpoint-config"
         exit 1

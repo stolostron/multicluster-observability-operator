@@ -281,7 +281,7 @@ patch_for_remote_write() {
     n=1
     while true
     do
-        entity=$(kubectl --kubeconfig $HUB_KUBECONFIG get route | grep observatorium-api) || true
+        entity=$(kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS get route | grep observatorium-api) || true
         if [[ ! -z $entity ]]; then
             break
         fi
@@ -292,7 +292,7 @@ patch_for_remote_write() {
         echo "Retrying in 10s..."
         sleep 10
     done
-    kubectl --kubeconfig $HUB_KUBECONFIG patch route observatorium-api --patch '{"spec":{"host": "observatorium.hub", "wildcardPolicy": "None"}}' --type=merge
+    kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS patch route observatorium-api --patch '{"spec":{"host": "observatorium.hub", "wildcardPolicy": "None"}}' --type=merge
     #obser_hub=`kind get kubeconfig --name hub --internal | grep server: | awk -F '://' '{print $2}' | awk -F ':' '{print $1}'`
 
     #spoke_docker_id=`docker ps | grep spoke-control-plane | awk -F ' ' '{print $1}'`
