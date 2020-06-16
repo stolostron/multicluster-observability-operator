@@ -4,7 +4,8 @@
 export WAIT_TIMEOUT=${WAIT_TIMEOUT:-5m}
 export KUBECONFIG=$HOME/.kube/kind-config-hub
 export SPOKE_KUBECONFIG=$HOME/.kube/kind-config-spoke
-kubectl config set-context --current --namespace open-cluster-management
+MONITORING_NS="open-cluster-management-monitoring"
+kubectl config set-context --current --namespace $MONITORING_NS
 
 wait_for_popup() {
     wait_for_event popup $@
@@ -57,7 +58,7 @@ run_test_readiness() {
     OBSERVATORIUM_STATEFULSET="$MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-compact $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-receive-default $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-rule $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-store-memcached $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-store-shard-0"
 
     for depl in ${MULTICLUSTER_MONITORING_DEPLOYMENTS}; do
-        if ! kubectl -n open-cluster-management rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then 
+        if ! kubectl -n $MONITORING_NS rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then 
             echo "$depl is not ready after $WAIT_TIMEOUT"
             exit 1
         fi
@@ -67,7 +68,7 @@ run_test_readiness() {
 
     for depl in ${MINIO_DEPLOYMENTS}; do
         wait_for_popup "deployments" $depl
-        if ! kubectl -n open-cluster-management rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then 
+        if ! kubectl -n $MONITORING_NS rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then 
             echo "$depl is not ready after $WAIT_TIMEOUT"
             exit 1
         fi
@@ -76,7 +77,7 @@ run_test_readiness() {
 
     for depl in ${OBSERVATORIUM_DEPLOYMENTS}; do
         wait_for_popup "deployments" $depl
-        if ! kubectl -n open-cluster-management rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then 
+        if ! kubectl -n $MONITORING_NS rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then 
             echo "$depl is not ready after $WAIT_TIMEOUT"
             exit 1
         fi
@@ -85,7 +86,7 @@ run_test_readiness() {
 
     for depl in ${OBSERVATORIUM_STATEFULSET}; do
         wait_for_popup "statefulset" $depl
-        if ! kubectl -n open-cluster-management rollout status statefulset $depl --timeout=$WAIT_TIMEOUT; then 
+        if ! kubectl -n $MONITORING_NS rollout status statefulset $depl --timeout=$WAIT_TIMEOUT; then 
             echo "$depl is not ready after $WAIT_TIMEOUT"
             exit 1
         fi
@@ -93,7 +94,7 @@ run_test_readiness() {
 
     for depl in ${GRAFANA_DEPLOYMENTS}; do
         wait_for_popup "deployments" $depl
-        if ! kubectl -n open-cluster-management rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then 
+        if ! kubectl -n $MONITORING_NS rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then 
             echo "$depl is not ready after $WAIT_TIMEOUT"
             exit 1
         fi
@@ -124,17 +125,17 @@ run_test_scale_grafana() {
 }
 
 run_test_teardown() {
-    kubectl delete -n open-cluster-management MultiClusterMonitoring monitoring
-    kubectl delete -n open-cluster-management deployment/grafana-test
-    kubectl delete -n open-cluster-management service/grafana-test
-    kubectl delete -n open-cluster-management -f deploy/
+    kubectl delete -n $MONITORING_NS MultiClusterMonitoring monitoring
+    kubectl delete -n $MONITORING_NS deployment/grafana-test
+    kubectl delete -n $MONITORING_NS service/grafana-test
+    kubectl delete -n $MONITORING_NS -f deploy/
     target_count="0"
     timeout=$true
     interval=0
     intervals=600
     while [ $interval -ne $intervals ]; do
       echo "Waiting for cleaning"
-      count=$(kubectl -n open-cluster-management get all | wc -l)
+      count=$(kubectl -n $MONITORING_NS get all | wc -l)
       if [ "$count" = "$target_count" ]; then
         echo NS count is now: $count
 	    timeout=$false
@@ -203,8 +204,6 @@ run_test_access_grafana_dashboard() {
 
 run_test_endpoint_operator() {
 
-    SPOKE_NAMESPACE="open-cluster-management-monitoring"
-
     wait_for_popup endpointmonitoring endpoint-config kind-config-hub cluster1
     if [ $? -ne 0 ]; then
         echo "The manifestwork monitoring-endpoint-monitoring-work not created"
@@ -221,7 +220,7 @@ run_test_endpoint_operator() {
         echo "The manifestwork monitoring-endpoint-monitoring-work created"
     fi
 
-    wait_for_popup secret hub-kube-config kind-config-spoke $SPOKE_NAMESPACE
+    wait_for_popup secret hub-kube-config kind-config-spoke $MONITORING_NS
     if [ $? -ne 0 ]; then
         echo "The secret hub-kube-config not created"
         exit 1
@@ -229,7 +228,7 @@ run_test_endpoint_operator() {
         echo "The secret hub-kube-config created"
     fi
 
-    wait_for_popup deployment endpoint-monitoring-operator kind-config-spoke $SPOKE_NAMESPACE
+    wait_for_popup deployment endpoint-monitoring-operator kind-config-spoke $MONITORING_NS
     if [ $? -ne 0 ]; then
         echo "The deployment endpoint-monitoring-operator not created"
         exit 1
@@ -277,7 +276,7 @@ run_test_monitoring_disable() {
     cat ~/.kube/kind-config-hub|grep client-key-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> key
     SERVER=$(cat ~/.kube/kind-config-hub|grep server|awk '{split($0, a, ": "); print a[2]}')
     curl --cert ./crt --key ./key --cacert ./ca -X PATCH -H "Content-Type:application/merge-patch+json" \
-        $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/open-cluster-management/placementrules/open-cluster-management-monitoring/status \
+        $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/$MONITORING_NS/placementrules/open-cluster-management-monitoring/status \
         -d @./tests/e2e/templates/empty_status.json   
     rm ca crt key
   
@@ -331,11 +330,11 @@ run_test_monitoring_disable() {
     fi
 }
 
-#run_test_readiness
-#run_test_reconciling
-#run_test_scale_grafana
-#run_test_access_grafana
-#run_test_access_grafana_dashboard
+run_test_readiness
+run_test_reconciling
+run_test_scale_grafana
+run_test_access_grafana
+run_test_access_grafana_dashboard
 run_test_endpoint_operator
 run_test_monitoring_disable
-#run_test_teardown
+run_test_teardown
