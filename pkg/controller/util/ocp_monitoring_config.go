@@ -42,7 +42,11 @@ func getConfigMap(client kubernetes.Interface) (*v1.ConfigMap, error) {
 	return cm, err
 }
 
-func createRemoteWriteSpec(url string, clusterID string, labelConfigs *[]monv1.RelabelConfig) (*monv1.RemoteWriteSpec, error) {
+func createRemoteWriteSpec(
+	url string,
+	clusterID string,
+	labelConfigs *[]monv1.RelabelConfig) (*monv1.RemoteWriteSpec, error) {
+
 	if labelConfigs == nil {
 		return nil, nil
 	}
