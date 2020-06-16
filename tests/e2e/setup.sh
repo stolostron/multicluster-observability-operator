@@ -314,8 +314,8 @@ deploy() {
     deploy_prometheus_operator observatorium.hub
     deploy_spoke_core
     approve_csr_joinrequest
-    patch_placement_rule
     patch_for_remote_write
+    patch_placement_rule
     revert_changes
 }
 
