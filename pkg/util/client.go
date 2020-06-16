@@ -8,7 +8,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-func createKubeClient() (kubernetes.Interface, error) {
+// CreateKubeClient creates kube client
+func CreateKubeClient() (kubernetes.Interface, error) {
 	// create the config from the path
 	config, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
@@ -26,7 +27,8 @@ func createKubeClient() (kubernetes.Interface, error) {
 	return kubeClient, err
 }
 
-func createOCPClient() (ocpClientSet.Interface, error) {
+// CreateOCPClient creates kocp client
+func CreateOCPClient() (ocpClientSet.Interface, error) {
 	// create the config from the path
 	config, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {

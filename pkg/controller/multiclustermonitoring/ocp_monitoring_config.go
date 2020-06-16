@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package util
+package multiclustermonitoring
 
 import (
 	"strings"
@@ -14,25 +14,23 @@ import (
 	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
+
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
-	// ClusterNameLabelKey is the key for the injected label
-	ClusterNameLabelKey = "cluster"
-	clusterIDLabelKey   = "cluster_id"
-	collectorType       = "OCP_PROMETHEUS"
-	cmName              = "cluster-monitoring-config"
-	cmNamespace         = "openshift-monitoring"
-	configKey           = "config.yaml"
-	labelValue          = "hub_cluster"
-	protocol            = "http://"
-	urlSubPath          = "/api/metrics/v1/write"
+	clusterIDLabelKey = "cluster_id"
+	collectorType     = "OCP_PROMETHEUS"
+	cmName            = "cluster-monitoring-config"
+	cmNamespace       = "openshift-monitoring"
+	configKey         = "config.yaml"
+	labelValue        = "hub_cluster"
+	protocol          = "http://"
+	urlSubPath        = "/api/metrics/v1/write"
 )
-
-var log = logf.Log.WithName("util")
 
 func getConfigMap(client kubernetes.Interface) (*v1.ConfigMap, error) {
 	cm, err := client.CoreV1().ConfigMaps(cmNamespace).Get(cmName, metav1.GetOptions{})
@@ -50,7 +48,6 @@ func createRemoteWriteSpec(
 	if labelConfigs == nil {
 		return nil, nil
 	}
-
 	relabelConfig := monv1.RelabelConfig{
 		SourceLabels: []string{"__name__"},
 		TargetLabel:  clusterIDLabelKey,
@@ -178,9 +175,9 @@ func updateConfigMap(
 	return err
 }
 
-// UpdateClusterMonitoringConfig is used to update cluster-monitoring-config configmap on spoke clusters
-func UpdateClusterMonitoringConfig(url string, labelConfigs *[]monv1.RelabelConfig) error {
-	client, err := createKubeClient()
+// updateClusterMonitoringConfig is used to update cluster-monitoring-config configmap on spoke clusters
+func updateClusterMonitoringConfig(url string, labelConfigs *[]monv1.RelabelConfig) error {
+	client, err := util.CreateKubeClient()
 	if err != nil {
 		return err
 	}
@@ -208,7 +205,7 @@ func UpdateClusterMonitoringConfig(url string, labelConfigs *[]monv1.RelabelConf
 
 // UpdateHubClusterMonitoringConfig is used to cluster-monitoring-config configmap on hub clusters
 func UpdateHubClusterMonitoringConfig(client client.Client, namespace string) (*reconcile.Result, error) {
-	url, err := GetObsAPIUrl(client, namespace)
+	url, err := config.GetObsAPIUrl(client, namespace)
 	if err != nil {
 		return &reconcile.Result{}, err
 	}
@@ -216,9 +213,9 @@ func UpdateHubClusterMonitoringConfig(client client.Client, namespace string) (*
 	labelConfigs := []monv1.RelabelConfig{
 		{
 			SourceLabels: []string{"__name__"},
-			TargetLabel:  ClusterNameLabelKey,
+			TargetLabel:  config.GetClusterNameLabelKey(),
 			Replacement:  labelValue,
 		},
 	}
-	return &reconcile.Result{}, UpdateClusterMonitoringConfig(url, &labelConfigs)
+	return &reconcile.Result{}, updateClusterMonitoringConfig(url, &labelConfigs)
 }

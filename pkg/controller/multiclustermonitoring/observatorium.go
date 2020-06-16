@@ -18,13 +18,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
@@ -104,20 +103,6 @@ func GenerateObservatoriumCR(
 	return nil, nil
 }
 
-func createKubeClient() (kubernetes.Interface, error) {
-	config, err := config.GetConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	kubeClient, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return kubeClient, err
-}
-
 func GenerateAPIGatewayRoute(
 	client client.Client, scheme *runtime.Scheme,
 	monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
@@ -131,7 +116,7 @@ func GenerateAPIGatewayRoute(
 	listOptions := metav1.ListOptions{
 		LabelSelector: labelSelector,
 	}
-	kubeClient, err := createKubeClient()
+	kubeClient, err := util.CreateKubeClient()
 	if err != nil {
 		log.Error(err, "Failed to create kube client")
 		return &reconcile.Result{}, err

@@ -12,8 +12,8 @@ import (
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering/templates"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 const (

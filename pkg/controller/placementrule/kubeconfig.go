@@ -9,7 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 const (
@@ -21,7 +21,7 @@ func createKubeConfig(client client.Client, namespace string) (*clientv1.Config,
 	if error != nil {
 		return nil, error
 	}
-	apiServer, error := util.GetKubeAPIServerAddress(client)
+	apiServer, error := config.GetKubeAPIServerAddress(client)
 	if error != nil {
 		return nil, error
 	}
