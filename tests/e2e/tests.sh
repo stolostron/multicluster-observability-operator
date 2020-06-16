@@ -276,7 +276,7 @@ run_test_monitoring_disable() {
     cat ~/.kube/kind-config-hub|grep client-key-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> key
     SERVER=$(cat ~/.kube/kind-config-hub|grep server|awk '{split($0, a, ": "); print a[2]}')
     curl --cert ./crt --key ./key --cacert ./ca -X PATCH -H "Content-Type:application/merge-patch+json" \
-        $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/open-cluster-management/placementrules/open-cluster-management-monitoring/status \
+        $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/$MONITORING_NS/placementrules/open-cluster-management-monitoring/status \
         -d @./tests/e2e/templates/empty_status.json   
     rm ca crt key
   
