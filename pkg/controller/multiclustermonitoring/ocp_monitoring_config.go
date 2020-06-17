@@ -42,7 +42,6 @@ func getConfigMap(client kubernetes.Interface) (*v1.ConfigMap, error) {
 
 func createRemoteWriteSpec(
 	url string,
-	clusterID string,
 	labelConfigs *[]monv1.RelabelConfig) (*monv1.RemoteWriteSpec, error) {
 
 	if labelConfigs == nil {
@@ -82,12 +81,7 @@ func createConfigMap(
 	ocpClient ocpClientSet.Interface,
 	url string, labelConfigs *[]monv1.RelabelConfig) error {
 
-	clusterID, err := GetClusterID(ocpClient)
-	if err != nil {
-		return err
-	}
-
-	rwSpec, err := createRemoteWriteSpec(url, clusterID, labelConfigs)
+	rwSpec, err := createRemoteWriteSpec(url, labelConfigs)
 	if err != nil {
 		return err
 	}
@@ -129,13 +123,7 @@ func updateConfigMap(
 	if err != nil {
 		return err
 	}
-
-	clusterID, err := GetClusterID(ocpClient)
-	if err != nil {
-		return err
-	}
-
-	rwSpec, err := createRemoteWriteSpec(url, clusterID, labelConfigs)
+	rwSpec, err := createRemoteWriteSpec(url, labelConfigs)
 	if err != nil {
 		return err
 	}
@@ -190,7 +178,7 @@ func updateClusterMonitoringConfig(url string, labelConfigs *[]monv1.RelabelConf
 		return err
 	}
 
-	ocpClient, err := createOCPClient()
+	ocpClient, err := util.CreateOCPClient()
 	if err != nil {
 		return err
 	}
