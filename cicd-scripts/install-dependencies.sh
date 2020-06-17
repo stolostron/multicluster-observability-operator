@@ -1,6 +1,7 @@
 #!/bin/bash
+# Copyright (c) 2020 Red Hat, Inc.
 
-echo "INSTALL DEPENDENCIES GOES HERE!"
+echo "install dependencies"
 
 _OPERATOR_SDK_VERSION=v0.17.0
 
