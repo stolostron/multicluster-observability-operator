@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	monv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	manifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -41,23 +42,26 @@ func getConfigMap(client kubernetes.Interface) (*v1.ConfigMap, error) {
 	return cm, err
 }
 
-func createRemoteWriteSpec(url string, labelConfigs *[]monv1.RelabelConfig) (*monv1.RemoteWriteSpec, error) {
+func createRemoteWriteSpec(
+	url string,
+	clusterID string,
+	labelConfigs *[]monv1.RelabelConfig) (*monv1.RemoteWriteSpec, error) {
+
 	if labelConfigs == nil {
 		return nil, nil
 	}
-	clusterID, err := GetClusterID()
-	if err != nil {
-		return nil, err
-	}
+
 	relabelConfig := monv1.RelabelConfig{
 		SourceLabels: []string{"__name__"},
 		TargetLabel:  clusterIDLabelKey,
 		Replacement:  clusterID,
 	}
+
 	newlabelConfigs := append(*labelConfigs, relabelConfig)
 	if !strings.HasPrefix(url, "http") {
 		url = protocol + url
 	}
+
 	if !strings.HasSuffix(url, urlSubPath) {
 		url = url + urlSubPath
 	}
@@ -68,8 +72,17 @@ func createRemoteWriteSpec(url string, labelConfigs *[]monv1.RelabelConfig) (*mo
 	}, nil
 }
 
-func createConfigMap(client kubernetes.Interface, url string, labelConfigs *[]monv1.RelabelConfig) error {
-	rwSpec, err := createRemoteWriteSpec(url, labelConfigs)
+func createConfigMap(
+	client kubernetes.Interface,
+	ocpClient ocpClientSet.Interface,
+	url string, labelConfigs *[]monv1.RelabelConfig) error {
+
+	clusterID, err := GetClusterID(ocpClient)
+	if err != nil {
+		return err
+	}
+
+	rwSpec, err := createRemoteWriteSpec(url, clusterID, labelConfigs)
 	if err != nil {
 		return err
 	}
@@ -100,6 +113,7 @@ func createConfigMap(client kubernetes.Interface, url string, labelConfigs *[]mo
 
 func updateConfigMap(
 	client kubernetes.Interface,
+	ocpClient ocpClientSet.Interface,
 	configmap *v1.ConfigMap,
 	url string,
 	labelConfigs *[]monv1.RelabelConfig) error {
@@ -111,7 +125,12 @@ func updateConfigMap(
 		return err
 	}
 
-	rwSpec, err := createRemoteWriteSpec(url, labelConfigs)
+	clusterID, err := GetClusterID(ocpClient)
+	if err != nil {
+		return err
+	}
+
+	rwSpec, err := createRemoteWriteSpec(url, clusterID, labelConfigs)
 	if err != nil {
 		return err
 	}
@@ -165,6 +184,12 @@ func UpdateClusterMonitoringConfig(url string, labelConfigs *[]monv1.RelabelConf
 	if err != nil {
 		return err
 	}
+
+	ocpClient, err := createOCPClient()
+	if err != nil {
+		return err
+	}
+
 	cm, err := getConfigMap(client)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -172,12 +197,12 @@ func UpdateClusterMonitoringConfig(url string, labelConfigs *[]monv1.RelabelConf
 				log.Info("No cluster-monitoring-config configmap found")
 				return nil
 			}
-			err = createConfigMap(client, url, labelConfigs)
+			err = createConfigMap(client, ocpClient, url, labelConfigs)
 			return err
 		}
 		return err
 	}
-	err = updateConfigMap(client, cm, url, labelConfigs)
+	err = updateConfigMap(client, ocpClient, cm, url, labelConfigs)
 	return err
 }
 
