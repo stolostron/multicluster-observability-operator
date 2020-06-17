@@ -29,16 +29,13 @@ func TestCompareObject(t *testing.T) {
 		{
 			name: "Compare namespaces",
 			rawObj1: runtime.RawExtension{
-				Object: &corev1.Namespace{
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "v1",
-						Kind:       "Namespace",
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-ns-1",
-					},
-					Spec: corev1.NamespaceSpec{},
-				},
+				Raw: []byte(`{
+	"apiVersion": "v1",
+	"kind": "Namespace",
+	"metadata": {
+		"name": "test-ns-1"
+	}
+}`),
 			},
 			rawObj2: runtime.RawExtension{
 				Object: &corev1.Namespace{
@@ -323,10 +320,8 @@ func TestCompareObject(t *testing.T) {
 			if !CompareObject(c.rawObj1, c.rawObj1) {
 				t.Errorf("The same object should be no difference.")
 			}
-			if c.rawObj3.Object != nil {
-				if CompareObject(c.rawObj1, c.rawObj3) {
-					t.Errorf("The object may not be updated.")
-				}
+			if CompareObject(c.rawObj1, c.rawObj3) {
+				t.Errorf("The object may not be updated.")
 			}
 		})
 	}
