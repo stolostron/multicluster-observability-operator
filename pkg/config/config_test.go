@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	configv1 "github.com/openshift/api/config/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -58,7 +59,7 @@ func TestGetKubeAPIServerAddress(t *testing.T) {
 	}
 }
 
-func TestGetClusterID(t *testing.T) {
+func TestGetClusterIDSuccess(t *testing.T) {
 	version := &configv1.ClusterVersion{
 		ObjectMeta: metav1.ObjectMeta{Name: "version"},
 		Spec: configv1.ClusterVersionSpec{
@@ -69,5 +70,40 @@ func TestGetClusterID(t *testing.T) {
 	tmpClusterID, _ := GetClusterID(client)
 	if tmpClusterID != clusterID {
 		t.Errorf("OCP ClusterID (%v) is not the expected (%v)", tmpClusterID, clusterID)
+	}
+}
+
+func TestGetClusterIDFailed(t *testing.T) {
+	inf := &configv1.Infrastructure{
+		ObjectMeta: metav1.ObjectMeta{Name: infrastructureConfigName},
+		Status: configv1.InfrastructureStatus{
+			APIServerURL: apiServerURL,
+		},
+	}
+	client := fakeconfigclient.NewSimpleClientset(inf)
+	_, err := GetClusterID(client)
+	if err == nil {
+		t.Errorf("Should throw the error since there is no clusterversion defined")
+	}
+}
+
+func TestGetObsAPIUrl(t *testing.T) {
+	route := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      obsAPIGateway,
+			Namespace: "test",
+		},
+		Spec: routev1.RouteSpec{
+			Host: apiServerURL,
+		},
+	}
+	client := newFakeClient([]schema.GroupVersion{routev1.GroupVersion}, []runtime.Object{route})
+	host, _ := GetObsAPIUrl(client, "default")
+	if host == apiServerURL {
+		t.Errorf("Should not get route host in default namespace")
+	}
+	host, _ = GetObsAPIUrl(client, "test")
+	if host != apiServerURL {
+		t.Errorf("Observatorium api (%v) is not the expected (%v)", host, apiServerURL)
 	}
 }
