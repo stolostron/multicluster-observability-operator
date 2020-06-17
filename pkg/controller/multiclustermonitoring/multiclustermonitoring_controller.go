@@ -25,6 +25,7 @@ import (
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/deploying"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 var log = logf.Log.WithName("controller_multiclustermonitoring")
@@ -181,8 +182,13 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 		return *result, err
 	}
 
+	ocpClient, err := util.CreateOCPClient()
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	// generate/update the configmap cluster-monitoring-config
-	result, err = UpdateHubClusterMonitoringConfig(r.client, instance.Namespace)
+	result, err = UpdateHubClusterMonitoringConfig(r.client, ocpClient, instance.Namespace)
 	if result != nil {
 		return *result, err
 	}

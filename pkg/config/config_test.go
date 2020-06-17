@@ -11,23 +11,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 var (
 	apiServerURL = "http://example.com"
 	clusterID    = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 )
-
-func newFakeClient(gvs []schema.GroupVersion, types []runtime.Object) client.Client {
-	s := scheme.Scheme
-	for k, gv := range gvs {
-		s.AddKnownTypes(gv, types[k])
-	}
-	return fake.NewFakeClientWithScheme(s, types...)
-}
 
 func TestGetClusterNameLabelKey(t *testing.T) {
 	clusterName := GetClusterNameLabelKey()
@@ -52,7 +43,7 @@ func TestGetKubeAPIServerAddress(t *testing.T) {
 			APIServerURL: apiServerURL,
 		},
 	}
-	client := newFakeClient([]schema.GroupVersion{configv1.GroupVersion}, []runtime.Object{inf})
+	client := util.NewFakeClient([]schema.GroupVersion{configv1.GroupVersion}, []runtime.Object{inf})
 	apiURL, _ := GetKubeAPIServerAddress(client)
 	if apiURL != apiServerURL {
 		t.Errorf("Kubenetes API Server Address (%v) is not the expected (%v)", apiURL, apiServerURL)
@@ -97,7 +88,7 @@ func TestGetObsAPIUrl(t *testing.T) {
 			Host: apiServerURL,
 		},
 	}
-	client := newFakeClient([]schema.GroupVersion{routev1.GroupVersion}, []runtime.Object{route})
+	client := util.NewFakeClient([]schema.GroupVersion{routev1.GroupVersion}, []runtime.Object{route})
 	host, _ := GetObsAPIUrl(client, "default")
 	if host == apiServerURL {
 		t.Errorf("Should not get route host in default namespace")

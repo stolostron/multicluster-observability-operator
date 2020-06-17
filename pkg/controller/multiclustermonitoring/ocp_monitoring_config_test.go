@@ -3,85 +3,46 @@
 package multiclustermonitoring
 
 import (
-	"strings"
 	"testing"
 
-	monv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	configv1 "github.com/openshift/api/config/v1"
+	routev1 "github.com/openshift/api/route/v1"
+	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
-func TestGetConfigMap(t *testing.T) {
-	client := fake.NewSimpleClientset()
+func TestUpdateHubClusterMonitoringConfig(t *testing.T) {
 
-	result, err := getConfigMap(client)
-	if result != nil {
-		t.Errorf("result (%v) is not the expected (nil)", result)
-	}
-
-	if !errors.IsNotFound(err) {
-		t.Errorf("err (%v) should be (IsNotFound)", err)
-	}
-
-	cm := &v1.ConfigMap{
+	route := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cmName,
-			Namespace: cmNamespace,
+			Name:      obsAPIGateway,
+			Namespace: "test",
 		},
-		Data: map[string]string{},
+		Spec: routev1.RouteSpec{
+			Host: "apiServerURL",
+		},
 	}
+	client := util.NewFakeClient([]schema.GroupVersion{routev1.GroupVersion}, []runtime.Object{route})
 
-	_, err = client.CoreV1().ConfigMaps(cmNamespace).Create(cm)
+	version := &configv1.ClusterVersion{
+		ObjectMeta: metav1.ObjectMeta{Name: "version"},
+		Spec: configv1.ClusterVersionSpec{
+			ClusterID: configv1.ClusterID("xxxx-xxxx"),
+		},
+	}
+	ocpClient := fakeconfigclient.NewSimpleClientset(version)
+
+	_, err := UpdateHubClusterMonitoringConfig(client, ocpClient, "test")
 	if err != nil {
-		t.Errorf("err (%v) is not the expected (nil)", err)
+		t.Errorf("Update configmap has error: %v", err)
 	}
 
-	_, err = getConfigMap(client)
-	if errors.IsNotFound(err) {
-		t.Errorf("should has a configmap (%v) in namespace (%v), err: (%v)", cmName, cmNamespace, err)
-	}
-}
-
-func TestCreateRemoteWriteSpec(t *testing.T) {
-	labelConfigs := []monv1.RelabelConfig{}
-	result, err := createRemoteWriteSpec("testURL", "testClusterID", &labelConfigs)
-
-	if err != nil {
-		t.Errorf("err (%v) is not the expected (nil)", err)
-	}
-
-	if !strings.HasPrefix(result.URL, protocol) {
-		t.Errorf("URL (%v) should has a <%v> prefix", result.URL, protocol)
-	}
-
-	if !strings.HasSuffix(result.URL, urlSubPath) {
-		t.Errorf("URL (%v) should has a <%v> suffix", result.URL, urlSubPath)
-	}
-
-	if !strings.Contains(result.URL, "testURL") {
-		t.Errorf("URL (%v) should contains <testURL>", result.URL)
-	}
-
-	if result.WriteRelabelConfigs[len(result.WriteRelabelConfigs)-1].TargetLabel != clusterIDLabelKey {
-		t.Errorf("replacement (%v) should be equal to <%v>",
-			result.WriteRelabelConfigs[len(result.WriteRelabelConfigs)-1].TargetLabel,
-			clusterIDLabelKey,
-		)
-	}
-
-	if result.WriteRelabelConfigs[len(result.WriteRelabelConfigs)-1].Replacement != "testClusterID" {
-		t.Errorf("replacement (%v) should be equal to <testClusterID>",
-			result.WriteRelabelConfigs[len(result.WriteRelabelConfigs)-1].Replacement)
-	}
-
-	result, err = createRemoteWriteSpec(protocol+"testURL"+urlSubPath, "testClusterID", &labelConfigs)
-	if !strings.HasPrefix(result.URL, protocol) {
-		t.Errorf("URL (%v) should has a <%v> prefix", result.URL, protocol)
-	}
-
-	if !strings.HasSuffix(result.URL, urlSubPath) {
-		t.Errorf("URL (%v) should has a <%v> suffix", result.URL, urlSubPath)
+	cm, _ := getConfigMap(client)
+	if cm.Data == nil {
+		t.Errorf("Update configmap is failed")
 	}
 }
