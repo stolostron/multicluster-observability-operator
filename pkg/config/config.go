@@ -7,13 +7,12 @@ import (
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
@@ -69,12 +68,7 @@ func GetKubeAPIServerAddress(client client.Client) (string, error) {
 }
 
 // GetClusterID is used to get the cluster uid
-func GetClusterID() (string, error) {
-	ocpClient, err := util.CreateOCPClient()
-	if err != nil {
-		return "", err
-	}
-
+func GetClusterID(ocpClient ocpClientSet.Interface) (string, error) {
 	clusterVersion, err := ocpClient.ConfigV1().ClusterVersions().Get("version", v1.GetOptions{})
 	if err != nil {
 		log.Error(err, "Failed to get clusterVersion")

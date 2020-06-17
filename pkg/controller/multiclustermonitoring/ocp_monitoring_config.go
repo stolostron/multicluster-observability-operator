@@ -48,6 +48,14 @@ func createRemoteWriteSpec(
 	if labelConfigs == nil {
 		return nil, nil
 	}
+	ocpClient, err := util.CreateOCPClient()
+	if err != nil {
+		return nil, err
+	}
+	clusterID, err := config.GetClusterID(ocpClient)
+	if err != nil {
+		return nil, err
+	}
 	relabelConfig := monv1.RelabelConfig{
 		SourceLabels: []string{"__name__"},
 		TargetLabel:  clusterIDLabelKey,
