@@ -22,9 +22,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/deploying"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 var log = logf.Log.WithName("controller_multiclustermonitoring")
@@ -123,6 +124,8 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling MultiClusterMonitoring")
 
+	//set request name to be used in placementrule controller
+	config.SetMonitoringCRName(request.Name)
 	// Fetch the MultiClusterMonitoring instance
 	instance := &monitoringv1alpha1.MultiClusterMonitoring{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
@@ -179,8 +182,13 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 		return *result, err
 	}
 
+	ocpClient, err := util.CreateOCPClient()
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	// generate/update the configmap cluster-monitoring-config
-	result, err = util.UpdateHubClusterMonitoringConfig(r.client, instance.Namespace)
+	result, err = UpdateHubClusterMonitoringConfig(r.client, ocpClient, instance.Namespace)
 	if result != nil {
 		return *result, err
 	}

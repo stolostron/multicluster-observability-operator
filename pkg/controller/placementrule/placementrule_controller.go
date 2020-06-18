@@ -23,7 +23,8 @@ import (
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
@@ -182,7 +183,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	mcm := &monitoringv1alpha1.MultiClusterMonitoring{}
 	err := r.client.Get(context.TODO(),
 		types.NamespacedName{
-			Name:      "monitoring",
+			Name:      config.GetMonitoringCRName(),
 			Namespace: request.Namespace,
 		}, mcm)
 	if err != nil {

@@ -1,51 +1,56 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package util
+package multiclustermonitoring
 
 import (
+	"context"
 	"strings"
 
 	monv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	manifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
-	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
+
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 const (
-	// ClusterNameLabelKey is the key for the injected label
-	ClusterNameLabelKey = "cluster"
-	clusterIDLabelKey   = "cluster_id"
-	collectorType       = "OCP_PROMETHEUS"
-	cmName              = "cluster-monitoring-config"
-	cmNamespace         = "openshift-monitoring"
-	configKey           = "config.yaml"
-	labelValue          = "hub_cluster"
-	protocol            = "http://"
-	urlSubPath          = "/api/metrics/v1/write"
+	clusterIDLabelKey = "cluster_id"
+	collectorType     = "OCP_PROMETHEUS"
+	cmName            = "cluster-monitoring-config"
+	cmNamespace       = "openshift-monitoring"
+	configKey         = "config.yaml"
+	labelValue        = "hub_cluster"
+	protocol          = "http://"
+	urlSubPath        = "/api/metrics/v1/write"
 )
 
-var log = logf.Log.WithName("util")
+func getConfigMap(client client.Client) (*v1.ConfigMap, error) {
 
-func getConfigMap(client kubernetes.Interface) (*v1.ConfigMap, error) {
-	cm, err := client.CoreV1().ConfigMaps(cmNamespace).Get(cmName, metav1.GetOptions{})
+	found := &corev1.ConfigMap{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNamespace}, found)
 	if err != nil {
 		return nil, err
 	}
-	return cm, err
+	return found, err
 }
 
-func createRemoteWriteSpec(url string, labelConfigs *[]monv1.RelabelConfig) (*monv1.RemoteWriteSpec, error) {
+func createRemoteWriteSpec(
+	ocpClient ocpClientSet.Interface, url string,
+	labelConfigs *[]monv1.RelabelConfig) (*monv1.RemoteWriteSpec, error) {
+
 	if labelConfigs == nil {
 		return nil, nil
 	}
-	clusterID, err := GetClusterID()
+	clusterID, err := config.GetClusterID(ocpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -54,10 +59,12 @@ func createRemoteWriteSpec(url string, labelConfigs *[]monv1.RelabelConfig) (*mo
 		TargetLabel:  clusterIDLabelKey,
 		Replacement:  clusterID,
 	}
+
 	newlabelConfigs := append(*labelConfigs, relabelConfig)
 	if !strings.HasPrefix(url, "http") {
 		url = protocol + url
 	}
+
 	if !strings.HasSuffix(url, urlSubPath) {
 		url = url + urlSubPath
 	}
@@ -68,8 +75,12 @@ func createRemoteWriteSpec(url string, labelConfigs *[]monv1.RelabelConfig) (*mo
 	}, nil
 }
 
-func createConfigMap(client kubernetes.Interface, url string, labelConfigs *[]monv1.RelabelConfig) error {
-	rwSpec, err := createRemoteWriteSpec(url, labelConfigs)
+func createConfigMap(
+	client client.Client,
+	ocpClient ocpClientSet.Interface,
+	url string, labelConfigs *[]monv1.RelabelConfig) error {
+
+	rwSpec, err := createRemoteWriteSpec(ocpClient, url, labelConfigs)
 	if err != nil {
 		return err
 	}
@@ -91,7 +102,8 @@ func createConfigMap(client kubernetes.Interface, url string, labelConfigs *[]mo
 		},
 		Data: map[string]string{configKey: string(configYaml)},
 	}
-	_, err = client.CoreV1().ConfigMaps(cmNamespace).Create(cm)
+
+	err = client.Create(context.TODO(), cm)
 	if err == nil {
 		log.Info("Configmap created")
 	}
@@ -99,7 +111,8 @@ func createConfigMap(client kubernetes.Interface, url string, labelConfigs *[]mo
 }
 
 func updateConfigMap(
-	client kubernetes.Interface,
+	client client.Client,
+	ocpClient ocpClientSet.Interface,
 	configmap *v1.ConfigMap,
 	url string,
 	labelConfigs *[]monv1.RelabelConfig) error {
@@ -110,8 +123,7 @@ func updateConfigMap(
 	if err != nil {
 		return err
 	}
-
-	rwSpec, err := createRemoteWriteSpec(url, labelConfigs)
+	rwSpec, err := createRemoteWriteSpec(ocpClient, url, labelConfigs)
 	if err != nil {
 		return err
 	}
@@ -152,19 +164,18 @@ func updateConfigMap(
 		return err
 	}
 	configmap.Data[configKey] = string(updateConfigYaml)
-	_, err = client.CoreV1().ConfigMaps(cmNamespace).Update(configmap)
+	err = client.Update(context.TODO(), configmap)
 	if err == nil {
 		log.Info("Configmap updated")
 	}
 	return err
 }
 
-// UpdateClusterMonitoringConfig is used to update cluster-monitoring-config configmap on spoke clusters
-func UpdateClusterMonitoringConfig(url string, labelConfigs *[]monv1.RelabelConfig) error {
-	client, err := createKubeClient()
-	if err != nil {
-		return err
-	}
+// updateClusterMonitoringConfig is used to update cluster-monitoring-config configmap on spoke clusters
+func updateClusterMonitoringConfig(
+	client client.Client, ocpClient ocpClientSet.Interface,
+	url string, labelConfigs *[]monv1.RelabelConfig) error {
+
 	cm, err := getConfigMap(client)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -172,18 +183,22 @@ func UpdateClusterMonitoringConfig(url string, labelConfigs *[]monv1.RelabelConf
 				log.Info("No cluster-monitoring-config configmap found")
 				return nil
 			}
-			err = createConfigMap(client, url, labelConfigs)
+			err = createConfigMap(client, ocpClient, url, labelConfigs)
 			return err
 		}
 		return err
 	}
-	err = updateConfigMap(client, cm, url, labelConfigs)
+	err = updateConfigMap(client, ocpClient, cm, url, labelConfigs)
 	return err
 }
 
 // UpdateHubClusterMonitoringConfig is used to cluster-monitoring-config configmap on hub clusters
-func UpdateHubClusterMonitoringConfig(client client.Client, namespace string) (*reconcile.Result, error) {
-	url, err := GetObsAPIUrl(client, namespace)
+func UpdateHubClusterMonitoringConfig(
+	client client.Client,
+	ocpClient ocpClientSet.Interface,
+	namespace string) (*reconcile.Result, error) {
+
+	url, err := config.GetObsAPIUrl(client, namespace)
 	if err != nil {
 		return &reconcile.Result{}, err
 	}
@@ -191,9 +206,9 @@ func UpdateHubClusterMonitoringConfig(client client.Client, namespace string) (*
 	labelConfigs := []monv1.RelabelConfig{
 		{
 			SourceLabels: []string{"__name__"},
-			TargetLabel:  ClusterNameLabelKey,
+			TargetLabel:  config.GetClusterNameLabelKey(),
 			Replacement:  labelValue,
 		},
 	}
-	return &reconcile.Result{}, UpdateClusterMonitoringConfig(url, &labelConfigs)
+	return &reconcile.Result{}, updateClusterMonitoringConfig(client, ocpClient, url, &labelConfigs)
 }

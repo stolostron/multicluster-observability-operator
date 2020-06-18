@@ -4,7 +4,6 @@ package multiclustermonitoring
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"time"
 
@@ -18,9 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -104,40 +101,18 @@ func GenerateObservatoriumCR(
 	return nil, nil
 }
 
-func createKubeClient() (kubernetes.Interface, error) {
-	config, err := config.GetConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	kubeClient, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return kubeClient, err
-}
-
 func GenerateAPIGatewayRoute(
-	client client.Client, scheme *runtime.Scheme,
+	runclient client.Client, scheme *runtime.Scheme,
 	monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
 
-	labelSelector := fmt.Sprintf(
-		"app.kubernetes.io/component=%s, app.kubernetes.io/instance=%s",
-		"api",
-		monitoring.Name+obsPartoOfName,
-	)
-
-	listOptions := metav1.ListOptions{
-		LabelSelector: labelSelector,
+	listOptions := []client.ListOption{
+		client.MatchingLabels(map[string]string{
+			"app.kubernetes.io/component": "api",
+			"app.kubernetes.io/instance":  monitoring.Name + obsPartoOfName,
+		}),
 	}
-	kubeClient, err := createKubeClient()
-	if err != nil {
-		log.Error(err, "Failed to create kube client")
-		return &reconcile.Result{}, err
-	}
-
-	apiGatewayServices, err := kubeClient.CoreV1().Services(monitoring.Namespace).List(listOptions)
+	apiGatewayServices := &v1.ServiceList{}
+	err := runclient.List(context.TODO(), apiGatewayServices, listOptions...)
 	if err == nil && len(apiGatewayServices.Items) > 0 {
 		apiGateway := &routev1.Route{
 			ObjectMeta: metav1.ObjectMeta{
@@ -154,7 +129,7 @@ func GenerateAPIGatewayRoute(
 				},
 			},
 		}
-		err = client.Get(
+		err = runclient.Get(
 			context.TODO(),
 			types.NamespacedName{Name: apiGateway.Name, Namespace: apiGateway.Namespace},
 			&routev1.Route{})
@@ -163,7 +138,7 @@ func GenerateAPIGatewayRoute(
 				"apiGateway.Namespace", apiGateway.Namespace,
 				"apiGateway.Name", apiGateway.Name,
 			)
-			err = client.Create(context.TODO(), apiGateway)
+			err = runclient.Create(context.TODO(), apiGateway)
 			if err != nil {
 				return &reconcile.Result{}, err
 			}
