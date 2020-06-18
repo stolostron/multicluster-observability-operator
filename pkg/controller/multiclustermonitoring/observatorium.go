@@ -186,8 +186,8 @@ func newDefaultObservatoriumSpec() *observatoriumv1alpha1.ObservatoriumSpec {
 	obs.Rule = newRuleSpec()
 	obs.Store = newStoreSpec()
 
-	obs.ThanosReceiveController.Image = "quay.io/observatorium/thanos-receive-controller:latest"
-	obs.ThanosReceiveController.Version = "latest"
+	obs.ThanosReceiveController.Image = "quay.io/observatorium/thanos-receive-controller:master-2020-04-16-44c6bea"
+	obs.ThanosReceiveController.Version = "master-2020-04-16-44c6bea"
 	return obs
 }
 
