@@ -55,6 +55,36 @@ func TestUpdateHubClusterMonitoringConfig(t *testing.T) {
 "http":
   "httpProxy": "test"
   "httpsProxy": "test"
+prometheusK8s:
+  externalLabels: null
+  hostport: ""
+  nodeSelector: null
+  remoteWrite:
+  - url: http://observatorium/api/metrics/v1/write
+    writeRelabelConfigs:
+    - replacement: hub_cluster
+      sourceLabels:
+      - __name__
+      targetLabel: cluster
+    - replacement: xxxx-xxxx
+      sourceLabels:
+      - __name__
+      targetLabel: cluster_id
+  - url: http://apiServerURL/api/metrics/v1/write  
+  - url: http://apiServerURL/api/metrics/v1/write
+    writeRelabelConfigs:
+    - replacement: spoke_cluster
+      sourceLabels:
+      - __name__
+      targetLabel: cluster
+    - replacement: xxxx-xxxx
+      sourceLabels:
+      - __name__
+      targetLabel: cluster_id
+  resources: null
+  retention: ""
+  tolerations: null
+  volumeClaimTemplate: null
 `)
 	cm := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
