@@ -4,29 +4,11 @@ package util
 
 import (
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-func createKubeClient() (kubernetes.Interface, error) {
-	// create the config from the path
-	config, err := clientcmd.BuildConfigFromFlags("", "")
-	if err != nil {
-		log.Error(err, "Failed to create the config")
-		return nil, err
-	}
-
-	// generate the client based off of the config
-	kubeClient, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		log.Error(err, "Failed to create kube client")
-		return nil, err
-	}
-
-	return kubeClient, err
-}
-
-func createOCPClient() (ocpClientSet.Interface, error) {
+// CreateOCPClient creates ocp client
+func CreateOCPClient() (ocpClientSet.Interface, error) {
 	// create the config from the path
 	config, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {

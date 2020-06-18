@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	epv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/util"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 const (
@@ -39,7 +39,7 @@ func deleteEndpointConfigCR(client client.Client, namespace string) error {
 }
 
 func createEndpointConfigCR(client client.Client, obsNamespace string, namespace string, cluster string) error {
-	url, err := util.GetObsAPIUrl(client, obsNamespace)
+	url, err := config.GetObsAPIUrl(client, obsNamespace)
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func createEndpointConfigCR(client client.Client, obsNamespace string, namespace
 					RelabelConfigs: []monv1.RelabelConfig{
 						{
 							SourceLabels: []string{"__name__"},
-							TargetLabel:  util.ClusterNameLabelKey,
+							TargetLabel:  config.GetClusterNameLabelKey(),
 							Replacement:  cluster,
 						},
 					},

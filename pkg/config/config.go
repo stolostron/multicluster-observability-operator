@@ -1,20 +1,54 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package util
+package config
 
 import (
 	"context"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
+	clusterNameLabelKey      = "cluster"
+	obsAPIGateway            = "observatorium-api"
 	infrastructureConfigName = "cluster"
 )
+
+var log = logf.Log.WithName("config")
+
+var monitoringCRName = ""
+
+// GetClusterNameLabelKey returns the key for the injected label
+func GetClusterNameLabelKey() string {
+	return clusterNameLabelKey
+}
+
+// GetObsAPIUrl is used to get the URL for observartium api gateway
+func GetObsAPIUrl(client client.Client, namespace string) (string, error) {
+	found := &routev1.Route{}
+
+	err := client.Get(context.TODO(), types.NamespacedName{Name: obsAPIGateway, Namespace: namespace}, found)
+	if err != nil {
+		return "", err
+	}
+	return found.Spec.Host, nil
+}
+
+// GetMonitoringCRName returns monitoring cr name
+func GetMonitoringCRName() string {
+	return monitoringCRName
+}
+
+// SetMonitoringCRName sets the cr name
+func SetMonitoringCRName(crName string) {
+	monitoringCRName = crName
+}
 
 func infrastructureConfigNameNsN() types.NamespacedName {
 	return types.NamespacedName{
