@@ -7,7 +7,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// CreateOCPClient creates kocp client
+// CreateOCPClient creates ocp client
 func CreateOCPClient() (ocpClientSet.Interface, error) {
 	// create the config from the path
 	config, err := clientcmd.BuildConfigFromFlags("", "")
