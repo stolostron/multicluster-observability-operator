@@ -10,9 +10,7 @@ import (
 	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var (
@@ -43,7 +41,9 @@ func TestGetKubeAPIServerAddress(t *testing.T) {
 			APIServerURL: apiServerURL,
 		},
 	}
-	client := util.NewFakeClient([]schema.GroupVersion{configv1.GroupVersion}, []runtime.Object{inf})
+	scheme := runtime.NewScheme()
+	scheme.AddKnownTypes(configv1.GroupVersion, inf)
+	client := fake.NewFakeClientWithScheme(scheme, inf)
 	apiURL, _ := GetKubeAPIServerAddress(client)
 	if apiURL != apiServerURL {
 		t.Errorf("Kubenetes API Server Address (%v) is not the expected (%v)", apiURL, apiServerURL)
@@ -88,7 +88,10 @@ func TestGetObsAPIUrl(t *testing.T) {
 			Host: apiServerURL,
 		},
 	}
-	client := util.NewFakeClient([]schema.GroupVersion{routev1.GroupVersion}, []runtime.Object{route})
+	scheme := runtime.NewScheme()
+	scheme.AddKnownTypes(routev1.GroupVersion, route)
+	client := fake.NewFakeClientWithScheme(scheme, route)
+
 	host, _ := GetObsAPIUrl(client, "default")
 	if host == apiServerURL {
 		t.Errorf("Should not get route host in default namespace")

@@ -4,7 +4,6 @@ package multiclustermonitoring
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"time"
 
@@ -23,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
@@ -104,25 +102,17 @@ func GenerateObservatoriumCR(
 }
 
 func GenerateAPIGatewayRoute(
-	client client.Client, scheme *runtime.Scheme,
+	runclient client.Client, scheme *runtime.Scheme,
 	monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
 
-	labelSelector := fmt.Sprintf(
-		"app.kubernetes.io/component=%s, app.kubernetes.io/instance=%s",
-		"api",
-		monitoring.Name+obsPartoOfName,
-	)
-
-	listOptions := metav1.ListOptions{
-		LabelSelector: labelSelector,
+	listOptions := []client.ListOption{
+		client.MatchingLabels(map[string]string{
+			"app.kubernetes.io/component": "api",
+			"app.kubernetes.io/instance":  monitoring.Name + obsPartoOfName,
+		}),
 	}
-	kubeClient, err := util.CreateKubeClient()
-	if err != nil {
-		log.Error(err, "Failed to create kube client")
-		return &reconcile.Result{}, err
-	}
-
-	apiGatewayServices, err := kubeClient.CoreV1().Services(monitoring.Namespace).List(listOptions)
+	apiGatewayServices := &v1.ServiceList{}
+	err := runclient.List(context.TODO(), apiGatewayServices, listOptions...)
 	if err == nil && len(apiGatewayServices.Items) > 0 {
 		apiGateway := &routev1.Route{
 			ObjectMeta: metav1.ObjectMeta{
@@ -139,7 +129,7 @@ func GenerateAPIGatewayRoute(
 				},
 			},
 		}
-		err = client.Get(
+		err = runclient.Get(
 			context.TODO(),
 			types.NamespacedName{Name: apiGateway.Name, Namespace: apiGateway.Namespace},
 			&routev1.Route{})
@@ -148,7 +138,7 @@ func GenerateAPIGatewayRoute(
 				"apiGateway.Namespace", apiGateway.Namespace,
 				"apiGateway.Name", apiGateway.Name,
 			)
-			err = client.Create(context.TODO(), apiGateway)
+			err = runclient.Create(context.TODO(), apiGateway)
 			if err != nil {
 				return &reconcile.Result{}, err
 			}
