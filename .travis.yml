@@ -51,7 +51,6 @@ jobs:
         - if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then export COMPONENT_TAG_EXTENSION="-PR${TRAVIS_PULL_REQUEST}-${TRAVIS_COMMIT}"; fi;
         - |
           make
-          make copyright-check TRAVIS_BRANCH=${TRAVIS_BRANCH} TRAVIS_PULL_REQUEST_BRANCH=${TRAVIS_PULL_REQUEST_BRANCH}
           make component/build
           make component/push
           make imagescan/status
@@ -62,10 +61,11 @@ jobs:
         # Set the image tag differently for PRs
         - if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then export COMPONENT_TAG_EXTENSION="-PR${TRAVIS_PULL_REQUEST}-${TRAVIS_COMMIT}"; fi;
         # Bootstrap the build harness, pull test image, and run unit tests.  
-        - | 
+        - |
           make 
           make component/test/unit
           make sonar/go
+          make copyright-check TRAVIS_BRANCH=${TRAVIS_BRANCH}
     - stage: test-e2e
       name: "Deploy the image to a cluster and run e2e tests"
       script:
