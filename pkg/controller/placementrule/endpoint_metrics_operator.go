@@ -3,8 +3,6 @@
 package placementrule
 
 import (
-	"os"
-
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -18,6 +16,7 @@ import (
 
 const (
 	deployName      = "endpoint-monitoring-operator"
+	imageName       = "endpoint-monitoring-operator"
 	saName          = "endpoint-monitoring-operator-sa"
 	rolebindingName = "endpoint-monitoring-operator-rb"
 )
@@ -51,7 +50,11 @@ func loadTemplates(namespace string,
 		// set the image and watch_namespace for endpoint metrics operator
 		if r.GetKind() == "Deployment" && r.GetName() == deployName {
 			spec := obj.(*v1.Deployment).Spec.Template.Spec
-			spec.Containers[0].Image = os.Getenv("ENDPOINT_OPERATOR_IMAGE")
+			if mcm.Spec.ImageTagSuffix != "" {
+				spec.Containers[0].Image = mcm.Spec.ImageRepository + "/" +
+					imageName + ":" + mcm.Spec.ImageTagSuffix
+			}
+			spec.Containers[0].ImagePullPolicy = mcm.Spec.ImagePullPolicy
 			for i, env := range spec.Containers[0].Env {
 				if env.Name == "WATCH_NAMESPACE" {
 					spec.Containers[0].Env[i].Value = namespace

@@ -16,7 +16,7 @@ spec:
       containers:
         - name: multicluster-monitoring-operator
           # Replace this with the built image name
-          image: quay.io/open-cluster-management/multicluster-monitoring-operator:0.1.0-6c602f787aba00683fb5b8c88fc279420f267c42 
+          image: quay.io/open-cluster-management/multicluster-monitoring-operator:2.0-SNAPSHOT-2020-06-19-06-05-44 
           command:
           - multicluster-monitoring-operator
           imagePullPolicy: Always
@@ -35,5 +35,3 @@ spec:
               value: /usr/local/manifests
             - name: SPOKE_NAMESPACE
               value: open-cluster-management-monitoring
-            - name: ENDPOINT_OPERATOR_IMAGE
-              value: "quay.io/open-cluster-management/endpoint-monitoring-operator:0.1.0-5a1b25da4be2cb700a03fd0380b499b70ffa020a"
