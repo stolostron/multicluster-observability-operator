@@ -15,23 +15,23 @@ type MultiClusterMonitoringSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	// Version of the MultiClusterMonitor
+	// Version of the MultiClusterMonitoring
 	// +optional
 	Version string `json:"version"`
 
-	// Repository of the MultiClusterMonitor images
+	// Repository of the MultiClusterMonitoring images
 	// +optional
 	ImageRepository string `json:"imageRepository"`
 
-	// ImageTagSuffix of the MultiClusterMonitor images
+	// ImageTagSuffix of the MultiClusterMonitoring images
 	// +optional
 	ImageTagSuffix string `json:"imageTagSuffix"`
 
-	// Pull policy of the MultiClusterMonitor images
+	// Pull policy of the MultiClusterMonitoring images
 	// +optional
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy"`
 
-	// Pull secret of the MultiClusterMonitor images
+	// Pull secret of the MultiClusterMonitoring images
 	// +optional
 	ImagePullSecret string `json:"imagePullSecret,omitempty"`
 

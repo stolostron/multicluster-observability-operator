@@ -2,3 +2,5 @@ apiVersion: monitoring.open-cluster-management.io/v1alpha1
 kind: MultiClusterMonitoring
 metadata:
   name: monitoring
+spec:
+  imageTagSuffix: 2.0-SNAPSHOT-2020-06-19-06-05-44

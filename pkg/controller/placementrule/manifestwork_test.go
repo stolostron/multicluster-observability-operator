@@ -75,6 +75,7 @@ func TestManifestWork(t *testing.T) {
 	mcm := &monitoringv1alpha1.MultiClusterMonitoring{
 		Spec: monitoringv1alpha1.MultiClusterMonitoringSpec{
 			ImagePullSecret: "pull-secret",
+			ImageTagSuffix:  "xxx-xxx",
 		},
 	}
 	ps := &corev1.Secret{

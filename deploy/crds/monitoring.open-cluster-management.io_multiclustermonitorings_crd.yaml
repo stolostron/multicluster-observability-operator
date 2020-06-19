@@ -45,16 +45,16 @@ spec:
                   type: integer
               type: object
             imagePullPolicy:
-              description: Pull policy of the MultiClusterMonitor images
+              description: Pull policy of the MultiClusterMonitoring images
               type: string
             imagePullSecret:
-              description: Pull secret of the MultiClusterMonitor images
+              description: Pull secret of the MultiClusterMonitoring images
               type: string
             imageRepository:
-              description: Repository of the MultiClusterMonitor images
+              description: Repository of the MultiClusterMonitoring images
               type: string
             imageTagSuffix:
-              description: ImageTagSuffix of the MultiClusterMonitor images
+              description: ImageTagSuffix of the MultiClusterMonitoring images
               type: string
             nodeSelector:
               additionalProperties:
