@@ -17,10 +17,13 @@ import (
 )
 
 const (
-	templatePath    = "/usr/local/manifests/endpoint-monitoring"
 	deployName      = "endpoint-monitoring-operator"
 	saName          = "endpoint-monitoring-operator-sa"
 	rolebindingName = "endpoint-monitoring-operator-rb"
+)
+
+var (
+	templatePath = "/usr/local/manifests/endpoint-monitoring"
 )
 
 func loadTemplates(namespace string,
