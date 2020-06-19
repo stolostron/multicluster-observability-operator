@@ -10,11 +10,8 @@ const (
 	name = "test-ns"
 )
 
-func init() {
-	spokeNameSpace = name
-}
-
 func TestCreateNameSpace(t *testing.T) {
+	spokeNameSpace = name
 	namespace := createNameSpace()
 	if namespace.Name != name {
 		t.Fatal("Wrong namespace created")
