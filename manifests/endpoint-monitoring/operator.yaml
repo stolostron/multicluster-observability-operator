@@ -16,7 +16,7 @@ spec:
       containers:
         - name: endpoint-monitoring-operator
           # Replace this with the built image name
-          image: "quay.io/open-cluster-management/endpoint-monitoring-operator:2.0-SNAPSHOT-2020-06-19-06-05-44"
+          image: "quay.io/open-cluster-management/endpoint-monitoring-operator:0.1.0-9ccd9631ce8f0abe2b327d39b15752ec4c48a1fe"
           command:
           - endpoint-monitoring-operator
           imagePullPolicy: Always
