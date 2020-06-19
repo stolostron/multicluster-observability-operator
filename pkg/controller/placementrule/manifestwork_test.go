@@ -8,87 +8,57 @@ import (
 	"path"
 	"testing"
 
-	ocinfrav1 "github.com/openshift/api/config/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
 
-func TestManifestWork(t *testing.T) {
-	secretName := "test-secret"
-	token := "test-token"
-	ca := "test-ca"
+const (
+	pullSecretName = "test-pull-secret"
+)
 
-	s := scheme.Scheme
-	if err := ocinfrav1.AddToScheme(s); err != nil {
-		t.Fatalf("Unable to add ocinfrav1 scheme: (%v)", err)
-	}
-	if err := workv1.AddToScheme(s); err != nil {
-		t.Fatalf("Unable to add workv1 scheme: (%v)", err)
-	}
-
-	secret := &corev1.Secret{
+func newTestMCM() *monitoringv1alpha1.MultiClusterMonitoring {
+	return &monitoringv1alpha1.MultiClusterMonitoring{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
-			Namespace: namespace,
+			Name:      mcmName,
+			Namespace: mcmNameSpace,
 		},
-		Type: corev1.SecretTypeServiceAccountToken,
-		Data: map[string][]byte{
-			"token":  []byte(token),
-			"ca.crt": []byte(ca),
-		},
-	}
-	sa := &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      serviceAccountName,
-			Namespace: namespace,
-			Annotations: map[string]string{
-				ownerLabelKey: ownerLabelValue,
-			},
-		},
-		Secrets: []corev1.ObjectReference{
-			{
-				Kind:      "Secret",
-				Namespace: namespace,
-				Name:      secretName,
-			},
-		},
-	}
-	infra := &ocinfrav1.Infrastructure{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "cluster",
-		},
-		Status: ocinfrav1.InfrastructureStatus{
-			APIServerURL: "test-api-url",
-		},
-	}
-	objs := []runtime.Object{secret, sa, infra}
-	c := fake.NewFakeClient(objs...)
-
-	mcm := &monitoringv1alpha1.MultiClusterMonitoring{
 		Spec: monitoringv1alpha1.MultiClusterMonitoringSpec{
-			ImagePullSecret: "pull-secret",
+			ImagePullSecret: pullSecretName,
 		},
 	}
-	ps := &corev1.Secret{
+}
+
+func newTestPullSecret() *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pullSecretName,
+			Namespace: mcmNameSpace,
+		},
 		Data: map[string][]byte{
 			".dockerconfigjson": []byte("test-docker-config"),
 		},
 	}
+}
+
+func TestManifestWork(t *testing.T) {
+	initSchema(t)
+
+	objs := []runtime.Object{newSATokenSecret(), newTestSA(), newTestInfra()}
+	c := fake.NewFakeClient(objs...)
 
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get work dir: (%v)", err)
 	}
 	templatePath = path.Join(wd, "../../../manifests/endpoint-monitoring")
-	err = createManifestWork(c, namespace, mcm, ps)
+	err = createManifestWork(c, namespace, newTestMCM(), newTestPullSecret())
 	if err != nil {
 		t.Fatalf("Failed to create manifestwork: (%v)", err)
 	}
@@ -102,7 +72,7 @@ func TestManifestWork(t *testing.T) {
 	}
 
 	spokeNameSpace = "spoke-ns"
-	err = createManifestWork(c, namespace, mcm, ps)
+	err = createManifestWork(c, namespace, newTestMCM(), newTestPullSecret())
 	if err != nil {
 		t.Fatalf("Failed to create manifestwork with updated namespace: (%v)", err)
 	}

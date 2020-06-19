@@ -15,8 +15,51 @@ import (
 )
 
 const (
-	namespace = "test-ns"
+	secretName = "test-secret"
+	token      = "test-token"
+	ca         = "test-ca"
 )
+
+func newTestSA(namespaces ...string) *corev1.ServiceAccount {
+	ns := namespace
+	if len(namespaces) != 0 {
+		ns = namespaces[0]
+	}
+	return &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      serviceAccountName,
+			Namespace: ns,
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
+		},
+		Secrets: []corev1.ObjectReference{
+			{
+				Kind:      "Secret",
+				Namespace: ns,
+				Name:      secretName,
+			},
+		},
+	}
+}
+
+func newSATokenSecret(namespaces ...string) *corev1.Secret {
+	ns := namespace
+	if len(namespaces) != 0 {
+		ns = namespaces[0]
+	}
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: ns,
+		},
+		Type: corev1.SecretTypeServiceAccountToken,
+		Data: map[string][]byte{
+			"token":  []byte(token),
+			"ca.crt": []byte(ca),
+		},
+	}
+}
 
 func TestCreateRole(t *testing.T) {
 	c := fake.NewFakeClient()
@@ -143,37 +186,7 @@ func TestCreateServiceAccount(t *testing.T) {
 }
 
 func TestGetSAToken(t *testing.T) {
-	secretName := "test-secret"
-	token := "test-token"
-	ca := "test-ca"
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
-			Namespace: namespace,
-		},
-		Type: corev1.SecretTypeServiceAccountToken,
-		Data: map[string][]byte{
-			"token":  []byte(token),
-			"ca.crt": []byte(ca),
-		},
-	}
-	sa := &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      serviceAccountName,
-			Namespace: namespace,
-			Annotations: map[string]string{
-				ownerLabelKey: ownerLabelValue,
-			},
-		},
-		Secrets: []corev1.ObjectReference{
-			{
-				Kind:      "Secret",
-				Namespace: namespace,
-				Name:      secretName,
-			},
-		},
-	}
-	objs := []runtime.Object{secret, sa}
+	objs := []runtime.Object{newSATokenSecret(), newTestSA()}
 	c := fake.NewFakeClient(objs...)
 	saCA, saToken, err := getSAToken(c, namespace)
 	if err != nil {
