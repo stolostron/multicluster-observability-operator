@@ -103,7 +103,79 @@ spec:
   hostPath:
     path: "/mnt/thanos/teamcitydata1"
 ```
-2. Apply the manifests
+2. Customize the configuration for the operator (optional)
+You can customize the operator by updating `deploy/crds/monitoring.open-cluster-management.io_v1_multiclustermonitoring_cr.yaml`. Below is a sample which has the configuration with default values. If you want to use customized value for one parameter, just need to specify that parameter in your own yaml file before deploy the operator.
+```
+apiVersion: monitoring.open-cluster-management.io/v1alpha1
+kind: MultiClusterMonitoring
+metadata:
+  name: monitoring
+spec:
+  grafana:
+    hostport: 3001
+    replicas: 1
+  imagePullPolicy: Always
+  imagePullSecret: multiclusterhub-operator-pull-secret
+  imageRepository: quay.io/open-cluster-management
+  imageTagSuffix: ""
+  objectStorageConfigSpec:
+    config:
+      access_key: minio
+      bucket: thanos
+      endpoint: minio:9000
+      insecure: true
+      secret_key: minio123
+      storage: 1Gi
+    type: minio
+  observatorium:
+    api:
+      image: quay.io/observatorium/observatorium:master-2020-04-29-v0.1.1-14-gceac185
+      version: master-2020-04-29-v0.1.1-14-gceac185
+    apiQuery:
+      image: quay.io/thanos/thanos:v0.12.0
+      version: v0.12.0
+    compact:
+      image: quay.io/thanos/thanos:v0.12.0
+      retentionResolution1h: 30d
+      retentionResolution5m: 14d
+      retentionResolutionRaw: 5d
+      version: v0.12.0
+    hashrings:
+    - hashring: default
+    objectStorageConfig:
+      key: thanos.yaml
+      name: thanos-objectstorage
+    query:
+      image: quay.io/thanos/thanos:v0.12.0
+      version: v0.12.0
+    queryCache:
+      image: quay.io/cortexproject/cortex:master-fdcd992f
+      replicas: 1
+      version: master-fdcd992f
+    receivers:
+      image: quay.io/thanos/thanos:v0.12.0
+      version: v0.12.0
+    rule:
+      image: quay.io/thanos/thanos:v0.12.0
+      version: v0.12.0
+    store:
+      cache:
+        exporterImage: prom/memcached-exporter:v0.6.0
+        exporterVersion: v0.6.0
+        image: docker.io/memcached:1.6.3-alpine
+        memoryLimitMb: 1024
+        replicas: 1
+        version: 1.6.3-alpine
+      image: quay.io/thanos/thanos:v0.12.0
+      shards: 1
+      version: v0.12.0
+    thanosReceiveController:
+      image: quay.io/observatorium/thanos-receive-controller:latest
+      version: latest
+  storageClass: gp2
+  version: latest
+```
+3. Apply the manifests
 ```
 kubectl apply -f deploy/req_crds/
 kubectl apply -f deploy/crds/
