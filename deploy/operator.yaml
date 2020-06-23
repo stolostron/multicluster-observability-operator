@@ -16,7 +16,7 @@ spec:
       containers:
         - name: multicluster-monitoring-operator
           # Replace this with the built image name
-          image: quay.io/open-cluster-management/multicluster-monitoring-operator:2.0-SNAPSHOT-2020-06-19-06-05-44 
+          image: quay.io/open-cluster-management/multicluster-monitoring-operator:2.0-SNAPSHOT-2020-06-23-05-37-38 
           command:
           - multicluster-monitoring-operator
           imagePullPolicy: Always
