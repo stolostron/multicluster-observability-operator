@@ -10,100 +10,50 @@ The multicluster-monitoring-operator is a component of ACM observability feature
 
 ## Installation
 
-We provided an easy way to install this operator into KinD cluster to verify some basic functionalities.
+### Install this operator on RHACM
 
 1. Clone this repo locally
 
 ```
 git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
 ```
-
-2. Provide the username and password for downloading multicluster-monitoring-operator image from quay.io.
+2. Create new namespace `open-cluster-management-monitoring`
 
 ```
-export DOCKER_USER=<quay.io username>
-export DOCKER_PASS=<quay.io password>
+oc create namespace open-cluster-management-monitoring
 ```
+3. Generate your pull-secret
+Assume RHACM is installed in `open-cluster-management` namespace. Generate your pull-screct by
 
-3. Deploy using the ./tests/e2e/setup.sh script
 ```
-./tests/e2e/setup.sh
+oc get secret multiclusterhub-operator-pull-secret -n open-cluster-management --export -o yaml |   kubectl apply --namespace=open-cluster-management-monitoring -f -
 ```
-If you want to install the latest multicluster-monitoring-operator image, you can find the latest tag here https://quay.io/repository/open-cluster-management/multicluster-monitoring-operator?tab=tags. Then install by
-```
-./tests/e2e/setup.sh quay.io/open-cluster-management/multicluster-monitoring-operator:<latest tag>
-```
+4. [Optional] Modify the operator and instance to use a new tag
 
-4. Access the grafana dashboard
-- Option 1: Edit /etc/hosts to add 
+Edit deploy/operator.yaml file and change image tag
 ```
-127.0.0.1 grafana.local
+    spec:
+      serviceAccountName: multicluster-monitoring-operator
+      containers:
+        - name: multicluster-monitoring-operator
+          # Replace this with the built image name
+          image: ...
+
 ```
-Then access grafana dashboard by `http://grafana.local`
-- Option 2: Forward the grafana port into local machine
+Edit deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml file to change `imageTagSuffix`
 ```
-kubectl port-forward -n open-cluster-management $(oc get pod -n open-cluster-management -lapp=grafana-test -o jsonpath='{.items[0].metadata.name}') 3001
-```
-Then access grafana dashboard by `http://127.0.0.1:3001`
-
-## Developer Guide
-The guide is used for developer to build and install the multicluster-monitoring-operator. It can be running in [kind][install_kind] if you don't have a OCP environment.
-
-### Prerequisites
-
-- [git][git_tool]
-- [go][go_tool] version v1.13.9+.
-- [docker][docker_tool] version 19.03+.
-- [kubectl][kubectl_tool] version v1.14+.
-- Access to a Kubernetes v1.11.3+ cluster.
-
-### Install the Operator SDK CLI
-
-Follow the steps in the [installation guide][install_guide] to learn how to install the Operator SDK CLI tool. It requires [version v0.17.0][operator_sdk_v0.17.0].
-Or just use this command to download `operator-sdk` for Mac:
-```
-curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.17.0/operator-sdk-v0.17.0-x86_64-apple-darwin -o operator-sdk
-```
-
-### Build the Operator
-
-- git clone this repository.
-- `go mod vendor`
-- `operator-sdk build <repo>/<component>:<tag>` for example: quay.io/multicluster-monitoring-operator:v0.1.0.
-- Replace the image in `deploy/operator.yaml`.
-- Update your namespace in `deploy/role_binding.yaml`
-- Update your grafana.server.domain in `deploy/crds/monitoring.open-cluster-management.io_v1_multiclustermonitoring_cr.yaml`
-
-### Deploy this Operator
-
-1. If you are using aws environment, skip this step. the `StorageClass` is set as `gp2` by default. Prepare the `StorageClass` and `PersistentVolume` to apply into the existing environment. For example:
-```
-kind: StorageClass
-apiVersion: storage.k8s.io/v1
+apiVersion: monitoring.open-cluster-management.io/v1alpha1
+kind: MultiClusterMonitoring
 metadata:
-  annotations:
-    storageclass.kubernetes.io/is-default-class: "true"
-  name: standard
-provisioner: kubernetes.io/no-provisioner
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: pv-volume-1
-  labels:
-    type: local
+  name: monitoring
 spec:
-  storageClassName: standard
-  capacity:
-    storage: 1Gi
-  accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Delete
-  hostPath:
-    path: "/mnt/thanos/teamcitydata1"
+  imageTagSuffix: ...
 ```
-2. Customize the configuration for the operator (optional)
-You can customize the operator by updating `deploy/crds/monitoring.open-cluster-management.io_v1_multiclustermonitoring_cr.yaml`. Below is a sample which has the configuration with default values. If you want to use customized value for one parameter, just need to specify that parameter in your own yaml file before deploy the operator.
+
+Note: Find snapshot tags here: https://quay.io/repository/open-cluster-management/acm-custom-registry?tab=tags
+
+5. [Optional] Customize the configuration for the operator instance
+You can customize the operator instance by updating `deploy/crds/monitoring.open-cluster-management.io_v1_multiclustermonitoring_cr.yaml`. Below is a sample which has the configuration with default values. If you want to use customized value for one parameter, just need to specify that parameter in your own yaml file.
 ```
 apiVersion: monitoring.open-cluster-management.io/v1alpha1
 kind: MultiClusterMonitoring
@@ -139,6 +89,13 @@ spec:
       retentionResolution5m: 14d
       retentionResolutionRaw: 5d
       version: v0.12.0
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
     hashrings:
     - hashring: default
     objectStorageConfig:
@@ -154,9 +111,23 @@ spec:
     receivers:
       image: quay.io/thanos/thanos:v0.12.0
       version: v0.12.0
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
     rule:
       image: quay.io/thanos/thanos:v0.12.0
       version: v0.12.0
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
     store:
       cache:
         exporterImage: prom/memcached-exporter:v0.6.0
@@ -168,79 +139,113 @@ spec:
       image: quay.io/thanos/thanos:v0.12.0
       shards: 1
       version: v0.12.0
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
     thanosReceiveController:
-      image: quay.io/observatorium/thanos-receive-controller:latest
-      version: latest
-  storageClass: gp2
+      image: quay.io/observatorium/thanos-receive-controller:master-2020-04-16-44c6bea
+      version: master-2020-04-16-44c6bea
+  storageClass: local
   version: latest
 ```
-3. Apply the manifests
+
+6. Deploy the `multicluster-monitoring-operator` and `MultiClusterMonitoring` instance
 ```
-kubectl apply -f deploy/req_crds/
-kubectl apply -f deploy/crds/
-kubectl apply -f deploy/
+oc project open-cluster-management-monitoring
+oc apply -f deploy/req_crds/
+oc apply -f deploy/crds/
+oc apply -f deploy/
+```
+The following pods are available in `open-cluster-management-monitoring` namespace after installed successfully.
+```
+NAME                                                                  READY   STATUS    RESTARTS   AGE
+pod/grafana-6fb9584cf9-tt5s2                                          1/1     Running   0          76m
+pod/minio-786cb78959-44mqj                                            1/1     Running   0          76m
+pod/monitoring-observatorium-cortex-query-frontend-695bdfc9cd-c4tcm   1/1     Running   0          75m
+pod/monitoring-observatorium-observatorium-api-6b474975f9-lgnfh       1/1     Running   0          76m
+pod/monitoring-observatorium-observatorium-api-thanos-query-77kfwz7   1/1     Running   0          76m
+pod/monitoring-observatorium-thanos-compact-0                         1/1     Running   0          74m
+pod/monitoring-observatorium-thanos-query-85d8cd96d6-5jj74            1/1     Running   0          74m
+pod/monitoring-observatorium-thanos-receive-controller-675868d4rzbq   1/1     Running   0          73m
+pod/monitoring-observatorium-thanos-receive-default-0                 1/1     Running   0          73m
+pod/monitoring-observatorium-thanos-receive-default-1                 1/1     Running   0          73m
+pod/monitoring-observatorium-thanos-receive-default-2                 1/1     Running   0          73m
+pod/monitoring-observatorium-thanos-rule-0                            1/1     Running   0          72m
+pod/monitoring-observatorium-thanos-rule-1                            1/1     Running   0          72m
+pod/monitoring-observatorium-thanos-store-memcached-0                 2/2     Running   0          75m
+pod/monitoring-observatorium-thanos-store-shard-0-0                   1/1     Running   0          72m
+pod/multicluster-monitoring-operator-5dc5997979-f4flc                 1/1     Running   1          77m
+pod/observatorium-operator-88b859dc-79hml                             1/1     Running   0          76m
+```
+
+7. By default, the endpoint monitoring operator will be installed on any managed clusters to remote-write the metrics from managed clusters to hub cluster. [How to configure endpoint monitoring?](#endpoint-monitoring-operator-installation--endpoint-monitoring-configuration)
+
+8. View metrics in dashboard
+Access Grafana console at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "ACM:Cluster Monitoring"
+
+### Install this operator on KinD
+
+We provided an easy way to install this operator into KinD cluster to verify some basic functionalities.
+
+1. Clone this repo locally
 
 ```
-After installed successfully, you will see the following output:
-`oc get pod`
+git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
 ```
-NAME                                                              READY   STATUS    RESTARTS   AGE
-grafana-deployment-846fd485fc-pmg6x                               1/1     Running   0          158m
-grafana-operator-6fd7d76c6c-lzp6d                                 1/1     Running   0          158m
-minio-5c8b47c889-vvfrz                                            1/1     Running   0          158m
-monitoring-observatorium-cortex-query-frontend-5644474746-2tpsv   1/1     Running   0          158m
-monitoring-observatorium-observatorium-api-gateway-6c4c475f4d5x   1/1     Running   0          158m
-monitoring-observatorium-observatorium-api-gateway-thanos-vp2vm   1/1     Running   0          158m
-monitoring-observatorium-thanos-compact-0                         1/1     Running   0          158m
-monitoring-observatorium-thanos-query-698f99987f-xlndd            1/1     Running   0          158m
-monitoring-observatorium-thanos-receive-controller-f5554fb9lnbj   1/1     Running   0          158m
-monitoring-observatorium-thanos-receive-default-0                 1/1     Running   0          158m
-monitoring-observatorium-thanos-receive-default-1                 1/1     Running   0          157m
-monitoring-observatorium-thanos-receive-default-2                 1/1     Running   0          156m
-monitoring-observatorium-thanos-rule-0                            1/1     Running   0          158m
-monitoring-observatorium-thanos-rule-1                            1/1     Running   0          156m
-monitoring-observatorium-thanos-store-shard-0-0                   1/1     Running   0          158m
-multicluster-monitoring-operator-5d7fd6dffb-qgg6c                 1/1     Running   0          158m
-observatorium-operator-84787d4b9c-28pd9                           1/1     Running   0          158m
-```
-`oc get grafana`
-```
-NAME                 AGE
-monitoring-grafana   165m
-```
-`oc get observatorium`
-```
-NAME                       AGE
-monitoring-observatorium   163m
-```
-### View metrics in dashboard
-1. The Prometheus in hub cluster already enabled remoteWrite to send metrics. Access Grafana console at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "ACM:Managed Cluster Monitoring"
 
-2. Manually Enable remote write for OCP prometheus in managed clusters
-Create the configmap in openshift-monitoring namespace. Replace the url with the your route value. Also need to replace the value of "replacement" with the spoke cluster's name
+2. Provide the username and password for downloading multicluster-monitoring-operator image from quay.io.
+
 ```
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: cluster-monitoring-config
-  namespace: openshift-monitoring
-data:
-  config.yaml: |
-    prometheusK8s:
-      remoteWrite:
-        - url: "http://observatorium-api-gateway-acm-monitoring.apps.one-chimp.dev05.red-chesterfield.com/api/metrics/v1/write"
-          writeRelabelConfigs:
-          - sourceLabels: [__name__]
-            replacement: test_cluster
-            targetLabel: cluster
+export DOCKER_USER=<quay.io username>
+export DOCKER_PASS=<quay.io password>
 ```
-The changes will be applied automatically after several minutes. You can apply the changes immediately by invoking command below
+
+3. Deploy using the ./tests/e2e/setup.sh script
 ```
-oc scale --replicas=2 statefulset --all -n openshift-monitoring; oc scale --replicas=1 deployment --all -n openshift-monitoring
+./tests/e2e/setup.sh
 ```
+If you want to install the latest multicluster-monitoring-operator image, you can find the latest tag here https://quay.io/repository/open-cluster-management/multicluster-monitoring-operator?tab=tags. Then install by
+```
+./tests/e2e/setup.sh quay.io/open-cluster-management/multicluster-monitoring-operator:<latest tag>
+```
+
+4. Access the KinD cluster
+
+Access `hub` KinD cluster by `export KUBECONFIG=$HOME/.kube/kind-config-hub`
+Access `hub` KinD cluster by `export KUBECONFIG=$HOME/.kube/kind-config-spoke`
+
+## Developer Guide
+
+### Prerequisites
+
+- [git][git_tool]
+- [go][go_tool] version v1.13.9+.
+- [docker][docker_tool] version 19.03+.
+- [kubectl][kubectl_tool] version v1.14+.
+- Access to a Kubernetes v1.11.3+ cluster.
+
+### Install the Operator SDK CLI
+
+Follow the steps in the [installation guide][install_guide] to learn how to install the Operator SDK CLI tool. It requires [version v0.17.0][operator_sdk_v0.17.0].
+Or just use this command to download `operator-sdk` for Mac:
+```
+curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.17.0/operator-sdk-v0.17.0-x86_64-apple-darwin -o operator-sdk
+```
+
+### Build the Operator
+
+- git clone this repository.
+- `go mod vendor`
+- `operator-sdk build <repo>/<component>:<tag>` for example: quay.io/multicluster-monitoring-operator:v0.1.0.
+- Replace the image in `deploy/operator.yaml`.
+- Update your namespace in `deploy/role_binding.yaml`
 
 ### Endpoint monitoring operator installation & endpoint monitoring configuration
-1. By default, the endpoint monitoring operator will be installed on any managed clusters. If want to disable this in a clusteer, need to add label using key/value "monitoring"/"disabled" on it.
+1. By default, the endpoint monitoring operator will be installed on any managed clusters. If want to disable this in a cluster, need to add label using key/value "monitoring"/"disabled" on it.
 2. Once the endpoint monitoring operator installed in the managed cluster, it will update the configmap cluster-monitoring-config automatically, and then the metrics will be pushed to hub side.
 3. In cluster's namespace in hub side, one default endpointmonitoring resource named as "endpoint-config"  will be created automatically. Users can edit section "relabelConfigs" in this resource to update the configuration for metrics collect in managed cluster side, such as filtering the metrics collected, injecting addtional labels([Prometheus relabel configuration]). A sample endpointmonitoring resource is as below:
 ```
