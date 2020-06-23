@@ -31,6 +31,7 @@ func newTestMCM() *monitoringv1alpha1.MultiClusterMonitoring {
 		},
 		Spec: monitoringv1alpha1.MultiClusterMonitoringSpec{
 			ImagePullSecret: pullSecretName,
+			ImageTagSuffix:  "xxx-xxx",
 		},
 	}
 }
