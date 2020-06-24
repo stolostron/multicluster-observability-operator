@@ -30,7 +30,7 @@ func (r *Renderer) renderGrafanaDeployments(res *resource.Resource) (*unstructur
 	spec, ok := u.Object["spec"].(map[string]interface{})
 	if ok {
 		if r.cr.Spec.Grafana.Replicas != spec["replicas"] {
-			spec["replicas"] = string(r.cr.Spec.Grafana.Replicas)
+			spec["replicas"] = r.cr.Spec.Grafana.Replicas
 		}
 	}
 

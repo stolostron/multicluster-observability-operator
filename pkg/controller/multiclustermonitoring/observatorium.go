@@ -282,7 +282,8 @@ func updateObservatoriumSpec(
 	return nil, nil
 }
 
-func mergeVolumeClaimTemplate(oldVolumn, newVolumn observatoriumv1alpha1.VolumeClaimTemplate) observatoriumv1alpha1.VolumeClaimTemplate {
+func mergeVolumeClaimTemplate(oldVolumn,
+	newVolumn observatoriumv1alpha1.VolumeClaimTemplate) observatoriumv1alpha1.VolumeClaimTemplate {
 	requestRes := newVolumn.Spec.Resources.Requests
 	limitRes := newVolumn.Spec.Resources.Limits
 	if requestRes != nil {
