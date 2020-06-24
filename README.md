@@ -29,7 +29,7 @@ Assume RHACM is installed in `open-cluster-management` namespace. Generate your 
 ```
 oc get secret multiclusterhub-operator-pull-secret -n open-cluster-management --export -o yaml |   kubectl apply --namespace=open-cluster-management-monitoring -f -
 ```
-4. [Optional] Modify the operator and CR to use a new SNAPSHOT tag
+4. [Optional] Modify the operator and instance to use a new SNAPSHOT tag
 
 Edit deploy/operator.yaml file and change image tag
 ```
@@ -53,7 +53,108 @@ spec:
 
 Note: Find snapshot tags here: https://quay.io/repository/open-cluster-management/acm-custom-registry?tab=tags
 
-5. Deploy the `multicluster-monitoring-operator` and `MultiClusterMonitoring` instance
+5. [Optional] Customize the configuration for the operator instance
+You can customize the operator instance by updating `deploy/crds/monitoring.open-cluster-management.io_v1_multiclustermonitoring_cr.yaml`. Below is a sample which has the configuration with default values. If you want to use customized value for one parameter, just need to specify that parameter in your own yaml file.
+```
+apiVersion: monitoring.open-cluster-management.io/v1alpha1
+kind: MultiClusterMonitoring
+metadata:
+  name: monitoring
+spec:
+  grafana:
+    hostport: 3001
+    replicas: 1
+  imagePullPolicy: Always
+  imagePullSecret: multiclusterhub-operator-pull-secret
+  imageRepository: quay.io/open-cluster-management
+  imageTagSuffix: 2.0-SNAPSHOT-2020-06-23-05-37-38
+  objectStorageConfigSpec:
+    config:
+      access_key: minio
+      bucket: thanos
+      endpoint: minio:9000
+      insecure: true
+      secret_key: minio123
+      storage: 1Gi
+    type: minio
+  observatorium:
+    api:
+      image: quay.io/observatorium/observatorium:master-2020-04-29-v0.1.1-14-gceac185
+      version: master-2020-04-29-v0.1.1-14-gceac185
+    apiQuery:
+      image: quay.io/thanos/thanos:v0.12.0
+      version: v0.12.0
+    compact:
+      image: quay.io/thanos/thanos:v0.12.0
+      retentionResolution1h: 30d
+      retentionResolution5m: 14d
+      retentionResolutionRaw: 5d
+      version: v0.12.0
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+    hashrings:
+    - hashring: default
+    objectStorageConfig:
+      key: thanos.yaml
+      name: thanos-objectstorage
+    query:
+      image: quay.io/thanos/thanos:v0.12.0
+      version: v0.12.0
+    queryCache:
+      image: quay.io/cortexproject/cortex:master-fdcd992f
+      replicas: 1
+      version: master-fdcd992f
+    receivers:
+      image: quay.io/thanos/thanos:v0.12.0
+      version: v0.12.0
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+    rule:
+      image: quay.io/thanos/thanos:v0.12.0
+      version: v0.12.0
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+    store:
+      cache:
+        exporterImage: prom/memcached-exporter:v0.6.0
+        exporterVersion: v0.6.0
+        image: docker.io/memcached:1.6.3-alpine
+        memoryLimitMb: 1024
+        replicas: 1
+        version: 1.6.3-alpine
+      image: quay.io/thanos/thanos:v0.12.0
+      shards: 1
+      version: v0.12.0
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+    thanosReceiveController:
+      image: quay.io/observatorium/thanos-receive-controller:master-2020-04-16-44c6bea
+      version: master-2020-04-16-44c6bea
+  storageClass: local
+  version: latest
+```
+
+6. Deploy the `multicluster-monitoring-operator` and `MultiClusterMonitoring` instance
 ```
 oc project open-cluster-management-monitoring
 oc apply -f deploy/req_crds/
@@ -82,9 +183,9 @@ pod/multicluster-monitoring-operator-5dc5997979-f4flc                 1/1     Ru
 pod/observatorium-operator-88b859dc-79hml                             1/1     Running   0          76m
 ```
 
-6. By default, the endpoint monitoring operator will be installed on any managed clusters to remote-write the metrics from managed clusters to hub cluster. [How to configure endpoint monitoring?](#endpoint-monitoring-operator-installation--endpoint-monitoring-configuration)
+7. By default, the endpoint monitoring operator will be installed on any managed clusters to remote-write the metrics from managed clusters to hub cluster. [How to configure endpoint monitoring?](#endpoint-monitoring-operator-installation--endpoint-monitoring-configuration)
 
-7. View metrics in dashboard
+8. View metrics in dashboard
 Access Grafana console at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "ACM:Cluster Monitoring"
 
 ### Install this operator on KinD
