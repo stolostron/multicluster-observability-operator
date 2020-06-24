@@ -210,5 +210,5 @@ func UpdateHubClusterMonitoringConfig(
 			Replacement:  labelValue,
 		},
 	}
-	return &reconcile.Result{}, updateClusterMonitoringConfig(client, ocpClient, url, &labelConfigs)
+	return nil, updateClusterMonitoringConfig(client, ocpClient, url, &labelConfigs)
 }

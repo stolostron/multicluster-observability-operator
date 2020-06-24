@@ -83,11 +83,12 @@ func GenerateObservatoriumCR(
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
+		return nil, nil
 	} else if err != nil {
 		return &reconcile.Result{}, err
 	}
 
-	oldSpec := observatoriumCRFound
+	oldSpec := observatoriumCRFound.Spec
 	newSpec := observatoriumCR.Spec
 	if !reflect.DeepEqual(oldSpec, newSpec) {
 		newObj := observatoriumCRFound.DeepCopy()
@@ -266,12 +267,29 @@ func updateObservatoriumSpec(
 	mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
 
 	// Merge observatorium Spec with the default values and customized values
-	newSpec := newDefaultObservatoriumSpec()
-	oldSpec := mcm.Spec.Observatorium
-	if !reflect.DeepEqual(oldSpec, newSpec) {
-		if err := mergo.Merge(oldSpec, newSpec); err != nil {
+	defaultSpec := newDefaultObservatoriumSpec()
+	runtimeSpec := mcm.Spec.Observatorium
+	if !reflect.DeepEqual(defaultSpec, runtimeSpec) {
+		if err := mergo.MergeWithOverwrite(defaultSpec, runtimeSpec); err != nil {
 			return &reconcile.Result{}, err
 		}
+		mergeVolumeClaimTemplate(defaultSpec.Compact.VolumeClaimTemplate, runtimeSpec.Compact.VolumeClaimTemplate)
+		mergeVolumeClaimTemplate(defaultSpec.Rule.VolumeClaimTemplate, runtimeSpec.Rule.VolumeClaimTemplate)
+		mergeVolumeClaimTemplate(defaultSpec.Receivers.VolumeClaimTemplate, runtimeSpec.Receivers.VolumeClaimTemplate)
+		mergeVolumeClaimTemplate(defaultSpec.Store.VolumeClaimTemplate, runtimeSpec.Store.VolumeClaimTemplate)
+		mcm.Spec.Observatorium = defaultSpec
 	}
 	return nil, nil
+}
+
+func mergeVolumeClaimTemplate(oldVolumn, newVolumn observatoriumv1alpha1.VolumeClaimTemplate) observatoriumv1alpha1.VolumeClaimTemplate {
+	requestRes := newVolumn.Spec.Resources.Requests
+	limitRes := newVolumn.Spec.Resources.Limits
+	if requestRes != nil {
+		oldVolumn.Spec.Resources.Requests[v1.ResourceStorage] = requestRes[v1.ResourceStorage]
+	}
+	if limitRes != nil {
+		oldVolumn.Spec.Resources.Limits[v1.ResourceStorage] = limitRes[v1.ResourceStorage]
+	}
+	return oldVolumn
 }

@@ -110,7 +110,8 @@ func (r *TemplateRenderer) AddTemplateFromPath(kustomizationPath string, resourc
 	if !ok {
 		resMap, err = r.render(kustomizationPath)
 		if err != nil {
-			return err
+			log.Printf("Cannot find this path %v, %v", kustomizationPath, err)
+			return nil
 		}
 		r.templates[kustomizationPath] = resMap
 	}
