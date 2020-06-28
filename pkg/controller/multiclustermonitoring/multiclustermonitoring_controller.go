@@ -8,6 +8,7 @@ import (
 	"time"
 
 	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
+	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -43,8 +44,15 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+	// Create OCP client
+	ocpClient, err := util.CreateOCPClient()
+	if err != nil {
+		log.Error(err, "Failed to create the OpenShift client")
+		return nil
+	}
 	return &ReconcileMultiClusterMonitoring{
 		client:    mgr.GetClient(),
+		ocpClient: ocpClient,
 		apiReader: mgr.GetAPIReader(),
 		scheme:    mgr.GetScheme(),
 	}
@@ -109,6 +117,7 @@ type ReconcileMultiClusterMonitoring struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client    client.Client
+	ocpClient ocpClientSet.Interface
 	apiReader client.Reader
 	scheme    *runtime.Scheme
 }
@@ -182,13 +191,8 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 		return *result, err
 	}
 
-	ocpClient, err := util.CreateOCPClient()
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
 	// generate/update the configmap cluster-monitoring-config
-	result, err = UpdateHubClusterMonitoringConfig(r.client, ocpClient, instance.Namespace)
+	result, err = UpdateHubClusterMonitoringConfig(r.client, r.ocpClient, instance.Namespace)
 	if result != nil {
 		return *result, err
 	}
@@ -198,7 +202,7 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 		return *result, err
 	}
 
-	return reconcile.Result{Requeue: true}, nil
+	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileMultiClusterMonitoring) UpdateStatus(
@@ -240,7 +244,7 @@ func (r *ReconcileMultiClusterMonitoring) UpdateStatus(
 		log.Error(err, fmt.Sprintf("Failed to update %s/%s status ", mcm.Namespace, mcm.Name))
 		return &reconcile.Result{}, err
 	}
-	return &reconcile.Result{}, nil
+	return nil, nil
 }
 
 // labelsForMultiClusterMonitoring returns the labels for selecting the resources
