@@ -88,15 +88,15 @@ func GenerateMonitoringCR(c client.Client,
 
 	desired, err := yaml.Marshal(mcm.Spec)
 	if err != nil {
-		log.Error(err, "issue parsing desired MultiClusterMonitoring values")
+		log.Error(err, "cannot parse the desired MultiClusterMonitoring values")
 	}
 	current, err := yaml.Marshal(found.Spec)
 	if err != nil {
-		log.Error(err, "issue parsing current MultiClusterMonitoring values")
+		log.Error(err, "cannot parse the current MultiClusterMonitoring values")
 	}
 
 	if res := bytes.Compare(desired, current); res != 0 {
-		log.Info("Update MultiClusterMonitoring CR with default values.")
+		log.Info("Update MultiClusterMonitoring CR.")
 		newObj := found.DeepCopy()
 		newObj.Spec = mcm.Spec
 		err = c.Update(context.TODO(), newObj)

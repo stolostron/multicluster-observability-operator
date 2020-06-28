@@ -24,3 +24,12 @@ func TestNewDefaultObservatorium(t *testing.T) {
 		t.Errorf("Failed to newDefaultObservatorium")
 	}
 }
+
+func TestMergeVolumeClaimTemplate(t *testing.T) {
+	vct1 := newVolumeClaimTemplate("1Gi")
+	vct3 := newVolumeClaimTemplate("3Gi")
+	mergeVolumeClaimTemplate(vct1, vct3)
+	if vct1.Spec.Resources.Requests[v1.ResourceStorage] != resource.MustParse("3Gi") {
+		t.Errorf("Failed to merge %v to %v", vct3, vct1)
+	}
+}
