@@ -9,3 +9,4 @@ resources:
 - ingress.yaml
 - service.yaml
 - ocp-dashboards.yaml
+- dashboard-metrics.yaml
