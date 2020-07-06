@@ -54,13 +54,42 @@ func createRemoteWriteSpec(
 	if err != nil {
 		return nil, err
 	}
-	relabelConfig := monv1.RelabelConfig{
-		SourceLabels: []string{"__name__"},
-		TargetLabel:  clusterIDLabelKey,
-		Replacement:  clusterID,
+
+	requiredMetics := []string{
+		"cluster_version",
+		"cluster:capacity_cpu_cores:sum",
+		"cluster:capacity_memory_bytes:sum",
+		"cluster_version_payload",
+		"cluster_infrastructure_provider",
+		"kube_pod_container_resource_requests_memory_bytes",
+		"machine_memory_bytes",
+		"kube_pod_container_resource_requests_cpu_cores",
+		"machine_cpu_cores",
+		"cluster:usage:resources:sum",
+		"cluster:cpu_usage_cores:sum",
+		"cluster:memory_usage_bytes:sum",
+		"cluster:container_cpu_usage:ratio",
+		"cluster:container_spec_cpu_shares:ratio",
+		"cluster:memory_usage:ratio",
+		"kube_node_status_allocatable_memory_bytes",
+		"haproxy_backend_connections_total",
 	}
 
-	newlabelConfigs := append(*labelConfigs, relabelConfig)
+	relabelConfigs := []monv1.RelabelConfig{
+		monv1.RelabelConfig{
+			SourceLabels: []string{"__name__"},
+			TargetLabel:  clusterIDLabelKey,
+			Replacement:  clusterID,
+		},
+
+		monv1.RelabelConfig{
+			Action:       "keep",
+			SourceLabels: []string{"__name__"},
+			Regex:        strings.Join(requiredMetics, "|"),
+		},
+	}
+
+	newlabelConfigs := append(*labelConfigs, relabelConfigs...)
 	if !strings.HasPrefix(url, "http") {
 		url = protocol + url
 	}
@@ -105,7 +134,7 @@ func createConfigMap(
 
 	err = client.Create(context.TODO(), cm)
 	if err == nil {
-		log.Info("Configmap created")
+		log.Info("Configmap cluster-monitoring-config created")
 	}
 	return err
 }
