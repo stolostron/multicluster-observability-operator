@@ -156,8 +156,10 @@ spec:
 6. Deploy the `multicluster-monitoring-operator` and `MultiClusterMonitoring` instance
 ```
 oc project open-cluster-management-monitoring
-oc apply -f deploy/req_crds/
-oc apply -f deploy/crds/
+oc apply -f deploy/req_crds/monitoring.open-cluster-management.io_endpointmonitoring_crd.yaml
+oc apply -f deploy/req_crds/core.observatorium.io_observatoria.yaml
+oc apply -f deploy/crds/monitoring.open-cluster-management.io_multiclustermonitorings_crd.yaml
+oc apply -f deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml
 oc apply -f deploy/
 ```
 The following pods are available in `open-cluster-management-monitoring` namespace after installed successfully.
