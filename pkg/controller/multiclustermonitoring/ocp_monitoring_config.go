@@ -44,7 +44,9 @@ func getConfigMap(client client.Client) (*v1.ConfigMap, error) {
 }
 
 func createRemoteWriteSpec(
-	ocpClient ocpClientSet.Interface, url string,
+	client client.Client,
+	ocpClient ocpClientSet.Interface,
+	url string,
 	labelConfigs *[]monv1.RelabelConfig) (*monv1.RemoteWriteSpec, error) {
 
 	if labelConfigs == nil {
@@ -55,26 +57,7 @@ func createRemoteWriteSpec(
 		return nil, err
 	}
 
-	requiredMetics := []string{
-		"cluster_version",
-		"cluster:capacity_cpu_cores:sum",
-		"cluster:capacity_memory_bytes:sum",
-		"cluster_version_payload",
-		"cluster_infrastructure_provider",
-		"kube_pod_container_resource_requests_memory_bytes",
-		"machine_memory_bytes",
-		"kube_pod_container_resource_requests_cpu_cores",
-		"machine_cpu_cores",
-		"cluster:usage:resources:sum",
-		"cluster:cpu_usage_cores:sum",
-		"cluster:memory_usage_bytes:sum",
-		"cluster:container_cpu_usage:ratio",
-		"cluster:container_spec_cpu_shares:ratio",
-		"cluster:memory_usage:ratio",
-		"kube_node_status_allocatable_memory_bytes",
-		"haproxy_backend_connections_total",
-	}
-
+	requiredMetics := getDashboardMetrics(client)
 	relabelConfigs := []monv1.RelabelConfig{
 		monv1.RelabelConfig{
 			SourceLabels: []string{"__name__"},
@@ -109,7 +92,7 @@ func createConfigMap(
 	ocpClient ocpClientSet.Interface,
 	url string, labelConfigs *[]monv1.RelabelConfig) error {
 
-	rwSpec, err := createRemoteWriteSpec(ocpClient, url, labelConfigs)
+	rwSpec, err := createRemoteWriteSpec(client, ocpClient, url, labelConfigs)
 	if err != nil {
 		return err
 	}
@@ -152,7 +135,7 @@ func updateConfigMap(
 	if err != nil {
 		return err
 	}
-	rwSpec, err := createRemoteWriteSpec(ocpClient, url, labelConfigs)
+	rwSpec, err := createRemoteWriteSpec(client, ocpClient, url, labelConfigs)
 	if err != nil {
 		return err
 	}
