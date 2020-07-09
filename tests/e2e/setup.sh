@@ -155,6 +155,7 @@ deploy_grafana() {
     cd ${WORKDIR}
     $sed_command "s~name: grafana$~name: grafana-test~g; s~app: grafana$~app: grafana-test~g; s~secretName: grafana-config$~secretName: grafana-config-test~g; /MULTICLUSTERMONITORING_CR_NAME/d" manifests/base/grafana/deployment.yaml
     $sed_command "s~name: grafana$~name: grafana-test~g; s~app: grafana$~app: grafana-test~g" manifests/base/grafana/service.yaml
+    $sed_command "s~namespace: open-cluster-management$~namespace: open-cluster-management-monitoring~g" manifests/base/grafana/deployment.yaml manifests/base/grafana/service.yaml
 
     kubectl apply -f manifests/base/grafana/deployment.yaml
     kubectl apply -f manifests/base/grafana/service.yaml
