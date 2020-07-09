@@ -294,9 +294,12 @@ patch_for_remote_write() {
         sleep 10
     done
     kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS patch route observatorium-api --patch '{"spec":{"host": "observatorium.hub", "wildcardPolicy": "None"}}' --type=merge
-    #obser_hub=`kind get kubeconfig --name hub --internal | grep server: | awk -F '://' '{print $2}' | awk -F ':' '{print $1}'`
+    obser_hub=`kind get kubeconfig --name hub --internal | grep server: | awk -F '://' '{print $2}' | awk -F ':' '{print $1}'`
 
-    #spoke_docker_id=`docker ps | grep spoke-control-plane | awk -F ' ' '{print $1}'`
+    # add hostAlias to the pod prometheus-k8s-0
+    kubectl --kubeconfig $SPOKE_KUBECONFIG delete deploy prometheus-operator -n openshift-monitoring
+    kubectl --kubeconfig $SPOKE_KUBECONFIG patch statefulset prometheus-k8s -n openshift-monitoring --patch "{\"spec\":{\"template\":{\"spec\":{\"hostAliases\":[{\"hostnames\":[\"observatorium.hub\"], \"ip\": \"$obser_hub\"}]}}}}" --type=merge
+
     #docker exec --env obser_hub=$obser_hub -it $spoke_docker_id /bin/bash -c 'echo "$obser_hub observatorium.hub" >> /etc/hosts'
 
 }
