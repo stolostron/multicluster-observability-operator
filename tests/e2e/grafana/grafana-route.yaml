@@ -6,4 +6,5 @@ spec:
   host: grafana.local
   wildcardPolicy: None
   to:
+    kind: Service
     name: grafana
