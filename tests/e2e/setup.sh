@@ -178,6 +178,7 @@ deploy_hub_core() {
     git clone https://github.com/open-cluster-management/registration-operator.git
     cd registration-operator/
     $sed_command "s~replicas: 3~replicas: 1~g" deploy/cluster-manager/*.yaml
+    $sed_command "s~cpu: 100m~cpu: 10m~g" deploy/cluster-manager/*.yaml
 
     if [[ "$(uname)" == "Darwin" ]]; then
         $sed_command "\$a\\
@@ -192,13 +193,15 @@ deploy_hub_core() {
     kubectl apply -f deploy/cluster-manager/crds/*crd.yaml
     sleep 2
     kubectl create ns $HUB_NS || true
-    kubectl create quota test --hard=pod=4 -n $HUB_NS
+    kubectl create quota test --hard=pods=4 -n $HUB_NS
     kubectl apply -f deploy/cluster-manager/crds
 }
 
 deploy_spoke_core() {
     cd ${WORKDIR}/../registration-operator
     $sed_command "s~replicas: 3~replicas: 1~g" deploy/klusterlet/*.yaml
+    $sed_command "s~cpu: 100m~cpu: 10m~g" deploy/klusterlet/*.yaml
+
     kubectl create ns ${DEFAULT_NS}
     kubectl config set-context --current --namespace ${DEFAULT_NS}
     kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
@@ -223,7 +226,7 @@ deploy_spoke_core() {
     rm -rf ${WORKDIR}/../registration-operator
     kind get kubeconfig --name hub --internal > $HOME/.kube/kind-config-hub-internal
     kubectl create namespace $AGENT_NS
-    kubectl create quota test --hard=pod=4 -n $AGENT_NS
+    kubectl create quota test --hard=pods=4 -n $AGENT_NS
     kubectl create secret generic bootstrap-hub-kubeconfig --from-file=kubeconfig=$HOME/.kube/kind-config-hub-internal -n $AGENT_NS
 }
 
@@ -307,6 +310,27 @@ patch_for_remote_write() {
 
 }
 
+patch_for_memcached() {
+    n=1
+    while true
+    do
+        if kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS get statefulset | grep monitoring-observatorium-thanos-store-memcached; then
+            break
+        fi
+        if [[ $n -ge 30 ]]; then
+            # for debug pod status
+            kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS get po
+            kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS describe po
+            exit 1
+        fi
+        n=$((n+1))
+        echo_ext "Retrying in 10s waiting for monitoring-observatorium-thanos-store-memcached ..."
+        sleep 10
+    done
+    # remove monitoring-observatorium-thanos-store-memcached resource request due to resource insufficient
+    kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS patch statefulset monitoring-observatorium-thanos-store-memcached --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/resources", "value": {}}]'
+}
+
 deploy() {
     setup_kubectl_command
     create_kind_cluster hub
@@ -323,6 +347,7 @@ deploy() {
     approve_csr_joinrequest
     patch_for_remote_write
     patch_placement_rule
+    patch_for_memcached
     revert_changes
 }
 
