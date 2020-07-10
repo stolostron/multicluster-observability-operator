@@ -324,7 +324,7 @@ patch_for_memcached() {
             exit 1
         fi
         n=$((n+1))
-        echo_ext "Retrying in 10s waiting for monitoring-observatorium-thanos-store-memcached ..."
+        echo "Retrying in 10s waiting for monitoring-observatorium-thanos-store-memcached ..."
         sleep 10
     done
     # remove monitoring-observatorium-thanos-store-memcached resource request due to resource insufficient
