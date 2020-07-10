@@ -44,7 +44,9 @@ func getConfigMap(client client.Client) (*v1.ConfigMap, error) {
 }
 
 func createRemoteWriteSpec(
-	ocpClient ocpClientSet.Interface, url string,
+	client client.Client,
+	ocpClient ocpClientSet.Interface,
+	url string,
 	labelConfigs *[]monv1.RelabelConfig) (*monv1.RemoteWriteSpec, error) {
 
 	if labelConfigs == nil {
@@ -54,13 +56,23 @@ func createRemoteWriteSpec(
 	if err != nil {
 		return nil, err
 	}
-	relabelConfig := monv1.RelabelConfig{
-		SourceLabels: []string{"__name__"},
-		TargetLabel:  clusterIDLabelKey,
-		Replacement:  clusterID,
+
+	requiredMetics := getDashboardMetrics(client)
+	relabelConfigs := []monv1.RelabelConfig{
+		monv1.RelabelConfig{
+			SourceLabels: []string{"__name__"},
+			TargetLabel:  clusterIDLabelKey,
+			Replacement:  clusterID,
+		},
+
+		monv1.RelabelConfig{
+			Action:       "keep",
+			SourceLabels: []string{"__name__"},
+			Regex:        strings.Join(requiredMetics, "|"),
+		},
 	}
 
-	newlabelConfigs := append(*labelConfigs, relabelConfig)
+	newlabelConfigs := append(*labelConfigs, relabelConfigs...)
 	if !strings.HasPrefix(url, "http") {
 		url = protocol + url
 	}
@@ -80,7 +92,7 @@ func createConfigMap(
 	ocpClient ocpClientSet.Interface,
 	url string, labelConfigs *[]monv1.RelabelConfig) error {
 
-	rwSpec, err := createRemoteWriteSpec(ocpClient, url, labelConfigs)
+	rwSpec, err := createRemoteWriteSpec(client, ocpClient, url, labelConfigs)
 	if err != nil {
 		return err
 	}
@@ -105,7 +117,7 @@ func createConfigMap(
 
 	err = client.Create(context.TODO(), cm)
 	if err == nil {
-		log.Info("Configmap created")
+		log.Info("Configmap cluster-monitoring-config created")
 	}
 	return err
 }
@@ -123,7 +135,7 @@ func updateConfigMap(
 	if err != nil {
 		return err
 	}
-	rwSpec, err := createRemoteWriteSpec(ocpClient, url, labelConfigs)
+	rwSpec, err := createRemoteWriteSpec(client, ocpClient, url, labelConfigs)
 	if err != nil {
 		return err
 	}
@@ -166,7 +178,7 @@ func updateConfigMap(
 	configmap.Data[configKey] = string(updateConfigYaml)
 	err = client.Update(context.TODO(), configmap)
 	if err == nil {
-		log.Info("Configmap updated")
+		log.Info("Configmap cluster-monitoring-config updated")
 	}
 	return err
 }
