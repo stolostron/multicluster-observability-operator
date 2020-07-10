@@ -92,6 +92,7 @@ func GenerateDashboardMetricCM(
 
 func getDashboardMetrics(client client.Client) []string {
 	internalDefaultMetrics := []string{
+		":node_memory_MemAvailable_bytes:sum",
 		"cluster:capacity_cpu_cores:sum",
 		"cluster:capacity_memory_bytes:sum",
 		"cluster:container_cpu_usage:ratio",
