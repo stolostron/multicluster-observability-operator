@@ -178,7 +178,7 @@ func updateConfigMap(
 	configmap.Data[configKey] = string(updateConfigYaml)
 	err = client.Update(context.TODO(), configmap)
 	if err == nil {
-		log.Info("Configmap updated")
+		log.Info("Configmap cluster-monitoring-config updated")
 	}
 	return err
 }
