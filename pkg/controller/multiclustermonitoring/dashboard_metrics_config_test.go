@@ -9,10 +9,50 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
 
-func TestDashboardMetrics(t *testing.T) {
+func TestGenerateDashboardMetricCM(t *testing.T) {
+	mcm := &monitoringv1alpha1.MultiClusterMonitoring{
+		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterMonitoring"},
+		ObjectMeta: metav1.ObjectMeta{Namespace: dashboardMetricsConfigMapNS, Name: "name"},
+		Spec:       monitoringv1alpha1.MultiClusterMonitoringSpec{},
+	}
+
+	s := scheme.Scheme
+	monitoringv1alpha1.SchemeBuilder.AddToScheme(s)
+	objs := []runtime.Object{mcm}
+	cl := fake.NewFakeClient(objs...)
+
+	caseList := []struct {
+		name     string
+		expected error
+	}{
+		{
+			name:     "create cm",
+			expected: nil,
+		},
+
+		{
+			name:     "create cm when cm is existing",
+			expected: nil,
+		},
+	}
+
+	for _, c := range caseList {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := GenerateDashboardMetricCM(cl, s, mcm)
+			if err != c.expected {
+				t.Errorf("case (%v) err (%v) is not the expected (%v)", c.name, err, c.expected)
+			}
+		})
+	}
+}
+
+func TestGetDashboardMetrics(t *testing.T) {
 	internalDefaultMetricsLen := 58
 	caseList := []struct {
 		name     string
@@ -31,7 +71,7 @@ func TestDashboardMetrics(t *testing.T) {
 					Name:      dashboardMetricsConfigMapName,
 					Namespace: dashboardMetricsConfigMapNS,
 				},
-				Data: map[string]string{"metrics.yaml": `
+				Data: map[string]string{dashboardMetricsConfigMapKey: `
 defalutMetrics:
   - a
   - b
@@ -54,7 +94,7 @@ additionalMetrics:
 					Name:      "name",
 					Namespace: "ns",
 				},
-				Data: map[string]string{"metrics.yaml": ""},
+				Data: map[string]string{dashboardMetricsConfigMapKey: ""},
 			},
 		},
 
@@ -70,7 +110,7 @@ additionalMetrics:
 					Name:      dashboardMetricsConfigMapName,
 					Namespace: dashboardMetricsConfigMapNS,
 				},
-				Data: map[string]string{"metrics.yaml": `
+				Data: map[string]string{dashboardMetricsConfigMapKey: `
 defalutMetrics
   - a
   - b
@@ -93,7 +133,7 @@ additionalMetrics
 					Name:      dashboardMetricsConfigMapName,
 					Namespace: dashboardMetricsConfigMapNS,
 				},
-				Data: map[string]string{"metrics.yaml": ""},
+				Data: map[string]string{dashboardMetricsConfigMapKey: ""},
 			},
 		},
 	}

@@ -6,9 +6,16 @@ import (
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
+
+	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
 )
 
 const (
@@ -22,6 +29,65 @@ type DashboardMetricConfig struct {
 	DefalutMetrics []string
 	// additional metrics are used for user customization
 	AdditionalMetrics []string
+}
+
+func GenerateDashboardMetricCM(
+	client client.Client,
+	scheme *runtime.Scheme,
+	monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+
+	labels := map[string]string{
+		"app": monitoring.Name,
+	}
+
+	metricsConfigmap := &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "ConfigMap",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dashboardMetricsConfigMapName,
+			Namespace: dashboardMetricsConfigMapNS,
+			Labels:    labels,
+		},
+		Data: map[string]string{dashboardMetricsConfigMapKey: `
+ # additionalMetrics:
+ #   - additional_metrics_1
+ #   - additional_metrics_2
+`},
+	}
+
+	// Set MultiClusterMonitoring instance as the owner and controller
+	if err := controllerutil.SetControllerReference(monitoring, metricsConfigmap, scheme); err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	// Check if this configmap already exists
+	found := &corev1.ConfigMap{}
+	err := client.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      dashboardMetricsConfigMapName,
+			Namespace: dashboardMetricsConfigMapNS,
+		},
+		found,
+	)
+
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Creating a new dashboards metrics configmap",
+			"metricsConfigmap.Namespace", metricsConfigmap.Namespace,
+			"metricsConfigmap.Name", metricsConfigmap.Name,
+		)
+		err = client.Create(context.TODO(), metricsConfigmap)
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
+		return nil, nil
+	} else if err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	return nil, nil
 }
 
 func getDashboardMetrics(client client.Client) []string {

@@ -17,11 +17,6 @@ if [[ "$(uname)" == "Darwin" ]]; then
     sed_command='sed -i '-e' -e'
 fi
 
-echo_ext() {
-    timestamp=`date +%F-%T`
-    echo [$timestamp] $@
-}
-
 # update prometheus CR to enable remote write to thanos
 update_prometheus_remote_write() {
     obs_url="http://monitoring-observatorium-observatorium-api.$DEFAULT_NS.svc:8080/api/metrics/v1/write"
@@ -47,15 +42,15 @@ update_prometheus_remote_write() {
 
 create_kind_cluster() {
     if [[ ! -f /usr/local/bin/kind ]]; then
-        echo_ext "This script will install kind (https://kind.sigs.k8s.io/) on your machine."
+        echo "This script will install kind (https://kind.sigs.k8s.io/) on your machine."
         curl -Lo ./kind "https://kind.sigs.k8s.io/dl/v0.7.0/kind-$(uname)-amd64"
         chmod +x ./kind
         sudo mv ./kind /usr/local/bin/kind
     fi
-    echo_ext "Delete the KinD cluster if exists"
+    echo "Delete the KinD cluster if exists"
     kind delete cluster --name $1 || true
 
-    echo_ext "Start KinD cluster with the default cluster name - $1"
+    echo "Start KinD cluster with the default cluster name - $1"
     rm -rf $HOME/.kube/kind-config-$1
     kind create cluster --kubeconfig $HOME/.kube/kind-config-$1 --name $1 --config ${WORKDIR}/tests/e2e/kind/kind-$1.config.yaml
     export KUBECONFIG=$HOME/.kube/kind-config-$1
@@ -64,7 +59,7 @@ create_kind_cluster() {
 
 setup_kubectl_command() {
     if [[ ! -f /usr/local/bin/kubectl ]]; then
-        echo_ext "This script will install kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your machine"
+        echo "This script will install kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your machine"
         if [[ "$(uname)" == "Linux" ]]; then
             curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.18.0/bin/linux/amd64/kubectl
         elif [[ "$(uname)" == "Darwin" ]]; then
@@ -88,16 +83,16 @@ install_jq() {
 }
 
 deploy_prometheus_operator() {
-    echo_ext "Install prometheus operator. Observatorium requires it."
+    echo "Install prometheus operator. Observatorium requires it."
     cd ${WORKDIR}/..
     git clone https://github.com/coreos/kube-prometheus.git
 
-    echo_ext "Replace namespace with openshift-monitoring"
+    echo "Replace namespace with openshift-monitoring"
     $sed_command "s~namespace: monitoring~namespace: openshift-monitoring~g" kube-prometheus/manifests/*.yaml
     $sed_command "s~namespace: monitoring~namespace: openshift-monitoring~g" kube-prometheus/manifests/setup/*.yaml
     $sed_command "s~name: monitoring~name: openshift-monitoring~g" kube-prometheus/manifests/setup/*.yaml
     $sed_command "s~replicas:.*$~replicas: 1~g" kube-prometheus/manifests/prometheus-prometheus.yaml
-    echo_ext "Remove alertmanager and grafana to free up resource"
+    echo "Remove alertmanager and grafana to free up resource"
     rm -rf kube-prometheus/manifests/alertmanager-*.yaml
     rm -rf kube-prometheus/manifests/grafana-*.yaml
     if [[ ! -z "$1" ]]; then
@@ -114,7 +109,7 @@ deploy_prometheus_operator() {
 
 deploy_openshift_router() {
     cd ${WORKDIR}/..
-    echo_ext "Install openshift route"
+    echo "Install openshift route"
     git clone https://github.com/openshift/router.git
     kubectl apply -f router/deploy/route_crd.yaml
     kubectl apply -f router/deploy/router_rbac.yaml
@@ -150,7 +145,7 @@ deploy_mcm_operator() {
     kubectl apply -f tests/e2e/req_crds/hub_cr
     kubectl apply -f deploy
     kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml
-
+    
     # expose grafana to test accessible
     kubectl apply -f tests/e2e/grafana/grafana-route.yaml
 }
@@ -204,10 +199,10 @@ deploy_spoke_core() {
     kubectl create ns ${DEFAULT_NS}
     kubectl config set-context --current --namespace ${DEFAULT_NS}
     kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
-
+    
     kubectl create namespace $MONITORING_NS
     kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS -n $MONITORING_NS
-
+    
     if [[ "$(uname)" == "Darwin" ]]; then
         $sed_command "\$a\\
         imagePullSecrets:\\
@@ -235,7 +230,7 @@ approve_csr_joinrequest() {
         csr=`kubectl --kubeconfig $HUB_KUBECONFIG get csr -lopen-cluster-management.io/cluster-name=cluster1 `
         if [[ ! -z $csr ]]; then
             csrname=`kubectl --kubeconfig $HUB_KUBECONFIG get csr -lopen-cluster-management.io/cluster-name=cluster1 | grep -v Name | awk 'NR==2' | awk '{ print $1 }' `
-            echo_ext "Approve CSR: $csrname"
+            echo "Approve CSR: $csrname"
             kubectl --kubeconfig $HUB_KUBECONFIG certificate approve $csrname
             break
         fi
@@ -243,7 +238,7 @@ approve_csr_joinrequest() {
             exit 1
         fi
         n=$((n+1))
-        echo_ext "Retrying in 10s waiting for approve CSR ..."
+        echo "Retrying in 10s..."
         sleep 10
     done
     n=1
@@ -252,7 +247,7 @@ approve_csr_joinrequest() {
         cluster=`kubectl --kubeconfig $HUB_KUBECONFIG get managedcluster`
         if [[ ! -z $cluster ]]; then
             clustername=`kubectl --kubeconfig $HUB_KUBECONFIG get managedcluster | grep -v Name | awk 'NR==2' | awk '{ print $1 }'`
-            echo_ext "Approve joinrequest for $clustername"
+            echo "Approve joinrequest for $clustername"
             kubectl --kubeconfig $HUB_KUBECONFIG patch managedcluster $clustername --patch '{"spec":{"hubAcceptsClient":true}}' --type=merge
             break
         fi
@@ -260,7 +255,7 @@ approve_csr_joinrequest() {
             exit 1
         fi
         n=$((n+1))
-        echo_ext "Retrying in 5s waiting for approve joinrequest for $clustername ..."
+        echo "Retrying in 5s..."
         sleep 5
     done
 
@@ -269,14 +264,14 @@ approve_csr_joinrequest() {
 patch_placement_rule() {
     cd ${WORKDIR}
     # Workaround for placementrules operator
-    echo_ext "Patch open-cluster-management-monitoring placementrule"
+    echo "Patch open-cluster-management-monitoring placementrule"
     cat ~/.kube/kind-config-hub|grep certificate-authority-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d  >> ca
     cat ~/.kube/kind-config-hub|grep client-certificate-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> crt
     cat ~/.kube/kind-config-hub|grep client-key-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> key
     SERVER=$(cat ~/.kube/kind-config-hub|grep server|awk '{split($0, a, ": "); print a[2]}')
     curl --cert ./crt --key ./key --cacert ./ca -X PATCH -H "Content-Type:application/merge-patch+json" \
         $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/$MONITORING_NS/placementrules/open-cluster-management-monitoring/status \
-        -d @./tests/e2e/templates/status.json
+        -d @./tests/e2e/templates/status.json   
     rm ca crt key
 
 }
@@ -294,7 +289,7 @@ patch_for_remote_write() {
             exit 1
         fi
         n=$((n+1))
-        echo_ext "Retrying in 10s waiting for observatorium-api route ..."
+        echo "Retrying in 10s..."
         sleep 10
     done
     kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS patch route observatorium-api --patch '{"spec":{"host": "observatorium.hub", "wildcardPolicy": "None"}}' --type=merge
@@ -303,27 +298,6 @@ patch_for_remote_write() {
     #spoke_docker_id=`docker ps | grep spoke-control-plane | awk -F ' ' '{print $1}'`
     #docker exec --env obser_hub=$obser_hub -it $spoke_docker_id /bin/bash -c 'echo "$obser_hub observatorium.hub" >> /etc/hosts'
 
-}
-
-patch_for_memcached() {
-    n=1
-    while true
-    do
-        if kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS get statefulset | grep monitoring-observatorium-thanos-store-memcached; then
-            break
-        fi
-        if [[ $n -ge 30 ]]; then
-            # for debug pod status
-            kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS get po
-            kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS describe po
-            exit 1
-        fi
-        n=$((n+1))
-        echo_ext "Retrying in 10s waiting for monitoring-observatorium-thanos-store-memcached ..."
-        sleep 10
-    done
-    # remove monitoring-observatorium-thanos-store-memcached resource request due to resource insufficient
-    kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS patch statefulset monitoring-observatorium-thanos-store-memcached --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/resources", "value": {}}]'
 }
 
 deploy() {
@@ -339,7 +313,6 @@ deploy() {
     create_kind_cluster spoke
     deploy_prometheus_operator observatorium.hub
     deploy_spoke_core
-    patch_for_memcached
     approve_csr_joinrequest
     patch_for_remote_write
     patch_placement_rule

@@ -26,11 +26,10 @@ spec:
         image: quay.io/observatorium/observatorium-operator:master-2020-05-07-e07bb8e
         imagePullPolicy: IfNotPresent
         name: observatorium-operator
-        # remove resource request due to e2e resource insufficient
-        # resources:
-        #   limits:
-        #     cpu: 100m
-        #     memory: 600Mi
-        #   requests:
-        #     cpu: 100m
-        #     memory: 600Mi
+        resources:
+          limits:
+            cpu: 100m
+            memory: 600Mi
+          requests:
+            cpu: 100m
+            memory: 600Mi

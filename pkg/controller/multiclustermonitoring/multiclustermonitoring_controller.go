@@ -180,6 +180,10 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 		return *result, err
 	}
 
+	if result, err := GenerateDashboardMetricCM(r.client, r.scheme, instance); result != nil {
+		return *result, err
+	}
+
 	// expose observatorium api gateway
 	result, err = GenerateAPIGatewayRoute(r.client, r.scheme, instance)
 	if result != nil {
