@@ -329,6 +329,7 @@ patch_for_memcached() {
     done
     # remove monitoring-observatorium-thanos-store-memcached resource request due to resource insufficient
     kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS patch statefulset monitoring-observatorium-thanos-store-memcached --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/resources", "value": {}}]'
+    kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS delete pod monitoring-observatorium-thanos-store-memcached-0
 }
 
 deploy() {
