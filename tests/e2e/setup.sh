@@ -155,6 +155,7 @@ deploy_grafana() {
     cd ${WORKDIR}
     $sed_command "s~name: grafana$~name: grafana-test~g; s~app: grafana$~app: grafana-test~g; s~secretName: grafana-config$~secretName: grafana-config-test~g; /MULTICLUSTERMONITORING_CR_NAME/d" manifests/base/grafana/deployment.yaml
     $sed_command "s~name: grafana$~name: grafana-test~g; s~app: grafana$~app: grafana-test~g" manifests/base/grafana/service.yaml
+    $sed_command "s~namespace: open-cluster-management$~namespace: open-cluster-management-monitoring~g" manifests/base/grafana/deployment.yaml manifests/base/grafana/service.yaml
 
     kubectl apply -f manifests/base/grafana/deployment.yaml
     kubectl apply -f manifests/base/grafana/service.yaml
@@ -177,6 +178,7 @@ deploy_hub_core() {
     git clone https://github.com/open-cluster-management/registration-operator.git
     cd registration-operator/
     $sed_command "s~replicas: 3~replicas: 1~g" deploy/cluster-manager/*.yaml
+    $sed_command "s~cpu: 100m~cpu: 10m~g" deploy/cluster-manager/*.yaml
 
     if [[ "$(uname)" == "Darwin" ]]; then
         $sed_command "\$a\\
@@ -190,12 +192,16 @@ deploy_hub_core() {
     kubectl apply -f deploy/cluster-manager/
     kubectl apply -f deploy/cluster-manager/crds/*crd.yaml
     sleep 2
+    kubectl create ns $HUB_NS || true
+    kubectl create quota test --hard=pods=4 -n $HUB_NS
     kubectl apply -f deploy/cluster-manager/crds
 }
 
 deploy_spoke_core() {
     cd ${WORKDIR}/../registration-operator
     $sed_command "s~replicas: 3~replicas: 1~g" deploy/klusterlet/*.yaml
+    $sed_command "s~cpu: 100m~cpu: 10m~g" deploy/klusterlet/*.yaml
+
     kubectl create ns ${DEFAULT_NS}
     kubectl config set-context --current --namespace ${DEFAULT_NS}
     kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
@@ -220,6 +226,7 @@ deploy_spoke_core() {
     rm -rf ${WORKDIR}/../registration-operator
     kind get kubeconfig --name hub --internal > $HOME/.kube/kind-config-hub-internal
     kubectl create namespace $AGENT_NS
+    kubectl create quota test --hard=pods=4 -n $AGENT_NS
     kubectl create secret generic bootstrap-hub-kubeconfig --from-file=kubeconfig=$HOME/.kube/kind-config-hub-internal -n $AGENT_NS
 }
 
@@ -293,11 +300,36 @@ patch_for_remote_write() {
         sleep 10
     done
     kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS patch route observatorium-api --patch '{"spec":{"host": "observatorium.hub", "wildcardPolicy": "None"}}' --type=merge
-    #obser_hub=`kind get kubeconfig --name hub --internal | grep server: | awk -F '://' '{print $2}' | awk -F ':' '{print $1}'`
+    obser_hub=`kind get kubeconfig --name hub --internal | grep server: | awk -F '://' '{print $2}' | awk -F ':' '{print $1}'`
 
-    #spoke_docker_id=`docker ps | grep spoke-control-plane | awk -F ' ' '{print $1}'`
+    # add hostAlias to the pod prometheus-k8s-0
+    kubectl --kubeconfig $SPOKE_KUBECONFIG delete deploy prometheus-operator -n openshift-monitoring
+    kubectl --kubeconfig $SPOKE_KUBECONFIG patch statefulset prometheus-k8s -n openshift-monitoring --patch "{\"spec\":{\"template\":{\"spec\":{\"hostAliases\":[{\"hostnames\":[\"observatorium.hub\"], \"ip\": \"$obser_hub\"}]}}}}" --type=merge
+
     #docker exec --env obser_hub=$obser_hub -it $spoke_docker_id /bin/bash -c 'echo "$obser_hub observatorium.hub" >> /etc/hosts'
 
+}
+
+patch_for_memcached() {
+    n=1
+    while true
+    do
+        if kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS get statefulset | grep monitoring-observatorium-thanos-store-memcached; then
+            break
+        fi
+        if [[ $n -ge 30 ]]; then
+            # for debug pod status
+            kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS get po
+            kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS describe po
+            exit 1
+        fi
+        n=$((n+1))
+        echo "Retrying in 10s waiting for monitoring-observatorium-thanos-store-memcached ..."
+        sleep 10
+    done
+    # remove monitoring-observatorium-thanos-store-memcached resource request due to resource insufficient
+    kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS patch statefulset monitoring-observatorium-thanos-store-memcached --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/resources", "value": {}}]'
+    kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS delete pod monitoring-observatorium-thanos-store-memcached-0
 }
 
 deploy() {
@@ -316,6 +348,7 @@ deploy() {
     approve_csr_joinrequest
     patch_for_remote_write
     patch_placement_rule
+    patch_for_memcached
     revert_changes
 }
 
