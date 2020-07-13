@@ -97,7 +97,6 @@ prometheusK8s:
       sourceLabels:
       - __name__
       targetLabel: cluster_id
-  - url: http://apiServerURL/api/metrics/v1/write  
   - url: http://apiServerURL/api/metrics/v1/write
     writeRelabelConfigs:
     - replacement: spoke_cluster
