@@ -54,6 +54,8 @@ func GenerateDashboardMetricCM(
  # additionalMetrics:
  #   - additional_metrics_1
  #   - additional_metrics_2
+ #   - regex_for_match_metrics_1
+ #   - regex_for_match_metrics_2
 `},
 	}
 
