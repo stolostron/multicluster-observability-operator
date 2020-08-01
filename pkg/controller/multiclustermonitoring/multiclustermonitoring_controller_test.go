@@ -69,7 +69,7 @@ func createClusterVersion() *configv1.ClusterVersion {
 func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	var (
 		name               = "monitoring"
-		namespace          = "open-cluster-management-monitoring"
+		namespace          = "open-cluster-management-observability"
 		defaultStorageSize = "3Gi"
 	)
 	logf.SetLogger(logf.ZapLogger(true))

@@ -5,7 +5,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: multicluster-monitoring-operator
-  namespace: open-cluster-management-monitoring
+  namespace: open-cluster-management-observability
 roleRef:
   kind: ClusterRole
   name: multicluster-monitoring-operator

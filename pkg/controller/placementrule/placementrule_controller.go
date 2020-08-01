@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	placementRuleName = "open-cluster-management-monitoring"
+	placementRuleName = "open-cluster-management-observability"
 	ownerLabelKey     = "owner"
 	ownerLabelValue   = "multicluster-operator"
 )

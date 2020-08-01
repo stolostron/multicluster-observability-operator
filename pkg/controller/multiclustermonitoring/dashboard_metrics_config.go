@@ -21,7 +21,7 @@ import (
 const (
 	dashboardMetricsConfigMapKey  = "metrics.yaml"
 	dashboardMetricsConfigMapName = "grafana-dashboards-metrics"
-	dashboardMetricsConfigMapNS   = "open-cluster-management-monitoring"
+	dashboardMetricsConfigMapNS   = "open-cluster-management-observability"
 )
 
 type DashboardMetricConfig struct {

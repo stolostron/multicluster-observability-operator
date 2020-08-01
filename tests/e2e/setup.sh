@@ -7,7 +7,7 @@ set -o pipefail
 WORKDIR=`pwd`
 HUB_KUBECONFIG=$HOME/.kube/kind-config-hub
 SPOKE_KUBECONFIG=$HOME/.kube/kind-config-spoke
-MONITORING_NS="open-cluster-management-monitoring"
+MONITORING_NS="open-cluster-management-observability"
 DEFAULT_NS="open-cluster-management"
 AGENT_NS="open-cluster-management-agent"
 HUB_NS="open-cluster-management-hub"
@@ -145,7 +145,7 @@ deploy_mcm_operator() {
     kubectl apply -f tests/e2e/req_crds/hub_cr
     kubectl apply -f deploy
     kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml
-    
+
     # expose grafana to test accessible
     kubectl apply -f tests/e2e/grafana/grafana-route.yaml
 }
@@ -155,7 +155,7 @@ deploy_grafana() {
     cd ${WORKDIR}
     $sed_command "s~name: grafana$~name: grafana-test~g; s~app: grafana$~app: grafana-test~g; s~secretName: grafana-config$~secretName: grafana-config-test~g; /MULTICLUSTERMONITORING_CR_NAME/d" manifests/base/grafana/deployment.yaml
     $sed_command "s~name: grafana$~name: grafana-test~g; s~app: grafana$~app: grafana-test~g" manifests/base/grafana/service.yaml
-    $sed_command "s~namespace: open-cluster-management$~namespace: open-cluster-management-monitoring~g" manifests/base/grafana/deployment.yaml manifests/base/grafana/service.yaml
+    $sed_command "s~namespace: open-cluster-management$~namespace: open-cluster-management-observability~g" manifests/base/grafana/deployment.yaml manifests/base/grafana/service.yaml
 
     kubectl apply -f manifests/base/grafana/deployment.yaml
     kubectl apply -f manifests/base/grafana/service.yaml
@@ -205,10 +205,10 @@ deploy_spoke_core() {
     kubectl create ns ${DEFAULT_NS}
     kubectl config set-context --current --namespace ${DEFAULT_NS}
     kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
-    
+
     kubectl create namespace $MONITORING_NS
     kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS -n $MONITORING_NS
-    
+
     if [[ "$(uname)" == "Darwin" ]]; then
         $sed_command "\$a\\
         imagePullSecrets:\\
@@ -271,14 +271,14 @@ approve_csr_joinrequest() {
 patch_placement_rule() {
     cd ${WORKDIR}
     # Workaround for placementrules operator
-    echo "Patch open-cluster-management-monitoring placementrule"
+    echo "Patch open-cluster-management-observability placementrule"
     cat ~/.kube/kind-config-hub|grep certificate-authority-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d  >> ca
     cat ~/.kube/kind-config-hub|grep client-certificate-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> crt
     cat ~/.kube/kind-config-hub|grep client-key-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> key
     SERVER=$(cat ~/.kube/kind-config-hub|grep server|awk '{split($0, a, ": "); print a[2]}')
     curl --cert ./crt --key ./key --cacert ./ca -X PATCH -H "Content-Type:application/merge-patch+json" \
-        $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/$MONITORING_NS/placementrules/open-cluster-management-monitoring/status \
-        -d @./tests/e2e/templates/status.json   
+        $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/$MONITORING_NS/placementrules/open-cluster-management-observability/status \
+        -d @./tests/e2e/templates/status.json
     rm ca crt key
 
 }

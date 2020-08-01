@@ -4,7 +4,7 @@
 export WAIT_TIMEOUT=${WAIT_TIMEOUT:-5m}
 export KUBECONFIG=$HOME/.kube/kind-config-hub
 export SPOKE_KUBECONFIG=$HOME/.kube/kind-config-spoke
-MONITORING_NS="open-cluster-management-monitoring"
+MONITORING_NS="open-cluster-management-observability"
 kubectl config set-context --current --namespace $MONITORING_NS
 
 wait_for_popup() {
@@ -33,7 +33,7 @@ wait_for_event() {
         elif [[ "$1" == "vanish" ]]; then
             if [[ -z $entity ]]; then
                 return
-            fi        
+            fi
         fi
         if [[ $n -ge 10 ]]; then
             exit 1
@@ -41,7 +41,7 @@ wait_for_event() {
         n=$((n+1))
         echo "Retrying in 10s..."
         sleep 10
-    done  
+    done
 }
 
 run_test_readiness() {
@@ -58,7 +58,7 @@ run_test_readiness() {
     OBSERVATORIUM_STATEFULSET="$MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-compact $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-receive-default $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-rule $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-store-memcached $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-store-shard-0"
 
     for depl in ${MULTICLUSTER_MONITORING_DEPLOYMENTS}; do
-        if ! kubectl -n $MONITORING_NS rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then 
+        if ! kubectl -n $MONITORING_NS rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then
             echo "$depl is not ready after $WAIT_TIMEOUT"
             exit 1
         fi
@@ -68,7 +68,7 @@ run_test_readiness() {
 
     for depl in ${MINIO_DEPLOYMENTS}; do
         wait_for_popup "deployments" $depl
-        if ! kubectl -n $MONITORING_NS rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then 
+        if ! kubectl -n $MONITORING_NS rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then
             echo "$depl is not ready after $WAIT_TIMEOUT"
             exit 1
         fi
@@ -77,7 +77,7 @@ run_test_readiness() {
 
     for depl in ${OBSERVATORIUM_DEPLOYMENTS}; do
         wait_for_popup "deployments" $depl
-        if ! kubectl -n $MONITORING_NS rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then 
+        if ! kubectl -n $MONITORING_NS rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then
             echo "$depl is not ready after $WAIT_TIMEOUT"
             exit 1
         fi
@@ -86,7 +86,7 @@ run_test_readiness() {
 
     for depl in ${OBSERVATORIUM_STATEFULSET}; do
         wait_for_popup "statefulset" $depl
-        if ! kubectl -n $MONITORING_NS rollout status statefulset $depl --timeout=$WAIT_TIMEOUT; then 
+        if ! kubectl -n $MONITORING_NS rollout status statefulset $depl --timeout=$WAIT_TIMEOUT; then
             echo "$depl is not ready after $WAIT_TIMEOUT"
             exit 1
         fi
@@ -94,7 +94,7 @@ run_test_readiness() {
 
     for depl in ${GRAFANA_DEPLOYMENTS}; do
         wait_for_popup "deployments" $depl
-        if ! kubectl -n $MONITORING_NS rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then 
+        if ! kubectl -n $MONITORING_NS rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then
             echo "$depl is not ready after $WAIT_TIMEOUT"
             exit 1
         fi
@@ -189,7 +189,7 @@ run_test_access_grafana() {
         echo "Retrying in 10s..."
         sleep 10
     done
-    
+
 }
 
 run_test_access_grafana_dashboard() {
@@ -270,16 +270,16 @@ run_test_endpoint_operator() {
 
 run_test_monitoring_disable() {
     # Workaround for placementrules operator
-    echo "Patch open-cluster-management-monitoring placementrule"
+    echo "Patch open-cluster-management-observability placementrule"
     cat ~/.kube/kind-config-hub|grep certificate-authority-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d  >> ca
     cat ~/.kube/kind-config-hub|grep client-certificate-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> crt
     cat ~/.kube/kind-config-hub|grep client-key-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> key
     SERVER=$(cat ~/.kube/kind-config-hub|grep server|awk '{split($0, a, ": "); print a[2]}')
     curl --cert ./crt --key ./key --cacert ./ca -X PATCH -H "Content-Type:application/merge-patch+json" \
-        $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/$MONITORING_NS/placementrules/open-cluster-management-monitoring/status \
-        -d @./tests/e2e/templates/empty_status.json   
+        $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/$MONITORING_NS/placementrules/open-cluster-management-observability/status \
+        -d @./tests/e2e/templates/empty_status.json
     rm ca crt key
-  
+
     n=1
     while true
     do
@@ -287,7 +287,7 @@ run_test_monitoring_disable() {
         if [[ $RESULT != *"replacement: cluster1"* ]] && [[ $RESULT != *"replacement: 3650eda1-66fe-4aba-bfbc-d398638f3022"* ]]; then
             echo "configmap cluster-monitoring-config has been reverted"
             break
-        fi  
+        fi
         if [[ $n -ge 10 ]]; then
             echo "configmap cluster-monitoring-config not reverted"
             exit 1

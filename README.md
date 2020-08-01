@@ -17,16 +17,16 @@ The multicluster-monitoring-operator is a component of ACM observability feature
 ```
 git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
 ```
-2. Create new namespace `open-cluster-management-monitoring`
+2. Create new namespace `open-cluster-management-observability`
 
 ```
-oc create namespace open-cluster-management-monitoring
+oc create namespace open-cluster-management-observability
 ```
 3. Generate your pull-secret
 Assume RHACM is installed in `open-cluster-management` namespace. Generate your pull-screct by
 
 ```
-oc get secret multiclusterhub-operator-pull-secret -n open-cluster-management --export -o yaml |   kubectl apply --namespace=open-cluster-management-monitoring -f -
+oc get secret multiclusterhub-operator-pull-secret -n open-cluster-management --export -o yaml |   kubectl apply --namespace=open-cluster-management-observability -f -
 ```
 4. [Optional] Modify the operator and instance to use a new tag
 
@@ -155,14 +155,14 @@ spec:
 
 6. Deploy the `multicluster-monitoring-operator` and `MultiClusterMonitoring` instance
 ```
-oc project open-cluster-management-monitoring
+oc project open-cluster-management-observability
 oc apply -f deploy/req_crds/monitoring.open-cluster-management.io_endpointmonitoring_crd.yaml
 oc apply -f deploy/req_crds/core.observatorium.io_observatoria.yaml
 oc apply -f deploy/crds/monitoring.open-cluster-management.io_multiclustermonitorings_crd.yaml
 oc apply -f deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml
 oc apply -f deploy/
 ```
-The following pods are available in `open-cluster-management-monitoring` namespace after installed successfully.
+The following pods are available in `open-cluster-management-observability` namespace after installed successfully.
 ```
 NAME                                                                  READY   STATUS    RESTARTS   AGE
 pod/grafana-6fb9584cf9-tt5s2                                          1/1     Running   0          76m
