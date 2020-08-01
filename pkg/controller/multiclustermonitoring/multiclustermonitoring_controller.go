@@ -22,11 +22,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/deploying"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
+	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-observability-operator/pkg/apis/monitoring/v1alpha1"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/deploying"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/rendering"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
 
 var log = logf.Log.WithName("controller_multiclustermonitoring")

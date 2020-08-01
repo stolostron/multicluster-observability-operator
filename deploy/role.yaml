@@ -2,7 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   creationTimestamp: null
-  name: multicluster-monitoring-operator
+  name: multicluster-observability-operator
 rules:
 - apiGroups:
   - ""
@@ -49,7 +49,7 @@ rules:
 - apiGroups:
   - apps
   resourceNames:
-  - multicluster-monitoring-operator
+  - multicluster-observability-operator
   resources:
   - deployments/finalizers
   verbs:

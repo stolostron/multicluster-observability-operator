@@ -126,7 +126,7 @@ deploy_mcm_operator() {
     # Add storage class config
     cp deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml-e
     printf "\n  storageClass: local\n" >> deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml
-    # Install the multicluster-monitoring-operator
+    # Install the multicluster-observability-operator
     kubectl create ns ${MONITORING_NS}
     kubectl config set-context --current --namespace ${MONITORING_NS}
     # create image pull secret

@@ -1,11 +1,11 @@
-# multicluster-monitoring-operator
+# multicluster-observability-operator
 
 ## Overview
 
-The multicluster-monitoring-operator is a component of ACM observability feature. It is designed to install into Hub Cluster.
+The multicluster-observability-operator is a component of ACM observability feature. It is designed to install into Hub Cluster.
 
 <div align="center">
-<img src="./docs/images/multicluster-monitoring-operator.png">
+<img src="./docs/images/multicluster-observability-operator.png">
 </div>
 
 ## Installation
@@ -15,7 +15,7 @@ The multicluster-monitoring-operator is a component of ACM observability feature
 1. Clone this repo locally
 
 ```
-git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
+git clone https://github.com/open-cluster-management/multicluster-observability-operator.git
 ```
 2. Create new namespace `open-cluster-management-observability`
 
@@ -33,9 +33,9 @@ oc get secret multiclusterhub-operator-pull-secret -n open-cluster-management --
 Edit deploy/operator.yaml file and change image tag
 ```
     spec:
-      serviceAccountName: multicluster-monitoring-operator
+      serviceAccountName: multicluster-observability-operator
       containers:
-        - name: multicluster-monitoring-operator
+        - name: multicluster-observability-operator
           # Replace this with the built image name
           image: ...
 
@@ -153,7 +153,7 @@ spec:
   version: latest
 ```
 
-6. Deploy the `multicluster-monitoring-operator` and `MultiClusterMonitoring` instance
+6. Deploy the `multicluster-observability-operator` and `MultiClusterMonitoring` instance
 ```
 oc project open-cluster-management-observability
 oc apply -f deploy/req_crds/monitoring.open-cluster-management.io_endpointmonitoring_crd.yaml
@@ -180,7 +180,7 @@ pod/monitoring-observatorium-thanos-rule-0                            1/1     Ru
 pod/monitoring-observatorium-thanos-rule-1                            1/1     Running   0          72m
 pod/monitoring-observatorium-thanos-store-memcached-0                 2/2     Running   0          75m
 pod/monitoring-observatorium-thanos-store-shard-0-0                   1/1     Running   0          72m
-pod/multicluster-monitoring-operator-5dc5997979-f4flc                 1/1     Running   1          77m
+pod/multicluster-observability-operator-5dc5997979-f4flc                 1/1     Running   1          77m
 pod/observatorium-operator-88b859dc-79hml                             1/1     Running   0          76m
 ```
 
@@ -196,10 +196,10 @@ We provided an easy way to install this operator into KinD cluster to verify som
 1. Clone this repo locally
 
 ```
-git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
+git clone https://github.com/open-cluster-management/multicluster-observability-operator.git
 ```
 
-2. Provide the username and password for downloading multicluster-monitoring-operator image from quay.io.
+2. Provide the username and password for downloading multicluster-observability-operator image from quay.io.
 
 ```
 export DOCKER_USER=<quay.io username>
@@ -210,9 +210,9 @@ export DOCKER_PASS=<quay.io password>
 ```
 ./tests/e2e/setup.sh
 ```
-If you want to install the latest multicluster-monitoring-operator image, you can find the latest tag here https://quay.io/repository/open-cluster-management/multicluster-monitoring-operator?tab=tags. Then install by
+If you want to install the latest multicluster-observability-operator image, you can find the latest tag here https://quay.io/repository/open-cluster-management/multicluster-observability-operator?tab=tags. Then install by
 ```
-./tests/e2e/setup.sh quay.io/open-cluster-management/multicluster-monitoring-operator:<latest tag>
+./tests/e2e/setup.sh quay.io/open-cluster-management/multicluster-observability-operator:<latest tag>
 ```
 
 4. Access the KinD cluster
@@ -242,7 +242,7 @@ curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.
 
 - git clone this repository.
 - `go mod vendor`
-- `operator-sdk build <repo>/<component>:<tag>` for example: quay.io/multicluster-monitoring-operator:v0.1.0.
+- `operator-sdk build <repo>/<component>:<tag>` for example: quay.io/multicluster-observability-operator:v0.1.0.
 - Replace the image in `deploy/operator.yaml`.
 - Update your namespace in `deploy/role_binding.yaml`
 

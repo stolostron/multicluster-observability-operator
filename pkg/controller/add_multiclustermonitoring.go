@@ -3,7 +3,7 @@
 package controller
 
 import (
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/multiclustermonitoring"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/controller/multiclustermonitoring"
 )
 
 func init() {

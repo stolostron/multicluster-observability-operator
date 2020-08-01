@@ -1,7 +1,7 @@
 package apis
 
 import (
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/apis/monitoring/v1alpha1"
 )
 
 func init() {

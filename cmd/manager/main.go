@@ -32,9 +32,9 @@ import (
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/version"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/apis"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/controller"
+	"github.com/open-cluster-management/multicluster-observability-operator/version"
 )
 
 // Change below variables to serve metrics on different host or port.
@@ -90,7 +90,7 @@ func main() {
 
 	ctx := context.TODO()
 	// Become the leader before proceeding
-	err = leader.Become(ctx, "multicluster-monitoring-operator-lock")
+	err = leader.Become(ctx, "multicluster-observability-operator-lock")
 	if err != nil {
 		log.Error(err, "")
 		os.Exit(1)

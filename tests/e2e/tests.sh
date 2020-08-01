@@ -49,7 +49,7 @@ run_test_readiness() {
 
     MULTICLUSTER_MONITORING_CR_NAME="monitoring"
 
-    MULTICLUSTER_MONITORING_DEPLOYMENTS="multicluster-monitoring-operator"
+    MULTICLUSTER_MONITORING_DEPLOYMENTS="multicluster-observability-operator"
     GRAFANA_DEPLOYMENTS="grafana"
     MINIO_DEPLOYMENTS="minio"
 
