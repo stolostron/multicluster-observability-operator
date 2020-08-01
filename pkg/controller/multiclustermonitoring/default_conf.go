@@ -25,7 +25,7 @@ const (
 // GenerateMonitoringCR is used to generate monitoring CR with the default values
 // w/ or w/o customized values
 func GenerateMonitoringCR(c client.Client,
-	mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+	mcm *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	if mcm.Spec.Version == "" {
 		mcm.Spec.Version = defaultVersion
@@ -73,7 +73,7 @@ func GenerateMonitoringCR(c client.Client,
 		updateGrafanaConfig(mcm)
 	}
 
-	found := &monitoringv1alpha1.MultiClusterMonitoring{}
+	found := &monitoringv1alpha1.MultiClusterObservability{}
 	err := c.Get(
 		context.TODO(),
 		types.NamespacedName{
@@ -88,15 +88,15 @@ func GenerateMonitoringCR(c client.Client,
 
 	desired, err := yaml.Marshal(mcm.Spec)
 	if err != nil {
-		log.Error(err, "cannot parse the desired MultiClusterMonitoring values")
+		log.Error(err, "cannot parse the desired MultiClusterObservability values")
 	}
 	current, err := yaml.Marshal(found.Spec)
 	if err != nil {
-		log.Error(err, "cannot parse the current MultiClusterMonitoring values")
+		log.Error(err, "cannot parse the current MultiClusterObservability values")
 	}
 
 	if res := bytes.Compare(desired, current); res != 0 {
-		log.Info("Update MultiClusterMonitoring CR.")
+		log.Info("Update MultiClusterObservability CR.")
 		newObj := found.DeepCopy()
 		newObj.Spec = mcm.Spec
 		err = c.Update(context.TODO(), newObj)

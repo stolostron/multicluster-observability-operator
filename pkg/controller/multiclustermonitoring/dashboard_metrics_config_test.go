@@ -16,8 +16,8 @@ import (
 )
 
 func TestGenerateDashboardMetricCM(t *testing.T) {
-	mcm := &monitoringv1alpha1.MultiClusterMonitoring{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterMonitoring"},
+	mcm := &monitoringv1alpha1.MultiClusterObservability{
+		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: dashboardMetricsConfigMapNS, Name: "name"},
 		Spec:       monitoringv1alpha1.MultiClusterMonitoringSpec{},
 	}

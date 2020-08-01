@@ -23,9 +23,9 @@ const (
 
 type patchGenerateFn func(
 	res *resource.Resource,
-	mcm *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error)
+	mcm *monitoringv1alpha1.MultiClusterObservability) (ifc.Kunstructured, error)
 
-func ApplyGlobalPatches(res *resource.Resource, mcm *monitoringv1alpha1.MultiClusterMonitoring) error {
+func ApplyGlobalPatches(res *resource.Resource, mcm *monitoringv1alpha1.MultiClusterObservability) error {
 
 	// for _, generate := range []patchGenerateFn{
 	// 	//generateImagePatch,
@@ -48,7 +48,7 @@ func ApplyGlobalPatches(res *resource.Resource, mcm *monitoringv1alpha1.MultiClu
 
 func generateImagePatch(
 	res *resource.Resource,
-	mcm *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
+	mcm *monitoringv1alpha1.MultiClusterObservability) (ifc.Kunstructured, error) {
 	imageFromTemplate, err := res.GetString(specFirstContainer + ".image") // need to loop through all images
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ spec:
 
 func generateImagePullSecretsPatch(
 	res *resource.Resource,
-	mcm *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
+	mcm *monitoringv1alpha1.MultiClusterObservability) (ifc.Kunstructured, error) {
 
 	pullSecret := mcm.Spec.ImagePullSecret
 	if pullSecret == "" {
@@ -107,7 +107,7 @@ func generateImagePullSecretsPatch(
 
 // func generateNodeSelectorPatch(
 // 	res *resource.Resource,
-// 	mcm *monitoringv1alpha1.MultiClusterMonitoring) (ifc.Kunstructured, error) {
+// 	mcm *monitoringv1alpha1.MultiClusterObservability) (ifc.Kunstructured, error) {
 
 // 	nodeSelectorOptions := mcm.Spec.NodeSelector
 // 	if nodeSelectorOptions == nil {

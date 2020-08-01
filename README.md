@@ -43,7 +43,7 @@ Edit deploy/operator.yaml file and change image tag
 Edit deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml file to change `imageTagSuffix`
 ```
 apiVersion: monitoring.open-cluster-management.io/v1alpha1
-kind: MultiClusterMonitoring
+kind: MultiClusterObservability
 metadata:
   name: monitoring
 spec:
@@ -56,7 +56,7 @@ Note: Find snapshot tags here: https://quay.io/repository/open-cluster-managemen
 You can customize the operator instance by updating `deploy/crds/monitoring.open-cluster-management.io_v1_multiclustermonitoring_cr.yaml`. Below is a sample which has the configuration with default values. If you want to use customized value for one parameter, just need to specify that parameter in your own yaml file.
 ```
 apiVersion: monitoring.open-cluster-management.io/v1alpha1
-kind: MultiClusterMonitoring
+kind: MultiClusterObservability
 metadata:
   name: monitoring
 spec:
@@ -153,7 +153,7 @@ spec:
   version: latest
 ```
 
-6. Deploy the `multicluster-observability-operator` and `MultiClusterMonitoring` instance
+6. Deploy the `multicluster-observability-operator` and `MultiClusterObservability` instance
 ```
 oc project open-cluster-management-observability
 oc apply -f deploy/req_crds/monitoring.open-cluster-management.io_endpointmonitoring_crd.yaml

@@ -179,8 +179,8 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling PlacementRule")
 
-	// Fetch the MultiClusterMonitoring instance
-	mcm := &monitoringv1alpha1.MultiClusterMonitoring{}
+	// Fetch the MultiClusterObservability instance
+	mcm := &monitoringv1alpha1.MultiClusterObservability{}
 	err := r.client.Get(context.TODO(),
 		types.NamespacedName{
 			Name:      config.GetMonitoringCRName(),

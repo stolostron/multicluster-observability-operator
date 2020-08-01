@@ -29,13 +29,13 @@ var log = logf.Log.WithName("renderer")
 type renderFn func(*resource.Resource) (*unstructured.Unstructured, error)
 
 type Renderer struct {
-	cr               *monitoringv1.MultiClusterMonitoring
+	cr               *monitoringv1.MultiClusterObservability
 	renderFns        map[string]renderFn
 	renderGrafanaFns map[string]renderFn
 	renderMinioFns   map[string]renderFn
 }
 
-func NewRenderer(multipleClusterMonitoring *monitoringv1.MultiClusterMonitoring) *Renderer {
+func NewRenderer(multipleClusterMonitoring *monitoringv1.MultiClusterObservability) *Renderer {
 	renderer := &Renderer{cr: multipleClusterMonitoring}
 	renderer.renderFns = map[string]renderFn{
 		"Deployment":            renderer.renderDeployments,
@@ -229,7 +229,7 @@ func (r *Renderer) renderClusterRoleBinding(res *resource.Resource) (*unstructur
 	return u, nil
 }
 
-func stringValueReplace(toReplace string, cr *monitoringv1.MultiClusterMonitoring) string {
+func stringValueReplace(toReplace string, cr *monitoringv1.MultiClusterObservability) string {
 
 	replaced := toReplace
 
@@ -282,7 +282,7 @@ func stringValueReplace(toReplace string, cr *monitoringv1.MultiClusterMonitorin
 	return replaced
 }
 
-func replaceInValues(values map[string]interface{}, cr *monitoringv1.MultiClusterMonitoring) error {
+func replaceInValues(values map[string]interface{}, cr *monitoringv1.MultiClusterObservability) error {
 	for inKey := range values {
 		isPrimitiveType := reflect.TypeOf(values[inKey]).String() == "string" ||
 			reflect.TypeOf(values[inKey]).String() == "bool" ||

@@ -48,7 +48,7 @@ func newGrafanaConfigSpec() *monitoringv1alpha1.GrafanaSpec {
 	return spec
 }
 
-func updateGrafanaConfig(mcm *monitoringv1alpha1.MultiClusterMonitoring) {
+func updateGrafanaConfig(mcm *monitoringv1alpha1.MultiClusterObservability) {
 	if mcm.Spec.Grafana.Hostport == 0 {
 		mcm.Spec.Grafana.Hostport = defaultHostport
 	}
@@ -62,7 +62,7 @@ func updateGrafanaConfig(mcm *monitoringv1alpha1.MultiClusterMonitoring) {
 func GenerateGrafanaDataSource(
 	client client.Client,
 	scheme *runtime.Scheme,
-	monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+	monitoring *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	grafanaDatasources, err := json.MarshalIndent(GrafanaDatasources{
 		APIVersion: 1,
@@ -90,7 +90,7 @@ func GenerateGrafanaDataSource(
 		},
 	}
 
-	// Set MultiClusterMonitoring instance as the owner and controller
+	// Set MultiClusterObservability instance as the owner and controller
 	if err = controllerutil.SetControllerReference(monitoring, dsSecret, scheme); err != nil {
 		return &reconcile.Result{}, err
 	}

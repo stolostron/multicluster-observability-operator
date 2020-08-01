@@ -9,7 +9,7 @@ import (
 )
 
 func TestUpdateGrafanaSpec(t *testing.T) {
-	mcm := &monitoringv1alpha1.MultiClusterMonitoring{
+	mcm := &monitoringv1alpha1.MultiClusterObservability{
 		Spec: monitoringv1alpha1.MultiClusterMonitoringSpec{
 			Grafana: &monitoringv1alpha1.GrafanaSpec{
 				Hostport: defaultHostport,

@@ -5,7 +5,7 @@ metadata:
 spec:
   group: monitoring.open-cluster-management.io
   names:
-    kind: MultiClusterMonitoring
+    kind: MultiClusterObservability
     listKind: MultiClusterMonitoringList
     plural: multiclustermonitorings
     singular: multiclustermonitoring
@@ -14,7 +14,7 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: MultiClusterMonitoring is the Schema for the multiclustermonitorings
+      description: MultiClusterObservability is the Schema for the multiclustermonitorings
         API
       properties:
         apiVersion:
@@ -30,7 +30,7 @@ spec:
         metadata:
           type: object
         spec:
-          description: MultiClusterMonitoringSpec defines the desired state of MultiClusterMonitoring
+          description: MultiClusterMonitoringSpec defines the desired state of MultiClusterObservability
           properties:
             grafana:
               description: Spec of Grafana
@@ -45,16 +45,16 @@ spec:
                   type: integer
               type: object
             imagePullPolicy:
-              description: Pull policy of the MultiClusterMonitoring images
+              description: Pull policy of the MultiClusterObservability images
               type: string
             imagePullSecret:
-              description: Pull secret of the MultiClusterMonitoring images
+              description: Pull secret of the MultiClusterObservability images
               type: string
             imageRepository:
-              description: Repository of the MultiClusterMonitoring images
+              description: Repository of the MultiClusterObservability images
               type: string
             imageTagSuffix:
-              description: ImageTagSuffix of the MultiClusterMonitoring images
+              description: ImageTagSuffix of the MultiClusterObservability images
               type: string
             nodeSelector:
               additionalProperties:
@@ -854,7 +854,7 @@ spec:
           type: object
         status:
           description: MultiClusterMonitoringStatus defines the observed state of
-            MultiClusterMonitoring
+            MultiClusterObservability
           properties:
             deployments:
               description: Represents the status of each deployment

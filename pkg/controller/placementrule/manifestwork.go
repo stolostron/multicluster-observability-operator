@@ -40,7 +40,7 @@ func deleteManifestWork(client client.Client, namespace string) error {
 }
 
 func createManifestWork(client client.Client, namespace string,
-	mcm *monitoringv1alpha1.MultiClusterMonitoring,
+	mcm *monitoringv1alpha1.MultiClusterObservability,
 	imagePullSecret *corev1.Secret) error {
 
 	secret, err := createKubeSecret(client, namespace)

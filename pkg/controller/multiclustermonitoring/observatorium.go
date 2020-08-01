@@ -40,10 +40,10 @@ const (
 	defaultThanosVersion = "v0.12.0"
 )
 
-// GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterMonitoring
+// GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
 func GenerateObservatoriumCR(
 	client client.Client, scheme *runtime.Scheme,
-	monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+	monitoring *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	labels := map[string]string{
 		"app": monitoring.Name,
@@ -58,7 +58,7 @@ func GenerateObservatoriumCR(
 		Spec: *monitoring.Spec.Observatorium,
 	}
 
-	// Set MultiClusterMonitoring instance as the owner and controller
+	// Set MultiClusterObservability instance as the owner and controller
 	if err := controllerutil.SetControllerReference(monitoring, observatoriumCR, scheme); err != nil {
 		return &reconcile.Result{}, err
 	}
@@ -104,7 +104,7 @@ func GenerateObservatoriumCR(
 
 func GenerateAPIGatewayRoute(
 	runclient client.Client, scheme *runtime.Scheme,
-	monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+	monitoring *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	listOptions := []client.ListOption{
 		client.MatchingLabels(map[string]string{
@@ -264,7 +264,7 @@ func newVolumeClaimTemplate(size string) observatoriumv1alpha1.VolumeClaimTempla
 
 func updateObservatoriumSpec(
 	c client.Client,
-	mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+	mcm *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	// Merge observatorium Spec with the default values and customized values
 	defaultSpec := newDefaultObservatoriumSpec()

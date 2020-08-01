@@ -16,7 +16,7 @@ import (
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-observability-operator/pkg/apis/monitoring/v1alpha1"
 )
 
-func NewFakeClient(mcm *monitoringv1alpha1.MultiClusterMonitoring,
+func NewFakeClient(mcm *monitoringv1alpha1.MultiClusterObservability,
 	obs *observatoriumv1alpha1.Observatorium) client.Client {
 	s := scheme.Scheme
 	s.AddKnownTypes(monitoringv1alpha1.SchemeGroupVersion, mcm)
@@ -26,8 +26,8 @@ func NewFakeClient(mcm *monitoringv1alpha1.MultiClusterMonitoring,
 }
 
 func TestGenerateMonitoringEmptyCR(t *testing.T) {
-	mcm := &monitoringv1alpha1.MultiClusterMonitoring{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterMonitoring"},
+	mcm := &monitoringv1alpha1.MultiClusterObservability{
+		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
 		Spec:       monitoringv1alpha1.MultiClusterMonitoringSpec{},
 	}
@@ -76,8 +76,8 @@ func TestGenerateMonitoringEmptyCR(t *testing.T) {
 
 func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 	retention := "20d"
-	mcm := &monitoringv1alpha1.MultiClusterMonitoring{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterMonitoring"},
+	mcm := &monitoringv1alpha1.MultiClusterObservability{
+		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
 		Spec: monitoringv1alpha1.MultiClusterMonitoringSpec{
 			Observatorium: &observatoriumv1alpha1.ObservatoriumSpec{

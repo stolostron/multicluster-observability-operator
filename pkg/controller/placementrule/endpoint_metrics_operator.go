@@ -26,7 +26,7 @@ var (
 )
 
 func loadTemplates(namespace string,
-	mcm *monitoringv1alpha1.MultiClusterMonitoring) ([]runtime.RawExtension, error) {
+	mcm *monitoringv1alpha1.MultiClusterObservability) ([]runtime.RawExtension, error) {
 	templateRenderer := templates.NewTemplateRenderer(templatePath)
 	resourceList := []*resource.Resource{}
 	err := templateRenderer.AddTemplateFromPath(templatePath, &resourceList)

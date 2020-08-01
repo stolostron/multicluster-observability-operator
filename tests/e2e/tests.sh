@@ -103,7 +103,7 @@ run_test_readiness() {
 
 # test grafana replicas changes
 run_test_scale_grafana() {
-    kubectl patch MultiClusterMonitoring monitoring --patch '{"spec":{"grafana":{"replicas":2}}}' --type=merge
+    kubectl patch MultiClusterObservability monitoring --patch '{"spec":{"grafana":{"replicas":2}}}' --type=merge
 
     n=1
     while true
@@ -125,7 +125,7 @@ run_test_scale_grafana() {
 }
 
 run_test_teardown() {
-    kubectl delete -n $MONITORING_NS MultiClusterMonitoring monitoring
+    kubectl delete -n $MONITORING_NS MultiClusterObservability monitoring
     kubectl delete -n $MONITORING_NS deployment/grafana-test
     kubectl delete -n $MONITORING_NS service/grafana-test
     kubectl delete -n $MONITORING_NS -f deploy/
@@ -152,7 +152,7 @@ run_test_teardown() {
 }
 
 run_test_reconciling() {
-    kubectl patch MultiClusterMonitoring monitoring --patch '{"spec":{"observatorium":{"compact":{"retentionResolutionRaw":"14d"}}}}' --type=merge
+    kubectl patch MultiClusterObservability monitoring --patch '{"spec":{"observatorium":{"compact":{"retentionResolutionRaw":"14d"}}}}' --type=merge
 
     n=1
     while true

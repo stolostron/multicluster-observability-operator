@@ -23,8 +23,8 @@ const (
 	pullSecretName = "test-pull-secret"
 )
 
-func newTestMCM() *monitoringv1alpha1.MultiClusterMonitoring {
-	return &monitoringv1alpha1.MultiClusterMonitoring{
+func newTestMCM() *monitoringv1alpha1.MultiClusterObservability {
+	return &monitoringv1alpha1.MultiClusterObservability{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mcmName,
 			Namespace: mcmNameSpace,
