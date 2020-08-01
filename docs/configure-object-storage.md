@@ -38,7 +38,7 @@ By default, you do not need to configure `objectStorageConfig` field. The multic
 
 ## Minio (default)
 
-When you install [multicluster-observability-operator CR](/deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml), it will use the following YAML content to configure Minio as default object storage server.
+When you install [multicluster-observability-operator CR](/deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml), it will use the following YAML content to configure Minio as default object storage server.
 
 ```yaml
   objectStorageConfig:
@@ -54,7 +54,7 @@ When you install [multicluster-observability-operator CR](/deploy/crds/monitorin
 
 ## S3
 
-If you want to configure S3 as object store server, you can add the following YAML content to [multicluster-observability-operator CR](/deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml):
+If you want to configure S3 as object store server, you can add the following YAML content to [multicluster-observability-operator CR](/deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml):
 
 ```yaml
   objectStorageConfig:

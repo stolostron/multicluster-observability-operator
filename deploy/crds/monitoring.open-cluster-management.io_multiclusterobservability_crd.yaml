@@ -1,20 +1,20 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: multiclustermonitorings.monitoring.open-cluster-management.io
+  name: multiclusterobservability.monitoring.open-cluster-management.io
 spec:
   group: monitoring.open-cluster-management.io
   names:
     kind: MultiClusterObservability
-    listKind: MultiClusterMonitoringList
-    plural: multiclustermonitorings
-    singular: multiclustermonitoring
+    listKind: MultiClusterObservabilityList
+    plural: multiclusterobservability
+    singular: multiclusterobservability
   scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: MultiClusterObservability is the Schema for the multiclustermonitorings
+      description: MultiClusterObservability is the Schema for the multiclusterobservability
         API
       properties:
         apiVersion:
@@ -30,7 +30,8 @@ spec:
         metadata:
           type: object
         spec:
-          description: MultiClusterMonitoringSpec defines the desired state of MultiClusterObservability
+          description: MultiClusterObservabilitySpec defines the desired state of
+            MultiClusterObservability
           properties:
             grafana:
               description: Spec of Grafana
@@ -849,12 +850,12 @@ spec:
                 Important: Run "operator-sdk generate k8s" to regenerate code after
                 modifying this file Add custom validation using kubebuilder tags:
                 https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-                Version of the MultiClusterMonitor'
+                Version of the MultiClusterObservability'
               type: string
           type: object
         status:
-          description: MultiClusterMonitoringStatus defines the observed state of
-            MultiClusterObservability
+          description: MultiClusterObservabilityStatus defines the observed state
+            of MultiClusterObservability
           properties:
             deployments:
               description: Represents the status of each deployment
