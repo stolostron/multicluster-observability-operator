@@ -18,6 +18,7 @@ const (
 	clusterNameLabelKey      = "cluster"
 	obsAPIGateway            = "observatorium-api"
 	infrastructureConfigName = "cluster"
+	defaultNamespace         = "open-cluster-management-monitoring"
 )
 
 var log = logf.Log.WithName("config")
@@ -38,6 +39,10 @@ func GetObsAPIUrl(client client.Client, namespace string) (string, error) {
 		return "", err
 	}
 	return found.Spec.Host, nil
+}
+
+func GetDefaultNamespace() string {
+	return defaultNamespace
 }
 
 // GetMonitoringCRName returns monitoring cr name

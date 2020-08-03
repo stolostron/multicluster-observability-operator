@@ -82,7 +82,7 @@ type DeploymentResult struct {
 
 // MultiClusterMonitoring is the Schema for the multiclustermonitorings API
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=multiclustermonitorings,scope=Namespaced
+// +kubebuilder:resource:path=multiclustermonitorings,scope=Cluster
 type MultiClusterMonitoring struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

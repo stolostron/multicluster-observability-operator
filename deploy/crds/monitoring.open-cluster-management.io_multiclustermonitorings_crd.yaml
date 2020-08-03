@@ -9,7 +9,7 @@ spec:
     listKind: MultiClusterMonitoringList
     plural: multiclustermonitorings
     singular: multiclustermonitoring
-  scope: Namespaced
+  scope: Cluster
   subresources:
     status: {}
   validation:
@@ -849,7 +849,7 @@ spec:
                 Important: Run "operator-sdk generate k8s" to regenerate code after
                 modifying this file Add custom validation using kubebuilder tags:
                 https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-                Version of the MultiClusterMonitor'
+                Version of the MultiClusterMonitoring'
               type: string
           type: object
         status:
