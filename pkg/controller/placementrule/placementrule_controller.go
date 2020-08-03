@@ -5,7 +5,6 @@ package placementrule
 import (
 	"context"
 
-	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,7 +33,7 @@ const (
 )
 
 var log = logf.Log.WithName("controller_placementrule")
-var watchNamespace, _ = k8sutil.GetWatchNamespace()
+var watchNamespace = config.GetDefaultNamespace()
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -179,12 +178,15 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling PlacementRule")
 
+	if config.GetMonitoringCRName() == "" {
+		return reconcile.Result{}, nil
+	}
+
 	// Fetch the MultiClusterObservability instance
 	mcm := &monitoringv1alpha1.MultiClusterObservability{}
 	err := r.client.Get(context.TODO(),
 		types.NamespacedName{
-			Name:      config.GetMonitoringCRName(),
-			Namespace: request.Namespace,
+			Name: config.GetMonitoringCRName(),
 		}, mcm)
 	if err != nil {
 		// Error reading the object - requeue the request.
@@ -201,7 +203,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-
+	mcm.Namespace = watchNamespace
 	// Fetch the PlacementRule instance
 	instance := &appsv1.PlacementRule{}
 	err = r.client.Get(context.TODO(), request.NamespacedName, instance)

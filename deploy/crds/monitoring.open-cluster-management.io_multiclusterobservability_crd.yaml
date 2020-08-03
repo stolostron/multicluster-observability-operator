@@ -8,8 +8,10 @@ spec:
     kind: MultiClusterObservability
     listKind: MultiClusterObservabilityList
     plural: multiclusterobservability
+    shortNames:
+    - mco
     singular: multiclusterobservability
-  scope: Namespaced
+  scope: Cluster
   subresources:
     status: {}
   validation:

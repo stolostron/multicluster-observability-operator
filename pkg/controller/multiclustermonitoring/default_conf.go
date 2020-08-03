@@ -77,8 +77,7 @@ func GenerateMonitoringCR(c client.Client,
 	err := c.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      mcm.Name,
-			Namespace: mcm.Namespace,
+			Name: mcm.Name,
 		},
 		found,
 	)

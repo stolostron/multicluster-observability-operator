@@ -82,7 +82,7 @@ type DeploymentResult struct {
 
 // MultiClusterObservability is the Schema for the multiclusterobservability API
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=multiclusterobservability,scope=Namespaced
+// +kubebuilder:resource:path=multiclusterobservability,scope=Cluster,shortName=mco
 type MultiClusterObservability struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

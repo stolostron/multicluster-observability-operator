@@ -33,6 +33,7 @@ import (
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
+	mcmconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/version"
 )
@@ -74,12 +75,6 @@ func main() {
 	logf.SetLogger(zap.Logger())
 
 	printVersion()
-
-	namespace, err := k8sutil.GetWatchNamespace()
-	if err != nil {
-		log.Error(err, "Failed to get watch namespace")
-		os.Exit(1)
-	}
 
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
@@ -157,7 +152,7 @@ func main() {
 	}
 
 	// Add the Metrics Service
-	addMetrics(ctx, cfg, namespace)
+	addMetrics(ctx, cfg, mcmconfig.GetDefaultNamespace())
 
 	log.Info("Starting the Cmd.")
 
