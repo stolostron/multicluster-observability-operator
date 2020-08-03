@@ -54,7 +54,7 @@ func GetTemplateRenderer() *TemplateRenderer {
 
 // GetGrafanaTemplates reads the grafana manifests
 func (r *TemplateRenderer) GetGrafanaTemplates(
-	mcm *monitoringv1alpha1.MultiClusterObservability) ([]*resource.Resource, error) {
+	mco *monitoringv1alpha1.MultiClusterObservability) ([]*resource.Resource, error) {
 	basePath := path.Join(r.templatesPath, "base")
 	// resourceList contains all kustomize resources
 	resourceList := []*resource.Resource{}
@@ -68,12 +68,12 @@ func (r *TemplateRenderer) GetGrafanaTemplates(
 
 // GetMinioTemplates reads the minio manifests
 func (r *TemplateRenderer) GetMinioTemplates(
-	mcm *monitoringv1alpha1.MultiClusterObservability) ([]*resource.Resource, error) {
+	mco *monitoringv1alpha1.MultiClusterObservability) ([]*resource.Resource, error) {
 	basePath := path.Join(r.templatesPath, "base")
 	// resourceList contains all kustomize resources
 	resourceList := []*resource.Resource{}
 
-	if mcm.Spec.ObjectStorageConfigSpec.Type == "minio" {
+	if mco.Spec.ObjectStorageConfigSpec.Type == "minio" {
 		// add minio template
 		if err := r.AddTemplateFromPath(basePath+"/object_storage/minio", &resourceList); err != nil {
 			return resourceList, err
@@ -84,7 +84,8 @@ func (r *TemplateRenderer) GetMinioTemplates(
 }
 
 // GetTemplates reads base manifest
-func (r *TemplateRenderer) GetTemplates(mcm *monitoringv1alpha1.MultiClusterObservability) ([]*resource.Resource, error) {
+func (r *TemplateRenderer) GetTemplates(
+	mco *monitoringv1alpha1.MultiClusterObservability) ([]*resource.Resource, error) {
 	basePath := path.Join(r.templatesPath, "base")
 	// resourceList contains all kustomize resources
 	resourceList := []*resource.Resource{}
@@ -94,7 +95,7 @@ func (r *TemplateRenderer) GetTemplates(mcm *monitoringv1alpha1.MultiClusterObse
 		return resourceList, err
 	}
 
-	objStorageType := mcm.Spec.ObjectStorageConfigSpec.Type
+	objStorageType := mco.Spec.ObjectStorageConfigSpec.Type
 	// add s3 template
 	if objStorageType == "s3" {
 		if err := r.AddTemplateFromPath(basePath+"/object_storage/s3", &resourceList); err != nil {

@@ -26,7 +26,7 @@ var (
 )
 
 func loadTemplates(namespace string,
-	mcm *monitoringv1alpha1.MultiClusterObservability) ([]runtime.RawExtension, error) {
+	mco *monitoringv1alpha1.MultiClusterObservability) ([]runtime.RawExtension, error) {
 	templateRenderer := templates.NewTemplateRenderer(templatePath)
 	resourceList := []*resource.Resource{}
 	err := templateRenderer.AddTemplateFromPath(templatePath, &resourceList)
@@ -50,11 +50,11 @@ func loadTemplates(namespace string,
 		// set the image and watch_namespace for endpoint metrics operator
 		if r.GetKind() == "Deployment" && r.GetName() == deployName {
 			spec := obj.(*v1.Deployment).Spec.Template.Spec
-			if mcm.Spec.ImageTagSuffix != "" {
-				spec.Containers[0].Image = mcm.Spec.ImageRepository + "/" +
-					imageName + ":" + mcm.Spec.ImageTagSuffix
+			if mco.Spec.ImageTagSuffix != "" {
+				spec.Containers[0].Image = mco.Spec.ImageRepository + "/" +
+					imageName + ":" + mco.Spec.ImageTagSuffix
 			}
-			spec.Containers[0].ImagePullPolicy = mcm.Spec.ImagePullPolicy
+			spec.Containers[0].ImagePullPolicy = mco.Spec.ImagePullPolicy
 			for i, env := range spec.Containers[0].Env {
 				if env.Name == "WATCH_NAMESPACE" {
 					spec.Containers[0].Env[i].Value = namespace
@@ -67,7 +67,7 @@ func loadTemplates(namespace string,
 			imageSecrets := obj.(*corev1.ServiceAccount).ImagePullSecrets
 			for i, imageSecret := range imageSecrets {
 				if imageSecret.Name == "REPLACE_WITH_IMAGEPULLSECRET" {
-					imageSecrets[i].Name = mcm.Spec.ImagePullSecret
+					imageSecrets[i].Name = mco.Spec.ImagePullSecret
 					break
 				}
 			}

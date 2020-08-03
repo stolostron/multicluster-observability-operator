@@ -23,16 +23,16 @@ const (
 
 type patchGenerateFn func(
 	res *resource.Resource,
-	mcm *monitoringv1alpha1.MultiClusterObservability) (ifc.Kunstructured, error)
+	mco *monitoringv1alpha1.MultiClusterObservability) (ifc.Kunstructured, error)
 
-func ApplyGlobalPatches(res *resource.Resource, mcm *monitoringv1alpha1.MultiClusterObservability) error {
+func ApplyGlobalPatches(res *resource.Resource, mco *monitoringv1alpha1.MultiClusterObservability) error {
 
 	// for _, generate := range []patchGenerateFn{
 	// 	//generateImagePatch,
 	// 	//generateImagePullSecretsPatch,
 	// 	generateNodeSelectorPatch,
 	// } {
-	// 	patch, err := generate(res, mcm)
+	// 	patch, err := generate(res, mco)
 	// 	if err != nil {
 	// 		return err
 	// 	}
@@ -48,13 +48,13 @@ func ApplyGlobalPatches(res *resource.Resource, mcm *monitoringv1alpha1.MultiClu
 
 func generateImagePatch(
 	res *resource.Resource,
-	mcm *monitoringv1alpha1.MultiClusterObservability) (ifc.Kunstructured, error) {
+	mco *monitoringv1alpha1.MultiClusterObservability) (ifc.Kunstructured, error) {
 	imageFromTemplate, err := res.GetString(specFirstContainer + ".image") // need to loop through all images
 	if err != nil {
 		return nil, err
 	}
-	imageRepo := mcm.Spec.ImageRepository
-	imageTagSuffix := mcm.Spec.ImageTagSuffix
+	imageRepo := mco.Spec.ImageRepository
+	imageTagSuffix := mco.Spec.ImageTagSuffix
 	if imageTagSuffix != "" {
 		imageTagSuffix = "-" + imageTagSuffix
 	}
@@ -63,7 +63,7 @@ func generateImagePatch(
 	container, _ := res.GetFieldValue(specFirstContainer)
 	containerMap, _ := container.(map[string]interface{})
 	containerMap["image"] = generatedImage
-	containerMap["imagePullPolicy"] = mcm.Spec.ImagePullPolicy
+	containerMap["imagePullPolicy"] = mco.Spec.ImagePullPolicy
 
 	return newKunstructuredForSpecContainers(containerMap), nil
 }
@@ -80,9 +80,9 @@ spec:
 
 func generateImagePullSecretsPatch(
 	res *resource.Resource,
-	mcm *monitoringv1alpha1.MultiClusterObservability) (ifc.Kunstructured, error) {
+	mco *monitoringv1alpha1.MultiClusterObservability) (ifc.Kunstructured, error) {
 
-	pullSecret := mcm.Spec.ImagePullSecret
+	pullSecret := mco.Spec.ImagePullSecret
 	if pullSecret == "" {
 		return nil, nil
 	}
@@ -107,9 +107,9 @@ func generateImagePullSecretsPatch(
 
 // func generateNodeSelectorPatch(
 // 	res *resource.Resource,
-// 	mcm *monitoringv1alpha1.MultiClusterObservability) (ifc.Kunstructured, error) {
+// 	mco *monitoringv1alpha1.MultiClusterObservability) (ifc.Kunstructured, error) {
 
-// 	nodeSelectorOptions := mcm.Spec.NodeSelector
+// 	nodeSelectorOptions := mco.Spec.NodeSelector
 // 	if nodeSelectorOptions == nil {
 // 		return nil, nil
 // 	}

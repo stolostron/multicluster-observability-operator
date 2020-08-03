@@ -23,7 +23,7 @@ const (
 	pullSecretName = "test-pull-secret"
 )
 
-func newTestMCM() *monitoringv1alpha1.MultiClusterObservability {
+func newTestMCO() *monitoringv1alpha1.MultiClusterObservability {
 	return &monitoringv1alpha1.MultiClusterObservability{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mcmName,
@@ -59,7 +59,7 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to get work dir: (%v)", err)
 	}
 	templatePath = path.Join(wd, "../../../manifests/endpoint-monitoring")
-	err = createManifestWork(c, namespace, newTestMCM(), newTestPullSecret())
+	err = createManifestWork(c, namespace, newTestMCO(), newTestPullSecret())
 	if err != nil {
 		t.Fatalf("Failed to create manifestwork: (%v)", err)
 	}
@@ -73,7 +73,7 @@ func TestManifestWork(t *testing.T) {
 	}
 
 	spokeNameSpace = "spoke-ns"
-	err = createManifestWork(c, namespace, newTestMCM(), newTestPullSecret())
+	err = createManifestWork(c, namespace, newTestMCO(), newTestPullSecret())
 	if err != nil {
 		t.Fatalf("Failed to create manifestwork with updated namespace: (%v)", err)
 	}

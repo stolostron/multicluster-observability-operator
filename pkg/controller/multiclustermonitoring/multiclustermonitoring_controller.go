@@ -210,20 +210,20 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 }
 
 func (r *ReconcileMultiClusterMonitoring) UpdateStatus(
-	mcm *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
+	mco *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
 
-	reqLogger := log.WithValues("Request.Namespace", mcm.Namespace, "Request.Name", mcm.Name)
+	reqLogger := log.WithValues("Request.Namespace", mco.Namespace, "Request.Name", mco.Name)
 
 	deployList := &appsv1.DeploymentList{}
 	listOpts := []client.ListOption{
-		client.InNamespace(mcm.Namespace),
-		client.MatchingLabels(labelsForMultiClusterMonitoring(mcm.Name)),
+		client.InNamespace(mco.Namespace),
+		client.MatchingLabels(labelsForMultiClusterMonitoring(mco.Name)),
 	}
 	err := r.client.List(context.TODO(), deployList, listOpts...)
 	if err != nil {
 		reqLogger.Error(err, "Failed to list deployments.",
-			"MultiClusterObservability.Namespace", mcm.Namespace,
-			"MemcaMultiClusterMonitoringched.Name", mcm.Name,
+			"MultiClusterObservability.Namespace", mco.Namespace,
+			"MemcaMultiClusterMonitoringched.Name", mco.Name,
 		)
 		return &reconcile.Result{}, err
 	}
@@ -235,9 +235,9 @@ func (r *ReconcileMultiClusterMonitoring) UpdateStatus(
 			Status: deployment.Status,
 		})
 	}
-	mcm.Status.Deployments = statedDeploys
+	mco.Status.Deployments = statedDeploys
 
-	err = r.client.Status().Update(context.TODO(), mcm)
+	err = r.client.Status().Update(context.TODO(), mco)
 	if err != nil {
 		if errors.IsConflict(err) {
 			// Error from object being modified is normal behavior and should not be treated like an error
@@ -245,7 +245,7 @@ func (r *ReconcileMultiClusterMonitoring) UpdateStatus(
 			return &reconcile.Result{RequeueAfter: time.Second}, nil
 		}
 
-		log.Error(err, fmt.Sprintf("Failed to update %s/%s status ", mcm.Namespace, mcm.Name))
+		log.Error(err, fmt.Sprintf("Failed to update %s/%s status ", mco.Namespace, mco.Name))
 		return &reconcile.Result{}, err
 	}
 	return nil, nil

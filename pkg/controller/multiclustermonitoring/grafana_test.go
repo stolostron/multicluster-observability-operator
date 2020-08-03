@@ -9,7 +9,7 @@ import (
 )
 
 func TestUpdateGrafanaSpec(t *testing.T) {
-	mcm := &monitoringv1alpha1.MultiClusterObservability{
+	mco := &monitoringv1alpha1.MultiClusterObservability{
 		Spec: monitoringv1alpha1.MultiClusterMonitoringSpec{
 			Grafana: &monitoringv1alpha1.GrafanaSpec{
 				Hostport: defaultHostport,
@@ -17,9 +17,9 @@ func TestUpdateGrafanaSpec(t *testing.T) {
 		},
 	}
 
-	updateGrafanaConfig(mcm)
+	updateGrafanaConfig(mco)
 
-	if mcm.Spec.Grafana.Replicas != 1 {
-		t.Errorf("Replicas (%v) is not the expected (%v)", mcm.Spec.Grafana.Replicas, defaultReplicas)
+	if mco.Spec.Grafana.Replicas != 1 {
+		t.Errorf("Replicas (%v) is not the expected (%v)", mco.Spec.Grafana.Replicas, defaultReplicas)
 	}
 }

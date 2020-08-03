@@ -34,10 +34,10 @@ type DashboardMetricConfig struct {
 func GenerateDashboardMetricCM(
 	client client.Client,
 	scheme *runtime.Scheme,
-	monitoring *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
+	mco *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	labels := map[string]string{
-		"app": monitoring.Name,
+		"app": mco.Name,
 	}
 
 	metricsConfigmap := &corev1.ConfigMap{
@@ -58,7 +58,7 @@ func GenerateDashboardMetricCM(
 	}
 
 	// Set MultiClusterObservability instance as the owner and controller
-	if err := controllerutil.SetControllerReference(monitoring, metricsConfigmap, scheme); err != nil {
+	if err := controllerutil.SetControllerReference(mco, metricsConfigmap, scheme); err != nil {
 		return &reconcile.Result{}, err
 	}
 

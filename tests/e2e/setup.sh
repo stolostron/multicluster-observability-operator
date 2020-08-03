@@ -117,7 +117,7 @@ deploy_openshift_router() {
     rm -rf router
 }
 
-deploy_mcm_operator() {
+deploy_mco_operator() {
     cd ${WORKDIR}
     if [[ ! -z "$1" ]]; then
         # replace the operator image with the latest image
@@ -337,7 +337,7 @@ deploy() {
     create_kind_cluster hub
     deploy_prometheus_operator
     deploy_openshift_router
-    deploy_mcm_operator $1
+    deploy_mco_operator $1
     if [[ "$2" == "grafana" ]]; then
         deploy_grafana
     fi

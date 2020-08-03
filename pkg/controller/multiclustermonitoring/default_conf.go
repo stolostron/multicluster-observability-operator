@@ -25,59 +25,59 @@ const (
 // GenerateMonitoringCR is used to generate monitoring CR with the default values
 // w/ or w/o customized values
 func GenerateMonitoringCR(c client.Client,
-	mcm *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
+	mco *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
 
-	if mcm.Spec.Version == "" {
-		mcm.Spec.Version = defaultVersion
+	if mco.Spec.Version == "" {
+		mco.Spec.Version = defaultVersion
 	}
 
-	if mcm.Spec.ImageRepository == "" {
-		mcm.Spec.ImageRepository = defaultImgRepo
+	if mco.Spec.ImageRepository == "" {
+		mco.Spec.ImageRepository = defaultImgRepo
 	}
 
-	if string(mcm.Spec.ImagePullPolicy) == "" {
-		mcm.Spec.ImagePullPolicy = corev1.PullAlways
+	if string(mco.Spec.ImagePullPolicy) == "" {
+		mco.Spec.ImagePullPolicy = corev1.PullAlways
 	}
 
-	if mcm.Spec.ImagePullSecret == "" {
-		mcm.Spec.ImagePullSecret = defaultImgPullSecret
+	if mco.Spec.ImagePullSecret == "" {
+		mco.Spec.ImagePullSecret = defaultImgPullSecret
 	}
 
-	if mcm.Spec.NodeSelector == nil {
-		mcm.Spec.NodeSelector = map[string]string{}
+	if mco.Spec.NodeSelector == nil {
+		mco.Spec.NodeSelector = map[string]string{}
 	}
 
-	if mcm.Spec.StorageClass == "" {
-		mcm.Spec.StorageClass = defaultStorageClass
+	if mco.Spec.StorageClass == "" {
+		mco.Spec.StorageClass = defaultStorageClass
 	}
 
-	if mcm.Spec.Observatorium == nil {
+	if mco.Spec.Observatorium == nil {
 		log.Info("Add default observatorium spec")
-		mcm.Spec.Observatorium = newDefaultObservatoriumSpec()
+		mco.Spec.Observatorium = newDefaultObservatoriumSpec()
 	} else {
-		result, err := updateObservatoriumSpec(c, mcm)
+		result, err := updateObservatoriumSpec(c, mco)
 		if result != nil {
 			return result, err
 		}
 	}
 
-	if mcm.Spec.ObjectStorageConfigSpec == nil {
+	if mco.Spec.ObjectStorageConfigSpec == nil {
 		log.Info("Add default object storage configuration")
-		mcm.Spec.ObjectStorageConfigSpec = newDefaultObjectStorageConfigSpec()
+		mco.Spec.ObjectStorageConfigSpec = newDefaultObjectStorageConfigSpec()
 	}
 
-	if mcm.Spec.Grafana == nil {
+	if mco.Spec.Grafana == nil {
 		log.Info("Add default grafana config")
-		mcm.Spec.Grafana = newGrafanaConfigSpec()
+		mco.Spec.Grafana = newGrafanaConfigSpec()
 	} else {
-		updateGrafanaConfig(mcm)
+		updateGrafanaConfig(mco)
 	}
 
 	found := &monitoringv1alpha1.MultiClusterObservability{}
 	err := c.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name: mcm.Name,
+			Name: mco.Name,
 		},
 		found,
 	)
@@ -85,7 +85,7 @@ func GenerateMonitoringCR(c client.Client,
 		return &reconcile.Result{}, err
 	}
 
-	desired, err := yaml.Marshal(mcm.Spec)
+	desired, err := yaml.Marshal(mco.Spec)
 	if err != nil {
 		log.Error(err, "cannot parse the desired MultiClusterObservability values")
 	}
@@ -97,7 +97,7 @@ func GenerateMonitoringCR(c client.Client,
 	if res := bytes.Compare(desired, current); res != 0 {
 		log.Info("Update MultiClusterObservability CR.")
 		newObj := found.DeepCopy()
-		newObj.Spec = mcm.Spec
+		newObj.Spec = mco.Spec
 		err = c.Update(context.TODO(), newObj)
 		if err != nil {
 			return &reconcile.Result{}, err
