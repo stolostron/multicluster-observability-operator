@@ -15,7 +15,7 @@ The multicluster-observability-operator is a component of ACM observability feat
 1. Clone this repo locally
 
 ```
-git clone https://github.com/open-cluster-management/multicluster-observability-operator.git
+git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
 ```
 2. Create new namespace `open-cluster-management-observability`
 
@@ -196,7 +196,7 @@ We provided an easy way to install this operator into KinD cluster to verify som
 1. Clone this repo locally
 
 ```
-git clone https://github.com/open-cluster-management/multicluster-observability-operator.git
+git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
 ```
 
 2. Provide the username and password for downloading multicluster-observability-operator image from quay.io.

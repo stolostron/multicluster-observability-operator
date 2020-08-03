@@ -32,9 +32,9 @@ import (
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/apis"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/controller"
-	"github.com/open-cluster-management/multicluster-observability-operator/version"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/version"
 )
 
 // Change below variables to serve metrics on different host or port.

@@ -1,4 +1,4 @@
-module github.com/open-cluster-management/multicluster-observability-operator
+module github.com/open-cluster-management/multicluster-monitoring-operator
 
 go 1.13
 
