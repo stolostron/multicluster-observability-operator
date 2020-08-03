@@ -18,7 +18,7 @@ const (
 	clusterNameLabelKey      = "cluster"
 	obsAPIGateway            = "observatorium-api"
 	infrastructureConfigName = "cluster"
-	defaultNamespace         = "open-cluster-management-monitoring"
+	defaultNamespace         = "open-cluster-management-observability"
 )
 
 var log = logf.Log.WithName("config")

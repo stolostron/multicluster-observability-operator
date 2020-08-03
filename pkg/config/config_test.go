@@ -26,7 +26,7 @@ func TestGetClusterNameLabelKey(t *testing.T) {
 }
 
 func TestGetDefaultNamespace(t *testing.T) {
-	expected := "open-cluster-management-monitoring"
+	expected := "open-cluster-management-observability"
 	if GetDefaultNamespace() != expected {
 		t.Errorf("Default Namespace (%v) is not the expected (%v)", GetDefaultNamespace(), expected)
 	}
