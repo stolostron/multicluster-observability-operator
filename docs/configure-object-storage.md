@@ -6,7 +6,7 @@ The multicluster-observability-operator supports S3-compatible object storage. C
 apiVersion: monitoring.open-cluster-management.io/v1alpha1
 kind: MultiClusterObservability
 metadata:
-  name: monitoring
+  name: observability
 spec:
   version: latest
   imageRepository: "quay.io/open-cluster-management"

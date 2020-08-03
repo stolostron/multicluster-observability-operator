@@ -47,7 +47,7 @@ wait_for_event() {
 run_test_readiness() {
     echo "Test to ensure all critical pods are running"
 
-    MULTICLUSTER_MONITORING_CR_NAME="monitoring"
+    MULTICLUSTER_MONITORING_CR_NAME="observability"
 
     MULTICLUSTER_MONITORING_DEPLOYMENTS="multicluster-observability-operator"
     GRAFANA_DEPLOYMENTS="grafana"
@@ -103,7 +103,7 @@ run_test_readiness() {
 
 # test grafana replicas changes
 run_test_scale_grafana() {
-    kubectl patch MultiClusterObservability monitoring --patch '{"spec":{"grafana":{"replicas":2}}}' --type=merge
+    kubectl patch MultiClusterObservability observability --patch '{"spec":{"grafana":{"replicas":2}}}' --type=merge
 
     n=1
     while true
@@ -125,7 +125,7 @@ run_test_scale_grafana() {
 }
 
 run_test_teardown() {
-    kubectl delete -n $MONITORING_NS MultiClusterObservability monitoring
+    kubectl delete -n $MONITORING_NS MultiClusterObservability observability
     kubectl delete -n $MONITORING_NS deployment/grafana-test
     kubectl delete -n $MONITORING_NS service/grafana-test
     kubectl delete -n $MONITORING_NS -f deploy/
@@ -152,13 +152,13 @@ run_test_teardown() {
 }
 
 run_test_reconciling() {
-    kubectl patch MultiClusterObservability monitoring --patch '{"spec":{"observatorium":{"compact":{"retentionResolutionRaw":"14d"}}}}' --type=merge
+    kubectl patch MultiClusterObservability observability --patch '{"spec":{"observatorium":{"compact":{"retentionResolutionRaw":"14d"}}}}' --type=merge
 
     n=1
     while true
     do
         # check the changes were applied into observatorium
-        retention=$(kubectl get observatorium monitoring-observatorium -ojsonpath='{.spec.compact.retentionResolutionRaw}') || true
+        retention=$(kubectl get observatorium observability-observatorium -ojsonpath='{.spec.compact.retentionResolutionRaw}') || true
         if [[ $retention == '14d' ]]; then
             echo "Change retentionResolutionRaw to 14d successfully."
             break
@@ -206,10 +206,10 @@ run_test_endpoint_operator() {
 
     wait_for_popup endpointmonitoring endpoint-config kind-config-hub cluster1
     if [ $? -ne 0 ]; then
-        echo "The manifestwork monitoring-endpoint-monitoring-work not created"
+        echo "The endpointmonitoring monitoring-endpoint-monitoring-work not created"
         exit 1
     else
-        echo "The manifestwork monitoring-endpoint-monitoring-work created"
+        echo "The endpointmonitoring monitoring-endpoint-monitoring-work created"
     fi
 
     wait_for_popup manifestwork monitoring-endpoint-monitoring-work kind-config-hub cluster1

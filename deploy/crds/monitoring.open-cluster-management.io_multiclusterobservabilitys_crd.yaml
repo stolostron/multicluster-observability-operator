@@ -1,13 +1,13 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: multiclusterobservability.monitoring.open-cluster-management.io
+  name: multiclusterobservabilitys.monitoring.open-cluster-management.io
 spec:
   group: monitoring.open-cluster-management.io
   names:
     kind: MultiClusterObservability
     listKind: MultiClusterObservabilityList
-    plural: multiclusterobservability
+    plural: multiclusterobservabilitys
     shortNames:
     - mco
     singular: multiclusterobservability

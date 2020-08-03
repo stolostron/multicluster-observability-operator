@@ -5,4 +5,4 @@ metadata:
 spec:
   clusterSelector:
     matchExpressions:
-      - {key: monitoring, operator: NotIn, values: [disabled]}
+      - {key: observability, operator: NotIn, values: [disabled]}

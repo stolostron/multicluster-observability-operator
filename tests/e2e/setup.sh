@@ -19,7 +19,7 @@ fi
 
 # update prometheus CR to enable remote write to thanos
 update_prometheus_remote_write() {
-    obs_url="http://monitoring-observatorium-observatorium-api.$DEFAULT_NS.svc:8080/api/metrics/v1/write"
+    obs_url="http://observability-observatorium-observatorium-api.$DEFAULT_NS.svc:8080/api/metrics/v1/write"
     cluster_replacement="hub_cluster"
     if [[ ! -z "$1" ]]; then
        obs_url="http://$1/api/metrics/v1/write"
@@ -139,7 +139,7 @@ deploy_mcm_operator() {
 
     kubectl apply -f tests/e2e/samples
     kubectl apply -f deploy/req_crds
-    kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_multiclusterobservability_crd.yaml
+    kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_multiclusterobservabilitys_crd.yaml
     kubectl apply -f tests/e2e/req_crds
     sleep 2
     kubectl apply -f tests/e2e/req_crds/hub_cr
@@ -314,7 +314,7 @@ patch_for_memcached() {
     n=1
     while true
     do
-        if kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS get statefulset | grep monitoring-observatorium-thanos-store-memcached; then
+        if kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS get statefulset | grep observability-observatorium-thanos-store-memcached; then
             break
         fi
         if [[ $n -ge 30 ]]; then
@@ -324,12 +324,12 @@ patch_for_memcached() {
             exit 1
         fi
         n=$((n+1))
-        echo "Retrying in 10s waiting for monitoring-observatorium-thanos-store-memcached ..."
+        echo "Retrying in 10s waiting for observability-observatorium-thanos-store-memcached ..."
         sleep 10
     done
-    # remove monitoring-observatorium-thanos-store-memcached resource request due to resource insufficient
-    kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS patch statefulset monitoring-observatorium-thanos-store-memcached --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/resources", "value": {}}]'
-    kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS delete pod monitoring-observatorium-thanos-store-memcached-0
+    # remove observability-observatorium-thanos-store-memcached resource request due to resource insufficient
+    kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS patch statefulset observability-observatorium-thanos-store-memcached --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/resources", "value": {}}]'
+    kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS delete pod observability-observatorium-thanos-store-memcached-0
 }
 
 deploy() {

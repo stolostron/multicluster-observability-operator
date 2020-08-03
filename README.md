@@ -45,7 +45,7 @@ Edit deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobse
 apiVersion: monitoring.open-cluster-management.io/v1alpha1
 kind: MultiClusterObservability
 metadata:
-  name: monitoring
+  name: observability
 spec:
   imageTagSuffix: ...
 ```
@@ -58,7 +58,7 @@ You can customize the operator instance by updating `deploy/crds/monitoring.open
 apiVersion: monitoring.open-cluster-management.io/v1alpha1
 kind: MultiClusterObservability
 metadata:
-  name: monitoring
+  name: observability
 spec:
   grafana:
     hostport: 3001
@@ -158,7 +158,7 @@ spec:
 oc project open-cluster-management-observability
 oc apply -f deploy/req_crds/monitoring.open-cluster-management.io_endpointmonitoring_crd.yaml
 oc apply -f deploy/req_crds/core.observatorium.io_observatoria.yaml
-oc apply -f deploy/crds/monitoring.open-cluster-management.io_multiclusterobservability_crd.yaml
+oc apply -f deploy/crds/monitoring.open-cluster-management.io_multiclusterobservabilitys_crd.yaml
 oc apply -f deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml
 oc apply -f deploy/
 ```
