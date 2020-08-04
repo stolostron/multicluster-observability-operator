@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -14,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 func NewFakeClient(mco *monitoringv1alpha1.MultiClusterObservability,
@@ -37,16 +37,14 @@ func TestGenerateMonitoringEmptyCR(t *testing.T) {
 		t.Errorf("Should return nil for result (%v) and err (%v)", result, err)
 	}
 
-	if mco.Spec.Version != defaultVersion {
-		t.Errorf("Version (%v) is not the expected (%v)", mco.Spec.Version, defaultVersion)
+	if mco.Spec.ImagePullPolicy != defaultImagePullPolicy {
+		t.Errorf("ImagePullPolicy (%v) is not the expected (%v)",
+			mco.Spec.ImagePullPolicy, defaultImagePullPolicy)
 	}
 
-	if mco.Spec.ImageRepository != defaultImgRepo {
-		t.Errorf("ImageRepository (%v) is not the expected (%v)", mco.Spec.ImageRepository, defaultImgRepo)
-	}
-
-	if string(mco.Spec.ImagePullPolicy) != string(corev1.PullAlways) {
-		t.Errorf("ImagePullPolicy (%v) is not the expected (%v)", mco.Spec.ImagePullPolicy, corev1.PullAlways)
+	if mco.Annotations[mcoconfig.AnnotationKeyImageRepository] != defaultImageRepository {
+		t.Errorf("ImageRepository (%v) is not the expected (%v)",
+			mco.Annotations[mcoconfig.AnnotationKeyImageRepository], defaultImageRepository)
 	}
 
 	if mco.Spec.ImagePullSecret != defaultImgPullSecret {
@@ -93,18 +91,14 @@ func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 		t.Fatalf("Should return nil for result (%v) and err (%v)", result, err)
 	}
 
-	if mco.Spec.Version != defaultVersion {
-		t.Errorf("Version (%v) is not the expected (%v)", mco.Spec.Version, defaultVersion)
-	}
-
-	if mco.Spec.ImageRepository != defaultImgRepo {
-		t.Errorf("ImageRepository (%v) is not the expected (%v)",
-			mco.Spec.ImageRepository, defaultImgRepo)
-	}
-
-	if string(mco.Spec.ImagePullPolicy) != string(corev1.PullAlways) {
+	if mco.Spec.ImagePullPolicy != defaultImagePullPolicy {
 		t.Errorf("ImagePullPolicy (%v) is not the expected (%v)",
-			mco.Spec.ImagePullPolicy, corev1.PullAlways)
+			mco.Spec.ImagePullPolicy, defaultImagePullPolicy)
+	}
+
+	if mco.Annotations[mcoconfig.AnnotationKeyImageRepository] != defaultImageRepository {
+		t.Errorf("ImageRepository (%v) is not the expected (%v)",
+			mco.Annotations[mcoconfig.AnnotationKeyImageRepository], defaultImageRepository)
 	}
 
 	if mco.Spec.ImagePullSecret != defaultImgPullSecret {

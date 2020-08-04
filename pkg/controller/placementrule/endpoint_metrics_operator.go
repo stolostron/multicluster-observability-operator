@@ -10,6 +10,7 @@ import (
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering/templates"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
@@ -50,9 +51,9 @@ func loadTemplates(namespace string,
 		// set the image and watch_namespace for endpoint metrics operator
 		if r.GetKind() == "Deployment" && r.GetName() == deployName {
 			spec := obj.(*v1.Deployment).Spec.Template.Spec
-			if mco.Spec.ImageTagSuffix != "" {
-				spec.Containers[0].Image = mco.Spec.ImageRepository + "/" +
-					imageName + ":" + mco.Spec.ImageTagSuffix
+			if mco.Annotations[mcoconfig.AnnotationKeyImageTagSuffix] != "" {
+				spec.Containers[0].Image = mco.Annotations[mcoconfig.AnnotationKeyImageRepository] +
+					"/" + imageName + ":" + mco.Annotations[mcoconfig.AnnotationKeyImageTagSuffix]
 			}
 			spec.Containers[0].ImagePullPolicy = mco.Spec.ImagePullPolicy
 			for i, env := range spec.Containers[0].Env {

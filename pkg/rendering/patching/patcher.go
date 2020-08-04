@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 const (
@@ -53,8 +54,8 @@ func generateImagePatch(
 	if err != nil {
 		return nil, err
 	}
-	imageRepo := mco.Spec.ImageRepository
-	imageTagSuffix := mco.Spec.ImageTagSuffix
+	imageRepo := mco.Annotations[mcoconfig.AnnotationKeyImageRepository]
+	imageTagSuffix := mco.Annotations[mcoconfig.AnnotationKeyImageTagSuffix]
 	if imageTagSuffix != "" {
 		imageTagSuffix = "-" + imageTagSuffix
 	}
@@ -64,7 +65,6 @@ func generateImagePatch(
 	containerMap, _ := container.(map[string]interface{})
 	containerMap["image"] = generatedImage
 	containerMap["imagePullPolicy"] = mco.Spec.ImagePullPolicy
-
 	return newKunstructuredForSpecContainers(containerMap), nil
 }
 
