@@ -40,26 +40,26 @@ const (
 	defaultThanosVersion = "v0.12.0"
 )
 
-// GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterMonitoring
+// GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
 func GenerateObservatoriumCR(
 	client client.Client, scheme *runtime.Scheme,
-	monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+	mco *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	labels := map[string]string{
-		"app": monitoring.Name,
+		"app": mco.Name,
 	}
 
 	observatoriumCR := &observatoriumv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      monitoring.Name + obsPartoOfName,
-			Namespace: monitoring.Namespace,
+			Name:      mco.Name + obsPartoOfName,
+			Namespace: mco.Namespace,
 			Labels:    labels,
 		},
-		Spec: *monitoring.Spec.Observatorium,
+		Spec: *mco.Spec.Observatorium,
 	}
 
-	// Set MultiClusterMonitoring instance as the owner and controller
-	if err := controllerutil.SetControllerReference(monitoring, observatoriumCR, scheme); err != nil {
+	// Set MultiClusterObservability instance as the owner and controller
+	if err := controllerutil.SetControllerReference(mco, observatoriumCR, scheme); err != nil {
 		return &reconcile.Result{}, err
 	}
 
@@ -104,12 +104,12 @@ func GenerateObservatoriumCR(
 
 func GenerateAPIGatewayRoute(
 	runclient client.Client, scheme *runtime.Scheme,
-	monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+	mco *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	listOptions := []client.ListOption{
 		client.MatchingLabels(map[string]string{
 			"app.kubernetes.io/component": "api",
-			"app.kubernetes.io/instance":  monitoring.Name + obsPartoOfName,
+			"app.kubernetes.io/instance":  mco.Name + obsPartoOfName,
 		}),
 	}
 	apiGatewayServices := &v1.ServiceList{}
@@ -118,7 +118,7 @@ func GenerateAPIGatewayRoute(
 		apiGateway := &routev1.Route{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      obsAPIGateway,
-				Namespace: monitoring.Namespace,
+				Namespace: mco.Namespace,
 			},
 			Spec: routev1.RouteSpec{
 				Port: &routev1.RoutePort{
@@ -148,7 +148,7 @@ func GenerateAPIGatewayRoute(
 	} else if err == nil && len(apiGatewayServices.Items) == 0 {
 		log.Info("Cannot find the service ",
 			"serviceName",
-			monitoring.Name+obsPartoOfName+"-"+obsAPIGateway,
+			mco.Name+obsPartoOfName+"-"+obsAPIGateway,
 		)
 		return &reconcile.Result{RequeueAfter: time.Second * 10}, nil
 	} else {
@@ -264,11 +264,11 @@ func newVolumeClaimTemplate(size string) observatoriumv1alpha1.VolumeClaimTempla
 
 func updateObservatoriumSpec(
 	c client.Client,
-	mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+	mco *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	// Merge observatorium Spec with the default values and customized values
 	defaultSpec := newDefaultObservatoriumSpec()
-	runtimeSpec := mcm.Spec.Observatorium
+	runtimeSpec := mco.Spec.Observatorium
 	if !reflect.DeepEqual(defaultSpec, runtimeSpec) {
 		if err := mergo.MergeWithOverwrite(defaultSpec, runtimeSpec); err != nil {
 			return &reconcile.Result{}, err
@@ -277,7 +277,7 @@ func updateObservatoriumSpec(
 		mergeVolumeClaimTemplate(defaultSpec.Rule.VolumeClaimTemplate, runtimeSpec.Rule.VolumeClaimTemplate)
 		mergeVolumeClaimTemplate(defaultSpec.Receivers.VolumeClaimTemplate, runtimeSpec.Receivers.VolumeClaimTemplate)
 		mergeVolumeClaimTemplate(defaultSpec.Store.VolumeClaimTemplate, runtimeSpec.Store.VolumeClaimTemplate)
-		mcm.Spec.Observatorium = defaultSpec
+		mco.Spec.Observatorium = defaultSpec
 	}
 	return nil, nil
 }

@@ -16,15 +16,15 @@ import (
 )
 
 func TestGenerateDashboardMetricCM(t *testing.T) {
-	mcm := &monitoringv1alpha1.MultiClusterMonitoring{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterMonitoring"},
+	mco := &monitoringv1alpha1.MultiClusterObservability{
+		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: dashboardMetricsConfigMapNS, Name: "name"},
 		Spec:       monitoringv1alpha1.MultiClusterMonitoringSpec{},
 	}
 
 	s := scheme.Scheme
 	monitoringv1alpha1.SchemeBuilder.AddToScheme(s)
-	objs := []runtime.Object{mcm}
+	objs := []runtime.Object{mco}
 	cl := fake.NewFakeClient(objs...)
 
 	caseList := []struct {
@@ -44,7 +44,7 @@ func TestGenerateDashboardMetricCM(t *testing.T) {
 
 	for _, c := range caseList {
 		t.Run(c.name, func(t *testing.T) {
-			_, err := GenerateDashboardMetricCM(cl, s, mcm)
+			_, err := GenerateDashboardMetricCM(cl, s, mco)
 			if err != c.expected {
 				t.Errorf("case (%v) err (%v) is not the expected (%v)", c.name, err, c.expected)
 			}

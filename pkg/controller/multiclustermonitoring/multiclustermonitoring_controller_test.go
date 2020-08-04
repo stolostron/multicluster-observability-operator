@@ -69,7 +69,7 @@ func createClusterVersion() *configv1.ClusterVersion {
 func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	var (
 		name               = "monitoring"
-		namespace          = "open-cluster-management-monitoring"
+		namespace          = "open-cluster-management-observability"
 		defaultStorageSize = "3Gi"
 	)
 	logf.SetLogger(logf.ZapLogger(true))
@@ -82,9 +82,9 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	//cannot convert unstructured.Unstructured into v1.Service in fake client
 	os.Setenv("TEMPLATES_PATH", path.Join(wd, "../../../tests/manifests"))
 
-	// A MultiClusterMonitoring object with metadata and spec.
-	mcm := &monitoringv1alpha1.MultiClusterMonitoring{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterMonitoring"},
+	// A MultiClusterObservability object with metadata and spec.
+	mco := &monitoringv1alpha1.MultiClusterObservability{
+		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
 		Spec:       monitoringv1alpha1.MultiClusterMonitoringSpec{},
 	}
@@ -96,7 +96,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	routev1.AddToScheme(s)
 
 	svc := createObservatoriumApiService(name, namespace)
-	objs := []runtime.Object{mcm, svc}
+	objs := []runtime.Object{mco, svc}
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
 
@@ -118,16 +118,16 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 
-	updatedMCM := &monitoringv1alpha1.MultiClusterMonitoring{}
-	err = cl.Get(context.TODO(), req.NamespacedName, updatedMCM)
+	updatedMCO := &monitoringv1alpha1.MultiClusterObservability{}
+	err = cl.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
-		t.Fatalf("Failed to get MultiClusterMonitoring: (%v)", err)
+		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	log.Info("updated MultiClusterMonitoring successfully", "MultiClusterMonitoring", updatedMCM)
+	log.Info("updated MultiClusterObservability successfully", "MultiClusterObservability", updatedMCO)
 
-	// A MultiClusterMonitoring object with metadata and spec.
-	mcm = &monitoringv1alpha1.MultiClusterMonitoring{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterMonitoring"},
+	// A MultiClusterObservability object with metadata and spec.
+	mco = &monitoringv1alpha1.MultiClusterObservability{
+		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
 		Spec: monitoringv1alpha1.MultiClusterMonitoringSpec{
 			Observatorium: &observatoriumv1alpha1.ObservatoriumSpec{
@@ -158,19 +158,19 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 			},
 		},
 	}
-	err = cl.Update(context.TODO(), mcm)
+	err = cl.Update(context.TODO(), mco)
 	if err != nil {
-		t.Fatalf("Failed to update MultiClusterMonitoring: (%v)", err)
+		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
 	}
 	_, err = r.Reconcile(req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	updatedMCM = &monitoringv1alpha1.MultiClusterMonitoring{}
-	err = r.client.Get(context.TODO(), req.NamespacedName, updatedMCM)
+	updatedMCO = &monitoringv1alpha1.MultiClusterObservability{}
+	err = r.client.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
-		t.Fatalf("Failed to get MultiClusterMonitoring: (%v)", err)
+		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	log.Info("updated MultiClusterMonitoring successfully", "MultiClusterMonitoring", updatedMCM)
+	log.Info("updated MultiClusterObservability successfully", "MultiClusterObservability", updatedMCO)
 
 }

@@ -1,6 +1,6 @@
 apiVersion: monitoring.open-cluster-management.io/v1alpha1
-kind: MultiClusterMonitoring
+kind: MultiClusterObservability
 metadata:
-  name: monitoring
+  name: observability
 spec:
   imageTagSuffix: ""

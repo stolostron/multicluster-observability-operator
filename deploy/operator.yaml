@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: multicluster-monitoring-operator
+  name: multicluster-observability-operator
 spec:
   replicas: 1
   selector:
     matchLabels:
-      name: multicluster-monitoring-operator
+      name: multicluster-observability-operator
   template:
     metadata:
       labels:
-        name: multicluster-monitoring-operator
+        name: multicluster-observability-operator
     spec:
-      serviceAccountName: multicluster-monitoring-operator
+      serviceAccountName: multicluster-observability-operator
       containers:
-        - name: multicluster-monitoring-operator
+        - name: multicluster-observability-operator
           # Replace this with the built image name
-          image: quay.io/open-cluster-management/multicluster-monitoring-operator:0.1.0-8db1b1ed74d880dd2c92c72edd749d5cd014d831
+          image: quay.io/open-cluster-management/multicluster-observability-operator:0.1.0-426050808a84d6152586f3f13278ca244f1f3259
           command:
-          - multicluster-monitoring-operator
+          - multicluster-observability-operator
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
@@ -28,8 +28,8 @@ spec:
                 fieldRef:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
-              value: "multicluster-monitoring-operator"
+              value: "multicluster-observability-operator"
             - name: TEMPLATES_PATH
               value: /usr/local/manifests
             - name: SPOKE_NAMESPACE
-              value: open-cluster-management-monitoring
+              value: open-cluster-management-observability

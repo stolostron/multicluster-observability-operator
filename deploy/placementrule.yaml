@@ -1,8 +1,8 @@
 apiVersion: apps.open-cluster-management.io/v1
 kind: PlacementRule
 metadata:
-  name: open-cluster-management-monitoring
+  name: open-cluster-management-observability
 spec:
   clusterSelector:
     matchExpressions:
-      - {key: monitoring, operator: NotIn, values: [disabled]}
+      - {key: observability, operator: NotIn, values: [disabled]}

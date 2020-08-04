@@ -21,7 +21,7 @@ import (
 const (
 	dashboardMetricsConfigMapKey  = "metrics.yaml"
 	dashboardMetricsConfigMapName = "grafana-dashboards-metrics"
-	dashboardMetricsConfigMapNS   = "open-cluster-management-monitoring"
+	dashboardMetricsConfigMapNS   = "open-cluster-management-observability"
 )
 
 type DashboardMetricConfig struct {
@@ -34,10 +34,10 @@ type DashboardMetricConfig struct {
 func GenerateDashboardMetricCM(
 	client client.Client,
 	scheme *runtime.Scheme,
-	monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+	mco *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	labels := map[string]string{
-		"app": monitoring.Name,
+		"app": mco.Name,
 	}
 
 	metricsConfigmap := &corev1.ConfigMap{
@@ -57,8 +57,8 @@ func GenerateDashboardMetricCM(
 `},
 	}
 
-	// Set MultiClusterMonitoring instance as the owner and controller
-	if err := controllerutil.SetControllerReference(monitoring, metricsConfigmap, scheme); err != nil {
+	// Set MultiClusterObservability instance as the owner and controller
+	if err := controllerutil.SetControllerReference(mco, metricsConfigmap, scheme); err != nil {
 		return &reconcile.Result{}, err
 	}
 

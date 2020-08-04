@@ -40,7 +40,7 @@ func deleteManifestWork(client client.Client, namespace string) error {
 }
 
 func createManifestWork(client client.Client, namespace string,
-	mcm *monitoringv1alpha1.MultiClusterMonitoring,
+	mco *monitoringv1alpha1.MultiClusterObservability,
 	imagePullSecret *corev1.Secret) error {
 
 	secret, err := createKubeSecret(client, namespace)
@@ -72,7 +72,7 @@ func createManifestWork(client client.Client, namespace string,
 			},
 		},
 	}
-	templates, err := loadTemplates(namespace, mcm)
+	templates, err := loadTemplates(namespace, mco)
 	if err != nil {
 		log.Error(err, "Failed to load templates")
 		return err

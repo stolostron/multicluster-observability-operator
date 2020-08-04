@@ -51,8 +51,8 @@ func TestApplyGlobalPatches(t *testing.T) {
 	u.UnmarshalJSON(json)
 	apiserver := factory.FromMap(u.Object)
 
-	mchcr := &monitoringv1alpha1.MultiClusterMonitoring{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterMonitoring"},
+	mchcr := &monitoringv1alpha1.MultiClusterObservability{
+		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: "test"},
 		Spec: monitoringv1alpha1.MultiClusterMonitoringSpec{
 			ImageRepository: "quay.io/open-cluster-management",

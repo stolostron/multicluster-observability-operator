@@ -23,8 +23,8 @@ func TestRender(t *testing.T) {
 	os.Setenv(templates.TemplatesPathEnvVar, templatesPath)
 	defer os.Unsetenv(templates.TemplatesPathEnvVar)
 
-	mchcr := &monitoringv1alpha1.MultiClusterMonitoring{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterMonitoring"},
+	mchcr := &monitoringv1alpha1.MultiClusterObservability{
+		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
 		Spec: monitoringv1alpha1.MultiClusterMonitoringSpec{
 			Version:         "latest",
@@ -54,7 +54,7 @@ func TestRender(t *testing.T) {
 	renderer := NewRenderer(mchcr)
 	objs, err := renderer.Render(nil)
 	if err != nil {
-		t.Fatalf("failed to render MultiClusterMonitoring %v", err)
+		t.Fatalf("failed to render MultiClusterObservability %v", err)
 	}
 
 	printObjs(t, objs)

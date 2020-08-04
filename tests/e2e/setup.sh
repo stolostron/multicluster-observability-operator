@@ -7,7 +7,7 @@ set -o pipefail
 WORKDIR=`pwd`
 HUB_KUBECONFIG=$HOME/.kube/kind-config-hub
 SPOKE_KUBECONFIG=$HOME/.kube/kind-config-spoke
-MONITORING_NS="open-cluster-management-monitoring"
+MONITORING_NS="open-cluster-management-observability"
 DEFAULT_NS="open-cluster-management"
 AGENT_NS="open-cluster-management-agent"
 HUB_NS="open-cluster-management-hub"
@@ -19,7 +19,7 @@ fi
 
 # update prometheus CR to enable remote write to thanos
 update_prometheus_remote_write() {
-    obs_url="http://monitoring-observatorium-observatorium-api.$DEFAULT_NS.svc:8080/api/metrics/v1/write"
+    obs_url="http://observability-observatorium-observatorium-api.$DEFAULT_NS.svc:8080/api/metrics/v1/write"
     cluster_replacement="hub_cluster"
     if [[ ! -z "$1" ]]; then
        obs_url="http://$1/api/metrics/v1/write"
@@ -117,16 +117,16 @@ deploy_openshift_router() {
     rm -rf router
 }
 
-deploy_mcm_operator() {
+deploy_mco_operator() {
     cd ${WORKDIR}
     if [[ ! -z "$1" ]]; then
         # replace the operator image with the latest image
         $sed_command "s~image:.*$~image: $1~g" deploy/operator.yaml
     fi
     # Add storage class config
-    cp deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml-e
-    printf "\n  storageClass: local\n" >> deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml
-    # Install the multicluster-monitoring-operator
+    cp deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml-e
+    printf "\n  storageClass: local\n" >> deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml
+    # Install the multicluster-observability-operator
     kubectl create ns ${MONITORING_NS}
     kubectl config set-context --current --namespace ${MONITORING_NS}
     # create image pull secret
@@ -139,13 +139,13 @@ deploy_mcm_operator() {
 
     kubectl apply -f tests/e2e/samples
     kubectl apply -f deploy/req_crds
-    kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_multiclustermonitorings_crd.yaml
+    kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_multiclusterobservabilitys_crd.yaml
     kubectl apply -f tests/e2e/req_crds
     sleep 2
     kubectl apply -f tests/e2e/req_crds/hub_cr
     kubectl apply -f deploy
-    kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml
-    
+    kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml
+
     # expose grafana to test accessible
     kubectl apply -f tests/e2e/grafana/grafana-route.yaml
 }
@@ -155,7 +155,7 @@ deploy_grafana() {
     cd ${WORKDIR}
     $sed_command "s~name: grafana$~name: grafana-test~g; s~app: grafana$~app: grafana-test~g; s~secretName: grafana-config$~secretName: grafana-config-test~g; /MULTICLUSTERMONITORING_CR_NAME/d" manifests/base/grafana/deployment.yaml
     $sed_command "s~name: grafana$~name: grafana-test~g; s~app: grafana$~app: grafana-test~g" manifests/base/grafana/service.yaml
-    $sed_command "s~namespace: open-cluster-management$~namespace: open-cluster-management-monitoring~g" manifests/base/grafana/deployment.yaml manifests/base/grafana/service.yaml
+    $sed_command "s~namespace: open-cluster-management$~namespace: open-cluster-management-observability~g" manifests/base/grafana/deployment.yaml manifests/base/grafana/service.yaml
 
     kubectl apply -f manifests/base/grafana/deployment.yaml
     kubectl apply -f manifests/base/grafana/service.yaml
@@ -164,7 +164,7 @@ deploy_grafana() {
 
 revert_changes() {
     cd ${WORKDIR}
-    CHANGED_FILES="manifests/base/grafana/deployment.yaml manifests/base/grafana/service.yaml tests/e2e/samples/persistentVolume.yaml deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml deploy/operator.yaml"
+    CHANGED_FILES="manifests/base/grafana/deployment.yaml manifests/base/grafana/service.yaml tests/e2e/samples/persistentVolume.yaml deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml deploy/operator.yaml"
     # revert the changes
     for file in ${CHANGED_FILES}; do
         if [[ -f "${file}-e" ]]; then
@@ -205,10 +205,10 @@ deploy_spoke_core() {
     kubectl create ns ${DEFAULT_NS}
     kubectl config set-context --current --namespace ${DEFAULT_NS}
     kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
-    
+
     kubectl create namespace $MONITORING_NS
     kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS -n $MONITORING_NS
-    
+
     if [[ "$(uname)" == "Darwin" ]]; then
         $sed_command "\$a\\
         imagePullSecrets:\\
@@ -271,14 +271,14 @@ approve_csr_joinrequest() {
 patch_placement_rule() {
     cd ${WORKDIR}
     # Workaround for placementrules operator
-    echo "Patch open-cluster-management-monitoring placementrule"
+    echo "Patch open-cluster-management-observability placementrule"
     cat ~/.kube/kind-config-hub|grep certificate-authority-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d  >> ca
     cat ~/.kube/kind-config-hub|grep client-certificate-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> crt
     cat ~/.kube/kind-config-hub|grep client-key-data|awk '{split($0, a, ": "); print a[2]}'|base64 -d >> key
     SERVER=$(cat ~/.kube/kind-config-hub|grep server|awk '{split($0, a, ": "); print a[2]}')
     curl --cert ./crt --key ./key --cacert ./ca -X PATCH -H "Content-Type:application/merge-patch+json" \
-        $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/$MONITORING_NS/placementrules/open-cluster-management-monitoring/status \
-        -d @./tests/e2e/templates/status.json   
+        $SERVER/apis/apps.open-cluster-management.io/v1/namespaces/$MONITORING_NS/placementrules/open-cluster-management-observability/status \
+        -d @./tests/e2e/templates/status.json
     rm ca crt key
 
 }
@@ -314,7 +314,7 @@ patch_for_memcached() {
     n=1
     while true
     do
-        if kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS get statefulset | grep monitoring-observatorium-thanos-store-memcached; then
+        if kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS get statefulset | grep observability-observatorium-thanos-store-memcached; then
             break
         fi
         if [[ $n -ge 30 ]]; then
@@ -324,12 +324,12 @@ patch_for_memcached() {
             exit 1
         fi
         n=$((n+1))
-        echo "Retrying in 10s waiting for monitoring-observatorium-thanos-store-memcached ..."
+        echo "Retrying in 10s waiting for observability-observatorium-thanos-store-memcached ..."
         sleep 10
     done
-    # remove monitoring-observatorium-thanos-store-memcached resource request due to resource insufficient
-    kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS patch statefulset monitoring-observatorium-thanos-store-memcached --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/resources", "value": {}}]'
-    kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS delete pod monitoring-observatorium-thanos-store-memcached-0
+    # remove observability-observatorium-thanos-store-memcached resource request due to resource insufficient
+    kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS patch statefulset observability-observatorium-thanos-store-memcached --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/resources", "value": {}}]'
+    kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS delete pod observability-observatorium-thanos-store-memcached-0
 }
 
 deploy() {
@@ -337,7 +337,7 @@ deploy() {
     create_kind_cluster hub
     deploy_prometheus_operator
     deploy_openshift_router
-    deploy_mcm_operator $1
+    deploy_mco_operator $1
     if [[ "$2" == "grafana" ]]; then
         deploy_grafana
     fi

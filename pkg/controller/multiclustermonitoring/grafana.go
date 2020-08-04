@@ -48,12 +48,12 @@ func newGrafanaConfigSpec() *monitoringv1alpha1.GrafanaSpec {
 	return spec
 }
 
-func updateGrafanaConfig(mcm *monitoringv1alpha1.MultiClusterMonitoring) {
-	if mcm.Spec.Grafana.Hostport == 0 {
-		mcm.Spec.Grafana.Hostport = defaultHostport
+func updateGrafanaConfig(mco *monitoringv1alpha1.MultiClusterObservability) {
+	if mco.Spec.Grafana.Hostport == 0 {
+		mco.Spec.Grafana.Hostport = defaultHostport
 	}
-	if mcm.Spec.Grafana.Replicas == 0 {
-		mcm.Spec.Grafana.Replicas = defaultReplicas
+	if mco.Spec.Grafana.Replicas == 0 {
+		mco.Spec.Grafana.Replicas = defaultReplicas
 	}
 }
 
@@ -62,7 +62,7 @@ func updateGrafanaConfig(mcm *monitoringv1alpha1.MultiClusterMonitoring) {
 func GenerateGrafanaDataSource(
 	client client.Client,
 	scheme *runtime.Scheme,
-	monitoring *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+	mco *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	grafanaDatasources, err := json.MarshalIndent(GrafanaDatasources{
 		APIVersion: 1,
@@ -71,7 +71,7 @@ func GenerateGrafanaDataSource(
 				Name:   "Observatorium",
 				Type:   "prometheus",
 				Access: "proxy",
-				URL:    "http://" + monitoring.Name + obsPartoOfName + "-observatorium-api:8080/api/metrics/v1",
+				URL:    "http://" + mco.Name + obsPartoOfName + "-observatorium-api:8080/api/metrics/v1",
 			},
 		},
 	}, "", "    ")
@@ -82,7 +82,7 @@ func GenerateGrafanaDataSource(
 	dsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "grafana-datasources",
-			Namespace: monitoring.Namespace,
+			Namespace: mco.Namespace,
 		},
 		Type: "Opaque",
 		StringData: map[string]string{
@@ -90,8 +90,8 @@ func GenerateGrafanaDataSource(
 		},
 	}
 
-	// Set MultiClusterMonitoring instance as the owner and controller
-	if err = controllerutil.SetControllerReference(monitoring, dsSecret, scheme); err != nil {
+	// Set MultiClusterObservability instance as the owner and controller
+	if err = controllerutil.SetControllerReference(mco, dsSecret, scheme); err != nil {
 		return &reconcile.Result{}, err
 	}
 

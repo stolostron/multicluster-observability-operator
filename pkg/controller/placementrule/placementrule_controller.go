@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	placementRuleName = "open-cluster-management-monitoring"
+	placementRuleName = "open-cluster-management-observability"
 	ownerLabelKey     = "owner"
 	ownerLabelValue   = "multicluster-operator"
 )
@@ -182,12 +182,12 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, nil
 	}
 
-	// Fetch the MultiClusterMonitoring instance
-	mcm := &monitoringv1alpha1.MultiClusterMonitoring{}
+	// Fetch the MultiClusterObservability instance
+	mco := &monitoringv1alpha1.MultiClusterObservability{}
 	err := r.client.Get(context.TODO(),
 		types.NamespacedName{
 			Name: config.GetMonitoringCRName(),
-		}, mcm)
+		}, mco)
 	if err != nil {
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
@@ -196,14 +196,14 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	imagePullSecret := &corev1.Secret{}
 	err = r.client.Get(context.TODO(),
 		types.NamespacedName{
-			Name:      mcm.Spec.ImagePullSecret,
+			Name:      mco.Spec.ImagePullSecret,
 			Namespace: request.Namespace,
 		}, imagePullSecret)
 	if err != nil {
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-	mcm.Namespace = watchNamespace
+	mco.Namespace = watchNamespace
 	// Fetch the PlacementRule instance
 	instance := &appsv1.PlacementRule{}
 	err = r.client.Get(context.TODO(), request.NamespacedName, instance)
@@ -234,12 +234,12 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	for _, decision := range instance.Status.Decisions {
 		reqLogger.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
 		currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
-		err = createEndpointConfigCR(r.client, mcm.Namespace, decision.ClusterNamespace, decision.ClusterName)
+		err = createEndpointConfigCR(r.client, mco.Namespace, decision.ClusterNamespace, decision.ClusterName)
 		if err != nil {
 			reqLogger.Error(err, "Failed to create endpointmonitoring")
 			return reconcile.Result{}, err
 		}
-		err = createManifestWork(r.client, decision.ClusterNamespace, mcm, imagePullSecret)
+		err = createManifestWork(r.client, decision.ClusterNamespace, mco, imagePullSecret)
 		if err != nil {
 			reqLogger.Error(err, "Failed to create manifestwork")
 			return reconcile.Result{}, err

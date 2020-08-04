@@ -33,7 +33,7 @@ import (
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
-	mcmconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/version"
 )
@@ -85,7 +85,7 @@ func main() {
 
 	ctx := context.TODO()
 	// Become the leader before proceeding
-	err = leader.Become(ctx, "multicluster-monitoring-operator-lock")
+	err = leader.Become(ctx, "multicluster-observability-operator-lock")
 	if err != nil {
 		log.Error(err, "")
 		os.Exit(1)
@@ -152,7 +152,7 @@ func main() {
 	}
 
 	// Add the Metrics Service
-	addMetrics(ctx, cfg, mcmconfig.GetDefaultNamespace())
+	addMetrics(ctx, cfg, mcoconfig.GetDefaultNamespace())
 
 	log.Info("Starting the Cmd.")
 

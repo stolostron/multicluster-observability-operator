@@ -4,5 +4,5 @@ data:
 kind: Secret
 metadata:
   name: grafana-config-test
-  namespace: open-cluster-management-monitoring
+  namespace: open-cluster-management-observability
 type: Opaque

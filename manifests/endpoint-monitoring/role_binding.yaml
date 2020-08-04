@@ -5,7 +5,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: endpoint-monitoring-operator-sa
-  namespace: open-cluster-management-monitoring
+  namespace: open-cluster-management-observability
 roleRef:
   kind: ClusterRole
   name: endpoint-monitoring-operator

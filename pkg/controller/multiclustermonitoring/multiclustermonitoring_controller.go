@@ -36,7 +36,7 @@ var log = logf.Log.WithName("controller_multiclustermonitoring")
 * business logic.  Delete these comments after modifying this file.*
  */
 
-// Add creates a new MultiClusterMonitoring Controller and adds it to the Manager. The Manager will set fields on
+// Add creates a new MultiClusterObservability Controller and adds it to the Manager. The Manager will set fields on
 // the Controller and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
@@ -66,40 +66,40 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// Watch for changes to primary resource MultiClusterMonitoring
-	err = c.Watch(&source.Kind{Type: &monitoringv1alpha1.MultiClusterMonitoring{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to primary resource MultiClusterObservability
+	err = c.Watch(&source.Kind{Type: &monitoringv1alpha1.MultiClusterObservability{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to secondary resource Deployment and requeue the owner MultiClusterMonitoring
+	// Watch for changes to secondary resource Deployment and requeue the owner MultiClusterObservability
 	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1alpha1.MultiClusterMonitoring{},
+		OwnerType:    &monitoringv1alpha1.MultiClusterObservability{},
 	})
 
-	// Watch for changes to secondary resource ConfigMap and requeue the owner MultiClusterMonitoring
+	// Watch for changes to secondary resource ConfigMap and requeue the owner MultiClusterObservability
 	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1alpha1.MultiClusterMonitoring{},
+		OwnerType:    &monitoringv1alpha1.MultiClusterObservability{},
 	})
 
-	// Watch for changes to secondary resource Secret and requeue the owner MultiClusterMonitoring
+	// Watch for changes to secondary resource Secret and requeue the owner MultiClusterObservability
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1alpha1.MultiClusterMonitoring{},
+		OwnerType:    &monitoringv1alpha1.MultiClusterObservability{},
 	})
 
-	// Watch for changes to secondary resource Service and requeue the owner MultiClusterMonitoring
+	// Watch for changes to secondary resource Service and requeue the owner MultiClusterObservability
 	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1alpha1.MultiClusterMonitoring{},
+		OwnerType:    &monitoringv1alpha1.MultiClusterObservability{},
 	})
 
-	// Watch for changes to secondary Observatorium CR and requeue the owner MultiClusterMonitoring
+	// Watch for changes to secondary Observatorium CR and requeue the owner MultiClusterObservability
 	err = c.Watch(&source.Kind{Type: &observatoriumv1alpha1.Observatorium{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1alpha1.MultiClusterMonitoring{},
+		OwnerType:    &monitoringv1alpha1.MultiClusterObservability{},
 	})
 
 	if err != nil {
@@ -112,7 +112,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 // blank assignment to verify that ReconcileMultiClusterMonitoring implements reconcile.Reconciler
 var _ reconcile.Reconciler = &ReconcileMultiClusterMonitoring{}
 
-// ReconcileMultiClusterMonitoring reconciles a MultiClusterMonitoring object
+// ReconcileMultiClusterMonitoring reconciles a MultiClusterObservability object
 type ReconcileMultiClusterMonitoring struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
@@ -122,8 +122,8 @@ type ReconcileMultiClusterMonitoring struct {
 	scheme    *runtime.Scheme
 }
 
-// Reconcile reads that state of the cluster for a MultiClusterMonitoring object and makes changes
-// based on the state read and what is in the MultiClusterMonitoring.Spec
+// Reconcile reads that state of the cluster for a MultiClusterObservability object and makes changes
+// based on the state read and what is in the MultiClusterObservability.Spec
 // Modify this Reconcile function to implement your Controller logic.  This example creates
 // a Pod as an example
 // Note:
@@ -131,12 +131,12 @@ type ReconcileMultiClusterMonitoring struct {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling MultiClusterMonitoring")
+	reqLogger.Info("Reconciling MultiClusterObservability")
 
 	//set request name to be used in placementrule controller
 	config.SetMonitoringCRName(request.Name)
-	// Fetch the MultiClusterMonitoring instance
-	instance := &monitoringv1alpha1.MultiClusterMonitoring{}
+	// Fetch the MultiClusterObservability instance
+	instance := &monitoringv1alpha1.MultiClusterObservability{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -210,20 +210,20 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 }
 
 func (r *ReconcileMultiClusterMonitoring) UpdateStatus(
-	mcm *monitoringv1alpha1.MultiClusterMonitoring) (*reconcile.Result, error) {
+	mco *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
 
-	reqLogger := log.WithValues("Request.Namespace", mcm.Namespace, "Request.Name", mcm.Name)
+	reqLogger := log.WithValues("Request.Namespace", mco.Namespace, "Request.Name", mco.Name)
 
 	deployList := &appsv1.DeploymentList{}
 	listOpts := []client.ListOption{
-		client.InNamespace(mcm.Namespace),
-		client.MatchingLabels(labelsForMultiClusterMonitoring(mcm.Name)),
+		client.InNamespace(mco.Namespace),
+		client.MatchingLabels(labelsForMultiClusterMonitoring(mco.Name)),
 	}
 	err := r.client.List(context.TODO(), deployList, listOpts...)
 	if err != nil {
 		reqLogger.Error(err, "Failed to list deployments.",
-			"MultiClusterMonitoring.Namespace", mcm.Namespace,
-			"MemcaMultiClusterMonitoringched.Name", mcm.Name,
+			"MultiClusterObservability.Namespace", mco.Namespace,
+			"MemcaMultiClusterMonitoringched.Name", mco.Name,
 		)
 		return &reconcile.Result{}, err
 	}
@@ -235,9 +235,9 @@ func (r *ReconcileMultiClusterMonitoring) UpdateStatus(
 			Status: deployment.Status,
 		})
 	}
-	mcm.Status.Deployments = statedDeploys
+	mco.Status.Deployments = statedDeploys
 
-	err = r.client.Status().Update(context.TODO(), mcm)
+	err = r.client.Status().Update(context.TODO(), mco)
 	if err != nil {
 		if errors.IsConflict(err) {
 			// Error from object being modified is normal behavior and should not be treated like an error
@@ -245,14 +245,14 @@ func (r *ReconcileMultiClusterMonitoring) UpdateStatus(
 			return &reconcile.Result{RequeueAfter: time.Second}, nil
 		}
 
-		log.Error(err, fmt.Sprintf("Failed to update %s/%s status ", mcm.Namespace, mcm.Name))
+		log.Error(err, fmt.Sprintf("Failed to update %s/%s status ", mco.Namespace, mco.Name))
 		return &reconcile.Result{}, err
 	}
 	return nil, nil
 }
 
 // labelsForMultiClusterMonitoring returns the labels for selecting the resources
-// belonging to the given MultiClusterMonitoring CR name.
+// belonging to the given MultiClusterObservability CR name.
 func labelsForMultiClusterMonitoring(name string) map[string]string {
 	return map[string]string{"monitoring.open-cluster-management.io/name": name}
 }

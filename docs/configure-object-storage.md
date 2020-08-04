@@ -1,12 +1,12 @@
 # Object Storage
 
-The multicluster-monitoring-operator supports S3-compatible object storage. Current object storage configurations:
+The multicluster-observability-operator supports S3-compatible object storage. Current object storage configurations:
 
 ```yaml
 apiVersion: monitoring.open-cluster-management.io/v1alpha1
-kind: MultiClusterMonitoring
+kind: MultiClusterObservability
 metadata:
-  name: monitoring
+  name: observability
 spec:
   version: latest
   imageRepository: "quay.io/open-cluster-management"
@@ -34,11 +34,11 @@ spec:
 - storage:  minio local PVC storage size, just for minio only, ignore it if type is s3
 
 
-By default, you do not need to configure `objectStorageConfig` field. The multicluster-monitoring-operator will automatically install [Minio](https://min.io/) as backend object storage server, you can also configure an S3 bucket as an object store.
+By default, you do not need to configure `objectStorageConfig` field. The multicluster-observability-operator will automatically install [Minio](https://min.io/) as backend object storage server, you can also configure an S3 bucket as an object store.
 
 ## Minio (default)
 
-When you install [multicluster-monitoring-operator CR](/deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml), it will use the following YAML content to configure Minio as default object storage server.
+When you install [multicluster-observability-operator CR](/deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml), it will use the following YAML content to configure Minio as default object storage server.
 
 ```yaml
   objectStorageConfig:
@@ -54,7 +54,7 @@ When you install [multicluster-monitoring-operator CR](/deploy/crds/monitoring.o
 
 ## S3
 
-If you want to configure S3 as object store server, you can add the following YAML content to [multicluster-monitoring-operator CR](/deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclustermonitoring_cr.yaml):
+If you want to configure S3 as object store server, you can add the following YAML content to [multicluster-observability-operator CR](/deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml):
 
 ```yaml
   objectStorageConfig:
