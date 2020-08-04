@@ -74,10 +74,10 @@ rules:
   - update
   - watch
 - apiGroups:
-  - monitoring.open-cluster-management.io
+  - observability.open-cluster-management.io
   resources:
   - '*'
-  - multiclustermonitorings
+  - multiclusterobservabilities
   - endpointmonitorings
   verbs:
   - create

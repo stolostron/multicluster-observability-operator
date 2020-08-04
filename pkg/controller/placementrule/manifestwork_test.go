@@ -16,22 +16,21 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
-	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 const (
 	pullSecretName = "test-pull-secret"
 )
 
-func newTestMCO() *monitoringv1alpha1.MultiClusterObservability {
-	return &monitoringv1alpha1.MultiClusterObservability{
+func newTestMCO() *mcov1beta1.MultiClusterObservability {
+	return &mcov1beta1.MultiClusterObservability{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      mcmName,
-			Namespace: mcmNameSpace,
+			Name:      mcoName,
+			Namespace: mcoNamespace,
 		},
-		Spec: monitoringv1alpha1.MultiClusterMonitoringSpec{
+		Spec: mcov1beta1.MultiClusterObservabilitySpec{
 			ImagePullSecret: pullSecretName,
-			ImageTagSuffix:  "xxx-xxx",
 		},
 	}
 }
@@ -40,7 +39,7 @@ func newTestPullSecret() *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pullSecretName,
-			Namespace: mcmNameSpace,
+			Namespace: mcoNamespace,
 		},
 		Data: map[string][]byte{
 			".dockerconfigjson": []byte("test-docker-config"),

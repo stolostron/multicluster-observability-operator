@@ -13,9 +13,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
-	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering/patching"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering/templates"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
@@ -233,51 +234,12 @@ func stringValueReplace(toReplace string, cr *monitoringv1.MultiClusterObservabi
 
 	replaced := toReplace
 
-	replaced = strings.ReplaceAll(replaced, "{{IMAGEREPO}}", string(cr.Spec.ImageRepository))
+	replaced = strings.ReplaceAll(replaced, "{{IMAGEREPO}}", string(util.GetAnnotation(cr, "mco-imageRepository")))
 	replaced = strings.ReplaceAll(replaced, "{{PULLSECRET}}", string(cr.Spec.ImagePullSecret))
 	replaced = strings.ReplaceAll(replaced, "{{NAMESPACE}}", string(cr.Namespace))
-	replaced = strings.ReplaceAll(replaced, "{{PULLPOLICY}}", string(cr.Spec.ImagePullPolicy))
+	replaced = strings.ReplaceAll(replaced, "{{PULLPOLICY}}", string(util.GetAnnotation(cr, "mco-imagePullPolicy")))
 	replaced = strings.ReplaceAll(replaced, "{{STORAGECLASS}}", string(cr.Spec.StorageClass))
-	replaced = strings.ReplaceAll(replaced, "{{MULTICLUSTERMONITORING_CR_NAME}}", string(cr.Name))
-
-	// Object storage config
-	replaced = strings.ReplaceAll(
-		replaced,
-		"{{OBJ_STORAGE_BUCKET}}",
-		string(cr.Spec.ObjectStorageConfigSpec.Config.Bucket),
-	)
-
-	replaced = strings.ReplaceAll(
-		replaced,
-		"{{OBJ_STORAGE_ENDPOINT}}",
-		string(cr.Spec.ObjectStorageConfigSpec.Config.Endpoint),
-	)
-
-	replaced = strings.ReplaceAll(
-		replaced,
-		"{{OBJ_STORAGE_INSECURE}}",
-		strconv.FormatBool(cr.Spec.ObjectStorageConfigSpec.Config.Insecure),
-	)
-
-	replaced = strings.ReplaceAll(
-		replaced,
-		"{{OBJ_STORAGE_ACCESSKEY}}",
-		string(cr.Spec.ObjectStorageConfigSpec.Config.AccessKey),
-	)
-
-	replaced = strings.ReplaceAll(
-		replaced,
-		"{{OBJ_STORAGE_SECRETKEY}}",
-		string(cr.Spec.ObjectStorageConfigSpec.Config.SecretKey),
-	)
-
-	if cr.Spec.ObjectStorageConfigSpec.Type == "minio" {
-		replaced = strings.ReplaceAll(
-			replaced,
-			"{{OBJ_STORAGE_STORAGE}}",
-			string(cr.Spec.ObjectStorageConfigSpec.Config.Storage),
-		)
-	}
+	replaced = strings.ReplaceAll(replaced, "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}", string(cr.Name))
 
 	return replaced
 }

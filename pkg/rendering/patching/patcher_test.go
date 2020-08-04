@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 	"sigs.k8s.io/yaml"
 
-	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 var apiserver = `
@@ -51,11 +51,13 @@ func TestApplyGlobalPatches(t *testing.T) {
 	u.UnmarshalJSON(json)
 	apiserver := factory.FromMap(u.Object)
 
-	mchcr := &monitoringv1alpha1.MultiClusterObservability{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: "test"},
-		Spec: monitoringv1alpha1.MultiClusterMonitoringSpec{
-			ImageRepository: "quay.io/open-cluster-management",
+	mchcr := &mcov1beta1.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   "test",
+			Annotations: map[string]string{"mco-imageRepository": "quay.io/open-cluster-management"},
+		},
+		Spec: mcov1beta1.MultiClusterObservabilitySpec{
 			ImagePullPolicy: "Always",
 			ImagePullSecret: "test",
 		},

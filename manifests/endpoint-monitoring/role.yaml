@@ -67,7 +67,7 @@ rules:
   verbs:
   - get
 - apiGroups:
-  - monitoring.open-cluster-management.io
+  - observability.open-cluster-management.io
   resources:
   - '*'
   verbs:

@@ -1,13 +1,12 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package multiclustermonitoring
+package multiclusterobservability
 
 import (
 	"context"
 	"reflect"
 	"time"
 
-	"github.com/imdario/mergo"
 	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	v1 "k8s.io/api/core/v1"
@@ -21,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 const (
@@ -43,7 +42,7 @@ const (
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
 func GenerateObservatoriumCR(
 	client client.Client, scheme *runtime.Scheme,
-	mco *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
+	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	labels := map[string]string{
 		"app": mco.Name,
@@ -55,7 +54,7 @@ func GenerateObservatoriumCR(
 			Namespace: mco.Namespace,
 			Labels:    labels,
 		},
-		Spec: *mco.Spec.Observatorium,
+		Spec: *newDefaultObservatoriumSpec(),
 	}
 
 	// Set MultiClusterObservability instance as the owner and controller
@@ -76,8 +75,7 @@ func GenerateObservatoriumCR(
 
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating a new observatorium CR",
-			"observatorium.Namespace", observatoriumCR.Namespace,
-			"observatorium.Name", observatoriumCR.Name,
+			"observatorium", observatoriumCR,
 		)
 		err = client.Create(context.TODO(), observatoriumCR)
 		if err != nil {
@@ -104,7 +102,7 @@ func GenerateObservatoriumCR(
 
 func GenerateAPIGatewayRoute(
 	runclient client.Client, scheme *runtime.Scheme,
-	mco *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
+	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	listOptions := []client.ListOption{
 		client.MatchingLabels(map[string]string{
@@ -264,21 +262,23 @@ func newVolumeClaimTemplate(size string) observatoriumv1alpha1.VolumeClaimTempla
 
 func updateObservatoriumSpec(
 	c client.Client,
-	mco *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
+	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
+
+	//TODO: update new values from CR to observatorium CR
 
 	// Merge observatorium Spec with the default values and customized values
-	defaultSpec := newDefaultObservatoriumSpec()
-	runtimeSpec := mco.Spec.Observatorium
-	if !reflect.DeepEqual(defaultSpec, runtimeSpec) {
-		if err := mergo.MergeWithOverwrite(defaultSpec, runtimeSpec); err != nil {
-			return &reconcile.Result{}, err
-		}
-		mergeVolumeClaimTemplate(defaultSpec.Compact.VolumeClaimTemplate, runtimeSpec.Compact.VolumeClaimTemplate)
-		mergeVolumeClaimTemplate(defaultSpec.Rule.VolumeClaimTemplate, runtimeSpec.Rule.VolumeClaimTemplate)
-		mergeVolumeClaimTemplate(defaultSpec.Receivers.VolumeClaimTemplate, runtimeSpec.Receivers.VolumeClaimTemplate)
-		mergeVolumeClaimTemplate(defaultSpec.Store.VolumeClaimTemplate, runtimeSpec.Store.VolumeClaimTemplate)
-		mco.Spec.Observatorium = defaultSpec
-	}
+	//defaultSpec := newDefaultObservatoriumSpec()
+	// runtimeSpec := mco.Spec.Observatorium
+	// if !reflect.DeepEqual(defaultSpec, runtimeSpec) {
+	// 	if err := mergo.MergeWithOverwrite(defaultSpec, runtimeSpec); err != nil {
+	// 		return &reconcile.Result{}, err
+	// 	}
+	// 	mergeVolumeClaimTemplate(defaultSpec.Compact.VolumeClaimTemplate, runtimeSpec.Compact.VolumeClaimTemplate)
+	// 	mergeVolumeClaimTemplate(defaultSpec.Rule.VolumeClaimTemplate, runtimeSpec.Rule.VolumeClaimTemplate)
+	// 	mergeVolumeClaimTemplate(defaultSpec.Receivers.VolumeClaimTemplate, runtimeSpec.Receivers.VolumeClaimTemplate)
+	// 	mergeVolumeClaimTemplate(defaultSpec.Store.VolumeClaimTemplate, runtimeSpec.Store.VolumeClaimTemplate)
+	// 	mco.Spec.Observatorium = defaultSpec
+	// }
 	return nil, nil
 }
 

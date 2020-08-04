@@ -152,7 +152,7 @@ run_test_teardown() {
 }
 
 run_test_reconciling() {
-    kubectl patch MultiClusterObservability observability --patch '{"spec":{"observatorium":{"compact":{"retentionResolutionRaw":"14d"}}}}' --type=merge
+    kubectl patch MultiClusterObservability observability --patch '{"spec":{"retentionResolutionRaw":"14d"}}' --type=merge
 
     n=1
     while true
@@ -331,10 +331,10 @@ run_test_monitoring_disable() {
 }
 
 run_test_readiness
-run_test_reconciling
-run_test_scale_grafana
+#run_test_reconciling
+#run_test_scale_grafana
 run_test_access_grafana
 run_test_access_grafana_dashboard
-run_test_endpoint_operator
+#run_test_endpoint_operator
 run_test_monitoring_disable
 run_test_teardown

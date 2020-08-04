@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
-	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering/templates"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
@@ -26,7 +26,7 @@ var (
 )
 
 func loadTemplates(namespace string,
-	mco *monitoringv1alpha1.MultiClusterObservability) ([]runtime.RawExtension, error) {
+	mco *mcov1beta1.MultiClusterObservability) ([]runtime.RawExtension, error) {
 	templateRenderer := templates.NewTemplateRenderer(templatePath)
 	resourceList := []*resource.Resource{}
 	err := templateRenderer.AddTemplateFromPath(templatePath, &resourceList)
@@ -50,9 +50,11 @@ func loadTemplates(namespace string,
 		// set the image and watch_namespace for endpoint metrics operator
 		if r.GetKind() == "Deployment" && r.GetName() == deployName {
 			spec := obj.(*v1.Deployment).Spec.Template.Spec
-			if mco.Spec.ImageTagSuffix != "" {
-				spec.Containers[0].Image = mco.Spec.ImageRepository + "/" +
-					imageName + ":" + mco.Spec.ImageTagSuffix
+			if util.GetAnnotation(mco, "mco-imageTagSuffix") != "" {
+				spec.Containers[0].Image = util.GetAnnotation(mco, "mco-imageRepository") +
+					"/" +
+					imageName + ":" +
+					util.GetAnnotation(mco, "mco-imageTagSuffix")
 			}
 			spec.Containers[0].ImagePullPolicy = mco.Spec.ImagePullPolicy
 			for i, env := range spec.Containers[0].Env {

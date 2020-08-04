@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	epv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 const (
@@ -24,7 +24,7 @@ func newTestRoute() *routev1.Route {
 	return &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "observatorium-api",
-			Namespace: mcmNameSpace,
+			Namespace: mcoNamespace,
 		},
 		Spec: routev1.RouteSpec{
 			Host: routeHost,
@@ -38,11 +38,11 @@ func TestEndpointConfigCR(t *testing.T) {
 	objs := []runtime.Object{newTestRoute(), newTestInfra()}
 	c := fake.NewFakeClient(objs...)
 
-	err := createEndpointConfigCR(c, mcmNameSpace, namespace, "test-cluster")
+	err := createEndpointConfigCR(c, mcoNamespace, namespace, "test-cluster")
 	if err != nil {
 		t.Fatalf("Failed to create EndpointMonitoring: (%v)", err)
 	}
-	found := &epv1alpha1.EndpointMonitoring{}
+	found := &mcov1beta1.EndpointMonitoring{}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: epConfigName, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to get EndpointMonitoring: (%v)", err)
@@ -52,7 +52,7 @@ func TestEndpointConfigCR(t *testing.T) {
 		t.Fatal("Endpointmonitoring has wrong configurations")
 	}
 
-	err = createEndpointConfigCR(c, mcmNameSpace, namespace, "test-cluster")
+	err = createEndpointConfigCR(c, mcoNamespace, namespace, "test-cluster")
 	if err != nil {
 		t.Fatalf("Failed to create EndpointMonitoring: (%v)", err)
 	}

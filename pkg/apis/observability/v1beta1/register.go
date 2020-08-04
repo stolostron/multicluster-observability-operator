@@ -1,9 +1,9 @@
 // NOTE: Boilerplate only.  Ignore this file.
 
-// Package v1alpha1 contains API Schema definitions for the monitoring v1alpha1 API group
+// Package v1beta1 contains API Schema definitions for the observability v1beta1 API group
 // +k8s:deepcopy-gen=package,register
-// +groupName=monitoring.open-cluster-management.io
-package v1alpha1
+// +groupName=observability.open-cluster-management.io
+package v1beta1
 
 import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -12,7 +12,7 @@ import (
 
 var (
 	// SchemeGroupVersion is group version used to register these objects
-	SchemeGroupVersion = schema.GroupVersion{Group: "monitoring.open-cluster-management.io", Version: "v1alpha1"}
+	SchemeGroupVersion = schema.GroupVersion{Group: "observability.open-cluster-management.io", Version: "v1beta1"}
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
 	SchemeBuilder = &scheme.Builder{GroupVersion: SchemeGroupVersion}

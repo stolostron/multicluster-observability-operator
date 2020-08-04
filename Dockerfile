@@ -31,15 +31,15 @@ LABEL org.label-schema.vendor="Red Hat" \
     io.k8s.description="$IMAGE_DESCRIPTION" \
     io.openshift.tags="$IMAGE_OPENSHIFT_TAGS"
 
-ENV OPERATOR=/usr/local/bin/multicluster-observability-operator \
+ENV OPERATOR=/usr/local/bin/mco-operator \
     USER_UID=1001 \
-    USER_NAME=multicluster-observability-operator
+    USER_NAME=mco
 
 # install templates
 COPY manifests /usr/local/manifests
 
 # install operator binary
-COPY build/_output/bin/multicluster-observability-operator ${OPERATOR}
+COPY build/_output/bin/multicluster-monitoring-operator ${OPERATOR}
 
 COPY build/bin /usr/local/bin
 RUN  /usr/local/bin/user_setup

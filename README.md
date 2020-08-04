@@ -40,9 +40,9 @@ Edit deploy/operator.yaml file and change image tag
           image: ...
 
 ```
-Edit deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml file to change `imageTagSuffix`
+Edit deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml file to change `imageTagSuffix`
 ```
-apiVersion: monitoring.open-cluster-management.io/v1alpha1
+apiVersion: observability.open-cluster-management.io/v1alpha1
 kind: MultiClusterObservability
 metadata:
   name: observability
@@ -53,9 +53,9 @@ spec:
 Note: Find snapshot tags here: https://quay.io/repository/open-cluster-management/acm-custom-registry?tab=tags
 
 5. [Optional] Customize the configuration for the operator instance
-You can customize the operator instance by updating `deploy/crds/monitoring.open-cluster-management.io_v1_multiclusterobservability_cr.yaml`. Below is a sample which has the configuration with default values. If you want to use customized value for one parameter, just need to specify that parameter in your own yaml file.
+You can customize the operator instance by updating `deploy/crds/observability.open-cluster-management.io_v1_multiclusterobservability_cr.yaml`. Below is a sample which has the configuration with default values. If you want to use customized value for one parameter, just need to specify that parameter in your own yaml file.
 ```
-apiVersion: monitoring.open-cluster-management.io/v1alpha1
+apiVersion: observability.open-cluster-management.io/v1alpha1
 kind: MultiClusterObservability
 metadata:
   name: observability
@@ -156,10 +156,10 @@ spec:
 6. Deploy the `multicluster-observability-operator` and `MultiClusterObservability` instance
 ```
 oc project open-cluster-management-observability
-oc apply -f deploy/req_crds/monitoring.open-cluster-management.io_endpointmonitoring_crd.yaml
+oc apply -f deploy/req_crds/observability.open-cluster-management.io_endpointmonitoring_crd.yaml
 oc apply -f deploy/req_crds/core.observatorium.io_observatoria.yaml
-oc apply -f deploy/crds/monitoring.open-cluster-management.io_multiclusterobservabilitys_crd.yaml
-oc apply -f deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml
+oc apply -f deploy/crds/observability.open-cluster-management.io_multiclusterobservabilities_crd.yaml
+oc apply -f deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
 oc apply -f deploy/
 ```
 The following pods are available in `open-cluster-management-observability` namespace after installed successfully.
@@ -251,7 +251,7 @@ curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.
 2. Once the endpoint monitoring operator installed in the managed cluster, it will update the configmap cluster-monitoring-config automatically, and then the metrics will be pushed to hub side.
 3. In cluster's namespace in hub side, one default endpointmonitoring resource named as "endpoint-config"  will be created automatically. Users can edit section "relabelConfigs" in this resource to update the configuration for metrics collect in managed cluster side, such as filtering the metrics collected, injecting addtional labels([Prometheus relabel configuration]). A sample endpointmonitoring resource is as below:
 ```
-apiVersion: monitoring.open-cluster-management.io/v1alpha1
+apiVersion: observability.open-cluster-management.io/v1alpha1
 kind: EndpointMonitoring
 metadata:
   annotations:

@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package v1alpha1
+package v1beta1
 
 import (
 	monv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"

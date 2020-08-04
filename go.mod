@@ -6,7 +6,7 @@ require (
 	github.com/coreos/prometheus-operator v0.38.0
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/imdario/mergo v0.3.9
+	github.com/imdario/mergo v0.3.9 // indirect
 	github.com/observatorium/configuration v0.0.0-20200505130827-23ee12780d4c
 	github.com/open-cluster-management/api v0.0.0-20200602195039-a516cac2e038
 	github.com/open-cluster-management/multicloud-operators-placementrule v1.0.0-2020-05-08-20-30-09

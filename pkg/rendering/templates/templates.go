@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 	"sigs.k8s.io/kustomize/v3/pkg/target"
 
-	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 const TemplatesPathEnvVar = "TEMPLATES_PATH"
@@ -54,7 +54,7 @@ func GetTemplateRenderer() *TemplateRenderer {
 
 // GetGrafanaTemplates reads the grafana manifests
 func (r *TemplateRenderer) GetGrafanaTemplates(
-	mco *monitoringv1alpha1.MultiClusterObservability) ([]*resource.Resource, error) {
+	mco *mcov1beta1.MultiClusterObservability) ([]*resource.Resource, error) {
 	basePath := path.Join(r.templatesPath, "base")
 	// resourceList contains all kustomize resources
 	resourceList := []*resource.Resource{}
@@ -68,12 +68,12 @@ func (r *TemplateRenderer) GetGrafanaTemplates(
 
 // GetMinioTemplates reads the minio manifests
 func (r *TemplateRenderer) GetMinioTemplates(
-	mco *monitoringv1alpha1.MultiClusterObservability) ([]*resource.Resource, error) {
+	mco *mcov1beta1.MultiClusterObservability) ([]*resource.Resource, error) {
 	basePath := path.Join(r.templatesPath, "base")
 	// resourceList contains all kustomize resources
 	resourceList := []*resource.Resource{}
 
-	if mco.Spec.ObjectStorageConfigSpec.Type == "minio" {
+	if mco.Spec.ObjectStorageConfig == nil {
 		// add minio template
 		if err := r.AddTemplateFromPath(basePath+"/object_storage/minio", &resourceList); err != nil {
 			return resourceList, err
@@ -85,7 +85,7 @@ func (r *TemplateRenderer) GetMinioTemplates(
 
 // GetTemplates reads base manifest
 func (r *TemplateRenderer) GetTemplates(
-	mco *monitoringv1alpha1.MultiClusterObservability) ([]*resource.Resource, error) {
+	mco *mcov1beta1.MultiClusterObservability) ([]*resource.Resource, error) {
 	basePath := path.Join(r.templatesPath, "base")
 	// resourceList contains all kustomize resources
 	resourceList := []*resource.Resource{}
@@ -95,13 +95,6 @@ func (r *TemplateRenderer) GetTemplates(
 		return resourceList, err
 	}
 
-	objStorageType := mco.Spec.ObjectStorageConfigSpec.Type
-	// add s3 template
-	if objStorageType == "s3" {
-		if err := r.AddTemplateFromPath(basePath+"/object_storage/s3", &resourceList); err != nil {
-			return resourceList, err
-		}
-	}
 	return resourceList, nil
 }
 
