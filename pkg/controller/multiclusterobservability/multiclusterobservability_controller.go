@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
+	observatoriumv1alpha1 "github.com/observatorium/deployments/operator/api/v1alpha1"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"

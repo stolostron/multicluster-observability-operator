@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"time"
 
-	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
+	observatoriumv1alpha1 "github.com/observatorium/deployments/operator/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -35,8 +35,8 @@ const (
 	retentionResolution5m  = "14d"
 	retentionResolutionRaw = "5d"
 
-	defaultThanosImage   = "quay.io/thanos/thanos:v0.12.0"
-	defaultThanosVersion = "v0.12.0"
+	defaultThanosImage   = "quay.io/thanos/thanos:master-2020-05-24-079ad427"
+	defaultThanosVersion = "master-2020-05-24-079ad427"
 )
 
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
@@ -120,11 +120,12 @@ func GenerateAPIGatewayRoute(
 			},
 			Spec: routev1.RouteSpec{
 				Port: &routev1.RoutePort{
-					TargetPort: intstr.FromString("http"),
+					TargetPort: intstr.FromString("remote-write"),
 				},
 				To: routev1.RouteTargetReference{
 					Kind: "Service",
-					Name: apiGatewayServices.Items[0].GetName(),
+					//Name: apiGatewayServices.Items[0].GetName(),
+					Name: mco.Name + "-observatorium-thanos-receive",
 				},
 			},
 		}
@@ -158,8 +159,10 @@ func GenerateAPIGatewayRoute(
 func newDefaultObservatoriumSpec() *observatoriumv1alpha1.ObservatoriumSpec {
 	obs := &observatoriumv1alpha1.ObservatoriumSpec{}
 
-	obs.API.Image = "quay.io/observatorium/observatorium:master-2020-04-29-v0.1.1-14-gceac185"
-	obs.API.Version = "master-2020-04-29-v0.1.1-14-gceac185"
+	obs.API.Image = "quay.io/observatorium/observatorium:latest"
+	obs.API.Version = "latest"
+	obs.API.RBAC = newAPIRBAC()
+	obs.API.Tenants = newAPITenants()
 
 	obs.APIQuery.Image = defaultThanosImage
 	obs.APIQuery.Version = defaultThanosVersion
@@ -170,8 +173,10 @@ func newDefaultObservatoriumSpec() *observatoriumv1alpha1.ObservatoriumSpec {
 		{Hashring: "default", Tenants: []string{}},
 	}
 
-	obs.ObjectStorageConfig.Name = "thanos-objectstorage"
-	obs.ObjectStorageConfig.Key = "thanos.yaml"
+	obs.ObjectStorageConfig.Thanos = &observatoriumv1alpha1.ObjectStorageConfigSpec{
+		Name: "thanos-objectstorage",
+		Key:  "thanos.yaml",
+	}
 
 	obs.Query.Image = defaultThanosImage
 	obs.Query.Version = defaultThanosVersion
@@ -185,9 +190,58 @@ func newDefaultObservatoriumSpec() *observatoriumv1alpha1.ObservatoriumSpec {
 	obs.Rule = newRuleSpec()
 	obs.Store = newStoreSpec()
 
-	obs.ThanosReceiveController.Image = "quay.io/observatorium/thanos-receive-controller:master-2020-04-16-44c6bea"
-	obs.ThanosReceiveController.Version = "master-2020-04-16-44c6bea"
+	obs.ThanosReceiveController.Image = "quay.io/observatorium/thanos-receive-controller:master-2020-06-17-a9d9169"
+	obs.ThanosReceiveController.Version = "master-2020-06-17-a9d9169"
 	return obs
+}
+
+func newAPIRBAC() observatoriumv1alpha1.APIRBAC {
+	return observatoriumv1alpha1.APIRBAC{
+		Roles: []observatoriumv1alpha1.RBACRole{
+			{
+				Name: "read-write",
+				Resources: []string{
+					"metrics",
+				},
+				Permissions: []observatoriumv1alpha1.Permission{
+					observatoriumv1alpha1.Write,
+					observatoriumv1alpha1.Read,
+				},
+				Tenants: []string{
+					"test",
+				},
+			},
+		},
+		RoleBindings: []observatoriumv1alpha1.RBACRoleBinding{
+			{
+				Name: "test",
+				Roles: []string{
+					"read-write",
+				},
+				Subjects: []observatoriumv1alpha1.Subject{
+					{
+						Name: "admin@example.com",
+						Kind: observatoriumv1alpha1.User,
+					},
+				},
+			},
+		},
+	}
+}
+
+func newAPITenants() []observatoriumv1alpha1.APITenant {
+	return []observatoriumv1alpha1.APITenant{
+		{
+			Name: "test",
+			ID:   "1610b0c3-c509-4592-a256-a1871353dbfa",
+			OIDC: observatoriumv1alpha1.TenantOIDC{
+				ClientID:      "test",
+				ClientSecret:  "ZXhhbXBsZS1hcHAtc2VjcmV0",
+				IssuerURL:     "http://ec2-107-21-40-191.compute-1.amazonaws.com:5556/dex",
+				UsernameClaim: "email",
+			},
+		},
+	}
 }
 
 func newReceiversSpec() observatoriumv1alpha1.ReceiversSpec {

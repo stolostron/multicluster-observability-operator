@@ -10,7 +10,7 @@ import (
 	"os"
 	"runtime"
 
-	observatoriumAPIs "github.com/observatorium/configuration/api/v1alpha1"
+	observatoriumAPIs "github.com/observatorium/deployments/operator/api/v1alpha1"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
