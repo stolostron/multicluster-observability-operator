@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
@@ -54,8 +55,8 @@ func generateImagePatch(
 	if err != nil {
 		return nil, err
 	}
-	imageRepo := util.GetAnnotation(mco, "mco-imageRepository")
-	imageTagSuffix := util.GetAnnotation(mco, "mco-imageTagSuffix")
+	imageRepo := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository)
+	imageTagSuffix := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
 	if imageTagSuffix != "" {
 		imageTagSuffix = "-" + imageTagSuffix
 	}

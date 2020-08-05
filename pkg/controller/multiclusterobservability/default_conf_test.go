@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -14,6 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 func NewFakeClient(mco *mcov1beta1.MultiClusterObservability,
@@ -37,12 +38,24 @@ func TestGenerateMonitoringEmptyCR(t *testing.T) {
 		t.Errorf("Should return nil for result (%v) and err (%v)", result, err)
 	}
 
-	if string(mco.Spec.ImagePullPolicy) != string(corev1.PullAlways) {
-		t.Errorf("ImagePullPolicy (%v) is not the expected (%v)", mco.Spec.ImagePullPolicy, corev1.PullAlways)
+	if mco.Spec.ImagePullPolicy != defaultImagePullPolicy {
+		t.Errorf("ImagePullPolicy (%v) is not the expected (%v)",
+			mco.Spec.ImagePullPolicy, defaultImagePullPolicy)
 	}
 
-	if mco.Spec.ImagePullSecret != defaultImgPullSecret {
-		t.Errorf("ImagePullSecret (%v) is not the expected (%v)", mco.Spec.ImagePullSecret, defaultImgPullSecret)
+	if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository) != defaultImageRepository {
+		t.Errorf("ImageRepository (%v) is not the expected (%v)",
+			util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository), defaultImageRepository)
+	}
+
+	if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix) != defaultImageTagSuffix {
+		t.Errorf("ImageTagSuffix (%v) is not the expected (%v)",
+			util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix), defaultImageTagSuffix)
+	}
+
+	if mco.Spec.ImagePullSecret != defaultImagePullSecret {
+		t.Errorf("ImagePullSecret (%v) is not the expected (%v)",
+			mco.Spec.ImagePullSecret, defaultImagePullSecret)
 	}
 
 	if mco.Spec.NodeSelector == nil {
@@ -50,7 +63,8 @@ func TestGenerateMonitoringEmptyCR(t *testing.T) {
 	}
 
 	if mco.Spec.StorageClass != defaultStorageClass {
-		t.Errorf("StorageClass (%v) is not the expected (%v)", mco.Spec.StorageClass, defaultStorageClass)
+		t.Errorf("StorageClass (%v) is not the expected (%v)",
+			mco.Spec.StorageClass, defaultStorageClass)
 	}
 }
 
@@ -66,9 +80,24 @@ func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 		t.Fatalf("Should return nil for result (%v) and err (%v)", result, err)
 	}
 
-	if mco.Spec.ImagePullSecret != defaultImgPullSecret {
+	if mco.Spec.ImagePullPolicy != defaultImagePullPolicy {
+		t.Errorf("ImagePullPolicy (%v) is not the expected (%v)",
+			mco.Spec.ImagePullPolicy, defaultImagePullPolicy)
+	}
+
+	if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository) != defaultImageRepository {
+		t.Errorf("ImageRepository (%v) is not the expected (%v)",
+			util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository), defaultImageRepository)
+	}
+
+	if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix) != defaultImageTagSuffix {
+		t.Errorf("ImageTagSuffix (%v) is not the expected (%v)",
+			util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix), defaultImageTagSuffix)
+	}
+
+	if mco.Spec.ImagePullSecret != defaultImagePullSecret {
 		t.Errorf("ImagePullSecret (%v) is not the expected (%v)",
-			mco.Spec.ImagePullSecret, defaultImgPullSecret)
+			mco.Spec.ImagePullSecret, defaultImagePullSecret)
 	}
 
 	if mco.Spec.NodeSelector == nil {
