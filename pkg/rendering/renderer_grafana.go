@@ -27,12 +27,11 @@ func (r *Renderer) renderGrafanaDeployments(res *resource.Resource) (*unstructur
 	if err != nil {
 		return nil, err
 	}
-	spec, ok := u.Object["spec"].(map[string]interface{})
-	if ok {
-		if r.cr.Spec.Grafana.Replicas != spec["replicas"] {
-			spec["replicas"] = r.cr.Spec.Grafana.Replicas
-		}
-	}
+	//TODO: handle the HA
+	// spec, ok := u.Object["spec"].(map[string]interface{})
+	// if ok {
+	// 	spec["replicas"] = r.cr.Spec.Grafana.Replicas
+	// }
 
 	return u, nil
 }

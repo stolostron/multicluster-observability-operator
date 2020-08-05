@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package multiclustermonitoring
+package multiclusterobservability
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
 
-	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 const (
@@ -25,15 +25,7 @@ const (
 // GenerateMonitoringCR is used to generate monitoring CR with the default values
 // w/ or w/o customized values
 func GenerateMonitoringCR(c client.Client,
-	mco *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
-
-	if mco.Spec.Version == "" {
-		mco.Spec.Version = defaultVersion
-	}
-
-	if mco.Spec.ImageRepository == "" {
-		mco.Spec.ImageRepository = defaultImgRepo
-	}
+	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	if string(mco.Spec.ImagePullPolicy) == "" {
 		mco.Spec.ImagePullPolicy = corev1.PullAlways
@@ -51,29 +43,12 @@ func GenerateMonitoringCR(c client.Client,
 		mco.Spec.StorageClass = defaultStorageClass
 	}
 
-	if mco.Spec.Observatorium == nil {
-		log.Info("Add default observatorium spec")
-		mco.Spec.Observatorium = newDefaultObservatoriumSpec()
-	} else {
-		result, err := updateObservatoriumSpec(c, mco)
-		if result != nil {
-			return result, err
-		}
-	}
+	// if mco.Spec.ObjectStorageConfig == nil {
+	// 	log.Info("Add default object storage configuration")
+	// 	mco.Spec.ObjectStorageConfig = newDefaultObjectStorageConfigSpec()
+	// }
 
-	if mco.Spec.ObjectStorageConfigSpec == nil {
-		log.Info("Add default object storage configuration")
-		mco.Spec.ObjectStorageConfigSpec = newDefaultObjectStorageConfigSpec()
-	}
-
-	if mco.Spec.Grafana == nil {
-		log.Info("Add default grafana config")
-		mco.Spec.Grafana = newGrafanaConfigSpec()
-	} else {
-		updateGrafanaConfig(mco)
-	}
-
-	found := &monitoringv1alpha1.MultiClusterObservability{}
+	found := &mcov1beta1.MultiClusterObservability{}
 	err := c.Get(
 		context.TODO(),
 		types.NamespacedName{

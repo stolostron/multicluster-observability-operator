@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package multiclustermonitoring
+package multiclusterobservability
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 const (
@@ -41,28 +41,12 @@ type GrafanaDatasource struct {
 	Version           int    `json:"version"`
 }
 
-func newGrafanaConfigSpec() *monitoringv1alpha1.GrafanaSpec {
-	spec := &monitoringv1alpha1.GrafanaSpec{}
-	spec.Hostport = defaultHostport
-	spec.Replicas = defaultReplicas
-	return spec
-}
-
-func updateGrafanaConfig(mco *monitoringv1alpha1.MultiClusterObservability) {
-	if mco.Spec.Grafana.Hostport == 0 {
-		mco.Spec.Grafana.Hostport = defaultHostport
-	}
-	if mco.Spec.Grafana.Replicas == 0 {
-		mco.Spec.Grafana.Replicas = defaultReplicas
-	}
-}
-
 // GenerateGrafanaDataSource is used to generate the GrafanaDatasource as a secret.
 // the GrafanaDatasource points to observatorium api gateway service
 func GenerateGrafanaDataSource(
 	client client.Client,
 	scheme *runtime.Scheme,
-	mco *monitoringv1alpha1.MultiClusterObservability) (*reconcile.Result, error) {
+	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	grafanaDatasources, err := json.MarshalIndent(GrafanaDatasources{
 		APIVersion: 1,

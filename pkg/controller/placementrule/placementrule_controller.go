@@ -21,7 +21,7 @@ import (
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
@@ -117,7 +117,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// secondary watch for endpointmonitoring
-	err = c.Watch(&source.Kind{Type: &monitoringv1alpha1.EndpointMonitoring{}},
+	err = c.Watch(&source.Kind{Type: &mcov1beta1.EndpointMonitoring{}},
 		&handler.EnqueueRequestsFromMapFunc{
 			ToRequests: mapFn,
 		},
@@ -183,7 +183,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	}
 
 	// Fetch the MultiClusterObservability instance
-	mco := &monitoringv1alpha1.MultiClusterObservability{}
+	mco := &mcov1beta1.MultiClusterObservability{}
 	err := r.client.Get(context.TODO(),
 		types.NamespacedName{
 			Name: config.GetMonitoringCRName(),
@@ -218,7 +218,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 
-	epList := &monitoringv1alpha1.EndpointMonitoringList{}
+	epList := &mcov1beta1.EndpointMonitoringList{}
 	err = r.client.List(context.TODO(), epList)
 	if err != nil {
 		reqLogger.Error(err, "Failed to list endpointmonitoring resource")

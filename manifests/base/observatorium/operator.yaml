@@ -7,18 +7,18 @@ metadata:
     app.kubernetes.io/name: observatorium-operator
     app.kubernetes.io/part-of: observatorium
     control-plane: observatorium-operator
-    monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
+    observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
 spec:
   replicas: 1
   selector:
     matchLabels:
       control-plane: observatorium-operator
-      monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
+      observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
   template:
     metadata:
       labels:
         control-plane: observatorium-operator
-        monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
+        observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
     spec:
       containers:
       - args:

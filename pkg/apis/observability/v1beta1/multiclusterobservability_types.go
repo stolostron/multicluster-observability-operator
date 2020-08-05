@@ -1,37 +1,45 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package v1alpha1
+package v1beta1
 
 import (
-	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+// AvailabilityType ...
+type AvailabilityType string
+
+const (
+	// HABasic stands up most app subscriptions with a replicaCount of 1
+	HABasic AvailabilityType = "Basic"
+	// HAHigh stands up most app subscriptions with a replicaCount of 2
+	HAHigh AvailabilityType = "High"
+)
 
 // MultiClusterObservabilitySpec defines the desired state of MultiClusterObservability
 type MultiClusterObservabilitySpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	// Version of the MultiClusterObservability
-	// +optional
-	Version string `json:"version"`
 
-	// Repository of the MultiClusterObservability images
+	// ReplicaCount for HA support. Does not affect data stores.
+	// Enabled will toggle HA support. This will provide better support in cases of failover
+	// but consumes more resources. Options are: Basic and High (default).
 	// +optional
-	ImageRepository string `json:"imageRepository"`
+	AvailabilityConfig AvailabilityType `json:"availabilityConfig,omitempty"`
 
-	// ImageTagSuffix of the MultiClusterObservability images
-	// +optional
-	ImageTagSuffix string `json:"imageTagSuffix"`
+	// Enable or disable the downsample.
+	// The default value is false.
+	// This is not recommended as querying long time ranges
+	// without non-downsampled data is not efficient and useful.
+	EnableDownSampling bool `json:"enableDownSampling,omitempty"`
 
 	// Pull policy of the MultiClusterObservability images
 	// +optional
-	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy"`
+	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 
 	// Pull secret of the MultiClusterObservability images
 	// +optional
@@ -41,21 +49,37 @@ type MultiClusterObservabilitySpec struct {
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
-	// Spec of StorageClass
+	// How long to retain raw samples in a bucket. Default is 5d
+	RetentionResolutionRaw string `json:"retentionResolutionRaw,omitempty"`
+
+	// How long to retain samples of resolution 1 (5 minutes) in bucket.
+	// Default is 14d
+	RetentionResolution5m string `json:"retentionResolution5m,omitempty"`
+
+	// How long to retain samples of resolution 2 (1 hour) in bucket.
+	// Default is 30d.
+	RetentionResolution1h string `json:"retentionResolution1h,omitempty"`
+
+	// Specify the storageClass for PVC.
+	// The default value is gp2.
 	// +optional
 	StorageClass string `json:"storageClass"`
 
-	// Spec of Observatorium
+	// The storageSize is applied to the thanos components
+	// compact/recevier/rule/store.
+	// The default value is 50Gi
 	// +optional
-	Observatorium *observatoriumv1alpha1.ObservatoriumSpec `json:"observatorium"`
-
-	// Spec of Grafana
-	// +optional
-	Grafana *GrafanaSpec `json:"grafana"`
+	StorageSize resource.Quantity `json:"storageSize"`
 
 	// Spec of object storage config
 	// +optional
-	ObjectStorageConfigSpec *ObjectStorageConfigSpec `json:"objectStorageConfigSpec,omitempty"`
+	ObjectStorageConfig *ObjectStorageConfig `json:"objectStorageConfig,omitempty"`
+}
+
+// ObjectStorageConfig is the Spec of object storage.
+type ObjectStorageConfig struct {
+	//Object Store Config Secret for metrics
+	Metrics *corev1.SecretKeySelector `json:"metrics,omitempty"`
 }
 
 // MultiClusterObservabilityStatus defines the observed state of MultiClusterObservability
@@ -82,7 +106,7 @@ type DeploymentResult struct {
 
 // MultiClusterObservability is the Schema for the multiclusterobservability API
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=multiclusterobservabilitys,scope=Cluster,shortName=mco
+// +kubebuilder:resource:path=multiclusterobservabilities,scope=Cluster,shortName=mco
 type MultiClusterObservability struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -102,46 +126,4 @@ type MultiClusterObservabilityList struct {
 
 func init() {
 	SchemeBuilder.Register(&MultiClusterObservability{}, &MultiClusterObservabilityList{})
-}
-
-// GrafanaSpec defines the desired state of GrafanaSpec
-type GrafanaSpec struct {
-	// Hostport of grafana
-	// +optional
-	Hostport int32 `json:"hostport"`
-
-	// replicas of grafana
-	// +optional
-	Replicas int32 `json:"replicas,omitempty"`
-}
-
-// ObjectStorageConfigSpec defines the desired state of ObjectStorageConfigSpec
-type ObjectStorageConfigSpec struct {
-	// Type of object storage [s3 minio]
-	Type string `json:"type,omitempty"`
-
-	// Object storage configuration
-	Config ObjectStorageConfig `json:"config,omitempty"`
-}
-
-// ObjectStorageConfig defines s3 object storage configuration
-type ObjectStorageConfig struct {
-	// Object storage bucket name
-	Bucket string `json:"bucket,omitempty"`
-
-	// Object storage server endpoint
-	Endpoint string `json:"endpoint,omitempty"`
-
-	// Configure object storage server use HTTP or HTTPs
-	Insecure bool `json:"insecure,omitempty"`
-
-	// Object storage server access key
-	AccessKey string `json:"access_key,omitempty"`
-
-	// Object storage server secret key
-	SecretKey string `json:"secret_key,omitempty"`
-
-	// Minio local PVC storage size, just for minio only, ignore it if type is s3
-	// +optional
-	Storage string `json:"storage,omitempty"`
 }

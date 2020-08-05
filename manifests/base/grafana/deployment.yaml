@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   labels:
     app: grafana
-    monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
+    observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
   name: grafana
   namespace: open-cluster-management
 spec:
@@ -11,12 +11,12 @@ spec:
   selector:
     matchLabels:
       app: grafana
-      monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
+      observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
   template:
     metadata:
       labels:
         app: grafana
-        monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
+        observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
     spec:
       containers:
       - args:

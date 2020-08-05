@@ -25,8 +25,8 @@ import (
 const (
 	namespace    = "test-ns"
 	namespace2   = "test-ns-2"
-	mcmName      = "test-mcm"
-	mcmNameSpace = "test-mcm-namespace"
+	mcoName      = "test-mco"
+	mcoNamespace = "open-cluster-management-observability"
 )
 
 func initSchema(t *testing.T) {
@@ -35,7 +35,7 @@ func initSchema(t *testing.T) {
 		t.Fatalf("Unable to add placementrule scheme: (%v)", err)
 	}
 	if err := apis.AddToScheme(s); err != nil {
-		t.Fatalf("Unable to add monitoringv1alpha1 scheme: (%v)", err)
+		t.Fatalf("Unable to add mcov1beta1 scheme: (%v)", err)
 	}
 	if err := routev1.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add routev1 scheme: (%v)", err)
@@ -51,12 +51,12 @@ func initSchema(t *testing.T) {
 func TestEndpointMonitoringController(t *testing.T) {
 	s := scheme.Scheme
 	initSchema(t)
-	config.SetMonitoringCRName(mcmName)
+	config.SetMonitoringCRName(mcoName)
 
 	p := &placementv1.PlacementRule{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      placementRuleName,
-			Namespace: mcmNameSpace,
+			Namespace: mcoNamespace,
 		},
 		Status: placementv1.PlacementRuleStatus{
 			Decisions: []placementv1.PlacementDecision{
@@ -71,14 +71,14 @@ func TestEndpointMonitoringController(t *testing.T) {
 			},
 		},
 	}
-	objs := []runtime.Object{p, newTestMCM(), newTestPullSecret(), newTestRoute(), newTestInfra(), newSATokenSecret(), newTestSA(), newSATokenSecret(namespace2), newTestSA(namespace2)}
+	objs := []runtime.Object{p, newTestMCO(), newTestPullSecret(), newTestRoute(), newTestInfra(), newSATokenSecret(), newTestSA(), newSATokenSecret(namespace2), newTestSA(namespace2)}
 	c := fake.NewFakeClient(objs...)
 
 	r := &ReconcilePlacementRule{client: c, scheme: s}
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      placementRuleName,
-			Namespace: mcmNameSpace,
+			Namespace: mcoNamespace,
 		},
 	}
 	_, err := r.Reconcile(req)
@@ -98,7 +98,7 @@ func TestEndpointMonitoringController(t *testing.T) {
 	p = &placementv1.PlacementRule{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      placementRuleName,
-			Namespace: mcmNameSpace,
+			Namespace: mcoNamespace,
 		},
 		Status: placementv1.PlacementRuleStatus{
 			Decisions: []placementv1.PlacementDecision{

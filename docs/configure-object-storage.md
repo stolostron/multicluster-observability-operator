@@ -3,26 +3,19 @@
 The multicluster-observability-operator supports S3-compatible object storage. Current object storage configurations:
 
 ```yaml
-apiVersion: monitoring.open-cluster-management.io/v1alpha1
+apiVersion: observability.open-cluster-management.io/v1alpha1
 kind: MultiClusterObservability
 metadata:
   name: observability
 spec:
-  version: latest
-  imageRepository: "quay.io/open-cluster-management"
-  imageTagSuffix: ""
+  availabilityConfig: Basic
   imagePullPolicy: Always
   imagePullSecret: multiclusterhub-operator-pull-secret
+  retentionResolution1h: 30d
+  retentionResolution5m: 14d
+  retentionResolutionRaw: 5d
   storageClass: gp2
-  objectStorageConfig:
-    type: minio
-    config:
-      bucket: thanos
-      endpoint: minio:9000
-      insecure: true
-      access_key: minio
-      secret_key: minio123
-      storage: 1Gi
+  storageSize: 50Gi
 ```
 
 - type: type of object storage backend server, currently only `minio` and `s3` are supported
@@ -38,7 +31,7 @@ By default, you do not need to configure `objectStorageConfig` field. The multic
 
 ## Minio (default)
 
-When you install [multicluster-observability-operator CR](/deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml), it will use the following YAML content to configure Minio as default object storage server.
+When you install [multicluster-observability-operator CR](/deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml), it will use the following YAML content to configure Minio as default object storage server.
 
 ```yaml
   objectStorageConfig:
@@ -54,7 +47,7 @@ When you install [multicluster-observability-operator CR](/deploy/crds/monitorin
 
 ## S3
 
-If you want to configure S3 as object store server, you can add the following YAML content to [multicluster-observability-operator CR](/deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml):
+If you want to configure S3 as object store server, you can add the following YAML content to [multicluster-observability-operator CR](/deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml):
 
 ```yaml
   objectStorageConfig:

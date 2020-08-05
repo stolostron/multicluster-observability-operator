@@ -19,7 +19,7 @@ const (
 	roleBindingName    = "monitoring-endpoint-monitoring"
 	serviceAccountName = "monitoring-endpoint-monitoring-sa"
 	epRsName           = "endpointmonitorings"
-	epRsGroup          = "monitoring.open-cluster-management.io"
+	epRsGroup          = "observability.open-cluster-management.io"
 )
 
 func createRole(client client.Client, namespace string) error {

@@ -124,8 +124,8 @@ deploy_mco_operator() {
         $sed_command "s~image:.*$~image: $1~g" deploy/operator.yaml
     fi
     # Add storage class config
-    cp deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml-e
-    printf "\n  storageClass: local\n" >> deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml
+    cp deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml-e
+    printf "\n  storageClass: local\n" >> deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
     # Install the multicluster-observability-operator
     kubectl create ns ${MONITORING_NS}
     kubectl config set-context --current --namespace ${MONITORING_NS}
@@ -139,12 +139,12 @@ deploy_mco_operator() {
 
     kubectl apply -f tests/e2e/samples
     kubectl apply -f deploy/req_crds
-    kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_multiclusterobservabilitys_crd.yaml
+    kubectl apply -f deploy/crds/observability.open-cluster-management.io_multiclusterobservabilities_crd.yaml
     kubectl apply -f tests/e2e/req_crds
     sleep 2
     kubectl apply -f tests/e2e/req_crds/hub_cr
     kubectl apply -f deploy
-    kubectl apply -f deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml
+    kubectl apply -f deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
 
     # expose grafana to test accessible
     kubectl apply -f tests/e2e/grafana/grafana-route.yaml
@@ -153,7 +153,7 @@ deploy_mco_operator() {
 # deploy the new grafana to check the dashboards from browsers
 deploy_grafana() {
     cd ${WORKDIR}
-    $sed_command "s~name: grafana$~name: grafana-test~g; s~app: grafana$~app: grafana-test~g; s~secretName: grafana-config$~secretName: grafana-config-test~g; /MULTICLUSTERMONITORING_CR_NAME/d" manifests/base/grafana/deployment.yaml
+    $sed_command "s~name: grafana$~name: grafana-test~g; s~app: grafana$~app: grafana-test~g; s~secretName: grafana-config$~secretName: grafana-config-test~g; /MULTICLUSTEROBSERVABILITY_CR_NAME/d" manifests/base/grafana/deployment.yaml
     $sed_command "s~name: grafana$~name: grafana-test~g; s~app: grafana$~app: grafana-test~g" manifests/base/grafana/service.yaml
     $sed_command "s~namespace: open-cluster-management$~namespace: open-cluster-management-observability~g" manifests/base/grafana/deployment.yaml manifests/base/grafana/service.yaml
 
@@ -164,7 +164,7 @@ deploy_grafana() {
 
 revert_changes() {
     cd ${WORKDIR}
-    CHANGED_FILES="manifests/base/grafana/deployment.yaml manifests/base/grafana/service.yaml tests/e2e/samples/persistentVolume.yaml deploy/crds/monitoring.open-cluster-management.io_v1alpha1_multiclusterobservability_cr.yaml deploy/operator.yaml"
+    CHANGED_FILES="manifests/base/grafana/deployment.yaml manifests/base/grafana/service.yaml tests/e2e/samples/persistentVolume.yaml deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml deploy/operator.yaml"
     # revert the changes
     for file in ${CHANGED_FILES}; do
         if [[ -f "${file}-e" ]]; then

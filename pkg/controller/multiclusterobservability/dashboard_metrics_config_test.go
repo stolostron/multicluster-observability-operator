@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package multiclustermonitoring
+package multiclusterobservability
 
 import (
 	"context"
@@ -12,18 +12,18 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 func TestGenerateDashboardMetricCM(t *testing.T) {
-	mco := &monitoringv1alpha1.MultiClusterObservability{
+	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: dashboardMetricsConfigMapNS, Name: "name"},
-		Spec:       monitoringv1alpha1.MultiClusterMonitoringSpec{},
+		Spec:       mcov1beta1.MultiClusterObservabilitySpec{},
 	}
 
 	s := scheme.Scheme
-	monitoringv1alpha1.SchemeBuilder.AddToScheme(s)
+	mcov1beta1.SchemeBuilder.AddToScheme(s)
 	objs := []runtime.Object{mco}
 	cl := fake.NewFakeClient(objs...)
 
@@ -53,7 +53,7 @@ func TestGenerateDashboardMetricCM(t *testing.T) {
 }
 
 func TestGetDashboardMetrics(t *testing.T) {
-	internalDefaultMetricsLen := 58
+	internalDefaultMetricsLen := 59
 	caseList := []struct {
 		name     string
 		expected int

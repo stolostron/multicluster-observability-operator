@@ -1,4 +1,4 @@
-apiVersion: monitoring.open-cluster-management.io/v1alpha1
+apiVersion: observability.open-cluster-management.io/v1alpha1
 kind: EndpointMonitoring
 metadata:
   name: endpoint-config

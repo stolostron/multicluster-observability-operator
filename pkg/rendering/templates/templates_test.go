@@ -9,7 +9,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 func TestGetCoreTemplates(t *testing.T) {
@@ -21,26 +21,13 @@ func TestGetCoreTemplates(t *testing.T) {
 	os.Setenv(TemplatesPathEnvVar, templatesPath)
 	defer os.Unsetenv(TemplatesPathEnvVar)
 
-	mchcr := &monitoringv1alpha1.MultiClusterObservability{
+	mchcr := &mcov1beta1.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
-		Spec: monitoringv1alpha1.MultiClusterMonitoringSpec{
-			Version:         "latest",
-			ImageRepository: "quay.io/open-cluster-management",
+		Spec: mcov1beta1.MultiClusterObservabilitySpec{
 			ImagePullPolicy: "Always",
 			ImagePullSecret: "test",
 			StorageClass:    "gp2",
-			ObjectStorageConfigSpec: &monitoringv1alpha1.ObjectStorageConfigSpec{
-				Type: "minio",
-				Config: monitoringv1alpha1.ObjectStorageConfig{
-					Bucket:    "Bucket",
-					Endpoint:  "Endpoint",
-					Insecure:  true,
-					AccessKey: "AccessKey",
-					SecretKey: "SecretKey",
-					Storage:   "Storage",
-				},
-			},
 		},
 	}
 	_, err = GetTemplateRenderer().GetTemplates(mchcr)

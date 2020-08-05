@@ -4,20 +4,20 @@ metadata:
   name: minio
   namespace: observatorium
   labels:
-    monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
+    observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
 spec:
   replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: minio
-      monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
+      observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
         app.kubernetes.io/name: minio
-        monitoring.open-cluster-management.io/name: "{{MULTICLUSTERMONITORING_CR_NAME}}"
+        observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
     spec:
       containers:
       - command:
@@ -26,9 +26,9 @@ spec:
         - mkdir -p /storage/thanos && /usr/bin/minio server /storage
         env:
         - name: MINIO_ACCESS_KEY
-          value: "{{OBJ_STORAGE_ACCESSKEY}}"
+          value: "minio"
         - name: MINIO_SECRET_KEY
-          value: "{{OBJ_STORAGE_SECRETKEY}}"
+          value: "minio123"
         image: minio/minio
         imagePullPolicy: IfNotPresent
         name: minio

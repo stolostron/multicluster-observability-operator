@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package multiclustermonitoring
+package multiclusterobservability
 
 import (
 	"context"
@@ -13,7 +13,6 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
-	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 func init() {
@@ -33,7 +32,7 @@ func init() {
 func TestLabelsForMultiClusterMonitoring(t *testing.T) {
 	lab := labelsForMultiClusterMonitoring("test")
 
-	value, _ := lab["monitoring.open-cluster-management.io/name"]
+	value, _ := lab["observability.open-cluster-management.io/name"]
 	if value != "test" {
 		t.Errorf("value (%v) is not the expected (test)", value)
 	}
@@ -68,9 +67,8 @@ func createClusterVersion() *configv1.ClusterVersion {
 
 func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	var (
-		name               = "monitoring"
-		namespace          = "open-cluster-management-observability"
-		defaultStorageSize = "3Gi"
+		name      = "monitoring"
+		namespace = "open-cluster-management-observability"
 	)
 	logf.SetLogger(logf.ZapLogger(true))
 
@@ -83,15 +81,15 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	os.Setenv("TEMPLATES_PATH", path.Join(wd, "../../../tests/manifests"))
 
 	// A MultiClusterObservability object with metadata and spec.
-	mco := &monitoringv1alpha1.MultiClusterObservability{
+	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
-		Spec:       monitoringv1alpha1.MultiClusterMonitoringSpec{},
+		Spec:       mcov1beta1.MultiClusterObservabilitySpec{},
 	}
 
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
-	monitoringv1alpha1.SchemeBuilder.AddToScheme(s)
+	mcov1beta1.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
 	routev1.AddToScheme(s)
 
@@ -102,7 +100,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 
 	ocpClient := fakeconfigclient.NewSimpleClientset([]runtime.Object{createClusterVersion()}...)
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	r := &ReconcileMultiClusterMonitoring{client: cl, scheme: s, ocpClient: ocpClient}
+	r := &ReconcileMultiClusterObservability{client: cl, scheme: s, ocpClient: ocpClient}
 
 	// Mock request to simulate Reconcile() being called on an event for a
 	// watched resource .
@@ -118,7 +116,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 
-	updatedMCO := &monitoringv1alpha1.MultiClusterObservability{}
+	updatedMCO := &mcov1beta1.MultiClusterObservability{}
 	err = cl.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
@@ -126,37 +124,10 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	log.Info("updated MultiClusterObservability successfully", "MultiClusterObservability", updatedMCO)
 
 	// A MultiClusterObservability object with metadata and spec.
-	mco = &monitoringv1alpha1.MultiClusterObservability{
+	mco = &mcov1beta1.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
-		Spec: monitoringv1alpha1.MultiClusterMonitoringSpec{
-			Observatorium: &observatoriumv1alpha1.ObservatoriumSpec{
-				Compact: observatoriumv1alpha1.CompactSpec{
-					VolumeClaimTemplate: observatoriumv1alpha1.VolumeClaimTemplate{
-						Spec: corev1.PersistentVolumeClaimSpec{
-							AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceName(corev1.ResourceStorage): resource.MustParse(defaultStorageSize),
-								},
-							},
-						},
-					},
-				},
-				Rule: observatoriumv1alpha1.RuleSpec{
-					VolumeClaimTemplate: observatoriumv1alpha1.VolumeClaimTemplate{
-						Spec: corev1.PersistentVolumeClaimSpec{
-							AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceName(corev1.ResourceStorage): resource.MustParse(defaultStorageSize),
-								},
-							},
-						},
-					},
-				},
-			},
-		},
+		Spec:       mcov1beta1.MultiClusterObservabilitySpec{},
 	}
 	err = cl.Update(context.TODO(), mco)
 	if err != nil {
@@ -166,7 +137,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	updatedMCO = &monitoringv1alpha1.MultiClusterObservability{}
+	updatedMCO = &mcov1beta1.MultiClusterObservability{}
 	err = r.client.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)

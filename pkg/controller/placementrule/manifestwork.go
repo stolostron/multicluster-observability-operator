@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
-	monitoringv1alpha1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/monitoring/v1alpha1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
@@ -40,7 +40,7 @@ func deleteManifestWork(client client.Client, namespace string) error {
 }
 
 func createManifestWork(client client.Client, namespace string,
-	mco *monitoringv1alpha1.MultiClusterObservability,
+	mco *mcov1beta1.MultiClusterObservability,
 	imagePullSecret *corev1.Secret) error {
 
 	secret, err := createKubeSecret(client, namespace)
