@@ -1,3 +1,5 @@
+// Copyright (c) 2020 Red Hat, Inc.
+
 // Package observability contains observability API versions.
 //
 // This file ensures Go source parsers acknowledge the observability package

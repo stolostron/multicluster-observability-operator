@@ -1,3 +1,5 @@
+// Copyright (c) 2020 Red Hat, Inc.
+
 package apis
 
 import v1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"

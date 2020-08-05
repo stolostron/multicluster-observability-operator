@@ -1,3 +1,5 @@
+// Copyright (c) 2020 Red Hat, Inc.
+
 // NOTE: Boilerplate only.  Ignore this file.
 
 // Package v1beta1 contains API Schema definitions for the observability v1beta1 API group
