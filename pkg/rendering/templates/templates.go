@@ -73,7 +73,8 @@ func (r *TemplateRenderer) GetMinioTemplates(
 	// resourceList contains all kustomize resources
 	resourceList := []*resource.Resource{}
 
-	if mco.Spec.ObjectStorageConfigSpec.Type == "minio" {
+	// TODO: if do not config objectStorageConfig
+	if mco.Spec.ObjectStorageConfigSpec == nil {
 		// add minio template
 		if err := r.AddTemplateFromPath(basePath+"/object_storage/minio", &resourceList); err != nil {
 			return resourceList, err
@@ -93,14 +94,6 @@ func (r *TemplateRenderer) GetTemplates(
 	// add observatorium template
 	if err := r.AddTemplateFromPath(basePath+"/observatorium", &resourceList); err != nil {
 		return resourceList, err
-	}
-
-	objStorageType := mco.Spec.ObjectStorageConfigSpec.Type
-	// add s3 template
-	if objStorageType == "s3" {
-		if err := r.AddTemplateFromPath(basePath+"/object_storage/s3", &resourceList); err != nil {
-			return resourceList, err
-		}
 	}
 	return resourceList, nil
 }

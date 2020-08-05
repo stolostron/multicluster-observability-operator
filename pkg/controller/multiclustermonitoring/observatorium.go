@@ -172,8 +172,8 @@ func newDefaultObservatoriumSpec() *observatoriumv1alpha1.ObservatoriumSpec {
 		{Hashring: "default", Tenants: []string{}},
 	}
 
-	obs.ObjectStorageConfig.Name = "thanos-objectstorage"
-	obs.ObjectStorageConfig.Key = "thanos.yaml"
+	obs.ObjectStorageConfig.Name = defaultObjStorageSecretName
+	obs.ObjectStorageConfig.Key = defaultObjStorageSecretKey
 
 	obs.Query.Image = defaultThanosImage
 	obs.Query.Version = defaultThanosVersion

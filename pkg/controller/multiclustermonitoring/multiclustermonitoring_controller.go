@@ -152,6 +152,11 @@ func (r *ReconcileMultiClusterMonitoring) Reconcile(request reconcile.Request) (
 	if result, err := GenerateMonitoringCR(r.client, instance); result != nil {
 		return *result, err
 	}
+
+	if result, err := GenerateObjectStorageSecret(r.client, instance); result != nil {
+		return *result, err
+	}
+
 	instance.Namespace = config.GetDefaultNamespace()
 	//Render the templates with a specified CR
 	renderer := rendering.NewRenderer(instance)

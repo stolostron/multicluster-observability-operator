@@ -61,11 +61,6 @@ func GenerateMonitoringCR(c client.Client,
 		}
 	}
 
-	if mco.Spec.ObjectStorageConfigSpec == nil {
-		log.Info("Add default object storage configuration")
-		mco.Spec.ObjectStorageConfigSpec = newDefaultObjectStorageConfigSpec()
-	}
-
 	if mco.Spec.Grafana == nil {
 		log.Info("Add default grafana config")
 		mco.Spec.Grafana = newGrafanaConfigSpec()

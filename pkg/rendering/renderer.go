@@ -192,20 +192,6 @@ func (r *Renderer) renderSecret(res *resource.Resource) (*unstructured.Unstructu
 		res.SetNamespace(r.cr.Namespace)
 	}
 
-	name := res.GetName()
-	switch name {
-
-	case "thanos-objectstorage":
-		stringData, ok := u.Object["stringData"].(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("failed to find stringData field")
-		}
-		err := replaceInValues(stringData, r.cr)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	return u, nil
 }
 
@@ -240,45 +226,29 @@ func stringValueReplace(toReplace string, cr *monitoringv1.MultiClusterObservabi
 	replaced = strings.ReplaceAll(replaced, "{{STORAGECLASS}}", string(cr.Spec.StorageClass))
 	replaced = strings.ReplaceAll(replaced, "{{MULTICLUSTERMONITORING_CR_NAME}}", string(cr.Name))
 
-	// Object storage config
-	replaced = strings.ReplaceAll(
-		replaced,
-		"{{OBJ_STORAGE_BUCKET}}",
-		string(cr.Spec.ObjectStorageConfigSpec.Config.Bucket),
-	)
-
-	replaced = strings.ReplaceAll(
-		replaced,
-		"{{OBJ_STORAGE_ENDPOINT}}",
-		string(cr.Spec.ObjectStorageConfigSpec.Config.Endpoint),
-	)
-
-	replaced = strings.ReplaceAll(
-		replaced,
-		"{{OBJ_STORAGE_INSECURE}}",
-		strconv.FormatBool(cr.Spec.ObjectStorageConfigSpec.Config.Insecure),
-	)
-
+	// for minio deployment config
 	replaced = strings.ReplaceAll(
 		replaced,
 		"{{OBJ_STORAGE_ACCESSKEY}}",
-		string(cr.Spec.ObjectStorageConfigSpec.Config.AccessKey),
+		// TODO: get it from cr spec
+		"minio",
 	)
 
 	replaced = strings.ReplaceAll(
 		replaced,
 		"{{OBJ_STORAGE_SECRETKEY}}",
-		string(cr.Spec.ObjectStorageConfigSpec.Config.SecretKey),
+		// TODO: get it from cr spec
+		"minio123",
 	)
 
-	if cr.Spec.ObjectStorageConfigSpec.Type == "minio" {
+	if cr.Spec.ObjectStorageConfigSpec == nil {
 		replaced = strings.ReplaceAll(
 			replaced,
 			"{{OBJ_STORAGE_STORAGE}}",
-			string(cr.Spec.ObjectStorageConfigSpec.Config.Storage),
+			// TODO: get it from cr spec
+			"1Gi",
 		)
 	}
-
 	return replaced
 }
 
