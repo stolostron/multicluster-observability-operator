@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 const (
@@ -30,8 +30,6 @@ const (
 )
 
 const (
-	defaultStorageSize = "1Gi"
-
 	retentionResolution1h  = "30d"
 	retentionResolution5m  = "14d"
 	retentionResolutionRaw = "5d"
@@ -55,7 +53,7 @@ func GenerateObservatoriumCR(
 			Namespace: mco.Namespace,
 			Labels:    labels,
 		},
-		Spec: *newDefaultObservatoriumSpec(),
+		Spec: *newDefaultObservatoriumSpec(mco),
 	}
 
 	// Set MultiClusterObservability instance as the owner and controller
@@ -157,7 +155,7 @@ func GenerateAPIGatewayRoute(
 	return nil, nil
 }
 
-func newDefaultObservatoriumSpec() *observatoriumv1alpha1.ObservatoriumSpec {
+func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability) *observatoriumv1alpha1.ObservatoriumSpec {
 	obs := &observatoriumv1alpha1.ObservatoriumSpec{}
 
 	obs.API.Image = "quay.io/observatorium/observatorium:latest"
@@ -174,9 +172,12 @@ func newDefaultObservatoriumSpec() *observatoriumv1alpha1.ObservatoriumSpec {
 		{Hashring: "default", Tenants: []string{}},
 	}
 
-	obs.ObjectStorageConfig.Thanos = &observatoriumv1alpha1.ObjectStorageConfigSpec{
-		Name: "thanos-objectstorage",
-		Key:  "thanos.yaml",
+	if mco.Spec.ObjectStorageConfig != nil && mco.Spec.ObjectStorageConfig.Metrics != nil {
+		obs.ObjectStorageConfig.Thanos.Name = mco.Spec.ObjectStorageConfig.Metrics.Name
+		obs.ObjectStorageConfig.Thanos.Key = mco.Spec.ObjectStorageConfig.Metrics.Key
+	} else {
+		obs.ObjectStorageConfig.Thanos.Name = mcoconfig.DefaultObjStorageSecretName
+		obs.ObjectStorageConfig.Thanos.Key = mcoconfig.DefaultObjStorageSecretName
 	}
 
 	obs.Query.Image = defaultThanosImage
@@ -209,13 +210,13 @@ func newAPIRBAC() observatoriumv1alpha1.APIRBAC {
 					observatoriumv1alpha1.Read,
 				},
 				Tenants: []string{
-					config.GetDefaultTenantName(),
+					mcoconfig.GetDefaultTenantName(),
 				},
 			},
 		},
 		RoleBindings: []observatoriumv1alpha1.RBACRoleBinding{
 			{
-				Name: config.GetDefaultTenantName(),
+				Name: mcoconfig.GetDefaultTenantName(),
 				Roles: []string{
 					"read-write",
 				},
@@ -233,7 +234,7 @@ func newAPIRBAC() observatoriumv1alpha1.APIRBAC {
 func newAPITenants() []observatoriumv1alpha1.APITenant {
 	return []observatoriumv1alpha1.APITenant{
 		{
-			Name: config.GetDefaultTenantName(),
+			Name: mcoconfig.GetDefaultTenantName(),
 			ID:   "1610b0c3-c509-4592-a256-a1871353dbfa",
 			OIDC: observatoriumv1alpha1.TenantOIDC{
 				ClientID:      "test",

@@ -20,9 +20,17 @@ const (
 	infrastructureConfigName = "cluster"
 	defaultNamespace         = "open-cluster-management-observability"
 	defaultTenantName        = "prod"
-)
 
-const (
+	DefaultObjStorageType      = "s3"
+	DefaultObjStorageBucket    = "thanos"
+	DefaultObjStorageEndpoint  = "minio:9000"
+	DefaultObjStorageInsecure  = true
+	DefaultObjStorageAccesskey = "minio"
+	// #nosec
+	DefaultObjStorageSecretkey = "minio123"
+	// #nosec
+	DefaultObjStorageSecretName = "thanos-object-storage"
+
 	AnnotationKeyImageRepository = "mco-imageRepository"
 	AnnotationKeyImageTagSuffix  = "mco-imageTagSuffix"
 )

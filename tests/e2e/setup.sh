@@ -17,6 +17,12 @@ if [[ "$(uname)" == "Darwin" ]]; then
     sed_command='sed -i '-e' -e'
 fi
 
+print_mco_operator_log() {
+    kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS get po \
+        | grep multicluster-observability-operator | awk '{print $1}' \
+        | xargs kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS logs
+}
+
 # update prometheus CR to enable remote write to thanos
 update_prometheus_remote_write() {
     obs_url="http://observability-observatorium-observatorium-api.$DEFAULT_NS.svc:8080/api/metrics/v1/write"
@@ -242,6 +248,7 @@ approve_csr_joinrequest() {
             break
         fi
         if [[ $n -ge 20 ]]; then
+            print_mco_operator_log
             exit 1
         fi
         n=$((n+1))
@@ -259,6 +266,7 @@ approve_csr_joinrequest() {
             break
         fi
         if [[ $n -ge 20 ]]; then
+            print_mco_operator_log
             exit 1
         fi
         n=$((n+1))
@@ -293,6 +301,7 @@ patch_for_remote_write() {
             break
         fi
         if [[ $n -ge 20 ]]; then
+            print_mco_operator_log
             exit 1
         fi
         n=$((n+1))
@@ -321,6 +330,7 @@ patch_for_memcached() {
             # for debug pod status
             kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS get po
             kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS describe po
+            print_mco_operator_log
             exit 1
         fi
         n=$((n+1))

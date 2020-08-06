@@ -22,6 +22,7 @@ const (
 	defaultImageRepository = "quay.io/open-cluster-management"
 	defaultImageTagSuffix  = ""
 	defaultStorageClass    = "gp2"
+	defaultStorageSize     = "50Gi"
 )
 
 // GenerateMonitoringCR is used to generate monitoring CR with the default values
@@ -57,6 +58,13 @@ func GenerateMonitoringCR(c client.Client,
 
 	if mco.Spec.StorageClass == "" {
 		mco.Spec.StorageClass = defaultStorageClass
+	}
+
+	if mco.Spec.ObjectStorageConfig == nil {
+		err := GenerateObjectStorageSecret(c, mco)
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
 	}
 
 	found := &mcov1beta1.MultiClusterObservability{}
