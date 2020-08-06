@@ -70,9 +70,15 @@ func TestGenerateMonitoringEmptyCR(t *testing.T) {
 
 func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 	mco := &mcov1beta1.MultiClusterObservability{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
-		Spec:       mcov1beta1.MultiClusterObservabilitySpec{},
+		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "test",
+			Name:      "test",
+			Annotations: map[string]string{
+				"test": "test",
+			},
+		},
+		Spec: mcov1beta1.MultiClusterObservabilitySpec{},
 	}
 	fakeClient := NewFakeClient(mco, &observatoriumv1alpha1.Observatorium{})
 	result, err := GenerateMonitoringCR(fakeClient, mco)
@@ -109,4 +115,16 @@ func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 			mco.Spec.StorageClass, defaultStorageClass)
 	}
 
+	mco.Annotations[mcoconfig.AnnotationKeyImageRepository] = "test_repo"
+	mco.Annotations[mcoconfig.AnnotationKeyImageTagSuffix] = "test_suffix"
+	fakeClient = NewFakeClient(mco, &observatoriumv1alpha1.Observatorium{})
+	result, err = GenerateMonitoringCR(fakeClient, mco)
+	if result != nil || err != nil {
+		t.Fatalf("Should return nil for result (%v) and err (%v)", result, err)
+	}
+
+	if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix) != "test_suffix" {
+		t.Errorf("ImageTagSuffix (%v) is not the expected (%v)",
+			util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix), "test_suffix")
+	}
 }
