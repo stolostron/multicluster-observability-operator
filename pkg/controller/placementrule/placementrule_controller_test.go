@@ -48,7 +48,7 @@ func initSchema(t *testing.T) {
 	}
 }
 
-func TestEndpointMonitoringController(t *testing.T) {
+func TestObservabilityAddonController(t *testing.T) {
 	s := scheme.Scheme
 	initSchema(t)
 	config.SetMonitoringCRName(mcoName)

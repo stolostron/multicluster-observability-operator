@@ -6,14 +6,13 @@ import (
 	"context"
 	"testing"
 
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	routev1 "github.com/openshift/api/route/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 const (
@@ -40,35 +39,35 @@ func TestEndpointConfigCR(t *testing.T) {
 
 	err := createEndpointConfigCR(c, mcoNamespace, namespace, "test-cluster")
 	if err != nil {
-		t.Fatalf("Failed to create EndpointMonitoring: (%v)", err)
+		t.Fatalf("Failed to create observabilityaddon: (%v)", err)
 	}
-	found := &mcov1beta1.EndpointMonitoring{}
+	found := &mcov1beta1.ObservabilityAddon{}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: epConfigName, Namespace: namespace}, found)
 	if err != nil {
-		t.Fatalf("Failed to get EndpointMonitoring: (%v)", err)
+		t.Fatalf("Failed to get observabilityaddon: (%v)", err)
 	}
-	if found.Spec.GlobalConfig.SeverURL != routeHost {
-		t.Log(found.Spec.GlobalConfig.SeverURL)
-		t.Fatal("Endpointmonitoring has wrong configurations")
+	if found.Spec.MetricsConfigs.Interval != "1m" {
+		t.Log(found.Spec.MetricsConfigs.Interval)
+		t.Fatal("observabilityaddon has wrong configurations")
 	}
 
 	err = createEndpointConfigCR(c, mcoNamespace, namespace, "test-cluster")
 	if err != nil {
-		t.Fatalf("Failed to create EndpointMonitoring: (%v)", err)
+		t.Fatalf("Failed to create observabilityaddon: (%v)", err)
 	}
 
 	err = deleteEndpointConfigCR(c, namespace)
 	if err != nil {
-		t.Fatalf("Failed to delete EndpointMonitoring: (%v)", err)
+		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: epConfigName, Namespace: namespace}, found)
 	if err == nil || !errors.IsNotFound(err) {
-		t.Fatalf("Failed to delete EndpointMonitoring: (%v)", err)
+		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}
 
 	err = deleteEndpointConfigCR(c, namespace)
 	if err != nil {
-		t.Fatalf("Failed to delete EndpointMonitoring: (%v)", err)
+		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}
 
 }
