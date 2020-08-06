@@ -21,6 +21,11 @@ const (
 	defaultNamespace         = "open-cluster-management-observability"
 )
 
+const (
+	AnnotationKeyImageRepository = "mco-imageRepository"
+	AnnotationKeyImageTagSuffix  = "mco-imageTagSuffix"
+)
+
 var log = logf.Log.WithName("config")
 
 var monitoringCRName = ""
