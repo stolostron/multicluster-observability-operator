@@ -7,7 +7,7 @@ spec:
   names:
     kind: ObservabilityAddon
     listKind: ObservabilityAddonList
-    plural: observabilityaddon
+    plural: observabilityaddons
     shortNames:
       - oba
     singular: observabilityaddon
