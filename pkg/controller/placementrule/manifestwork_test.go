@@ -83,6 +83,6 @@ func TestManifestWork(t *testing.T) {
 	}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err == nil || !errors.IsNotFound(err) {
-		t.Fatalf("Failed to delete EndpointMonitoring: (%v)", err)
+		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}
 }
