@@ -28,8 +28,11 @@ const (
 	DefaultObjStorageAccesskey = "minio"
 	// #nosec
 	DefaultObjStorageSecretkey = "minio123"
+
 	// #nosec
 	DefaultObjStorageSecretName = "thanos-object-storage"
+	// #nosec
+	DefaultObjStorageSecretStringDataKey = "thanos.yaml"
 
 	AnnotationKeyImageRepository = "mco-imageRepository"
 	AnnotationKeyImageTagSuffix  = "mco-imageTagSuffix"

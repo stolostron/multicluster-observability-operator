@@ -172,12 +172,13 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability) *obs
 		{Hashring: "default", Tenants: []string{}},
 	}
 
+	obs.ObjectStorageConfig.Thanos = &observatoriumv1alpha1.ObjectStorageConfigSpec{}
 	if mco.Spec.ObjectStorageConfig != nil && mco.Spec.ObjectStorageConfig.Metrics != nil {
 		obs.ObjectStorageConfig.Thanos.Name = mco.Spec.ObjectStorageConfig.Metrics.Name
 		obs.ObjectStorageConfig.Thanos.Key = mco.Spec.ObjectStorageConfig.Metrics.Key
 	} else {
 		obs.ObjectStorageConfig.Thanos.Name = mcoconfig.DefaultObjStorageSecretName
-		obs.ObjectStorageConfig.Thanos.Key = mcoconfig.DefaultObjStorageSecretName
+		obs.ObjectStorageConfig.Thanos.Key = mcoconfig.DefaultObjStorageSecretStringDataKey
 	}
 
 	obs.Query.Image = defaultThanosImage

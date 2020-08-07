@@ -70,7 +70,7 @@ func newObjectStorageSecret(
 
 		Type: "Opaque",
 		StringData: map[string]string{
-			mcoconfig.DefaultObjStorageSecretName: getObjStorageConf(),
+			mcoconfig.DefaultObjStorageSecretStringDataKey: getObjStorageConf(),
 		},
 	}
 
