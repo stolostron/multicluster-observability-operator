@@ -23,13 +23,13 @@ import (
 	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
-	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
-	ownerLabelKey   = "owner"
-	ownerLabelValue = "multicluster-operator"
+	placementRuleName = "open-cluster-management-observability"
+	ownerLabelKey     = "owner"
+	ownerLabelValue   = "multicluster-operator"
 )
 
 var log = logf.Log.WithName("controller_placementrule")
@@ -65,19 +65,19 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Meta.GetName() == mcoconfig.GetDefaultNamespace() && e.Meta.GetNamespace() == watchNamespace {
+			if e.Meta.GetName() == placementRuleName && e.Meta.GetNamespace() == watchNamespace {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == mcoconfig.GetDefaultNamespace() && e.MetaNew.GetNamespace() == watchNamespace {
+			if e.MetaNew.GetName() == placementRuleName && e.MetaNew.GetNamespace() == watchNamespace {
 				return true
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == mcoconfig.GetDefaultNamespace() && e.Meta.GetNamespace() == watchNamespace {
+			if e.Meta.GetName() == placementRuleName && e.Meta.GetNamespace() == watchNamespace {
 				return e.DeleteStateUnknown
 			}
 			return false
@@ -94,7 +94,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		func(a handler.MapObject) []reconcile.Request {
 			return []reconcile.Request{
 				{NamespacedName: types.NamespacedName{
-					Name:      mcoconfig.GetDefaultNamespace(),
+					Name:      placementRuleName,
 					Namespace: watchNamespace,
 				}},
 			}
