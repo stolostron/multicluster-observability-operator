@@ -13,13 +13,15 @@ import (
 	"sigs.k8s.io/yaml"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 const (
-	defaultVersion       = "latest"
-	defaultImgRepo       = "quay.io/open-cluster-management"
-	defaultImgPullSecret = "multiclusterhub-operator-pull-secret"
-	defaultStorageClass  = "gp2"
+	defaultImagePullPolicy = corev1.PullAlways
+	defaultImagePullSecret = "multiclusterhub-operator-pull-secret"
+	defaultImageRepository = "quay.io/open-cluster-management"
+	defaultImageTagSuffix  = ""
+	defaultStorageClass    = "gp2"
 )
 
 // GenerateMonitoringCR is used to generate monitoring CR with the default values
@@ -27,12 +29,26 @@ const (
 func GenerateMonitoringCR(c client.Client,
 	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
-	if string(mco.Spec.ImagePullPolicy) == "" {
-		mco.Spec.ImagePullPolicy = corev1.PullAlways
+	if mco.Annotations == nil {
+		mco.Annotations = map[string]string{
+			mcoconfig.AnnotationKeyImageRepository: defaultImageRepository,
+			mcoconfig.AnnotationKeyImageTagSuffix:  defaultImageTagSuffix,
+		}
+	} else {
+		if _, ok := mco.Annotations[mcoconfig.AnnotationKeyImageRepository]; !ok {
+			mco.Annotations[mcoconfig.AnnotationKeyImageRepository] = defaultImageRepository
+		}
+		if _, ok := mco.Annotations[mcoconfig.AnnotationKeyImageTagSuffix]; !ok {
+			mco.Annotations[mcoconfig.AnnotationKeyImageTagSuffix] = defaultImageTagSuffix
+		}
+	}
+
+	if mco.Spec.ImagePullPolicy == "" {
+		mco.Spec.ImagePullPolicy = defaultImagePullPolicy
 	}
 
 	if mco.Spec.ImagePullSecret == "" {
-		mco.Spec.ImagePullSecret = defaultImgPullSecret
+		mco.Spec.ImagePullSecret = defaultImagePullSecret
 	}
 
 	if mco.Spec.NodeSelector == nil {
@@ -42,11 +58,6 @@ func GenerateMonitoringCR(c client.Client,
 	if mco.Spec.StorageClass == "" {
 		mco.Spec.StorageClass = defaultStorageClass
 	}
-
-	// if mco.Spec.ObjectStorageConfig == nil {
-	// 	log.Info("Add default object storage configuration")
-	// 	mco.Spec.ObjectStorageConfig = newDefaultObjectStorageConfigSpec()
-	// }
 
 	found := &mcov1beta1.MultiClusterObservability{}
 	err := c.Get(

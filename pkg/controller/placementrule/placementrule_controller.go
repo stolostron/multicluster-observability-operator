@@ -100,7 +100,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			}
 		})
 
-	// Only handle delete event for endpointmonitoring
+	// Only handle delete event for observabilityaddon
 	epPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			return false
@@ -116,8 +116,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		},
 	}
 
-	// secondary watch for endpointmonitoring
-	err = c.Watch(&source.Kind{Type: &mcov1beta1.EndpointMonitoring{}},
+	// secondary watch for observabilityaddon
+	err = c.Watch(&source.Kind{Type: &mcov1beta1.ObservabilityAddon{}},
 		&handler.EnqueueRequestsFromMapFunc{
 			ToRequests: mapFn,
 		},
@@ -218,10 +218,10 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 
-	epList := &mcov1beta1.EndpointMonitoringList{}
+	epList := &mcov1beta1.ObservabilityAddonList{}
 	err = r.client.List(context.TODO(), epList)
 	if err != nil {
-		reqLogger.Error(err, "Failed to list endpointmonitoring resource")
+		reqLogger.Error(err, "Failed to list observabilityaddon resource")
 		return reconcile.Result{}, err
 	}
 	currentClusters := []string{}
@@ -236,7 +236,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
 		err = createEndpointConfigCR(r.client, mco.Namespace, decision.ClusterNamespace, decision.ClusterName)
 		if err != nil {
-			reqLogger.Error(err, "Failed to create endpointmonitoring")
+			reqLogger.Error(err, "Failed to create observabilityaddon")
 			return reconcile.Result{}, err
 		}
 		err = createManifestWork(r.client, decision.ClusterNamespace, mco, imagePullSecret)
@@ -250,7 +250,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		reqLogger.Info("Monitoring opearator will be uninstalled", "namespace", cluster)
 		err = deleteEndpointConfigCR(r.client, cluster)
 		if err != nil {
-			reqLogger.Error(err, "Failed to delete endpointmonitoring", "namespace", cluster)
+			reqLogger.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
 			return reconcile.Result{}, err
 		}
 		err = deleteManifestWork(r.client, cluster)

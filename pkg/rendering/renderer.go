@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
 	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering/patching"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering/templates"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
@@ -234,10 +235,14 @@ func stringValueReplace(toReplace string, cr *monitoringv1.MultiClusterObservabi
 
 	replaced := toReplace
 
-	replaced = strings.ReplaceAll(replaced, "{{IMAGEREPO}}", string(util.GetAnnotation(cr, "mco-imageRepository")))
+	replaced = strings.ReplaceAll(
+		replaced,
+		"{{IMAGEREPO}}",
+		string(util.GetAnnotation(cr, mcoconfig.AnnotationKeyImageRepository)),
+	)
 	replaced = strings.ReplaceAll(replaced, "{{PULLSECRET}}", string(cr.Spec.ImagePullSecret))
 	replaced = strings.ReplaceAll(replaced, "{{NAMESPACE}}", string(cr.Namespace))
-	replaced = strings.ReplaceAll(replaced, "{{PULLPOLICY}}", string(util.GetAnnotation(cr, "mco-imagePullPolicy")))
+	replaced = strings.ReplaceAll(replaced, "{{PULLPOLICY}}", string(cr.Spec.ImagePullPolicy))
 	replaced = strings.ReplaceAll(replaced, "{{STORAGECLASS}}", string(cr.Spec.StorageClass))
 	replaced = strings.ReplaceAll(replaced, "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}", string(cr.Name))
 
