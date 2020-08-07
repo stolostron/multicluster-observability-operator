@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	epConfigName  = "endpoint-config"
-	collectorType = "OCP_PROMETHEUS"
+	epConfigName    = "observability-addon"
+	collectorType   = "OCP_PROMETHEUS"
+	defaultInterval = "1m"
 )
 
 func deleteEndpointConfigCR(client client.Client, namespace string) error {
@@ -52,7 +53,7 @@ func createEndpointConfigCR(client client.Client, obsNamespace string, namespace
 		Spec: obv1beta1.ObservabilityAddonSpec{
 			EnableMetrics: true,
 			MetricsConfigs: obv1beta1.MetricsConfigsSpec{
-				Interval: "1m",
+				Interval: defaultInterval,
 			},
 		},
 	}

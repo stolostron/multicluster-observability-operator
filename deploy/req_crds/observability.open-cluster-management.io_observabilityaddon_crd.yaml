@@ -8,6 +8,8 @@ spec:
     kind: ObservabilityAddon
     listKind: ObservabilityAddonList
     plural: observabilityaddon
+    shortNames:
+      - oba
     singular: observabilityaddon
   scope: Namespaced
   subresources:

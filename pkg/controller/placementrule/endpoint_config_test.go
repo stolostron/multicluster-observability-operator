@@ -46,7 +46,7 @@ func TestEndpointConfigCR(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get observabilityaddon: (%v)", err)
 	}
-	if found.Spec.MetricsConfigs.Interval != "1m" {
+	if found.Spec.MetricsConfigs.Interval != defaultInterval {
 		t.Log(found.Spec.MetricsConfigs.Interval)
 		t.Fatal("observabilityaddon has wrong configurations")
 	}
