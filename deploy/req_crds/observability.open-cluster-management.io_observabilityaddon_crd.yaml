@@ -1,7 +1,7 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: observabilityaddon.observability.open-cluster-management.io
+  name: observabilityaddons.observability.open-cluster-management.io
 spec:
   group: observability.open-cluster-management.io
   names:
@@ -9,7 +9,7 @@ spec:
     listKind: ObservabilityAddonList
     plural: observabilityaddons
     shortNames:
-      - oba
+    - oba
     singular: observabilityaddon
   scope: Namespaced
   subresources:
