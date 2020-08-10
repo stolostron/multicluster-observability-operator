@@ -72,7 +72,6 @@ func (r *TemplateRenderer) GetMinioTemplates(
 	basePath := path.Join(r.templatesPath, "base")
 	// resourceList contains all kustomize resources
 	resourceList := []*resource.Resource{}
-
 	if mco.Spec.ObjectStorageConfig == nil {
 		// add minio template
 		if err := r.AddTemplateFromPath(basePath+"/object_storage/minio", &resourceList); err != nil {

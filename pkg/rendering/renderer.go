@@ -194,20 +194,6 @@ func (r *Renderer) renderSecret(res *resource.Resource) (*unstructured.Unstructu
 		res.SetNamespace(r.cr.Namespace)
 	}
 
-	name := res.GetName()
-	switch name {
-
-	case "thanos-objectstorage":
-		stringData, ok := u.Object["stringData"].(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("failed to find stringData field")
-		}
-		err := replaceInValues(stringData, r.cr)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	return u, nil
 }
 
@@ -245,6 +231,24 @@ func stringValueReplace(toReplace string, cr *monitoringv1.MultiClusterObservabi
 	replaced = strings.ReplaceAll(replaced, "{{PULLPOLICY}}", string(cr.Spec.ImagePullPolicy))
 	replaced = strings.ReplaceAll(replaced, "{{STORAGECLASS}}", string(cr.Spec.StorageClass))
 	replaced = strings.ReplaceAll(replaced, "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}", string(cr.Name))
+
+	replaced = strings.ReplaceAll(
+		replaced,
+		"{{OBJ_STORAGE_ACCESSKEY}}",
+		mcoconfig.DefaultObjStorageAccesskey,
+	)
+
+	replaced = strings.ReplaceAll(
+		replaced,
+		"{{OBJ_STORAGE_SECRETKEY}}",
+		mcoconfig.DefaultObjStorageSecretkey,
+	)
+
+	replaced = strings.ReplaceAll(
+		replaced,
+		"{{OBJ_STORAGE_STORAGE}}",
+		cr.Spec.StorageSize.String(),
+	)
 
 	return replaced
 }

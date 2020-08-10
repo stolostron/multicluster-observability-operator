@@ -13,12 +13,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 func TestGenerateDashboardMetricCM(t *testing.T) {
 	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: dashboardMetricsConfigMapNS, Name: "name"},
+		ObjectMeta: metav1.ObjectMeta{Namespace: mcoconfig.GetDefaultNamespace(), Name: "name"},
 		Spec:       mcov1beta1.MultiClusterObservabilitySpec{},
 	}
 
@@ -69,7 +70,7 @@ func TestGetDashboardMetrics(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      dashboardMetricsConfigMapName,
-					Namespace: dashboardMetricsConfigMapNS,
+					Namespace: mcoconfig.GetDefaultNamespace(),
 				},
 				Data: map[string]string{dashboardMetricsConfigMapKey: `
 defalutMetrics:
@@ -108,7 +109,7 @@ additionalMetrics:
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      dashboardMetricsConfigMapName,
-					Namespace: dashboardMetricsConfigMapNS,
+					Namespace: mcoconfig.GetDefaultNamespace(),
 				},
 				Data: map[string]string{dashboardMetricsConfigMapKey: `
 defalutMetrics
@@ -131,7 +132,7 @@ additionalMetrics
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      dashboardMetricsConfigMapName,
-					Namespace: dashboardMetricsConfigMapNS,
+					Namespace: mcoconfig.GetDefaultNamespace(),
 				},
 				Data: map[string]string{dashboardMetricsConfigMapKey: ""},
 			},

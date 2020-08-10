@@ -16,12 +16,12 @@ import (
 	"sigs.k8s.io/yaml"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 const (
 	dashboardMetricsConfigMapKey  = "metrics.yaml"
 	dashboardMetricsConfigMapName = "grafana-dashboards-metrics"
-	dashboardMetricsConfigMapNS   = "open-cluster-management-observability"
 )
 
 type DashboardMetricConfig struct {
@@ -47,7 +47,7 @@ func GenerateDashboardMetricCM(
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      dashboardMetricsConfigMapName,
-			Namespace: dashboardMetricsConfigMapNS,
+			Namespace: mcoconfig.GetDefaultNamespace(),
 			Labels:    labels,
 		},
 		Data: map[string]string{dashboardMetricsConfigMapKey: `
@@ -68,7 +68,7 @@ func GenerateDashboardMetricCM(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      dashboardMetricsConfigMapName,
-			Namespace: dashboardMetricsConfigMapNS,
+			Namespace: mcoconfig.GetDefaultNamespace(),
 		},
 		found,
 	)
@@ -156,7 +156,7 @@ func getDashboardMetrics(client client.Client) []string {
 	found := &corev1.ConfigMap{}
 	namespacedName := types.NamespacedName{
 		Name:      dashboardMetricsConfigMapName,
-		Namespace: dashboardMetricsConfigMapNS,
+		Namespace: mcoconfig.GetDefaultNamespace(),
 	}
 
 	err := client.Get(context.TODO(), namespacedName, found)

@@ -23,6 +23,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 func init() {
@@ -68,7 +69,7 @@ func createClusterVersion() *configv1.ClusterVersion {
 func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	var (
 		name      = "monitoring"
-		namespace = "open-cluster-management-observability"
+		namespace = mcoconfig.GetDefaultNamespace()
 	)
 	logf.SetLogger(logf.ZapLogger(true))
 
