@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 const (
@@ -208,13 +209,13 @@ func newAPIRBAC() observatoriumv1alpha1.APIRBAC {
 					observatoriumv1alpha1.Read,
 				},
 				Tenants: []string{
-					"test",
+					config.GetDefaultTenantName(),
 				},
 			},
 		},
 		RoleBindings: []observatoriumv1alpha1.RBACRoleBinding{
 			{
-				Name: "test",
+				Name: config.GetDefaultTenantName(),
 				Roles: []string{
 					"read-write",
 				},
@@ -232,7 +233,7 @@ func newAPIRBAC() observatoriumv1alpha1.APIRBAC {
 func newAPITenants() []observatoriumv1alpha1.APITenant {
 	return []observatoriumv1alpha1.APITenant{
 		{
-			Name: "test",
+			Name: config.GetDefaultTenantName(),
 			ID:   "1610b0c3-c509-4592-a256-a1871353dbfa",
 			OIDC: observatoriumv1alpha1.TenantOIDC{
 				ClientID:      "test",

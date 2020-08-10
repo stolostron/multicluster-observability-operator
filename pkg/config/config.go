@@ -19,6 +19,7 @@ const (
 	obsAPIGateway            = "observatorium-api"
 	infrastructureConfigName = "cluster"
 	defaultNamespace         = "open-cluster-management-observability"
+	defaultTenantName        = "prod"
 )
 
 const (
@@ -33,6 +34,11 @@ var monitoringCRName = ""
 // GetClusterNameLabelKey returns the key for the injected label
 func GetClusterNameLabelKey() string {
 	return clusterNameLabelKey
+}
+
+// GetDefaultTenantName returns the default tenant name
+func GetDefaultTenantName() string {
+	return defaultTenantName
 }
 
 // GetObsAPIUrl is used to get the URL for observartium api gateway

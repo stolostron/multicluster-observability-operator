@@ -25,6 +25,13 @@ func TestGetClusterNameLabelKey(t *testing.T) {
 	}
 }
 
+func TestGetDefaultTenantName(t *testing.T) {
+	tenantName := GetDefaultTenantName()
+	if tenantName != defaultTenantName {
+		t.Errorf("Tenant name (%v) is not the expected (%v)", tenantName, defaultTenantName)
+	}
+}
+
 func TestGetDefaultNamespace(t *testing.T) {
 	expected := "open-cluster-management-observability"
 	if GetDefaultNamespace() != expected {
