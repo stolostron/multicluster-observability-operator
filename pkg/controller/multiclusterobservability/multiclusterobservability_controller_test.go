@@ -8,7 +8,7 @@ import (
 	"path"
 	"testing"
 
-	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
+	observatoriumv1alpha1 "github.com/observatorium/deployments/operator/api/v1alpha1"
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"

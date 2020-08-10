@@ -5,7 +5,7 @@ package multiclusterobservability
 import (
 	"testing"
 
-	observatoriumv1alpha1 "github.com/observatorium/configuration/api/v1alpha1"
+	observatoriumv1alpha1 "github.com/observatorium/deployments/operator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
