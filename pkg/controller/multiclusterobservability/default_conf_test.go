@@ -43,16 +43,6 @@ func TestGenerateMonitoringEmptyCR(t *testing.T) {
 			mco.Spec.ImagePullPolicy, defaultImagePullPolicy)
 	}
 
-	if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository) != defaultImageRepository {
-		t.Errorf("ImageRepository (%v) is not the expected (%v)",
-			util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository), defaultImageRepository)
-	}
-
-	if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix) != defaultImageTagSuffix {
-		t.Errorf("ImageTagSuffix (%v) is not the expected (%v)",
-			util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix), defaultImageTagSuffix)
-	}
-
 	if mco.Spec.ImagePullSecret != defaultImagePullSecret {
 		t.Errorf("ImagePullSecret (%v) is not the expected (%v)",
 			mco.Spec.ImagePullSecret, defaultImagePullSecret)
@@ -91,16 +81,6 @@ func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 			mco.Spec.ImagePullPolicy, defaultImagePullPolicy)
 	}
 
-	if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository) != defaultImageRepository {
-		t.Errorf("ImageRepository (%v) is not the expected (%v)",
-			util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository), defaultImageRepository)
-	}
-
-	if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix) != defaultImageTagSuffix {
-		t.Errorf("ImageTagSuffix (%v) is not the expected (%v)",
-			util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix), defaultImageTagSuffix)
-	}
-
 	if mco.Spec.ImagePullSecret != defaultImagePullSecret {
 		t.Errorf("ImagePullSecret (%v) is not the expected (%v)",
 			mco.Spec.ImagePullSecret, defaultImagePullSecret)
@@ -117,6 +97,7 @@ func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 
 	mco.Annotations[mcoconfig.AnnotationKeyImageRepository] = "test_repo"
 	mco.Annotations[mcoconfig.AnnotationKeyImageTagSuffix] = "test_suffix"
+
 	fakeClient = NewFakeClient(mco, &observatoriumv1alpha1.Observatorium{})
 	result, err = GenerateMonitoringCR(fakeClient, mco)
 	if result != nil || err != nil {
