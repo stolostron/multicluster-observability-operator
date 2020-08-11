@@ -6,9 +6,9 @@ metadata:
   name: minio
   namespace: observatorium
 spec:
-  storageClassName: "{{OBJ_STORAGE_CLASS}}"
+  storageClassName: "gp2"
   accessModes:
   - ReadWriteOnce
   resources:
     requests:
-      storage: "{{OBJ_STORAGE_SIZE}}"
+      storage: "50Gi"

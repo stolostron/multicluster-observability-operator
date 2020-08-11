@@ -26,6 +26,7 @@ const (
 	metadataErr = "failed to find metadata field"
 
 	nsUpdateAnnoKey = "update-namespace"
+	crLabelKey      = "observability.open-cluster-management.io/name"
 )
 
 var log = logf.Log.WithName("renderer")
@@ -47,11 +48,11 @@ func NewRenderer(multipleClusterMonitoring *monitoringv1.MultiClusterObservabili
 		"ServiceAccount":        renderer.renderNamespace,
 		"ConfigMap":             renderer.renderNamespace,
 		"ClusterRoleBinding":    renderer.renderClusterRoleBinding,
-		"Secret":                renderer.renderSecret,
+		"Secret":                renderer.renderNamespace,
 		"Role":                  renderer.renderNamespace,
 		"RoleBinding":           renderer.renderNamespace,
 		"Ingress":               renderer.renderNamespace,
-		"PersistentVolumeClaim": renderer.renderPersistentVolumeClaim,
+		"PersistentVolumeClaim": renderer.renderNamespace,
 	}
 	renderer.newGranfanaRenderer()
 	renderer.newMinioRenderer()
@@ -94,22 +95,33 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 	for idx, _ := range resources {
 		if resources[idx].GetKind() == "PersistentVolumeClaim" {
 			obj := util.GetK8sObj(resources[idx].GetKind())
-			runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
+			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
+			if err != nil {
+				return nil, err
+			}
+
 			spec := &obj.(*corev1.PersistentVolumeClaim).Spec
 			storageClass := r.cr.Spec.StorageClass
 			spec.StorageClassName = &storageClass
 			spec.Resources.Requests[corev1.ResourceStorage] = k8sresource.MustParse(r.cr.Spec.StorageSize.String())
-			unstructuredObj, _ := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+			if err != nil {
+				return nil, err
+			}
+
 			resources[idx].Object = unstructuredObj
 		}
 
 		if resources[idx].GetKind() == "Deployment" {
 			obj := util.GetK8sObj(resources[idx].GetKind())
-			runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
+			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
+			if err != nil {
+				return nil, err
+			}
 			dep := obj.(*v1.Deployment)
-			dep.ObjectMeta.Labels["observability.open-cluster-management.io/name"] = r.cr.Name
-			dep.Spec.Selector.MatchLabels["observability.open-cluster-management.io/name"] = r.cr.Name
-			dep.Spec.Template.ObjectMeta.Labels["observability.open-cluster-management.io/name"] = r.cr.Name
+			dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+			dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
+			dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 
 			spec := &dep.Spec.Template.Spec
 			spec.Containers[0].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
@@ -117,7 +129,6 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 			spec.ImagePullSecrets = []corev1.LocalObjectReference{
 				{Name: r.cr.Spec.ImagePullSecret},
 			}
-
 			grafanaImgRepo := mcoconfig.GrafanaImgRepo
 			grafanaImgTagSuffix := mcoconfig.GrafanaImgTagSuffix
 			minioImgRepo := mcoconfig.MinioImgRepo
@@ -138,33 +149,42 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 				observatoriumImgTagSuffix = imgVersion
 			}
 
-			if resources[idx].GetName() == "grafana" {
+			switch resources[idx].GetName() {
+
+			case "grafana":
 				spec.Containers[0].Image = grafanaImgRepo + "/grafana:" + grafanaImgTagSuffix
-			}
 
-			if resources[idx].GetName() == "minio" {
+			case "minio":
 				spec.Containers[0].Image = minioImgRepo + "/minio:" + minioImgTagSuffix
-				for i, env := range spec.Containers[0].Env {
-					if env.Name == "MINIO_ACCESS_KEY" {
-						spec.Containers[0].Env[i].Value = mcoconfig.DefaultObjStorageAccesskey
-					}
+				updateMinioSpecEnv(spec)
 
-					if env.Name == "MINIO_SECRET_KEY" {
-						spec.Containers[0].Env[i].Value = mcoconfig.DefaultObjStorageSecretkey
-					}
-				}
-			}
-
-			if resources[idx].GetName() == "observatorium-operator" {
+			case "observatorium-operator":
 				spec.Containers[0].Image = observatoriumImgRepo + "/observatorium-operator:" + observatoriumImgTagSuffix
+
 			}
 
-			unstructuredObj, _ := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+			if err != nil {
+				return nil, err
+			}
+
 			resources[idx].Object = unstructuredObj
 		}
 	}
 
 	return resources, nil
+}
+
+func updateMinioSpecEnv(spec *corev1.PodSpec) {
+	for i, env := range spec.Containers[0].Env {
+		if env.Name == "MINIO_ACCESS_KEY" {
+			spec.Containers[0].Env[i].Value = mcoconfig.DefaultObjStorageAccesskey
+		}
+
+		if env.Name == "MINIO_SECRET_KEY" {
+			spec.Containers[0].Env[i].Value = mcoconfig.DefaultObjStorageSecretkey
+		}
+	}
 }
 
 func (r *Renderer) renderTemplates(templates []*resource.Resource) ([]*unstructured.Unstructured, error) {
@@ -202,28 +222,6 @@ func (r *Renderer) renderDeployments(res *resource.Resource) (*unstructured.Unst
 
 func (r *Renderer) renderNamespace(res *resource.Resource) (*unstructured.Unstructured, error) {
 	u := &unstructured.Unstructured{Object: res.Map()}
-
-	if UpdateNamespace(u) {
-		res.SetNamespace(r.cr.Namespace)
-	}
-
-	return &unstructured.Unstructured{Object: res.Map()}, nil
-}
-
-func (r *Renderer) renderPersistentVolumeClaim(res *resource.Resource) (*unstructured.Unstructured, error) {
-	u := &unstructured.Unstructured{Object: res.Map()}
-
-	if UpdateNamespace(u) {
-		res.SetNamespace(r.cr.Namespace)
-	}
-
-	return u, nil
-}
-
-// render object storage secret config
-func (r *Renderer) renderSecret(res *resource.Resource) (*unstructured.Unstructured, error) {
-	u := &unstructured.Unstructured{Object: res.Map()}
-
 	if UpdateNamespace(u) {
 		res.SetNamespace(r.cr.Namespace)
 	}

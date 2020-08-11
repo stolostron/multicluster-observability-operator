@@ -35,6 +35,8 @@ const (
 
 	defaultThanosImage   = "quay.io/thanos/thanos:master-2020-05-24-079ad427"
 	defaultThanosVersion = "master-2020-05-24-079ad427"
+
+	thanosImgName = "thanos"
 )
 
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
@@ -195,10 +197,10 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability) *obs
 		obs.ThanosReceiveController.Image = imgRepo + "/thanos-receive-controller:" + imgVersion
 		obs.ThanosReceiveController.Version = imgVersion
 
-		obs.Query.Image = imgRepo + "/thanos:" + imgVersion
+		obs.Query.Image = imgRepo + "/" + thanosImgName + ":" + imgVersion
 		obs.Query.Version = imgVersion
 
-		obs.APIQuery.Image = imgRepo + "/thanos:" + imgVersion
+		obs.APIQuery.Image = imgRepo + "/" + thanosImgName + ":" + imgVersion
 		obs.APIQuery.Version = imgVersion
 
 	} else {
@@ -278,7 +280,7 @@ func newReceiversSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1
 		if imgVersion == "" {
 			imgVersion = mcoconfig.DefaultImgTagSuffix
 		}
-		receSpec.Image = imgRepo + "/thanos:" + imgVersion
+		receSpec.Image = imgRepo + "/" + thanosImgName + ":" + imgVersion
 		receSpec.Version = imgVersion
 	} else {
 		receSpec.Image = defaultThanosImage
@@ -297,7 +299,7 @@ func newRuleSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha
 		if imgVersion == "" {
 			imgVersion = mcoconfig.DefaultImgTagSuffix
 		}
-		ruleSpec.Image = imgRepo + "/thanos:" + imgVersion
+		ruleSpec.Image = imgRepo + "/" + thanosImgName + ":" + imgVersion
 		ruleSpec.Version = imgVersion
 	} else {
 		ruleSpec.Image = defaultThanosImage
@@ -316,7 +318,7 @@ func newStoreSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alph
 		if imgVersion == "" {
 			imgVersion = mcoconfig.DefaultImgTagSuffix
 		}
-		storeSpec.Image = imgRepo + "/thanos:" + imgVersion
+		storeSpec.Image = imgRepo + "/" + thanosImgName + ":" + imgVersion
 		storeSpec.Version = imgVersion
 	} else {
 		storeSpec.Image = defaultThanosImage
@@ -365,7 +367,7 @@ func newCompactSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1al
 		if imgVersion == "" {
 			imgVersion = mcoconfig.DefaultImgTagSuffix
 		}
-		compactSpec.Image = imgRepo + "/thanos:" + imgVersion
+		compactSpec.Image = imgRepo + "/" + thanosImgName + ":" + imgVersion
 		compactSpec.Version = imgVersion
 	} else {
 		compactSpec.Image = defaultThanosImage
