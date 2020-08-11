@@ -67,7 +67,7 @@ func GetClusterNameLabelKey() string {
 func IsNeededReplacement(annotations map[string]string) bool {
 	if annotations != nil {
 		_, hasRepo := annotations[AnnotationKeyImageRepository]
-		_, hasTagSuffix := annotations[AnnotationKeyImageRepository]
+		_, hasTagSuffix := annotations[AnnotationKeyImageTagSuffix]
 		return hasRepo && hasTagSuffix
 	}
 	return false
