@@ -7,6 +7,7 @@ import (
 	"path"
 	"testing"
 
+	k8sresource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
@@ -30,13 +31,14 @@ func TestRender(t *testing.T) {
 			ImagePullPolicy: "Always",
 			ImagePullSecret: "test",
 			StorageClass:    "gp2",
+			StorageSize:     k8sresource.MustParse("1Gi"),
 		},
 	}
 
 	renderer := NewRenderer(mchcr)
 	objs, err := renderer.Render(nil)
 	if err != nil {
-		t.Fatalf("failed to render MultiClusterObservability %v", err)
+		t.Fatalf("failed to render MultiClusterObservability: %v", err)
 	}
 
 	printObjs(t, objs)
