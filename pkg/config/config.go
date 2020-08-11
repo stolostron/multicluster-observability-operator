@@ -8,6 +8,7 @@ import (
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,6 +37,22 @@ const (
 
 	AnnotationKeyImageRepository = "mco-imageRepository"
 	AnnotationKeyImageTagSuffix  = "mco-imageTagSuffix"
+
+	DefaultImgPullPolicy = corev1.PullAlways
+	DefaultImgPullSecret = "multiclusterhub-operator-pull-secret"
+	DefaultImgRepository = "quay.io/open-cluster-management"
+	DefaultImgTagSuffix  = "latest"
+	DefaultStorageClass  = "gp2"
+	DefaultStorageSize   = "50Gi"
+
+	GrafanaImgRepo      = "grafana"
+	GrafanaImgTagSuffix = "6.6.0"
+
+	MinioImgRepo      = "minio"
+	MinioImgTagSuffix = "latest"
+
+	ObservatoriumImgRepo      = "quay.io/observatorium"
+	ObservatoriumImgTagSuffix = "latest"
 )
 
 var log = logf.Log.WithName("config")
@@ -45,6 +62,15 @@ var monitoringCRName = ""
 // GetClusterNameLabelKey returns the key for the injected label
 func GetClusterNameLabelKey() string {
 	return clusterNameLabelKey
+}
+
+func IsNeededReplacement(annotations map[string]string) bool {
+	if annotations != nil {
+		_, hasRepo := annotations[AnnotationKeyImageRepository]
+		_, hasTagSuffix := annotations[AnnotationKeyImageTagSuffix]
+		return hasRepo && hasTagSuffix
+	}
+	return false
 }
 
 // GetDefaultTenantName returns the default tenant name

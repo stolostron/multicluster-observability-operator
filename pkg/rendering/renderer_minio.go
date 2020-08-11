@@ -14,11 +14,11 @@ func (r *Renderer) newMinioRenderer() {
 		"ServiceAccount":        r.renderNamespace,
 		"ConfigMap":             r.renderNamespace,
 		"ClusterRoleBinding":    r.renderClusterRoleBinding,
-		"Secret":                r.renderSecret,
+		"Secret":                r.renderNamespace,
 		"Role":                  r.renderNamespace,
 		"RoleBinding":           r.renderNamespace,
 		"Ingress":               r.renderNamespace,
-		"PersistentVolumeClaim": r.renderPersistentVolumeClaim,
+		"PersistentVolumeClaim": r.renderNamespace,
 	}
 }
 
@@ -26,35 +26,6 @@ func (r *Renderer) renderMinioDeployments(res *resource.Resource) (*unstructured
 	u, err := r.renderDeployments(res)
 	if err != nil {
 		return nil, err
-	}
-
-	spec, ok := u.Object["spec"].(map[string]interface{})
-	if !ok {
-		return u, nil
-	}
-
-	template, ok := spec["template"].(map[string]interface{})
-	if !ok {
-		return u, nil
-	}
-
-	// update MINIO_ACCESS_KEY and MINIO_SECRET_KEY
-	containers, _ := template["spec"].(map[string]interface{})["containers"].([]interface{})
-	if len(containers) == 0 {
-		return nil, nil
-	}
-
-	envList, ok := containers[0].(map[string]interface{})["env"].([]interface{})
-	if !ok {
-		return u, nil
-	}
-
-	for idx := range envList {
-		env := envList[idx].(map[string]interface{})
-		err = replaceInValues(env, r.cr)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return u, nil

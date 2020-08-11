@@ -28,12 +28,13 @@ var compFns = map[string]compFn{
 // GetK8sObj is used to get k8s struct based on the passed-in Kind name
 func GetK8sObj(kind string) runtime.Object {
 	objs := map[string]runtime.Object{
-		"Namespace":          &corev1.Namespace{},
-		"Deployment":         &v1.Deployment{},
-		"ClusterRole":        &rbacv1.ClusterRole{},
-		"ClusterRoleBinding": &rbacv1.ClusterRoleBinding{},
-		"ServiceAccount":     &corev1.ServiceAccount{},
-		"Secret":             &corev1.Secret{},
+		"Namespace":             &corev1.Namespace{},
+		"Deployment":            &v1.Deployment{},
+		"ClusterRole":           &rbacv1.ClusterRole{},
+		"ClusterRoleBinding":    &rbacv1.ClusterRoleBinding{},
+		"ServiceAccount":        &corev1.ServiceAccount{},
+		"PersistentVolumeClaim": &corev1.PersistentVolumeClaim{},
+		"Secret":                &corev1.Secret{},
 	}
 	return objs[kind]
 }
