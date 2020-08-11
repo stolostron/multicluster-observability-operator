@@ -46,7 +46,7 @@ const (
 	DefaultStorageSize   = "50Gi"
 
 	GrafanaImgRepo      = "grafana"
-	GrafanaImgTagSuffix = "6.6.0"
+	GrafanaImgTagSuffix = "7.1.3"
 
 	MinioImgRepo      = "minio"
 	MinioImgTagSuffix = "latest"
