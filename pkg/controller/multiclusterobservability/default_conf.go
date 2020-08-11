@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -16,40 +15,17 @@ import (
 	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
-const (
-	defaultImagePullPolicy = corev1.PullAlways
-	defaultImagePullSecret = "multiclusterhub-operator-pull-secret"
-	defaultImageRepository = "quay.io/open-cluster-management"
-	defaultImageTagSuffix  = ""
-	defaultStorageClass    = "gp2"
-	defaultStorageSize     = "50Gi"
-)
-
 // GenerateMonitoringCR is used to generate monitoring CR with the default values
 // w/ or w/o customized values
 func GenerateMonitoringCR(c client.Client,
 	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
-	if mco.Annotations == nil {
-		mco.Annotations = map[string]string{
-			mcoconfig.AnnotationKeyImageRepository: defaultImageRepository,
-			mcoconfig.AnnotationKeyImageTagSuffix:  defaultImageTagSuffix,
-		}
-	} else {
-		if _, ok := mco.Annotations[mcoconfig.AnnotationKeyImageRepository]; !ok {
-			mco.Annotations[mcoconfig.AnnotationKeyImageRepository] = defaultImageRepository
-		}
-		if _, ok := mco.Annotations[mcoconfig.AnnotationKeyImageTagSuffix]; !ok {
-			mco.Annotations[mcoconfig.AnnotationKeyImageTagSuffix] = defaultImageTagSuffix
-		}
-	}
-
 	if mco.Spec.ImagePullPolicy == "" {
-		mco.Spec.ImagePullPolicy = defaultImagePullPolicy
+		mco.Spec.ImagePullPolicy = mcoconfig.DefaultImgPullPolicy
 	}
 
 	if mco.Spec.ImagePullSecret == "" {
-		mco.Spec.ImagePullSecret = defaultImagePullSecret
+		mco.Spec.ImagePullSecret = mcoconfig.DefaultImgPullSecret
 	}
 
 	if mco.Spec.NodeSelector == nil {
@@ -57,7 +33,7 @@ func GenerateMonitoringCR(c client.Client,
 	}
 
 	if mco.Spec.StorageClass == "" {
-		mco.Spec.StorageClass = defaultStorageClass
+		mco.Spec.StorageClass = mcoconfig.DefaultStorageClass
 	}
 
 	if mco.Spec.ObjectStorageConfig == nil {

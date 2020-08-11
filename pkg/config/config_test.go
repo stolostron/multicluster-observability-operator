@@ -25,6 +25,60 @@ func TestGetClusterNameLabelKey(t *testing.T) {
 	}
 }
 
+func TestIsNeededReplacement(t *testing.T) {
+	caseList := []struct {
+		annotations map[string]string
+		name        string
+		expected    bool
+	}{
+		{
+			annotations: map[string]string{
+				AnnotationKeyImageRepository: "test",
+				AnnotationKeyImageTagSuffix:  "test",
+			},
+			name:     "have img info",
+			expected: true,
+		},
+
+		{
+			annotations: map[string]string{
+				AnnotationKeyImageRepository: "test",
+			},
+			name:     "no img tag",
+			expected: false,
+		},
+
+		{
+			annotations: map[string]string{
+				AnnotationKeyImageTagSuffix: "test",
+			},
+			name:     "no img repo",
+			expected: false,
+		},
+
+		{
+			annotations: map[string]string{},
+			name:        "no img info",
+			expected:    false,
+		},
+
+		{
+			annotations: nil,
+			name:        "annotations is nil",
+			expected:    false,
+		},
+	}
+
+	for _, c := range caseList {
+		t.Run(c.name, func(t *testing.T) {
+			output := IsNeededReplacement(c.annotations)
+			if output != c.expected {
+				t.Errorf("case (%v) output (%v) is not the expected (%v)", c.name, output, c.expected)
+			}
+		})
+	}
+}
+
 func TestGetDefaultTenantName(t *testing.T) {
 	tenantName := GetDefaultTenantName()
 	if tenantName != defaultTenantName {

@@ -132,6 +132,7 @@ deploy_mco_operator() {
     # Add storage class config
     cp deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml-e
     printf "\n  storageClass: local\n" >> deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
+    $sed_command "s~50Gi~1Gi~g" deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
     # Install the multicluster-observability-operator
     kubectl create ns ${MONITORING_NS}
     kubectl config set-context --current --namespace ${MONITORING_NS}

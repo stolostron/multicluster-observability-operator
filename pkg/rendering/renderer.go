@@ -4,11 +4,13 @@ package rendering
 
 import (
 	"fmt"
-	"reflect"
 	"strconv"
-	"strings"
 
+	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	k8sresource "k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
@@ -24,6 +26,7 @@ const (
 	metadataErr = "failed to find metadata field"
 
 	nsUpdateAnnoKey = "update-namespace"
+	crLabelKey      = "observability.open-cluster-management.io/name"
 )
 
 var log = logf.Log.WithName("renderer")
@@ -45,11 +48,11 @@ func NewRenderer(multipleClusterMonitoring *monitoringv1.MultiClusterObservabili
 		"ServiceAccount":        renderer.renderNamespace,
 		"ConfigMap":             renderer.renderNamespace,
 		"ClusterRoleBinding":    renderer.renderClusterRoleBinding,
-		"Secret":                renderer.renderSecret,
+		"Secret":                renderer.renderNamespace,
 		"Role":                  renderer.renderNamespace,
 		"RoleBinding":           renderer.renderNamespace,
 		"Ingress":               renderer.renderNamespace,
-		"PersistentVolumeClaim": renderer.renderPersistentVolumeClaim,
+		"PersistentVolumeClaim": renderer.renderNamespace,
 	}
 	renderer.newGranfanaRenderer()
 	renderer.newMinioRenderer()
@@ -88,7 +91,100 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 		return nil, err
 	}
 
-	return append(resources, minioResources...), nil
+	resources = append(resources, minioResources...)
+	for idx, _ := range resources {
+		if resources[idx].GetKind() == "PersistentVolumeClaim" {
+			obj := util.GetK8sObj(resources[idx].GetKind())
+			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
+			if err != nil {
+				return nil, err
+			}
+
+			spec := &obj.(*corev1.PersistentVolumeClaim).Spec
+			storageClass := r.cr.Spec.StorageClass
+			spec.StorageClassName = &storageClass
+			spec.Resources.Requests[corev1.ResourceStorage] = k8sresource.MustParse(r.cr.Spec.StorageSize.String())
+			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+			if err != nil {
+				return nil, err
+			}
+
+			resources[idx].Object = unstructuredObj
+		}
+
+		if resources[idx].GetKind() == "Deployment" {
+			obj := util.GetK8sObj(resources[idx].GetKind())
+			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
+			if err != nil {
+				return nil, err
+			}
+			dep := obj.(*v1.Deployment)
+			dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+			dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
+			dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+
+			spec := &dep.Spec.Template.Spec
+			spec.Containers[0].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
+			spec.NodeSelector = r.cr.Spec.NodeSelector
+			spec.ImagePullSecrets = []corev1.LocalObjectReference{
+				{Name: r.cr.Spec.ImagePullSecret},
+			}
+			grafanaImgRepo := mcoconfig.GrafanaImgRepo
+			grafanaImgTagSuffix := mcoconfig.GrafanaImgTagSuffix
+			minioImgRepo := mcoconfig.MinioImgRepo
+			minioImgTagSuffix := mcoconfig.MinioImgTagSuffix
+			observatoriumImgRepo := mcoconfig.ObservatoriumImgRepo
+			observatoriumImgTagSuffix := mcoconfig.ObservatoriumImgTagSuffix
+			if mcoconfig.IsNeededReplacement(r.cr.Annotations) {
+				imgRepo := util.GetAnnotation(r.cr, mcoconfig.AnnotationKeyImageRepository)
+				imgVersion := util.GetAnnotation(r.cr, mcoconfig.AnnotationKeyImageTagSuffix)
+				if imgVersion == "" {
+					imgVersion = mcoconfig.DefaultImgTagSuffix
+				}
+				grafanaImgRepo = imgRepo
+				grafanaImgTagSuffix = imgVersion
+				minioImgRepo = imgRepo
+				minioImgTagSuffix = imgVersion
+				observatoriumImgRepo = imgRepo
+				observatoriumImgTagSuffix = imgVersion
+			}
+
+			switch resources[idx].GetName() {
+
+			case "grafana":
+				spec.Containers[0].Image = grafanaImgRepo + "/grafana:" + grafanaImgTagSuffix
+
+			case "minio":
+				spec.Containers[0].Image = minioImgRepo + "/minio:" + minioImgTagSuffix
+				updateMinioSpecEnv(spec)
+
+			case "observatorium-operator":
+				spec.Containers[0].Image = observatoriumImgRepo + "/observatorium-operator:" + observatoriumImgTagSuffix
+
+			}
+
+			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+			if err != nil {
+				return nil, err
+			}
+
+			resources[idx].Object = unstructuredObj
+		}
+	}
+
+	return resources, nil
+}
+
+func updateMinioSpecEnv(spec *corev1.PodSpec) {
+	for i, env := range spec.Containers[0].Env {
+		if env.Name == "MINIO_ACCESS_KEY" {
+			spec.Containers[0].Env[i].Value = mcoconfig.DefaultObjStorageAccesskey
+		}
+
+		if env.Name == "MINIO_SECRET_KEY" {
+			spec.Containers[0].Env[i].Value = mcoconfig.DefaultObjStorageSecretkey
+		}
+	}
 }
 
 func (r *Renderer) renderTemplates(templates []*resource.Resource) ([]*unstructured.Unstructured, error) {
@@ -120,76 +216,12 @@ func (r *Renderer) renderDeployments(res *resource.Resource) (*unstructured.Unst
 	}
 
 	res.SetNamespace(r.cr.Namespace)
-
 	u := &unstructured.Unstructured{Object: res.Map()}
-
-	metadata, ok := u.Object["metadata"].(map[string]interface{})
-	if ok {
-		err = replaceInValues(metadata, r.cr)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	spec, ok := u.Object["spec"].(map[string]interface{})
-	if ok {
-		selector, ok := spec["selector"].(map[string]interface{})
-		if ok {
-			err = replaceInValues(selector, r.cr)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		template, ok := spec["template"].(map[string]interface{})
-		if ok {
-			metadata, ok := template["metadata"].(map[string]interface{})
-			if ok {
-				err = replaceInValues(metadata, r.cr)
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-	}
-
 	return u, nil
 }
 
 func (r *Renderer) renderNamespace(res *resource.Resource) (*unstructured.Unstructured, error) {
 	u := &unstructured.Unstructured{Object: res.Map()}
-
-	if UpdateNamespace(u) {
-		res.SetNamespace(r.cr.Namespace)
-	}
-
-	return &unstructured.Unstructured{Object: res.Map()}, nil
-}
-
-func (r *Renderer) renderPersistentVolumeClaim(res *resource.Resource) (*unstructured.Unstructured, error) {
-	u := &unstructured.Unstructured{Object: res.Map()}
-
-	if UpdateNamespace(u) {
-		res.SetNamespace(r.cr.Namespace)
-	}
-
-	// Update channel to prepend the CRs namespace
-	spec, ok := u.Object["spec"].(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("failed to find spec field")
-	}
-	err := replaceInValues(spec, r.cr)
-	if err != nil {
-		return nil, err
-	}
-
-	return u, nil
-}
-
-// render object storage secret config
-func (r *Renderer) renderSecret(res *resource.Resource) (*unstructured.Unstructured, error) {
-	u := &unstructured.Unstructured{Object: res.Map()}
-
 	if UpdateNamespace(u) {
 		res.SetNamespace(r.cr.Namespace)
 	}
@@ -215,72 +247,6 @@ func (r *Renderer) renderClusterRoleBinding(res *resource.Resource) (*unstructur
 	}
 
 	return u, nil
-}
-
-func stringValueReplace(toReplace string, cr *monitoringv1.MultiClusterObservability) string {
-
-	replaced := toReplace
-
-	replaced = strings.ReplaceAll(
-		replaced,
-		"{{IMAGEREPO}}",
-		string(util.GetAnnotation(cr, mcoconfig.AnnotationKeyImageRepository)),
-	)
-	replaced = strings.ReplaceAll(replaced, "{{PULLSECRET}}", string(cr.Spec.ImagePullSecret))
-	replaced = strings.ReplaceAll(replaced, "{{NAMESPACE}}", string(cr.Namespace))
-	replaced = strings.ReplaceAll(replaced, "{{PULLPOLICY}}", string(cr.Spec.ImagePullPolicy))
-	replaced = strings.ReplaceAll(replaced, "{{STORAGECLASS}}", string(cr.Spec.StorageClass))
-	replaced = strings.ReplaceAll(replaced, "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}", string(cr.Name))
-
-	replaced = strings.ReplaceAll(
-		replaced,
-		"{{OBJ_STORAGE_ACCESSKEY}}",
-		mcoconfig.DefaultObjStorageAccesskey,
-	)
-
-	replaced = strings.ReplaceAll(
-		replaced,
-		"{{OBJ_STORAGE_SECRETKEY}}",
-		mcoconfig.DefaultObjStorageSecretkey,
-	)
-
-	replaced = strings.ReplaceAll(
-		replaced,
-		"{{OBJ_STORAGE_STORAGE}}",
-		cr.Spec.StorageSize.String(),
-	)
-
-	return replaced
-}
-
-func replaceInValues(values map[string]interface{}, cr *monitoringv1.MultiClusterObservability) error {
-	for inKey := range values {
-		isPrimitiveType := reflect.TypeOf(values[inKey]).String() == "string" ||
-			reflect.TypeOf(values[inKey]).String() == "bool" ||
-			reflect.TypeOf(values[inKey]).String() == "int"
-
-		if isPrimitiveType {
-			if reflect.TypeOf(values[inKey]).String() == "string" {
-				values[inKey] = stringValueReplace(values[inKey].(string), cr)
-			} // add other options for other primitives when required
-		} else if reflect.TypeOf(values[inKey]).Kind().String() == "slice" {
-			stringSlice := values[inKey].([]interface{})
-			for i := range stringSlice {
-				// assumes only slices of strings, which is OK for now
-				stringSlice[i] = stringValueReplace(stringSlice[i].(string), cr)
-			}
-		} else { // reflect.TypeOf(values[inKey]).Kind().String() == "map"
-			inValue, ok := values[inKey].(map[string]interface{})
-			if !ok {
-				return fmt.Errorf("failed to map values")
-			}
-			err := replaceInValues(inValue, cr)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 // UpdateNamespace checks for annotiation to update NS

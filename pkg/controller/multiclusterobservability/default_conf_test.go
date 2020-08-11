@@ -38,33 +38,23 @@ func TestGenerateMonitoringEmptyCR(t *testing.T) {
 		t.Errorf("Should return nil for result (%v) and err (%v)", result, err)
 	}
 
-	if mco.Spec.ImagePullPolicy != defaultImagePullPolicy {
+	if mco.Spec.ImagePullPolicy != mcoconfig.DefaultImgPullPolicy {
 		t.Errorf("ImagePullPolicy (%v) is not the expected (%v)",
-			mco.Spec.ImagePullPolicy, defaultImagePullPolicy)
+			mco.Spec.ImagePullPolicy, mcoconfig.DefaultImgPullPolicy)
 	}
 
-	if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository) != defaultImageRepository {
-		t.Errorf("ImageRepository (%v) is not the expected (%v)",
-			util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository), defaultImageRepository)
-	}
-
-	if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix) != defaultImageTagSuffix {
-		t.Errorf("ImageTagSuffix (%v) is not the expected (%v)",
-			util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix), defaultImageTagSuffix)
-	}
-
-	if mco.Spec.ImagePullSecret != defaultImagePullSecret {
+	if mco.Spec.ImagePullSecret != mcoconfig.DefaultImgPullSecret {
 		t.Errorf("ImagePullSecret (%v) is not the expected (%v)",
-			mco.Spec.ImagePullSecret, defaultImagePullSecret)
+			mco.Spec.ImagePullSecret, mcoconfig.DefaultImgPullSecret)
 	}
 
 	if mco.Spec.NodeSelector == nil {
 		t.Errorf("NodeSelector (%v) is not the expected (non-nil)", mco.Spec.NodeSelector)
 	}
 
-	if mco.Spec.StorageClass != defaultStorageClass {
+	if mco.Spec.StorageClass != mcoconfig.DefaultStorageClass {
 		t.Errorf("StorageClass (%v) is not the expected (%v)",
-			mco.Spec.StorageClass, defaultStorageClass)
+			mco.Spec.StorageClass, mcoconfig.DefaultStorageClass)
 	}
 }
 
@@ -86,37 +76,28 @@ func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 		t.Fatalf("Should return nil for result (%v) and err (%v)", result, err)
 	}
 
-	if mco.Spec.ImagePullPolicy != defaultImagePullPolicy {
+	if mco.Spec.ImagePullPolicy != mcoconfig.DefaultImgPullPolicy {
 		t.Errorf("ImagePullPolicy (%v) is not the expected (%v)",
-			mco.Spec.ImagePullPolicy, defaultImagePullPolicy)
+			mco.Spec.ImagePullPolicy, mcoconfig.DefaultImgPullPolicy)
 	}
 
-	if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository) != defaultImageRepository {
-		t.Errorf("ImageRepository (%v) is not the expected (%v)",
-			util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository), defaultImageRepository)
-	}
-
-	if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix) != defaultImageTagSuffix {
-		t.Errorf("ImageTagSuffix (%v) is not the expected (%v)",
-			util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix), defaultImageTagSuffix)
-	}
-
-	if mco.Spec.ImagePullSecret != defaultImagePullSecret {
+	if mco.Spec.ImagePullSecret != mcoconfig.DefaultImgPullSecret {
 		t.Errorf("ImagePullSecret (%v) is not the expected (%v)",
-			mco.Spec.ImagePullSecret, defaultImagePullSecret)
+			mco.Spec.ImagePullSecret, mcoconfig.DefaultImgPullSecret)
 	}
 
 	if mco.Spec.NodeSelector == nil {
 		t.Errorf("NodeSelector (%v) is not the expected (non-nil)", mco.Spec.NodeSelector)
 	}
 
-	if mco.Spec.StorageClass != defaultStorageClass {
+	if mco.Spec.StorageClass != mcoconfig.DefaultStorageClass {
 		t.Errorf("StorageClass (%v) is not the expected (%v)",
-			mco.Spec.StorageClass, defaultStorageClass)
+			mco.Spec.StorageClass, mcoconfig.DefaultStorageClass)
 	}
 
 	mco.Annotations[mcoconfig.AnnotationKeyImageRepository] = "test_repo"
 	mco.Annotations[mcoconfig.AnnotationKeyImageTagSuffix] = "test_suffix"
+
 	fakeClient = NewFakeClient(mco, &observatoriumv1alpha1.Observatorium{})
 	result, err = GenerateMonitoringCR(fakeClient, mco)
 	if result != nil || err != nil {

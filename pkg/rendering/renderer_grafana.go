@@ -14,11 +14,11 @@ func (r *Renderer) newGranfanaRenderer() {
 		"ServiceAccount":        r.renderNamespace,
 		"ConfigMap":             r.renderNamespace,
 		"ClusterRoleBinding":    r.renderClusterRoleBinding,
-		"Secret":                r.renderSecret,
+		"Secret":                r.renderNamespace,
 		"Role":                  r.renderNamespace,
 		"RoleBinding":           r.renderNamespace,
 		"Ingress":               r.renderNamespace,
-		"PersistentVolumeClaim": r.renderPersistentVolumeClaim,
+		"PersistentVolumeClaim": r.renderNamespace,
 	}
 }
 
