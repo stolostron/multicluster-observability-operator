@@ -282,7 +282,7 @@ func newReceiversSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1
 		receSpec.Image = defaultThanosImage
 		receSpec.Version = defaultThanosVersion
 	}
-	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mcoconfig.DefaultStorageSize)
+	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mco.Spec.StorageSize.String())
 
 	return receSpec
 }
@@ -301,8 +301,7 @@ func newRuleSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha
 		ruleSpec.Image = defaultThanosImage
 		ruleSpec.Version = defaultThanosVersion
 	}
-	ruleSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mcoconfig.DefaultStorageSize)
-
+	ruleSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mco.Spec.StorageSize.String())
 	return ruleSpec
 }
 
@@ -320,7 +319,7 @@ func newStoreSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alph
 		storeSpec.Image = defaultThanosImage
 		storeSpec.Version = defaultThanosVersion
 	}
-	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mcoconfig.DefaultStorageSize)
+	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mco.Spec.StorageSize.String())
 	shards := int32(1)
 	storeSpec.Shards = &shards
 	storeSpec.Cache = newStoreCacheSpec(mco)

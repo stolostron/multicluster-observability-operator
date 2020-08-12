@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -20,6 +21,10 @@ import (
 func GenerateMonitoringCR(c client.Client,
 	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
+	if mco.Spec.StorageSize.String() == "0" {
+		mco.Spec.StorageSize = resource.MustParse(mcoconfig.DefaultStorageSize)
+	}
+	
 	if mco.Spec.ImagePullPolicy == "" {
 		mco.Spec.ImagePullPolicy = mcoconfig.DefaultImgPullPolicy
 	}
