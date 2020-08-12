@@ -4,10 +4,6 @@
 
 The multicluster-observability-operator is a component of ACM observability feature. It is designed to install into Hub Cluster.
 
-<div align="center">
-<img src="./docs/images/multicluster-observability-operator.png">
-</div>
-
 ## Installation
 
 ### Install this operator on RHACM
@@ -16,6 +12,7 @@ The multicluster-observability-operator is a component of ACM observability feat
 
 ```
 git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
+git checkout origin/release-2.1
 ```
 2. Create new namespace `open-cluster-management-observability`
 
@@ -28,7 +25,7 @@ Assume RHACM is installed in `open-cluster-management` namespace. Generate your 
 ```
 oc get secret multiclusterhub-operator-pull-secret -n open-cluster-management --export -o yaml |   kubectl apply --namespace=open-cluster-management-observability -f -
 ```
-4. [Optional] Modify the operator and instance to use a new tag
+4. [Optional] Modify the operator and instance to use a new SNAPSHOT tag
 
 Edit deploy/operator.yaml file and change image tag
 ```
@@ -40,123 +37,28 @@ Edit deploy/operator.yaml file and change image tag
           image: ...
 
 ```
-Edit deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml file to change `imageTagSuffix`
+Edit observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml file to change `mco-imageTagSuffix`
 ```
 apiVersion: observability.open-cluster-management.io/v1alpha1
 kind: MultiClusterObservability
 metadata:
   name: observability
+  annotations:
+    mco-imageRepository: quay.io/open-cluster-management
+    mco-imageTagSuffix: 2.1.0-SNAPSHOT-2020-08-11-14-16-48
 spec:
-  imageTagSuffix: ...
+  ...
 ```
 
 Note: Find snapshot tags here: https://quay.io/repository/open-cluster-management/acm-custom-registry?tab=tags
 
 5. [Optional] Customize the configuration for the operator instance
-You can customize the operator instance by updating `deploy/crds/observability.open-cluster-management.io_v1_multiclusterobservability_cr.yaml`. Below is a sample which has the configuration with default values. If you want to use customized value for one parameter, just need to specify that parameter in your own yaml file.
-```
-apiVersion: observability.open-cluster-management.io/v1alpha1
-kind: MultiClusterObservability
-metadata:
-  name: observability
-spec:
-  grafana:
-    hostport: 3001
-    replicas: 1
-  imagePullPolicy: Always
-  imagePullSecret: multiclusterhub-operator-pull-secret
-  imageRepository: quay.io/open-cluster-management
-  imageTagSuffix: ""
-  objectStorageConfigSpec:
-    config:
-      access_key: minio
-      bucket: thanos
-      endpoint: minio:9000
-      insecure: true
-      secret_key: minio123
-      storage: 1Gi
-    type: minio
-  observatorium:
-    api:
-      image: quay.io/observatorium/observatorium:master-2020-04-29-v0.1.1-14-gceac185
-      version: master-2020-04-29-v0.1.1-14-gceac185
-    apiQuery:
-      image: quay.io/thanos/thanos:v0.12.0
-      version: v0.12.0
-    compact:
-      image: quay.io/thanos/thanos:v0.12.0
-      retentionResolution1h: 30d
-      retentionResolution5m: 14d
-      retentionResolutionRaw: 5d
-      version: v0.12.0
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-          - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
-    hashrings:
-    - hashring: default
-    objectStorageConfig:
-      key: thanos.yaml
-      name: thanos-objectstorage
-    query:
-      image: quay.io/thanos/thanos:v0.12.0
-      version: v0.12.0
-    queryCache:
-      image: quay.io/cortexproject/cortex:master-fdcd992f
-      replicas: 1
-      version: master-fdcd992f
-    receivers:
-      image: quay.io/thanos/thanos:v0.12.0
-      version: v0.12.0
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-          - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
-    rule:
-      image: quay.io/thanos/thanos:v0.12.0
-      version: v0.12.0
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-          - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
-    store:
-      cache:
-        exporterImage: prom/memcached-exporter:v0.6.0
-        exporterVersion: v0.6.0
-        image: docker.io/memcached:1.6.3-alpine
-        memoryLimitMb: 1024
-        replicas: 1
-        version: 1.6.3-alpine
-      image: quay.io/thanos/thanos:v0.12.0
-      shards: 1
-      version: v0.12.0
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-          - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
-    thanosReceiveController:
-      image: quay.io/observatorium/thanos-receive-controller:master-2020-04-16-44c6bea
-      version: master-2020-04-16-44c6bea
-  storageClass: local
-  version: latest
-```
+You can customize the operator instance by updating `observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml`. Below is a sample which has the configuration with default values. If you want to use customized value for one parameter, just need to specify that parameter in your own yaml file.
 
 6. Deploy the `multicluster-observability-operator` and `MultiClusterObservability` instance
 ```
 oc project open-cluster-management-observability
-oc apply -f deploy/req_crds/observability.open-cluster-management.io_endpointmonitoring_crd.yaml
+oc apply -f deploy/req_crds/observability.open-cluster-management.io_observabilityaddon_crd.yaml
 oc apply -f deploy/req_crds/core.observatorium.io_observatoria.yaml
 oc apply -f deploy/crds/observability.open-cluster-management.io_multiclusterobservabilities_crd.yaml
 oc apply -f deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
@@ -180,13 +82,11 @@ pod/monitoring-observatorium-thanos-rule-0                            1/1     Ru
 pod/monitoring-observatorium-thanos-rule-1                            1/1     Running   0          72m
 pod/monitoring-observatorium-thanos-store-memcached-0                 2/2     Running   0          75m
 pod/monitoring-observatorium-thanos-store-shard-0-0                   1/1     Running   0          72m
-pod/multicluster-observability-operator-5dc5997979-f4flc                 1/1     Running   1          77m
+pod/multicluster-monitoring-operator-5dc5997979-f4flc                 1/1     Running   1          77m
 pod/observatorium-operator-88b859dc-79hml                             1/1     Running   0          76m
 ```
 
-7. By default, the endpoint monitoring operator will be installed on any managed clusters to remote-write the metrics from managed clusters to hub cluster. [How to configure endpoint monitoring?](#endpoint-monitoring-operator-installation--endpoint-monitoring-configuration)
-
-8. View metrics in dashboard
+7. View metrics in dashboard
 Access Grafana console at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "ACM:Cluster Monitoring"
 
 ### Install this operator on KinD
@@ -210,7 +110,7 @@ export DOCKER_PASS=<quay.io password>
 ```
 ./tests/e2e/setup.sh
 ```
-If you want to install the latest multicluster-observability-operator image, you can find the latest tag here https://quay.io/repository/open-cluster-management/multicluster-observability-operator?tab=tags. Then install by
+If you want to install the latest multicluster-observability-operator image, you can find the latest tag here https://quay.io/repository/open-cluster-management/multicluster-monitoring-operator?tab=tags. Then install by
 ```
 ./tests/e2e/setup.sh quay.io/open-cluster-management/multicluster-observability-operator:<latest tag>
 ```
@@ -242,16 +142,16 @@ curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.
 
 - git clone this repository.
 - `go mod vendor`
-- `operator-sdk build <repo>/<component>:<tag>` for example: quay.io/multicluster-observability-operator:v0.1.0.
+- `operator-sdk build <repo>/<component>:<tag>` for example: quay.io/multicluster-monitoring-operator:v0.1.0.
 - Replace the image in `deploy/operator.yaml`.
 - Update your namespace in `deploy/role_binding.yaml`
 
 ### Endpoint monitoring operator installation & endpoint monitoring configuration
-1. By default, the endpoint monitoring operator will be installed on any managed clusters. If want to disable this in a cluster, need to add label using key/value "observability"/"disabled" on it.
+1. By default, the endpoint monitoring operator will be installed on any managed clusters. If want to disable this in a cluster, need to add label using key/value "monitoring"/"disabled" on it.
 2. Once the endpoint monitoring operator installed in the managed cluster, it will update the configmap cluster-monitoring-config automatically, and then the metrics will be pushed to hub side.
 3. In cluster's namespace in hub side, one default endpointmonitoring resource named as "endpoint-config"  will be created automatically. Users can edit section "relabelConfigs" in this resource to update the configuration for metrics collect in managed cluster side, such as filtering the metrics collected, injecting addtional labels([Prometheus relabel configuration]). A sample endpointmonitoring resource is as below:
 ```
-apiVersion: observability.open-cluster-management.io/v1alpha1
+apiVersion: monitoring.open-cluster-management.io/v1alpha1
 kind: EndpointMonitoring
 metadata:
   annotations:
