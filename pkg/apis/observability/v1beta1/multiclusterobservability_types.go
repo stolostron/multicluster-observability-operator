@@ -50,14 +50,17 @@ type MultiClusterObservabilitySpec struct {
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// How long to retain raw samples in a bucket. Default is 5d
+	// +optional
 	RetentionResolutionRaw string `json:"retentionResolutionRaw,omitempty"`
 
 	// How long to retain samples of resolution 1 (5 minutes) in bucket.
 	// Default is 14d
+	// +optional
 	RetentionResolution5m string `json:"retentionResolution5m,omitempty"`
 
 	// How long to retain samples of resolution 2 (1 hour) in bucket.
 	// Default is 30d.
+	// +optional
 	RetentionResolution1h string `json:"retentionResolution1h,omitempty"`
 
 	// Specify the storageClass for PVC.

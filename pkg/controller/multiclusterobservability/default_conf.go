@@ -41,6 +41,18 @@ func GenerateMonitoringCR(c client.Client,
 		mco.Spec.StorageSize = resource.MustParse(mcoconfig.DefaultStorageSize)
 	}
 
+	if mco.Spec.RetentionResolution1h == "" {
+		mco.Spec.RetentionResolution1h = mcoconfig.DefaultRetentionResolution1h
+	}
+
+	if mco.Spec.RetentionResolution5m == "" {
+		mco.Spec.RetentionResolution5m = mcoconfig.DefaultRetentionResolution5m
+	}
+
+	if mco.Spec.RetentionResolutionRaw == "" {
+		mco.Spec.RetentionResolutionRaw = mcoconfig.DefaultRetentionResolutionRaw
+	}
+
 	if mco.Spec.ObjectStorageConfig == nil {
 		err := GenerateObjectStorageSecret(c, mco)
 		if err != nil {
