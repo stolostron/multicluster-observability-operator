@@ -29,10 +29,6 @@ const (
 	obsPartoOfName = "-observatorium"
 	obsAPIGateway  = "observatorium-api"
 
-	retentionResolution1h  = "30d"
-	retentionResolution5m  = "14d"
-	retentionResolutionRaw = "5d"
-
 	defaultThanosImage   = "quay.io/thanos/thanos:master-2020-05-24-079ad427"
 	defaultThanosVersion = "master-2020-05-24-079ad427"
 
@@ -286,7 +282,7 @@ func newReceiversSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1
 		receSpec.Image = defaultThanosImage
 		receSpec.Version = defaultThanosVersion
 	}
-	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mcoconfig.DefaultStorageSize)
+	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mco.Spec.StorageSize.String())
 
 	return receSpec
 }
@@ -305,7 +301,7 @@ func newRuleSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha
 		ruleSpec.Image = defaultThanosImage
 		ruleSpec.Version = defaultThanosVersion
 	}
-	ruleSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mcoconfig.DefaultStorageSize)
+	ruleSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mco.Spec.StorageSize.String())
 
 	return ruleSpec
 }
@@ -324,7 +320,7 @@ func newStoreSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alph
 		storeSpec.Image = defaultThanosImage
 		storeSpec.Version = defaultThanosVersion
 	}
-	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mcoconfig.DefaultStorageSize)
+	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mco.Spec.StorageSize.String())
 	shards := int32(1)
 	storeSpec.Shards = &shards
 	storeSpec.Cache = newStoreCacheSpec(mco)
@@ -373,10 +369,10 @@ func newCompactSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1al
 		compactSpec.Image = defaultThanosImage
 		compactSpec.Version = defaultThanosVersion
 	}
-	compactSpec.RetentionResolutionRaw = retentionResolutionRaw
-	compactSpec.RetentionResolution5m = retentionResolution5m
-	compactSpec.RetentionResolution1h = retentionResolution1h
-	compactSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mcoconfig.DefaultStorageSize)
+	compactSpec.RetentionResolutionRaw = mco.Spec.RetentionResolutionRaw
+	compactSpec.RetentionResolution5m = mco.Spec.RetentionResolution5m
+	compactSpec.RetentionResolution1h = mco.Spec.RetentionResolution1h
+	compactSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mco.Spec.StorageSize.String())
 
 	return compactSpec
 }
