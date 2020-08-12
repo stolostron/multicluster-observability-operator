@@ -7,7 +7,7 @@ require (
 	github.com/observatorium/deployments/operator v0.0.0-20200806144145-10069f8e16a2
 	github.com/open-cluster-management/api v0.0.0-20200602195039-a516cac2e038
 	github.com/open-cluster-management/multicloud-operators-placementrule v1.0.0-2020-05-08-20-30-09
-	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
+	github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
 	github.com/openshift/cluster-monitoring-operator v0.1.1-0.20200406225945-844f960a2a8d
 	github.com/operator-framework/operator-sdk v0.17.0
@@ -44,3 +44,7 @@ replace (
 	k8s.io/metrics => k8s.io/metrics v0.0.0-20191016113814-3b1a734dba6e
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.0.0-20191016112829-06bb3c9d77c9
 )
+
+replace github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad
+
+replace github.com/prometheus/prometheus => github.com/prometheus/prometheus v1.8.2-0.20190424153033-d3245f150225
