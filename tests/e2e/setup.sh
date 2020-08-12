@@ -131,20 +131,13 @@ deploy_mco_operator() {
     fi
     # Add storage class config
     cp deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml-e
-    printf "\n  storageClass: local\n" >> deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
-    $sed_command "s~50Gi~1Gi~g" deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
+    printf "\n  storageClass: standard\n" >> deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
+    printf "\n  storageSize: 1Gi\n" >> deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
     # Install the multicluster-observability-operator
     kubectl create ns ${MONITORING_NS}
     kubectl config set-context --current --namespace ${MONITORING_NS}
     # create image pull secret
     kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
-
-    # for mac, there is no /mnt
-    if [[ "$(uname)" == "Darwin" ]]; then
-        $sed_command "s~/mnt/thanos/teamcitydata1~/opt/thanos/teamcitydata1~g" tests/e2e/samples/persistentVolume.yaml
-    fi
-
-    kubectl apply -f tests/e2e/samples
     kubectl apply -f deploy/req_crds
     kubectl apply -f deploy/crds/observability.open-cluster-management.io_multiclusterobservabilities_crd.yaml
     kubectl apply -f tests/e2e/req_crds
@@ -171,7 +164,7 @@ deploy_grafana() {
 
 revert_changes() {
     cd ${WORKDIR}
-    CHANGED_FILES="manifests/base/grafana/deployment.yaml manifests/base/grafana/service.yaml tests/e2e/samples/persistentVolume.yaml deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml deploy/operator.yaml"
+    CHANGED_FILES="manifests/base/grafana/deployment.yaml manifests/base/grafana/service.yaml deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml deploy/operator.yaml"
     # revert the changes
     for file in ${CHANGED_FILES}; do
         if [[ -f "${file}-e" ]]; then

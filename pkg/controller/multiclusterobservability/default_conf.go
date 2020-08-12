@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -34,6 +35,22 @@ func GenerateMonitoringCR(c client.Client,
 
 	if mco.Spec.StorageClass == "" {
 		mco.Spec.StorageClass = mcoconfig.DefaultStorageClass
+	}
+
+	if mco.Spec.StorageSize.String() == "0" {
+		mco.Spec.StorageSize = resource.MustParse(mcoconfig.DefaultStorageSize)
+	}
+
+	if mco.Spec.RetentionResolution1h == "" {
+		mco.Spec.RetentionResolution1h = mcoconfig.DefaultRetentionResolution1h
+	}
+
+	if mco.Spec.RetentionResolution5m == "" {
+		mco.Spec.RetentionResolution5m = mcoconfig.DefaultRetentionResolution5m
+	}
+
+	if mco.Spec.RetentionResolutionRaw == "" {
+		mco.Spec.RetentionResolutionRaw = mcoconfig.DefaultRetentionResolutionRaw
 	}
 
 	if mco.Spec.ObjectStorageConfig == nil {

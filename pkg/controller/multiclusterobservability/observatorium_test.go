@@ -15,7 +15,7 @@ import (
 )
 
 func TestNewVolumeClaimTemplate(t *testing.T) {
-	vct := newVolumeClaimTemplate("50Gi")
+	vct := newVolumeClaimTemplate("50Gi", "test")
 	if vct.Spec.AccessModes[0] != v1.ReadWriteOnce ||
 		vct.Spec.Resources.Requests[v1.ResourceStorage] != resource.MustParse(mcoconfig.DefaultStorageSize) {
 		t.Errorf("Failed to newVolumeClaimTemplate")
@@ -74,8 +74,8 @@ func TestNewDefaultObservatorium(t *testing.T) {
 }
 
 func TestMergeVolumeClaimTemplate(t *testing.T) {
-	vct1 := newVolumeClaimTemplate("1Gi")
-	vct3 := newVolumeClaimTemplate("3Gi")
+	vct1 := newVolumeClaimTemplate("1Gi", "test")
+	vct3 := newVolumeClaimTemplate("3Gi", "test")
 	mergeVolumeClaimTemplate(vct1, vct3)
 	if vct1.Spec.Resources.Requests[v1.ResourceStorage] != resource.MustParse("3Gi") {
 		t.Errorf("Failed to merge %v to %v", vct3, vct1)

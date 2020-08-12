@@ -45,8 +45,12 @@ const (
 	DefaultStorageClass  = "gp2"
 	DefaultStorageSize   = "50Gi"
 
+	DefaultRetentionResolution1h  = "30d"
+	DefaultRetentionResolution5m  = "14d"
+	DefaultRetentionResolutionRaw = "5d"
+
 	GrafanaImgRepo      = "grafana"
-	GrafanaImgTagSuffix = "6.6.0"
+	GrafanaImgTagSuffix = "7.1.3"
 
 	MinioImgRepo      = "minio"
 	MinioImgTagSuffix = "latest"
