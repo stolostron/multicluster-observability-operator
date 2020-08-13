@@ -131,6 +131,7 @@ deploy_mco_operator() {
     fi
     # Add storage class config
     cp deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml-e
+    $sed_command "s~spec:.*$~spec: ~g" deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
     printf "\n  storageClass: standard\n" >> deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
     printf "\n  storageSize: 1Gi\n" >> deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
     # Install the multicluster-observability-operator
