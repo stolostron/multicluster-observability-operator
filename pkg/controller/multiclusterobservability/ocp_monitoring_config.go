@@ -30,7 +30,7 @@ const (
 	configKey         = "config.yaml"
 	labelValue        = "hub_cluster"
 	protocol          = "http://"
-	urlSubPath        = "/api/metrics/v1/write"
+	urlSubPath        = "/api/v1/receive"
 )
 
 func getConfigMap(client client.Client) (*v1.ConfigMap, error) {

@@ -56,7 +56,7 @@ const (
 	MinioImgTagSuffix = "latest"
 
 	ObservatoriumImgRepo      = "quay.io/observatorium"
-	ObservatoriumImgTagSuffix = "latest"
+	ObservatoriumImgTagSuffix = "master-2020-08-06-10069f8"
 )
 
 var log = logf.Log.WithName("config")
