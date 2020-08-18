@@ -25,6 +25,60 @@ func TestGetClusterNameLabelKey(t *testing.T) {
 	}
 }
 
+func TestIsValidAddonInterval(t *testing.T) {
+	var cases = []struct {
+		in       string
+		expected bool
+	}{
+		{
+			in:       "1m",
+			expected: true,
+		},
+
+		{
+			in:       "30s",
+			expected: true,
+		},
+
+		{
+			in:       "1h",
+			expected: true,
+		},
+
+		{
+			in:       "2m",
+			expected: true,
+		},
+
+		{
+			in:       "29s",
+			expected: false,
+		},
+
+		{
+			in:       "2h",
+			expected: false,
+		},
+
+		{
+			in:       "",
+			expected: false,
+		},
+
+		{
+			in:       "m1",
+			expected: false,
+		},
+	}
+
+	for _, c := range cases {
+		output, err := IsValidAddonInterval(c.in)
+		if output != c.expected {
+			t.Errorf("output (%v) is not the expected (%v), err: %v", output, c.expected, err)
+		}
+	}
+}
+
 func TestIsNeededReplacement(t *testing.T) {
 	caseList := []struct {
 		annotations map[string]string

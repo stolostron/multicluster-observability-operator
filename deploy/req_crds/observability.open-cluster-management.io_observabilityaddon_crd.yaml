@@ -31,17 +31,16 @@ spec:
         metadata:
           type: object
         spec:
-          description: ObservabilityAddonSpec defines the desired state of ObservabilityAddon
+          description: ObservabilityAddonSpec is the spec of observability addon
           properties:
             enableMetrics:
+              description: EnableMetrics indicate the observability addon push metrics
+                to hub server. The default is true
               type: boolean
-            metricsConfigs:
-              description: MetricsConfigsSpec defines the configuration for metrics
-                scrape/push
-              properties:
-                interval:
-                  type: string
-              type: object
+            interval:
+              description: Interval for the observability addon push metrics to hub
+                server. The default is 1 minute
+              type: string
           type: object
         status:
           description: ObservabilityAddonStatus defines the observed state of ObservabilityAddon

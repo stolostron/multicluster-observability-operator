@@ -77,11 +77,29 @@ type MultiClusterObservabilitySpec struct {
 	// Spec of object storage config
 	// +optional
 	ObjectStorageConfig *ObjectStorageConfig `json:"objectStorageConfig,omitempty"`
+
+	// The ObservabilityAddonSpec defines the global settings for all managed
+	// clusters which have observability add-on enabled.
+	// +optional
+	ObservabilityAddonSpec *ObservabilityAddonSpec `json:"observabilityAddonSpec,omitempty"`
 }
 
-// ObjectStorageConfig is the Spec of object storage.
+// ObservabilityAddonSpec is the spec of observability addon
+type ObservabilityAddonSpec struct {
+	// EnableMetrics indicates the observability addon push metrics to hub server.
+	// The default is true
+	// +optional
+	EnableMetrics bool `json:"enableMetrics,omitempty"`
+
+	// Interval for the observability addon push metrics to hub server.
+	// The default is 1 minute
+	// +optional
+	Interval string `json:"interval,omitempty"`
+}
+
+// ObjectStorageConfig is the spec of object storage.
 type ObjectStorageConfig struct {
-	//Object Store Config Secret for metrics
+	// Object store config secret for metrics
 	Metrics *corev1.SecretKeySelector `json:"metrics,omitempty"`
 }
 

@@ -3,6 +3,7 @@
 package multiclusterobservability
 
 import (
+	"reflect"
 	"testing"
 
 	observatoriumv1alpha1 "github.com/observatorium/deployments/operator/api/v1alpha1"
@@ -56,9 +57,25 @@ func TestGenerateMonitoringEmptyCR(t *testing.T) {
 		t.Errorf("StorageClass (%v) is not the expected (%v)",
 			mco.Spec.StorageClass, mcoconfig.DefaultStorageClass)
 	}
+
+	defaultObservabilityAddonSpec := &mcov1beta1.ObservabilityAddonSpec{
+		EnableMetrics: true,
+		Interval:      mcoconfig.DefaultAddonInterval,
+	}
+
+	if !reflect.DeepEqual(mco.Spec.ObservabilityAddonSpec, defaultObservabilityAddonSpec) {
+		t.Errorf("ObservabilityAddonSpec (%v) is not the expected (%v)",
+			mco.Spec.ObservabilityAddonSpec,
+			defaultObservabilityAddonSpec)
+	}
 }
 
 func TestGenerateMonitoringCustomizedCR(t *testing.T) {
+	addonSpec := &mcov1beta1.ObservabilityAddonSpec{
+		EnableMetrics: true,
+		Interval:      "2m",
+	}
+
 	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{
@@ -68,8 +85,12 @@ func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 				"test": "test",
 			},
 		},
-		Spec: mcov1beta1.MultiClusterObservabilitySpec{},
+
+		Spec: mcov1beta1.MultiClusterObservabilitySpec{
+			ObservabilityAddonSpec: addonSpec,
+		},
 	}
+
 	fakeClient := NewFakeClient(mco, &observatoriumv1alpha1.Observatorium{})
 	result, err := GenerateMonitoringCR(fakeClient, mco)
 	if result != nil || err != nil {
@@ -93,6 +114,12 @@ func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 	if mco.Spec.StorageClass != mcoconfig.DefaultStorageClass {
 		t.Errorf("StorageClass (%v) is not the expected (%v)",
 			mco.Spec.StorageClass, mcoconfig.DefaultStorageClass)
+	}
+
+	if !reflect.DeepEqual(mco.Spec.ObservabilityAddonSpec, addonSpec) {
+		t.Errorf("ObservabilityAddonSpec (%v) is not the expected (%v)",
+			mco.Spec.ObservabilityAddonSpec,
+			addonSpec)
 	}
 
 	mco.Annotations[mcoconfig.AnnotationKeyImageRepository] = "test_repo"

@@ -61,7 +61,7 @@ spec:
               description: Spec of object storage config
               properties:
                 metrics:
-                  description: Object Store Config Secret for metrics
+                  description: Object store config secret for metrics
                   properties:
                     key:
                       description: The key of the secret to select from.  Must be
@@ -77,6 +77,19 @@ spec:
                   required:
                   - key
                   type: object
+              type: object
+            observabilityAddonSpec:
+              description: The ObservabilityAddonSpec defines the global settings
+                for all managed clusters which have observability add-on enabled.
+              properties:
+                enableMetrics:
+                  description: EnableMetrics indicates the observability addon push
+                    metrics to hub server. The default is true
+                  type: boolean
+                interval:
+                  description: Interval for the observability addon push metrics to
+                    hub server. The default is 1 minute
+                  type: string
               type: object
             retentionResolution1h:
               description: How long to retain samples of resolution 2 (1 hour) in
