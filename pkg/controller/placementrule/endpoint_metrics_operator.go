@@ -16,14 +16,14 @@ import (
 )
 
 const (
-	deployName      = "endpoint-monitoring-operator"
+	deployName      = "endpoint-observability-operator"
 	imageName       = "endpoint-monitoring-operator"
-	saName          = "endpoint-monitoring-operator-sa"
-	rolebindingName = "endpoint-monitoring-operator-rb"
+	saName          = "endpoint-observability-operator-sa"
+	rolebindingName = "endpoint-observability-operator-rb"
 )
 
 var (
-	templatePath = "/usr/local/manifests/endpoint-monitoring"
+	templatePath = "/usr/local/manifests/endpoint-observability"
 )
 
 func loadTemplates(namespace string,

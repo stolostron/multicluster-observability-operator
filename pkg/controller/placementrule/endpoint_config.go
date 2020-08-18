@@ -50,12 +50,7 @@ func createEndpointConfigCR(client client.Client, obsNamespace string, namespace
 				ownerLabelKey: ownerLabelValue,
 			},
 		},
-		Spec: obv1beta1.ObservabilityAddonSpec{
-			EnableMetrics: true,
-			MetricsConfigs: obv1beta1.MetricsConfigsSpec{
-				Interval: defaultInterval,
-			},
-		},
+		Spec: obv1beta1.ObservabilityAddonSpec{},
 	}
 	found := &obv1beta1.ObservabilityAddon{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: epConfigName, Namespace: namespace}, found)

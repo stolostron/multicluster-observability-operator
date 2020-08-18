@@ -57,6 +57,12 @@ const (
 
 	ObservatoriumImgRepo      = "quay.io/observatorium"
 	ObservatoriumImgTagSuffix = "master-2020-08-06-10069f8"
+
+	EndpointControllerImgRepo      = "quay.io/open-cluster-management/endpoint-monitoring-operator"
+	EndpointControllerImgTagSuffix = "master-2020-08-06-10069f8"
+
+	MetricsCollectorImgRepo      = "quay.io/open-cluster-management/metrics-collector"
+	MetricsCollectorImgTagSuffix = "master-2020-08-06-10069f8"
 )
 
 var log = logf.Log.WithName("config")

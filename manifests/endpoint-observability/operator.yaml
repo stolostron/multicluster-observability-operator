@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: endpoint-monitoring-operator
+  name: endpoint-observability-operator
 spec:
   replicas: 1
   selector:
     matchLabels:
-      name: endpoint-monitoring-operator
+      name: endpoint-observability-operator
   template:
     metadata:
       labels:
-        name: endpoint-monitoring-operator
+        name: endpoint-observability-operator
     spec:
-      serviceAccountName: endpoint-monitoring-operator-sa
+      serviceAccountName: endpoint-observability-operator-sa
       containers:
-        - name: endpoint-monitoring-operator
+        - name: endpoint-observability-operator
           # Replace this with the built image name
           image: "quay.io/open-cluster-management/endpoint-monitoring-operator:0.1.0-da400374f9b67491473683dc46c1be476f40976f"
           command:
@@ -23,10 +23,20 @@ spec:
           env:
             - name: WATCH_NAMESPACE
               value: REPLACE_WITH_HUB_CLUSTER_NAMESPACE
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
             - name: POD_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            - name: SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            - name: COLLECTOR_IMAGE
+              value: quay.io/open-cluster-management/metrics-collector:2.1.0-PR6-1b7cdb7b33bd9baed230a367465ec7238204648a
             - name: OPERATOR_NAME
               value: "endpoint-monitoring-operator"
             - name: HUB_KUBECONFIG
