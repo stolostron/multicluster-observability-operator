@@ -149,12 +149,13 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return reconcile.Result{}, err
 	}
 
+	reqLogger.Info("Generate MCO cr")
 	if result, err := GenerateMonitoringCR(r.client, instance); result != nil {
 		return *result, err
 	}
 
+	reqLogger.Info("Render the templates with a specified CR")
 	instance.Namespace = config.GetDefaultNamespace()
-	//Render the templates with a specified CR
 	renderer := rendering.NewRenderer(instance)
 	toDeploy, err := renderer.Render(r.client)
 	if err != nil {
@@ -175,33 +176,39 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		}
 	}
 
-	// create an Observatorium CR
+	reqLogger.Info("Generate observatorium CR")
 	result, err := GenerateObservatoriumCR(r.client, r.scheme, instance)
 	if result != nil {
 		return *result, err
 	}
 
+	reqLogger.Info("Generate dashboard metric cm")
 	if result, err := GenerateDashboardMetricCM(r.client, r.scheme, instance); result != nil {
 		return *result, err
 	}
 
 	// expose observatorium api gateway
+	reqLogger.Info("Generate API gateway route")
 	result, err = GenerateAPIGatewayRoute(r.client, r.scheme, instance)
 	if result != nil {
 		return *result, err
 	}
+
 	// generate grafana datasource to point to observatorium api gateway
+	reqLogger.Info("Generate grafana datasource")
 	result, err = GenerateGrafanaDataSource(r.client, r.scheme, instance)
 	if result != nil {
 		return *result, err
 	}
 
 	// generate/update the configmap cluster-monitoring-config
+	reqLogger.Info("Update hub cluster monitoring config")
 	result, err = UpdateHubClusterMonitoringConfig(r.client, r.ocpClient, instance.Namespace)
 	if result != nil {
 		return *result, err
 	}
 
+	reqLogger.Info("Update MCO status")
 	result, err = r.UpdateStatus(instance)
 	if result != nil {
 		return *result, err

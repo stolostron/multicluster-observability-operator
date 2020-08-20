@@ -100,6 +100,7 @@ func GenerateGrafanaDataSource(
 		)
 
 		err = client.Create(context.TODO(), dsSecret)
+		log.Error(err, "Failed to create grafana datasource secret")
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
