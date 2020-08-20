@@ -1,17 +1,17 @@
-#MultiClusterObservability CRD 
+# MultiClusterObservability CRD 
 
 
  
-##Description
+## Description
 
 MultiClusterObservability API is the interface to manage the MultiClusterObservability Operator which deploys and manages the Observability components on the RHACM Hub Cluster. MultiClusterObservability is a cluster scoped CRD. The short name is MCO.
 
-##API Version
+## API Version
 
 observability.open-cluster-management.io/v1beta1
 
 
-##Specification
+## Specification
 
 
 <table>
@@ -120,7 +120,7 @@ Options are: Basic and High (default).
 </table>
 
 
-###StorageConfigObject
+### StorageConfigObject
 
 
 <table>
@@ -171,7 +171,7 @@ The default  is gp2.
 </table>
 
 
-###PreConfiguredStorage
+### PreConfiguredStorage
 
 
 <table>
@@ -208,7 +208,7 @@ The default  is gp2.
 </table>
 
 
-###ObservabilityAddonSpec
+### ObservabilityAddonSpec
 
  
 <table>
@@ -247,7 +247,7 @@ The default is 1m
 </table>
 
 
-###MultiClusterObservability Status
+### MultiClusterObservability Status
 
 
 <table>
@@ -278,7 +278,7 @@ The default is 1m
 </table>
 
 
-###Conditions
+### Conditions
 
 <table>
   <tr>
