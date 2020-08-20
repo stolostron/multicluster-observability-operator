@@ -128,6 +128,7 @@ run_test_teardown() {
     kubectl delete -n $MONITORING_NS MultiClusterObservability observability
     kubectl delete -n $MONITORING_NS deployment/grafana-test
     kubectl delete -n $MONITORING_NS service/grafana-test
+    kubectl delete -n $MONITORING_NS -f tests/e2e/minio
     kubectl delete -n $MONITORING_NS -f deploy/
     target_count="0"
     timeout=$true

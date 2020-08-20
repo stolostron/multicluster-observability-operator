@@ -15,18 +15,29 @@ import (
 )
 
 func TestNewVolumeClaimTemplate(t *testing.T) {
-	vct := newVolumeClaimTemplate("50Gi", "test")
+	vct := newVolumeClaimTemplate("10Gi", "test")
 	if vct.Spec.AccessModes[0] != v1.ReadWriteOnce ||
 		vct.Spec.Resources.Requests[v1.ResourceStorage] != resource.MustParse(mcoconfig.DefaultStorageSize) {
 		t.Errorf("Failed to newVolumeClaimTemplate")
 	}
 }
 
-func TestNewDefaultObservatorium(t *testing.T) {
+func TestNewDefaultObservatoriumSpec(t *testing.T) {
+	storageClassName := "gp2"
+	statefulSetSize := "1Gi"
 	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
-		Spec:       mcov1beta1.MultiClusterObservabilitySpec{},
+		Spec: mcov1beta1.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta1.StorageConfigObject{
+				MetricObjectStorage: &mcov1beta1.PreConfiguredStorage{
+					Key:  "key",
+					Name: "name",
+				},
+				StatefulSetSize:         statefulSetSize,
+				StatefulSetStorageClass: storageClassName,
+			},
+		},
 	}
 
 	obs := newDefaultObservatoriumSpec(mco)
@@ -41,7 +52,10 @@ func TestNewDefaultObservatorium(t *testing.T) {
 	}
 	imgRepo := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository)
 	imgVersion := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
-
+	receiversStorage := obs.Receivers.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
+	ruleStorage := obs.Rule.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
+	storeStorage := obs.Store.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
+	compactStorage := obs.Compact.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	obs = newDefaultObservatoriumSpec(mco)
 	APIImg := imgRepo + "/observatorium:" + imgVersion
 	queryCacheImg := imgRepo + "/cortex:" + imgVersion
@@ -57,6 +71,14 @@ func TestNewDefaultObservatorium(t *testing.T) {
 		obs.Query.Version != imgVersion ||
 		obs.Receivers.Image != thanosImg ||
 		obs.Receivers.Version != imgVersion ||
+		*obs.Receivers.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
+		*obs.Rule.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
+		*obs.Store.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
+		*obs.Compact.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
+		receiversStorage.String() != statefulSetSize ||
+		ruleStorage.String() != statefulSetSize ||
+		storeStorage.String() != statefulSetSize ||
+		compactStorage.String() != statefulSetSize ||
 		obs.Rule.Image != thanosImg ||
 		obs.Rule.Version != imgVersion ||
 		obs.Store.Image != thanosImg ||
@@ -68,7 +90,9 @@ func TestNewDefaultObservatorium(t *testing.T) {
 		obs.Store.Cache.ExporterImage != imgRepo+"/memcached-exporter:"+imgVersion ||
 		obs.Store.Cache.ExporterVersion != imgVersion ||
 		obs.APIQuery.Image != thanosImg ||
-		obs.APIQuery.Version != imgVersion {
+		obs.APIQuery.Version != imgVersion ||
+		obs.ObjectStorageConfig.Thanos.Key != "key" ||
+		obs.ObjectStorageConfig.Thanos.Name != "name" {
 		t.Errorf("Failed to newDefaultObservatorium")
 	}
 }
