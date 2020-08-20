@@ -4,13 +4,10 @@ package config
 
 import (
 	"context"
-	"errors"
-	"time"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
-	"github.com/prometheus/common/model"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -61,9 +58,7 @@ const (
 	ObservatoriumImgRepo      = "quay.io/observatorium"
 	ObservatoriumImgTagSuffix = "master-2020-08-06-10069f8"
 
-	DefaultAddonInterval = "1m"
-	MinAddonInterval     = "30s"
-	MaxAddonInterval     = "1h"
+	DefaultAddonInterval = 60
 )
 
 var log = logf.Log.WithName("config")
@@ -73,25 +68,6 @@ var monitoringCRName = ""
 // GetClusterNameLabelKey returns the key for the injected label
 func GetClusterNameLabelKey() string {
 	return clusterNameLabelKey
-}
-
-func IsValidAddonInterval(interval string) (bool, error) {
-	duration, err := model.ParseDuration(interval)
-	if err != nil {
-		return false, errors.New("Invalid interval config, use default")
-	}
-
-	maxInterval, _ := model.ParseDuration(MaxAddonInterval)
-	minInterval, _ := model.ParseDuration(MinAddonInterval)
-	if time.Duration(duration).Hours() > time.Duration(maxInterval).Hours() {
-		return false, errors.New("The interval is too large, use default")
-	}
-
-	if time.Duration(duration).Seconds() < time.Duration(minInterval).Seconds() {
-		return false, errors.New("The interval is too small, use default")
-	}
-
-	return true, nil
 }
 
 func IsNeededReplacement(annotations map[string]string) bool {

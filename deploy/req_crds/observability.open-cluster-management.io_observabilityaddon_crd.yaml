@@ -34,13 +34,16 @@ spec:
           description: ObservabilityAddonSpec is the spec of observability addon
           properties:
             enableMetrics:
-              description: EnableMetrics indicate the observability addon push metrics
+              description: EnableMetrics indicates the observability addon push metrics
                 to hub server. The default is true
               type: boolean
             interval:
               description: Interval for the observability addon push metrics to hub
-                server. The default is 1 minute
-              type: string
+                server. The default is 60 seconds
+              format: int32
+              type: integer
+              minimum: 15
+              maximum: 3600
           type: object
         status:
           description: ObservabilityAddonStatus defines the observed state of ObservabilityAddon

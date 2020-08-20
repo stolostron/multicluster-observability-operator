@@ -92,9 +92,9 @@ type ObservabilityAddonSpec struct {
 	EnableMetrics bool `json:"enableMetrics,omitempty"`
 
 	// Interval for the observability addon push metrics to hub server.
-	// The default is 1 minute
+	// The default is 60 seconds
 	// +optional
-	Interval string `json:"interval,omitempty"`
+	Interval int32 `json:"interval,omitempty"`
 }
 
 // ObjectStorageConfig is the spec of object storage.
