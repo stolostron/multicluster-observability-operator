@@ -16,7 +16,7 @@ spec:
       containers:
         - name: endpoint-observability-operator
           # Replace this with the built image name
-          image: "quay.io/open-cluster-management/endpoint-monitoring-operator:0.1.0-da400374f9b67491473683dc46c1be476f40976f"
+          image: REPLACE_WITH_OPERATOR_IMAGE
           command:
           - endpoint-monitoring-operator
           imagePullPolicy: Always
@@ -36,7 +36,7 @@ spec:
                 fieldRef:
                   fieldPath: spec.serviceAccountName
             - name: COLLECTOR_IMAGE
-              value: quay.io/open-cluster-management/metrics-collector:2.1.0-PR6-1b7cdb7b33bd9baed230a367465ec7238204648a
+              value: REPLACE_WITH_METRICS_COLLECTOR_IMAGE
             - name: OPERATOR_NAME
               value: "endpoint-monitoring-operator"
             - name: HUB_KUBECONFIG

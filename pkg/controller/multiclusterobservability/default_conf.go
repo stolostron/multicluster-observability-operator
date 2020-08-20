@@ -60,6 +60,13 @@ func GenerateMonitoringCR(c client.Client,
 		}
 	}
 
+	if mco.Spec.ObservabilityAddonSpec == nil {
+		mco.Spec.ObservabilityAddonSpec = &mcov1beta1.ObservabilityAddonSpec{
+			EnableMetrics: true,
+			Interval:      mcoconfig.DefaultAddonInterval,
+		}
+	}
+
 	found := &mcov1beta1.MultiClusterObservability{}
 	err := c.Get(
 		context.TODO(),

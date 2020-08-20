@@ -14,9 +14,7 @@ import (
 )
 
 const (
-	epConfigName    = "observability-addon"
-	collectorType   = "OCP_PROMETHEUS"
-	defaultInterval = "1m"
+	epConfigName = "observability-addon"
 )
 
 func deleteEndpointConfigCR(client client.Client, namespace string) error {

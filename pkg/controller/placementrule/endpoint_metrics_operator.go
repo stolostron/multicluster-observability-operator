@@ -16,10 +16,11 @@ import (
 )
 
 const (
-	deployName      = "endpoint-observability-operator"
-	imageName       = "endpoint-monitoring-operator"
-	saName          = "endpoint-observability-operator-sa"
-	rolebindingName = "endpoint-observability-operator-rb"
+	deployName         = "endpoint-observability-operator"
+	imageName          = "endpoint-monitoring-operator"
+	collectorImageName = "metrics-collectore"
+	saName             = "endpoint-observability-operator-sa"
+	rolebindingName    = "endpoint-observability-operator-rb"
 )
 
 var (
@@ -48,7 +49,7 @@ func loadTemplates(namespace string,
 			return nil, err
 		}
 
-		// set the image and watch_namespace for endpoint metrics operator
+		// set the images and watch_namespace for endpoint metrics operator
 		if r.GetKind() == "Deployment" && r.GetName() == deployName {
 			spec := obj.(*v1.Deployment).Spec.Template.Spec
 			if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix) != "" {
@@ -56,12 +57,27 @@ func loadTemplates(namespace string,
 					"/" +
 					imageName + ":" +
 					util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
+			} else {
+				spec.Containers[0].Image = mcoconfig.DefaultImgRepository +
+					"/" +
+					imageName + ":" +
+					mcoconfig.EndpointControllerImgTagSuffix
 			}
 			spec.Containers[0].ImagePullPolicy = mco.Spec.ImagePullPolicy
 			for i, env := range spec.Containers[0].Env {
 				if env.Name == "WATCH_NAMESPACE" {
 					spec.Containers[0].Env[i].Value = namespace
-					break
+				}
+				if env.Name == "COLLECTOR_IMAGE" && util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix) != "" {
+					spec.Containers[0].Env[i].Value = util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository) +
+						"/" +
+						collectorImageName + ":" +
+						util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
+				} else {
+					spec.Containers[0].Image = mcoconfig.DefaultImgRepository +
+						"/" +
+						imageName + ":" +
+						mcoconfig.MetricsCollectorImgTagSuffix
 				}
 			}
 		}

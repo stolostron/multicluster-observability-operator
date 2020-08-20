@@ -11,6 +11,7 @@ require (
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
 	github.com/openshift/cluster-monitoring-operator v0.1.1-0.20200406225945-844f960a2a8d
 	github.com/operator-framework/operator-sdk v0.17.0
+	github.com/prometheus/common v0.9.1
 	github.com/spf13/pflag v1.0.5
 	k8s.io/api v0.18.3
 	k8s.io/apimachinery v0.18.3
