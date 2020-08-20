@@ -57,6 +57,8 @@ const (
 
 	ObservatoriumImgRepo      = "quay.io/observatorium"
 	ObservatoriumImgTagSuffix = "master-2020-08-06-10069f8"
+
+	DefaultAddonInterval = 60
 )
 
 var log = logf.Log.WithName("config")
