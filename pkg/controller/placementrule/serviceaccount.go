@@ -50,6 +50,7 @@ func createRole(client client.Client, namespace string) error {
 			{
 				Resources: []string{
 					"pods",
+					"secrets",
 				},
 				Verbs: []string{
 					"watch",
