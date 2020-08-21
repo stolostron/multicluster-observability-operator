@@ -68,16 +68,18 @@ func loadTemplates(namespace string,
 				if env.Name == "WATCH_NAMESPACE" {
 					spec.Containers[0].Env[i].Value = namespace
 				}
-				if env.Name == "COLLECTOR_IMAGE" && util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix) != "" {
-					spec.Containers[0].Env[i].Value = util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository) +
-						"/" +
-						collectorImageName + ":" +
-						util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
-				} else {
-					spec.Containers[0].Image = mcoconfig.DefaultImgRepository +
-						"/" +
-						imageName + ":" +
-						mcoconfig.MetricsCollectorImgTagSuffix
+				if env.Name == "COLLECTOR_IMAGE" {
+					if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix) != "" {
+						spec.Containers[0].Env[i].Value = util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository) +
+							"/" +
+							collectorImageName + ":" +
+							util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
+					} else {
+						spec.Containers[0].Image = mcoconfig.DefaultImgRepository +
+							"/" +
+							imageName + ":" +
+							mcoconfig.MetricsCollectorImgTagSuffix
+					}
 				}
 			}
 		}
