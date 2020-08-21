@@ -59,7 +59,6 @@ replace (
 replace (
 	github.com/coreos/etcd => go.etcd.io/etcd v3.3.22+incompatible
 	github.com/gorilla/websocket => github.com/gorilla/websocket v1.4.2
-	github.com/mholt/caddy => github.com/caddyserver/caddy/v2 v2.1.1
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc7
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad
 )
