@@ -75,7 +75,7 @@ func loadTemplates(namespace string,
 							collectorImageName + ":" +
 							util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
 					} else {
-						spec.Containers[0].Image = mcoconfig.DefaultImgRepository +
+						spec.Containers[0].Env[i].Value = mcoconfig.DefaultImgRepository +
 							"/" +
 							imageName + ":" +
 							mcoconfig.MetricsCollectorImgTagSuffix

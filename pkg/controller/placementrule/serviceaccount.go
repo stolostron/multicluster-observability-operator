@@ -19,6 +19,7 @@ const (
 	roleBindingName    = "endpoint-observability-controller"
 	serviceAccountName = "endpoint-observability-controller-sa"
 	epRsName           = "observabilityaddons"
+	epStatusRsName     = "observabilityaddons/status"
 	epRsGroup          = "observability.open-cluster-management.io"
 )
 
@@ -36,6 +37,7 @@ func createRole(client client.Client, namespace string) error {
 			{
 				Resources: []string{
 					epRsName,
+					epStatusRsName,
 				},
 				Verbs: []string{
 					"watch",
