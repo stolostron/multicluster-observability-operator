@@ -88,7 +88,7 @@ func updateRes(r *resource.Resource, namespace string,
 				} else {
 					spec.Containers[0].Env[i].Value = mcoconfig.DefaultImgRepository +
 						"/" +
-						imageName + ":" +
+						collectorImageName + ":" +
 						mcoconfig.MetricsCollectorImgTagSuffix
 				}
 			}
