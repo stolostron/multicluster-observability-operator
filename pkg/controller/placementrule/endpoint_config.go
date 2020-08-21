@@ -49,7 +49,7 @@ func createEndpointConfigCR(client client.Client, obsNamespace string, namespace
 			},
 		},
 		Spec: obv1beta1.ObservabilityAddonSpec{
-			EnableMetrics: true
+			EnableMetrics: true,
 		},
 	}
 	found := &obv1beta1.ObservabilityAddon{}
