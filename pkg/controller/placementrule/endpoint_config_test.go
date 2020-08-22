@@ -37,7 +37,7 @@ func TestEndpointConfigCR(t *testing.T) {
 	objs := []runtime.Object{newTestRoute(), newTestInfra()}
 	c := fake.NewFakeClient(objs...)
 
-	err := createEndpointConfigCR(c, mcoNamespace, namespace, "test-cluster")
+	err := createEndpointConfigCR(c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to create observabilityaddon: (%v)", err)
 	}
@@ -47,7 +47,7 @@ func TestEndpointConfigCR(t *testing.T) {
 		t.Fatalf("Failed to get observabilityaddon: (%v)", err)
 	}
 
-	err = createEndpointConfigCR(c, mcoNamespace, namespace, "test-cluster")
+	err = createEndpointConfigCR(c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to create observabilityaddon: (%v)", err)
 	}
