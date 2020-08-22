@@ -17,7 +17,7 @@ import (
 
 const (
 	hubInfoName = "hub-info-secret"
-	hubInfoKey  = "hubInfoKey"
+	hubInfoKey  = "hub-info.yaml"
 	urlSubPath  = "/api/v1/receive"
 )
 

@@ -18,7 +18,7 @@ import (
 const (
 	deployName         = "endpoint-observability-operator"
 	imageName          = "endpoint-monitoring-operator"
-	collectorImageName = "metrics-collectore"
+	collectorImageName = "metrics-collector"
 	saName             = "endpoint-observability-operator-sa"
 	rolebindingName    = "endpoint-observability-operator-rb"
 )
