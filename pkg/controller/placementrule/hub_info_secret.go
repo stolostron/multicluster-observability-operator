@@ -40,6 +40,8 @@ func createHubInfoSecret(client client.Client, obsNamespace string, namespace st
 	if err != nil {
 		return err
 	}
+	configYamlMap := map[string][]byte{}
+	configYamlMap[hubInfoKey] = configYaml
 	hubInfoSec := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
@@ -49,9 +51,7 @@ func createHubInfoSecret(client client.Client, obsNamespace string, namespace st
 			Name:      hubInfoName,
 			Namespace: namespace,
 		},
-		Data: map[string][]byte{
-			hubInfoKey: configYaml,
-		},
+		Data: configYamlMap,
 	}
 
 	found := &corev1.Secret{}
