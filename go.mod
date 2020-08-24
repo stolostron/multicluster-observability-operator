@@ -3,18 +3,30 @@ module github.com/open-cluster-management/multicluster-monitoring-operator
 go 1.13
 
 require (
+	github.com/Azure/azure-sdk-for-go v40.1.0+incompatible // indirect
+	github.com/Azure/go-autorest/autorest v0.10.0 // indirect
+	github.com/caddyserver/caddy/v2 v2.1.1 // indirect
 	github.com/coreos/prometheus-operator v0.38.0
+	github.com/go-openapi/strfmt v0.19.4 // indirect
+	github.com/gophercloud/gophercloud v0.8.0 // indirect
+	github.com/grpc-ecosystem/grpc-gateway v1.14.1 // indirect
+	github.com/hashicorp/consul v1.7.4 // indirect
 	github.com/observatorium/deployments/operator v0.0.0-20200806144145-10069f8e16a2
 	github.com/open-cluster-management/api v0.0.0-20200602195039-a516cac2e038
 	github.com/open-cluster-management/multicloud-operators-placementrule v1.0.0-2020-05-08-20-30-09
 	github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
 	github.com/openshift/cluster-monitoring-operator v0.1.1-0.20200406225945-844f960a2a8d
+	github.com/openshift/origin v1.2.0 // indirect
 	github.com/operator-framework/operator-sdk v0.17.0
+	github.com/prometheus/prometheus v2.9.2+incompatible // indirect
 	github.com/spf13/pflag v1.0.5
+	github.com/syndtr/goleveldb v1.0.0 // indirect
+	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.18.3
 	k8s.io/apimachinery v0.18.3
 	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/kubernetes v1.18.8 // indirect
 	sigs.k8s.io/controller-runtime v0.5.2
 	sigs.k8s.io/kustomize/v3 v3.3.1
 	sigs.k8s.io/yaml v1.2.0
@@ -45,6 +57,9 @@ replace (
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.0.0-20191016112829-06bb3c9d77c9
 )
 
-replace github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad
-
-replace github.com/prometheus/prometheus => github.com/prometheus/prometheus v1.8.2-0.20190424153033-d3245f150225
+replace (
+	github.com/coreos/etcd => go.etcd.io/etcd v3.3.22+incompatible
+	github.com/gorilla/websocket => github.com/gorilla/websocket v1.4.2
+	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc7
+	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad
+)

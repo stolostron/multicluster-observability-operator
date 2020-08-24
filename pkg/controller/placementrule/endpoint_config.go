@@ -14,9 +14,7 @@ import (
 )
 
 const (
-	epConfigName    = "observability-addon"
-	collectorType   = "OCP_PROMETHEUS"
-	defaultInterval = "1m"
+	epConfigName = "observability-addon"
 )
 
 func deleteEndpointConfigCR(client client.Client, namespace string) error {
@@ -37,11 +35,7 @@ func deleteEndpointConfigCR(client client.Client, namespace string) error {
 	return err
 }
 
-func createEndpointConfigCR(client client.Client, obsNamespace string, namespace string, cluster string) error {
-	//url, err := config.GetObsAPIUrl(client, obsNamespace)
-	//if err != nil {
-	//	return err
-	//}
+func createEndpointConfigCR(client client.Client, namespace string) error {
 	ec := &obv1beta1.ObservabilityAddon{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      epConfigName,
@@ -52,9 +46,6 @@ func createEndpointConfigCR(client client.Client, obsNamespace string, namespace
 		},
 		Spec: obv1beta1.ObservabilityAddonSpec{
 			EnableMetrics: true,
-			MetricsConfigs: obv1beta1.MetricsConfigsSpec{
-				Interval: defaultInterval,
-			},
 		},
 	}
 	found := &obv1beta1.ObservabilityAddon{}

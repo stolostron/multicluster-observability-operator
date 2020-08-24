@@ -125,6 +125,12 @@ func GenerateAPIGatewayRoute(
 				},
 			},
 		}
+
+		// Set MultiClusterObservability instance as the owner and controller
+		if err := controllerutil.SetControllerReference(mco, apiGateway, scheme); err != nil {
+			return &reconcile.Result{}, err
+		}
+
 		err = runclient.Get(
 			context.TODO(),
 			types.NamespacedName{Name: apiGateway.Name, Namespace: apiGateway.Namespace},

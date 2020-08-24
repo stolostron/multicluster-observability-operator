@@ -1,12 +1,12 @@
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: endpoint-monitoring-operator-rb
+  name: endpoint-observability-operator-rb
 subjects:
 - kind: ServiceAccount
-  name: endpoint-monitoring-operator-sa
+  name: endpoint-observability-operator-sa
   namespace: open-cluster-management-observability
 roleRef:
   kind: ClusterRole
-  name: endpoint-monitoring-operator
+  name: endpoint-observability-operator
   apiGroup: rbac.authorization.k8s.io

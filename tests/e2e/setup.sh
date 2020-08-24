@@ -194,7 +194,7 @@ deploy_hub_core() {
     kubectl apply -f deploy/cluster-manager/crds/*crd.yaml
     sleep 2
     kubectl create ns $HUB_NS || true
-    kubectl create quota test --hard=pods=4 -n $HUB_NS
+    kubectl create quota test --hard=pods=7 -n $HUB_NS
     kubectl apply -f deploy/cluster-manager/crds
 }
 
@@ -227,7 +227,7 @@ deploy_spoke_core() {
     rm -rf ${WORKDIR}/../registration-operator
     kind get kubeconfig --name hub --internal > $HOME/.kube/kind-config-hub-internal
     kubectl create namespace $AGENT_NS
-    kubectl create quota test --hard=pods=4 -n $AGENT_NS
+    kubectl create quota test --hard=pods=7 -n $AGENT_NS
     kubectl create secret generic bootstrap-hub-kubeconfig --from-file=kubeconfig=$HOME/.kube/kind-config-hub-internal -n $AGENT_NS
 }
 
