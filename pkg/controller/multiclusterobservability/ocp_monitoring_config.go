@@ -24,7 +24,6 @@ import (
 
 const (
 	clusterIDLabelKey = "cluster_id"
-	collectorType     = "OCP_PROMETHEUS"
 	cmName            = "cluster-monitoring-config"
 	cmNamespace       = "openshift-monitoring"
 	configKey         = "config.yaml"

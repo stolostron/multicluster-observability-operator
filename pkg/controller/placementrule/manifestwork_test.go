@@ -57,7 +57,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get work dir: (%v)", err)
 	}
-	templatePath = path.Join(wd, "../../../manifests/endpoint-monitoring")
+	templatePath = path.Join(wd, "../../../manifests/endpoint-observability")
 	err = createManifestWork(c, namespace, newTestMCO(), newTestPullSecret())
 	if err != nil {
 		t.Fatalf("Failed to create manifestwork: (%v)", err)

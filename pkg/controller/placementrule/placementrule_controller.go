@@ -234,7 +234,12 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	for _, decision := range instance.Status.Decisions {
 		reqLogger.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
 		currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
-		err = createEndpointConfigCR(r.client, mco.Namespace, decision.ClusterNamespace, decision.ClusterName)
+		err = createHubInfoSecret(r.client, mco.Namespace, decision.ClusterNamespace, decision.ClusterName)
+		if err != nil {
+			reqLogger.Error(err, "Failed to create hubinfo secret")
+			return reconcile.Result{}, err
+		}
+		err = createEndpointConfigCR(r.client, decision.ClusterNamespace)
 		if err != nil {
 			reqLogger.Error(err, "Failed to create observabilityaddon")
 			return reconcile.Result{}, err

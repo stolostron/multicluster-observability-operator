@@ -16,14 +16,15 @@ import (
 )
 
 const (
-	deployName      = "endpoint-monitoring-operator"
-	imageName       = "endpoint-monitoring-operator"
-	saName          = "endpoint-monitoring-operator-sa"
-	rolebindingName = "endpoint-monitoring-operator-rb"
+	deployName         = "endpoint-observability-operator"
+	imageName          = "endpoint-monitoring-operator"
+	collectorImageName = "metrics-collector"
+	saName             = "endpoint-observability-operator-sa"
+	rolebindingName    = "endpoint-observability-operator-rb"
 )
 
 var (
-	templatePath = "/usr/local/manifests/endpoint-monitoring"
+	templatePath = "/usr/local/manifests/endpoint-observability"
 )
 
 func loadTemplates(namespace string,
@@ -37,50 +38,77 @@ func loadTemplates(namespace string,
 	}
 	rawExtensionList := []runtime.RawExtension{}
 	for _, r := range resourceList {
-		kind := r.GetKind()
-		if kind != "ClusterRole" && kind != "ClusterRoleBinding" {
-			r.SetNamespace(spokeNameSpace)
-		}
-		obj := util.GetK8sObj(kind)
-		err := runtime.DefaultUnstructuredConverter.FromUnstructured(r.Map(), obj)
+		obj, err := updateRes(r, namespace, mco)
 		if err != nil {
-			log.Error(err, "failed to convert the resource", r.GetName())
 			return nil, err
-		}
-
-		// set the image and watch_namespace for endpoint metrics operator
-		if r.GetKind() == "Deployment" && r.GetName() == deployName {
-			spec := obj.(*v1.Deployment).Spec.Template.Spec
-			if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix) != "" {
-				spec.Containers[0].Image = util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository) +
-					"/" +
-					imageName + ":" +
-					util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
-			}
-			spec.Containers[0].ImagePullPolicy = mco.Spec.ImagePullPolicy
-			for i, env := range spec.Containers[0].Env {
-				if env.Name == "WATCH_NAMESPACE" {
-					spec.Containers[0].Env[i].Value = namespace
-					break
-				}
-			}
-		}
-		// set the imagepullsecrets for sa
-		if r.GetKind() == "ServiceAccount" && r.GetName() == saName {
-			imageSecrets := obj.(*corev1.ServiceAccount).ImagePullSecrets
-			for i, imageSecret := range imageSecrets {
-				if imageSecret.Name == "REPLACE_WITH_IMAGEPULLSECRET" {
-					imageSecrets[i].Name = mco.Spec.ImagePullSecret
-					break
-				}
-			}
-		}
-		// set namespace for rolebinding
-		if r.GetKind() == "ClusterRoleBinding" && r.GetName() == rolebindingName {
-			binding := obj.(*rbacv1.ClusterRoleBinding)
-			binding.Subjects[0].Namespace = spokeNameSpace
 		}
 		rawExtensionList = append(rawExtensionList, runtime.RawExtension{Object: obj})
 	}
 	return rawExtensionList, nil
+}
+
+func updateRes(r *resource.Resource, namespace string,
+	mco *mcov1beta1.MultiClusterObservability) (runtime.Object, error) {
+
+	kind := r.GetKind()
+	if kind != "ClusterRole" && kind != "ClusterRoleBinding" {
+		r.SetNamespace(spokeNameSpace)
+	}
+	obj := util.GetK8sObj(kind)
+	err := runtime.DefaultUnstructuredConverter.FromUnstructured(r.Map(), obj)
+	if err != nil {
+		log.Error(err, "failed to convert the resource", r.GetName())
+		return nil, err
+	}
+	// set the images and watch_namespace for endpoint metrics operator
+	if r.GetKind() == "Deployment" && r.GetName() == deployName {
+		spec := obj.(*v1.Deployment).Spec.Template.Spec
+		if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix) != "" {
+			spec.Containers[0].Image = util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository) +
+				"/" +
+				imageName + ":" +
+				util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
+		} else {
+			spec.Containers[0].Image = mcoconfig.DefaultImgRepository +
+				"/" +
+				imageName + ":" +
+				mcoconfig.EndpointControllerImgTagSuffix
+		}
+		spec.Containers[0].ImagePullPolicy = mco.Spec.ImagePullPolicy
+		for i, env := range spec.Containers[0].Env {
+			if env.Name == "WATCH_NAMESPACE" {
+				spec.Containers[0].Env[i].Value = namespace
+			}
+			if env.Name == "COLLECTOR_IMAGE" {
+				if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix) != "" {
+					spec.Containers[0].Env[i].Value = util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository) +
+						"/" +
+						collectorImageName + ":" +
+						util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
+				} else {
+					spec.Containers[0].Env[i].Value = mcoconfig.DefaultImgRepository +
+						"/" +
+						collectorImageName + ":" +
+						mcoconfig.MetricsCollectorImgTagSuffix
+				}
+			}
+		}
+	}
+	// set the imagepullsecrets for sa
+	if r.GetKind() == "ServiceAccount" && r.GetName() == saName {
+		imageSecrets := obj.(*corev1.ServiceAccount).ImagePullSecrets
+		for i, imageSecret := range imageSecrets {
+			if imageSecret.Name == "REPLACE_WITH_IMAGEPULLSECRET" {
+				imageSecrets[i].Name = mco.Spec.ImagePullSecret
+				break
+			}
+		}
+	}
+	// set namespace for rolebinding
+	if r.GetKind() == "ClusterRoleBinding" && r.GetName() == rolebindingName {
+		binding := obj.(*rbacv1.ClusterRoleBinding)
+		binding.Subjects[0].Namespace = spokeNameSpace
+	}
+
+	return obj, nil
 }
