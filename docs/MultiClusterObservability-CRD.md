@@ -1,17 +1,15 @@
-#MultiClusterObservability CRD 
+# MultiClusterObservability CRD
 
-
- 
-##Description
+## Description
 
 MultiClusterObservability API is the interface to manage the MultiClusterObservability Operator which deploys and manages the Observability components on the RHACM Hub Cluster. MultiClusterObservability is a cluster scoped CRD. The short name is MCO.
 
-##API Version
+## API Version
 
 observability.open-cluster-management.io/v1beta1
 
 
-##Specification
+## Specification
 
 
 <table>
@@ -26,7 +24,7 @@ observability.open-cluster-management.io/v1beta1
    </td>
   </tr>
   <tr>
-   <td>imagePullSecret
+   <td>ImagePullSecret
    </td>
    <td>string
    </td>
@@ -46,13 +44,13 @@ observability.open-cluster-management.io/v1beta1
    </td>
   </tr>
   <tr>
-   <td>enableDownSampling
+   <td>EnableDownSampling
    </td>
    <td>bool
    </td>
-   <td>Enable or disable the downsample. 
+   <td>Enable or disable the downsample.
 <p>
-The default value is <strong>true</strong>. 
+The default value is <strong>true</strong>.
 <p>
 Note: Disabling downsampling is not recommended as querying long time ranges without non-downsampled data is not efficient and useful.
    </td>
@@ -60,11 +58,11 @@ Note: Disabling downsampling is not recommended as querying long time ranges wit
    </td>
   </tr>
   <tr>
-   <td>RawResolutionRetention
+   <td>RetentionResolutionRaw
    </td>
    <td>string
    </td>
-   <td>How long to retain raw samples in a bucket. 
+   <td>How long to retain raw samples in a bucket.
 <p>
 Default is 5d
    </td>
@@ -72,7 +70,7 @@ Default is 5d
    </td>
   </tr>
   <tr>
-   <td>5mResolutionRetention
+   <td>RetentionResolution5m
    </td>
    <td>string
    </td>
@@ -84,11 +82,11 @@ Default is 5d
    </td>
   </tr>
   <tr>
-   <td>1hResolutionRetention
+   <td>RetentionResolution1h
    </td>
    <td>string
    </td>
-   <td>How long to retain samples of resolution 2 (1 hour) in a bucket. 
+   <td>How long to retain samples of resolution 2 (1 hour) in a bucket.
 <p>
 Default is 30d.
    </td>
@@ -96,11 +94,11 @@ Default is 30d.
    </td>
   </tr>
   <tr>
-   <td>availabilityConfig
+   <td>AvailabilityConfig
    </td>
    <td>AvailabilityType
    </td>
-   <td>ReplicaCount for HA support. Does not affect data stores. High will enable HA support. This will provide better support in cases of failover but consumes more resources. 
+   <td>ReplicaCount for HA support. Does not affect data stores. High will enable HA support. This will provide better support in cases of failover but consumes more resources.
 <p>
 Options are: Basic and High (default).
    </td>
@@ -108,9 +106,9 @@ Options are: Basic and High (default).
    </td>
   </tr>
   <tr>
-   <td>observabilityAddonSpec
+   <td>ObservabilityAddonSpec
    </td>
-   <td>ObservabilityAddOnSpec 
+   <td>ObservabilityAddOnSpec
    </td>
    <td>The observabilityAddonSpec defines the global settings for all managed clusters which have observability add-on enabled.
    </td>
@@ -120,7 +118,7 @@ Options are: Basic and High (default).
 </table>
 
 
-###StorageConfigObject
+### StorageConfigObject
 
 
 <table>
@@ -149,7 +147,7 @@ Options are: Basic and High (default).
    </td>
    <td>String
    </td>
-   <td>The amount of storage applied to the Observability stateful sets, i.e. Thanos store, Rule, compact and receiver. 
+   <td>The amount of storage applied to the Observability stateful sets, i.e. Thanos store, Rule, compact and receiver.
 <p>
 The default is 10Gi
    </td>
@@ -161,7 +159,7 @@ The default is 10Gi
    </td>
    <td>String
    </td>
-   <td>Specify the storageClass Stateful Sets.  This storage class will also be used for Object Storage if MetricObjectStorage was configured for the system to create the storage. 
+   <td>Specify the storageClass Stateful Sets.  This storage class will also be used for Object Storage if MetricObjectStorage was configured for the system to create the storage.
 <p>
 The default  is gp2.
    </td>
@@ -171,7 +169,7 @@ The default  is gp2.
 </table>
 
 
-###PreConfiguredStorage
+### PreConfiguredStorage
 
 
 <table>
@@ -186,7 +184,7 @@ The default  is gp2.
    </td>
   </tr>
   <tr>
-   <td>key
+   <td>Key
    </td>
    <td>string
    </td>
@@ -196,7 +194,7 @@ The default  is gp2.
    </td>
   </tr>
   <tr>
-   <td>name
+   <td>Name
    </td>
    <td>string
    </td>
@@ -208,9 +206,9 @@ The default  is gp2.
 </table>
 
 
-###ObservabilityAddonSpec
+### ObservabilityAddonSpec
 
- 
+
 <table>
   <tr>
    <td><strong>Property</strong>
@@ -223,7 +221,7 @@ The default  is gp2.
    </td>
   </tr>
   <tr>
-   <td>enableMetrics
+   <td>EnableMetrics
    </td>
    <td>bool
    </td>
@@ -235,7 +233,7 @@ The default  is gp2.
   <tr>
    <td>Interval
    </td>
-   <td>string
+   <td>int32
    </td>
    <td>Interval for the metrics collector push metrics to hub server
 <p>
@@ -247,7 +245,7 @@ The default is 1m
 </table>
 
 
-###MultiClusterObservability Status
+### MultiClusterObservability Status
 
 
 <table>
@@ -264,7 +262,7 @@ The default is 1m
    </td>
   </tr>
   <tr>
-   <td>status
+   <td>Status
    </td>
    <td>Status contains the different condition statuses for this deployment
    </td>
@@ -278,7 +276,7 @@ The default is 1m
 </table>
 
 
-###Conditions
+### Conditions
 
 <table>
   <tr>
