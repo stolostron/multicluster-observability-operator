@@ -4,6 +4,7 @@ package placementrule
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -179,7 +180,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	reqLogger.Info("Reconciling PlacementRule")
 
 	if config.GetMonitoringCRName() == "" {
-		return reconcile.Result{}, nil
+		return reconcile.Result{}, fmt.Errorf("multicluster observability resource is not available")
 	}
 
 	// Fetch the MultiClusterObservability instance

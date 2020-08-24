@@ -58,7 +58,7 @@ const (
 	ObservatoriumImgRepo      = "quay.io/observatorium"
 	ObservatoriumImgTagSuffix = "master-2020-08-06-10069f8"
 
-	EndpointControllerImgTagSuffix = "0.1.0-108eac0953939c0f5622de44e5802962f2608f20"
+	EndpointControllerImgTagSuffix = "0.1.0-3add7c7666a19f957ae16d41ef2f5b7be81d8dba"
 
 	MetricsCollectorImgTagSuffix = "2.1.0-SNAPSHOT-2020-08-20-20-59-55"
 
