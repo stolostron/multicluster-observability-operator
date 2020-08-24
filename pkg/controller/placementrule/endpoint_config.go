@@ -11,12 +11,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	obv1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
-	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 const (
-	epConfigName  = "observability-addon"
-	collectorType = "OCP_PROMETHEUS"
+	epConfigName = "observability-addon"
 )
 
 func deleteEndpointConfigCR(client client.Client, namespace string) error {
@@ -37,11 +35,7 @@ func deleteEndpointConfigCR(client client.Client, namespace string) error {
 	return err
 }
 
-func createEndpointConfigCR(client client.Client, obsNamespace string, namespace string, cluster string) error {
-	//url, err := config.GetObsAPIUrl(client, obsNamespace)
-	//if err != nil {
-	//	return err
-	//}
+func createEndpointConfigCR(client client.Client, namespace string) error {
 	ec := &obv1beta1.ObservabilityAddon{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      epConfigName,
@@ -52,7 +46,6 @@ func createEndpointConfigCR(client client.Client, obsNamespace string, namespace
 		},
 		Spec: obv1beta1.ObservabilityAddonSpec{
 			EnableMetrics: true,
-			Interval:      mcoconfig.DefaultAddonInterval,
 		},
 	}
 	found := &obv1beta1.ObservabilityAddon{}
