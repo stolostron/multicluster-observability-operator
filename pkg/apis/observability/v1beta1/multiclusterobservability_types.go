@@ -111,13 +111,25 @@ type MultiClusterObservabilityStatus struct {
 
 	// Represents the status of each deployment
 	// +optional
-	Deployments []DeploymentResult `json:"deployments,omitempty"`
+	// Deployments []DeploymentResult `json:"deployments,omitempty"` TEMP
+
+	// Represents the status of MultiClusterObservability itself
+	// +optional
+	Conditions []DeploymentConditionResult `json:"conditions,omitempty"`
 }
 
-// DeploymentResult defines the observed state of Deployment
-type DeploymentResult struct {
+// DeploymentConditionResult defines the observed state of Deployment
+type DeploymentConditionResult struct {
 	// Name of the deployment
 	Name string `json:"name"`
+
+	// Return ready if deployment is ready
+	// +optional
+	Ready bool `json:"ready,omitempty"`
+
+	// Return fail if deployment is fail
+	// +optional
+	Failed bool `json:"fail,omitempty"`
 
 	// The most recently observed status of the Deployment
 	Status appsv1.DeploymentStatus `json:"status"`

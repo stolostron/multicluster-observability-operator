@@ -210,6 +210,7 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 	return reconcile.Result{}, nil
 }
 
+// UpdateStatus override UpdateStatus interface
 func (r *ReconcileMultiClusterObservability) UpdateStatus(
 	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
@@ -228,15 +229,31 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 		)
 		return &reconcile.Result{}, err
 	}
-
-	statedDeploys := []mcov1beta1.DeploymentResult{}
+	statedDeploys := []mcov1beta1.DeploymentConditionResult{}
 	for _, deployment := range deployList.Items {
-		statedDeploys = append(statedDeploys, mcov1beta1.DeploymentResult{
-			Name:   deployment.Name,
-			Status: deployment.Status,
-		})
+		log.Info("11111")
+		log.WithValues(statedDeploys)
+		status := deployment.Status
+		ready := status.ReadyReplicas > 0
+		if ready {
+			statedDeploys = append(statedDeploys, mcov1beta1.DeploymentConditionResult{
+				Name:   deployment.Name,
+				Status: deployment.Status,
+				Ready:  ready,
+			})
+		} else {
+			statedDeploys = append(statedDeploys, mcov1beta1.DeploymentConditionResult{
+				Name:   deployment.Name,
+				Status: deployment.Status,
+				Failed: !ready,
+			})
+		}
+		log.Info("2222")
+		log.WithValues(statedDeploys)
 	}
-	mco.Status.Deployments = statedDeploys
+	mco.Status.Conditions = statedDeploys
+	log.Info("3333")
+	log.WithValues(mco.Status.Conditions)
 
 	err = r.client.Status().Update(context.TODO(), mco)
 	if err != nil {

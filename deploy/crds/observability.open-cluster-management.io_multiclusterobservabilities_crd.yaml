@@ -123,14 +123,20 @@ spec:
           description: MultiClusterObservabilityStatus defines the observed state
             of MultiClusterObservability
           properties:
-            deployments:
+            conditions:
               description: Represents the status of each deployment
               items:
-                description: DeploymentResult defines the observed state of Deployment
+                description: DeploymentConditionResult defines the observed state of Deployment
                 properties:
                   name:
                     description: Name of the deployment
                     type: string
+                  ready: 
+                    description: Show if it is ready
+                    type: boolean
+                  failed:
+                    description: Show if it is failed
+                    type: boolean
                   status:
                     description: The most recently observed status of the Deployment
                     properties:
