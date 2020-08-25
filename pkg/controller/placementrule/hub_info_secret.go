@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v2"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,10 +30,12 @@ type HubInfo struct {
 	Endpoint    string `yaml:"endpoint"`
 }
 
-func createHubInfoSecret(client client.Client, obsNamespace string, namespace string, clusterName string) error {
+func newHubInfoSecret(client client.Client, obsNamespace string,
+	namespace string, clusterName string) (*corev1.Secret, error) {
 	url, err := config.GetObsAPIUrl(client, obsNamespace)
 	if err != nil {
-		return err
+		log.Error(err, "Failed to get api gateway")
+		return nil, err
 	}
 	if !strings.HasPrefix(url, "http") {
 		url = protocol + url
@@ -43,11 +46,11 @@ func createHubInfoSecret(client client.Client, obsNamespace string, namespace st
 	}
 	configYaml, err := yaml.Marshal(hubInfo)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	configYamlMap := map[string][]byte{}
 	configYamlMap[hubInfoKey] = configYaml
-	hubInfoSec := &corev1.Secret{
+	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
 			Kind:       "Secret",
@@ -57,12 +60,19 @@ func createHubInfoSecret(client client.Client, obsNamespace string, namespace st
 			Namespace: namespace,
 		},
 		Data: configYamlMap,
-	}
+	}, nil
+}
+
+func createHubInfoSecret(client client.Client, obsNamespace string, namespace string, clusterName string) error {
 
 	found := &corev1.Secret{}
-	err = client.Get(context.TODO(), types.NamespacedName{Name: hubInfoName, Namespace: namespace}, found)
+	err := client.Get(context.TODO(), types.NamespacedName{Name: hubInfoName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating hubinfo secret", "namespace", namespace)
+		hubInfoSec, err := newHubInfoSecret(client, obsNamespace, namespace, clusterName)
+		if err != nil {
+			return err
+		}
 		err = client.Create(context.TODO(), hubInfoSec)
 		if err != nil {
 			log.Error(err, "Failed to create hubInfo secret")
