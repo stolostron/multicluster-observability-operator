@@ -22,19 +22,6 @@ const (
 	defaultNamespace         = "open-cluster-management-observability"
 	defaultTenantName        = "prod"
 
-	DefaultObjStorageType      = "s3"
-	DefaultObjStorageBucket    = "thanos"
-	DefaultObjStorageEndpoint  = "minio:9000"
-	DefaultObjStorageInsecure  = true
-	DefaultObjStorageAccesskey = "minio"
-	// #nosec
-	DefaultObjStorageSecretkey = "minio123"
-
-	// #nosec
-	DefaultObjStorageSecretName = "thanos-object-storage"
-	// #nosec
-	DefaultObjStorageSecretStringDataKey = "thanos.yaml"
-
 	AnnotationKeyImageRepository = "mco-imageRepository"
 	AnnotationKeyImageTagSuffix  = "mco-imageTagSuffix"
 
@@ -43,7 +30,7 @@ const (
 	DefaultImgRepository = "quay.io/open-cluster-management"
 	DefaultImgTagSuffix  = "latest"
 	DefaultStorageClass  = "gp2"
-	DefaultStorageSize   = "50Gi"
+	DefaultStorageSize   = "10Gi"
 
 	DefaultRetentionResolution1h  = "30d"
 	DefaultRetentionResolution5m  = "14d"
@@ -51,9 +38,6 @@ const (
 
 	GrafanaImgRepo      = "grafana"
 	GrafanaImgTagSuffix = "7.1.3"
-
-	MinioImgRepo      = "minio"
-	MinioImgTagSuffix = "latest"
 
 	ObservatoriumImgRepo      = "quay.io/observatorium"
 	ObservatoriumImgTagSuffix = "master-2020-08-06-10069f8"

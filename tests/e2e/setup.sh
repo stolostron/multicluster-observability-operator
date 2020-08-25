@@ -132,8 +132,8 @@ deploy_mco_operator() {
     # Add storage class config
     cp deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml-e
     $sed_command "s~spec:.*$~spec: ~g" deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
-    printf "\n  storageClass: standard\n" >> deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
-    printf "\n  storageSize: 1Gi\n" >> deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
+    printf "\n    statefulSetSize: 10Gi\n" >> deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
+    printf "\n    statefulSetStorageClass: standard\n" >> deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
     # Install the multicluster-observability-operator
     kubectl create ns ${MONITORING_NS}
     kubectl config set-context --current --namespace ${MONITORING_NS}
@@ -142,6 +142,7 @@ deploy_mco_operator() {
     kubectl apply -f deploy/req_crds
     kubectl apply -f deploy/crds/observability.open-cluster-management.io_multiclusterobservabilities_crd.yaml
     kubectl apply -f tests/e2e/req_crds
+    kubectl apply -f tests/e2e/minio
     sleep 2
     kubectl apply -f tests/e2e/req_crds/hub_cr
     kubectl apply -f deploy
