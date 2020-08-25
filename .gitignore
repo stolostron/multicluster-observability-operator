@@ -1,7 +1,6 @@
 # Temporary Build Files
 build/_output
 build/_test
-vendor/
 temp/
 # Created by https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 ### Emacs ###
