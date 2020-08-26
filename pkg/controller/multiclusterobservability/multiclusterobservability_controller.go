@@ -5,6 +5,8 @@ package multiclusterobservability
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	observatoriumv1alpha1 "github.com/observatorium/deployments/operator/api/v1alpha1"
@@ -29,7 +31,10 @@ import (
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
-var log = logf.Log.WithName("controller_multiclustermonitoring")
+var (
+	log                  = logf.Log.WithName("controller_multiclustermonitoring")
+	enableHubRemoteWrite = os.Getenv("ENABLE_HUB_REMOTEWRITE")
+)
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -197,9 +202,13 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 	}
 
 	// generate/update the configmap cluster-monitoring-config
-	result, err = UpdateHubClusterMonitoringConfig(r.client, r.ocpClient, instance.Namespace)
-	if result != nil {
-		return *result, err
+	flag, err := strconv.ParseBool(enableHubRemoteWrite)
+	if err != nil && flag {
+		reqLogger.Info("Update cluster-monitornig-config map to enable remote write")
+		result, err = UpdateHubClusterMonitoringConfig(r.client, r.ocpClient, instance.Namespace)
+		if result != nil {
+			return *result, err
+		}
 	}
 
 	result, err = r.UpdateStatus(instance)

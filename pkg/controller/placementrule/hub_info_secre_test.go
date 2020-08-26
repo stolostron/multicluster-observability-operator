@@ -14,8 +14,7 @@ import (
 )
 
 const (
-	routeHost   = "test-host"
-	clusterName = "test-cluster"
+	routeHost = "test-host"
 )
 
 func newTestRoute() *routev1.Route {
