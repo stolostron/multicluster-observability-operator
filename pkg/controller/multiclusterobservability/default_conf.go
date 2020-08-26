@@ -32,6 +32,10 @@ func GenerateMonitoringCR(c client.Client,
 		mco.Spec.NodeSelector = map[string]string{}
 	}
 
+	if mco.Spec.StorageConfig == nil {
+		mco.Spec.StorageConfig = &mcov1beta1.StorageConfigObject{}
+	}
+
 	if mco.Spec.StorageConfig.StatefulSetSize == "" {
 		mco.Spec.StorageConfig.StatefulSetSize = mcoconfig.DefaultStorageSize
 	}

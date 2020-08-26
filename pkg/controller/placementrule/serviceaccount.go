@@ -15,13 +15,123 @@ import (
 )
 
 const (
-	roleName           = "endpoint-observability-controller"
-	roleBindingName    = "endpoint-observability-controller"
-	serviceAccountName = "endpoint-observability-controller-sa"
-	epRsName           = "observabilityaddons"
-	epStatusRsName     = "observabilityaddons/status"
-	epRsGroup          = "observability.open-cluster-management.io"
+	roleName               = "endpoint-observability-controller"
+	roleBindingName        = "endpoint-observability-controller"
+	clusterRoleName        = "endpoint-observability-controller"
+	clusterRoleBindingName = "endpoint-observability-controller"
+	serviceAccountName     = "endpoint-observability-controller-sa"
+	epRsName               = "observabilityaddons"
+	epStatusRsName         = "observabilityaddons/status"
+	mcoRsName              = "observabilities"
+	epRsGroup              = "observability.open-cluster-management.io"
 )
+
+func createClusterRole(client client.Client) error {
+
+	role := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: clusterRoleName,
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				Resources: []string{
+					mcoRsName,
+				},
+				Verbs: []string{
+					"watch",
+					"list",
+					"get",
+				},
+				APIGroups: []string{
+					epRsGroup,
+				},
+			},
+		},
+	}
+
+	found := &rbacv1.ClusterRole{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName, Namespace: ""}, found)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Creating endpoint-observability-controller clusterRole")
+		err = client.Create(context.TODO(), role)
+		if err != nil {
+			log.Error(err, "Failed to create endpoint-observability-controller clusterRole")
+			return err
+		}
+		return nil
+	} else if err != nil {
+		log.Error(err, "Failed to check endpoint-observability-controller clusterRole")
+		return err
+	}
+
+	if !reflect.DeepEqual(found.Rules, role.Rules) {
+		log.Info("Updating endpoint-observability-controller clusterRole")
+		role.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		err = client.Update(context.TODO(), role)
+		if err != nil {
+			log.Error(err, "Failed to update endpoint-observability-controller clusterRole")
+			return err
+		}
+		return nil
+	}
+
+	log.Info("clusterrole already existed/unchanged")
+	return nil
+}
+
+func createClusterRoleBinding(client client.Client, namespace string) error {
+	rb := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: namespace + "-" + roleBindingName,
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			Kind:     "ClusterRole",
+			Name:     roleName,
+			APIGroup: "rbac.authorization.k8s.io",
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      serviceAccountName,
+				Namespace: namespace,
+			},
+		},
+	}
+	found := &rbacv1.ClusterRoleBinding{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: namespace + "-" + roleBindingName, Namespace: ""}, found)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Creating endpoint-observability-controller clusterrolebinding")
+		err = client.Create(context.TODO(), rb)
+		if err != nil {
+			log.Error(err, "Failed to create endpoint-observability-controller clusterrolebinding")
+			return err
+		}
+		return nil
+	} else if err != nil {
+		log.Error(err, "Failed to check endpoint-observability-controller clusterrolebinding")
+		return err
+	}
+
+	if !reflect.DeepEqual(found.Subjects, rb.Subjects) && !reflect.DeepEqual(found.RoleRef, rb.RoleRef) {
+		log.Info("Updating endpoint-observability-controller clusterrolebinding")
+		rb.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		err = client.Update(context.TODO(), rb)
+		if err != nil {
+			log.Error(err, "Failed to update endpoint-observability-controller clusterrolebinding")
+			return err
+		}
+		return nil
+	}
+
+	log.Info("clusterrolebinding already existed/unchanged", "namespace", namespace)
+	return nil
+}
 
 func createRole(client client.Client, namespace string) error {
 
@@ -178,7 +288,15 @@ func createServiceAccount(client client.Client, namespace string) error {
 }
 
 func getSAToken(client client.Client, namespace string) ([]byte, []byte, error) {
-	err := createRole(client, namespace)
+	err := createClusterRole(client)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = createClusterRoleBinding(client, namespace)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = createRole(client, namespace)
 	if err != nil {
 		return nil, nil, err
 	}

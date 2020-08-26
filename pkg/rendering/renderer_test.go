@@ -7,7 +7,6 @@ import (
 	"path"
 	"testing"
 
-	k8sresource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
@@ -30,8 +29,10 @@ func TestRender(t *testing.T) {
 		Spec: mcov1beta1.MultiClusterObservabilitySpec{
 			ImagePullPolicy: "Always",
 			ImagePullSecret: "test",
-			StorageClass:    "gp2",
-			StorageSize:     k8sresource.MustParse("1Gi"),
+			StorageConfig: &mcov1beta1.StorageConfigObject{
+				StatefulSetStorageClass: "gp2",
+				StatefulSetSize:         "1Gi",
+			},
 		},
 	}
 

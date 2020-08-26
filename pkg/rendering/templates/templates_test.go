@@ -27,7 +27,9 @@ func TestGetCoreTemplates(t *testing.T) {
 		Spec: mcov1beta1.MultiClusterObservabilitySpec{
 			ImagePullPolicy: "Always",
 			ImagePullSecret: "test",
-			StorageClass:    "gp2",
+			StorageConfig: &mcov1beta1.StorageConfigObject{
+				StatefulSetStorageClass: "gp2",
+			},
 		},
 	}
 	_, err = GetTemplateRenderer().GetTemplates(mchcr)
