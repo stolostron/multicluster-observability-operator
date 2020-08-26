@@ -26,7 +26,30 @@ Assume RHACM is installed in `open-cluster-management` namespace. Generate your 
 ```
 oc get secret multiclusterhub-operator-pull-secret -n open-cluster-management --export -o yaml |   kubectl apply --namespace=open-cluster-management-observability -f -
 ```
-4. [Optional] Modify the operator and instance to use a new SNAPSHOT tag
+4. Create Secret for object storage
+You need to create a Secret for object storage in advance. Firstly create the  object storage configuration should as following:
+
+```
+type: s3
+config:
+  bucket: YOUR-BUCKET
+  endpoint: S3-ENDPOINT
+  insecure: true
+  access_key: ACCESS_KEY
+  secret_key: SECRET_KEY
+```
+
+You will need to provide a value for the `bucket`, `endpoint`, `access_key`, and `secret_key` keys. For more details, please refer to https://thanos.io/tip/thanos/storage.md/#s3. 
+
+Then encode object storage configuration with base64, fill it in `example/object-storage-secret.yaml` `thanos.yaml`field, and create the Secret using folllowing commands:
+
+Only for development or testing purposes, you can [deploy your object storage](./README.md#setup-object-storage). 
+```
+$ cat your-object-storage-configuration | base64
+$ oc apply --namespace=open-cluster-management-observability -f example/object-storage-secret.yaml
+```
+
+5. [Optional] Modify the operator and instance to use a new SNAPSHOT tag
 
 Edit deploy/operator.yaml file and change image tag
 ```
@@ -39,7 +62,7 @@ Edit deploy/operator.yaml file and change image tag
 
 ```
 
-Edit observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml file to change `mco-imageTagSuffix` and `storageConfigObject`
+Edit observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml file to change `mco-imageTagSuffix` and `storageConfigObject`. In  `storageConfigObject.metricObjectStorage`, `name` is the name of the Secret created in  step 4, `key` is the key of the data in that Secret.
 
 ```
 apiVersion: observability.open-cluster-management.io/v1alpha1
@@ -56,31 +79,12 @@ spec:
       key: thanos.yaml
 ```
 
-You need to set a Secret for object storage in advance, or you can [deploy your object storage](./README.md#setup-object-storage). The object storage configuration should as following:
-
-```
-type: s3
-config:
-  bucket: YOUR-BUCKET
-  endpoint: S3-ENDPOINT
-  insecure: true
-  access_key: ACCESS_KEY
-  secret_key: SECRET_KEY
-```
-
-You will need to provide a value for the `bucket`, `endpoint`, `access_key`, and `secret_key` keys. For more details, please refer to https://thanos.io/tip/thanos/storage.md/#s3 , and then encode object storage configuration with base64 and fill it in `example/object-storage-secret.yaml` `thanos.yaml`field:
-
-```
-$ cat your-object-storage-configuration | base64
-$ oc apply -f example/object-storage-secret.yaml
-```
-
 Note: Find snapshot tags here: https://quay.io/repository/open-cluster-management/acm-custom-registry?tab=tags
 
-5. [Optional] Customize the configuration for the operator instance
+6. [Optional] Customize the configuration for the operator instance
 You can customize the operator instance by updating `observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml`. Below is a sample which has the configuration with default values. If you want to use customized value for one parameter, just need to specify that parameter in your own yaml file.
 
-6. Deploy the `multicluster-observability-operator` and `MultiClusterObservability` instance
+7. Deploy the `multicluster-observability-operator` and `MultiClusterObservability` instance
 ```
 oc project open-cluster-management-observability
 oc apply -f deploy/req_crds/observability.open-cluster-management.io_observabilityaddon_crd.yaml
@@ -106,7 +110,7 @@ observability-observatorium-thanos-store-shard-0-0                1/1     Runnin
 observatorium-operator-686cc5bf6-l9zcx                            1/1     Running   0          7h8m
 ```
 
-7. View metrics in dashboard
+8. View metrics in dashboard
 Access Grafana console at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "ACM:Cluster Monitoring"
 
 ### Install this operator on KinD
@@ -168,7 +172,7 @@ curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.
 
 ### Setup object storage
 
-For development or testing purposes, you can set up your own object storage. We provide some examples for you to set up your own object storage through [Minio](https://min.io/), you can find these examples in `tests/e2e/minio/` path. The steps are as follows:
+For development or testing purposes, you can set up your own object storage. We provide some examples for you to set up your own object storage through [Minio](https://min.io/), you can find these examples in `tests/e2e/minio/` path. You need to update the storageclass in `tests/e2e/minio/minio-pvc.yaml` firstly, then create minio deployment as follows:
 
 ```
 $ oc create ns open-cluster-management-observability
