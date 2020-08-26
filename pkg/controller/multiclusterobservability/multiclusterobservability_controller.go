@@ -231,8 +231,6 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 	}
 	statedDeploys := []mcov1beta1.DeploymentConditionResult{}
 	for _, deployment := range deployList.Items {
-		log.Info("11111")
-		log.WithValues(statedDeploys)
 		status := deployment.Status
 		ready := status.ReadyReplicas > 0
 		if ready {
@@ -248,12 +246,8 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 				Failed: !ready,
 			})
 		}
-		log.Info("2222")
-		log.WithValues(statedDeploys)
 	}
 	mco.Status.Conditions = statedDeploys
-	log.Info("3333")
-	log.WithValues(mco.Status.Conditions)
 
 	err = r.client.Status().Update(context.TODO(), mco)
 	if err != nil {
