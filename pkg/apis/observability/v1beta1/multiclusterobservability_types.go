@@ -5,7 +5,6 @@ package v1beta1
 import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -63,20 +62,9 @@ type MultiClusterObservabilitySpec struct {
 	// +optional
 	RetentionResolution1h string `json:"retentionResolution1h,omitempty"`
 
-	// Specify the storageClass for PVC.
-	// The default value is gp2.
-	// +optional
-	StorageClass string `json:"storageClass"`
-
-	// The storageSize is applied to the thanos components
-	// compact/recevier/rule/store.
-	// The default value is 50Gi
-	// +optional
-	StorageSize resource.Quantity `json:"storageSize"`
-
-	// Spec of object storage config
-	// +optional
-	ObjectStorageConfig *ObjectStorageConfig `json:"objectStorageConfig,omitempty"`
+	// Specifies the storage to be used by Observability
+	// +required
+	StorageConfig *StorageConfigObject `json:"storageConfigObject,omitempty"`
 
 	// The ObservabilityAddonSpec defines the global settings for all managed
 	// clusters which have observability add-on enabled.
@@ -97,10 +85,33 @@ type ObservabilityAddonSpec struct {
 	Interval int32 `json:"interval,omitempty"`
 }
 
-// ObjectStorageConfig is the spec of object storage.
-type ObjectStorageConfig struct {
+// StorageConfigObject is the spec of object storage.
+type StorageConfigObject struct {
 	// Object store config secret for metrics
-	Metrics *corev1.SecretKeySelector `json:"metrics,omitempty"`
+	// +required
+	MetricObjectStorage *PreConfiguredStorage `json:"metricObjectStorage,omitempty"`
+	// The amount of storage applied to the Observability stateful sets, i.e.
+	// Thanos store, Rule, compact and receiver.
+	// The default is 10Gi
+	// +optional
+	StatefulSetSize string `json:"statefulSetSize,omitempty"`
+
+	// 	Specify the storageClass Stateful Sets. This storage class will also
+	// be used for Object Storage if MetricObjectStorage was configured for
+	// the system to create the storage.
+	// The default is gp2.
+	// +optional
+	StatefulSetStorageClass string `json:"statefulSetStorageClass,omitempty"`
+}
+
+type PreConfiguredStorage struct {
+	// The key of the secret to select from. Must be a valid secret key.
+	// Refer to https://thanos.io/storage.md/#configuration for a valid content of key.
+	// +required
+	Key string `json:"key,omitempty"`
+	// Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+	// +required
+	Name string `json:"name,omitempty"`
 }
 
 // MultiClusterObservabilityStatus defines the observed state of MultiClusterObservability

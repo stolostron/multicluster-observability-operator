@@ -27,11 +27,13 @@ func NewFakeClient(mco *mcov1beta1.MultiClusterObservability,
 	return fake.NewFakeClientWithScheme(s, objs...)
 }
 
-func TestGenerateMonitoringEmptyCR(t *testing.T) {
+func TestGenerateMonitoringCR(t *testing.T) {
 	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
-		Spec:       mcov1beta1.MultiClusterObservabilitySpec{},
+		Spec: mcov1beta1.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta1.StorageConfigObject{},
+		},
 	}
 
 	result, err := GenerateMonitoringCR(NewFakeClient(mco, &observatoriumv1alpha1.Observatorium{}), mco)
@@ -53,9 +55,16 @@ func TestGenerateMonitoringEmptyCR(t *testing.T) {
 		t.Errorf("NodeSelector (%v) is not the expected (non-nil)", mco.Spec.NodeSelector)
 	}
 
-	if mco.Spec.StorageClass != mcoconfig.DefaultStorageClass {
-		t.Errorf("StorageClass (%v) is not the expected (%v)",
-			mco.Spec.StorageClass, mcoconfig.DefaultStorageClass)
+	if mco.Spec.StorageConfig.StatefulSetSize != mcoconfig.DefaultStorageSize {
+		t.Errorf("StatefulSetSize (%v) is not the expected (%v)",
+			mco.Spec.StorageConfig.StatefulSetSize,
+			mcoconfig.DefaultStorageSize)
+	}
+
+	if mco.Spec.StorageConfig.StatefulSetStorageClass != mcoconfig.DefaultStorageClass {
+		t.Errorf("StatefulSetStorageClass (%v) is not the expected (%v)",
+			mco.Spec.StorageConfig.StatefulSetStorageClass,
+			mcoconfig.DefaultStorageClass)
 	}
 
 	defaultObservabilityAddonSpec := &mcov1beta1.ObservabilityAddonSpec{
@@ -87,6 +96,10 @@ func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 		},
 
 		Spec: mcov1beta1.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta1.StorageConfigObject{
+				StatefulSetSize:         "1Gi",
+				StatefulSetStorageClass: "gp2",
+			},
 			ObservabilityAddonSpec: addonSpec,
 		},
 	}
@@ -111,9 +124,14 @@ func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 		t.Errorf("NodeSelector (%v) is not the expected (non-nil)", mco.Spec.NodeSelector)
 	}
 
-	if mco.Spec.StorageClass != mcoconfig.DefaultStorageClass {
-		t.Errorf("StorageClass (%v) is not the expected (%v)",
-			mco.Spec.StorageClass, mcoconfig.DefaultStorageClass)
+	if mco.Spec.StorageConfig.StatefulSetSize != "1Gi" {
+		t.Errorf("StatefulSetSize (%v) is not the expected (%v)",
+			mco.Spec.StorageConfig.StatefulSetSize, "1Gi")
+	}
+
+	if mco.Spec.StorageConfig.StatefulSetStorageClass != "gp2" {
+		t.Errorf("StatefulSetStorageClass (%v) is not the expected (%v)",
+			mco.Spec.StorageConfig.StatefulSetStorageClass, "gp2")
 	}
 
 	if !reflect.DeepEqual(mco.Spec.ObservabilityAddonSpec, addonSpec) {

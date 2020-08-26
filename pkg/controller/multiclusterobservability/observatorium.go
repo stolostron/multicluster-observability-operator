@@ -125,6 +125,12 @@ func GenerateAPIGatewayRoute(
 				},
 			},
 		}
+
+		// Set MultiClusterObservability instance as the owner and controller
+		if err := controllerutil.SetControllerReference(mco, apiGateway, scheme); err != nil {
+			return &reconcile.Result{}, err
+		}
+
 		err = runclient.Get(
 			context.TODO(),
 			types.NamespacedName{Name: apiGateway.Name, Namespace: apiGateway.Namespace},
@@ -163,12 +169,10 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability) *obs
 	}
 
 	obs.ObjectStorageConfig.Thanos = &observatoriumv1alpha1.ObjectStorageConfigSpec{}
-	if mco.Spec.ObjectStorageConfig != nil && mco.Spec.ObjectStorageConfig.Metrics != nil {
-		obs.ObjectStorageConfig.Thanos.Name = mco.Spec.ObjectStorageConfig.Metrics.Name
-		obs.ObjectStorageConfig.Thanos.Key = mco.Spec.ObjectStorageConfig.Metrics.Key
-	} else {
-		obs.ObjectStorageConfig.Thanos.Name = mcoconfig.DefaultObjStorageSecretName
-		obs.ObjectStorageConfig.Thanos.Key = mcoconfig.DefaultObjStorageSecretStringDataKey
+	if mco.Spec.StorageConfig != nil && mco.Spec.StorageConfig.MetricObjectStorage != nil {
+		objStorageConf := mco.Spec.StorageConfig.MetricObjectStorage
+		obs.ObjectStorageConfig.Thanos.Name = objStorageConf.Name
+		obs.ObjectStorageConfig.Thanos.Key = objStorageConf.Key
 	}
 
 	replicas := int32(1)
@@ -282,7 +286,9 @@ func newReceiversSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1
 		receSpec.Image = defaultThanosImage
 		receSpec.Version = defaultThanosVersion
 	}
-	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mco.Spec.StorageSize.String(), mco.Spec.StorageClass)
+	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
+		mco.Spec.StorageConfig.StatefulSetSize,
+		mco.Spec.StorageConfig.StatefulSetStorageClass)
 
 	return receSpec
 }
@@ -301,7 +307,9 @@ func newRuleSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha
 		ruleSpec.Image = defaultThanosImage
 		ruleSpec.Version = defaultThanosVersion
 	}
-	ruleSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mco.Spec.StorageSize.String(), mco.Spec.StorageClass)
+	ruleSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
+		mco.Spec.StorageConfig.StatefulSetSize,
+		mco.Spec.StorageConfig.StatefulSetStorageClass)
 
 	return ruleSpec
 }
@@ -320,7 +328,9 @@ func newStoreSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alph
 		storeSpec.Image = defaultThanosImage
 		storeSpec.Version = defaultThanosVersion
 	}
-	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mco.Spec.StorageSize.String(), mco.Spec.StorageClass)
+	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
+		mco.Spec.StorageConfig.StatefulSetSize,
+		mco.Spec.StorageConfig.StatefulSetStorageClass)
 	shards := int32(1)
 	storeSpec.Shards = &shards
 	storeSpec.Cache = newStoreCacheSpec(mco)
@@ -372,7 +382,9 @@ func newCompactSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1al
 	compactSpec.RetentionResolutionRaw = mco.Spec.RetentionResolutionRaw
 	compactSpec.RetentionResolution5m = mco.Spec.RetentionResolution5m
 	compactSpec.RetentionResolution1h = mco.Spec.RetentionResolution1h
-	compactSpec.VolumeClaimTemplate = newVolumeClaimTemplate(mco.Spec.StorageSize.String(), mco.Spec.StorageClass)
+	compactSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
+		mco.Spec.StorageConfig.StatefulSetSize,
+		mco.Spec.StorageConfig.StatefulSetStorageClass)
 
 	return compactSpec
 }

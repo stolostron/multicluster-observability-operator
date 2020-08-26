@@ -128,6 +128,7 @@ run_test_teardown() {
     kubectl delete -n $MONITORING_NS MultiClusterObservability observability
     kubectl delete -n $MONITORING_NS deployment/grafana-test
     kubectl delete -n $MONITORING_NS service/grafana-test
+    kubectl delete -n $MONITORING_NS -f tests/e2e/minio
     kubectl delete -n $MONITORING_NS -f deploy/
     target_count="0"
     timeout=$true
@@ -204,12 +205,21 @@ run_test_access_grafana_dashboard() {
 
 run_test_endpoint_operator() {
 
-    wait_for_popup endpointmonitoring endpoint-config kind-config-hub cluster1
+    kubectl apply --kubeconfig $SPOKE_KUBECONFIG -f ./tests/e2e/templates/clusterrole.yaml
     if [ $? -ne 0 ]; then
-        echo "The endpointmonitoring monitoring-endpoint-monitoring-work not created"
+        echo "Failed to create cluster-monitoring-view clusterrole"
         exit 1
     else
-        echo "The endpointmonitoring monitoring-endpoint-monitoring-work created"
+        echo "Created cluster-monitoring-view clusterrole"
+    fi
+    sleep 5
+
+    wait_for_popup oba observability-addon kind-config-hub cluster1
+    if [ $? -ne 0 ]; then
+        echo "The observabilityAddon observability-addon not created"
+        exit 1
+    else
+        echo "The observabilityAddon observability-addon created"
     fi
 
     wait_for_popup manifestwork monitoring-endpoint-monitoring-work kind-config-hub cluster1
@@ -228,42 +238,20 @@ run_test_endpoint_operator() {
         echo "The secret hub-kube-config created"
     fi
 
-    wait_for_popup deployment endpoint-monitoring-operator kind-config-spoke $MONITORING_NS
+    wait_for_popup deployment endpoint-observability-operator kind-config-spoke $MONITORING_NS
     if [ $? -ne 0 ]; then
-        echo "The deployment endpoint-monitoring-operator not created"
+        echo "The deployment endpoint-observability-operator not created"
         exit 1
     else
-        echo "The deployment endpoint-monitoring-operator created"
+        echo "The deployment endpoint-observability-operator created"
     fi
 
-    wait_for_popup configmap cluster-monitoring-config kind-config-spoke openshift-monitoring
+    wait_for_popup deployment metrics-collector-deployment kind-config-spoke $MONITORING_NS
     if [ $? -ne 0 ]; then
-        echo "The configmap cluster-monitoring-config is not created"
+        echo "The deployment metrics-collector-deployment not created"
         exit 1
     else
-        echo "The configmap cluster-monitoring-config created"
-    fi
-    RESULT=$(kubectl get configmap --kubeconfig $SPOKE_KUBECONFIG -n openshift-monitoring cluster-monitoring-config -o yaml)
-    if [[ $RESULT == *"replacement: cluster1"* ]] && [[ $RESULT == *"replacement: 3650eda1-66fe-4aba-bfbc-d398638f3022"* ]]; then
-        echo "configmap cluster-monitoring-config has correct configuration"
-    else
-        echo "configmap cluster-monitoring-config doesn't have correct configuration"
-    fi
-
-    kubectl apply -n cluster1 -f ./tests/e2e/templates/endpoint.yaml
-    if [ $? -ne 0 ]; then
-        echo "Failed to update endpointmonitoring endpoint-config"
-        exit 1
-    else
-        echo "New changes applied to endpointmonitoring endpoint-config"
-    fi
-    sleep 5
-    RESULT=$(kubectl get configmap --kubeconfig $SPOKE_KUBECONFIG -n openshift-monitoring cluster-monitoring-config -o yaml)
-    if [[ $RESULT == *"replacement: test_value"* ]] && [[ $RESULT == *"replacement: cluster1"* ]] && [[ $RESULT == *"replacement: 3650eda1-66fe-4aba-bfbc-d398638f3022"* ]]; then
-        echo "Latest changes synched to configmap cluster-monitoring-config"
-    else
-        echo "Latest changes not synched to configmap cluster-monitoring-config"
-        exit 1
+        echo "The deployment metrics-collector-deployment created"
     fi
 
 }

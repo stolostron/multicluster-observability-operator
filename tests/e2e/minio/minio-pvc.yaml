@@ -4,11 +4,11 @@ metadata:
   labels:
     app.kubernetes.io/name: minio
   name: minio
-  namespace: observatorium
+  namespace: open-cluster-management-observability
 spec:
-  storageClassName: "gp2"
+  storageClassName: "standard"
   accessModes:
   - ReadWriteOnce
   resources:
     requests:
-      storage: "50Gi"
+      storage: "1Gi"

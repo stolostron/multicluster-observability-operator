@@ -20,6 +20,7 @@ git checkout origin/release-2.1
 oc create namespace open-cluster-management-observability
 ```
 3. Generate your pull-secret
+
 Assume RHACM is installed in `open-cluster-management` namespace. Generate your pull-screct by
 
 ```
@@ -37,7 +38,9 @@ Edit deploy/operator.yaml file and change image tag
           image: ...
 
 ```
-Edit observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml file to change `mco-imageTagSuffix`
+
+Edit observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml file to change `mco-imageTagSuffix` and `storageConfigObject`
+
 ```
 apiVersion: observability.open-cluster-management.io/v1alpha1
 kind: MultiClusterObservability
@@ -47,7 +50,29 @@ metadata:
     mco-imageRepository: quay.io/open-cluster-management
     mco-imageTagSuffix: 2.1.0-SNAPSHOT-2020-08-11-14-16-48
 spec:
-  ...
+  storageConfigObject:
+    metricObjectStorage:
+      name: thanos-object-storage
+      key: thanos.yaml
+```
+
+You need to set a Secret for object storage in advance, or you can [deploy your object storage](./README.md#setup-object-storage). The object storage configuration should as following:
+
+```
+type: s3
+config:
+  bucket: YOUR-BUCKET
+  endpoint: S3-ENDPOINT
+  insecure: true
+  access_key: ACCESS_KEY
+  secret_key: SECRET_KEY
+```
+
+You will need to provide a value for the `bucket`, `endpoint`, `access_key`, and `secret_key` keys. For more details, please refer to https://thanos.io/tip/thanos/storage.md/#s3 , and then encode object storage configuration with base64 and fill it in `example/object-storage-secret.yaml` `thanos.yaml`field:
+
+```
+$ cat your-object-storage-configuration | base64
+$ oc apply -f example/object-storage-secret.yaml
 ```
 
 Note: Find snapshot tags here: https://quay.io/repository/open-cluster-management/acm-custom-registry?tab=tags
@@ -66,24 +91,19 @@ oc apply -f deploy/
 ```
 The following pods are available in `open-cluster-management-observability` namespace after installed successfully.
 ```
-NAME                                                                  READY   STATUS    RESTARTS   AGE
-pod/grafana-6fb9584cf9-tt5s2                                          1/1     Running   0          76m
-pod/minio-786cb78959-44mqj                                            1/1     Running   0          76m
-pod/monitoring-observatorium-cortex-query-frontend-695bdfc9cd-c4tcm   1/1     Running   0          75m
-pod/monitoring-observatorium-observatorium-api-6b474975f9-lgnfh       1/1     Running   0          76m
-pod/monitoring-observatorium-observatorium-api-thanos-query-77kfwz7   1/1     Running   0          76m
-pod/monitoring-observatorium-thanos-compact-0                         1/1     Running   0          74m
-pod/monitoring-observatorium-thanos-query-85d8cd96d6-5jj74            1/1     Running   0          74m
-pod/monitoring-observatorium-thanos-receive-controller-675868d4rzbq   1/1     Running   0          73m
-pod/monitoring-observatorium-thanos-receive-default-0                 1/1     Running   0          73m
-pod/monitoring-observatorium-thanos-receive-default-1                 1/1     Running   0          73m
-pod/monitoring-observatorium-thanos-receive-default-2                 1/1     Running   0          73m
-pod/monitoring-observatorium-thanos-rule-0                            1/1     Running   0          72m
-pod/monitoring-observatorium-thanos-rule-1                            1/1     Running   0          72m
-pod/monitoring-observatorium-thanos-store-memcached-0                 2/2     Running   0          75m
-pod/monitoring-observatorium-thanos-store-shard-0-0                   1/1     Running   0          72m
-pod/multicluster-monitoring-operator-5dc5997979-f4flc                 1/1     Running   1          77m
-pod/observatorium-operator-88b859dc-79hml                             1/1     Running   0          76m
+NAME                                                              READY   STATUS    RESTARTS   AGE
+grafana-7cb7c6b698-4kbdc                                          1/1     Running   0          7h8m
+multicluster-observability-operator-55bc57d65c-tk2c2              1/1     Running   0          7h8m
+observability-observatorium-cortex-query-frontend-56bd7954zk4hs   1/1     Running   0          7h6m
+observability-observatorium-observatorium-api-7cbb7766b-k5lxf     1/1     Running   0          7h7m
+observability-observatorium-thanos-compact-0                      1/1     Running   0          7h4m
+observability-observatorium-thanos-query-6658db5979-5dvjq         1/1     Running   0          7h4m
+observability-observatorium-thanos-receive-controller-5965wbpqs   1/1     Running   0          7h1m
+observability-observatorium-thanos-receive-default-0              1/1     Running   0          7h1m
+observability-observatorium-thanos-rule-0                         1/1     Running   0          7h
+observability-observatorium-thanos-store-memcached-0              2/2     Running   0          7h5m
+observability-observatorium-thanos-store-shard-0-0                1/1     Running   0          6h59m
+observatorium-operator-686cc5bf6-l9zcx                            1/1     Running   0          7h8m
 ```
 
 7. View metrics in dashboard
@@ -146,7 +166,47 @@ curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.
 - Replace the image in `deploy/operator.yaml`.
 - Update your namespace in `deploy/role_binding.yaml`
 
+### Setup object storage
+
+For development or testing purposes, you can set up your own object storage. We provide some examples for you to set up your own object storage through [Minio](https://min.io/), you can find these examples in `tests/e2e/minio/` path. The steps are as follows:
+
+```
+$ oc create ns open-cluster-management-observability
+namespace/open-cluster-management-observability created
+$ oc apply -f tests/e2e/minio/
+deployment.apps/minio created
+persistentvolumeclaim/minio created
+secret/thanos-object-storage created
+service/minio created
+```
+
+When minio starts successfully, Edit `observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml` file to change `metricObjectStorage` field. Fill the Secret `name` and `data key` in `metricObjectStorage` field. The Secret should as following:
+
+```
+apiVersion: v1
+data:
+  thanos.yaml: dHlwZTogczMKY29uZmlnOgogIGJ1Y2tldDogInRoYW5vcyIKICBlbmRwb2ludDogIm1pbmlvOjkwMDAiCiAgaW5zZWN1cmU6IHRydWUKICBhY2Nlc3Nfa2V5OiAibWluaW8iCiAgc2VjcmV0X2tleTogIm1pbmlvMTIzIg==
+kind: Secret
+metadata:
+  name: thanos-object-storage
+type: Opaque
+```
+
+You can run the following command to get the object storage configuration:
+
+```
+$ kubectl get secret thanos-object-storage -o 'go-template={{index .data "thanos.yaml"}}' | base64 --decode
+type: s3
+config:
+  bucket: "thanos"
+  endpoint: "minio:9000"
+  insecure: true
+  access_key: "minio"
+  secret_key: "minio123"
+```
+
 ### Endpoint monitoring operator installation & endpoint monitoring configuration
+
 1. By default, the endpoint monitoring operator will be installed on any managed clusters. If want to disable this in a cluster, need to add label using key/value "monitoring"/"disabled" on it.
 2. Once the endpoint monitoring operator installed in the managed cluster, it will update the configmap cluster-monitoring-config automatically, and then the metrics will be pushed to hub side.
 3. In cluster's namespace in hub side, one default endpointmonitoring resource named as "endpoint-config"  will be created automatically. Users can edit section "relabelConfigs" in this resource to update the configuration for metrics collect in managed cluster side, such as filtering the metrics collected, injecting addtional labels([Prometheus relabel configuration]). A sample endpointmonitoring resource is as below:
