@@ -50,7 +50,7 @@ func newTestPullSecret() *corev1.Secret {
 func TestManifestWork(t *testing.T) {
 	initSchema(t)
 
-	objs := []runtime.Object{newSATokenSecret(), newTestSA(), newTestInfra()}
+	objs := []runtime.Object{newSATokenSecret(), newTestSA(), newTestInfra(), newTestRoute()}
 	c := fake.NewFakeClient(objs...)
 
 	wd, err := os.Getwd()
@@ -58,7 +58,7 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to get work dir: (%v)", err)
 	}
 	templatePath = path.Join(wd, "../../../manifests/endpoint-observability")
-	err = createManifestWork(c, namespace, newTestMCO(), newTestPullSecret())
+	err = createManifestWork(c, namespace, clusterName, newTestMCO(), newTestPullSecret())
 	if err != nil {
 		t.Fatalf("Failed to create manifestwork: (%v)", err)
 	}
@@ -67,12 +67,12 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork: (%v)", err)
 	}
-	if len(found.Spec.Workload.Manifests) != 7 {
+	if len(found.Spec.Workload.Manifests) != 8 {
 		t.Fatal("Wrong size of manifests in the mainfestwork")
 	}
 
 	spokeNameSpace = "spoke-ns"
-	err = createManifestWork(c, namespace, newTestMCO(), newTestPullSecret())
+	err = createManifestWork(c, namespace, clusterName, newTestMCO(), newTestPullSecret())
 	if err != nil {
 		t.Fatalf("Failed to create manifestwork with updated namespace: (%v)", err)
 	}

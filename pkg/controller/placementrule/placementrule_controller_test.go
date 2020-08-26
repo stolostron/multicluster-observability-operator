@@ -25,6 +25,8 @@ import (
 const (
 	namespace    = "test-ns"
 	namespace2   = "test-ns-2"
+	clusterName  = "cluster1"
+	clusterName2 = "cluster2"
 	mcoName      = "test-mco"
 	mcoNamespace = "open-cluster-management-observability"
 )
@@ -61,11 +63,11 @@ func TestObservabilityAddonController(t *testing.T) {
 		Status: placementv1.PlacementRuleStatus{
 			Decisions: []placementv1.PlacementDecision{
 				{
-					ClusterName:      "cluster1",
+					ClusterName:      clusterName,
 					ClusterNamespace: namespace,
 				},
 				{
-					ClusterName:      "cluster2",
+					ClusterName:      clusterName2,
 					ClusterNamespace: namespace2,
 				},
 			},
@@ -103,7 +105,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		Status: placementv1.PlacementRuleStatus{
 			Decisions: []placementv1.PlacementDecision{
 				{
-					ClusterName:      "cluster1",
+					ClusterName:      clusterName,
 					ClusterNamespace: namespace,
 				},
 			},

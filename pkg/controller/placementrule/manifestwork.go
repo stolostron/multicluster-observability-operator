@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	workName = "monitoring-endpoint-monitoring-work"
+	workName = "endpoint-observability-work"
 )
 
 func deleteManifestWork(client client.Client, namespace string) error {
@@ -39,18 +39,19 @@ func deleteManifestWork(client client.Client, namespace string) error {
 	return err
 }
 
-func createManifestWork(client client.Client, namespace string,
+func createManifestWork(client client.Client, clusterNamespace string,
+	clusterName string,
 	mco *mcov1beta1.MultiClusterObservability,
 	imagePullSecret *corev1.Secret) error {
 
-	secret, err := createKubeSecret(client, namespace)
+	secret, err := createKubeSecret(client, clusterNamespace)
 	if err != nil {
 		return err
 	}
 	work := &workv1.ManifestWork{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      workName,
-			Namespace: namespace,
+			Namespace: clusterNamespace,
 			Annotations: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
@@ -72,7 +73,7 @@ func createManifestWork(client client.Client, namespace string,
 			},
 		},
 	}
-	templates, err := loadTemplates(namespace, mco)
+	templates, err := loadTemplates(clusterNamespace, mco)
 	if err != nil {
 		log.Error(err, "Failed to load templates")
 		return err
@@ -102,12 +103,24 @@ func createManifestWork(client client.Client, namespace string,
 				},
 			},
 		})
+
+	// create the hub info secret
+	hubInfo, err := newHubInfoSecret(client, mco.Namespace, spokeNameSpace, clusterName)
+	if err != nil {
+		return err
+	}
+	manifests = append(manifests, workv1.Manifest{
+		runtime.RawExtension{
+			Object: hubInfo,
+		},
+	})
+
 	work.Spec.Workload.Manifests = manifests
 
 	found := &workv1.ManifestWork{}
-	err = client.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	err = client.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: clusterNamespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating monitoring-endpoint-monitoring-work work", "namespace", namespace)
+		log.Info("Creating monitoring-endpoint-monitoring-work work", "namespace", clusterNamespace)
 
 		err = client.Create(context.TODO(), work)
 		if err != nil {
@@ -133,7 +146,7 @@ func createManifestWork(client client.Client, namespace string,
 	}
 
 	if updated {
-		log.Info("Reverting monitoring-endpoint-monitoring-work work", "namespace", namespace)
+		log.Info("Reverting monitoring-endpoint-monitoring-work work", "namespace", clusterNamespace)
 		work.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 		err = client.Update(context.TODO(), work)
 		if err != nil {
@@ -143,6 +156,6 @@ func createManifestWork(client client.Client, namespace string,
 		return nil
 	}
 
-	log.Info("manifestwork already existed/unchanged", "namespace", namespace)
+	log.Info("manifestwork already existed/unchanged", "namespace", clusterNamespace)
 	return nil
 }
