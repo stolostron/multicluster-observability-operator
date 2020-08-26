@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	workName = "monitoring-endpoint-monitoring-work"
+	workName = "endpoint-observability-work"
 )
 
 func deleteManifestWork(client client.Client, namespace string) error {

@@ -15,11 +15,11 @@ import (
 )
 
 const (
-	roleName               = "endpoint-observability-controller"
-	roleBindingName        = "endpoint-observability-controller"
-	clusterRoleName        = "endpoint-observability-controller"
-	clusterRoleBindingName = "endpoint-observability-controller"
-	serviceAccountName     = "endpoint-observability-controller-sa"
+	roleName               = "endpoint-observability-role"
+	roleBindingName        = "endpoint-observability-rolebinding"
+	clusterRoleName        = "endpoint-observability-role"
+	clusterRoleBindingName = "endpoint-observability-rolebinding"
+	serviceAccountName     = "endpoint-observability-sa"
 	epRsName               = "observabilityaddons"
 	epStatusRsName         = "observabilityaddons/status"
 	mcoRsName              = "observabilities"
