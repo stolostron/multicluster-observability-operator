@@ -22,7 +22,7 @@ const (
 	serviceAccountName     = "endpoint-observability-sa"
 	epRsName               = "observabilityaddons"
 	epStatusRsName         = "observabilityaddons/status"
-	mcoRsName              = "observabilities"
+	mcoRsName              = "multiclusterobservabilities"
 	epRsGroup              = "observability.open-cluster-management.io"
 )
 
