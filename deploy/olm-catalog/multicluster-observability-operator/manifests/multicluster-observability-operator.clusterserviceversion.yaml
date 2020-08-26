@@ -10,7 +10,14 @@ metadata:
           "metadata": {
             "name": "observability"
           },
-          "spec": {}
+          "spec": {
+            "storageConfigObject": {
+              "metricObjectStorage": {
+                "key": "thanos.yaml",
+                "name": "thanos-object-storage"
+              }
+            }
+          }
         }
       ]
     capabilities: Basic Install
