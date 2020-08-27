@@ -238,25 +238,38 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 		)
 		return &reconcile.Result{}, err
 	}
-	statedDeploys := []mcov1beta1.DeploymentConditionResult{}
+	conditions := []mcov1beta1.MCOCondition{}
+	allDeploymentReady := true
+	failedDeployment := ""
 	for _, deployment := range deployList.Items {
-		status := deployment.Status
-		ready := status.ReadyReplicas > 0
-		if ready {
-			statedDeploys = append(statedDeploys, mcov1beta1.DeploymentConditionResult{
-				Name:   deployment.Name,
-				Status: deployment.Status,
-				Ready:  ready,
-			})
-		} else {
-			statedDeploys = append(statedDeploys, mcov1beta1.DeploymentConditionResult{
-				Name:   deployment.Name,
-				Status: deployment.Status,
-				Failed: !ready,
-			})
+		if deployment.Status.ReadyReplicas < 1 || deployment.Status.AvailableReplicas < 1 {
+			allDeploymentReady = false
+			failedDeployment = deployment.Name
+			break
 		}
 	}
-	mco.Status.Conditions = statedDeploys
+	if allDeploymentReady {
+		ready := mcov1beta1.Ready{
+			Type:    "Ready",
+			Reason:  "Ready",
+			Message: "Observability components deployed and running",
+		}
+		conditions = append(conditions, mcov1beta1.MCOCondition{
+			Ready: ready,
+		})
+	} else {
+		failedMessage := fmt.Sprintf("Deployment failed for %s", failedDeployment)
+		failed := mcov1beta1.Failed{
+			Type:    "Failed",
+			Reason:  "Failed",
+			Message: failedMessage,
+		}
+		conditions = append(conditions, mcov1beta1.MCOCondition{
+			Failed: failed,
+		})
+	}
+
+	mco.Status.Conditions = conditions
 
 	err = r.client.Status().Update(context.TODO(), mco)
 	if err != nil {
