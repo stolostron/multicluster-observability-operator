@@ -42,9 +42,9 @@ const (
 	ObservatoriumImgRepo      = "quay.io/observatorium"
 	ObservatoriumImgTagSuffix = "master-2020-08-06-10069f8"
 
-	EndpointControllerImgTagSuffix = "0.1.0-3add7c7666a19f957ae16d41ef2f5b7be81d8dba"
+	EndpointControllerImgTagSuffix = "0.1.0-b9d038e056beb9f981b84d13487706b1ec7635a3"
 
-	MetricsCollectorImgTagSuffix = "2.1.0-SNAPSHOT-2020-08-20-20-59-55"
+	MetricsCollectorImgTagSuffix = "2.1.0-1aa917b69ceb64c5a77b999ffb69529aa6fb069c"
 
 	DefaultAddonInterval = 60
 )
