@@ -32,7 +32,6 @@ spec:
       kind: MultiClusterObservability
       name: multiclusterobservabilities.observability.open-cluster-management.io
       version: v1beta1
-    required:
     - name: observatoria.core.observatorium.io
       version: v1alpha1
       kind: Observatorium
@@ -274,10 +273,10 @@ spec:
   - supported: true
     type: AllNamespaces
   keywords:
-  - open-cluster-management
   - MultiClusterObservability
   maintainers:
-  - {}
+  - email: ssli@redhat.com
+    name: Song Song Li
   maturity: alpha
   provider:
     name: Red Hat, Inc.
