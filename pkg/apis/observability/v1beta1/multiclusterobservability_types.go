@@ -134,6 +134,7 @@ type MCOCondition struct {
 	// +optional
 	Failed Failed `json:"fail,omitempty"`
 }
+
 // Ready defines the ready status of MCO CR
 type Ready struct {
 	Type    string `json:"type"`
@@ -141,7 +142,7 @@ type Ready struct {
 	Message string `json:"message"`
 }
 
-// Failed defines the ready status of MCO CR
+// Failed defines the failed status of MCO CR
 type Failed struct {
 	Type    string `json:"type"`
 	Reason  string `json:"reason"`
