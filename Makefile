@@ -15,3 +15,7 @@ unit-tests:
 
 e2e-tests:
 	@echo "TODO: Run e2e-tests"
+
+# should set the correct IMAGE_TAG and IMAGE_NAME for the new csv
+update-csv:
+	operator-sdk generate csv --crd-dir=deploy/crds --deploy-dir=deploy/ --output-dir=deploy/olm-catalog/multicluster-observability-operator --operator-name=multicluster-observability-operator --csv-version=0.1.0
