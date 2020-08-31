@@ -83,22 +83,37 @@ spec:
 Note: Find snapshot tags here: https://quay.io/repository/open-cluster-management/acm-custom-registry?tab=tags
 
 6. [Optional] Customize the configuration for the operator instance
+
 You can customize the operator instance by updating `observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml`. Below is a sample which has the configuration with default values. If you want to use customized value for one parameter, just need to specify that parameter in your own yaml file.
 
-7. Deploy the `multicluster-observability-operator` and `MultiClusterObservability` instance
+7. Deploy the `multicluster-observability-operator` to `open-cluster-management` namespace
+
 ```
-oc project open-cluster-management-observability
+oc project open-cluster-management
 oc apply -f deploy/req_crds/observability.open-cluster-management.io_observabilityaddon_crd.yaml
 oc apply -f deploy/req_crds/core.observatorium.io_observatoria.yaml
 oc apply -f deploy/crds/observability.open-cluster-management.io_multiclusterobservabilities_crd.yaml
-oc apply -f deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
 oc apply -f deploy/
 ```
+When you successfully install the `multicluster-observability-operator`, the following pods are available in `open-cluster-management` namespace:
+
+```
+NAME                                                              READY   STATUS    RESTARTS   AGE
+multicluster-observability-operator-55bc57d65c-tk2c2              1/1     Running   0          7h8m
+```
+
+8. Deploy `MultiClusterObservability` instance to `open-cluster-management-observability` namespace
+
+```
+oc project open-cluster-management-observability
+oc apply -f deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
+```
+
 The following pods are available in `open-cluster-management-observability` namespace after installed successfully.
+
 ```
 NAME                                                              READY   STATUS    RESTARTS   AGE
 grafana-7cb7c6b698-4kbdc                                          1/1     Running   0          7h8m
-multicluster-observability-operator-55bc57d65c-tk2c2              1/1     Running   0          7h8m
 observability-observatorium-cortex-query-frontend-56bd7954zk4hs   1/1     Running   0          7h6m
 observability-observatorium-observatorium-api-7cbb7766b-k5lxf     1/1     Running   0          7h7m
 observability-observatorium-thanos-compact-0                      1/1     Running   0          7h4m
@@ -111,7 +126,8 @@ observability-observatorium-thanos-store-shard-0-0                1/1     Runnin
 observatorium-operator-686cc5bf6-l9zcx                            1/1     Running   0          7h8m
 ```
 
-8. View metrics in dashboard
+9. View metrics in dashboard
+
 Access Grafana console at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "ACM:Cluster Monitoring"
 
 ### Install this operator on KinD

@@ -5,6 +5,7 @@ export WAIT_TIMEOUT=${WAIT_TIMEOUT:-5m}
 export KUBECONFIG=$HOME/.kube/kind-config-hub
 export SPOKE_KUBECONFIG=$HOME/.kube/kind-config-spoke
 MONITORING_NS="open-cluster-management-observability"
+DEFAULT_NS="open-cluster-management"
 kubectl config set-context --current --namespace $MONITORING_NS
 
 wait_for_popup() {
@@ -58,7 +59,7 @@ run_test_readiness() {
     OBSERVATORIUM_STATEFULSET="$MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-compact $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-receive-default $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-rule $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-store-memcached $MULTICLUSTER_MONITORING_CR_NAME-observatorium-thanos-store-shard-0"
 
     for depl in ${MULTICLUSTER_MONITORING_DEPLOYMENTS}; do
-        if ! kubectl -n $MONITORING_NS rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then
+        if ! kubectl -n $DEFAULT_NS rollout status deployments $depl --timeout=$WAIT_TIMEOUT; then
             echo "$depl is not ready after $WAIT_TIMEOUT"
             exit 1
         fi

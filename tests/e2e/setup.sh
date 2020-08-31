@@ -18,9 +18,9 @@ if [[ "$(uname)" == "Darwin" ]]; then
 fi
 
 print_mco_operator_log() {
-    kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS get po \
+    kubectl --kubeconfig $HUB_KUBECONFIG -n $DEFAULT_NS get po \
         | grep multicluster-observability-operator | awk '{print $1}' \
-        | xargs kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS logs
+        | xargs kubectl --kubeconfig $HUB_KUBECONFIG -n $DEFAULT_NS logs
 }
 
 # update prometheus CR to enable remote write to thanos
@@ -145,7 +145,13 @@ deploy_mco_operator() {
     kubectl apply -f tests/e2e/minio
     sleep 2
     kubectl apply -f tests/e2e/req_crds/hub_cr
-    kubectl apply -f deploy
+    kubectl apply -f deploy/placementrule.yaml
+    kubectl create ns ${DEFAULT_NS}
+    kubectl create secret -n ${DEFAULT_NS} docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
+    kubectl apply -n ${DEFAULT_NS} -f deploy/operator.yaml
+    kubectl apply -n ${DEFAULT_NS} -f deploy/role.yaml
+    kubectl apply -n ${DEFAULT_NS} -f deploy/role_binding.yaml
+    kubectl apply -n ${DEFAULT_NS} -f deploy/service_account.yaml
     kubectl apply -f deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
 
     # expose grafana to test accessible
