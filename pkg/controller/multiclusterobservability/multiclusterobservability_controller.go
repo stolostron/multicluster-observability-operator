@@ -219,6 +219,7 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 	return reconcile.Result{}, nil
 }
 
+// UpdateStatus override UpdateStatus interface
 func (r *ReconcileMultiClusterObservability) UpdateStatus(
 	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
@@ -237,15 +238,38 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 		)
 		return &reconcile.Result{}, err
 	}
-
-	statedDeploys := []mcov1beta1.DeploymentResult{}
+	conditions := []mcov1beta1.MCOCondition{}
+	allDeploymentReady := true
+	failedDeployment := ""
 	for _, deployment := range deployList.Items {
-		statedDeploys = append(statedDeploys, mcov1beta1.DeploymentResult{
-			Name:   deployment.Name,
-			Status: deployment.Status,
+		if deployment.Status.ReadyReplicas < 1 || deployment.Status.AvailableReplicas < 1 {
+			allDeploymentReady = false
+			failedDeployment = deployment.Name
+			break
+		}
+	}
+	if allDeploymentReady {
+		ready := mcov1beta1.Ready{
+			Type:    "Ready",
+			Reason:  "Ready",
+			Message: "Observability components deployed and running",
+		}
+		conditions = append(conditions, mcov1beta1.MCOCondition{
+			Ready: ready,
+		})
+	} else {
+		failedMessage := fmt.Sprintf("Deployment failed for %s", failedDeployment)
+		failed := mcov1beta1.Failed{
+			Type:    "Failed",
+			Reason:  "Failed",
+			Message: failedMessage,
+		}
+		conditions = append(conditions, mcov1beta1.MCOCondition{
+			Failed: failed,
 		})
 	}
-	mco.Status.Deployments = statedDeploys
+
+	mco.Status.Conditions = conditions
 
 	err = r.client.Status().Update(context.TODO(), mco)
 	if err != nil {
