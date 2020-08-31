@@ -13,9 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	clientConfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
@@ -49,23 +47,6 @@ func initSchema(t *testing.T) {
 	}
 	if err := workv1.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add workv1 scheme: (%v)", err)
-	}
-}
-
-func TestAddController(t *testing.T) {
-	cfg, err := clientConfig.GetConfig()
-	if err != nil {
-		t.Fatalf("Failed to get config: (%v)", err)
-	}
-	mgr, err := manager.New(cfg, manager.Options{
-		Namespace: "",
-	})
-	if err != nil {
-		t.Fatalf("Failed to create manager: (%v)", err)
-	}
-	err = add(mgr, newReconciler(mgr))
-	if err != nil {
-		t.Fatalf("Failed to add controller: (%v)", err)
 	}
 }
 
