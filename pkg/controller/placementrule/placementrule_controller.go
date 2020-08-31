@@ -156,6 +156,28 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	mcoPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return true
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return true
+		},
+	}
+
+	// secondary watch for mco
+	err = c.Watch(&source.Kind{Type: &mcov1beta1.MultiClusterObservability{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: mapFn,
+		},
+		mcoPred)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
