@@ -27,6 +27,7 @@ Assume RHACM is installed in `open-cluster-management` namespace. Generate your 
 oc get secret multiclusterhub-operator-pull-secret -n open-cluster-management --export -o yaml |   kubectl apply --namespace=open-cluster-management-observability -f -
 ```
 4. Create Secret for object storage
+
 You need to create a Secret for object storage in advance. Firstly create the  object storage configuration should as following:
 
 ```
@@ -39,11 +40,11 @@ config:
   secret_key: SECRET_KEY
 ```
 
-You will need to provide a value for the `bucket`, `endpoint`, `access_key`, and `secret_key` keys. For more details, please refer to https://thanos.io/tip/thanos/storage.md/#s3. 
+You will need to provide a value for the `bucket`, `endpoint`, `access_key`, and `secret_key` keys. For more details, please refer to https://thanos.io/tip/thanos/storage.md/#s3.
 
 Then encode object storage configuration with base64, fill it in `example/object-storage-secret.yaml` `thanos.yaml`field, and create the Secret using folllowing commands:
 
-Only for development or testing purposes, you can [deploy your object storage](./README.md#setup-object-storage). 
+Only for development or testing purposes, you can [deploy your object storage](./README.md#setup-object-storage).
 ```
 $ cat your-object-storage-configuration | base64
 $ oc apply --namespace=open-cluster-management-observability -f example/object-storage-secret.yaml
