@@ -3,7 +3,6 @@
 package v1beta1
 
 import (
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -122,16 +121,32 @@ type MultiClusterObservabilityStatus struct {
 
 	// Represents the status of each deployment
 	// +optional
-	Deployments []DeploymentResult `json:"deployments,omitempty"`
+	Conditions []MCOCondition `json:"conditions,omitempty"`
 }
 
-// DeploymentResult defines the observed state of Deployment
-type DeploymentResult struct {
-	// Name of the deployment
-	Name string `json:"name"`
+// MCOCondition defines the aggregated state of entire MultiClusterObservability CR
+type MCOCondition struct {
+	// Return true if deployment is ready, not present if it is failed
+	// +optional
+	Ready Ready `json:"ready,omitempty"`
 
-	// The most recently observed status of the Deployment
-	Status appsv1.DeploymentStatus `json:"status"`
+	// Return true if deployment is failed, not present if it is ready
+	// +optional
+	Failed Failed `json:"fail,omitempty"`
+}
+
+// Ready defines the ready status of MCO CR
+type Ready struct {
+	Type    string `json:"type"`
+	Reason  string `json:"reason"`
+	Message string `json:"message"`
+}
+
+// Failed defines the failed status of MCO CR
+type Failed struct {
+	Type    string `json:"type"`
+	Reason  string `json:"reason"`
+	Message string `json:"message"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
