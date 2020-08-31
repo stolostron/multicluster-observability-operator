@@ -111,7 +111,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == epConfigName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+			if e.Meta.GetName() == epConfigName && e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				return true
 			}
 			return false
@@ -133,13 +133,13 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == workName && e.MetaNew.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+			if e.MetaNew.GetName() == workName && e.MetaNew.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				return true
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == workName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+			if e.Meta.GetName() == workName && e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				return true
 			}
 			return false
