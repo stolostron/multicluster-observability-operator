@@ -2450,7 +2450,7 @@ items:
       }
   kind: ConfigMap
   metadata:
-    name: acm-multicluster-dashboard
+    name: grafana-dashboard-acm-clusters-overview
     namespace: open-cluster-management
 kind: ConfigMapList
 ---
@@ -4518,6 +4518,6 @@ data:
       }
   kind: ConfigMap
   metadata:
-    name: acm-multicluster-dashboard
+    name: grafana-dashboard-acm-control-plane
     namespace: open-cluster-management
 kind: ConfigMapList
