@@ -21,6 +21,16 @@ func Remove(list []string, s string) []string {
 	return result
 }
 
+// Contains is used to check whether a list contains string s
+func Contains(list []string, s string) bool {
+	for _, v := range list {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
 // GetAnnotation returns the annotation value for a given key, or an empty string if not set
 func GetAnnotation(instance *mcov1beta1.MultiClusterObservability, key string) string {
 	a := instance.GetAnnotations()

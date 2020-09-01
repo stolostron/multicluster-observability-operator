@@ -31,7 +31,7 @@ func createClusterRole(client client.Client) error {
 	role := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: clusterRoleName,
-			Annotations: map[string]string{
+			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
 		},
@@ -86,7 +86,7 @@ func createClusterRoleBinding(client client.Client, namespace string) error {
 	rb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace + "-" + roleBindingName,
-			Annotations: map[string]string{
+			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
 		},
@@ -139,7 +139,7 @@ func createRole(client client.Client, namespace string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      roleName,
 			Namespace: namespace,
-			Annotations: map[string]string{
+			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
 		},
@@ -211,7 +211,7 @@ func createRoleBinding(client client.Client, namespace string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      roleBindingName,
 			Namespace: namespace,
-			Annotations: map[string]string{
+			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
 		},
@@ -263,7 +263,7 @@ func createServiceAccount(client client.Client, namespace string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      serviceAccountName,
 			Namespace: namespace,
-			Annotations: map[string]string{
+			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
 		},
