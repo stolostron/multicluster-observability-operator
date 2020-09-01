@@ -63,16 +63,11 @@ func updateRes(r *resource.Resource, namespace string,
 	// set the images and watch_namespace for endpoint metrics operator
 	if r.GetKind() == "Deployment" && r.GetName() == deployName {
 		spec := obj.(*v1.Deployment).Spec.Template.Spec
-		if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix) != "" {
-			spec.Containers[0].Image = util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository) +
-				"/" +
-				imageName + ":" +
-				util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
-		} else {
-			spec.Containers[0].Image = mcoconfig.DefaultImgRepository +
-				"/" +
-				imageName + ":" +
-				mcoconfig.EndpointControllerImgTagSuffix
+		spec.Containers[0].Image = mcoconfig.DefaultImgRepository +
+			"/" + imageName + ":" + mcoconfig.EndpointControllerImgTagSuffix
+		if mcoconfig.IsNeededReplacement(mco.Annotations, spec.Containers[0].Image) {
+			spec.Containers[0].Image = mcoconfig.GetAnnotationImageInfo().ImageRepository +
+				"/" + imageName + ":" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 		}
 		spec.Containers[0].ImagePullPolicy = mco.Spec.ImagePullPolicy
 		for i, env := range spec.Containers[0].Env {
@@ -80,16 +75,11 @@ func updateRes(r *resource.Resource, namespace string,
 				spec.Containers[0].Env[i].Value = namespace
 			}
 			if env.Name == "COLLECTOR_IMAGE" {
-				if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix) != "" {
-					spec.Containers[0].Env[i].Value = util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository) +
-						"/" +
-						collectorImageName + ":" +
-						util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
-				} else {
-					spec.Containers[0].Env[i].Value = mcoconfig.DefaultImgRepository +
-						"/" +
-						collectorImageName + ":" +
-						mcoconfig.MetricsCollectorImgTagSuffix
+				spec.Containers[0].Env[i].Value = mcoconfig.DefaultImgRepository +
+					"/" + collectorImageName + ":" + mcoconfig.MetricsCollectorImgTagSuffix
+				if mcoconfig.IsNeededReplacement(mco.Annotations, spec.Containers[0].Env[i].Value) {
+					spec.Containers[0].Env[i].Value = mcoconfig.GetAnnotationImageInfo().ImageRepository +
+						"/" + collectorImageName + ":" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 				}
 			}
 		}
