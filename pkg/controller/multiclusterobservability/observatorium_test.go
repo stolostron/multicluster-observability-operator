@@ -50,8 +50,8 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 		mcoconfig.AnnotationKeyImageRepository: "repo",
 		mcoconfig.AnnotationKeyImageTagSuffix:  "tag",
 	}
-	imgRepo := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository)
-	imgVersion := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
+	imgRepo := util.GetAnnotation(mco.GetAnnotations(), mcoconfig.AnnotationKeyImageRepository)
+	imgVersion := util.GetAnnotation(mco.GetAnnotations(), mcoconfig.AnnotationKeyImageTagSuffix)
 	receiversStorage := obs.Receivers.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	ruleStorage := obs.Rule.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	storeStorage := obs.Store.VolumeClaimTemplate.Spec.Resources.Requests["storage"]

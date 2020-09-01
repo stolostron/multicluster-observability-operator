@@ -29,49 +29,85 @@ func TestIsNeededReplacement(t *testing.T) {
 	caseList := []struct {
 		annotations map[string]string
 		name        string
+		imageRepo   string
 		expected    bool
 	}{
 		{
 			annotations: map[string]string{
-				AnnotationKeyImageRepository: "test",
+				AnnotationKeyImageRepository: DefaultImgRepository,
 				AnnotationKeyImageTagSuffix:  "test",
 			},
-			name:     "have img info",
-			expected: true,
+			name:      "Image is in different org",
+			imageRepo: "test.org",
+			expected:  false,
 		},
 
 		{
 			annotations: map[string]string{
-				AnnotationKeyImageRepository: "test",
+				AnnotationKeyImageRepository: DefaultImgRepository,
+				AnnotationKeyImageTagSuffix:  "2.1.0-SNAPSHOT-2020-08-11-14-16-48",
 			},
-			name:     "no img tag",
-			expected: false,
+			name:      "Image is in the same org",
+			imageRepo: DefaultImgRepository,
+			expected:  true,
+		},
+
+		{
+			annotations: map[string]string{
+				AnnotationKeyImageRepository: DefaultDSImgRepository,
+				AnnotationKeyImageTagSuffix:  "2.1.0-SNAPSHOT-2020-08-11-14-16-48",
+			},
+			name:      "Image is from the ds build",
+			imageRepo: "test.org",
+			expected:  true,
+		},
+
+		{
+			annotations: map[string]string{
+				AnnotationKeyImageRepository: "test.org",
+			},
+			name:      "no img tag",
+			imageRepo: "test.org",
+			expected:  false,
 		},
 
 		{
 			annotations: map[string]string{
 				AnnotationKeyImageTagSuffix: "test",
 			},
-			name:     "no img repo",
-			expected: false,
+			name:      "no img repo",
+			imageRepo: "test.org",
+			expected:  false,
+		},
+
+		{
+			annotations: map[string]string{
+				AnnotationKeyImageRepository: "",
+				AnnotationKeyImageTagSuffix:  "",
+			},
+			name:      "the img repo is empty",
+			imageRepo: "",
+			expected:  false,
 		},
 
 		{
 			annotations: map[string]string{},
 			name:        "no img info",
+			imageRepo:   "test.org",
 			expected:    false,
 		},
 
 		{
 			annotations: nil,
 			name:        "annotations is nil",
+			imageRepo:   "test.org",
 			expected:    false,
 		},
 	}
 
 	for _, c := range caseList {
 		t.Run(c.name, func(t *testing.T) {
-			output := IsNeededReplacement(c.annotations)
+			output := IsNeededReplacement(c.annotations, c.imageRepo)
 			if output != c.expected {
 				t.Errorf("case (%v) output (%v) is not the expected (%v)", c.name, output, c.expected)
 			}

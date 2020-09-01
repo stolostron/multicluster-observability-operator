@@ -22,7 +22,6 @@ import (
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
@@ -182,44 +181,49 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability) *obs
 	obs.Rule = newRuleSpec(mco)
 	obs.Store = newStoreSpec(mco)
 
-	if mcoconfig.IsNeededReplacement(mco.Annotations) {
-		imgRepo := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository)
-		imgVersion := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
-		if imgVersion == "" {
-			imgVersion = mcoconfig.DefaultImgTagSuffix
-		}
-		obs.API.Image = imgRepo + "/observatorium:" + imgVersion
-		obs.API.Version = imgVersion
+	//set the default observatorium components' image
+	obs.API.Image = "quay.io/observatorium/observatorium:latest"
+	obs.API.Version = "latest"
 
-		obs.QueryCache.Image = imgRepo + "/cortex:" + imgVersion
-		obs.QueryCache.Version = imgVersion
+	obs.QueryCache.Image = "quay.io/cortexproject/cortex:master-fdcd992f"
+	obs.QueryCache.Version = "master-fdcd992f"
 
-		obs.ThanosReceiveController.Image = imgRepo + "/thanos-receive-controller:" + imgVersion
-		obs.ThanosReceiveController.Version = imgVersion
+	obs.ThanosReceiveController.Image = "quay.io/observatorium/thanos-receive-controller:master-2020-06-17-a9d9169"
+	obs.ThanosReceiveController.Version = "master-2020-06-17-a9d9169"
 
-		obs.Query.Image = imgRepo + "/" + thanosImgName + ":" + imgVersion
-		obs.Query.Version = imgVersion
+	obs.Query.Image = defaultThanosImage
+	obs.Query.Version = defaultThanosVersion
 
-		obs.APIQuery.Image = imgRepo + "/" + thanosImgName + ":" + imgVersion
-		obs.APIQuery.Version = imgVersion
+	obs.APIQuery.Image = defaultThanosImage
+	obs.APIQuery.Version = defaultThanosVersion
 
-	} else {
-		obs.API.Image = "quay.io/observatorium/observatorium:latest"
-		obs.API.Version = "latest"
+	if mcoconfig.IsNeededReplacement(mco.Annotations, obs.API.Image) {
 
-		obs.QueryCache.Image = "quay.io/cortexproject/cortex:master-fdcd992f"
-		obs.QueryCache.Version = "master-fdcd992f"
-
-		obs.ThanosReceiveController.Image = "quay.io/observatorium/thanos-receive-controller:master-2020-06-17-a9d9169"
-		obs.ThanosReceiveController.Version = "master-2020-06-17-a9d9169"
-
-		obs.Query.Image = defaultThanosImage
-		obs.Query.Version = defaultThanosVersion
-
-		obs.APIQuery.Image = defaultThanosImage
-		obs.APIQuery.Version = defaultThanosVersion
+		obs.API.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/observatorium:" +
+			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+		obs.API.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 	}
+	if mcoconfig.IsNeededReplacement(mco.Annotations, obs.QueryCache.Image) {
+		obs.QueryCache.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/cortex:" +
+			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+		obs.QueryCache.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+	}
+	if mcoconfig.IsNeededReplacement(mco.Annotations, obs.ThanosReceiveController.Image) {
+		obs.ThanosReceiveController.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository +
+			"/thanos-receive-controller:" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+		obs.ThanosReceiveController.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+	}
+	if mcoconfig.IsNeededReplacement(mco.Annotations, obs.Query.Image) {
+		obs.Query.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/" + thanosImgName + ":" +
+			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+		obs.Query.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+	}
+	if mcoconfig.IsNeededReplacement(mco.Annotations, obs.APIQuery.Image) {
+		obs.APIQuery.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/" + thanosImgName + ":" +
+			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+		obs.APIQuery.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 
+	}
 	return obs
 }
 
@@ -274,17 +278,12 @@ func newAPITenants() []observatoriumv1alpha1.APITenant {
 
 func newReceiversSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha1.ReceiversSpec {
 	receSpec := observatoriumv1alpha1.ReceiversSpec{}
-	if mcoconfig.IsNeededReplacement(mco.Annotations) {
-		imgRepo := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository)
-		imgVersion := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
-		if imgVersion == "" {
-			imgVersion = mcoconfig.DefaultImgTagSuffix
-		}
-		receSpec.Image = imgRepo + "/" + thanosImgName + ":" + imgVersion
-		receSpec.Version = imgVersion
-	} else {
-		receSpec.Image = defaultThanosImage
-		receSpec.Version = defaultThanosVersion
+	receSpec.Image = defaultThanosImage
+	receSpec.Version = defaultThanosVersion
+	if mcoconfig.IsNeededReplacement(mco.Annotations, receSpec.Image) {
+		receSpec.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/" +
+			thanosImgName + ":" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+		receSpec.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 	}
 	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.StatefulSetSize,
@@ -295,17 +294,12 @@ func newReceiversSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1
 
 func newRuleSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha1.RuleSpec {
 	ruleSpec := observatoriumv1alpha1.RuleSpec{}
-	if mcoconfig.IsNeededReplacement(mco.Annotations) {
-		imgRepo := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository)
-		imgVersion := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
-		if imgVersion == "" {
-			imgVersion = mcoconfig.DefaultImgTagSuffix
-		}
-		ruleSpec.Image = imgRepo + "/" + thanosImgName + ":" + imgVersion
-		ruleSpec.Version = imgVersion
-	} else {
-		ruleSpec.Image = defaultThanosImage
-		ruleSpec.Version = defaultThanosVersion
+	ruleSpec.Image = defaultThanosImage
+	ruleSpec.Version = defaultThanosVersion
+	if mcoconfig.IsNeededReplacement(mco.Annotations, ruleSpec.Image) {
+		ruleSpec.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/" +
+			thanosImgName + ":" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+		ruleSpec.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 	}
 	ruleSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.StatefulSetSize,
@@ -316,17 +310,12 @@ func newRuleSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha
 
 func newStoreSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha1.StoreSpec {
 	storeSpec := observatoriumv1alpha1.StoreSpec{}
-	if mcoconfig.IsNeededReplacement(mco.Annotations) {
-		imgRepo := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository)
-		imgVersion := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
-		if imgVersion == "" {
-			imgVersion = mcoconfig.DefaultImgTagSuffix
-		}
-		storeSpec.Image = imgRepo + "/" + thanosImgName + ":" + imgVersion
-		storeSpec.Version = imgVersion
-	} else {
-		storeSpec.Image = defaultThanosImage
-		storeSpec.Version = defaultThanosVersion
+	storeSpec.Image = defaultThanosImage
+	storeSpec.Version = defaultThanosVersion
+	if mcoconfig.IsNeededReplacement(mco.Annotations, storeSpec.Image) {
+		storeSpec.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/" +
+			thanosImgName + ":" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+		storeSpec.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 	}
 	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.StatefulSetSize,
@@ -340,21 +329,20 @@ func newStoreSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alph
 
 func newStoreCacheSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha1.StoreCacheSpec {
 	storeCacheSpec := observatoriumv1alpha1.StoreCacheSpec{}
-	if mcoconfig.IsNeededReplacement(mco.Annotations) {
-		imgRepo := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository)
-		imgVersion := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
-		if imgVersion == "" {
-			imgVersion = mcoconfig.DefaultImgTagSuffix
-		}
-		storeCacheSpec.Image = imgRepo + "/memcached:" + imgVersion
-		storeCacheSpec.Version = imgVersion
-		storeCacheSpec.ExporterImage = imgRepo + "/memcached-exporter:" + imgVersion
-		storeCacheSpec.ExporterVersion = imgVersion
-	} else {
-		storeCacheSpec.Image = "docker.io/memcached:1.6.3-alpine"
-		storeCacheSpec.Version = "1.6.3-alpine"
-		storeCacheSpec.ExporterImage = "prom/memcached-exporter:v0.6.0"
-		storeCacheSpec.ExporterVersion = "v0.6.0"
+	storeCacheSpec.Image = "docker.io/memcached:1.6.3-alpine"
+	storeCacheSpec.Version = "1.6.3-alpine"
+	storeCacheSpec.ExporterImage = "prom/memcached-exporter:v0.6.0"
+	storeCacheSpec.ExporterVersion = "v0.6.0"
+
+	if mcoconfig.IsNeededReplacement(mco.Annotations, storeCacheSpec.Image) {
+		storeCacheSpec.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/memcached:" +
+			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+		storeCacheSpec.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+	}
+	if mcoconfig.IsNeededReplacement(mco.Annotations, storeCacheSpec.ExporterImage) {
+		storeCacheSpec.ExporterImage = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/memcached-exporter:" +
+			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+		storeCacheSpec.ExporterVersion = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 	}
 
 	replicas := int32(1)
@@ -367,17 +355,12 @@ func newStoreCacheSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv
 
 func newCompactSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha1.CompactSpec {
 	compactSpec := observatoriumv1alpha1.CompactSpec{}
-	if mcoconfig.IsNeededReplacement(mco.Annotations) {
-		imgRepo := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository)
-		imgVersion := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
-		if imgVersion == "" {
-			imgVersion = mcoconfig.DefaultImgTagSuffix
-		}
-		compactSpec.Image = imgRepo + "/" + thanosImgName + ":" + imgVersion
-		compactSpec.Version = imgVersion
-	} else {
-		compactSpec.Image = defaultThanosImage
-		compactSpec.Version = defaultThanosVersion
+	compactSpec.Image = defaultThanosImage
+	compactSpec.Version = defaultThanosVersion
+	if mcoconfig.IsNeededReplacement(mco.Annotations, compactSpec.Image) {
+		compactSpec.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/" + thanosImgName + ":" +
+			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+		compactSpec.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 	}
 	compactSpec.RetentionResolutionRaw = mco.Spec.RetentionResolutionRaw
 	compactSpec.RetentionResolution5m = mco.Spec.RetentionResolution5m
