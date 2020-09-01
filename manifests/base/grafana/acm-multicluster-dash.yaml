@@ -1730,7 +1730,25 @@ data:
         "ACM"
       ],
       "templating": {
-        "list": []
+        "list": [
+          {
+            "current": {
+              "text": "Observatorium",
+              "value": "Observatorium"
+            },
+            "hide": 2,
+            "includeAll": false,
+            "label": null,
+            "multi": false,
+            "name": "datasource",
+            "options": [],
+            "query": "prometheus",
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "type": "datasource"
+          }
+        ]
       },
       "time": {
         "from": "now-3h",
