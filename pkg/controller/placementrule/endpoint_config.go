@@ -40,7 +40,7 @@ func createEndpointConfigCR(client client.Client, namespace string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      epConfigName,
 			Namespace: namespace,
-			Annotations: map[string]string{
+			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
 		},
