@@ -29,7 +29,7 @@ func newTestSA(namespaces ...string) *corev1.ServiceAccount {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      serviceAccountName,
 			Namespace: ns,
-			Annotations: map[string]string{
+			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
 		},
@@ -80,7 +80,7 @@ func TestCreateRole(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      roleName,
 			Namespace: namespace,
-			Annotations: map[string]string{
+			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
 		},
@@ -136,7 +136,7 @@ func TestCreateRoleBinding(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      roleBindingName,
 			Namespace: namespace,
-			Annotations: map[string]string{
+			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
 		},

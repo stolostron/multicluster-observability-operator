@@ -52,7 +52,7 @@ func createManifestWork(client client.Client, clusterNamespace string,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      workName,
 			Namespace: clusterNamespace,
-			Annotations: map[string]string{
+			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
 		},

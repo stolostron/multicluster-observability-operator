@@ -73,7 +73,8 @@ func TestObservabilityAddonController(t *testing.T) {
 			},
 		},
 	}
-	objs := []runtime.Object{p, newTestMCO(), newTestPullSecret(), newTestRoute(), newTestInfra(), newSATokenSecret(), newTestSA(), newSATokenSecret(namespace2), newTestSA(namespace2)}
+	mco := newTestMCO()
+	objs := []runtime.Object{p, mco, newTestPullSecret(), newTestRoute(), newTestInfra(), newSATokenSecret(), newTestSA(), newSATokenSecret(namespace2), newTestSA(namespace2)}
 	c := fake.NewFakeClient(objs...)
 
 	r := &ReconcilePlacementRule{client: c, scheme: s}
@@ -126,5 +127,35 @@ func TestObservabilityAddonController(t *testing.T) {
 	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace2}, found)
 	if err == nil || !errors.IsNotFound(err) {
 		t.Fatalf("Failed to delete manifestwork for cluster2: (%v)", err)
+	}
+
+	err = c.Delete(context.TODO(), mco)
+	if err != nil {
+		t.Fatalf("Failed to delete mco: (%v)", err)
+	}
+	_, err = r.Reconcile(req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+	foundList := &workv1.ManifestWorkList{}
+	err = c.List(context.TODO(), foundList)
+	if err != nil {
+		t.Fatalf("Failed to list manifestwork: (%v)", err)
+	}
+	if len(foundList.Items) != 0 {
+		t.Fatalf("Not all manifestwork removed after remove mco resource")
+	}
+
+	err = c.Create(context.TODO(), mco)
+	if err != nil {
+		t.Fatalf("Failed to create mco: (%v)", err)
+	}
+	_, err = r.Reconcile(req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	if err != nil {
+		t.Fatalf("Failed to get manifestwork for cluster1: (%v)", err)
 	}
 }
