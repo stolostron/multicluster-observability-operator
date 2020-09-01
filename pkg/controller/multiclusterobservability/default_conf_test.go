@@ -149,8 +149,8 @@ func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 		t.Fatalf("Should return nil for result (%v) and err (%v)", result, err)
 	}
 
-	if util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix) != "test_suffix" {
+	if util.GetAnnotation(mco.Annotations, mcoconfig.AnnotationKeyImageTagSuffix) != "test_suffix" {
 		t.Errorf("ImageTagSuffix (%v) is not the expected (%v)",
-			util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix), "test_suffix")
+			util.GetAnnotation(mco.Annotations, mcoconfig.AnnotationKeyImageTagSuffix), "test_suffix")
 	}
 }

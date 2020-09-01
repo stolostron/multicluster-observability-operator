@@ -4,7 +4,9 @@ package config
 
 import (
 	"context"
+	"strings"
 
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
@@ -25,12 +27,13 @@ const (
 	AnnotationKeyImageRepository = "mco-imageRepository"
 	AnnotationKeyImageTagSuffix  = "mco-imageTagSuffix"
 
-	DefaultImgPullPolicy = corev1.PullAlways
-	DefaultImgPullSecret = "multiclusterhub-operator-pull-secret"
-	DefaultImgRepository = "quay.io/open-cluster-management"
-	DefaultImgTagSuffix  = "latest"
-	DefaultStorageClass  = "gp2"
-	DefaultStorageSize   = "10Gi"
+	DefaultImgPullPolicy   = corev1.PullAlways
+	DefaultImgPullSecret   = "multiclusterhub-operator-pull-secret"
+	DefaultImgRepository   = "quay.io/open-cluster-management"
+	DefaultDSImgRepository = "quay.io:443/acm-d"
+	DefaultImgTagSuffix    = "latest"
+	DefaultStorageClass    = "gp2"
+	DefaultStorageSize     = "10Gi"
 
 	DefaultRetentionResolution1h  = "30d"
 	DefaultRetentionResolution5m  = "14d"
@@ -49,20 +52,32 @@ const (
 	DefaultAddonInterval = 60
 )
 
+type AnnotationImageInfo struct {
+	ImageRepository string
+	ImageTagSuffix  string
+}
+
 var log = logf.Log.WithName("config")
 
 var monitoringCRName = ""
+
+var annotationImageInfo = AnnotationImageInfo{}
 
 // GetClusterNameLabelKey returns the key for the injected label
 func GetClusterNameLabelKey() string {
 	return clusterNameLabelKey
 }
 
-func IsNeededReplacement(annotations map[string]string) bool {
+func IsNeededReplacement(annotations map[string]string, imageRepo string) bool {
 	if annotations != nil {
-		_, hasRepo := annotations[AnnotationKeyImageRepository]
+		annotationImageRepo, hasImage := annotations[AnnotationKeyImageRepository]
 		_, hasTagSuffix := annotations[AnnotationKeyImageTagSuffix]
-		return hasRepo && hasTagSuffix
+		sameOrg := strings.Contains(imageRepo, DefaultImgRepository)
+		isFromDS := strings.Contains(annotationImageRepo, DefaultDSImgRepository)
+		if isFromDS {
+			return hasImage && hasTagSuffix
+		}
+		return hasImage && hasTagSuffix && sameOrg
 	}
 	return false
 }
@@ -85,6 +100,25 @@ func GetObsAPIUrl(client client.Client, namespace string) (string, error) {
 
 func GetDefaultNamespace() string {
 	return defaultNamespace
+}
+
+// GetAnnotationImageInfo returns the configured image repo and tag
+func GetAnnotationImageInfo() AnnotationImageInfo {
+	return annotationImageInfo
+}
+
+// SetAnnotationImageInfo set the configured image repo and tag
+func SetAnnotationImageInfo(annotations map[string]string) AnnotationImageInfo {
+	imgRepo := util.GetAnnotation(annotations, AnnotationKeyImageRepository)
+	imgVersion := util.GetAnnotation(annotations, AnnotationKeyImageTagSuffix)
+	if imgVersion == "" {
+		imgVersion = DefaultImgTagSuffix
+	}
+	annotationImageInfo = AnnotationImageInfo{
+		ImageRepository: imgRepo,
+		ImageTagSuffix:  imgVersion,
+	}
+	return annotationImageInfo
 }
 
 // GetMonitoringCRName returns monitoring cr name
