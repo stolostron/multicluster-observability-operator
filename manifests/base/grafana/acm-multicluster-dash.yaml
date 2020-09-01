@@ -1741,8 +1741,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Prometheus",
-              "value": "Prometheus"
+              "text": "Observatorium",
+              "value": "Observatorium"
             },
             "hide": 2,
             "includeAll": false,

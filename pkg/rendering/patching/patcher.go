@@ -55,8 +55,8 @@ func generateImagePatch(
 	if err != nil {
 		return nil, err
 	}
-	imageRepo := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageRepository)
-	imageTagSuffix := util.GetAnnotation(mco, mcoconfig.AnnotationKeyImageTagSuffix)
+	imageRepo := util.GetAnnotation(mco.GetAnnotations(), mcoconfig.AnnotationKeyImageRepository)
+	imageTagSuffix := util.GetAnnotation(mco.GetAnnotations(), mcoconfig.AnnotationKeyImageTagSuffix)
 	if imageTagSuffix != "" {
 		imageTagSuffix = "-" + imageTagSuffix
 	}

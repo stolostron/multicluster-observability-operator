@@ -99,16 +99,16 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 			grafanaImgTagSuffix := mcoconfig.GrafanaImgTagSuffix
 			observatoriumImgRepo := mcoconfig.ObservatoriumImgRepo
 			observatoriumImgTagSuffix := mcoconfig.ObservatoriumImgTagSuffix
-			if mcoconfig.IsNeededReplacement(r.cr.Annotations) {
-				imgRepo := util.GetAnnotation(r.cr, mcoconfig.AnnotationKeyImageRepository)
-				imgVersion := util.GetAnnotation(r.cr, mcoconfig.AnnotationKeyImageTagSuffix)
-				if imgVersion == "" {
-					imgVersion = mcoconfig.DefaultImgTagSuffix
-				}
-				grafanaImgRepo = imgRepo
-				grafanaImgTagSuffix = imgVersion
-				observatoriumImgRepo = imgRepo
-				observatoriumImgTagSuffix = imgVersion
+
+			//replace the grafana image
+			if mcoconfig.IsNeededReplacement(r.cr.Annotations, grafanaImgRepo) {
+				grafanaImgRepo = mcoconfig.GetAnnotationImageInfo().ImageRepository
+				grafanaImgTagSuffix = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+			}
+			//replace the observatorium operator image
+			if mcoconfig.IsNeededReplacement(r.cr.Annotations, observatoriumImgRepo) {
+				observatoriumImgRepo = mcoconfig.GetAnnotationImageInfo().ImageRepository
+				observatoriumImgTagSuffix = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 			}
 
 			switch resources[idx].GetName() {
