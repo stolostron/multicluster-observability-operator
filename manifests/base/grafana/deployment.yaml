@@ -44,6 +44,10 @@ spec:
           name: grafana-dashboards
         - mountPath: /grafana-dashboard-definitions/0/managed-clusters
           name: grafana-dashboard-managed-clusters
+        - mountPath: /grafana-dashboard-definitions/0/acm-clusters-overview
+          name: grafana-dashboard-acm-clusters-overview
+        - mountPath: /grafana-dashboard-definitions/0/acm-control-plane
+          name: grafana-dashboard-acm-control-plane
         - mountPath: /grafana-dashboard-definitions/0/cluster-tota
           name: grafana-dashboard-cluster-total
         - mountPath: /grafana-dashboard-definitions/0/k8s-resources-cluster
@@ -79,6 +83,14 @@ spec:
           defaultMode: 420
           name: grafana-dashboards
         name: grafana-dashboards
+      - configMap:
+          defaultmode: 420
+          name: grafana-dashboard-acm-clusters-overview
+        name: grafana-dashboard-acm-clusters-overview
+      - configMap:
+          defaultmode: 420
+          name: grafana-dashboard-acm-control-plane
+        name: grafana-dashboard-acm-control-plane
       - configMap:
           defaultMode: 420
           name: grafana-dashboard-managed-clusters

@@ -158,6 +158,9 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return *result, err
 	}
 
+	//set configured image repo and image tag from annotations
+	config.SetAnnotationImageInfo(instance.GetAnnotations())
+
 	instance.Namespace = config.GetDefaultNamespace()
 	//Render the templates with a specified CR
 	renderer := rendering.NewRenderer(instance)

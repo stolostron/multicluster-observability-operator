@@ -92,7 +92,7 @@ func createClusterRoleBinding(client client.Client, namespace string) error {
 		},
 		RoleRef: rbacv1.RoleRef{
 			Kind:     "ClusterRole",
-			Name:     roleName,
+			Name:     clusterRoleName,
 			APIGroup: "rbac.authorization.k8s.io",
 		},
 		Subjects: []rbacv1.Subject{
