@@ -6,7 +6,7 @@ metadata:
   name: minio
   namespace: open-cluster-management-observability
 spec:
-  storageClassName: "standard"
+  storageClassName: gp2
   accessModes:
   - ReadWriteOnce
   resources:

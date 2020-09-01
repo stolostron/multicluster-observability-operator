@@ -23,29 +23,6 @@ print_mco_operator_log() {
         | xargs kubectl --kubeconfig $HUB_KUBECONFIG -n $DEFAULT_NS logs
 }
 
-# update prometheus CR to enable remote write to thanos
-update_prometheus_remote_write() {
-    obs_url="http://observability-observatorium-observatorium-api.$DEFAULT_NS.svc:8080/api/metrics/v1/write"
-    cluster_replacement="hub_cluster"
-    if [[ ! -z "$1" ]]; then
-       obs_url="http://$1/api/metrics/v1/write"
-       cluster_replacement="cluster1"
-    fi
-    if [[ "$(uname)" == "Darwin" ]]; then
-        $sed_command "\$a\\
-        \ \ remoteWrite:\\
-        \ \ - url: ${obs_url}\\
-        \ \ \ \ remoteTimeout: 30s\\
-        \ \ \ \ writeRelabelConfigs:\\
-        \ \ \ \ - sourceLabels:\\
-        \ \ \ \ \ \ - __name__\\
-        \ \ \ \ \ \ targetLabel: cluster\\
-        \ \ \ \ \ \ replacement: $cluster_replacement" $WORKDIR/../kube-prometheus/manifests/prometheus-prometheus.yaml
-    elif [[ "$(uname)" == "Linux" ]]; then
-        $sed_command "\$a\ \ remoteWrite:\n\ \ - url: ${obs_url}\n\ \ \ \ remoteTimeout: 30s\n\ \ \ \ writeRelabelConfigs:\n\ \ \ \ - sourceLabels:\n\ \ \ \ \ \ - __name__\n\ \ \ \ \ \ targetLabel: cluster\n\ \ \ \ \ \ replacement: $cluster_replacement" $WORKDIR/../kube-prometheus/manifests/prometheus-prometheus.yaml
-    fi
-}
-
 create_kind_cluster() {
     if [[ ! -f /usr/local/bin/kind ]]; then
         echo "This script will install kind (https://kind.sigs.k8s.io/) on your machine."
@@ -101,12 +78,6 @@ deploy_prometheus_operator() {
     echo "Remove alertmanager and grafana to free up resource"
     rm -rf kube-prometheus/manifests/alertmanager-*.yaml
     rm -rf kube-prometheus/manifests/grafana-*.yaml
-    if [[ ! -z "$1" ]]; then
-        update_prometheus_remote_write $1
-    else
-        update_prometheus_remote_write
-    fi
-
     kubectl create -f kube-prometheus/manifests/setup
     until kubectl get servicemonitors --all-namespaces ; do date; sleep 1; echo ""; done
     kubectl create -f kube-prometheus/manifests/
@@ -142,6 +113,7 @@ deploy_mco_operator() {
     kubectl apply -f deploy/req_crds
     kubectl apply -f deploy/crds/observability.open-cluster-management.io_multiclusterobservabilities_crd.yaml
     kubectl apply -f tests/e2e/req_crds
+    $sed_command "s~storageClassName:.*$~storageClassName: standard~g" tests/e2e/minio/minio-pvc.yaml
     kubectl apply -f tests/e2e/minio
     sleep 2
     kubectl apply -f tests/e2e/req_crds/hub_cr
@@ -373,7 +345,7 @@ deploy() {
     fi
     deploy_hub_core
     create_kind_cluster spoke
-    deploy_prometheus_operator observatorium.hub
+    deploy_prometheus_operator
     deploy_spoke_core
     approve_csr_joinrequest
     patch_for_remote_write
