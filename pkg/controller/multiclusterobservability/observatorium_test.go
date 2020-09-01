@@ -26,8 +26,15 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	storageClassName := "gp2"
 	statefulSetSize := "1Gi"
 	mco := &mcov1beta1.MultiClusterObservability{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
+		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "test",
+			Name:      "test",
+			Annotations: map[string]string{
+				mcoconfig.AnnotationKeyImageRepository: "quay.io:443/acm-d",
+				mcoconfig.AnnotationKeyImageTagSuffix:  "tag",
+			},
+		},
 		Spec: mcov1beta1.MultiClusterObservabilitySpec{
 			StorageConfig: &mcov1beta1.StorageConfigObject{
 				MetricObjectStorage: &mcov1beta1.PreConfiguredStorage{
@@ -39,17 +46,10 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 			},
 		},
 	}
+	mcoconfig.SetAnnotationImageInfo(mco.GetAnnotations())
 
 	obs := newDefaultObservatoriumSpec(mco)
-	if obs.Query.Image != defaultThanosImage ||
-		obs.Query.Version != defaultThanosVersion {
-		t.Errorf("Failed to newDefaultObservatorium")
-	}
 
-	mco.Annotations = map[string]string{
-		mcoconfig.AnnotationKeyImageRepository: "repo",
-		mcoconfig.AnnotationKeyImageTagSuffix:  "tag",
-	}
 	imgRepo := util.GetAnnotation(mco.GetAnnotations(), mcoconfig.AnnotationKeyImageRepository)
 	imgVersion := util.GetAnnotation(mco.GetAnnotations(), mcoconfig.AnnotationKeyImageTagSuffix)
 	receiversStorage := obs.Receivers.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
