@@ -205,3 +205,18 @@ func TestGetObsAPIUrl(t *testing.T) {
 		t.Errorf("Observatorium api (%v) is not the expected (%v)", host, apiServerURL)
 	}
 }
+
+func TestGetAnnotationImageInfo(t *testing.T) {
+	SetAnnotationImageInfo(map[string]string{
+		AnnotationKeyImageRepository: DefaultImgRepository,
+		AnnotationKeyImageTagSuffix:  DefaultImgTagSuffix,
+	})
+	imageInfo := GetAnnotationImageInfo()
+
+	if imageInfo.ImageRepository != DefaultImgRepository {
+		t.Errorf("ImageRepository (%v) is not the expected (%v)", imageInfo.ImageRepository, DefaultImgRepository)
+	}
+	if imageInfo.ImageTagSuffix != DefaultImgTagSuffix {
+		t.Errorf("ImageTagSuffix (%v) is not the expected (%v)", imageInfo.ImageRepository, DefaultImgRepository)
+	}
+}
