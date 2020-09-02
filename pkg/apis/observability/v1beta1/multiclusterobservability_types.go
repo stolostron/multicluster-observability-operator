@@ -137,16 +137,16 @@ type MCOCondition struct {
 
 // Ready defines the ready status of MCO CR
 type Ready struct {
-	Type    string `json:"type"`
-	Reason  string `json:"reason"`
-	Message string `json:"message"`
+	Type    string `json:"type,omitempty"`
+	Reason  string `json:"reason,omitempty"`
+	Message string `json:"message,omitempty"`
 }
 
 // Failed defines the failed status of MCO CR
 type Failed struct {
-	Type    string `json:"type"`
-	Reason  string `json:"reason"`
-	Message string `json:"message"`
+	Type    string `json:"type,omitempty"`
+	Reason  string `json:"reason,omitempty"`
+	Message string `json:"message,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
