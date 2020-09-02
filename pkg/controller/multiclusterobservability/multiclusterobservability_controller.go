@@ -180,6 +180,12 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		}
 	}
 
+	// create the certificates
+	err = createObservabilityCertificate(r.client, r.scheme, instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	// create an Observatorium CR
 	result, err := GenerateObservatoriumCR(r.client, r.scheme, instance)
 	if result != nil {
