@@ -31,7 +31,7 @@ const (
 
 	clientSelfSignIssuer = "observability-client-selfsign-issuer"
 	clientCAIssuer       = "observability-client-ca-issuer"
-	clientCACertifcate   = "observability-client-ca-certificate"
+	clientCACertificate  = "observability-client-ca-certificate"
 	clientCACerts        = "observability-client-ca-certs"
 
 	grafanaCertificate = "observability-grafana-certificate"
@@ -284,6 +284,7 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 		return err
 	}
 
+	//TODO: Inject the dns
 	spec = CreateCertificateSpec(serverCerts, false, serverCAIssuer, false,
 		serverCertificate, []string{}, []string{})
 	err = CreateCertificate(client, scheme, mco,
@@ -305,9 +306,9 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 	}
 
 	spec = CreateCertificateSpec(clientCACerts, false, clientSelfSignIssuer, true,
-		clientCACertifcate, []string{}, []string{})
+		clientCACertificate, []string{}, []string{})
 	err = CreateCertificate(client, scheme, mco,
-		clientCACertifcate, certMgrClusterRsNs, spec)
+		clientCACertificate, certMgrClusterRsNs, spec)
 	if err != nil {
 		return err
 	}
@@ -324,6 +325,56 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 		grafanaCertificate, config.GetDefaultNamespace(), spec)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// only need to clean the issuer/certificate in other namespace
+func cleanIssuerCert(client client.Client) error {
+	foundClusterIssuer := &cert.ClusterIssuer{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: clientCAIssuer}, foundClusterIssuer)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Issuer doesn't exist", "name", clientCAIssuer)
+	} else if err != nil {
+		log.Error(err, "Failed to check clusterissuer", "name", clientCAIssuer)
+		return err
+	} else {
+		err = client.Delete(context.TODO(), foundClusterIssuer)
+		if err != nil {
+			log.Error(err, "Failed to delete clusterissuer", "name", clientCAIssuer)
+			return err
+		}
+	}
+
+	foundIssuer := &cert.Issuer{}
+	err = client.Get(context.TODO(), types.NamespacedName{Name: clientSelfSignIssuer, Namespace: certMgrClusterRsNs}, foundIssuer)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("ClusterIssuer doesn't exist", "name", clientSelfSignIssuer, "namespace", certMgrClusterRsNs)
+	} else if err != nil {
+		log.Error(err, "Failed to check issuer", "name", clientSelfSignIssuer, "namespace", certMgrClusterRsNs)
+		return err
+	} else {
+		err = client.Delete(context.TODO(), foundIssuer)
+		if err != nil {
+			log.Error(err, "Failed to delete issuer", "name", clientSelfSignIssuer, "namespace", certMgrClusterRsNs)
+			return err
+		}
+	}
+
+	foundCert := &cert.Certificate{}
+	err = client.Get(context.TODO(), types.NamespacedName{Name: clientCACertificate, Namespace: certMgrClusterRsNs}, foundCert)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Certificate doesn't exist", "name", clientCACertificate, "namespace", certMgrClusterRsNs)
+	} else if err != nil {
+		log.Error(err, "Failed to check Certificate", "name", clientCACertificate, "namespace", certMgrClusterRsNs)
+		return err
+	} else {
+		err = client.Delete(context.TODO(), foundCert)
+		if err != nil {
+			log.Error(err, "Failed to delete Certificate", "name", clientCACertificate, "namespace", certMgrClusterRsNs)
+			return err
+		}
 	}
 
 	return nil

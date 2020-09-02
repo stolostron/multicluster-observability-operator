@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
+	routev1 "github.com/openshift/api/route/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -33,17 +34,28 @@ func TestCreateCertificates(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
 		Spec:       mcov1beta1.MultiClusterObservabilitySpec{},
 	}
-
+	route := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      obsAPIGateway,
+			Namespace: namespace,
+		},
+		Spec: routev1.RouteSpec{
+			Host: "apiServerURL",
+		},
+	}
 	s := scheme.Scheme
 	mcov1beta1.SchemeBuilder.AddToScheme(s)
 	certv1alpha1.SchemeBuilder.AddToScheme(s)
+	routev1.AddToScheme(s)
 
-	c := fake.NewFakeClient()
+	c := fake.NewFakeClient(route)
+
 	err := createObservabilityCertificate(c, s, mco)
 	if err != nil {
 		t.Fatalf("createObservabilityCertificate: (%v)", err)
 	}
 
+	// Test scenario in which issuer/certificate updated by others
 	clusterIssuer := &certv1alpha1.ClusterIssuer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: clientCAIssuer,
@@ -51,55 +63,55 @@ func TestCreateCertificates(t *testing.T) {
 		Spec: certv1alpha1.IssuerSpec{
 			IssuerConfig: certv1alpha1.IssuerConfig{
 				CA: &certv1alpha1.CAIssuer{
-					SecretName: clientCACerts + testSuffix,
+					SecretName: clientCAIssuer + testSuffix,
 				},
 			},
 		},
 	}
 	issuer := &certv1alpha1.Issuer{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      serverCAIssuer,
-			Namespace: namespace,
+			Name:      clientSelfSignIssuer,
+			Namespace: certMgrClusterRsNs,
 		},
 		Spec: certv1alpha1.IssuerSpec{
 			IssuerConfig: certv1alpha1.IssuerConfig{
 				CA: &certv1alpha1.CAIssuer{
-					SecretName: serverCACerts + testSuffix,
+					SecretName: clientSelfSignIssuer + testSuffix,
 				},
 			},
 		},
 	}
 	cert := &certv1alpha1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      serverCertificate,
-			Namespace: namespace,
+			Name:      clientCACertificate,
+			Namespace: certMgrClusterRsNs,
 		},
 		Spec: certv1alpha1.CertificateSpec{
-			CommonName: serverCertificate + testSuffix,
+			CommonName: clientCACertificate + testSuffix,
 		},
 	}
-	c = fake.NewFakeClient(clusterIssuer, issuer, cert)
+	c = fake.NewFakeClient(route, clusterIssuer, issuer, cert)
 	err = createObservabilityCertificate(c, s, mco)
 	if err != nil {
 		t.Fatalf("createObservabilityCertificate: (%v)", err)
 	}
 
 	foundCert := &certv1alpha1.Certificate{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: serverCertificate, Namespace: namespace}, foundCert)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: clientCACertificate, Namespace: certMgrClusterRsNs}, foundCert)
 	if err != nil {
-		t.Fatalf("Failed to get certificate (%s): (%v)", serverCertificate, err)
+		t.Fatalf("Failed to get certificate (%s): (%v)", clientCACertificate, err)
 	}
-	if foundCert.Spec.CommonName != serverCertificate {
-		t.Fatalf("Failed to update certificate (%s)", serverCertificate)
+	if foundCert.Spec.CommonName != clientCACertificate {
+		t.Fatalf("Failed to update certificate (%s)", clientCACertificate)
 	}
 
 	foundIssuer := &certv1alpha1.Issuer{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: serverCAIssuer, Namespace: namespace}, foundIssuer)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: clientSelfSignIssuer, Namespace: certMgrClusterRsNs}, foundIssuer)
 	if err != nil {
-		t.Fatalf("Failed to get issuer (%s): (%v)", serverCAIssuer, err)
+		t.Fatalf("Failed to get issuer (%s): (%v)", clientSelfSignIssuer, err)
 	}
-	if foundIssuer.Spec.CA.SecretName != serverCACerts {
-		t.Fatalf("Failed to update issuer (%s)", serverCAIssuer)
+	if foundIssuer.Spec.CA != nil {
+		t.Fatalf("Failed to update issuer (%s)", clientSelfSignIssuer)
 	}
 
 	foundClusterIssuer := &certv1alpha1.ClusterIssuer{}
@@ -109,5 +121,34 @@ func TestCreateCertificates(t *testing.T) {
 	}
 	if foundClusterIssuer.Spec.CA.SecretName != clientCACerts {
 		t.Fatalf("Failed to update issuer (%s)", clientCAIssuer)
+	}
+
+	err = cleanIssuerCert(c)
+	if err != nil {
+		t.Fatalf("Failed to clean the issuer/certificate")
+	}
+
+	// Test clean scenario in which issuer/certificate already removed
+	err = createObservabilityCertificate(c, s, mco)
+	if err != nil {
+		t.Fatalf("Failed to createObservabilityCertificate: (%v)", err)
+	}
+
+	err = c.Delete(context.TODO(), clusterIssuer)
+	if err != nil {
+		t.Fatalf("Failed to delete (%s): (%v)", clientCAIssuer, err)
+	}
+	err = c.Delete(context.TODO(), issuer)
+	if err != nil {
+		t.Fatalf("Failed to delete (%s): (%v)", clientSelfSignIssuer, err)
+	}
+	err = c.Delete(context.TODO(), cert)
+	if err != nil {
+		t.Fatalf("Failed to delete (%s): (%v)", clientCACertificate, err)
+	}
+
+	err = cleanIssuerCert(c)
+	if err != nil {
+		t.Fatalf("Failed to clean the issuer/certificate")
 	}
 }

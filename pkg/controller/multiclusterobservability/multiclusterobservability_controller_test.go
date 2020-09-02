@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	observatoriumv1alpha1 "github.com/observatorium/deployments/operator/api/v1alpha1"
 	configv1 "github.com/openshift/api/config/v1"
@@ -15,6 +16,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -218,4 +220,15 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 	log.Info("updated MultiClusterObservability successfully", "MultiClusterObservability", updatedMCO)
 
+	//Test finalizer
+	mco.ObjectMeta.DeletionTimestamp = &v1.Time{time.Now()}
+	mco.ObjectMeta.Finalizers = []string{certFinalizer, "test-finalizerr"}
+	err = cl.Update(context.TODO(), mco)
+	if err != nil {
+		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
+	}
+	_, err = r.Reconcile(req)
+	if err != nil {
+		t.Fatalf("reconcile for finalizer: (%v)", err)
+	}
 }
