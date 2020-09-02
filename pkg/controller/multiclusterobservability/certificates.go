@@ -284,7 +284,6 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 		return err
 	}
 
-	//TODO: Inject the dns
 	spec = CreateCertificateSpec(serverCerts, false, serverCAIssuer, false,
 		serverCertificate, []string{}, []string{})
 	err = CreateCertificate(client, scheme, mco,
@@ -348,7 +347,8 @@ func cleanIssuerCert(client client.Client) error {
 	}
 
 	foundIssuer := &cert.Issuer{}
-	err = client.Get(context.TODO(), types.NamespacedName{Name: clientSelfSignIssuer, Namespace: certMgrClusterRsNs}, foundIssuer)
+	err = client.Get(context.TODO(),
+		types.NamespacedName{Name: clientSelfSignIssuer, Namespace: certMgrClusterRsNs}, foundIssuer)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("ClusterIssuer doesn't exist", "name", clientSelfSignIssuer, "namespace", certMgrClusterRsNs)
 	} else if err != nil {
@@ -363,7 +363,8 @@ func cleanIssuerCert(client client.Client) error {
 	}
 
 	foundCert := &cert.Certificate{}
-	err = client.Get(context.TODO(), types.NamespacedName{Name: clientCACertificate, Namespace: certMgrClusterRsNs}, foundCert)
+	err = client.Get(context.TODO(),
+		types.NamespacedName{Name: clientCACertificate, Namespace: certMgrClusterRsNs}, foundCert)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Certificate doesn't exist", "name", clientCACertificate, "namespace", certMgrClusterRsNs)
 	} else if err != nil {
