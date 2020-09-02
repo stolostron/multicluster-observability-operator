@@ -8,6 +8,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,7 +31,7 @@ import (
 const (
 	placementRuleName = "open-cluster-management-observability"
 	ownerLabelKey     = "owner"
-	ownerLabelValue   = "multicluster-operator"
+	ownerLabelValue   = "multicluster-observability-operator"
 )
 
 var log = logf.Log.WithName("controller_placementrule")
@@ -110,7 +111,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == epConfigName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+			if e.Meta.GetName() == epConfigName && e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				return true
 			}
 			return false
@@ -132,13 +133,13 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == workName && e.MetaNew.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+			if e.MetaNew.GetName() == workName && e.MetaNew.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				return true
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == workName && e.Meta.GetAnnotations()[ownerLabelKey] == ownerLabelValue {
+			if e.Meta.GetName() == workName && e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				return true
 			}
 			return false
@@ -151,6 +152,28 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			ToRequests: mapFn,
 		},
 		workPred)
+	if err != nil {
+		return err
+	}
+
+	mcoPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return true
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return true
+		},
+	}
+
+	// secondary watch for mco
+	err = c.Watch(&source.Kind{Type: &mcov1beta1.MultiClusterObservability{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: mapFn,
+		},
+		mcoPred)
 	if err != nil {
 		return err
 	}
@@ -184,82 +207,119 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	}
 
 	// Fetch the MultiClusterObservability instance
+	deleteAll := false
 	mco := &mcov1beta1.MultiClusterObservability{}
 	err := r.client.Get(context.TODO(),
 		types.NamespacedName{
 			Name: config.GetMonitoringCRName(),
 		}, mco)
 	if err != nil {
-		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
-	}
-
-	imagePullSecret := &corev1.Secret{}
-	err = r.client.Get(context.TODO(),
-		types.NamespacedName{
-			Name:      mco.Spec.ImagePullSecret,
-			Namespace: request.Namespace,
-		}, imagePullSecret)
-	if err != nil {
-		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
-	}
-	mco.Namespace = watchNamespace
-	// Fetch the PlacementRule instance
-	instance := &appsv1.PlacementRule{}
-	err = r.client.Get(context.TODO(), request.NamespacedName, instance)
-	if err != nil {
 		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			return reconcile.Result{}, nil
+			deleteAll = true
+		} else {
+			// Error reading the object - requeue the request.
+			return reconcile.Result{}, err
 		}
-		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
 	}
 
+	opts := &client.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
+	}
 	epList := &mcov1beta1.ObservabilityAddonList{}
-	err = r.client.List(context.TODO(), epList)
+	err = r.client.List(context.TODO(), epList, opts)
 	if err != nil {
 		reqLogger.Error(err, "Failed to list observabilityaddon resource")
 		return reconcile.Result{}, err
 	}
-	currentClusters := []string{}
-	for _, ep := range epList.Items {
-		if ep.Name == epConfigName && ep.Annotations[ownerLabelKey] == ownerLabelValue {
+	if !deleteAll {
+		imagePullSecret := &corev1.Secret{}
+		err = r.client.Get(context.TODO(),
+			types.NamespacedName{
+				Name:      mco.Spec.ImagePullSecret,
+				Namespace: request.Namespace,
+			}, imagePullSecret)
+		if err != nil {
+			// Error reading the object - requeue the request.
+			return reconcile.Result{}, err
+		}
+		mco.Namespace = watchNamespace
+		// Fetch the PlacementRule instance
+		instance := &appsv1.PlacementRule{}
+		err = r.client.Get(context.TODO(), request.NamespacedName, instance)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				// Request object not found, could have been deleted after reconcile request.
+				// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+				// Return and don't requeue
+				return reconcile.Result{}, nil
+			}
+			// Error reading the object - requeue the request.
+			return reconcile.Result{}, err
+		}
+
+		currentClusters := []string{}
+		for _, ep := range epList.Items {
 			currentClusters = append(currentClusters, ep.Namespace)
 		}
+
+		for _, decision := range instance.Status.Decisions {
+			reqLogger.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
+			currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
+			err = createEndpointConfigCR(r.client, decision.ClusterNamespace)
+			if err != nil {
+				reqLogger.Error(err, "Failed to create observabilityaddon")
+				return reconcile.Result{}, err
+			}
+			err = createManifestWork(r.client, decision.ClusterNamespace, decision.ClusterName, mco, imagePullSecret)
+			if err != nil {
+				reqLogger.Error(err, "Failed to create manifestwork")
+				return reconcile.Result{}, err
+			}
+		}
+
+		for _, cluster := range currentClusters {
+			reqLogger.Info("To delete observabilityAddon", "namespace", cluster)
+			err = deleteEndpointConfigCR(r.client, cluster)
+			if err != nil {
+				reqLogger.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
+				return reconcile.Result{}, err
+			}
+		}
+	} else {
+		for _, ep := range epList.Items {
+			err = deleteEndpointConfigCR(r.client, ep.Namespace)
+			if err != nil {
+				reqLogger.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
+				return reconcile.Result{}, err
+			}
+		}
 	}
 
-	for _, decision := range instance.Status.Decisions {
-		reqLogger.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
-		currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
-		err = createEndpointConfigCR(r.client, decision.ClusterNamespace)
-		if err != nil {
-			reqLogger.Error(err, "Failed to create observabilityaddon")
-			return reconcile.Result{}, err
-		}
-		err = createManifestWork(r.client, decision.ClusterNamespace, decision.ClusterName, mco, imagePullSecret)
-		if err != nil {
-			reqLogger.Error(err, "Failed to create manifestwork")
-			return reconcile.Result{}, err
-		}
+	epList = &mcov1beta1.ObservabilityAddonList{}
+	err = r.client.List(context.TODO(), epList, opts)
+	if err != nil {
+		reqLogger.Error(err, "Failed to list observabilityaddon resource")
+		return reconcile.Result{}, err
 	}
-
-	for _, cluster := range currentClusters {
-		reqLogger.Info("Monitoring opearator will be uninstalled", "namespace", cluster)
-		err = deleteEndpointConfigCR(r.client, cluster)
-		if err != nil {
-			reqLogger.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
-			return reconcile.Result{}, err
+	workList := &workv1.ManifestWorkList{}
+	err = r.client.List(context.TODO(), workList, opts)
+	if err != nil {
+		reqLogger.Error(err, "Failed to list manifestwork resource")
+		return reconcile.Result{}, err
+	}
+	latestClusters := []string{}
+	for _, ep := range epList.Items {
+		latestClusters = append(latestClusters, ep.Namespace)
+	}
+	for _, work := range workList.Items {
+		if !util.Contains(latestClusters, work.Namespace) {
+			reqLogger.Info("To delete manifestwork", "namespace", work.Namespace)
+			err = deleteManifestWork(r.client, work.Namespace)
+			if err != nil {
+				reqLogger.Error(err, "Failed to delete manifestwork")
+				return reconcile.Result{}, err
+			}
 		}
-		err = deleteManifestWork(r.client, cluster)
-		if err != nil {
-			reqLogger.Error(err, "Failed to create manifestwork")
-			return reconcile.Result{}, err
-		}
-
 	}
 
 	return reconcile.Result{}, nil
