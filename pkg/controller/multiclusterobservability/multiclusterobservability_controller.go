@@ -229,6 +229,7 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 	reqLogger := log.WithValues("Request.Namespace", mco.Namespace, "Request.Name", mco.Name)
 
 	deployList := &appsv1.DeploymentList{}
+	log.WithValues("deployList", deployList)
 	listOpts := []client.ListOption{
 		client.InNamespace(mco.Namespace),
 		client.MatchingLabels(labelsForMultiClusterMonitoring(mco.Name)),
