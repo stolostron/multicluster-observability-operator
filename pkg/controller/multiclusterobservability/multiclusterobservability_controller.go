@@ -251,25 +251,36 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 			break
 		}
 	}
-	if allDeploymentReady {
-		ready := mcov1beta1.Ready{
-			Type:    "Ready",
-			Reason:  "Ready",
-			Message: "Observability components deployed and running",
-		}
-		conditions = append(conditions, mcov1beta1.MCOCondition{
-			Ready: ready,
-		})
-	} else {
-		failedMessage := fmt.Sprintf("Deployment failed for %s", failedDeployment)
+	if len(deployList.Items) == 0 {
 		failed := mcov1beta1.Failed{
 			Type:    "Failed",
 			Reason:  "Failed",
-			Message: failedMessage,
+			Message: "No deployment found.",
 		}
 		conditions = append(conditions, mcov1beta1.MCOCondition{
 			Failed: failed,
 		})
+	} else {
+		if allDeploymentReady {
+			ready := mcov1beta1.Ready{
+				Type:    "Ready",
+				Reason:  "Ready",
+				Message: "Observability components deployed and running",
+			}
+			conditions = append(conditions, mcov1beta1.MCOCondition{
+				Ready: ready,
+			})
+		} else {
+			failedMessage := fmt.Sprintf("Deployment failed for %s", failedDeployment)
+			failed := mcov1beta1.Failed{
+				Type:    "Failed",
+				Reason:  "Failed",
+				Message: failedMessage,
+			}
+			conditions = append(conditions, mcov1beta1.MCOCondition{
+				Failed: failed,
+			})
+		}
 	}
 
 	mco.Status.Conditions = conditions
