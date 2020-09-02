@@ -43,12 +43,10 @@ const (
 	managedClusterCertOrg     = "acm"
 )
 
-// CreateCertificate is used to create Certificate resource
-func CreateCertificate(client client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta1.MultiClusterObservability,
-	name string, namespace string,
-	secret string, isClusterIssuer bool, issuer string, isCA bool,
-	commonName string, organizations []string, dnsNames []string) error {
+// CreateCertificateSpec is used to create a struct of CertificateSpec
+func CreateCertificateSpec(secret string,
+	isClusterIssuer bool, issuer string, isCA bool,
+	commonName string, organizations []string, dnsNames []string) cert.CertificateSpec {
 
 	spec := cert.CertificateSpec{}
 	spec.SecretName = secret
@@ -72,6 +70,14 @@ func CreateCertificate(client client.Client, scheme *runtime.Scheme,
 	if len(dnsNames) != 0 {
 		spec.DNSNames = dnsNames
 	}
+	return spec
+}
+
+// CreateCertificate is used to create Certificate resource
+func CreateCertificate(client client.Client, scheme *runtime.Scheme,
+	mco *mcov1beta1.MultiClusterObservability,
+	name string, namespace string,
+	spec cert.CertificateSpec) error {
 
 	certificate := &cert.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
@@ -119,7 +125,7 @@ func CreateCertificate(client client.Client, scheme *runtime.Scheme,
 }
 
 func createClusterIssuer(client client.Client, name string, ca string) error {
-	issuer := &cert.ClusterIssuer{
+	clusterIssuer := &cert.ClusterIssuer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
@@ -136,7 +142,7 @@ func createClusterIssuer(client client.Client, name string, ca string) error {
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name}, found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating ClusterIssuer", "name", name)
-		err = client.Create(context.TODO(), issuer)
+		err = client.Create(context.TODO(), clusterIssuer)
 		if err != nil {
 			log.Error(err, "Failed to create ClusterIssuer", "name", name)
 			return err
@@ -147,10 +153,10 @@ func createClusterIssuer(client client.Client, name string, ca string) error {
 		return err
 	}
 
-	if !reflect.DeepEqual(found.Spec, issuer.Spec) {
+	if !reflect.DeepEqual(found.Spec, clusterIssuer.Spec) {
 		log.Info("Updating ClusterIssuer", "name", name)
-		issuer.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-		err = client.Update(context.TODO(), issuer)
+		clusterIssuer.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		err = client.Update(context.TODO(), clusterIssuer)
 		if err != nil {
 			log.Error(err, "Failed to update ClusterIssuer", "name", name)
 			return err
@@ -264,10 +270,10 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 		return err
 	}
 
-	err = CreateCertificate(client, scheme, mco,
-		serverCACertifcate, ns,
-		serverCACerts, false, serverSelfSignIssuer, true,
+	spec := CreateCertificateSpec(serverCACerts, false, serverSelfSignIssuer, true,
 		serverCACertifcate, []string{}, []string{})
+	err = CreateCertificate(client, scheme, mco,
+		serverCACertifcate, ns, spec)
 	if err != nil {
 		return err
 	}
@@ -278,10 +284,10 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 		return err
 	}
 
-	err = CreateCertificate(client, scheme, mco,
-		serverCertificate, ns,
-		serverCerts, false, serverCAIssuer, false,
+	spec = CreateCertificateSpec(serverCerts, false, serverCAIssuer, false,
 		serverCertificate, []string{}, []string{})
+	err = CreateCertificate(client, scheme, mco,
+		serverCertificate, ns, spec)
 	if err != nil {
 		return err
 	}
@@ -298,10 +304,10 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 		return err
 	}
 
-	err = CreateCertificate(client, scheme, mco,
-		clientCACertifcate, certMgrClusterRsNs,
-		clientCACerts, false, clientSelfSignIssuer, true,
+	spec = CreateCertificateSpec(clientCACerts, false, clientSelfSignIssuer, true,
 		clientCACertifcate, []string{}, []string{})
+	err = CreateCertificate(client, scheme, mco,
+		clientCACertifcate, certMgrClusterRsNs, spec)
 	if err != nil {
 		return err
 	}
@@ -312,10 +318,10 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 	}
 
 	log.Info("Creating certificates for grafana")
-	err = CreateCertificate(client, scheme, mco,
-		grafanaCertificate, config.GetDefaultNamespace(),
-		grafanaCerts, true, clientCAIssuer, false,
+	spec = CreateCertificateSpec(grafanaCerts, true, clientCAIssuer, false,
 		grafanaSubject, []string{}, []string{})
+	err = CreateCertificate(client, scheme, mco,
+		grafanaCertificate, config.GetDefaultNamespace(), spec)
 	if err != nil {
 		return err
 	}
