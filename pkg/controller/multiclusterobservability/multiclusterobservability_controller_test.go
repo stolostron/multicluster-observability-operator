@@ -61,8 +61,8 @@ func createObservatoriumApiService(name, namespace string) *corev1.Service {
 func createReadyDeployment(name, namespace string) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "Service",
+			APIVersion: "apps/v1",
+			Kind:       "Deployment",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name + "-fake-ready-deployment",
@@ -83,8 +83,8 @@ func createReadyDeployment(name, namespace string) *appsv1.Deployment {
 func createFailedDeployment(name, namespace string) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "Service",
+			APIVersion: "apps/v1",
+			Kind:       "Deployment",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name + "-fake-failed-deployment",
@@ -166,6 +166,9 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
+	if updatedMCO.Status.Conditions[0].Failed.Message != "No deployment found." {
+		t.Fatalf("Failed to get correct MCO status, expect failed with no deployment")
+	}
 	log.Info("updated MultiClusterObservability successfully", "MultiClusterObservability", updatedMCO)
 
 	// A MultiClusterObservability object with metadata and spec.
@@ -190,6 +193,9 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
+	if updatedMCO.Status.Conditions[0].Ready.Type != "Ready" {
+		t.Fatalf("Failed to get correct MCO status, expect Ready")
+	}
 	log.Info("updated MultiClusterObservability successfully", "MultiClusterObservability", updatedMCO)
 
 	failedDeployment := createFailedDeployment(name, namespace)
@@ -206,6 +212,9 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	err = r.client.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
+	}
+	if updatedMCO.Status.Conditions[0].Failed.Message != "Deployment failed for monitoring-fake-failed-deployment" {
+		t.Fatalf("Failed to get correct MCO status, expect failed with failed deployment")
 	}
 	log.Info("updated MultiClusterObservability successfully", "MultiClusterObservability", updatedMCO)
 
