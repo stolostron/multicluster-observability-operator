@@ -3554,7 +3554,7 @@ data:
               "text": "",
               "value": ""
             },
-            "datasource": "Prometheus",
+            "datasource": "$datasource",
             "definition": "label_values(node_cpu_seconds_total, cluster)",
             "hide": 0,
             "includeAll": false,
