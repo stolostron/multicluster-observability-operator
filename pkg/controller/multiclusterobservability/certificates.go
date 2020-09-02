@@ -43,6 +43,81 @@ const (
 	managedClusterCertOrg     = "acm"
 )
 
+// CreateCertificate is used to create Certificate resource
+func CreateCertificate(client client.Client, scheme *runtime.Scheme,
+	mco *mcov1beta1.MultiClusterObservability,
+	name string, namespace string,
+	secret string, isClusterIssuer bool, issuer string, isCA bool,
+	commonName string, organizations []string, dnsNames []string) error {
+
+	spec := cert.CertificateSpec{}
+	spec.SecretName = secret
+	kind := "Issuer"
+	if isClusterIssuer {
+		kind = "ClusterIssuer"
+	}
+	if isCA {
+		spec.IsCA = isCA
+	}
+	spec.IssuerRef = cert.ObjectReference{
+		Kind: kind,
+		Name: issuer,
+	}
+	if commonName != "" {
+		spec.CommonName = commonName
+	}
+	if len(organizations) != 0 {
+		spec.Organization = organizations
+	}
+	if len(dnsNames) != 0 {
+		spec.DNSNames = dnsNames
+	}
+
+	certificate := &cert.Certificate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: spec,
+	}
+
+	// Set MultiClusterObservability instance as the owner and controller
+	if namespace == config.GetDefaultNamespace() {
+		if err := controllerutil.SetControllerReference(mco, certificate, scheme); err != nil {
+			return err
+		}
+	}
+
+	found := &cert.Certificate{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Creating Certificate", "name", name)
+		err = client.Create(context.TODO(), certificate)
+		if err != nil {
+			log.Error(err, "Failed to create Certificate", "name", name)
+			return err
+		}
+		return nil
+	} else if err != nil {
+		log.Error(err, "Failed to check Certificate", "name", name)
+		return err
+	}
+
+	if !reflect.DeepEqual(found.Spec, certificate.Spec) {
+		log.Info("Updating Certificate", "name", name)
+		certificate.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		err = client.Update(context.TODO(), certificate)
+		if err != nil {
+			log.Error(err, "Failed to update Certificate", "name", name)
+			return err
+		}
+		return nil
+	}
+
+	log.Info("Certificate already existed/unchanged", "name", name)
+	return nil
+}
+
 func createClusterIssuer(client client.Client, name string, ca string) error {
 	issuer := &cert.ClusterIssuer{
 		ObjectMeta: metav1.ObjectMeta{
@@ -149,80 +224,6 @@ func createIssuer(client client.Client, scheme *runtime.Scheme,
 	return nil
 }
 
-func createCertificate(client client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta1.MultiClusterObservability,
-	name string, namespace string,
-	secret string, isClusterIssuer bool, issuer string, isCA bool,
-	commonName string, organizations []string, dnsNames []string) error {
-
-	spec := cert.CertificateSpec{}
-	spec.SecretName = secret
-	kind := "Issuer"
-	if isClusterIssuer {
-		kind = "ClusterIssuer"
-	}
-	if isCA {
-		spec.IsCA = isCA
-	}
-	spec.IssuerRef = cert.ObjectReference{
-		Kind: kind,
-		Name: issuer,
-	}
-	if commonName != "" {
-		spec.CommonName = commonName
-	}
-	if len(organizations) != 0 {
-		spec.Organization = organizations
-	}
-	if len(dnsNames) != 0 {
-		spec.DNSNames = dnsNames
-	}
-
-	certificate := &cert.Certificate{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Spec: spec,
-	}
-
-	// Set MultiClusterObservability instance as the owner and controller
-	if namespace == config.GetDefaultNamespace() {
-		if err := controllerutil.SetControllerReference(mco, certificate, scheme); err != nil {
-			return err
-		}
-	}
-
-	found := &cert.Certificate{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating Certificate", "name", name)
-		err = client.Create(context.TODO(), certificate)
-		if err != nil {
-			log.Error(err, "Failed to create Certificate", "name", name)
-			return err
-		}
-		return nil
-	} else if err != nil {
-		log.Error(err, "Failed to check Certificate", "name", name)
-		return err
-	}
-
-	if !reflect.DeepEqual(found.Spec, certificate.Spec) {
-		log.Info("Updating Certificate", "name", name)
-		certificate.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-		err = client.Update(context.TODO(), certificate)
-		if err != nil {
-			log.Error(err, "Failed to update Certificate", "name", name)
-			return err
-		}
-		return nil
-	}
-
-	log.Info("Certificate already existed/unchanged", "name", name)
-	return nil
-}
-
 func createNamespace(client client.Client) error {
 	ns := &corev1.Namespace{
 		TypeMeta: metav1.TypeMeta{
@@ -263,7 +264,7 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 		return err
 	}
 
-	err = createCertificate(client, scheme, mco,
+	err = CreateCertificate(client, scheme, mco,
 		serverCACertifcate, ns,
 		serverCACerts, false, serverSelfSignIssuer, true,
 		serverCACertifcate, []string{}, []string{})
@@ -277,7 +278,7 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 		return err
 	}
 
-	err = createCertificate(client, scheme, mco,
+	err = CreateCertificate(client, scheme, mco,
 		serverCertificate, ns,
 		serverCerts, false, serverCAIssuer, false,
 		serverCertificate, []string{}, []string{})
@@ -297,7 +298,7 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 		return err
 	}
 
-	err = createCertificate(client, scheme, mco,
+	err = CreateCertificate(client, scheme, mco,
 		clientCACertifcate, certMgrClusterRsNs,
 		clientCACerts, false, clientSelfSignIssuer, true,
 		clientCACertifcate, []string{}, []string{})
@@ -311,7 +312,7 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 	}
 
 	log.Info("Creating certificates for grafana")
-	err = createCertificate(client, scheme, mco,
+	err = CreateCertificate(client, scheme, mco,
 		grafanaCertificate, config.GetDefaultNamespace(),
 		grafanaCerts, true, clientCAIssuer, false,
 		grafanaSubject, []string{}, []string{})
