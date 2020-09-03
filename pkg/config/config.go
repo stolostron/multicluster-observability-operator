@@ -27,6 +27,7 @@ const (
 
 	AnnotationKeyImageRepository = "mco-imageRepository"
 	AnnotationKeyImageTagSuffix  = "mco-imageTagSuffix"
+	AnnotationMCOPause           = "mco-pause"
 
 	DefaultImgPullPolicy   = corev1.PullAlways
 	DefaultImgPullSecret   = "multiclusterhub-operator-pull-secret"
@@ -162,4 +163,18 @@ func GetClusterID(ocpClient ocpClientSet.Interface) (string, error) {
 // GetPlacementRuleName is used to get placementRuleName
 func GetPlacementRuleName() string {
 	return placementRuleName
+
+// IsPaused returns true if the multiclusterobservability instance is labeled as paused, and false otherwise
+func IsPaused(annotations map[string]string) bool {
+	if annotations == nil {
+		return false
+	}
+
+	if annotations[AnnotationMCOPause] != "" &&
+		strings.EqualFold(annotations[AnnotationMCOPause], "true") {
+		return true
+	}
+
+	return false
+
 }
