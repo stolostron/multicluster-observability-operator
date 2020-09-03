@@ -22,8 +22,13 @@ const (
 )
 
 func deleteManifestWork(client client.Client, namespace string) error {
+	err := deleteRes(client, namespace)
+	if err != nil {
+		return err
+	}
+
 	found := &workv1.ManifestWork{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	err = client.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil

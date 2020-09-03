@@ -33,8 +33,11 @@ const (
 	ownerLabelValue = "multicluster-observability-operator"
 )
 
-var log = logf.Log.WithName("controller_placementrule")
-var watchNamespace = config.GetDefaultNamespace()
+var (
+	log            = logf.Log.WithName("controller_placementrule")
+	watchNamespace = config.GetDefaultNamespace()
+	isCRoleCreated = false
+)
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -233,6 +236,15 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 	if !deleteAll {
+		// create the clusterrole if not there
+		if !isCRoleCreated {
+			err = createClusterRole(r.client)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			isCRoleCreated = true
+		}
+
 		imagePullSecret := &corev1.Secret{}
 		err = r.client.Get(context.TODO(),
 			types.NamespacedName{
@@ -294,6 +306,11 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 				return reconcile.Result{}, err
 			}
 		}
+		err = deleteClusterRole(r.client)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		isCRoleCreated = false
 	}
 
 	epList = &mcov1beta1.ObservabilityAddonList{}

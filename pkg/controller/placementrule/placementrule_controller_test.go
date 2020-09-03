@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
@@ -51,6 +52,9 @@ func initSchema(t *testing.T) {
 }
 
 func TestObservabilityAddonController(t *testing.T) {
+
+	logf.SetLogger(logf.ZapLogger(true))
+
 	s := scheme.Scheme
 	initSchema(t)
 	config.SetMonitoringCRName(mcoName)
@@ -151,6 +155,11 @@ func TestObservabilityAddonController(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create mco: (%v)", err)
 	}
+	err = c.Create(context.TODO(), newTestSA())
+	if err != nil {
+		t.Fatalf("Failed to create sa: (%v)", err)
+	}
+
 	_, err = r.Reconcile(req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
