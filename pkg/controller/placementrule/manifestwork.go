@@ -14,6 +14,8 @@ import (
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
@@ -44,15 +46,21 @@ func deleteManifestWork(client client.Client, namespace string) error {
 	return err
 }
 
+func injectIntoWork(works []workv1.Manifest, obj runtime.Object) []workv1.Manifest {
+	works = append(works,
+		workv1.Manifest{
+			runtime.RawExtension{
+				Object: obj,
+			},
+		})
+	return works
+}
+
 func createManifestWork(client client.Client, clusterNamespace string,
 	clusterName string,
 	mco *mcov1beta1.MultiClusterObservability,
 	imagePullSecret *corev1.Secret) error {
 
-	secret, err := createKubeSecret(client, clusterNamespace)
-	if err != nil {
-		return err
-	}
 	work := &workv1.ManifestWork{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      workName,
@@ -63,21 +71,12 @@ func createManifestWork(client client.Client, clusterNamespace string,
 		},
 		Spec: workv1.ManifestWorkSpec{
 			Workload: workv1.ManifestsTemplate{
-				Manifests: []workv1.Manifest{
-					{
-						runtime.RawExtension{
-							Object: createNameSpace(),
-						},
-					},
-					{
-						runtime.RawExtension{
-							Object: secret,
-						},
-					},
-				},
+				Manifests: []workv1.Manifest{},
 			},
 		},
 	}
+
+	// inject resouces in templates
 	templates, err := loadTemplates(clusterNamespace, mco)
 	if err != nil {
 		log.Error(err, "Failed to load templates")
@@ -88,37 +87,33 @@ func createManifestWork(client client.Client, clusterNamespace string,
 		manifests = append(manifests, workv1.Manifest{raw})
 	}
 
-	//create image pull secret
-	manifests = append(manifests,
-		workv1.Manifest{
-			runtime.RawExtension{
-				Object: &corev1.Secret{
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: corev1.SchemeGroupVersion.String(),
-						Kind:       "Secret",
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      imagePullSecret.Name,
-						Namespace: spokeNameSpace,
-					},
-					Data: map[string][]byte{
-						".dockerconfigjson": imagePullSecret.Data[".dockerconfigjson"],
-					},
-					Type: corev1.SecretTypeDockerConfigJson,
-				},
-			},
-		})
+	// inject namespace
+	manifests = injectIntoWork(manifests, createNameSpace())
 
-	// create the hub info secret
+	// inject kube secret
+	secret, err := createKubeSecret(client, clusterNamespace)
+	if err != nil {
+		return err
+	}
+	manifests = injectIntoWork(manifests, secret)
+
+	//create image pull secret
+	pull := getPullSecret(imagePullSecret)
+	manifests = injectIntoWork(manifests, pull)
+
+	// inject the hub info secret
 	hubInfo, err := newHubInfoSecret(client, mco.Namespace, spokeNameSpace, clusterName)
 	if err != nil {
 		return err
 	}
-	manifests = append(manifests, workv1.Manifest{
-		runtime.RawExtension{
-			Object: hubInfo,
-		},
-	})
+	manifests = injectIntoWork(manifests, hubInfo)
+
+	// inject the certificates
+	certs, err := getCerts(client, clusterNamespace)
+	if err != nil {
+		return err
+	}
+	manifests = injectIntoWork(manifests, certs)
 
 	work.Spec.Workload.Manifests = manifests
 
@@ -163,4 +158,57 @@ func createManifestWork(client client.Client, clusterNamespace string,
 
 	log.Info("manifestwork already existed/unchanged", "namespace", clusterNamespace)
 	return nil
+}
+
+func getPullSecret(imagePullSecret *corev1.Secret) *corev1.Secret {
+	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "Secret",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      imagePullSecret.Name,
+			Namespace: spokeNameSpace,
+		},
+		Data: map[string][]byte{
+			".dockerconfigjson": imagePullSecret.Data[".dockerconfigjson"],
+		},
+		Type: corev1.SecretTypeDockerConfigJson,
+	}
+}
+
+func getCerts(client client.Client, namespace string) (*corev1.Secret, error) {
+
+	ca := &corev1.Secret{}
+	caName := multiclusterobservability.GetserverCerts()
+	err := client.Get(context.TODO(), types.NamespacedName{Name: caName,
+		Namespace: config.GetDefaultNamespace()}, ca)
+	if err != nil {
+		log.Error(err, "Failed to get ca cert secret", "name", caName)
+		return nil, err
+	}
+
+	certs := &corev1.Secret{}
+	err = client.Get(context.TODO(), types.NamespacedName{Name: certsName, Namespace: namespace}, certs)
+	if err != nil {
+		log.Error(err, "Failed to get certs secret", "name", certsName, "namespace", namespace)
+		return nil, err
+	}
+
+	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "Secret",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      certsName,
+			Namespace: spokeNameSpace,
+		},
+		Data: map[string][]byte{
+			"ca.crt":  ca.Data["ca.crt"],
+			"tls.crt": certs.Data["tls.crt"],
+			"tls.key": certs.Data["tls.key"],
+		},
+		Type: corev1.SecretTypeDockerConfigJson,
+	}, nil
 }

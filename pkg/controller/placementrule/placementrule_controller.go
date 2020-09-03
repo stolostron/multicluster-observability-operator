@@ -6,8 +6,10 @@ import (
 	"context"
 	"fmt"
 
+	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -25,12 +27,15 @@ import (
 	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
 	ownerLabelKey   = "owner"
 	ownerLabelValue = "multicluster-observability-operator"
+	certificateName = "observability-managed-cluster-certificate"
+	certsName       = "observability-managed-cluster-certs"
 )
 
 var (
@@ -278,6 +283,16 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		for _, decision := range instance.Status.Decisions {
 			reqLogger.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
 			currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
+
+			spec := multiclusterobservability.CreateCertificateSpec(certsName, true,
+				multiclusterobservability.GetClientCAIssuer(), false,
+				multiclusterobservability.GetManagedClusterOrg(), []string{}, []string{})
+			err = multiclusterobservability.CreateCertificate(r.client, nil, nil,
+				certificateName, decision.ClusterNamespace, spec)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+
 			err = createEndpointConfigCR(r.client, decision.ClusterNamespace)
 			if err != nil {
 				reqLogger.Error(err, "Failed to create observabilityaddon")
@@ -332,6 +347,18 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	for _, work := range workList.Items {
 		if !util.Contains(latestClusters, work.Namespace) {
 			reqLogger.Info("To delete manifestwork", "namespace", work.Namespace)
+
+			certificate := &certv1alpha1.Certificate{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      certificateName,
+					Namespace: work.Namespace,
+				},
+			}
+			err = r.client.Delete(context.TODO(), certificate)
+			if err != nil && !errors.IsNotFound(err) {
+				return reconcile.Result{}, err
+			}
+
 			err = deleteManifestWork(r.client, work.Namespace)
 			if err != nil {
 				reqLogger.Error(err, "Failed to delete manifestwork")
