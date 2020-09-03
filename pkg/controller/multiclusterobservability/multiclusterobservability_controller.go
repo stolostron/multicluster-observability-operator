@@ -159,8 +159,11 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 	}
 
 	// Init finalizers
-	err = r.initFinalization(instance)
+	isTerminating, err := r.initFinalization(instance)
 	if err != nil {
+		return reconcile.Result{}, err
+	} else if isTerminating {
+		reqLogger.Info("MCO instance is in Terminating status, skip the reconcile")
 		return reconcile.Result{}, err
 	}
 
@@ -335,30 +338,30 @@ func labelsForMultiClusterMonitoring(name string) map[string]string {
 }
 
 func (r *ReconcileMultiClusterObservability) initFinalization(
-	mco *mcov1beta1.MultiClusterObservability) error {
+	mco *mcov1beta1.MultiClusterObservability) (bool, error) {
 	if mco.GetDeletionTimestamp() != nil && util.Contains(mco.GetFinalizers(), certFinalizer) {
 		log.Info("To delete issuer/certificate across namespaces")
 		err := cleanIssuerCert(r.client)
 		if err != nil {
-			return err
+			return false, err
 		}
 		mco.SetFinalizers(util.Remove(mco.GetFinalizers(), certFinalizer))
 		err = r.client.Update(context.TODO(), mco)
 		if err != nil {
 			log.Error(err, "Failed to remove finalizer from mco resource", "namespace", mco.Namespace)
-			return err
+			return false, err
 		}
 		log.Info("Finalizer removed from mco resource")
-		return nil
+		return true, nil
 	}
 	if !util.Contains(mco.GetFinalizers(), certFinalizer) {
 		mco.SetFinalizers(append(mco.GetFinalizers(), certFinalizer))
 		err := r.client.Update(context.TODO(), mco)
 		if err != nil {
 			log.Error(err, "Failed to add finalizer to mco resource", "namespace", mco.Namespace)
-			return err
+			return false, err
 		}
 		log.Info("Finalizer added to mco resource")
 	}
-	return nil
+	return false, nil
 }
