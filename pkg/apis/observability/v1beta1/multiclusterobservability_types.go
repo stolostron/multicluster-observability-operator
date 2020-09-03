@@ -126,13 +126,23 @@ type MultiClusterObservabilityStatus struct {
 
 // MCOCondition defines the aggregated state of entire MultiClusterObservability CR
 type MCOCondition struct {
-	// Return true if deployment is ready, not present if it is failed
+	//Return the installing status of dependent deployments of MCO CR
+	Installing Installing `json:"installing"`
+
+	// Return ready if deployment is ready, not present if it is failed
 	// +optional
 	Ready Ready `json:"ready,omitempty"`
 
-	// Return true if deployment is failed, not present if it is ready
+	// Return failed if deployment is failed, not present if it is ready
 	// +optional
 	Failed Failed `json:"fail,omitempty"`
+}
+
+// Installing defines the installing status of MCO CR
+type Installing struct {
+	Type 	string `json:"type"`
+	Reason  string `json:"reason"`
+	Message string `json:"message"`
 }
 
 // Ready defines the ready status of MCO CR

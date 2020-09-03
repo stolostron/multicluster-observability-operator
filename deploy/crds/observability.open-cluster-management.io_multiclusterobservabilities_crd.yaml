@@ -122,6 +122,19 @@ spec:
               items:
                 description: MCOCondition defines the aggregated condition of MCO
                 properties:
+                  installing:
+                    description: Shows if a deployment is installing
+                    properties:
+                      type:
+                        description: Defines type of MCO CR installing condition
+                        type: string
+                      reason:
+                        description: Shows reason of MCO CR installing condition
+                        type: string
+                      message:
+                        description: Shows message MCO CR installing condition
+                        type: string
+                    type: object
                   ready: 
                     description: Shown if a deployment is ready
                     properties:
