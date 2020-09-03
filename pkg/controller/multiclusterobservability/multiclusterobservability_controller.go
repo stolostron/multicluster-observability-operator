@@ -193,6 +193,12 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		}
 	}
 
+	// expose observatorium api gateway
+	result, err := GenerateAPIGatewayRoute(r.client, r.scheme, instance)
+	if result != nil {
+		return *result, err
+	}
+
 	// create the certificates
 	err = createObservabilityCertificate(r.client, r.scheme, instance)
 	if err != nil {
@@ -200,7 +206,7 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 	}
 
 	// create an Observatorium CR
-	result, err := GenerateObservatoriumCR(r.client, r.scheme, instance)
+	result, err = GenerateObservatoriumCR(r.client, r.scheme, instance)
 	if result != nil {
 		return *result, err
 	}
@@ -209,11 +215,6 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return *result, err
 	}
 
-	// expose observatorium api gateway
-	result, err = GenerateAPIGatewayRoute(r.client, r.scheme, instance)
-	if result != nil {
-		return *result, err
-	}
 	// generate grafana datasource to point to observatorium api gateway
 	result, err = GenerateGrafanaDataSource(r.client, r.scheme, instance)
 	if result != nil {

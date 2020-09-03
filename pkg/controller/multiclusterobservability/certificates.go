@@ -284,8 +284,13 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 		return err
 	}
 
+	url, err := config.GetObsAPIUrl(client, ns)
+	if err != nil {
+		log.Error(err, "Failed to get api gateway")
+		return err
+	}
 	spec = CreateCertificateSpec(serverCerts, false, serverCAIssuer, false,
-		serverCertificate, []string{}, []string{})
+		serverCertificate, []string{}, []string{url})
 	err = CreateCertificate(client, scheme, mco,
 		serverCertificate, ns, spec)
 	if err != nil {
