@@ -47,8 +47,8 @@ wait_for_event() {
             exit 1
         fi
         n=$((n+1))
-        echo "Retrying in 10s..."
-        sleep 10
+        echo "Retrying in 20s..."
+        sleep 20
     done
 }
 
