@@ -19,6 +19,7 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 1,
+      "iteration": 1599069063991,
       "links": [],
       "panels": [
         {
@@ -37,7 +38,7 @@ data:
         },
         {
           "cacheTimeout": null,
-          "datasource": null,
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "custom": {},
@@ -70,7 +71,7 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 3,
+            "w": 4,
             "x": 0,
             "y": 1
           },
@@ -109,7 +110,7 @@ data:
         },
         {
           "cacheTimeout": null,
-          "datasource": null,
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "custom": {},
@@ -142,8 +143,8 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 3,
-            "x": 3,
+            "w": 4,
+            "x": 4,
             "y": 1
           },
           "id": 10,
@@ -180,7 +181,7 @@ data:
           "type": "stat"
         },
         {
-          "datasource": null,
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "custom": {
@@ -264,13 +265,19 @@ data:
           },
           "gridPos": {
             "h": 8,
-            "w": 12,
-            "x": 6,
+            "w": 16,
+            "x": 8,
             "y": 1
           },
           "id": 44,
           "options": {
-            "showHeader": true
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": false,
+                "displayName": "Memory"
+              }
+            ]
           },
           "pluginVersion": "7.1.3",
           "targets": [
@@ -328,7 +335,7 @@ data:
           "type": "table"
         },
         {
-          "datasource": null,
+          "datasource": "$datasource",
           "description": "OCP versions across managed clusters",
           "fieldConfig": {
             "defaults": {
@@ -359,7 +366,7 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 3,
+            "w": 4,
             "x": 0,
             "y": 5
           },
@@ -394,7 +401,7 @@ data:
           "type": "bargauge"
         },
         {
-          "datasource": null,
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -419,8 +426,8 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 3,
-            "x": 3,
+            "w": 4,
+            "x": 4,
             "y": 5
           },
           "hideTimeOverride": false,
@@ -453,7 +460,7 @@ data:
           "type": "bargauge"
         },
         {
-          "datasource": null,
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "custom": {
@@ -526,7 +533,7 @@ data:
           },
           "gridPos": {
             "h": 7,
-            "w": 18,
+            "w": 24,
             "x": 0,
             "y": 9
           },
@@ -649,7 +656,7 @@ data:
           "type": "row"
         },
         {
-          "datasource": null,
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "custom": {
@@ -803,7 +810,7 @@ data:
           },
           "gridPos": {
             "h": 6,
-            "w": 18,
+            "w": 24,
             "x": 0,
             "y": 17
           },
@@ -909,7 +916,7 @@ data:
           "type": "row"
         },
         {
-          "datasource": null,
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "custom": {
@@ -1004,8 +1011,8 @@ data:
             ]
           },
           "gridPos": {
-            "h": 8,
-            "w": 9,
+            "h": 7,
+            "w": 12,
             "x": 0,
             "y": 24
           },
@@ -1084,7 +1091,7 @@ data:
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": null,
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "custom": {}
@@ -1094,9 +1101,9 @@ data:
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 8,
-            "w": 9,
-            "x": 9,
+            "h": 7,
+            "w": 12,
+            "x": 12,
             "y": 24
           },
           "hiddenSeries": false,
@@ -1173,7 +1180,7 @@ data:
           }
         },
         {
-          "datasource": null,
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "custom": {
@@ -1268,10 +1275,10 @@ data:
             ]
           },
           "gridPos": {
-            "h": 8,
-            "w": 9,
+            "h": 7,
+            "w": 12,
             "x": 0,
-            "y": 32
+            "y": 31
           },
           "id": 60,
           "options": {
@@ -1286,10 +1293,12 @@ data:
           "pluginVersion": "7.1.3",
           "targets": [
             {
-              "expr": "sum(node_memory_MemTotal_bytes / 1000000000) by (cluster)",
+              "expr": "sum(cluster:capacity_memory_bytes:sum / 1000000000) by (cluster)",
               "format": "table",
+              "hide": false,
               "instant": true,
               "interval": "",
+              "intervalFactor": 1,
               "legendFormat": "",
               "refId": "F"
             },
@@ -1349,7 +1358,7 @@ data:
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": null,
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "custom": {}
@@ -1359,10 +1368,10 @@ data:
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 8,
-            "w": 9,
-            "x": 9,
-            "y": 32
+            "h": 7,
+            "w": 12,
+            "x": 12,
+            "y": 31
           },
           "hiddenSeries": false,
           "id": 65,
@@ -1439,7 +1448,7 @@ data:
           }
         },
         {
-          "datasource": null,
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "custom": {
@@ -1535,9 +1544,9 @@ data:
           },
           "gridPos": {
             "h": 8,
-            "w": 9,
+            "w": 12,
             "x": 0,
-            "y": 40
+            "y": 38
           },
           "id": 61,
           "options": {
@@ -1615,7 +1624,7 @@ data:
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": null,
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "custom": {
@@ -1642,9 +1651,9 @@ data:
           "fillGradient": 0,
           "gridPos": {
             "h": 8,
-            "w": 9,
-            "x": 9,
-            "y": 40
+            "w": 12,
+            "x": 12,
+            "y": 38
           },
           "hiddenSeries": false,
           "id": 51,
@@ -1723,16 +1732,15 @@ data:
           }
         }
       ],
-      "refresh": "",
+      "refresh": "1m",
       "schemaVersion": 26,
       "style": "light",
-      "tags": [
-        "ACM"
-      ],
+      "tags": [],
       "templating": {
         "list": [
           {
             "current": {
+              "selected": false,
               "text": "Observatorium",
               "value": "Observatorium"
             },
@@ -1751,38 +1759,27 @@ data:
         ]
       },
       "time": {
-          "from": "now-5m",
-          "to": "now"
-        },
-        "timepicker": {
-          "refresh_intervals": [
-            "5s",
-            "10s",
-            "30s",
-            "1m",
-            "5m",
-            "15m",
-            "30m",
-            "1h",
-            "2h",
-            "1d"
-          ],
-          "time_options": [
-            "5m",
-            "15m",
-            "1h",
-            "6h",
-            "12h",
-            "24h",
-            "2d",
-            "7d",
-            "30d"
-          ]
-        },
+        "from": "now-3h",
+        "to": "now"
+      },
+      "timepicker": {
+        "refresh_intervals": [
+          "5s",
+          "10s",
+          "30s",
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ]
+      },
       "timezone": "browser",
       "title": "ACM - Cluster Overview",
       "uid": "gSyJ7YIMk",
-      "version": 1
+      "version": 3
     }
 kind: ConfigMap
 metadata:
@@ -1811,7 +1808,7 @@ data:
       "gnetId": 9878,
       "graphTooltip": 0,
       "id": 16,
-      "iteration": 1598922388164,
+      "iteration": 1599019887658,
       "links": [],
       "panels": [
         {
@@ -1831,7 +1828,7 @@ data:
         },
         {
           "cacheTimeout": null,
-          "datasource": null,
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "custom": {},
@@ -2190,7 +2187,7 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 6,
+            "w": 8,
             "x": 0,
             "y": 6
           },
@@ -2266,8 +2263,8 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 6,
-            "x": 6,
+            "w": 8,
+            "x": 8,
             "y": 6
           },
           "id": 2,
@@ -2298,7 +2295,7 @@ data:
               "step": 600
             }
           ],
-          "title": "etcd Servers Up",
+          "title": "etcd stores",
           "type": "gauge"
         },
         {
@@ -2342,8 +2339,8 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 6,
-            "x": 12,
+            "w": 8,
+            "x": 16,
             "y": 6
           },
           "id": 37,
@@ -2374,83 +2371,7 @@ data:
               "step": 600
             }
           ],
-          "title": "Controller Servers Up",
-          "type": "gauge"
-        },
-        {
-          "cacheTimeout": null,
-          "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "mappings": [
-                {
-                  "id": 0,
-                  "op": "=",
-                  "text": "N/A",
-                  "type": 1,
-                  "value": "null"
-                }
-              ],
-              "max": 100,
-              "min": 0,
-              "nullValueMode": "connected",
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "rgba(245, 54, 54, 0.9)",
-                    "value": null
-                  },
-                  {
-                    "color": "rgba(237, 129, 40, 0.89)",
-                    "value": 50
-                  },
-                  {
-                    "color": "rgba(50, 172, 45, 0.97)",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "percent"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 6,
-            "x": 18,
-            "y": 6
-          },
-          "id": 16,
-          "interval": null,
-          "links": [],
-          "maxDataPoints": 100,
-          "options": {
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showThresholdLabels": false,
-            "showThresholdMarkers": true
-          },
-          "pluginVersion": "7.1.3",
-          "targets": [
-            {
-              "expr": "(sum(up{job=\"kubelet\",cluster=\"$cluster\"} == 1) / count(up{job=\"kubelet\",cluster=\"$cluster\"})) * 100",
-              "format": "time_series",
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "",
-              "refId": "A",
-              "step": 600
-            }
-          ],
-          "title": "Kubelets UP",
+          "title": "Controller Manager",
           "type": "gauge"
         },
         {
@@ -2492,7 +2413,7 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
+            "w": 8,
             "x": 0,
             "y": 10
           },
@@ -2569,8 +2490,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 6,
+            "w": 8,
+            "x": 8,
             "y": 10
           },
           "hideTimeOverride": false,
@@ -2604,7 +2525,7 @@ data:
               "step": 600
             }
           ],
-          "title": "etcd Servers Count",
+          "title": "etcd Stores Count",
           "type": "stat"
         },
         {
@@ -2646,8 +2567,8 @@ data:
           },
           "gridPos": {
             "h": 3,
-            "w": 6,
-            "x": 12,
+            "w": 8,
+            "x": 16,
             "y": 10
           },
           "hideTimeOverride": false,
@@ -2681,84 +2602,7 @@ data:
               "step": 600
             }
           ],
-          "title": "Controller Servers Count",
-          "type": "stat"
-        },
-        {
-          "cacheTimeout": null,
-          "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "mappings": [
-                {
-                  "id": 0,
-                  "op": "=",
-                  "text": "0",
-                  "type": 1,
-                  "value": "null"
-                }
-              ],
-              "nullValueMode": "connected",
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "red",
-                    "value": null
-                  },
-                  {
-                    "color": "orange",
-                    "value": 1
-                  },
-                  {
-                    "color": "green",
-                    "value": 2
-                  }
-                ]
-              },
-              "unit": "none"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 6,
-            "x": 18,
-            "y": 10
-          },
-          "hideTimeOverride": false,
-          "id": 23,
-          "interval": null,
-          "links": [],
-          "maxDataPoints": 100,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "textMode": "auto"
-          },
-          "pluginVersion": "7.1.3",
-          "targets": [
-            {
-              "expr": "count(up{job=\"kubelet\",cluster=\"$cluster\"})",
-              "format": "time_series",
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "",
-              "refId": "A",
-              "step": 600
-            }
-          ],
-          "title": "Kubelets Count",
+          "title": "Controllers Count",
           "type": "stat"
         },
         {
@@ -2817,7 +2661,7 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 6,
+            "w": 8,
             "x": 0,
             "y": 14
           },
@@ -2893,8 +2737,8 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 6,
-            "x": 6,
+            "w": 8,
+            "x": 8,
             "y": 14
           },
           "id": 7,
@@ -2916,8 +2760,10 @@ data:
           "pluginVersion": "7.1.3",
           "targets": [
             {
-              "expr": "((sum(node_memory_MemTotal_bytes{cluster=\"$cluster\"}) - sum(node_memory_MemFree_bytes{cluster=\"$cluster\"}) - sum(node_memory_Buffers_bytes{cluster=\"$cluster\"}) - sum(node_memory_Cached_bytes{cluster=\"$cluster\"})) / sum(node_memory_MemTotal_bytes{cluster=\"$cluster\"})) * 100",
+              "expr": "((sum(cluster:capacity_memory_bytes:sum{cluster=\"$cluster\"}) - sum(node_memory_MemAvailable_bytes{cluster=\"$cluster\"})) / sum(cluster:capacity_memory_bytes:sum{cluster=\"$cluster\"})) * 100",
               "format": "time_series",
+              "hide": false,
+              "instant": false,
               "interval": "",
               "intervalFactor": 2,
               "legendFormat": "",
@@ -2969,8 +2815,8 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 6,
-            "x": 12,
+            "w": 8,
+            "x": 16,
             "y": 14
           },
           "id": 9,
@@ -3003,95 +2849,6 @@ data:
           ],
           "title": "Filesystem",
           "type": "gauge"
-        },
-        {
-          "cacheTimeout": null,
-          "colorBackground": false,
-          "colorValue": false,
-          "colors": [
-            "#73BF69",
-            "#FF9830",
-            "#F2495C"
-          ],
-          "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {}
-            },
-            "overrides": []
-          },
-          "format": "percent",
-          "gauge": {
-            "maxValue": 100,
-            "minValue": 0,
-            "show": true,
-            "thresholdLabels": false,
-            "thresholdMarkers": true
-          },
-          "gridPos": {
-            "h": 4,
-            "w": 6,
-            "x": 18,
-            "y": 14
-          },
-          "id": 10,
-          "interval": null,
-          "links": [],
-          "mappingType": 1,
-          "mappingTypes": [
-            {
-              "name": "value to text",
-              "value": 1
-            },
-            {
-              "name": "range to text",
-              "value": 2
-            }
-          ],
-          "maxDataPoints": 100,
-          "nullPointMode": "connected",
-          "nullText": null,
-          "postfix": "",
-          "postfixFontSize": "50%",
-          "prefix": "",
-          "prefixFontSize": "50%",
-          "rangeMaps": [
-            {
-              "from": "null",
-              "text": "N/A",
-              "to": "null"
-            }
-          ],
-          "sparkline": {
-            "fillColor": "rgba(31, 118, 189, 0.18)",
-            "full": false,
-            "lineColor": "rgb(31, 120, 193)",
-            "show": false
-          },
-          "tableColumn": "",
-          "targets": [
-            {
-              "expr": "sum(node_filefd_allocated{cluster=\"$cluster\"}) / sum(node_filefd_maximum{cluster=\"$cluster\"}) * 100",
-              "format": "time_series",
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "",
-              "refId": "A",
-              "step": 600
-            }
-          ],
-          "thresholds": "80,90",
-          "title": "Open File Descriptors",
-          "type": "singlestat",
-          "valueFontSize": "80%",
-          "valueMaps": [
-            {
-              "op": "=",
-              "text": "N/A",
-              "value": "null"
-            }
-          ],
-          "valueName": "avg"
         },
         {
           "cacheTimeout": null,
@@ -3134,7 +2891,7 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 6,
+            "w": 8,
             "x": 0,
             "y": 18
           },
@@ -3209,7 +2966,7 @@ data:
           "gridPos": {
             "h": 4,
             "w": 6,
-            "x": 6,
+            "x": 8,
             "y": 18
           },
           "hideTimeOverride": false,
@@ -3285,8 +3042,8 @@ data:
           },
           "gridPos": {
             "h": 4,
-            "w": 6,
-            "x": 12,
+            "w": 4,
+            "x": 14,
             "y": 18
           },
           "hideTimeOverride": false,
@@ -3635,6 +3392,8 @@ data:
             "min": false,
             "rightSide": true,
             "show": true,
+            "sort": "avg",
+            "sortDesc": true,
             "total": false,
             "values": true
           },
@@ -3792,9 +3551,8 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
-              "text": "shared-ocp-4-4-14",
-              "value": "shared-ocp-4-4-14"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "label_values(node_cpu_seconds_total, cluster)",
@@ -3814,6 +3572,23 @@ data:
             "tagsQuery": "",
             "type": "query",
             "useTags": false
+          },
+          {
+            "current": {
+              "text": "Observatorium",
+              "value": "Observatorium"
+            },
+            "hide": 2,
+            "includeAll": false,
+            "label": null,
+            "multi": false,
+            "name": "datasource",
+            "options": [],
+            "query": "prometheus",
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "type": "datasource"
           }
         ]
       },
@@ -3849,7 +3624,7 @@ data:
       "timezone": "",
       "title": "Kubernetes Control Plane",
       "uid": "2bG3Qsgmz",
-      "version": 8
+      "version": 14
     }
 kind: ConfigMap
 metadata:
