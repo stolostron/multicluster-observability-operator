@@ -58,7 +58,7 @@ func GenerateGrafanaDataSource(
 				//URL:    "http://" + mco.Name + obsPartoOfName + "-observatorium-api:8080/api/metrics/v1",
 				// TODO: need to use observatorium api here
 				// right now, bypass the observatorium api w/o authentication
-				URL: "http://" + mco.Name + "-observatorium-cortex-query-frontend.open-cluster-management-observability.svc.cluster.local:9090",
+				URL: "http://" + mco.Name + "thanos-query-frontend.open-cluster-management-observability.svc.cluster.local",
 			},
 		},
 	}, "", "    ")

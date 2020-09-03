@@ -29,8 +29,8 @@ const (
 	obsPartoOfName = "-observatorium"
 	obsAPIGateway  = "observatorium-api"
 
-	defaultThanosImage   = "quay.io/thanos/thanos:master-2020-05-24-079ad427"
-	defaultThanosVersion = "master-2020-05-24-079ad427"
+	defaultThanosImage   = "quay.io/thanos/thanos:master-2020-08-12-70f89d83"
+	defaultThanosVersion = "master-2020-08-12-70f89d83"
 
 	thanosImgName = "thanos"
 )
@@ -177,11 +177,6 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability) *obs
 		obs.ObjectStorageConfig.Thanos.Name = objStorageConf.Name
 		obs.ObjectStorageConfig.Thanos.Key = objStorageConf.Key
 	}
-
-	replicas := int32(1)
-	obs.QueryCache.Replicas = &replicas
-	obs.QueryCache.Image = "quay.io/cortexproject/cortex:master-fdcd992f"
-	obs.QueryCache.Version = "master-fdcd992f"
 
 	obs.Receivers = newReceiversSpec(mco)
 	obs.Rule = newRuleSpec(mco)
