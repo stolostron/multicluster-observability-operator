@@ -16,6 +16,7 @@ rules:
   - configmaps
   - secrets
   - serviceaccounts
+  - namespaces
   verbs:
   - create
   - delete
@@ -175,5 +176,11 @@ rules:
   resources:
   - '*'
   - infrastructures
+  verbs:
+  - '*'
+- apiGroups:
+  - certmanager.k8s.io
+  resources:
+  - '*'
   verbs:
   - '*'

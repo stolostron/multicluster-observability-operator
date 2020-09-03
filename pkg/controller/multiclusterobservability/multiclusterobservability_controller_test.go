@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	observatoriumv1alpha1 "github.com/observatorium/deployments/operator/api/v1alpha1"
 	configv1 "github.com/openshift/api/config/v1"
@@ -15,6 +16,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -23,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
+	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
@@ -137,6 +140,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	mcov1beta1.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
 	routev1.AddToScheme(s)
+	placementv1.AddToScheme(s)
 
 	svc := createObservatoriumApiService(name, namespace)
 	objs := []runtime.Object{mco, svc}
@@ -218,4 +222,15 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 	log.Info("updated MultiClusterObservability successfully", "MultiClusterObservability", updatedMCO)
 
+	//Test finalizer
+	mco.ObjectMeta.DeletionTimestamp = &v1.Time{time.Now()}
+	mco.ObjectMeta.Finalizers = []string{certFinalizer, "test-finalizerr"}
+	err = cl.Update(context.TODO(), mco)
+	if err != nil {
+		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
+	}
+	_, err = r.Reconcile(req)
+	if err != nil {
+		t.Fatalf("reconcile for finalizer: (%v)", err)
+	}
 }
