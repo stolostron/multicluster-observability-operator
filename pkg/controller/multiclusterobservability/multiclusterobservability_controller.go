@@ -161,6 +161,12 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 	//set configured image repo and image tag from annotations
 	config.SetAnnotationImageInfo(instance.GetAnnotations())
 
+	// Do not reconcile objects if this instance of mch is labeled "paused"
+	if config.IsPaused(instance.GetAnnotations()) {
+		reqLogger.Info("MCO reconciliation is paused. Nothing more to do.")
+		return reconcile.Result{}, nil
+	}
+
 	instance.Namespace = config.GetDefaultNamespace()
 	//Render the templates with a specified CR
 	renderer := rendering.NewRenderer(instance)
