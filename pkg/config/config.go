@@ -23,6 +23,7 @@ const (
 	infrastructureConfigName = "cluster"
 	defaultNamespace         = "open-cluster-management-observability"
 	defaultTenantName        = "prod"
+	placementRuleName        = "observability"
 
 	AnnotationKeyImageRepository = "mco-imageRepository"
 	AnnotationKeyImageTagSuffix  = "mco-imageTagSuffix"
@@ -157,6 +158,11 @@ func GetClusterID(ocpClient ocpClientSet.Interface) (string, error) {
 	}
 
 	return string(clusterVersion.Spec.ClusterID), nil
+}
+
+// GetPlacementRuleName is used to get placementRuleName
+func GetPlacementRuleName() string {
+	return placementRuleName
 }
 
 // IsPaused returns true if the multiclusterobservability instance is labeled as paused, and false otherwise

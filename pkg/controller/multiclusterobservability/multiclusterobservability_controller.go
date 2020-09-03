@@ -31,6 +31,10 @@ import (
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
+const (
+	certFinalizer = "observability.open-cluster-management.io/cert-cleanup"
+)
+
 var (
 	log                  = logf.Log.WithName("controller_multiclustermonitoring")
 	enableHubRemoteWrite = os.Getenv("ENABLE_HUB_REMOTEWRITE")
@@ -154,6 +158,12 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return reconcile.Result{}, err
 	}
 
+	// Init finalizers
+	err = r.initFinalization(instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	if result, err := GenerateMonitoringCR(r.client, instance); result != nil {
 		return *result, err
 	}
@@ -189,8 +199,26 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		}
 	}
 
+	// expose observatorium api gateway
+	result, err := GenerateAPIGatewayRoute(r.client, r.scheme, instance)
+	if result != nil {
+		return *result, err
+	}
+
+	// create the certificates
+	err = createObservabilityCertificate(r.client, r.scheme, instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// create the placementrule
+	err = createPlacementRule(r.client, r.scheme, instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	// create an Observatorium CR
-	result, err := GenerateObservatoriumCR(r.client, r.scheme, instance)
+	result, err = GenerateObservatoriumCR(r.client, r.scheme, instance)
 	if result != nil {
 		return *result, err
 	}
@@ -199,11 +227,6 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return *result, err
 	}
 
-	// expose observatorium api gateway
-	result, err = GenerateAPIGatewayRoute(r.client, r.scheme, instance)
-	if result != nil {
-		return *result, err
-	}
 	// generate grafana datasource to point to observatorium api gateway
 	result, err = GenerateGrafanaDataSource(r.client, r.scheme, instance)
 	if result != nil {
@@ -309,4 +332,33 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 // belonging to the given MultiClusterObservability CR name.
 func labelsForMultiClusterMonitoring(name string) map[string]string {
 	return map[string]string{"observability.open-cluster-management.io/name": name}
+}
+
+func (r *ReconcileMultiClusterObservability) initFinalization(
+	mco *mcov1beta1.MultiClusterObservability) error {
+	if mco.GetDeletionTimestamp() != nil && util.Contains(mco.GetFinalizers(), certFinalizer) {
+		log.Info("To delete issuer/certificate across namespaces")
+		err := cleanIssuerCert(r.client)
+		if err != nil {
+			return err
+		}
+		mco.SetFinalizers(util.Remove(mco.GetFinalizers(), certFinalizer))
+		err = r.client.Update(context.TODO(), mco)
+		if err != nil {
+			log.Error(err, "Failed to remove finalizer from mco resource", "namespace", mco.Namespace)
+			return err
+		}
+		log.Info("Finalizer removed from mco resource")
+		return nil
+	}
+	if !util.Contains(mco.GetFinalizers(), certFinalizer) {
+		mco.SetFinalizers(append(mco.GetFinalizers(), certFinalizer))
+		err := r.client.Update(context.TODO(), mco)
+		if err != nil {
+			log.Error(err, "Failed to add finalizer to mco resource", "namespace", mco.Namespace)
+			return err
+		}
+		log.Info("Finalizer added to mco resource")
+	}
+	return nil
 }

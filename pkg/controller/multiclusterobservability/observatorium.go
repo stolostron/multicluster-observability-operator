@@ -5,7 +5,6 @@ package multiclusterobservability
 import (
 	"bytes"
 	"context"
-	"time"
 
 	observatoriumv1alpha1 "github.com/observatorium/deployments/operator/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -103,61 +102,43 @@ func GenerateAPIGatewayRoute(
 	runclient client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
-	listOptions := []client.ListOption{
-		client.MatchingLabels(map[string]string{
-			"app.kubernetes.io/component": "api",
-			"app.kubernetes.io/instance":  mco.Name + obsPartoOfName,
-		}),
+	apiGateway := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      obsAPIGateway,
+			Namespace: mco.Namespace,
+		},
+		Spec: routev1.RouteSpec{
+			Port: &routev1.RoutePort{
+				TargetPort: intstr.FromString("remote-write"),
+			},
+			To: routev1.RouteTargetReference{
+				Kind: "Service",
+				//Name: apiGatewayServices.Items[0].GetName(),
+				Name: mco.Name + "-observatorium-thanos-receive",
+			},
+		},
 	}
-	apiGatewayServices := &v1.ServiceList{}
-	err := runclient.List(context.TODO(), apiGatewayServices, listOptions...)
-	if err == nil && len(apiGatewayServices.Items) > 0 {
-		apiGateway := &routev1.Route{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      obsAPIGateway,
-				Namespace: mco.Namespace,
-			},
-			Spec: routev1.RouteSpec{
-				Port: &routev1.RoutePort{
-					TargetPort: intstr.FromString("remote-write"),
-				},
-				To: routev1.RouteTargetReference{
-					Kind: "Service",
-					//Name: apiGatewayServices.Items[0].GetName(),
-					Name: mco.Name + "-observatorium-thanos-receive",
-				},
-			},
-		}
 
-		// Set MultiClusterObservability instance as the owner and controller
-		if err := controllerutil.SetControllerReference(mco, apiGateway, scheme); err != nil {
-			return &reconcile.Result{}, err
-		}
-
-		err = runclient.Get(
-			context.TODO(),
-			types.NamespacedName{Name: apiGateway.Name, Namespace: apiGateway.Namespace},
-			&routev1.Route{})
-		if err != nil && errors.IsNotFound(err) {
-			log.Info("Creating a new route to expose observatorium api",
-				"apiGateway.Namespace", apiGateway.Namespace,
-				"apiGateway.Name", apiGateway.Name,
-			)
-			err = runclient.Create(context.TODO(), apiGateway)
-			if err != nil {
-				return &reconcile.Result{}, err
-			}
-		}
-
-	} else if err == nil && len(apiGatewayServices.Items) == 0 {
-		log.Info("Cannot find the service ",
-			"serviceName",
-			mco.Name+obsPartoOfName+"-"+obsAPIGateway,
-		)
-		return &reconcile.Result{RequeueAfter: time.Second * 10}, nil
-	} else {
+	// Set MultiClusterObservability instance as the owner and controller
+	if err := controllerutil.SetControllerReference(mco, apiGateway, scheme); err != nil {
 		return &reconcile.Result{}, err
 	}
+
+	err := runclient.Get(
+		context.TODO(),
+		types.NamespacedName{Name: apiGateway.Name, Namespace: apiGateway.Namespace},
+		&routev1.Route{})
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Creating a new route to expose observatorium api",
+			"apiGateway.Namespace", apiGateway.Namespace,
+			"apiGateway.Name", apiGateway.Name,
+		)
+		err = runclient.Create(context.TODO(), apiGateway)
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
+	}
+
 	return nil, nil
 }
 

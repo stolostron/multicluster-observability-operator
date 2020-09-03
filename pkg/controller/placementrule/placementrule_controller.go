@@ -29,9 +29,8 @@ import (
 )
 
 const (
-	placementRuleName = "open-cluster-management-observability"
-	ownerLabelKey     = "owner"
-	ownerLabelValue   = "multicluster-observability-operator"
+	ownerLabelKey   = "owner"
+	ownerLabelValue = "multicluster-observability-operator"
 )
 
 var log = logf.Log.WithName("controller_placementrule")
@@ -65,21 +64,23 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	name := config.GetPlacementRuleName()
+
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Meta.GetName() == placementRuleName && e.Meta.GetNamespace() == watchNamespace {
+			if e.Meta.GetName() == name && e.Meta.GetNamespace() == watchNamespace {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == placementRuleName && e.MetaNew.GetNamespace() == watchNamespace {
+			if e.MetaNew.GetName() == name && e.MetaNew.GetNamespace() == watchNamespace {
 				return true
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == placementRuleName && e.Meta.GetNamespace() == watchNamespace {
+			if e.Meta.GetName() == name && e.Meta.GetNamespace() == watchNamespace {
 				return e.DeleteStateUnknown
 			}
 			return false
@@ -96,7 +97,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		func(a handler.MapObject) []reconcile.Request {
 			return []reconcile.Request{
 				{NamespacedName: types.NamespacedName{
-					Name:      placementRuleName,
+					Name:      name,
 					Namespace: watchNamespace,
 				}},
 			}
