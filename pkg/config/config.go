@@ -163,6 +163,7 @@ func GetClusterID(ocpClient ocpClientSet.Interface) (string, error) {
 // GetPlacementRuleName is used to get placementRuleName
 func GetPlacementRuleName() string {
 	return placementRuleName
+}
 
 // IsPaused returns true if the multiclusterobservability instance is labeled as paused, and false otherwise
 func IsPaused(annotations map[string]string) bool {
@@ -176,5 +177,4 @@ func IsPaused(annotations map[string]string) bool {
 	}
 
 	return false
-
 }

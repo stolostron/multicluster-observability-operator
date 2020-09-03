@@ -145,7 +145,6 @@ deploy_mco_operator() {
     kubectl apply -f tests/e2e/minio
     sleep 2
     kubectl apply -f tests/e2e/req_crds/hub_cr
-    kubectl apply -f deploy/placementrule.yaml
     kubectl create ns ${DEFAULT_NS}
     kubectl create secret -n ${DEFAULT_NS} docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
     kubectl apply -n ${DEFAULT_NS} -f deploy/operator.yaml
