@@ -23,7 +23,7 @@ const (
 	infrastructureConfigName = "cluster"
 	defaultNamespace         = "open-cluster-management-observability"
 	defaultTenantName        = "prod"
-	placementRuleName        = "open-cluster-management-observability"
+	placementRuleName        = "observability"
 
 	AnnotationKeyImageRepository = "mco-imageRepository"
 	AnnotationKeyImageTagSuffix  = "mco-imageTagSuffix"
