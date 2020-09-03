@@ -205,6 +205,12 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return reconcile.Result{}, err
 	}
 
+	// create the placementrule
+	err = createPlacementRule(r.client, r.scheme, instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	// create an Observatorium CR
 	result, err = GenerateObservatoriumCR(r.client, r.scheme, instance)
 	if result != nil {
