@@ -237,6 +237,14 @@ deploy_spoke_core() {
     kubectl create secret generic bootstrap-hub-kubeconfig --from-file=kubeconfig=$HOME/.kube/kind-config-hub-internal -n $AGENT_NS
 }
 
+deploy_certmanager(){
+    curl -L https://github.com/jetstack/cert-manager/releases/download/v0.10.0/cert-manager-openshift.yaml -o cert-manager-openshift.yaml
+    echo "Replace namespace with ibm-common-services"
+    $sed_command "s~--cluster-resource-namespace=.*~--cluster-resource-namespace=ibm-common-services~g" cert-manager-openshift.yaml
+    kubectl apply -f cert-manager-openshift.yaml
+    rm cert-manager-openshift.yaml
+}
+
 approve_csr_joinrequest() {
     n=1
     while true
@@ -343,11 +351,22 @@ patch_for_memcached() {
     kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS delete pod observability-observatorium-thanos-store-memcached-0
 }
 
+patch_for_clusterrole()  {
+    kubectl apply --kubeconfig $SPOKE_KUBECONFIG -f ./tests/e2e/templates/clusterrole.yaml
+    if [ $? -ne 0 ]; then
+        echo "Failed to create cluster-monitoring-view clusterrole"
+        exit 1
+    else
+        echo "Created cluster-monitoring-view clusterrole"
+    fi
+}
+
 deploy() {
     setup_kubectl_command
     create_kind_cluster hub
     deploy_prometheus_operator
     deploy_openshift_router
+    deploy_certmanager
     deploy_mco_operator $1
     if [[ "$2" == "grafana" ]]; then
         deploy_grafana
@@ -360,6 +379,7 @@ deploy() {
     patch_for_remote_write
     patch_placement_rule
     patch_for_memcached
+    patch_for_clusterrole
     revert_changes
 }
 
