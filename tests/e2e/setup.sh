@@ -237,14 +237,6 @@ deploy_spoke_core() {
     kubectl create secret generic bootstrap-hub-kubeconfig --from-file=kubeconfig=$HOME/.kube/kind-config-hub-internal -n $AGENT_NS
 }
 
-deploy_certmanager(){
-    curl -L https://github.com/jetstack/cert-manager/releases/download/v0.10.0/cert-manager-openshift.yaml -o cert-manager-openshift.yaml
-    echo "Replace namespace with ibm-common-services"
-    $sed_command "s~--cluster-resource-namespace=.*~--cluster-resource-namespace=ibm-common-services~g" cert-manager-openshift.yaml
-    kubectl apply -f cert-manager-openshift.yaml
-    rm cert-manager-openshift.yaml
-}
-
 approve_csr_joinrequest() {
     n=1
     while true
@@ -361,12 +353,25 @@ patch_for_clusterrole()  {
     fi
 }
 
+deploy_cert_manager() {
+    curl -L https://github.com/jetstack/cert-manager/releases/download/v0.10.0/cert-manager-openshift.yaml -o cert-manager-openshift.yaml
+    echo "Replace namespace with ibm-common-services"
+    $sed_command "s~--cluster-resource-namespace=.*~--cluster-resource-namespace=ibm-common-services~g" cert-manager-openshift.yaml
+    if kubectl apply -f cert-manager-openshift.yaml ; then
+        echo "cert-manager was successfully deployed"
+    else
+        echo "Failed to deploy cert-manager"
+        exit 1
+    fi
+    rm cert-manager-openshift.yaml
+}
+
 deploy() {
     setup_kubectl_command
     create_kind_cluster hub
     deploy_prometheus_operator
     deploy_openshift_router
-    deploy_certmanager
+    deploy_cert_manager
     deploy_mco_operator $1
     if [[ "$2" == "grafana" ]]; then
         deploy_grafana
