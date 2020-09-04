@@ -32,6 +32,9 @@ const (
 	defaultThanosVersion = "master-2020-08-12-70f89d83"
 
 	thanosImgName = "thanos"
+
+	readOnlyRoleName  = "read-only-metrics"
+	readWriteRoleName = "read-write-metrics"
 )
 
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
@@ -149,7 +152,7 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability) *obs
 	obs.Compact = newCompactSpec(mco)
 
 	obs.Hashrings = []*observatoriumv1alpha1.Hashring{
-		{Hashring: "default", Tenants: []string{}},
+		{Hashring: "default", Tenants: []string{mcoconfig.GetTenantUID()}},
 	}
 
 	obs.ObjectStorageConfig.Thanos = &observatoriumv1alpha1.ObjectStorageConfigSpec{}
@@ -210,7 +213,19 @@ func newAPIRBAC() observatoriumv1alpha1.APIRBAC {
 	return observatoriumv1alpha1.APIRBAC{
 		Roles: []observatoriumv1alpha1.RBACRole{
 			{
-				Name: "read-write",
+				Name: readOnlyRoleName,
+				Resources: []string{
+					"metrics",
+				},
+				Permissions: []observatoriumv1alpha1.Permission{
+					observatoriumv1alpha1.Read,
+				},
+				Tenants: []string{
+					mcoconfig.GetDefaultTenantName(),
+				},
+			},
+			{
+				Name: readWriteRoleName,
 				Resources: []string{
 					"metrics",
 				},
@@ -225,14 +240,26 @@ func newAPIRBAC() observatoriumv1alpha1.APIRBAC {
 		},
 		RoleBindings: []observatoriumv1alpha1.RBACRoleBinding{
 			{
-				Name: mcoconfig.GetDefaultTenantName(),
+				Name: readOnlyRoleName,
 				Roles: []string{
-					"read-write",
+					readOnlyRoleName,
 				},
 				Subjects: []observatoriumv1alpha1.Subject{
 					{
-						Name: "admin@example.com",
+						Name: "grafana",
 						Kind: observatoriumv1alpha1.User,
+					},
+				},
+			},
+			{
+				Name: readWriteRoleName,
+				Roles: []string{
+					readWriteRoleName,
+				},
+				Subjects: []observatoriumv1alpha1.Subject{
+					{
+						Name: "managed-clusters",
+						Kind: observatoriumv1alpha1.Group,
 					},
 				},
 			},
@@ -244,7 +271,7 @@ func newAPITenants() []observatoriumv1alpha1.APITenant {
 	return []observatoriumv1alpha1.APITenant{
 		{
 			Name: mcoconfig.GetDefaultTenantName(),
-			ID:   "1610b0c3-c509-4592-a256-a1871353dbfa",
+			ID:   mcoconfig.GetTenantUID(),
 			OIDC: observatoriumv1alpha1.TenantOIDC{
 				ClientID:      "test",
 				ClientSecret:  "ZXhhbXBsZS1hcHAtc2VjcmV0",

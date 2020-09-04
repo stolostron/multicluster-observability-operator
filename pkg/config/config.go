@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -22,7 +23,7 @@ const (
 	obsAPIGateway            = "observatorium-api"
 	infrastructureConfigName = "cluster"
 	defaultNamespace         = "open-cluster-management-observability"
-	defaultTenantName        = "prod"
+	defaultTenantName        = "default"
 	placementRuleName        = "observability"
 
 	AnnotationKeyImageRepository = "mco-imageRepository"
@@ -59,11 +60,12 @@ type AnnotationImageInfo struct {
 	ImageTagSuffix  string
 }
 
-var log = logf.Log.WithName("config")
-
-var monitoringCRName = ""
-
-var annotationImageInfo = AnnotationImageInfo{}
+var (
+	log                 = logf.Log.WithName("config")
+	monitoringCRName    = ""
+	annotationImageInfo = AnnotationImageInfo{}
+	tenantUID           = ""
+)
 
 // GetClusterNameLabelKey returns the key for the injected label
 func GetClusterNameLabelKey() string {
@@ -177,4 +179,12 @@ func IsPaused(annotations map[string]string) bool {
 	}
 
 	return false
+}
+
+// GetTenantUID returns tenant uid
+func GetTenantUID() string {
+	if tenantUID == "" {
+		tenantUID = string(uuid.NewUUID())
+	}
+	return tenantUID
 }
