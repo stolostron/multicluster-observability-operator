@@ -79,7 +79,9 @@ func CreateCertificateSpec(secret string,
 		spec.CommonName = commonName
 	}
 	if len(organizations) != 0 {
-		spec.Organization = organizations
+		spec.Subject = &cert.X509Subject{
+			OrganizationalUnits: organizations,
+		}
 	}
 	if len(hosts) != 0 {
 		dns := []string{}

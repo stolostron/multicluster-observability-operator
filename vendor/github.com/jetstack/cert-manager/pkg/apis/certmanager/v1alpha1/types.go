@@ -102,14 +102,14 @@ const (
 	// WantInjectFromSecretAnnotation is the annotation that specifies that a particular
 	// object wants injection of CAs.  It takes the form of a reference to a Secret
 	// as namespace/name.
-	WantInjectFromSecretAnnotation = "certmanager.k8s.io/inject-ca-from-secret"
+	WantInjectFromSecretAnnotation = "certmanager.k8s.io/inject-ca-from-secret" /* #nosec G101 */
 
 	// AllowsInjectionFromSecretAnnotation is an annotation that must be added
 	// to Secret resource that want to denote that they can be directly
 	// injected into injectables that have a `inject-ca-from-secret` annotation.
 	// If an injectable references a Secret that does NOT have this annotation,
 	// the cainjector will refuse to inject the secret.
-	AllowsInjectionFromSecretAnnotation = "certmanager.k8s.io/allow-direct-injection"
+	AllowsInjectionFromSecretAnnotation = "certmanager.k8s.io/allow-direct-injection" /* #nosec G101 */
 )
 
 // KeyUsage specifies valid usage contexts for keys.
