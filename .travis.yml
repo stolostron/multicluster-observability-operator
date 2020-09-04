@@ -42,6 +42,9 @@ stages:
 
 before_script:
   - make init
+  - echo "https://${GITHUB_TOKEN}:x-oauth-basic@github.com" >> ~/.git-credentials
+  - export GOPRIVATE=github.com/open-cluster-management
+  - git config --global url."https://$GITHUB_TOKEN@github.com/open-cluster-management".insteadOf "https://github.com/open-cluster-management"
   
 jobs:
   include:
