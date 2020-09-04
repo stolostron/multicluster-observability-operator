@@ -235,7 +235,6 @@ deploy_spoke_core() {
     kubectl create namespace $AGENT_NS
     kubectl create quota test --hard=pods=4 -n $AGENT_NS
     kubectl create secret generic bootstrap-hub-kubeconfig --from-file=kubeconfig=$HOME/.kube/kind-config-hub-internal -n $AGENT_NS
-    kubectl apply --kubeconfig $SPOKE_KUBECONFIG -f ${WORKDIR}/tests/e2e/templates/clusterrole.yaml
 }
 
 deploy_certmanager(){

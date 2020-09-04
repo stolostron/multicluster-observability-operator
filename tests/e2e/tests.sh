@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright (c) 2020 Red Hat, Inc.
 
-export WAIT_TIMEOUT=${WAIT_TIMEOUT:-5m}
+export WAIT_TIMEOUT=${WAIT_TIMEOUT:-10m}
 export KUBECONFIG=$HOME/.kube/kind-config-hub
 export SPOKE_KUBECONFIG=$HOME/.kube/kind-config-spoke
 MONITORING_NS="open-cluster-management-observability"
