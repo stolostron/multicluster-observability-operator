@@ -49,7 +49,8 @@ const (
 
 	EndpointControllerImgTagSuffix = "0.1.0-9dddad57ace8425ff06ee6a4a9143e1066c03dda"
 
-	MetricsCollectorImgTagSuffix = "2.1.0-1aa917b69ceb64c5a77b999ffb69529aa6fb069c"
+	#MetricsCollectorImgTagSuffix = "2.1.0-1aa917b69ceb64c5a77b999ffb69529aa6fb069c"
+	MetricsCollectorImgTagSuffix = "2.1.0-PR14-d530db7173268125246d4f46ae00ab587d69888d"
 
 	DefaultAddonInterval = 60
 )
