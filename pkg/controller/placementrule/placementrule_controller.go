@@ -6,8 +6,10 @@ import (
 	"context"
 	"fmt"
 
+	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -25,16 +27,22 @@ import (
 	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
 	ownerLabelKey   = "owner"
 	ownerLabelValue = "multicluster-observability-operator"
+	certificateName = "observability-managed-cluster-certificate"
+	certsName       = "observability-managed-cluster-certs"
 )
 
-var log = logf.Log.WithName("controller_placementrule")
-var watchNamespace = config.GetDefaultNamespace()
+var (
+	log            = logf.Log.WithName("controller_placementrule")
+	watchNamespace = config.GetDefaultNamespace()
+	isCRoleCreated = false
+)
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -239,6 +247,15 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 	if !deleteAll {
+		// create the clusterrole if not there
+		if !isCRoleCreated {
+			err = createClusterRole(r.client)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			isCRoleCreated = true
+		}
+
 		imagePullSecret := &corev1.Secret{}
 		err = r.client.Get(context.TODO(),
 			types.NamespacedName{
@@ -272,14 +289,9 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		for _, decision := range instance.Status.Decisions {
 			reqLogger.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
 			currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
-			err = createEndpointConfigCR(r.client, decision.ClusterNamespace)
+			err = createManagedClusterRes(r.client, mco, imagePullSecret,
+				decision.ClusterName, decision.ClusterNamespace)
 			if err != nil {
-				reqLogger.Error(err, "Failed to create observabilityaddon")
-				return reconcile.Result{}, err
-			}
-			err = createManifestWork(r.client, decision.ClusterNamespace, decision.ClusterName, mco, imagePullSecret)
-			if err != nil {
-				reqLogger.Error(err, "Failed to create manifestwork")
 				return reconcile.Result{}, err
 			}
 		}
@@ -300,6 +312,11 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 				return reconcile.Result{}, err
 			}
 		}
+		err = deleteClusterRole(r.client)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		isCRoleCreated = false
 	}
 
 	epList = &mcov1beta1.ObservabilityAddonList{}
@@ -321,13 +338,57 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	for _, work := range workList.Items {
 		if !util.Contains(latestClusters, work.Namespace) {
 			reqLogger.Info("To delete manifestwork", "namespace", work.Namespace)
-			err = deleteManifestWork(r.client, work.Namespace)
+			err = deleteManagedClusterRes(r.client, work.Namespace)
 			if err != nil {
-				reqLogger.Error(err, "Failed to delete manifestwork")
 				return reconcile.Result{}, err
 			}
 		}
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func createManagedClusterRes(client client.Client,
+	mco *mcov1beta1.MultiClusterObservability, imagePullSecret *corev1.Secret,
+	name string, namespace string) error {
+	spec := multiclusterobservability.CreateCertificateSpec(certsName, true,
+		multiclusterobservability.GetClientCAIssuer(), false,
+		multiclusterobservability.GetManagedClusterOrg(), []string{}, []string{})
+	err := multiclusterobservability.CreateCertificate(client, nil, nil,
+		certificateName, namespace, spec)
+	if err != nil {
+		return err
+	}
+
+	err = createEndpointConfigCR(client, namespace)
+	if err != nil {
+		log.Error(err, "Failed to create observabilityaddon")
+		return err
+	}
+	err = createManifestWork(client, namespace, name, mco, imagePullSecret)
+	if err != nil {
+		log.Error(err, "Failed to create manifestwork")
+		return err
+	}
+	return nil
+}
+
+func deleteManagedClusterRes(client client.Client, namespace string) error {
+	certificate := &certv1alpha1.Certificate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      certificateName,
+			Namespace: namespace,
+		},
+	}
+	err := client.Delete(context.TODO(), certificate)
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+
+	err = deleteManifestWork(client, namespace)
+	if err != nil {
+		log.Error(err, "Failed to delete manifestwork")
+		return err
+	}
+	return nil
 }

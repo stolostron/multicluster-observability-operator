@@ -17,10 +17,12 @@ import (
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/multiclusterobservability"
 )
 
 const (
-	pullSecretName = "test-pull-secret"
+	pullSecretName   = "test-pull-secret"
+	mainfestworkSize = 9
 )
 
 func newTestMCO() *mcov1beta1.MultiClusterObservability {
@@ -47,10 +49,40 @@ func newTestPullSecret() *corev1.Secret {
 	}
 }
 
+func newCASecret() *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      multiclusterobservability.GetserverCerts(),
+			Namespace: mcoNamespace,
+		},
+		Data: map[string][]byte{
+			"ca.crt": []byte("test-ca-crt"),
+		},
+	}
+}
+
+func newCertSecret(namespaces ...string) *corev1.Secret {
+	ns := namespace
+	if len(namespaces) != 0 {
+		ns = namespaces[0]
+	}
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      certsName,
+			Namespace: ns,
+		},
+		Data: map[string][]byte{
+			"tls.crt": []byte("test-tls-crt"),
+			"tls.key": []byte("test-tls-key"),
+		},
+	}
+}
+
 func TestManifestWork(t *testing.T) {
 	initSchema(t)
 
-	objs := []runtime.Object{newSATokenSecret(), newTestSA(), newTestInfra(), newTestRoute()}
+	objs := []runtime.Object{newSATokenSecret(), newTestSA(), newTestInfra(),
+		newTestRoute(), newCASecret(), newCertSecret()}
 	c := fake.NewFakeClient(objs...)
 
 	wd, err := os.Getwd()
@@ -67,7 +99,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork: (%v)", err)
 	}
-	if len(found.Spec.Workload.Manifests) != 8 {
+	if len(found.Spec.Workload.Manifests) != mainfestworkSize {
 		t.Fatal("Wrong size of manifests in the mainfestwork")
 	}
 

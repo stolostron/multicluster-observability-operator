@@ -38,10 +38,23 @@ const (
 	grafanaCerts       = "observability-grafana-certs"
 	grafanaSubject     = "grafana"
 
-	managedClusterCertificate = "observability-managed-cluster-certificate"
-	managedClusterCerts       = "observability-managed-cluster-certs"
-	managedClusterCertOrg     = "acm"
+	managedClusterCertOrg = "acm"
 )
+
+// GetManagedClusterOrg is used to return managedClusterCertOrg
+func GetManagedClusterOrg() string {
+	return managedClusterCertOrg
+}
+
+// GetClientCAIssuer is used to return clientCAIssuer
+func GetClientCAIssuer() string {
+	return clientCAIssuer
+}
+
+// GetserverCerts is used to return serverCerts
+func GetserverCerts() string {
+	return serverCerts
+}
 
 // CreateCertificateSpec is used to create a struct of CertificateSpec
 func CreateCertificateSpec(secret string,
@@ -88,7 +101,7 @@ func CreateCertificate(client client.Client, scheme *runtime.Scheme,
 	}
 
 	// Set MultiClusterObservability instance as the owner and controller
-	if namespace == config.GetDefaultNamespace() {
+	if namespace == config.GetDefaultNamespace() && mco != nil {
 		if err := controllerutil.SetControllerReference(mco, certificate, scheme); err != nil {
 			return err
 		}
