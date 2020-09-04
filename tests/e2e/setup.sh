@@ -174,6 +174,34 @@ deploy_hub_core() {
     kubectl create ns $HUB_NS || true
     kubectl create quota test --hard=pods=4 -n $HUB_NS
     kubectl apply -f deploy/cluster-manager/crds
+
+    # waiting cluster-manager ready and modify resource request and replicas due to resource insufficient
+    n=1
+    while true
+    do
+        if kubectl --kubeconfig $HUB_KUBECONFIG -n $HUB_NS get deploy cluster-manager-registration-controller cluster-manager-registration-webhook  cluster-manager-work-webhook; then
+            kubectl  --kubeconfig $HUB_KUBECONFIG delete deploy -n  $DEFAULT_NS cluster-manager
+
+            kubectl  --kubeconfig $HUB_KUBECONFIG scale --replicas=1 deployment cluster-manager-work-webhook -n $HUB_NS
+            kubectl  --kubeconfig $HUB_KUBECONFIG scale --replicas=1 deployment cluster-manager-registration-controller -n $HUB_NS
+            kubectl  --kubeconfig $HUB_KUBECONFIG scale --replicas=1 deployment cluster-manager-registration-webhook -n $HUB_NS
+
+            kubectl  --kubeconfig $HUB_KUBECONFIG -n $HUB_NS patch deployment cluster-manager-registration-controller --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/resources", "value": {}}]'
+            kubectl  --kubeconfig $HUB_KUBECONFIG -n $HUB_NS patch deployment cluster-manager-registration-webhook --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/resources", "value": {}}]'
+            kubectl  --kubeconfig $HUB_KUBECONFIG -n $HUB_NS patch deployment cluster-manager-work-webhook --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/resources", "value": {}}]'
+
+            break
+        fi
+
+        if [[ $n -ge 20 ]]; then
+            echo "Waiting for cluster-manager ready timeout ..."
+            exit 1
+        fi
+
+        n=$((n+1))
+        echo "Retrying in 10s for waiting for cluster-manager ready ..."
+        sleep 10
+    done
 }
 
 deploy_spoke_core() {
@@ -207,6 +235,7 @@ deploy_spoke_core() {
     kubectl create namespace $AGENT_NS
     kubectl create quota test --hard=pods=4 -n $AGENT_NS
     kubectl create secret generic bootstrap-hub-kubeconfig --from-file=kubeconfig=$HOME/.kube/kind-config-hub-internal -n $AGENT_NS
+    kubectl apply --kubeconfig $SPOKE_KUBECONFIG -f ${WORKDIR}/tests/e2e/templates/clusterrole.yaml
 }
 
 deploy_certmanager(){
