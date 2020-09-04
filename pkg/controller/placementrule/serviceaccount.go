@@ -288,11 +288,8 @@ func createServiceAccount(client client.Client, namespace string) error {
 }
 
 func getSAToken(client client.Client, namespace string) ([]byte, []byte, error) {
-	err := createClusterRole(client)
-	if err != nil {
-		return nil, nil, err
-	}
-	err = createClusterRoleBinding(client, namespace)
+
+	err := createClusterRoleBinding(client, namespace)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -329,4 +326,74 @@ func getSAToken(client client.Client, namespace string) ([]byte, []byte, error) 
 		}
 	}
 	return nil, nil, errors.NewNotFound(corev1.Resource("secret"), saFound.Name+"-token-*")
+}
+
+func deleteClusterRole(client client.Client) error {
+	clusterrole := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: clusterRoleName,
+		},
+	}
+	err := client.Delete(context.TODO(), clusterrole)
+	if err != nil && !errors.IsNotFound(err) {
+		log.Error(err, "Failed to delete clusterrole", "name", clusterRoleName)
+		return err
+	}
+	log.Info("Clusterrole deleted", "name", clusterRoleName)
+	return nil
+}
+
+func deleteRes(client client.Client, namespace string) error {
+	crb := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: namespace + "-" + roleBindingName,
+		},
+	}
+	err := client.Delete(context.TODO(), crb)
+	if err != nil && !errors.IsNotFound(err) {
+		log.Error(err, "Failed to delete clusterrolebinding", "name", namespace+"-"+roleBindingName)
+		return err
+	}
+	log.Info("Clusterrolebinding deleted", "name", namespace+"-"+roleBindingName)
+
+	role := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      roleName,
+			Namespace: namespace,
+		},
+	}
+	err = client.Delete(context.TODO(), role)
+	if err != nil && !errors.IsNotFound(err) {
+		log.Error(err, "Failed to delete role", "name", roleName, "namespace", namespace)
+		return err
+	}
+	log.Info("Role deleted", "name", roleName, "namespace", namespace)
+
+	rb := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      roleBindingName,
+			Namespace: namespace,
+		},
+	}
+	err = client.Delete(context.TODO(), rb)
+	if err != nil && !errors.IsNotFound(err) {
+		log.Error(err, "Failed to delete rolebinding", "name", roleBindingName, "namespace", namespace)
+		return err
+	}
+	log.Info("Rolebinding deleted", "name", roleBindingName, "namespace", namespace)
+
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      serviceAccountName,
+			Namespace: namespace,
+		},
+	}
+	err = client.Delete(context.TODO(), sa)
+	if err != nil && !errors.IsNotFound(err) {
+		log.Error(err, "Failed to delete serviceaccount", "name", serviceAccountName, "namespace", namespace)
+		return err
+	}
+	log.Info("Serviceaccount deleted", "name", serviceAccountName, "namespace", namespace)
+
+	return nil
 }
