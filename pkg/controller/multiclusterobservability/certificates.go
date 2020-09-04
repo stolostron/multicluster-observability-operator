@@ -39,7 +39,7 @@ const (
 	grafanaCerts       = "observability-grafana-certs"
 	grafanaSubject     = "grafana"
 
-	managedClusterCertOrg = "test"
+	managedClusterCertOrg = "acm"
 )
 
 // GetManagedClusterOrg is used to return managedClusterCertOrg
