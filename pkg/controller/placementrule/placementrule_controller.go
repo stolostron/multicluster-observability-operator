@@ -223,6 +223,12 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		}
 	}
 
+	// Do not reconcile objects if this instance of mch is labeled "paused"
+	if config.IsPaused(mco.GetAnnotations()) {
+		reqLogger.Info("MCO reconciliation is paused. Nothing more to do.")
+		return reconcile.Result{}, nil
+	}
+
 	opts := &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
 	}
