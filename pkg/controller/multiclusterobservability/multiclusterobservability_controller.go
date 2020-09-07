@@ -242,8 +242,16 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 		)
 		return &reconcile.Result{}, err
 	}
-
-	installingCondition := mco.Status.Conditions[0].Installing
+	installingCondition := mcov1beta1.Installing{}
+	if len(mco.Status.Conditions) == 0 {
+		installingCondition = mcov1beta1.Installing{
+			Type:    "Installing",
+			Reason:  "Installing",
+			Message: "Installing condition initializing",
+		}
+	} else {
+		installingCondition = mco.Status.Conditions[0].Installing
+	}
 	if installingCondition.Type != "Ready" {
 		watchingPods := []string{
 			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-observatorium-api"}, "-"),
@@ -316,7 +324,13 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 			}
 		}
 
-		if allPodsReady != true || podCounter < len(watchingPods) {
+		if podCounter == 0 || statefulSetCounter == 0 {
+			installingCondition = mcov1beta1.Installing{
+				Type:    "Installing",
+				Reason:  "Installing",
+				Message: "Installing condition initializing",
+			}
+		} else if allPodsReady != true || podCounter < len(watchingPods) {
 			installingCondition = mcov1beta1.Installing{
 				Type:    "Installing",
 				Reason:  "Pod Installing",
@@ -359,10 +373,20 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 		})
 	} else {
 		if allDeploymentReady {
-			ready := mcov1beta1.Ready{
-				Type:    "Ready",
-				Reason:  "Ready",
-				Message: "Observability components deployed and running",
+			ready := mcov1beta1.Ready{}
+			if mco.Spec.ObservabilityAddonSpec != nil && mco.Spec.ObservabilityAddonSpec.EnableMetrics == false {
+				ready = mcov1beta1.Ready{
+					Type:    "Ready",
+					Reason:  "Ready",
+					Message: "Observability components deployed and running",
+					EnableMetrics: "False",
+				}
+			} else {
+				ready = mcov1beta1.Ready{
+					Type:    "Ready",
+					Reason:  "Ready",
+					Message: "Observability components deployed and running",
+				}
 			}
 			conditions = append(conditions, mcov1beta1.MCOCondition{
 				Installing: installingCondition,

@@ -147,6 +147,9 @@ spec:
                       message:
                         description: Shows exact message get from depolyments
                         type: string
+                      enableMetrics:
+                        description: Shown only when add-on is enabled and metrics is disabled
+                        type: string
                     type: object
                   failed:
                     description: Shown if a deployment is ready

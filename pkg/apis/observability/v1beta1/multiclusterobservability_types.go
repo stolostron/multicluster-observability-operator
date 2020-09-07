@@ -150,6 +150,7 @@ type Ready struct {
 	Type    string `json:"type,omitempty"`
 	Reason  string `json:"reason,omitempty"`
 	Message string `json:"message,omitempty"`
+	EnableMetrics string `json:"enableMetrics,omitempty"`
 }
 
 // Failed defines the failed status of MCO CR
