@@ -9,10 +9,9 @@ require (
 	github.com/coreos/prometheus-operator v0.38.0
 	github.com/go-openapi/strfmt v0.19.4 // indirect
 	github.com/gophercloud/gophercloud v0.8.0 // indirect
-	github.com/grpc-ecosystem/grpc-gateway v1.14.1 // indirect
 	github.com/hashicorp/consul v1.7.4 // indirect
 	github.com/jetstack/cert-manager v0.0.0-00010101000000-000000000000
-	github.com/observatorium/deployments/operator v0.0.0-20200806144145-10069f8e16a2
+	github.com/observatorium/deployments/operator v0.0.0-20200904140422-ff3b6890e05f
 	github.com/open-cluster-management/api v0.0.0-20200602195039-a516cac2e038
 	github.com/open-cluster-management/multicloud-operators-placementrule v1.0.0-2020-05-08-20-30-09
 	github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible
@@ -24,6 +23,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/syndtr/goleveldb v1.0.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v3 v3.0.0-20200121175148-a6ecf24a6d71 // indirect
 	k8s.io/api v0.18.3
 	k8s.io/apimachinery v0.18.3
 	k8s.io/client-go v12.0.0+incompatible

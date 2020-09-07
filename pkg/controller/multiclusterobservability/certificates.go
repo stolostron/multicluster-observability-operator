@@ -52,8 +52,8 @@ func GetClientCAIssuer() string {
 	return clientCAIssuer
 }
 
-// GetserverCerts is used to return serverCerts
-func GetserverCerts() string {
+// GetServerCerts is used to return serverCerts
+func GetServerCerts() string {
 	return serverCerts
 }
 

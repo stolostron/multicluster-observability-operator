@@ -149,6 +149,7 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability) *obs
 	obs := &observatoriumv1alpha1.ObservatoriumSpec{}
 	obs.API.RBAC = newAPIRBAC()
 	obs.API.Tenants = newAPITenants()
+	obs.API.TLS = newAPITLS()
 	obs.Compact = newCompactSpec(mco)
 
 	obs.Hashrings = []*observatoriumv1alpha1.Hashring{
@@ -279,6 +280,16 @@ func newAPITenants() []observatoriumv1alpha1.APITenant {
 				UsernameClaim: "email",
 			},
 		},
+	}
+}
+
+func newAPITLS() observatoriumv1alpha1.TLS {
+	return observatoriumv1alpha1.TLS{
+		SecretName:    GetServerCerts(),
+		CertKey:       "tls.crt",
+		KeyKey:        "tls.key",
+		ConfigMapName: "observability-server-ca-certs",
+		CAKey:         "ca.crt",
 	}
 }
 
