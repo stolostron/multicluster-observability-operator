@@ -83,6 +83,17 @@ func GenerateObservatoriumCR(
 
 	oldSpec := observatoriumCRFound.Spec
 	newSpec := observatoriumCR.Spec
+	if mco.Spec.ObservabilityAddonSpec != nil && mco.Spec.ObservabilityAddonSpec.EnableMetrics == false {
+		if newSpec.Compact.RetentionResolution1h != oldSpec.Compact.RetentionResolution1h {
+			newSpec.Compact.RetentionResolution1h = oldSpec.Compact.RetentionResolution1h
+		}
+		if newSpec.Compact.RetentionResolution5m != oldSpec.Compact.RetentionResolution5m {
+			newSpec.Compact.RetentionResolution5m = oldSpec.Compact.RetentionResolution5m
+		}
+		if newSpec.Compact.RetentionResolutionRaw != oldSpec.Compact.RetentionResolutionRaw {
+			newSpec.Compact.RetentionResolutionRaw = oldSpec.Compact.RetentionResolutionRaw
+		}
+	}
 	oldSpecBytes, _ := yaml.Marshal(oldSpec)
 	newSpecBytes, _ := yaml.Marshal(newSpec)
 
