@@ -88,7 +88,8 @@ func (a *ACMEIssuerDNS01Config) Provider(name string) (*ACMEIssuerDNS01Provider,
 	if a == nil {
 		return nil, fmt.Errorf("issuer does not contain DNS01 configuration for provider named %q", name)
 	}
-	for _, p := range a.Providers {
+	for _, ap := range a.Providers {
+		p := ap
 		if p.Name == name {
 			return &(*&p), nil
 		}

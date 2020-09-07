@@ -61,7 +61,7 @@ replace (
 replace (
 	github.com/coreos/etcd => go.etcd.io/etcd v3.3.22+incompatible
 	github.com/gorilla/websocket => github.com/gorilla/websocket v1.4.2
-	github.com/jetstack/cert-manager => github.com/jetstack/cert-manager v0.10.0
+	github.com/jetstack/cert-manager => github.com/open-cluster-management/cert-manager v0.0.0-20200821135248-2fd523b053f5
 	github.com/mholt/caddy => github.com/caddyserver/caddy v1.0.5
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc7
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad

@@ -206,15 +206,6 @@ run_test_access_grafana_dashboard() {
 
 run_test_endpoint_operator() {
 
-    kubectl apply --kubeconfig $SPOKE_KUBECONFIG -f ./tests/e2e/templates/clusterrole.yaml
-    if [ $? -ne 0 ]; then
-        echo "Failed to create cluster-monitoring-view clusterrole"
-        exit 1
-    else
-        echo "Created cluster-monitoring-view clusterrole"
-    fi
-    sleep 5
-
     wait_for_popup oba observability-addon kind-config-hub cluster1
     if [ $? -ne 0 ]; then
         echo "The observabilityAddon observability-addon not created"
@@ -223,12 +214,12 @@ run_test_endpoint_operator() {
         echo "The observabilityAddon observability-addon created"
     fi
 
-    wait_for_popup manifestwork monitoring-endpoint-monitoring-work kind-config-hub cluster1
+    wait_for_popup manifestwork endpoint-observability-work kind-config-hub cluster1
     if [ $? -ne 0 ]; then
-        echo "The manifestwork monitoring-endpoint-monitoring-work not created"
+        echo "The manifestwork endpoint-observability-work not created"
         exit 1
     else
-        echo "The manifestwork monitoring-endpoint-monitoring-work created"
+        echo "The manifestwork endpoint-observability-work created"
     fi
 
     wait_for_popup secret hub-kube-config kind-config-spoke $MONITORING_NS
