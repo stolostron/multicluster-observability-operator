@@ -6,4 +6,4 @@ spec:
   cloudConfig:
     name: ""
 status:
-  apiServerURL: https://172.17.0.4:6443
+  apiServerURL: https://172.17.0.2:6443

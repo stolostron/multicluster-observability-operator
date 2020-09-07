@@ -1,12 +1,19 @@
 #!/bin/bash
 # Copyright (c) 2020 Red Hat, Inc.
 
-export WAIT_TIMEOUT=${WAIT_TIMEOUT:-5m}
+export WAIT_TIMEOUT=${WAIT_TIMEOUT:-10m}
 export KUBECONFIG=$HOME/.kube/kind-config-hub
 export SPOKE_KUBECONFIG=$HOME/.kube/kind-config-spoke
 MONITORING_NS="open-cluster-management-observability"
 DEFAULT_NS="open-cluster-management"
+HUB_KUBECONFIG=$HOME/.kube/kind-config-hub
 kubectl config set-context --current --namespace $MONITORING_NS
+
+print_mco_operator_log() {
+    kubectl --kubeconfig $HUB_KUBECONFIG -n $DEFAULT_NS get po \
+        | grep multicluster-observability-operator | awk '{print $1}' \
+        | xargs kubectl --kubeconfig $HUB_KUBECONFIG -n $DEFAULT_NS logs
+}
 
 wait_for_popup() {
     wait_for_event popup $@
@@ -26,7 +33,7 @@ wait_for_event() {
     n=1
     while true
     do
-        entity=$(kubectl get $2 $3 $CONFIG $NAMESPACE| grep -v Name | awk '{ print $1 }') || true
+        entity=$(kubectl get $2 $3 $CONFIG $NAMESPACE| grep -v NAME | awk '{ print $1 }') || true
         if [[ "$1" == "popup" ]]; then
             if [[ ! -z $entity ]]; then
                 return
@@ -40,8 +47,8 @@ wait_for_event() {
             exit 1
         fi
         n=$((n+1))
-        echo "Retrying in 10s..."
-        sleep 10
+        echo "Retrying in 20s..."
+        sleep 20
     done
 }
 
@@ -126,11 +133,17 @@ run_test_scale_grafana() {
 }
 
 run_test_teardown() {
-    kubectl delete -n $MONITORING_NS MultiClusterObservability observability
-    kubectl delete -n $MONITORING_NS deployment/grafana-test
-    kubectl delete -n $MONITORING_NS service/grafana-test
+    kubectl delete MultiClusterObservability observability
     kubectl delete -n $MONITORING_NS -f tests/e2e/minio
     kubectl delete -n $MONITORING_NS -f deploy/
+    kubectl delete -n $MONITORING_NS -f tests/e2e/req_crds/hub_cr
+    kubectl delete -n $MONITORING_NS  -f tests/e2e/grafana/grafana-route.yaml
+    kubectl delete secret -n ${DEFAULT_NS} multiclusterhub-operator-pull-secret
+    kubectl delete -n ${DEFAULT_NS} -f deploy/operator.yaml
+    kubectl delete -f deploy/role.yaml
+    kubectl delete -f deploy/role_binding.yaml
+    kubectl delete -n ${DEFAULT_NS} -f deploy/service_account.yaml
+
     target_count="0"
     timeout=$true
     interval=0
@@ -138,7 +151,7 @@ run_test_teardown() {
     while [ $interval -ne $intervals ]; do
       echo "Waiting for cleaning"
       count=$(kubectl -n $MONITORING_NS get all | wc -l)
-      if [ "$count" = "$target_count" ]; then
+      if [ "$count" -eq "$target_count" ]; then
         echo NS count is now: $count
 	    timeout=$false
 	    break
@@ -165,10 +178,13 @@ run_test_reconciling() {
             echo "Change retentionResolutionRaw to 14d successfully."
             break
         fi
+
         if [[ $n -ge 5 ]]; then
             echo "Change retentionResolutionRaw is failed."
+            print_mco_operator_log
             exit 1
         fi
+
         n=$((n+1))
         echo "Retrying in 2s..."
         sleep 2
@@ -245,7 +261,6 @@ run_test_endpoint_operator() {
     else
         echo "The deployment metrics-collector-deployment created"
     fi
-
 }
 
 run_test_monitoring_disable() {
@@ -260,40 +275,23 @@ run_test_monitoring_disable() {
         -d @./tests/e2e/templates/empty_status.json
     rm ca crt key
 
-    n=1
-    while true
-    do
-        RESULT=$(kubectl get configmap --kubeconfig $SPOKE_KUBECONFIG -n openshift-monitoring cluster-monitoring-config -o yaml)
-        if [[ $RESULT != *"replacement: cluster1"* ]] && [[ $RESULT != *"replacement: 3650eda1-66fe-4aba-bfbc-d398638f3022"* ]]; then
-            echo "configmap cluster-monitoring-config has been reverted"
-            break
-        fi
-        if [[ $n -ge 10 ]]; then
-            echo "configmap cluster-monitoring-config not reverted"
-            exit 1
-        fi
-        n=$((n+1))
-        echo "Retrying in 10s..."
-        sleep 10
-    done
-
-    wait_for_vanish endpointmonitoring endpoint-config kind-config-hub cluster1
+    wait_for_vanish oba observability-addon kind-config-hub cluster1
     if [ $? -ne 0 ]; then
-        echo "The manifestwork monitoring-endpoint-monitoring-work not removed"
+        echo "The manifestwork endpoint-observability-work not removed"
         exit 1
     else
-        echo "The manifestwork monitoring-endpoint-monitoring-work removed"
+        echo "The manifestwork endpoint-observability-work removed"
     fi
 
-    wait_for_vanish manifestwork monitoring-endpoint-monitoring-work kind-config-hub cluster1
+    wait_for_vanish manifestwork endpoint-observability-work kind-config-hub cluster1
     if [ $? -ne 0 ]; then
-        echo "The manifestwork monitoring-endpoint-monitoring-work not removed"
+        echo "The manifestwork endpoint-observability-work not removed"
         exit 1
     else
-        echo "The manifestwork monitoring-endpoint-monitoring-work removed"
+        echo "The manifestwork endpoint-observability-work removed"
     fi
 
-    wait_for_vanish secret hub-kube-config kind-config-spoke $SPOKE_NAMESPACE
+    wait_for_vanish secret hub-kube-config kind-config-spoke $MONITORING_NS
     if [ $? -ne 0 ]; then
         echo "The secret hub-kube-config not removed"
         exit 1
@@ -301,20 +299,28 @@ run_test_monitoring_disable() {
         echo "The secret hub-kube-config removed"
     fi
 
-    wait_for_vanish deployment endpoint-monitoring-operator kind-config-spoke $SPOKE_NAMESPACE
+    wait_for_vanish deployment endpoint-observability-operator kind-config-spoke $MONITORING_NS
     if [ $? -ne 0 ]; then
-        echo "The deployment endpoint-monitoring-operator not removed"
+        echo "The deployment endpoint-observability-operator not removed"
         exit 1
     else
-        echo "The deployment endpoint-monitoring-operator removed"
+        echo "The deployment endpoint-observability-operator removed"
+    fi
+
+    wait_for_vanish deployment metrics-collector-deployment kind-config-spoke $MONITORING_NS
+    if [ $? -ne 0 ]; then
+        echo "The deployment metrics-collector-deployment not removed"
+        exit 1
+    else
+        echo "The deployment metrics-collector-deployment removed"
     fi
 }
 
 run_test_readiness
-#run_test_reconciling
-#run_test_scale_grafana
-#run_test_access_grafana
-#run_test_access_grafana_dashboard
-#run_test_endpoint_operator
+run_test_reconciling
+# run_test_scale_grafana
+# run_test_access_grafana
+# run_test_access_grafana_dashboard
+run_test_endpoint_operator
 run_test_monitoring_disable
 run_test_teardown
