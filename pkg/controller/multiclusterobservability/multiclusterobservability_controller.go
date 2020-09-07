@@ -249,10 +249,8 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 			Reason:  "Installing",
 			Message: "Installing condition initializing",
 		}
-	} else {
+	} else if mco.Status.Conditions[0].Installing.Type == "Installing" {
 		installingCondition = mco.Status.Conditions[0].Installing
-	}
-	if installingCondition.Type != "Ready" {
 		watchingPods := []string{
 			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-observatorium-api"}, "-"),
 			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-query"}, "-"),
@@ -288,7 +286,6 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 				}
 			}
 		}
-
 		watchingStatefulSets := []string{
 			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-compact"}, "-"),
 			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-receive-default"}, "-"),
@@ -323,31 +320,20 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 				}
 			}
 		}
-
-		if podCounter == 0 || statefulSetCounter == 0 {
+		if podCounter == 0 || statefulSetCounter == 0 || allPodsReady != true || podCounter < len(watchingPods) || allstatefulSetReady != true || statefulSetCounter < len(watchingStatefulSets) {
 			installingCondition = mcov1beta1.Installing{
 				Type:    "Installing",
 				Reason:  "Installing",
-				Message: "Installing condition initializing",
-			}
-		} else if allPodsReady != true || podCounter < len(watchingPods) {
-			installingCondition = mcov1beta1.Installing{
-				Type:    "Installing",
-				Reason:  "Pod Installing",
-				Message: "One or more pod is still installing",
-			}
-		} else if allstatefulSetReady != true || statefulSetCounter < len(watchingStatefulSets) {
-			installingCondition = mcov1beta1.Installing{
-				Type:    "Installing",
-				Reason:  "StatefulSet Installing",
-				Message: "One or more statefulSet is still installing",
+				Message: "Installing still in process",
 			}
 		} else {
 			installingCondition = mcov1beta1.Installing{
-				Type:    "Ready",
-				Reason:  "Ready",
-				Message: "Installed",
+				Type: "Ready",
 			}
+		}
+	} else {
+		installingCondition = mcov1beta1.Installing{
+			Type: "Ready",
 		}
 	}
 
@@ -361,15 +347,18 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 			break
 		}
 	}
-	if len(deployList.Items) == 0 {
+	if installingCondition.Type != "Ready" {
+		conditions = append(conditions, mcov1beta1.MCOCondition{
+			Installing: installingCondition,
+		})
+	} else if len(deployList.Items) == 0 {
 		failed := mcov1beta1.Failed{
 			Type:    "Failed",
 			Reason:  "Failed",
 			Message: "No deployment found.",
 		}
 		conditions = append(conditions, mcov1beta1.MCOCondition{
-			Installing: installingCondition,
-			Failed:     failed,
+			Failed: failed,
 		})
 	} else {
 		if allDeploymentReady {
@@ -379,19 +368,26 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 					Type:    "Ready",
 					Reason:  "Ready",
 					Message: "Observability components deployed and running",
-					EnableMetrics: "False",
 				}
+				enableMetrics := mcov1beta1.EnableMetrics{
+					Type:    "Disabled",
+					Message: "Enable metrics is set to false in MCO Addon Spec",
+				}
+				conditions = append(conditions, mcov1beta1.MCOCondition{
+					Ready:         ready,
+					EnableMetrics: enableMetrics,
+				})
 			} else {
 				ready = mcov1beta1.Ready{
 					Type:    "Ready",
 					Reason:  "Ready",
 					Message: "Observability components deployed and running",
 				}
+				conditions = append(conditions, mcov1beta1.MCOCondition{
+					Ready: ready,
+				})
 			}
-			conditions = append(conditions, mcov1beta1.MCOCondition{
-				Installing: installingCondition,
-				Ready:      ready,
-			})
+
 		} else {
 			failedMessage := fmt.Sprintf("Deployment failed for %s", failedDeployment)
 			failed := mcov1beta1.Failed{
@@ -400,8 +396,7 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 				Message: failedMessage,
 			}
 			conditions = append(conditions, mcov1beta1.MCOCondition{
-				Installing: installingCondition,
-				Failed:     failed,
+				Failed: failed,
 			})
 		}
 	}

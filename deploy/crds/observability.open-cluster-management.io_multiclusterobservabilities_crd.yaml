@@ -147,8 +147,15 @@ spec:
                       message:
                         description: Shows exact message get from depolyments
                         type: string
-                      enableMetrics:
-                        description: Shown only when add-on is enabled and metrics is disabled
+                    type: object
+                  enableMetrics:
+                    description: Shown only when add-on is enabled and metrics is disabled
+                    properties:
+                      type:
+                        description: Only shows disabled
+                        type: string
+                      message:
+                        description: Only shows when is disabled
                         type: string
                     type: object
                   failed:

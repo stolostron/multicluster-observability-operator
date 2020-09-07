@@ -209,9 +209,6 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	if updatedMCO.Status.Conditions[0].Failed.Message != "No deployment found." {
-		t.Fatalf("Failed to get correct MCO status, expect failed with no deployment")
-	}
 	if updatedMCO.Status.Conditions[0].Installing.Message != "Installing condition initializing" {
 		t.Fatalf("Failed to get correct MCO installing status, expect installing condition initializing")
 	}
@@ -238,11 +235,11 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	if updatedMCO.Status.Conditions[0].Installing.Message != "One or more pod is still installing" {
-		t.Fatalf("Failed to get correct MCO installing status, expect One or more pod is still installing")
+	if updatedMCO.Status.Conditions[0].Installing.Message != "Installing still in process" {
+		t.Fatalf("Failed to get correct MCO installing status, expect Installing still in process")
 	}
 
-	// Update client with all pods 1 statefulSet
+	// Update client with all pods all statefulSet
 	observatoriumobservatoriumapiPod := createReadyPod(name, namespace, name+"-observatorium-observatorium-api")
 	err = cl.Create(context.TODO(), observatoriumobservatoriumapiPod)
 	if err != nil {
@@ -258,21 +255,6 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
 	}
-
-	_, err = r.Reconcile(req)
-	if err != nil {
-		t.Fatalf("reconcile: (%v)", err)
-	}
-	updatedMCO = &mcov1beta1.MultiClusterObservability{}
-	err = r.client.Get(context.TODO(), req.NamespacedName, updatedMCO)
-	if err != nil {
-		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
-	}
-	if updatedMCO.Status.Conditions[0].Installing.Message != "One or more statefulSet is still installing" {
-		t.Fatalf("Failed to get correct MCO installing status, expect One or more statefulSet is still installing")
-	}
-
-	// Update client with all pods all statefulSet
 	observatoriumthanosreceivedefaultSS := createReadyStatefulSet(name, namespace, name+"-observatorium-thanos-receive-default")
 	err = cl.Create(context.TODO(), observatoriumthanosreceivedefaultSS)
 	if err != nil {
@@ -303,18 +285,11 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	if updatedMCO.Status.Conditions[0].Installing.Message != "Installed" {
-		t.Fatalf("Failed to get correct MCO installing status, expect Installed")
+	if updatedMCO.Status.Conditions[0].Failed.Message != "No deployment found." {
+		t.Fatalf("Failed to get correct MCO installing status, expect Installed and showing Failed message")
 	}
 
-	// A MultiClusterObservability object with metadata and spec.
-	mco = &mcov1beta1.MultiClusterObservability{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
-		Spec:       mcov1beta1.MultiClusterObservabilitySpec{},
-	}
 	readyDeployment := createReadyDeployment(name, namespace)
-	err = cl.Update(context.TODO(), mco)
 	err = cl.Create(context.TODO(), readyDeployment)
 	if err != nil {
 		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
