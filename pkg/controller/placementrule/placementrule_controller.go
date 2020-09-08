@@ -351,9 +351,10 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 func createManagedClusterRes(client client.Client,
 	mco *mcov1beta1.MultiClusterObservability, imagePullSecret *corev1.Secret,
 	name string, namespace string) error {
+	org := multiclusterobservability.GetManagedClusterOrg()
 	spec := multiclusterobservability.CreateCertificateSpec(certsName, true,
 		multiclusterobservability.GetClientCAIssuer(), false,
-		multiclusterobservability.GetManagedClusterOrg(), []string{}, []string{})
+		certificateName, []string{org}, []string{})
 	err := multiclusterobservability.CreateCertificate(client, nil, nil,
 		certificateName, namespace, spec)
 	if err != nil {

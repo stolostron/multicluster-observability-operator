@@ -209,6 +209,5 @@ func getCerts(client client.Client, namespace string) (*corev1.Secret, error) {
 			"tls.crt": certs.Data["tls.crt"],
 			"tls.key": certs.Data["tls.key"],
 		},
-		Type: corev1.SecretTypeDockerConfigJson,
 	}, nil
 }

@@ -23,29 +23,6 @@ print_mco_operator_log() {
         | xargs kubectl --kubeconfig $HUB_KUBECONFIG -n $DEFAULT_NS logs
 }
 
-# update prometheus CR to enable remote write to thanos
-update_prometheus_remote_write() {
-    obs_url="http://observability-observatorium-observatorium-api.$DEFAULT_NS.svc:8080/api/metrics/v1/write"
-    cluster_replacement="hub_cluster"
-    if [[ ! -z "$1" ]]; then
-       obs_url="http://$1/api/metrics/v1/write"
-       cluster_replacement="cluster1"
-    fi
-    if [[ "$(uname)" == "Darwin" ]]; then
-        $sed_command "\$a\\
-        \ \ remoteWrite:\\
-        \ \ - url: ${obs_url}\\
-        \ \ \ \ remoteTimeout: 30s\\
-        \ \ \ \ writeRelabelConfigs:\\
-        \ \ \ \ - sourceLabels:\\
-        \ \ \ \ \ \ - __name__\\
-        \ \ \ \ \ \ targetLabel: cluster\\
-        \ \ \ \ \ \ replacement: $cluster_replacement" $WORKDIR/../kube-prometheus/manifests/prometheus-prometheus.yaml
-    elif [[ "$(uname)" == "Linux" ]]; then
-        $sed_command "\$a\ \ remoteWrite:\n\ \ - url: ${obs_url}\n\ \ \ \ remoteTimeout: 30s\n\ \ \ \ writeRelabelConfigs:\n\ \ \ \ - sourceLabels:\n\ \ \ \ \ \ - __name__\n\ \ \ \ \ \ targetLabel: cluster\n\ \ \ \ \ \ replacement: $cluster_replacement" $WORKDIR/../kube-prometheus/manifests/prometheus-prometheus.yaml
-    fi
-}
-
 create_kind_cluster() {
     if [[ ! -f /usr/local/bin/kind ]]; then
         echo "This script will install kind (https://kind.sigs.k8s.io/) on your machine."
@@ -101,12 +78,6 @@ deploy_prometheus_operator() {
     echo "Remove alertmanager and grafana to free up resource"
     rm -rf kube-prometheus/manifests/alertmanager-*.yaml
     rm -rf kube-prometheus/manifests/grafana-*.yaml
-    if [[ ! -z "$1" ]]; then
-        update_prometheus_remote_write $1
-    else
-        update_prometheus_remote_write
-    fi
-
     kubectl create -f kube-prometheus/manifests/setup
     until kubectl get servicemonitors --all-namespaces ; do date; sleep 1; echo ""; done
     kubectl create -f kube-prometheus/manifests/
@@ -142,6 +113,7 @@ deploy_mco_operator() {
     kubectl apply -f deploy/req_crds
     kubectl apply -f deploy/crds/observability.open-cluster-management.io_multiclusterobservabilities_crd.yaml
     kubectl apply -f tests/e2e/req_crds
+    $sed_command "s~storageClassName:.*$~storageClassName: standard~g" tests/e2e/minio/minio-pvc.yaml
     kubectl apply -f tests/e2e/minio
     sleep 2
     kubectl apply -f tests/e2e/req_crds/hub_cr
@@ -200,8 +172,36 @@ deploy_hub_core() {
     kubectl apply -f deploy/cluster-manager/crds/*crd.yaml
     sleep 2
     kubectl create ns $HUB_NS || true
-    kubectl create quota test --hard=pods=7 -n $HUB_NS
+    kubectl create quota test --hard=pods=4 -n $HUB_NS
     kubectl apply -f deploy/cluster-manager/crds
+
+    # waiting cluster-manager ready and modify resource request and replicas due to resource insufficient
+    n=1
+    while true
+    do
+        if kubectl --kubeconfig $HUB_KUBECONFIG -n $HUB_NS get deploy cluster-manager-registration-controller cluster-manager-registration-webhook  cluster-manager-work-webhook; then
+            kubectl  --kubeconfig $HUB_KUBECONFIG delete deploy -n  $DEFAULT_NS cluster-manager
+
+            kubectl  --kubeconfig $HUB_KUBECONFIG scale --replicas=1 deployment cluster-manager-work-webhook -n $HUB_NS
+            kubectl  --kubeconfig $HUB_KUBECONFIG scale --replicas=1 deployment cluster-manager-registration-controller -n $HUB_NS
+            kubectl  --kubeconfig $HUB_KUBECONFIG scale --replicas=1 deployment cluster-manager-registration-webhook -n $HUB_NS
+
+            kubectl  --kubeconfig $HUB_KUBECONFIG -n $HUB_NS patch deployment cluster-manager-registration-controller --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/resources", "value": {}}]'
+            kubectl  --kubeconfig $HUB_KUBECONFIG -n $HUB_NS patch deployment cluster-manager-registration-webhook --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/resources", "value": {}}]'
+            kubectl  --kubeconfig $HUB_KUBECONFIG -n $HUB_NS patch deployment cluster-manager-work-webhook --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/resources", "value": {}}]'
+
+            break
+        fi
+
+        if [[ $n -ge 20 ]]; then
+            echo "Waiting for cluster-manager ready timeout ..."
+            exit 1
+        fi
+
+        n=$((n+1))
+        echo "Retrying in 10s for waiting for cluster-manager ready ..."
+        sleep 10
+    done
 }
 
 deploy_spoke_core() {
@@ -233,7 +233,7 @@ deploy_spoke_core() {
     rm -rf ${WORKDIR}/../registration-operator
     kind get kubeconfig --name hub --internal > $HOME/.kube/kind-config-hub-internal
     kubectl create namespace $AGENT_NS
-    kubectl create quota test --hard=pods=7 -n $AGENT_NS
+    kubectl create quota test --hard=pods=4 -n $AGENT_NS
     kubectl create secret generic bootstrap-hub-kubeconfig --from-file=kubeconfig=$HOME/.kube/kind-config-hub-internal -n $AGENT_NS
 }
 
@@ -343,23 +343,48 @@ patch_for_memcached() {
     kubectl --kubeconfig $HUB_KUBECONFIG -n $MONITORING_NS delete pod observability-observatorium-thanos-store-memcached-0
 }
 
+patch_for_clusterrole()  {
+    kubectl apply --kubeconfig $SPOKE_KUBECONFIG -f ./tests/e2e/templates/clusterrole.yaml
+    if [ $? -ne 0 ]; then
+        echo "Failed to create cluster-monitoring-view clusterrole"
+        exit 1
+    else
+        echo "Created cluster-monitoring-view clusterrole"
+    fi
+}
+
+deploy_cert_manager() {
+    curl -L https://github.com/jetstack/cert-manager/releases/download/v0.10.0/cert-manager-openshift.yaml -o cert-manager-openshift.yaml
+    echo "Replace namespace with ibm-common-services"
+    $sed_command "s~--cluster-resource-namespace=.*~--cluster-resource-namespace=ibm-common-services~g" cert-manager-openshift.yaml
+    if kubectl apply -f cert-manager-openshift.yaml ; then
+        echo "cert-manager was successfully deployed"
+    else
+        echo "Failed to deploy cert-manager"
+        exit 1
+    fi
+    rm cert-manager-openshift.yaml
+}
+
 deploy() {
     setup_kubectl_command
     create_kind_cluster hub
     deploy_prometheus_operator
     deploy_openshift_router
+    deploy_cert_manager
     deploy_mco_operator $1
     if [[ "$2" == "grafana" ]]; then
         deploy_grafana
     fi
     deploy_hub_core
     create_kind_cluster spoke
-    deploy_prometheus_operator observatorium.hub
+    deploy_prometheus_operator
     deploy_spoke_core
     approve_csr_joinrequest
     patch_for_remote_write
     patch_placement_rule
     patch_for_memcached
+    patch_for_clusterrole
     revert_changes
 }
 

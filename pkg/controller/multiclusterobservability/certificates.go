@@ -4,6 +4,7 @@ package multiclusterobservability
 
 import (
 	"context"
+	"net"
 	"reflect"
 
 	cert "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
@@ -59,7 +60,7 @@ func GetserverCerts() string {
 // CreateCertificateSpec is used to create a struct of CertificateSpec
 func CreateCertificateSpec(secret string,
 	isClusterIssuer bool, issuer string, isCA bool,
-	commonName string, organizations []string, dnsNames []string) cert.CertificateSpec {
+	commonName string, organizations []string, hosts []string) cert.CertificateSpec {
 
 	spec := cert.CertificateSpec{}
 	spec.SecretName = secret
@@ -78,10 +79,27 @@ func CreateCertificateSpec(secret string,
 		spec.CommonName = commonName
 	}
 	if len(organizations) != 0 {
-		spec.Organization = organizations
+		spec.Subject = &cert.X509Subject{
+			OrganizationalUnits: organizations,
+		}
 	}
-	if len(dnsNames) != 0 {
-		spec.DNSNames = dnsNames
+	if len(hosts) != 0 {
+		dns := []string{}
+		ips := []string{}
+		for _, host := range hosts {
+			addr := net.ParseIP(host)
+			if addr != nil {
+				ips = append(ips, host)
+			} else {
+				dns = append(dns, host)
+			}
+		}
+		if len(dns) != 0 {
+			spec.DNSNames = dns
+		}
+		if len(ips) != 0 {
+			spec.IPAddresses = ips
+		}
 	}
 	return spec
 }
