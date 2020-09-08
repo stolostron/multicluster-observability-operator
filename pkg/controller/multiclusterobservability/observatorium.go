@@ -274,7 +274,7 @@ func newAPITenants() []observatoriumv1alpha1.APITenant {
 			Name: mcoconfig.GetDefaultTenantName(),
 			ID:   mcoconfig.GetTenantUID(),
 			MTLS: observatoriumv1alpha1.TenantMTLS{
-				SecretName: GetServerCerts(),
+				SecretName: GetClientCACert(),
 				CAKey:      "ca.crt",
 			},
 		},
@@ -283,12 +283,11 @@ func newAPITenants() []observatoriumv1alpha1.APITenant {
 
 func newAPITLS() observatoriumv1alpha1.TLS {
 	return observatoriumv1alpha1.TLS{
-		SecretName:    GetServerCerts(),
-		CertKey:       "tls.crt",
-		KeyKey:        "tls.key",
-		ConfigMapName: "observability-server-ca-certs",
-		CAKey:         "ca.crt",
-		ServerName:    serverCertificate,
+		SecretName: GetServerCerts(),
+		CertKey:    "tls.crt",
+		KeyKey:     "tls.key",
+		CAKey:      "ca.crt",
+		ServerName: serverCertificate,
 	}
 }
 
