@@ -1331,6 +1331,8 @@ github.com/observatorium/deployments/operator v0.0.0-20200904140422-ff3b6890e05f
 github.com/observatorium/deployments/operator v0.0.0-20200904140422-ff3b6890e05f/go.mod h1:CGTUtLhU7k+I4uNDoIlqHSuw5Cm9IzY8b5wctf2xqLk=
 github.com/observatorium/deployments/operator v0.0.0-20200907111222-3fa096f0d774 h1:uEvXp8EU2SUBFgXq02rRlseCPqJRwkGPA3yrjNm+4cA=
 github.com/observatorium/deployments/operator v0.0.0-20200907111222-3fa096f0d774/go.mod h1:CGTUtLhU7k+I4uNDoIlqHSuw5Cm9IzY8b5wctf2xqLk=
+github.com/observatorium/deployments/operator v0.0.0-20200908084635-806541b89082 h1:Vo9r/A4mYDTBEqFXRCQAfTPdDOiExM0lK1ZxOcY9zRM=
+github.com/observatorium/deployments/operator v0.0.0-20200908084635-806541b89082/go.mod h1:CGTUtLhU7k+I4uNDoIlqHSuw5Cm9IzY8b5wctf2xqLk=
 github.com/observatorium/observatorium v0.1.1 h1:HEHqxQCM3CQaqkuWKihKAOuerzuLYBjMl3blNsBLZAI=
 github.com/observatorium/observatorium v0.1.1/go.mod h1:OBSZE3oAaZGCDOzjEeyYnZQXo3/p9HRw0mYUNIHpm5k=
 github.com/observatorium/up v0.0.0-20200415082017-83c3d20f7088/go.mod h1:ysto9FMxd/1rHh9N9l1JfHLjT3X7ix4oWjMfnyrpqsY=

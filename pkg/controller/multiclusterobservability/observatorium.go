@@ -273,7 +273,7 @@ func newAPITenants() []observatoriumv1alpha1.APITenant {
 		{
 			Name: mcoconfig.GetDefaultTenantName(),
 			ID:   mcoconfig.GetTenantUID(),
-			MTLS: observatoriumv1alpha1.TenantMTLS{
+			MTLS: &observatoriumv1alpha1.TenantMTLS{
 				SecretName: GetClientCACert(),
 				CAKey:      "ca.crt",
 			},
