@@ -4,8 +4,8 @@ package multiclusterobservability
 
 import (
 	"context"
-	"encoding/json"
 
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,28 +25,34 @@ const (
 )
 
 type GrafanaDatasources struct {
-	APIVersion  int                  `json:"apiVersion"`
-	Datasources []*GrafanaDatasource `json:"datasources"`
+	APIVersion  int                  `yaml:"apiVersion"`
+	Datasources []*GrafanaDatasource `yaml:"datasources"`
 }
 
 type GrafanaDatasource struct {
-	Access            string     `json:"access"`
-	BasicAuth         bool       `json:"basicAuth"`
-	BasicAuthPassword string     `json:"basicAuthPassword"`
-	BasicAuthUser     string     `json:"basicAuthUser"`
-	Editable          bool       `json:"editable"`
-	Name              string     `json:"name"`
-	OrgID             int        `json:"orgId"`
-	Type              string     `json:"type"`
-	URL               string     `json:"url"`
-	Version           int        `json:"version"`
-	SecureJSONData    *TLSConfig `json:"secureJsonData"`
+	Access            string          `yaml:"access"`
+	BasicAuth         bool            `yaml:"basicAuth"`
+	BasicAuthPassword string          `yaml:"basicAuthPassword"`
+	BasicAuthUser     string          `yaml:"basicAuthUser"`
+	Editable          bool            `yaml:"editable"`
+	Name              string          `yaml:"name"`
+	OrgID             int             `yaml:"orgId"`
+	Type              string          `yaml:"type"`
+	URL               string          `yaml:"url"`
+	Version           int             `yaml:"version"`
+	JSONData          *JsonData       `yaml:"jsonData"`
+	SecureJSONData    *SecureJsonData `yaml:"secureJsonData"`
 }
 
-type TLSConfig struct {
-	TLSCACert     string `json:"tlsCACert"`
-	TLSClientCert string `json:"tlsClientCert"`
-	TLSClientKey  string `json:"tlsClientKey"`
+type JsonData struct {
+	TLSAuth   bool `yaml:"tlsAuth"`
+	TLSAuthCA bool `yaml:"tlsAuthWithCACert"`
+}
+
+type SecureJsonData struct {
+	TLSCACert     string `yaml:"tlsCACert"`
+	TLSClientCert string `yaml:"tlsClientCert"`
+	TLSClientKey  string `yaml:"tlsClientKey"`
 }
 
 // GenerateGrafanaDataSource is used to generate the GrafanaDatasource as a secret.
@@ -76,24 +82,28 @@ func GenerateGrafanaDataSource(
 	if err != nil {
 		return &reconcile.Result{}, err
 	}
-	tlsConfig := &TLSConfig{
+	tlsConfig := &SecureJsonData{
 		TLSCACert:     string(serverSecret.Data["ca.crt"]),
 		TLSClientCert: string(clientSecret.Data["tls.crt"]),
 		TLSClientKey:  string(clientSecret.Data["tls.key"]),
 	}
 
-	grafanaDatasources, err := json.MarshalIndent(GrafanaDatasources{
+	grafanaDatasources, err := yaml.Marshal(GrafanaDatasources{
 		APIVersion: 1,
 		Datasources: []*GrafanaDatasource{
 			{
-				Name:           "Observatorium",
-				Type:           "prometheus",
-				Access:         "proxy",
+				Name:   "Observatorium",
+				Type:   "prometheus",
+				Access: "proxy",
+				JSONData: &JsonData{
+					TLSAuth:   true,
+					TLSAuthCA: true,
+				},
 				SecureJSONData: tlsConfig,
-				URL:            "https://" + config.GetObsAPISvc(mco.GetName()) + ":8080/api/metrics/v1/default/api/v1/query",
+				URL:            "https://" + config.GetObsAPISvc(mco.GetName()) + ":8080/api/metrics/v1/default",
 			},
 		},
-	}, "", "    ")
+	})
 	if err != nil {
 		return &reconcile.Result{}, err
 	}
