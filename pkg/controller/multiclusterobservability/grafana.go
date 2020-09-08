@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 const (
@@ -29,16 +30,23 @@ type GrafanaDatasources struct {
 }
 
 type GrafanaDatasource struct {
-	Access            string `json:"access"`
-	BasicAuth         bool   `json:"basicAuth"`
-	BasicAuthPassword string `json:"basicAuthPassword"`
-	BasicAuthUser     string `json:"basicAuthUser"`
-	Editable          bool   `json:"editable"`
-	Name              string `json:"name"`
-	OrgID             int    `json:"orgId"`
-	Type              string `json:"type"`
-	URL               string `json:"url"`
-	Version           int    `json:"version"`
+	Access            string     `json:"access"`
+	BasicAuth         bool       `json:"basicAuth"`
+	BasicAuthPassword string     `json:"basicAuthPassword"`
+	BasicAuthUser     string     `json:"basicAuthUser"`
+	Editable          bool       `json:"editable"`
+	Name              string     `json:"name"`
+	OrgID             int        `json:"orgId"`
+	Type              string     `json:"type"`
+	URL               string     `json:"url"`
+	Version           int        `json:"version"`
+	SecureJSONData    *TLSConfig `json:"secureJsonData"`
+}
+
+type TLSConfig struct {
+	TLSCACert     string `json:"tlsCACert"`
+	TLSClientCert string `json:"tlsClientCert"`
+	TLSClientKey  string `json:"tlsClientKey"`
 }
 
 // GenerateGrafanaDataSource is used to generate the GrafanaDatasource as a secret.
@@ -48,17 +56,41 @@ func GenerateGrafanaDataSource(
 	scheme *runtime.Scheme,
 	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
+	clientSecret := &corev1.Secret{}
+	err := client.Get(context.TODO(),
+		types.NamespacedName{
+			Name:      GetGrafanaCerts(),
+			Namespace: config.GetDefaultNamespace(),
+		},
+		clientSecret)
+	if err != nil {
+		return &reconcile.Result{}, err
+	}
+	serverSecret := &corev1.Secret{}
+	err = client.Get(context.TODO(),
+		types.NamespacedName{
+			Name:      GetServerCerts(),
+			Namespace: config.GetDefaultNamespace(),
+		},
+		serverSecret)
+	if err != nil {
+		return &reconcile.Result{}, err
+	}
+	tlsConfig := &TLSConfig{
+		TLSCACert:     string(serverSecret.Data["ca.crt"]),
+		TLSClientCert: string(clientSecret.Data["tls.crt"]),
+		TLSClientKey:  string(clientSecret.Data["tls.key"]),
+	}
+
 	grafanaDatasources, err := json.MarshalIndent(GrafanaDatasources{
 		APIVersion: 1,
 		Datasources: []*GrafanaDatasource{
 			{
-				Name:   "Observatorium",
-				Type:   "prometheus",
-				Access: "proxy",
-				//URL:    "http://" + mco.Name + obsPartoOfName + "-observatorium-api:8080/api/metrics/v1",
-				// TODO: need to use observatorium api here
-				// right now, bypass the observatorium api w/o authentication
-				URL: "http://" + mco.Name + "-observatorium-thanos-query-frontend.open-cluster-management-observability.svc.cluster.local:9090",
+				Name:           "Observatorium",
+				Type:           "prometheus",
+				Access:         "proxy",
+				SecureJSONData: tlsConfig,
+				URL:            "https://" + config.GetObsAPISvc(mco.GetName()) + ":8080/api/metrics/v1/default/api/v1/query",
 			},
 		},
 	}, "", "    ")
