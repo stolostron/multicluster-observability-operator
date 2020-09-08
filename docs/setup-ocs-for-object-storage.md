@@ -30,7 +30,7 @@ $ k get noobaa -n openshift-storage -o yaml
 ...
       serviceS3:
         externalDNS:
-        - https://s3-openshift-storage.apps.soli-acm-hub.dev05.red-chesterfield.com
+        - https://s3-openshift-storage.apps.acm-hub.dev05.red-chesterfield.com
         - https://a916e5db6fa55485ba046a55c908147d-919567698.us-east-1.elb.amazonaws.com:443
 ...
 ```
