@@ -273,11 +273,9 @@ func newAPITenants() []observatoriumv1alpha1.APITenant {
 		{
 			Name: mcoconfig.GetDefaultTenantName(),
 			ID:   mcoconfig.GetTenantUID(),
-			OIDC: observatoriumv1alpha1.TenantOIDC{
-				ClientID:      "test",
-				ClientSecret:  "ZXhhbXBsZS1hcHAtc2VjcmV0",
-				IssuerURL:     "http://ec2-107-21-40-191.compute-1.amazonaws.com:5556/dex",
-				UsernameClaim: "email",
+			MTLS: observatoriumv1alpha1.TenantMTLS{
+				SecretName: GetServerCerts(),
+				CAKey:      "ca.crt",
 			},
 		},
 	}
@@ -290,6 +288,7 @@ func newAPITLS() observatoriumv1alpha1.TLS {
 		KeyKey:        "tls.key",
 		ConfigMapName: "observability-server-ca-certs",
 		CAKey:         "ca.crt",
+		ServerName:    serverCertificate,
 	}
 }
 

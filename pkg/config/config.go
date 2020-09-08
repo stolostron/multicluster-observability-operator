@@ -188,3 +188,8 @@ func GetTenantUID() string {
 	}
 	return tenantUID
 }
+
+// Get observatorium api service
+func GetObsAPISvc(instanceName string) string {
+	return instanceName + "-observatorium" + "-observatorium-api." + defaultNamespace + ".svc.cluster.local"
+}

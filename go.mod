@@ -11,7 +11,7 @@ require (
 	github.com/gophercloud/gophercloud v0.8.0 // indirect
 	github.com/hashicorp/consul v1.7.4 // indirect
 	github.com/jetstack/cert-manager v0.0.0-00010101000000-000000000000
-	github.com/observatorium/deployments/operator v0.0.0-20200904140422-ff3b6890e05f
+	github.com/observatorium/deployments/operator v0.0.0-20200907111222-3fa096f0d774
 	github.com/open-cluster-management/api v0.0.0-20200602195039-a516cac2e038
 	github.com/open-cluster-management/multicloud-operators-placementrule v1.0.0-2020-05-08-20-30-09
 	github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible

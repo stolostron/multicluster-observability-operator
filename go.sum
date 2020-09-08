@@ -1329,6 +1329,8 @@ github.com/observatorium/deployments/operator v0.0.0-20200806144145-10069f8e16a2
 github.com/observatorium/deployments/operator v0.0.0-20200806144145-10069f8e16a2/go.mod h1:WFDcs0McU6pP4uklaRMywug1jl+cndJMpHSgeQx9Etc=
 github.com/observatorium/deployments/operator v0.0.0-20200904140422-ff3b6890e05f h1:Ulht81GDlfVWkOm7SVF95fAGY03Wp21Fu9EhJDfRE+A=
 github.com/observatorium/deployments/operator v0.0.0-20200904140422-ff3b6890e05f/go.mod h1:CGTUtLhU7k+I4uNDoIlqHSuw5Cm9IzY8b5wctf2xqLk=
+github.com/observatorium/deployments/operator v0.0.0-20200907111222-3fa096f0d774 h1:uEvXp8EU2SUBFgXq02rRlseCPqJRwkGPA3yrjNm+4cA=
+github.com/observatorium/deployments/operator v0.0.0-20200907111222-3fa096f0d774/go.mod h1:CGTUtLhU7k+I4uNDoIlqHSuw5Cm9IzY8b5wctf2xqLk=
 github.com/observatorium/observatorium v0.1.1 h1:HEHqxQCM3CQaqkuWKihKAOuerzuLYBjMl3blNsBLZAI=
 github.com/observatorium/observatorium v0.1.1/go.mod h1:OBSZE3oAaZGCDOzjEeyYnZQXo3/p9HRw0mYUNIHpm5k=
 github.com/observatorium/up v0.0.0-20200415082017-83c3d20f7088/go.mod h1:ysto9FMxd/1rHh9N9l1JfHLjT3X7ix4oWjMfnyrpqsY=
@@ -1843,6 +1845,7 @@ go.etcd.io/etcd v3.3.18+incompatible h1:5aomL5mqoKHxw6NG+oYgsowk8tU8aOalo2IdZxdW
 go.etcd.io/etcd v3.3.18+incompatible/go.mod h1:yaeTdrJi5lOmYerz05bd8+V7KubZs8YSFZfzsF9A6aI=
 go.etcd.io/etcd v3.3.22+incompatible h1:6rUh61a1ijB5rJec+KAVzch3RqEnTcdwNizcMEeoSxU=
 go.etcd.io/etcd v3.3.22+incompatible/go.mod h1:yaeTdrJi5lOmYerz05bd8+V7KubZs8YSFZfzsF9A6aI=
+go.etcd.io/etcd v3.3.24+incompatible h1:eSLsNdP43sh59e5nQekNKazX9pIwAkhnDzEk320Ht2M=
 go.etcd.io/etcd v3.3.24+incompatible/go.mod h1:yaeTdrJi5lOmYerz05bd8+V7KubZs8YSFZfzsF9A6aI=
 go.mongodb.org/mongo-driver v1.0.3/go.mod h1:u7ryQJ+DOzQmeO7zB6MHyr8jkEQvC8vH7qLUO4lqsUM=
 go.mongodb.org/mongo-driver v1.0.4/go.mod h1:u7ryQJ+DOzQmeO7zB6MHyr8jkEQvC8vH7qLUO4lqsUM=
