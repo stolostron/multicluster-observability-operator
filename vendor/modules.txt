@@ -71,6 +71,9 @@ github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
 # github.com/imdario/mergo v0.3.8
 github.com/imdario/mergo
+# github.com/jetstack/cert-manager v0.0.0-00010101000000-000000000000 => github.com/open-cluster-management/cert-manager v0.0.0-20200821135248-2fd523b053f5
+github.com/jetstack/cert-manager/pkg/apis/certmanager
+github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1
 # github.com/json-iterator/go v1.1.9
 github.com/json-iterator/go
 # github.com/mailru/easyjson v0.7.0

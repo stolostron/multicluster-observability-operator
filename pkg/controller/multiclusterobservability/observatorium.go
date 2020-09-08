@@ -3,9 +3,8 @@
 package multiclusterobservability
 
 import (
+	"bytes"
 	"context"
-	"reflect"
-	"time"
 
 	observatoriumv1alpha1 "github.com/observatorium/deployments/operator/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -19,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/yaml"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
@@ -28,8 +28,8 @@ const (
 	obsPartoOfName = "-observatorium"
 	obsAPIGateway  = "observatorium-api"
 
-	defaultThanosImage   = "quay.io/thanos/thanos:master-2020-05-24-079ad427"
-	defaultThanosVersion = "master-2020-05-24-079ad427"
+	defaultThanosImage   = "quay.io/thanos/thanos:master-2020-08-12-70f89d83"
+	defaultThanosVersion = "master-2020-08-12-70f89d83"
 
 	thanosImgName = "thanos"
 )
@@ -83,7 +83,10 @@ func GenerateObservatoriumCR(
 
 	oldSpec := observatoriumCRFound.Spec
 	newSpec := observatoriumCR.Spec
-	if !reflect.DeepEqual(oldSpec, newSpec) {
+	oldSpecBytes, _ := yaml.Marshal(oldSpec)
+	newSpecBytes, _ := yaml.Marshal(newSpec)
+
+	if res := bytes.Compare(newSpecBytes, oldSpecBytes); res != 0 {
 		newObj := observatoriumCRFound.DeepCopy()
 		newObj.Spec = newSpec
 		err = client.Update(context.TODO(), newObj)
@@ -99,61 +102,43 @@ func GenerateAPIGatewayRoute(
 	runclient client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
-	listOptions := []client.ListOption{
-		client.MatchingLabels(map[string]string{
-			"app.kubernetes.io/component": "api",
-			"app.kubernetes.io/instance":  mco.Name + obsPartoOfName,
-		}),
+	apiGateway := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      obsAPIGateway,
+			Namespace: mco.Namespace,
+		},
+		Spec: routev1.RouteSpec{
+			Port: &routev1.RoutePort{
+				TargetPort: intstr.FromString("remote-write"),
+			},
+			To: routev1.RouteTargetReference{
+				Kind: "Service",
+				//Name: apiGatewayServices.Items[0].GetName(),
+				Name: mco.Name + "-observatorium-thanos-receive",
+			},
+		},
 	}
-	apiGatewayServices := &v1.ServiceList{}
-	err := runclient.List(context.TODO(), apiGatewayServices, listOptions...)
-	if err == nil && len(apiGatewayServices.Items) > 0 {
-		apiGateway := &routev1.Route{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      obsAPIGateway,
-				Namespace: mco.Namespace,
-			},
-			Spec: routev1.RouteSpec{
-				Port: &routev1.RoutePort{
-					TargetPort: intstr.FromString("remote-write"),
-				},
-				To: routev1.RouteTargetReference{
-					Kind: "Service",
-					//Name: apiGatewayServices.Items[0].GetName(),
-					Name: mco.Name + "-observatorium-thanos-receive",
-				},
-			},
-		}
 
-		// Set MultiClusterObservability instance as the owner and controller
-		if err := controllerutil.SetControllerReference(mco, apiGateway, scheme); err != nil {
-			return &reconcile.Result{}, err
-		}
-
-		err = runclient.Get(
-			context.TODO(),
-			types.NamespacedName{Name: apiGateway.Name, Namespace: apiGateway.Namespace},
-			&routev1.Route{})
-		if err != nil && errors.IsNotFound(err) {
-			log.Info("Creating a new route to expose observatorium api",
-				"apiGateway.Namespace", apiGateway.Namespace,
-				"apiGateway.Name", apiGateway.Name,
-			)
-			err = runclient.Create(context.TODO(), apiGateway)
-			if err != nil {
-				return &reconcile.Result{}, err
-			}
-		}
-
-	} else if err == nil && len(apiGatewayServices.Items) == 0 {
-		log.Info("Cannot find the service ",
-			"serviceName",
-			mco.Name+obsPartoOfName+"-"+obsAPIGateway,
-		)
-		return &reconcile.Result{RequeueAfter: time.Second * 10}, nil
-	} else {
+	// Set MultiClusterObservability instance as the owner and controller
+	if err := controllerutil.SetControllerReference(mco, apiGateway, scheme); err != nil {
 		return &reconcile.Result{}, err
 	}
+
+	err := runclient.Get(
+		context.TODO(),
+		types.NamespacedName{Name: apiGateway.Name, Namespace: apiGateway.Namespace},
+		&routev1.Route{})
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Creating a new route to expose observatorium api",
+			"apiGateway.Namespace", apiGateway.Namespace,
+			"apiGateway.Name", apiGateway.Name,
+		)
+		err = runclient.Create(context.TODO(), apiGateway)
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
+	}
+
 	return nil, nil
 }
 
@@ -174,9 +159,6 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability) *obs
 		obs.ObjectStorageConfig.Thanos.Key = objStorageConf.Key
 	}
 
-	replicas := int32(1)
-	obs.QueryCache.Replicas = &replicas
-
 	obs.Receivers = newReceiversSpec(mco)
 	obs.Rule = newRuleSpec(mco)
 	obs.Store = newStoreSpec(mco)
@@ -184,9 +166,6 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability) *obs
 	//set the default observatorium components' image
 	obs.API.Image = "quay.io/observatorium/observatorium:latest"
 	obs.API.Version = "latest"
-
-	obs.QueryCache.Image = "quay.io/cortexproject/cortex:master-fdcd992f"
-	obs.QueryCache.Version = "master-fdcd992f"
 
 	obs.ThanosReceiveController.Image = "quay.io/observatorium/thanos-receive-controller:master-2020-06-17-a9d9169"
 	obs.ThanosReceiveController.Version = "master-2020-06-17-a9d9169"
@@ -384,28 +363,6 @@ func newVolumeClaimTemplate(size string, storageClass string) observatoriumv1alp
 		},
 	}
 	return vct
-}
-
-func updateObservatoriumSpec(
-	c client.Client,
-	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
-
-	//TODO: update new values from CR to observatorium CR
-
-	// Merge observatorium Spec with the default values and customized values
-	//defaultSpec := newDefaultObservatoriumSpec()
-	// runtimeSpec := mco.Spec.Observatorium
-	// if !reflect.DeepEqual(defaultSpec, runtimeSpec) {
-	// 	if err := mergo.MergeWithOverwrite(defaultSpec, runtimeSpec); err != nil {
-	// 		return &reconcile.Result{}, err
-	// 	}
-	// 	mergeVolumeClaimTemplate(defaultSpec.Compact.VolumeClaimTemplate, runtimeSpec.Compact.VolumeClaimTemplate)
-	// 	mergeVolumeClaimTemplate(defaultSpec.Rule.VolumeClaimTemplate, runtimeSpec.Rule.VolumeClaimTemplate)
-	// 	mergeVolumeClaimTemplate(defaultSpec.Receivers.VolumeClaimTemplate, runtimeSpec.Receivers.VolumeClaimTemplate)
-	// 	mergeVolumeClaimTemplate(defaultSpec.Store.VolumeClaimTemplate, runtimeSpec.Store.VolumeClaimTemplate)
-	// 	mco.Spec.Observatorium = defaultSpec
-	// }
-	return nil, nil
 }
 
 func mergeVolumeClaimTemplate(oldVolumn,

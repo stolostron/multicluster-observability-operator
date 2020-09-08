@@ -23,9 +23,11 @@ const (
 	infrastructureConfigName = "cluster"
 	defaultNamespace         = "open-cluster-management-observability"
 	defaultTenantName        = "prod"
+	placementRuleName        = "observability"
 
 	AnnotationKeyImageRepository = "mco-imageRepository"
 	AnnotationKeyImageTagSuffix  = "mco-imageTagSuffix"
+	AnnotationMCOPause           = "mco-pause"
 
 	DefaultImgPullPolicy   = corev1.PullAlways
 	DefaultImgPullSecret   = "multiclusterhub-operator-pull-secret"
@@ -43,7 +45,7 @@ const (
 	GrafanaImgTagSuffix = "7.1.3"
 
 	ObservatoriumImgRepo      = "quay.io/observatorium"
-	ObservatoriumImgTagSuffix = "master-2020-08-06-10069f8"
+	ObservatoriumImgTagSuffix = "master-2020-09-02-52bf608"
 
 	EndpointControllerImgTagSuffix = "0.1.0-9dddad57ace8425ff06ee6a4a9143e1066c03dda"
 
@@ -156,4 +158,23 @@ func GetClusterID(ocpClient ocpClientSet.Interface) (string, error) {
 	}
 
 	return string(clusterVersion.Spec.ClusterID), nil
+}
+
+// GetPlacementRuleName is used to get placementRuleName
+func GetPlacementRuleName() string {
+	return placementRuleName
+}
+
+// IsPaused returns true if the multiclusterobservability instance is labeled as paused, and false otherwise
+func IsPaused(annotations map[string]string) bool {
+	if annotations == nil {
+		return false
+	}
+
+	if annotations[AnnotationMCOPause] != "" &&
+		strings.EqualFold(annotations[AnnotationMCOPause], "true") {
+		return true
+	}
+
+	return false
 }

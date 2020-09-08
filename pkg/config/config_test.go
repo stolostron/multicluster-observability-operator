@@ -220,3 +220,50 @@ func TestGetAnnotationImageInfo(t *testing.T) {
 		t.Errorf("ImageTagSuffix (%v) is not the expected (%v)", imageInfo.ImageRepository, DefaultImgRepository)
 	}
 }
+
+func TestIsPaused(t *testing.T) {
+	caseList := []struct {
+		annotations map[string]string
+		expected    bool
+		name        string
+	}{
+		{
+			name: "without mco-pause",
+			annotations: map[string]string{
+				AnnotationKeyImageRepository: DefaultImgRepository,
+				AnnotationKeyImageTagSuffix:  "test",
+			},
+			expected: false,
+		},
+		{
+			name: "mco-pause is empty",
+			annotations: map[string]string{
+				AnnotationMCOPause: "",
+			},
+			expected: false,
+		},
+		{
+			name: "mco-pause is false",
+			annotations: map[string]string{
+				AnnotationMCOPause: "false",
+			},
+			expected: false,
+		},
+		{
+			name: "mco-pause is true",
+			annotations: map[string]string{
+				AnnotationMCOPause: "true",
+			},
+			expected: true,
+		},
+	}
+
+	for _, c := range caseList {
+		t.Run(c.name, func(t *testing.T) {
+			output := IsPaused(c.annotations)
+			if output != c.expected {
+				t.Errorf("case (%v) output (%v) is not the expected (%v)", c.name, output, c.expected)
+			}
+		})
+	}
+}

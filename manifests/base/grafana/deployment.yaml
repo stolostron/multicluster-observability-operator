@@ -21,8 +21,8 @@ spec:
       containers:
       - args:
         - -config=/etc/grafana/grafana.ini
-        image: "{{GRAFANA_IMG_REPO}}/grafana:{{GRAFANA_IMG_VERSION}}"
-        imagePullPolicy: "{{MULTICLUSTEROBSERVABILITY_IMAGE_PULL_POLICY}}"
+        image:  grafana/grafana:7.1.3
+        imagePullPolicy: Always
         name: grafana
         ports:
         - containerPort: 3001
@@ -70,7 +70,7 @@ spec:
           name: grafana-config
       serviceAccount: grafana
       imagePullSecrets:
-      - name: "{{MULTICLUSTEROBSERVABILITY_IMAGE_PULL_SECRET}}"
+      - name: multiclusterhub-operator-pull-secret
       serviceAccountName: grafana
       volumes:
       - emptyDir: {}
@@ -84,11 +84,11 @@ spec:
           name: grafana-dashboards
         name: grafana-dashboards
       - configMap:
-          defaultmode: 420
+          defaultMode: 420
           name: grafana-dashboard-acm-clusters-overview
         name: grafana-dashboard-acm-clusters-overview
       - configMap:
-          defaultmode: 420
+          defaultMode: 420
           name: grafana-dashboard-acm-control-plane
         name: grafana-dashboard-acm-control-plane
       - configMap:
