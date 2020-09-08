@@ -54,7 +54,7 @@ func GetClientCAIssuer() string {
 
 // GetClientCACert is used to return clientCACert
 func GetClientCACert() string {
-	return clientCACerts
+	return grafanaCerts
 }
 
 // GetServerCerts is used to return serverCerts

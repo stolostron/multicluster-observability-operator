@@ -51,17 +51,37 @@ type ObservatoriumSpec struct {
 
 type ObjectStorageConfig struct {
 	// Object Store Config Secret for Thanos
-	Thanos *ObjectStorageConfigSpec `json:"thanos"`
+	Thanos *ThanosObjectStorageConfigSpec `json:"thanos"`
 	// Object Store Config Secret for Loki
 	// +optional
-	Loki *ObjectStorageConfigSpec `json:"loki,omitempty"`
+	Loki *LokiObjectStorageConfigSpec `json:"loki,omitempty"`
 }
 
-type ObjectStorageConfigSpec struct {
+type ThanosObjectStorageConfigSpec struct {
 	// Object Store Config Secret Name
 	Name string `json:"name"`
 	// Object Store Config key
 	Key string `json:"key"`
+}
+
+type LokiObjectStorageConfigSpec struct {
+	// Object Store Config Secret Name
+	SecretName string `json:"secretName"`
+	// Object Store Config key for S3_URL
+	// +optional
+	EndpointKey string `json:"endpointKey"`
+	// Object Store Config key for AWS_ACCESS_KEY_ID
+	// +optional
+	AccessKeyIDKey string `json:"accessKeyIdKey"`
+	// Object Store Config key for AWS_SECRET_ACCESS_KEY
+	// +optional
+	SecretAccessKeyKey string `json:"secretAccessKeyKey"`
+	// Object Store Config key for S3_BUCKETS
+	// +optional
+	BucketsKey string `json:"bucketsKey"`
+	// Object Store Config key for S3_REGION
+	// +optional
+	RegionKey string `json:"regionKey"`
 }
 
 type ThanosReceiveControllerSpec struct {
@@ -177,9 +197,9 @@ type TenantOIDC struct {
 type TenantMTLS struct {
 	CAKey string `json:"caKey"`
 	// +optional
-	SecretName string `json:"secretName"`
+	SecretName string `json:"secretName,omitempty"`
 	// +optional
-	ConfigMapName string `json:"configMapName"`
+	ConfigMapName string `json:"configMapName,omitempty"`
 }
 
 // APITenant represents a tenant in the Observatorium API.
@@ -187,9 +207,9 @@ type APITenant struct {
 	Name string `json:"name"`
 	ID   string `json:"id"`
 	// +optional
-	OIDC TenantOIDC `json:"oidc"`
+	OIDC *TenantOIDC `json:"oidc,omitempty"`
 	// +optional
-	MTLS TenantMTLS `json:"mTLS"`
+	MTLS *TenantMTLS `json:"mTLS,omitempty"`
 }
 
 // TLS contains the TLS configuration for a component.
@@ -198,13 +218,13 @@ type TLS struct {
 	CertKey    string `json:"certKey"`
 	KeyKey     string `json:"keyKey"`
 	// +optional
-	ConfigMapName string `json:"configMapName"`
+	ConfigMapName string `json:"configMapName,omitempty"`
 	// +optional
-	CAKey string `json:"caKey"`
+	CAKey string `json:"caKey,omitempty"`
 	// +optional
-	ServerName string `json:"serverName"`
+	ServerName string `json:"serverName,omitempty"`
 	// +optional
-	ReloadInterval string `json:"reloadInterval"`
+	ReloadInterval string `json:"reloadInterval,omitempty"`
 }
 
 type APISpec struct {
@@ -287,6 +307,8 @@ type LokiSpec struct {
 	Replicas map[string]int32 `json:"replicas,omitempty"`
 	// Version of Loki image to be deployed
 	Version string `json:"version,omitempty"`
+	// VolumeClaimTemplate
+	VolumeClaimTemplate VolumeClaimTemplate `json:"volumeClaimTemplate"`
 }
 
 // ObservatoriumStatus defines the observed state of Observatorium
