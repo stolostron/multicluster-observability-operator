@@ -185,8 +185,11 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	routev1.AddToScheme(s)
 	placementv1.AddToScheme(s)
 
-	svc := createObservatoriumAPIService(name, namespace)
-	objs := []runtime.Object{mco, svc}
+	svc := createObservatoriumApiService(name, namespace)
+	grafanaCert := newTestCert(GetGrafanaCerts(), namespace)
+	serverCert := newTestCert(GetServerCerts(), namespace)
+
+	objs := []runtime.Object{mco, svc, grafanaCert, serverCert}
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
 

@@ -16,8 +16,8 @@ import (
 const (
 	hubInfoName = "hub-info-secret"
 	hubInfoKey  = "hub-info.yaml"
-	urlSubPath  = "/api/v1/receive"
-	protocol    = "http://"
+	urlSubPath  = "api/metrics/v1/default/api/v1/receive"
+	protocol    = "https://"
 )
 
 // HubInfo is the struct for hub info
