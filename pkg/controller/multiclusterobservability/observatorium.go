@@ -9,6 +9,7 @@ import (
 	observatoriumv1alpha1 "github.com/observatorium/deployments/operator/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	v1 "k8s.io/api/core/v1"
+	storv1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,13 +47,32 @@ func GenerateObservatoriumCR(
 		"app": mco.Name,
 	}
 
+	storageClassList := &storv1.StorageClassList{}
+	err := client.List(context.TODO(), storageClassList)
+	if err != nil {
+		return &reconcile.Result{}, err
+	}
+	storageClassSelected := ""
+	storageClassDefault := ""
+	for _, storageClass := range storageClassList.Items {
+		if storageClass.ObjectMeta.Name == mco.Spec.StorageConfig.StatefulSetStorageClass {
+			storageClassSelected = storageClass.ObjectMeta.Name
+		}
+		if storageClass.ObjectMeta.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
+			storageClassDefault = storageClass.ObjectMeta.Name
+		}
+	}
+	if storageClassSelected == "" {
+		storageClassSelected = storageClassDefault
+	}
+
 	observatoriumCR := &observatoriumv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mco.Name + obsPartoOfName,
 			Namespace: mco.Namespace,
 			Labels:    labels,
 		},
-		Spec: *newDefaultObservatoriumSpec(mco),
+		Spec: *newDefaultObservatoriumSpec(mco, storageClassSelected),
 	}
 
 	// Set MultiClusterObservability instance as the owner and controller
@@ -62,7 +82,7 @@ func GenerateObservatoriumCR(
 
 	// Check if this Observatorium CR already exists
 	observatoriumCRFound := &observatoriumv1alpha1.Observatorium{}
-	err := client.Get(
+	err = client.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      observatoriumCR.Name,
@@ -86,17 +106,7 @@ func GenerateObservatoriumCR(
 
 	oldSpec := observatoriumCRFound.Spec
 	newSpec := observatoriumCR.Spec
-	if mco.Spec.EnableDownSampling == false {
-		if newSpec.Compact.RetentionResolution1h != oldSpec.Compact.RetentionResolution1h {
-			newSpec.Compact.RetentionResolution1h = oldSpec.Compact.RetentionResolution1h
-		}
-		if newSpec.Compact.RetentionResolution5m != oldSpec.Compact.RetentionResolution5m {
-			newSpec.Compact.RetentionResolution5m = oldSpec.Compact.RetentionResolution5m
-		}
-		if newSpec.Compact.RetentionResolutionRaw != oldSpec.Compact.RetentionResolutionRaw {
-			newSpec.Compact.RetentionResolutionRaw = oldSpec.Compact.RetentionResolutionRaw
-		}
-	}
+	// @TODO: resolve design issue on whether enable/disable downsampling will affact retension period config
 	oldSpecBytes, _ := yaml.Marshal(oldSpec)
 	newSpecBytes, _ := yaml.Marshal(newSpec)
 
@@ -112,6 +122,7 @@ func GenerateObservatoriumCR(
 	return nil, nil
 }
 
+// GenerateAPIGatewayRoute defines aaa
 func GenerateAPIGatewayRoute(
 	runclient client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
@@ -159,12 +170,12 @@ func GenerateAPIGatewayRoute(
 	return nil, nil
 }
 
-func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability) *observatoriumv1alpha1.ObservatoriumSpec {
+func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) *observatoriumv1alpha1.ObservatoriumSpec {
 	obs := &observatoriumv1alpha1.ObservatoriumSpec{}
 	obs.API.RBAC = newAPIRBAC()
 	obs.API.Tenants = newAPITenants()
 	obs.API.TLS = newAPITLS()
-	obs.Compact = newCompactSpec(mco)
+	obs.Compact = newCompactSpec(mco, scSelected)
 
 	obs.Hashrings = []*observatoriumv1alpha1.Hashring{
 		{Hashring: "default", Tenants: []string{mcoconfig.GetTenantUID()}},
@@ -177,9 +188,9 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability) *obs
 		obs.ObjectStorageConfig.Thanos.Key = objStorageConf.Key
 	}
 
-	obs.Receivers = newReceiversSpec(mco)
-	obs.Rule = newRuleSpec(mco)
-	obs.Store = newStoreSpec(mco)
+	obs.Receivers = newReceiversSpec(mco, scSelected)
+	obs.Rule = newRuleSpec(mco, scSelected)
+	obs.Store = newStoreSpec(mco, scSelected)
 
 	//set the default observatorium components' image
 	obs.API.Image = "quay.io/observatorium/observatorium:latest"
@@ -305,7 +316,7 @@ func newAPITLS() observatoriumv1alpha1.TLS {
 	}
 }
 
-func newReceiversSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha1.ReceiversSpec {
+func newReceiversSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) observatoriumv1alpha1.ReceiversSpec {
 	receSpec := observatoriumv1alpha1.ReceiversSpec{}
 	receSpec.Image = defaultThanosImage
 	receSpec.Version = defaultThanosVersion
@@ -316,12 +327,12 @@ func newReceiversSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1
 	}
 	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.StatefulSetSize,
-		mco.Spec.StorageConfig.StatefulSetStorageClass)
+		scSelected)
 
 	return receSpec
 }
 
-func newRuleSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha1.RuleSpec {
+func newRuleSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) observatoriumv1alpha1.RuleSpec {
 	ruleSpec := observatoriumv1alpha1.RuleSpec{}
 	ruleSpec.Image = defaultThanosImage
 	ruleSpec.Version = defaultThanosVersion
@@ -332,12 +343,12 @@ func newRuleSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha
 	}
 	ruleSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.StatefulSetSize,
-		mco.Spec.StorageConfig.StatefulSetStorageClass)
+		scSelected)
 
 	return ruleSpec
 }
 
-func newStoreSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha1.StoreSpec {
+func newStoreSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) observatoriumv1alpha1.StoreSpec {
 	storeSpec := observatoriumv1alpha1.StoreSpec{}
 	storeSpec.Image = defaultThanosImage
 	storeSpec.Version = defaultThanosVersion
@@ -348,7 +359,7 @@ func newStoreSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alph
 	}
 	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.StatefulSetSize,
-		mco.Spec.StorageConfig.StatefulSetStorageClass)
+		scSelected)
 	shards := int32(1)
 	storeSpec.Shards = &shards
 	storeSpec.Cache = newStoreCacheSpec(mco)
@@ -382,7 +393,7 @@ func newStoreCacheSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv
 	return storeCacheSpec
 }
 
-func newCompactSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha1.CompactSpec {
+func newCompactSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) observatoriumv1alpha1.CompactSpec {
 	compactSpec := observatoriumv1alpha1.CompactSpec{}
 	compactSpec.Image = defaultThanosImage
 	compactSpec.Version = defaultThanosVersion
@@ -391,13 +402,13 @@ func newCompactSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1al
 			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 		compactSpec.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 	}
-	compactSpec.EnableDownSampling = mco.Spec.EnableDownSampling
+	compactSpec.EnableDownsampling = mco.Spec.EnableDownSampling
 	compactSpec.RetentionResolutionRaw = mco.Spec.RetentionResolutionRaw
 	compactSpec.RetentionResolution5m = mco.Spec.RetentionResolution5m
 	compactSpec.RetentionResolution1h = mco.Spec.RetentionResolution1h
 	compactSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.StatefulSetSize,
-		mco.Spec.StorageConfig.StatefulSetStorageClass)
+		scSelected)
 
 	return compactSpec
 }
