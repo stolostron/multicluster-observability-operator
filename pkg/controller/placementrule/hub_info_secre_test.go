@@ -44,7 +44,7 @@ func TestNewSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
 	}
-	if hub.ClusterName != clusterName || !strings.HasPrefix(hub.Endpoint, "http://test-host") {
+	if hub.ClusterName != clusterName || !strings.HasPrefix(hub.Endpoint, "https://test-host") {
 		t.Fatalf("Wrong content in hub info secret: (%s)", hub.ClusterName+" "+hub.Endpoint)
 	}
 }

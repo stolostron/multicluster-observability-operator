@@ -47,14 +47,29 @@ func GetManagedClusterOrg() string {
 	return managedClusterCertOrg
 }
 
+// GetGrafanaSubject is used to return grafanaSubject
+func GetGrafanaSubject() string {
+	return grafanaSubject
+}
+
 // GetClientCAIssuer is used to return clientCAIssuer
 func GetClientCAIssuer() string {
 	return clientCAIssuer
 }
 
-// GetserverCerts is used to return serverCerts
-func GetserverCerts() string {
+// GetClientCACert is used to return clientCACert
+func GetClientCACert() string {
+	return grafanaCerts
+}
+
+// GetServerCerts is used to return serverCerts
+func GetServerCerts() string {
 	return serverCerts
+}
+
+// GetGrafanaCerts is used to return grafanaCerts
+func GetGrafanaCerts() string {
+	return grafanaCerts
 }
 
 // CreateCertificateSpec is used to create a struct of CertificateSpec
@@ -320,8 +335,9 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 		log.Error(err, "Failed to get api gateway")
 		return err
 	}
+
 	spec = CreateCertificateSpec(serverCerts, false, serverCAIssuer, false,
-		serverCertificate, []string{}, []string{url})
+		serverCertificate, []string{}, []string{url, config.GetObsAPISvc(mco.GetName())})
 	err = CreateCertificate(client, scheme, mco,
 		serverCertificate, ns, spec)
 	if err != nil {

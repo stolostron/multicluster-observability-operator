@@ -180,7 +180,7 @@ func getPullSecret(imagePullSecret *corev1.Secret) *corev1.Secret {
 func getCerts(client client.Client, namespace string) (*corev1.Secret, error) {
 
 	ca := &corev1.Secret{}
-	caName := multiclusterobservability.GetserverCerts()
+	caName := multiclusterobservability.GetServerCerts()
 	err := client.Get(context.TODO(), types.NamespacedName{Name: caName,
 		Namespace: config.GetDefaultNamespace()}, ca)
 	if err != nil {

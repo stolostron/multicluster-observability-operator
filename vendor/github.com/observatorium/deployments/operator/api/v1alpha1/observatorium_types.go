@@ -51,17 +51,37 @@ type ObservatoriumSpec struct {
 
 type ObjectStorageConfig struct {
 	// Object Store Config Secret for Thanos
-	Thanos *ObjectStorageConfigSpec `json:"thanos"`
+	Thanos *ThanosObjectStorageConfigSpec `json:"thanos"`
 	// Object Store Config Secret for Loki
 	// +optional
-	Loki *ObjectStorageConfigSpec `json:"loki,omitempty"`
+	Loki *LokiObjectStorageConfigSpec `json:"loki,omitempty"`
 }
 
-type ObjectStorageConfigSpec struct {
+type ThanosObjectStorageConfigSpec struct {
 	// Object Store Config Secret Name
 	Name string `json:"name"`
 	// Object Store Config key
 	Key string `json:"key"`
+}
+
+type LokiObjectStorageConfigSpec struct {
+	// Object Store Config Secret Name
+	SecretName string `json:"secretName"`
+	// Object Store Config key for S3_URL
+	// +optional
+	EndpointKey string `json:"endpointKey"`
+	// Object Store Config key for AWS_ACCESS_KEY_ID
+	// +optional
+	AccessKeyIDKey string `json:"accessKeyIdKey"`
+	// Object Store Config key for AWS_SECRET_ACCESS_KEY
+	// +optional
+	SecretAccessKeyKey string `json:"secretAccessKeyKey"`
+	// Object Store Config key for S3_BUCKETS
+	// +optional
+	BucketsKey string `json:"bucketsKey"`
+	// Object Store Config key for S3_REGION
+	// +optional
+	RegionKey string `json:"regionKey"`
 }
 
 type ThanosReceiveControllerSpec struct {
@@ -173,11 +193,38 @@ type TenantOIDC struct {
 	UsernameClaim string `json:"usernameClaim,omitempty"`
 }
 
+// TenantMTLS represents the mTLS configuration for an Observatorium API tenant.
+type TenantMTLS struct {
+	CAKey string `json:"caKey"`
+	// +optional
+	SecretName string `json:"secretName,omitempty"`
+	// +optional
+	ConfigMapName string `json:"configMapName,omitempty"`
+}
+
 // APITenant represents a tenant in the Observatorium API.
 type APITenant struct {
-	Name string     `json:"name"`
-	ID   string     `json:"id"`
-	OIDC TenantOIDC `json:"oidc"`
+	Name string `json:"name"`
+	ID   string `json:"id"`
+	// +optional
+	OIDC *TenantOIDC `json:"oidc,omitempty"`
+	// +optional
+	MTLS *TenantMTLS `json:"mTLS,omitempty"`
+}
+
+// TLS contains the TLS configuration for a component.
+type TLS struct {
+	SecretName string `json:"secretName"`
+	CertKey    string `json:"certKey"`
+	KeyKey     string `json:"keyKey"`
+	// +optional
+	ConfigMapName string `json:"configMapName,omitempty"`
+	// +optional
+	CAKey string `json:"caKey,omitempty"`
+	// +optional
+	ServerName string `json:"serverName,omitempty"`
+	// +optional
+	ReloadInterval string `json:"reloadInterval,omitempty"`
 }
 
 type APISpec struct {
@@ -185,6 +232,8 @@ type APISpec struct {
 	Image string `json:"image,omitempty"`
 	// Version describes the version of API to use.
 	Version string `json:"version,omitempty"`
+	// TLS configuration for the Observatorium API.
+	TLS TLS `json:"tls,omitempty"`
 	// RBAC is an RBAC configuration for the Observatorium API.
 	RBAC APIRBAC `json:"rbac"`
 	// Tenants is a slice of tenants for the Observatorium API.
@@ -227,6 +276,8 @@ type CompactSpec struct {
 	RetentionResolution5m string `json:"retentionResolution5m"`
 	// RetentionResolutionRaw
 	RetentionResolution1h string `json:"retentionResolution1h"`
+	// EnableDownsampling enables downsampling.
+	EnableDownsampling bool `json:"enableDownsampling,omitempty"`
 }
 
 type VolumeClaimTemplate struct {
@@ -256,6 +307,8 @@ type LokiSpec struct {
 	Replicas map[string]int32 `json:"replicas,omitempty"`
 	// Version of Loki image to be deployed
 	Version string `json:"version,omitempty"`
+	// VolumeClaimTemplate
+	VolumeClaimTemplate VolumeClaimTemplate `json:"volumeClaimTemplate"`
 }
 
 // ObservatoriumStatus defines the observed state of Observatorium

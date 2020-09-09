@@ -8,6 +8,7 @@ import (
 
 	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -22,6 +23,20 @@ const (
 	token      = "test-token"
 	ca         = "test-ca"
 )
+
+func newTestCert(name string, namespace string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Data: map[string][]byte{
+			"ca.crt":  []byte("test-ca-crt"),
+			"tls.crt": []byte("test-tls-crt"),
+			"tls.key": []byte("test-tls-key"),
+		},
+	}
+}
 
 func TestCreateCertificates(t *testing.T) {
 	var (

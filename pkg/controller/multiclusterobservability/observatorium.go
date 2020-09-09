@@ -32,6 +32,9 @@ const (
 	defaultThanosVersion = "master-2020-08-12-70f89d83"
 
 	thanosImgName = "thanos"
+
+	readOnlyRoleName  = "read-only-metrics"
+	readWriteRoleName = "read-write-metrics"
 )
 
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
@@ -120,12 +123,15 @@ func GenerateAPIGatewayRoute(
 		},
 		Spec: routev1.RouteSpec{
 			Port: &routev1.RoutePort{
-				TargetPort: intstr.FromString("remote-write"),
+				TargetPort: intstr.FromString("public"),
 			},
 			To: routev1.RouteTargetReference{
 				Kind: "Service",
-				//Name: apiGatewayServices.Items[0].GetName(),
-				Name: mco.Name + "-observatorium-thanos-receive",
+				Name: mco.Name + "-observatorium-observatorium-api",
+			},
+			TLS: &routev1.TLSConfig{
+				Termination:                   routev1.TLSTerminationPassthrough,
+				InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyNone,
 			},
 		},
 	}
@@ -157,13 +163,14 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability) *obs
 	obs := &observatoriumv1alpha1.ObservatoriumSpec{}
 	obs.API.RBAC = newAPIRBAC()
 	obs.API.Tenants = newAPITenants()
+	obs.API.TLS = newAPITLS()
 	obs.Compact = newCompactSpec(mco)
 
 	obs.Hashrings = []*observatoriumv1alpha1.Hashring{
-		{Hashring: "default", Tenants: []string{}},
+		{Hashring: "default", Tenants: []string{mcoconfig.GetTenantUID()}},
 	}
 
-	obs.ObjectStorageConfig.Thanos = &observatoriumv1alpha1.ObjectStorageConfigSpec{}
+	obs.ObjectStorageConfig.Thanos = &observatoriumv1alpha1.ThanosObjectStorageConfigSpec{}
 	if mco.Spec.StorageConfig != nil && mco.Spec.StorageConfig.MetricObjectStorage != nil {
 		objStorageConf := mco.Spec.StorageConfig.MetricObjectStorage
 		obs.ObjectStorageConfig.Thanos.Name = objStorageConf.Name
@@ -221,7 +228,19 @@ func newAPIRBAC() observatoriumv1alpha1.APIRBAC {
 	return observatoriumv1alpha1.APIRBAC{
 		Roles: []observatoriumv1alpha1.RBACRole{
 			{
-				Name: "read-write",
+				Name: readOnlyRoleName,
+				Resources: []string{
+					"metrics",
+				},
+				Permissions: []observatoriumv1alpha1.Permission{
+					observatoriumv1alpha1.Read,
+				},
+				Tenants: []string{
+					mcoconfig.GetDefaultTenantName(),
+				},
+			},
+			{
+				Name: readWriteRoleName,
 				Resources: []string{
 					"metrics",
 				},
@@ -236,14 +255,26 @@ func newAPIRBAC() observatoriumv1alpha1.APIRBAC {
 		},
 		RoleBindings: []observatoriumv1alpha1.RBACRoleBinding{
 			{
-				Name: mcoconfig.GetDefaultTenantName(),
+				Name: readOnlyRoleName,
 				Roles: []string{
-					"read-write",
+					readOnlyRoleName,
 				},
 				Subjects: []observatoriumv1alpha1.Subject{
 					{
-						Name: "admin@example.com",
+						Name: GetGrafanaSubject(),
 						Kind: observatoriumv1alpha1.User,
+					},
+				},
+			},
+			{
+				Name: readWriteRoleName,
+				Roles: []string{
+					readWriteRoleName,
+				},
+				Subjects: []observatoriumv1alpha1.Subject{
+					{
+						Name: GetManagedClusterOrg(),
+						Kind: observatoriumv1alpha1.Group,
 					},
 				},
 			},
@@ -255,14 +286,22 @@ func newAPITenants() []observatoriumv1alpha1.APITenant {
 	return []observatoriumv1alpha1.APITenant{
 		{
 			Name: mcoconfig.GetDefaultTenantName(),
-			ID:   "1610b0c3-c509-4592-a256-a1871353dbfa",
-			OIDC: observatoriumv1alpha1.TenantOIDC{
-				ClientID:      "test",
-				ClientSecret:  "ZXhhbXBsZS1hcHAtc2VjcmV0",
-				IssuerURL:     "http://ec2-107-21-40-191.compute-1.amazonaws.com:5556/dex",
-				UsernameClaim: "email",
+			ID:   mcoconfig.GetTenantUID(),
+			MTLS: &observatoriumv1alpha1.TenantMTLS{
+				SecretName: GetClientCACert(),
+				CAKey:      "ca.crt",
 			},
 		},
+	}
+}
+
+func newAPITLS() observatoriumv1alpha1.TLS {
+	return observatoriumv1alpha1.TLS{
+		SecretName: GetServerCerts(),
+		CertKey:    "tls.crt",
+		KeyKey:     "tls.key",
+		CAKey:      "ca.crt",
+		ServerName: serverCertificate,
 	}
 }
 

@@ -52,7 +52,7 @@ func newTestPullSecret() *corev1.Secret {
 func newCASecret() *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      multiclusterobservability.GetserverCerts(),
+			Name:      multiclusterobservability.GetServerCerts(),
 			Namespace: mcoNamespace,
 		},
 		Data: map[string][]byte{
