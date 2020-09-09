@@ -52,8 +52,13 @@ func GetClientCAIssuer() string {
 	return clientCAIssuer
 }
 
-// GetserverCerts is used to return serverCerts
-func GetserverCerts() string {
+// GetClientCACert is used to return clientCACert
+func GetClientCACert() string {
+	return grafanaCerts
+}
+
+// GetServerCerts is used to return serverCerts
+func GetServerCerts() string {
 	return serverCerts
 }
 
@@ -320,8 +325,9 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 		log.Error(err, "Failed to get api gateway")
 		return err
 	}
+
 	spec = CreateCertificateSpec(serverCerts, false, serverCAIssuer, false,
-		serverCertificate, []string{}, []string{url})
+		serverCertificate, []string{}, []string{url, config.GetObsAPISvc(mco.GetName())})
 	err = CreateCertificate(client, scheme, mco,
 		serverCertificate, ns, spec)
 	if err != nil {
