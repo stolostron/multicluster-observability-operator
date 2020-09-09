@@ -350,3 +350,79 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Fatalf("reconcile for finalizer: (%v)", err)
 	}
 }
+
+func TestCheckS3Conf(t *testing.T) {
+	mco := &mcov1beta1.MultiClusterObservability{
+		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
+		Spec: mcov1beta1.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta1.StorageConfigObject{
+				MetricObjectStorage: &mcov1beta1.PreConfiguredStorage{
+					Key:  "test",
+					Name: "test",
+				},
+			},
+		},
+	}
+
+	s := scheme.Scheme
+	mcov1beta1.SchemeBuilder.AddToScheme(s)
+	objs := []runtime.Object{mco}
+	c := fake.NewFakeClient(objs...)
+	mcoCondition := CheckS3Conf(c, mco)
+	if mcoCondition == nil {
+		t.Errorf("check s3 conf failed: got %v, expected non-nil", mcoCondition)
+	}
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "test",
+		},
+
+		Type: "Opaque",
+		StringData: map[string]string{"test": `type: s3
+config:
+  bucket: bucket
+  endpoint: endpoint
+  insecure: true
+  access_key: access_key
+  secret_key: secret_key`},
+	}
+
+	err := c.Create(context.TODO(), secret)
+	if err != nil {
+		t.Fatalf("Failed to create secret: (%v)", err)
+	}
+
+	mcoCondition = CheckS3Conf(c, mco)
+	if mcoCondition != nil {
+		t.Errorf("check s3 conf failed: got %v, expected nil", mcoCondition)
+	}
+
+	secret = &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "test",
+		},
+
+		Type: "Opaque",
+		StringData: map[string]string{"error": `type: s3
+config:
+  bucket: bucket
+  endpoint: endpoint
+  insecure: true
+  access_key: access_key
+  secret_key: secret_key`},
+	}
+
+	err = c.Update(context.TODO(), secret)
+	if err != nil {
+		t.Fatalf("Failed to update secret: (%v)", err)
+	}
+
+	mcoCondition = CheckS3Conf(c, mco)
+	if mcoCondition == nil {
+		t.Errorf("check s3 conf failed: got %v, expected no-nil", mcoCondition)
+	}
+}
