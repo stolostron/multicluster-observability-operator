@@ -65,6 +65,8 @@ func GenerateObservatoriumCR(
 	if storageClassSelected == "" {
 		storageClassSelected = storageClassDefault
 	}
+	log.Info("storageClassSelected", storageClassSelected)
+	log.Info("storageClassDefault", storageClassDefault)
 
 	observatoriumCR := &observatoriumv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
