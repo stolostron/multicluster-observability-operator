@@ -83,7 +83,7 @@ func GenerateObservatoriumCR(
 
 	oldSpec := observatoriumCRFound.Spec
 	newSpec := observatoriumCR.Spec
-	if mco.Spec.ObservabilityAddonSpec != nil && mco.Spec.ObservabilityAddonSpec.EnableMetrics == false {
+	if mco.Spec.EnableDownSampling == false {
 		if newSpec.Compact.RetentionResolution1h != oldSpec.Compact.RetentionResolution1h {
 			newSpec.Compact.RetentionResolution1h = oldSpec.Compact.RetentionResolution1h
 		}
@@ -352,6 +352,7 @@ func newCompactSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1al
 			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 		compactSpec.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 	}
+	compactSpec.EnableDownSampling = mco.Spec.EnableDownSampling
 	compactSpec.RetentionResolutionRaw = mco.Spec.RetentionResolutionRaw
 	compactSpec.RetentionResolution5m = mco.Spec.RetentionResolution5m
 	compactSpec.RetentionResolution1h = mco.Spec.RetentionResolution1h

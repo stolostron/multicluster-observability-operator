@@ -37,6 +37,7 @@ const (
 	DefaultStorageClass    = "gp2"
 	DefaultStorageSize     = "10Gi"
 
+	DefaultEnableDownSampling     = false
 	DefaultRetentionResolution1h  = "30d"
 	DefaultRetentionResolution5m  = "14d"
 	DefaultRetentionResolutionRaw = "5d"

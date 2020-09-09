@@ -44,6 +44,10 @@ func GenerateMonitoringCR(c client.Client,
 		mco.Spec.StorageConfig.StatefulSetStorageClass = mcoconfig.DefaultStorageClass
 	}
 
+	if mco.Spec.EnableDownSampling == "" {
+		mco.Spec.EnableDownSampling = mcoconfig.DefaultEnableDownSampling
+	}
+
 	if mco.Spec.RetentionResolution1h == "" {
 		mco.Spec.RetentionResolution1h = mcoconfig.DefaultRetentionResolution1h
 	}
