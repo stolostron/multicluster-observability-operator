@@ -16,6 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -407,6 +408,11 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 		}
 	}
 
+	s3condition := CheckS3Conf(r.client, mco)
+	if s3condition != nil {
+		conditions = append(conditions, *s3condition)
+	}
+
 	mco.Status.Conditions = conditions
 
 	err = r.client.Status().Update(context.TODO(), mco)
@@ -494,4 +500,39 @@ func getResourceConditions(podList *corev1.PodList, statefulSetList *appsv1.Stat
 		}
 	}
 	return
+}
+
+func CheckS3Conf(c client.Client,
+	mco *mcov1beta1.MultiClusterObservability) *mcov1beta1.MCOCondition {
+	objStorageConf := mco.Spec.StorageConfig.MetricObjectStorage
+	secret := &corev1.Secret{}
+	namespacedName := types.NamespacedName{
+		Name:      objStorageConf.Name,
+		Namespace: mco.Namespace,
+	}
+
+	failed := mcov1beta1.Failed{
+		Type:   "Failed",
+		Reason: "Failed",
+	}
+
+	err := c.Get(context.TODO(), namespacedName, secret)
+	if err != nil {
+		failed.Message = err.Error()
+		return &mcov1beta1.MCOCondition{Failed: failed}
+	}
+
+	data, ok := secret.StringData[objStorageConf.Key]
+	if !ok {
+		failed.Message = "Failed to found object storage conf"
+		return &mcov1beta1.MCOCondition{Failed: failed}
+	}
+
+	ok, err = util.IsValidS3Conf([]byte(data))
+	if !ok {
+		failed.Message = err.Error()
+		return &mcov1beta1.MCOCondition{Failed: failed}
+	}
+
+	return nil
 }
