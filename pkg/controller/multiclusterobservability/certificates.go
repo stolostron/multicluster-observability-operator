@@ -47,6 +47,11 @@ func GetManagedClusterOrg() string {
 	return managedClusterCertOrg
 }
 
+// GetGrafanaSubject is used to return grafanaSubject
+func GetGrafanaSubject() string {
+	return grafanaSubject
+}
+
 // GetClientCAIssuer is used to return clientCAIssuer
 func GetClientCAIssuer() string {
 	return clientCAIssuer
@@ -60,6 +65,11 @@ func GetClientCACert() string {
 // GetServerCerts is used to return serverCerts
 func GetServerCerts() string {
 	return serverCerts
+}
+
+// GetGrafanaCerts is used to return grafanaCerts
+func GetGrafanaCerts() string {
+	return grafanaCerts
 }
 
 // CreateCertificateSpec is used to create a struct of CertificateSpec

@@ -112,12 +112,15 @@ func GenerateAPIGatewayRoute(
 		},
 		Spec: routev1.RouteSpec{
 			Port: &routev1.RoutePort{
-				TargetPort: intstr.FromString("remote-write"),
+				TargetPort: intstr.FromString("public"),
 			},
 			To: routev1.RouteTargetReference{
 				Kind: "Service",
-				//Name: apiGatewayServices.Items[0].GetName(),
-				Name: mco.Name + "-observatorium-thanos-receive",
+				Name: mco.Name + "-observatorium-observatorium-api",
+			},
+			TLS: &routev1.TLSConfig{
+				Termination:                   routev1.TLSTerminationPassthrough,
+				InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyNone,
 			},
 		},
 	}
@@ -247,7 +250,7 @@ func newAPIRBAC() observatoriumv1alpha1.APIRBAC {
 				},
 				Subjects: []observatoriumv1alpha1.Subject{
 					{
-						Name: "grafana",
+						Name: GetGrafanaSubject(),
 						Kind: observatoriumv1alpha1.User,
 					},
 				},
@@ -259,7 +262,7 @@ func newAPIRBAC() observatoriumv1alpha1.APIRBAC {
 				},
 				Subjects: []observatoriumv1alpha1.Subject{
 					{
-						Name: "managed-clusters",
+						Name: GetManagedClusterOrg(),
 						Kind: observatoriumv1alpha1.Group,
 					},
 				},
