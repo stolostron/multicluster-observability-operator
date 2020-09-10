@@ -322,9 +322,11 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 		}
 		statefulSetCounter := 0
 		allstatefulSetReady := true
-		getResourceConditions(podList, statefulSetList, watchingPods, watchingStatefulSets, allPodsReady, allstatefulSetReady, podCounter, statefulSetCounter)
+		getResourceConditions(podList, statefulSetList, watchingPods, watchingStatefulSets,
+			allPodsReady, allstatefulSetReady, podCounter, statefulSetCounter)
 
-		if podCounter == 0 || statefulSetCounter == 0 || allPodsReady != true || podCounter < len(watchingPods) || allstatefulSetReady != true || statefulSetCounter < len(watchingStatefulSets) {
+		if podCounter == 0 || statefulSetCounter == 0 || allPodsReady != true ||
+			podCounter < len(watchingPods) || allstatefulSetReady != true || statefulSetCounter < len(watchingStatefulSets) {
 			installingCondition = mcov1beta1.Installing{
 				Type:    "Installing",
 				Reason:  "Installing",
