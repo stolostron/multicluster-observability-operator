@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	cert "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	observatoriumv1alpha1 "github.com/observatorium/deployments/operator/api/v1alpha1"
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -141,6 +142,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	observatoriumv1alpha1.AddToScheme(s)
 	routev1.AddToScheme(s)
 	placementv1.AddToScheme(s)
+	cert.AddToScheme(s)
 
 	svc := createObservatoriumApiService(name, namespace)
 	grafanaCert := newTestCert(GetGrafanaCerts(), namespace)
