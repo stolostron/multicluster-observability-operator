@@ -302,22 +302,6 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 		}
 		podCounter := 0
 		allPodsReady := true
-		for _, pod := range podList.Items {
-			for _, name := range watchingPods {
-				if strings.HasPrefix(pod.Name, name) {
-					podCounter++
-					singlePodReady := false
-					for _, podCondition := range pod.Status.Conditions {
-						if podCondition.Type == "Ready" {
-							singlePodReady = true
-						}
-					}
-					if singlePodReady == false {
-						allPodsReady = false
-					}
-				}
-			}
-		}
 		watchingStatefulSets := []string{
 			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-compact"}, "-"),
 			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-receive-default"}, "-"),
@@ -338,20 +322,8 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 		}
 		statefulSetCounter := 0
 		allstatefulSetReady := true
-		for _, statefulSet := range statefulSetList.Items {
-			for _, name := range watchingStatefulSets {
-				if strings.HasPrefix(statefulSet.Name, name) {
-					statefulSetCounter++
-					singleStatefulSetReady := false
-					if statefulSet.Status.ReadyReplicas >= 1 {
-						singleStatefulSetReady = true
-					}
-					if singleStatefulSetReady == false {
-						allstatefulSetReady = false
-					}
-				}
-			}
-		}
+		getResourceConditions(podList, statefulSetList, watchingPods, watchingStatefulSets, allPodsReady, allstatefulSetReady, podCounter, statefulSetCounter)
+
 		if podCounter == 0 || statefulSetCounter == 0 || allPodsReady != true || podCounter < len(watchingPods) || allstatefulSetReady != true || statefulSetCounter < len(watchingStatefulSets) {
 			installingCondition = mcov1beta1.Installing{
 				Type:    "Installing",
@@ -482,4 +454,42 @@ func (r *ReconcileMultiClusterObservability) initFinalization(
 		log.Info("Finalizer added to mco resource")
 	}
 	return false, nil
+}
+
+func getResourceConditions(podList *corev1.PodList, statefulSetList *appsv1.StatefulSetList,
+	watchingPods []string, watchingStatefulSets []string,
+	allPodsReady bool, allstatefulSetReady bool,
+	podCounter int, statefulSetCounter int,
+) {
+	for _, pod := range podList.Items {
+		for _, name := range watchingPods {
+			if strings.HasPrefix(pod.Name, name) {
+				podCounter++
+				singlePodReady := false
+				for _, podCondition := range pod.Status.Conditions {
+					if podCondition.Type == "Ready" {
+						singlePodReady = true
+					}
+				}
+				if singlePodReady == false {
+					allPodsReady = false
+				}
+			}
+		}
+	}
+	for _, statefulSet := range statefulSetList.Items {
+		for _, name := range watchingStatefulSets {
+			if strings.HasPrefix(statefulSet.Name, name) {
+				statefulSetCounter++
+				singleStatefulSetReady := false
+				if statefulSet.Status.ReadyReplicas >= 1 {
+					singleStatefulSetReady = true
+				}
+				if singleStatefulSetReady == false {
+					allstatefulSetReady = false
+				}
+			}
+		}
+	}
+	return
 }

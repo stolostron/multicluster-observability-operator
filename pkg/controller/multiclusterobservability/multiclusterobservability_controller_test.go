@@ -185,7 +185,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	routev1.AddToScheme(s)
 	placementv1.AddToScheme(s)
 
-	svc := createObservatoriumApiService(name, namespace)
+	svc := createObservatoriumAPIService(name, namespace)
 	grafanaCert := newTestCert(GetGrafanaCerts(), namespace)
 	serverCert := newTestCert(GetServerCerts(), namespace)
 
