@@ -41,6 +41,14 @@ rules:
   - update
   - watch
 - apiGroups:
+  - storage.k8s.io
+  resources:
+  - storageclasses
+  verbs:
+  - watch
+  - get
+  - list
+- apiGroups:
   - monitoring.coreos.com
   resources:
   - servicemonitors
