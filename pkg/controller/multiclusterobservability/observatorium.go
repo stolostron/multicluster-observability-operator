@@ -40,38 +40,37 @@ const (
 
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
 func GenerateObservatoriumCR(
-	client client.Client, scheme *runtime.Scheme, reader client.Reader,
+	cl client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	labels := map[string]string{
 		"app": mco.Name,
 	}
 
-	storageClassSelected = mco.Spec.StorageConfig.StatefulSetStorageClass
+	storageClassSelected := mco.Spec.StorageConfig.StatefulSetStorageClass
 	// for the test, the reader is just nil
-	if reader != nil {
-		storageClassList := &storv1.StorageClassList{}
-		err := reader.List(context.TODO(), storageClassList)
-		if err != nil {
-			return &reconcile.Result{}, err
-		}
-		hasValidSC := false
-		storageClassDefault := ""
-		for _, storageClass := range storageClassList.Items {
-			if storageClass.ObjectMeta.Name == storageClassSelected {
-				hasValidSC = true
-				break
-			}
-			if storageClass.ObjectMeta.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
-				storageClassDefault = storageClass.ObjectMeta.Name
-			}
-		}
-		if !hasValidSC {
-			storageClassSelected = storageClassDefault
-		}
-		log.Info("storageClassSelected", "storageClassSelected", storageClassSelected)
-		log.Info("storageClassDefault", "storageClassDefault", storageClassDefault)
+	storageClassList := &storv1.StorageClassList{}
+	err := cl.List(context.TODO(), storageClassList, &client.ListOptions{})
+	if err != nil {
+		return &reconcile.Result{}, err
 	}
+	hasValidSC := false
+	storageClassDefault := ""
+	for _, storageClass := range storageClassList.Items {
+		if storageClass.ObjectMeta.Name == storageClassSelected {
+			hasValidSC = true
+			break
+		}
+		if storageClass.ObjectMeta.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
+			storageClassDefault = storageClass.ObjectMeta.Name
+		}
+	}
+	if !hasValidSC {
+		storageClassSelected = storageClassDefault
+	}
+
+	log.Info("storageClassSelected", "storageClassSelected", storageClassSelected)
+	log.Info("storageClassDefault", "storageClassDefault", storageClassDefault)
 
 	observatoriumCR := &observatoriumv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
@@ -89,7 +88,7 @@ func GenerateObservatoriumCR(
 
 	// Check if this Observatorium CR already exists
 	observatoriumCRFound := &observatoriumv1alpha1.Observatorium{}
-	err = client.Get(
+	err = cl.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      observatoriumCR.Name,
@@ -102,7 +101,7 @@ func GenerateObservatoriumCR(
 		log.Info("Creating a new observatorium CR",
 			"observatorium", observatoriumCR,
 		)
-		err = client.Create(context.TODO(), observatoriumCR)
+		err = cl.Create(context.TODO(), observatoriumCR)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -120,7 +119,7 @@ func GenerateObservatoriumCR(
 	if res := bytes.Compare(newSpecBytes, oldSpecBytes); res != 0 {
 		newObj := observatoriumCRFound.DeepCopy()
 		newObj.Spec = newSpec
-		err = client.Update(context.TODO(), newObj)
+		err = cl.Update(context.TODO(), newObj)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}

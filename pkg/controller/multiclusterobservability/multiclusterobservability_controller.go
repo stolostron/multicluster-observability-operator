@@ -221,7 +221,7 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 	}
 
 	// create an Observatorium CR
-	result, err = GenerateObservatoriumCR(r.client, r.scheme, r.apiReader, instance)
+	result, err = GenerateObservatoriumCR(r.client, r.scheme, instance)
 	if result != nil {
 		return *result, err
 	}
