@@ -35,7 +35,7 @@ const (
 	thanosImgName = "thanos"
 
 	readOnlyRoleName  = "read-only-metrics"
-	readWriteRoleName = "read-write-metrics"
+	writeOnlyRoleName = "write-only-metrics"
 )
 
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
@@ -257,13 +257,12 @@ func newAPIRBAC() observatoriumv1alpha1.APIRBAC {
 				},
 			},
 			{
-				Name: readWriteRoleName,
+				Name: writeOnlyRoleName,
 				Resources: []string{
 					"metrics",
 				},
 				Permissions: []observatoriumv1alpha1.Permission{
 					observatoriumv1alpha1.Write,
-					observatoriumv1alpha1.Read,
 				},
 				Tenants: []string{
 					mcoconfig.GetDefaultTenantName(),
@@ -284,9 +283,9 @@ func newAPIRBAC() observatoriumv1alpha1.APIRBAC {
 				},
 			},
 			{
-				Name: readWriteRoleName,
+				Name: writeOnlyRoleName,
 				Roles: []string{
-					readWriteRoleName,
+					writeOnlyRoleName,
 				},
 				Subjects: []observatoriumv1alpha1.Subject{
 					{
