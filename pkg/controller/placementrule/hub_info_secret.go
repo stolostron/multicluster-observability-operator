@@ -16,7 +16,7 @@ import (
 const (
 	hubInfoName = "hub-info-secret"
 	hubInfoKey  = "hub-info.yaml"
-	urlSubPath  = "api/metrics/v1/default/api/v1/receive"
+	urlSubPath  = "/api/metrics/v1/default/api/v1/receive"
 	protocol    = "https://"
 )
 
