@@ -323,7 +323,7 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 		statefulSetCounter := 0
 		allstatefulSetReady := true
 		getResourceConditions(podList, statefulSetList, watchingPods, watchingStatefulSets,
-			allPodsReady, allstatefulSetReady, podCounter, statefulSetCounter)
+			&allPodsReady, &allstatefulSetReady, &podCounter, &statefulSetCounter)
 
 		if podCounter == 0 || statefulSetCounter == 0 || allPodsReady != true ||
 			podCounter < len(watchingPods) || allstatefulSetReady != true || statefulSetCounter < len(watchingStatefulSets) {
@@ -460,13 +460,13 @@ func (r *ReconcileMultiClusterObservability) initFinalization(
 
 func getResourceConditions(podList *corev1.PodList, statefulSetList *appsv1.StatefulSetList,
 	watchingPods []string, watchingStatefulSets []string,
-	allPodsReady bool, allstatefulSetReady bool,
-	podCounter int, statefulSetCounter int,
+	allPodsReady *bool, allstatefulSetReady *bool,
+	podCounter *int, statefulSetCounter *int,
 ) {
 	for _, pod := range podList.Items {
 		for _, name := range watchingPods {
 			if strings.HasPrefix(pod.Name, name) {
-				podCounter++
+				*podCounter++
 				singlePodReady := false
 				for _, podCondition := range pod.Status.Conditions {
 					if podCondition.Type == "Ready" {
@@ -474,7 +474,7 @@ func getResourceConditions(podList *corev1.PodList, statefulSetList *appsv1.Stat
 					}
 				}
 				if singlePodReady == false {
-					allPodsReady = false
+					*allPodsReady = false
 				}
 			}
 		}
@@ -482,13 +482,13 @@ func getResourceConditions(podList *corev1.PodList, statefulSetList *appsv1.Stat
 	for _, statefulSet := range statefulSetList.Items {
 		for _, name := range watchingStatefulSets {
 			if strings.HasPrefix(statefulSet.Name, name) {
-				statefulSetCounter++
+				*statefulSetCounter++
 				singleStatefulSetReady := false
 				if statefulSet.Status.ReadyReplicas >= 1 {
 					singleStatefulSetReady = true
 				}
 				if singleStatefulSetReady == false {
-					allstatefulSetReady = false
+					*allstatefulSetReady = false
 				}
 			}
 		}
