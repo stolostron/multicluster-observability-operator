@@ -44,7 +44,7 @@ func TestLabelsForMultiClusterMonitoring(t *testing.T) {
 	}
 }
 
-func createObservatoriumApiService(name, namespace string) *corev1.Service {
+func createObservatoriumAPIService(name, namespace string) *corev1.Service {
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
@@ -59,6 +59,49 @@ func createObservatoriumApiService(name, namespace string) *corev1.Service {
 			},
 		},
 		Spec: corev1.ServiceSpec{},
+	}
+}
+
+func createReadyPod(name, namespace, podName string) *corev1.Pod {
+	ready := corev1.PodCondition{
+		Type: "Ready",
+	}
+	return &corev1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Pod",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      podName,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"observability.open-cluster-management.io/name": name,
+			},
+		},
+		Status: corev1.PodStatus{
+			Conditions: []corev1.PodCondition{
+				ready,
+			},
+		},
+	}
+}
+
+func createReadyStatefulSet(name, namespace, statefulSetName string) *appsv1.StatefulSet {
+	return &appsv1.StatefulSet{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "apps/v1",
+			Kind:       "StatefulSet",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      statefulSetName,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"observability.open-cluster-management.io/name": name,
+			},
+		},
+		Status: appsv1.StatefulSetStatus{
+			ReadyReplicas: 1,
+		},
 	}
 }
 
@@ -144,7 +187,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	placementv1.AddToScheme(s)
 	cert.AddToScheme(s)
 
-	svc := createObservatoriumApiService(name, namespace)
+	svc := createObservatoriumAPIService(name, namespace)
 	grafanaCert := newTestCert(GetGrafanaCerts(), namespace)
 	serverCert := newTestCert(GetServerCerts(), namespace)
 
@@ -165,29 +208,97 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		},
 	}
 
+	// Create empty client
 	_, err = r.Reconcile(req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-
 	updatedMCO := &mcov1beta1.MultiClusterObservability{}
 	err = cl.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	if updatedMCO.Status.Conditions[0].Failed.Message != "No deployment found." {
-		t.Fatalf("Failed to get correct MCO status, expect failed with no deployment")
+	if updatedMCO.Status.Conditions[0].Installing.Message != "Installing condition initializing" {
+		t.Fatalf("Failed to get correct MCO installing status, expect installing condition initializing")
 	}
 	log.Info("updated MultiClusterObservability successfully", "MultiClusterObservability", updatedMCO)
 
-	// A MultiClusterObservability object with metadata and spec.
-	mco = &mcov1beta1.MultiClusterObservability{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
-		Spec:       mcov1beta1.MultiClusterObservabilitySpec{},
+	// Update client with 1 pod 1 statefulSet
+	grafanaPod := createReadyPod(name, namespace, "grafana")
+	err = cl.Create(context.TODO(), grafanaPod)
+	if err != nil {
+		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
 	}
+	observatoriumThanosCompactSS := createReadyStatefulSet(name, namespace, name+"-observatorium-thanos-compact")
+	err = cl.Create(context.TODO(), observatoriumThanosCompactSS)
+	if err != nil {
+		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
+	}
+
+	_, err = r.Reconcile(req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+	updatedMCO = &mcov1beta1.MultiClusterObservability{}
+	err = r.client.Get(context.TODO(), req.NamespacedName, updatedMCO)
+	if err != nil {
+		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
+	}
+	if updatedMCO.Status.Conditions[0].Installing.Message != "Installing still in process" {
+		t.Fatalf("Failed to get correct MCO installing status, expect Installing still in process")
+	}
+
+	// Update client with all pods all statefulSet
+	observatoriumobservatoriumapiPod := createReadyPod(name, namespace, name+"-observatorium-observatorium-api")
+	err = cl.Create(context.TODO(), observatoriumobservatoriumapiPod)
+	if err != nil {
+		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
+	}
+	observatoriumthanosqueryPod := createReadyPod(name, namespace, name+"-observatorium-thanos-query")
+	err = cl.Create(context.TODO(), observatoriumthanosqueryPod)
+	if err != nil {
+		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
+	}
+	observatoriumthanosreceivecontrollerPod := createReadyPod(name, namespace, name+"-observatorium-thanos-receive-controller")
+	err = cl.Create(context.TODO(), observatoriumthanosreceivecontrollerPod)
+	if err != nil {
+		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
+	}
+	observatoriumthanosreceivedefaultSS := createReadyStatefulSet(name, namespace, name+"-observatorium-thanos-receive-default")
+	err = cl.Create(context.TODO(), observatoriumthanosreceivedefaultSS)
+	if err != nil {
+		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
+	}
+	observatoriumthanosruleSS := createReadyStatefulSet(name, namespace, name+"-observatorium-thanos-rule")
+	err = cl.Create(context.TODO(), observatoriumthanosruleSS)
+	if err != nil {
+		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
+	}
+	observatoriumthanosstorememcachedSS := createReadyStatefulSet(name, namespace, name+"-observatorium-thanos-store-memcached")
+	err = cl.Create(context.TODO(), observatoriumthanosstorememcachedSS)
+	if err != nil {
+		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
+	}
+	observatoriumthanosstoreshard0SS := createReadyStatefulSet(name, namespace, name+"-observatorium-thanos-store-shard-0")
+	err = cl.Create(context.TODO(), observatoriumthanosstoreshard0SS)
+	if err != nil {
+		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
+	}
+
+	_, err = r.Reconcile(req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+	updatedMCO = &mcov1beta1.MultiClusterObservability{}
+	err = r.client.Get(context.TODO(), req.NamespacedName, updatedMCO)
+	if err != nil {
+		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
+	}
+	if updatedMCO.Status.Conditions[0].Failed.Message != "No deployment found." {
+		t.Fatalf("Failed to get correct MCO installing status, expect Installed and showing Failed message")
+	}
+
 	readyDeployment := createReadyDeployment(name, namespace)
-	err = cl.Update(context.TODO(), mco)
 	err = cl.Create(context.TODO(), readyDeployment)
 	if err != nil {
 		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
