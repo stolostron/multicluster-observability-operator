@@ -45,6 +45,7 @@ rules:
   resources:
   - storageclasses
   verbs:
+  - watch
   - get
   - list
 - apiGroups:

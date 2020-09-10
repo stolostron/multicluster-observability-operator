@@ -40,33 +40,38 @@ const (
 
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
 func GenerateObservatoriumCR(
-	client client.Client, scheme *runtime.Scheme,
+	client client.Client, scheme *runtime.Scheme, reader client.Reader,
 	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	labels := map[string]string{
 		"app": mco.Name,
 	}
 
-	storageClassList := &storv1.StorageClassList{}
-	err := client.List(context.TODO(), storageClassList)
-	if err != nil {
-		return &reconcile.Result{}, err
-	}
-	storageClassSelected := ""
-	storageClassDefault := ""
-	for _, storageClass := range storageClassList.Items {
-		if storageClass.ObjectMeta.Name == mco.Spec.StorageConfig.StatefulSetStorageClass {
-			storageClassSelected = storageClass.ObjectMeta.Name
+	storageClassSelected = mco.Spec.StorageConfig.StatefulSetStorageClass
+	// for the test, the reader is just nil
+	if reader != nil {
+		storageClassList := &storv1.StorageClassList{}
+		err := reader.List(context.TODO(), storageClassList)
+		if err != nil {
+			return &reconcile.Result{}, err
 		}
-		if storageClass.ObjectMeta.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
-			storageClassDefault = storageClass.ObjectMeta.Name
+		hasValidSC := false
+		storageClassDefault := ""
+		for _, storageClass := range storageClassList.Items {
+			if storageClass.ObjectMeta.Name == storageClassSelected {
+				hasValidSC = true
+				break
+			}
+			if storageClass.ObjectMeta.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
+				storageClassDefault = storageClass.ObjectMeta.Name
+			}
 		}
+		if !hasValidSC {
+			storageClassSelected = storageClassDefault
+		}
+		log.Info("storageClassSelected", "storageClassSelected", storageClassSelected)
+		log.Info("storageClassDefault", "storageClassDefault", storageClassDefault)
 	}
-	if storageClassSelected == "" {
-		storageClassSelected = storageClassDefault
-	}
-	log.Info("storageClassSelected", "storageClassSelected", storageClassSelected)
-	log.Info("storageClassDefault", "storageClassDefault", storageClassDefault)
 
 	observatoriumCR := &observatoriumv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{

@@ -139,7 +139,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 		t.Errorf("Failed to generate monitoring CR: %v", err)
 	}
 
-	GenerateObservatoriumCR(cl, s, mco)
+	GenerateObservatoriumCR(cl, s, nil, mco)
 
 	// Check if this Observatorium CR already exists
 	observatoriumCRFound := &observatoriumv1alpha1.Observatorium{}
