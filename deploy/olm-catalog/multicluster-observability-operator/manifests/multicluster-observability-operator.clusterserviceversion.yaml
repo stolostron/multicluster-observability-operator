@@ -225,6 +225,14 @@ spec:
           - infrastructures
           verbs:
           - '*'
+        - apiGroups:
+          - storage.k8s.io
+          resources:
+          - storageclasses
+          verbs:
+          - watch
+          - get
+          - list
         serviceAccountName: multicluster-observability-operator
       deployments:
       - name: multicluster-observability-operator
