@@ -22,6 +22,10 @@ import (
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
+var (
+	storageClassName = ""
+)
+
 func TestNewVolumeClaimTemplate(t *testing.T) {
 	vct := newVolumeClaimTemplate("10Gi", "test")
 	if vct.Spec.AccessModes[0] != v1.ReadWriteOnce ||
@@ -31,7 +35,6 @@ func TestNewVolumeClaimTemplate(t *testing.T) {
 }
 
 func TestNewDefaultObservatoriumSpec(t *testing.T) {
-	storageClassName := "gp2"
 	statefulSetSize := "1Gi"
 	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
@@ -56,7 +59,7 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	}
 	mcoconfig.SetAnnotationImageInfo(mco.GetAnnotations())
 
-	obs := newDefaultObservatoriumSpec(mco)
+	obs := newDefaultObservatoriumSpec(mco, storageClassName)
 
 	imgRepo := util.GetAnnotation(mco.GetAnnotations(), mcoconfig.AnnotationKeyImageRepository)
 	imgVersion := util.GetAnnotation(mco.GetAnnotations(), mcoconfig.AnnotationKeyImageTagSuffix)
@@ -64,7 +67,7 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	ruleStorage := obs.Rule.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	storeStorage := obs.Store.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	compactStorage := obs.Compact.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
-	obs = newDefaultObservatoriumSpec(mco)
+	obs = newDefaultObservatoriumSpec(mco, storageClassName)
 	APIImg := imgRepo + "/observatorium:" + imgVersion
 	queryCacheImg := imgRepo + "/cortex:" + imgVersion
 	controllerImg := imgRepo + "/thanos-receive-controller:" + imgVersion
@@ -153,7 +156,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	)
 
 	oldSpec := observatoriumCRFound.Spec
-	newSpec := newDefaultObservatoriumSpec(mco)
+	newSpec := newDefaultObservatoriumSpec(mco, storageClassName)
 	oldSpecBytes, _ := yaml.Marshal(oldSpec)
 	newSpecBytes, _ := yaml.Marshal(newSpec)
 

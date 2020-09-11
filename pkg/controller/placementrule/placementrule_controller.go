@@ -354,7 +354,7 @@ func createManagedClusterRes(client client.Client,
 	org := multiclusterobservability.GetManagedClusterOrg()
 	spec := multiclusterobservability.CreateCertificateSpec(certsName, true,
 		multiclusterobservability.GetClientCAIssuer(), false,
-		certificateName, []string{org}, []string{})
+		"mc-"+name, []string{org}, []string{})
 	err := multiclusterobservability.CreateCertificate(client, nil, nil,
 		certificateName, namespace, spec)
 	if err != nil {
