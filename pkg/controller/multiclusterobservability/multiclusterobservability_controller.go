@@ -277,75 +277,7 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 		return &reconcile.Result{}, err
 	}
 
-	installingCondition := mcov1beta1.MCOCondition{}
-	if len(mco.Status.Conditions) == 0 {
-		installingCondition = mcov1beta1.MCOCondition{
-			Type:    "Installing",
-			Reason:  "Installing",
-			Message: "Installing condition initializing",
-		}
-	} else if mco.Status.Conditions[0].Type == "Installing" {
-		installingCondition = mco.Status.Conditions[0]
-		watchingPods := []string{
-			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-observatorium-api"}, "-"),
-			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-query"}, "-"),
-			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-receive-controller"}, "-"),
-			"grafana",
-		}
-		podList := &corev1.PodList{}
-		podListOpts := []client.ListOption{
-			client.InNamespace(mco.Namespace),
-		}
-		err = r.client.List(context.TODO(), podList, podListOpts...)
-		if err != nil {
-			reqLogger.Error(err, "Failed to list pods.",
-				"MultiClusterObservability.Namespace", mco.Namespace,
-			)
-			return &reconcile.Result{}, err
-		}
-		podCounter := 0
-		allPodsReady := true
-		watchingStatefulSets := []string{
-			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-compact"}, "-"),
-			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-receive-default"}, "-"),
-			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-rule"}, "-"),
-			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-store-memcached"}, "-"),
-			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-store-shard-0"}, "-"),
-		}
-		statefulSetList := &appsv1.StatefulSetList{}
-		statefulSetListOpts := []client.ListOption{
-			client.InNamespace(mco.Namespace),
-		}
-		err = r.client.List(context.TODO(), statefulSetList, statefulSetListOpts...)
-		if err != nil {
-			reqLogger.Error(err, "Failed to list statefulSets.",
-				"MultiClusterObservability.Namespace", mco.Namespace,
-			)
-			return &reconcile.Result{}, err
-		}
-		statefulSetCounter := 0
-		allstatefulSetReady := true
-		getResourceConditions(podList, statefulSetList, watchingPods, watchingStatefulSets,
-			&allPodsReady, &allstatefulSetReady, &podCounter, &statefulSetCounter)
-
-		if podCounter == 0 || statefulSetCounter == 0 || allPodsReady != true ||
-			podCounter < len(watchingPods) || allstatefulSetReady != true || statefulSetCounter < len(watchingStatefulSets) {
-			installingCondition = mcov1beta1.MCOCondition{
-				Type:    "Installing",
-				Reason:  "Installing",
-				Message: "Installing still in process",
-			}
-		} else {
-			installingCondition = mcov1beta1.MCOCondition{
-				Type: "Ready",
-			}
-		}
-	} else {
-		installingCondition = mcov1beta1.MCOCondition{
-			Type: "Ready",
-		}
-	}
-
+	installingCondition := CheckInstallStatus(r.client, mco)
 	conditions := []mcov1beta1.MCOCondition{}
 	allDeploymentReady := true
 	failedDeployment := ""
@@ -398,12 +330,12 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 				Message: failedMessage,
 			}
 			conditions = append(conditions, failed)
-		}
-	}
 
-	s3condition := CheckS3Conf(r.client, mco)
-	if s3condition != nil {
-		conditions = append(conditions, *s3condition)
+			s3condition := CheckS3Conf(r.client, mco)
+			if s3condition != nil {
+				conditions = append(conditions, *s3condition)
+			}
+		}
 	}
 
 	mco.Status.Conditions = conditions
@@ -492,6 +424,81 @@ func getResourceConditions(podList *corev1.PodList, statefulSetList *appsv1.Stat
 		}
 	}
 	return
+}
+
+func CheckInstallStatus(c client.Client,
+	mco *mcov1beta1.MultiClusterObservability) mcov1beta1.MCOCondition {
+
+	installingCondition := mcov1beta1.MCOCondition{}
+	if len(mco.Status.Conditions) == 0 {
+		installingCondition = mcov1beta1.MCOCondition{
+			Type:    "Installing",
+			Reason:  "Installing",
+			Message: "Installing condition initializing",
+		}
+	} else if mco.Status.Conditions[0].Type == "Installing" {
+		installingCondition = mco.Status.Conditions[0]
+		watchingPods := []string{
+			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-observatorium-api"}, "-"),
+			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-query"}, "-"),
+			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-receive-controller"}, "-"),
+			"grafana",
+		}
+		podList := &corev1.PodList{}
+		podListOpts := []client.ListOption{
+			client.InNamespace(mco.Namespace),
+		}
+		err := c.List(context.TODO(), podList, podListOpts...)
+		if err != nil {
+			log.Error(err, "Failed to list pods.",
+				"MultiClusterObservability.Namespace", mco.Namespace,
+			)
+			return installingCondition
+		}
+		podCounter := 0
+		allPodsReady := true
+		watchingStatefulSets := []string{
+			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-compact"}, "-"),
+			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-receive-default"}, "-"),
+			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-rule"}, "-"),
+			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-store-memcached"}, "-"),
+			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-store-shard-0"}, "-"),
+		}
+		statefulSetList := &appsv1.StatefulSetList{}
+		statefulSetListOpts := []client.ListOption{
+			client.InNamespace(mco.Namespace),
+		}
+		err = c.List(context.TODO(), statefulSetList, statefulSetListOpts...)
+		if err != nil {
+			log.Error(err, "Failed to list statefulSets.",
+				"MultiClusterObservability.Namespace", mco.Namespace,
+			)
+			return installingCondition
+		}
+		statefulSetCounter := 0
+		allstatefulSetReady := true
+		getResourceConditions(podList, statefulSetList, watchingPods, watchingStatefulSets,
+			&allPodsReady, &allstatefulSetReady, &podCounter, &statefulSetCounter)
+
+		if podCounter == 0 || statefulSetCounter == 0 || allPodsReady != true ||
+			podCounter < len(watchingPods) || allstatefulSetReady != true || statefulSetCounter < len(watchingStatefulSets) {
+			installingCondition = mcov1beta1.MCOCondition{
+				Type:    "Installing",
+				Reason:  "Installing",
+				Message: "Installing still in process",
+			}
+		} else {
+			installingCondition = mcov1beta1.MCOCondition{
+				Type: "Ready",
+			}
+		}
+	} else {
+		installingCondition = mcov1beta1.MCOCondition{
+			Type: "Ready",
+		}
+	}
+
+	return installingCondition
 }
 
 func CheckS3Conf(c client.Client,
