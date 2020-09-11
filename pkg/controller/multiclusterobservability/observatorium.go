@@ -176,7 +176,9 @@ func GenerateAPIGatewayRoute(
 	return nil, nil
 }
 
-func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) *observatoriumv1alpha1.ObservatoriumSpec {
+func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability,
+	scSelected string) *observatoriumv1alpha1.ObservatoriumSpec {
+
 	obs := &observatoriumv1alpha1.ObservatoriumSpec{}
 	obs.API.RBAC = newAPIRBAC()
 	obs.API.Tenants = newAPITenants()
@@ -321,7 +323,9 @@ func newAPITLS() observatoriumv1alpha1.TLS {
 	}
 }
 
-func newReceiversSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) observatoriumv1alpha1.ReceiversSpec {
+func newReceiversSpec(
+	mco *mcov1beta1.MultiClusterObservability,
+	scSelected string) observatoriumv1alpha1.ReceiversSpec {
 	receSpec := observatoriumv1alpha1.ReceiversSpec{}
 	receSpec.Image = defaultThanosImage
 	receSpec.Version = defaultThanosVersion
