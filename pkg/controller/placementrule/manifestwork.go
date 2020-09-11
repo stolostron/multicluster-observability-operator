@@ -20,9 +20,8 @@ import (
 )
 
 const (
-	workName              = "endpoint-observability-work"
-	configMapName         = "observability-metrics-whitelist"
-	internalConfigMapName = "observability-metrics-whitelist-internal"
+	workName      = "endpoint-observability-work"
+	configMapName = "observability-metrics-whitelist"
 )
 
 var (
@@ -246,12 +245,7 @@ func getMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 		err := client.Get(context.TODO(), namespacedName, found)
 		if err != nil {
 			log.Error(err, "Failed to get metrics whitelist configmap")
-			namespacedName.Name = internalConfigMapName
-			err1 := client.Get(context.TODO(), namespacedName, found)
-			if err1 != nil {
-				log.Error(err, "Failed to get internal metrics whitelist configmap")
-				return nil, err
-			}
+			return nil, err
 		}
 		metricsWhitelist.Data = found.Data
 	}
