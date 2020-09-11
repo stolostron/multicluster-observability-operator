@@ -23,6 +23,7 @@ var compFns = map[string]compFn{
 	"ClusterRole":        compareClusterRoles,
 	"ClusterRoleBinding": compareClusterRoleBindings,
 	"Secret":             compareSecrets,
+	"ConfigMap":          compareConfigMap,
 }
 
 // GetK8sObj is used to get k8s struct based on the passed-in Kind name
@@ -35,6 +36,7 @@ func GetK8sObj(kind string) runtime.Object {
 		"ServiceAccount":        &corev1.ServiceAccount{},
 		"PersistentVolumeClaim": &corev1.PersistentVolumeClaim{},
 		"Secret":                &corev1.Secret{},
+		"ConfigMap":             &corev1.ConfigMap{},
 	}
 	return objs[kind]
 }
@@ -152,6 +154,20 @@ func compareSecrets(obj1 runtime.Object, obj2 runtime.Object) bool {
 	}
 	if !reflect.DeepEqual(s1.Data, s2.Data) {
 		log.Info("Find updated data in secret", "secret", s1.Name)
+		return false
+	}
+	return true
+}
+
+func compareConfigMap(obj1 runtime.Object, obj2 runtime.Object) bool {
+	cm1 := obj1.(*corev1.ConfigMap)
+	cm2 := obj2.(*corev1.ConfigMap)
+	if cm1.Name != cm2.Name || cm1.Namespace != cm2.Namespace {
+		log.Info("Find updated name/namespace for configmap", "configmap", cm1.Name)
+		return false
+	}
+	if !reflect.DeepEqual(cm1.Data, cm2.Data) {
+		log.Info("Find updated data in secret", "secret", cm1.Name)
 		return false
 	}
 	return true
