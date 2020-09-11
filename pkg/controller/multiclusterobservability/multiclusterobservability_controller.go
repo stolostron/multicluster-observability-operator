@@ -505,7 +505,7 @@ func CheckS3Conf(c client.Client,
 
 	failed := mcov1beta1.MCOCondition{
 		Type:   "Failed",
-		Reason: "Failed",
+		Reason: "Check s3 configuration",
 	}
 
 	err := c.Get(context.TODO(), namespacedName, secret)
