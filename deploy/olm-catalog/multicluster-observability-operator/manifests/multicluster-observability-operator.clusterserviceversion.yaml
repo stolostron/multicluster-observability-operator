@@ -64,6 +64,7 @@ spec:
           - configmaps
           - secrets
           - serviceaccounts
+          - namespaces
           verbs:
           - create
           - delete
@@ -87,6 +88,14 @@ spec:
           - patch
           - update
           - watch
+        - apiGroups:
+          - storage.k8s.io
+          resources:
+          - storageclasses
+          verbs:
+          - watch
+          - get
+          - list
         - apiGroups:
           - monitoring.coreos.com
           resources:
@@ -226,13 +235,11 @@ spec:
           verbs:
           - '*'
         - apiGroups:
-          - storage.k8s.io
+          - certmanager.k8s.io
           resources:
-          - storageclasses
+          - '*'
           verbs:
-          - watch
-          - get
-          - list
+          - '*'
         serviceAccountName: multicluster-observability-operator
       deployments:
       - name: multicluster-observability-operator

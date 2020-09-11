@@ -118,59 +118,17 @@ spec:
             of MultiClusterObservability
           properties:
             conditions:
-              description: Represents the condition of each deployment
+              description: Represents the status of each deployment
               items:
-                description: MCOCondition defines the aggregated condition of MCO
+                description: MCOCondition defines the aggregated state of entire MultiClusterObservability
+                  CR
                 properties:
-                  installing:
-                    description: Shows if a deployment is installing
-                    properties:
-                      type:
-                        description: Defines type of MCO CR installing condition
-                        type: string
-                      reason:
-                        description: Shows reason of MCO CR installing condition
-                        type: string
-                      message:
-                        description: Shows message MCO CR installing condition
-                        type: string
-                    type: object
-                  ready: 
-                    description: Shown if a deployment is ready
-                    properties:
-                      type:
-                        description: Defines type of MCOCondition
-                        type: string
-                      reason:
-                        description: Shows reason of MCOCondition
-                        type: string
-                      message:
-                        description: Shows exact message get from depolyments
-                        type: string
-                    type: object
-                  enableMetrics:
-                    description: Shown only when add-on is enabled and metrics is disabled
-                    properties:
-                      type:
-                        description: Only shows disabled
-                        type: string
-                      message:
-                        description: Only shows when is disabled
-                        type: string
-                    type: object
-                  failed:
-                    description: Shown if a deployment is ready
-                    properties:
-                      type:
-                        description: Defines type of MCOCondition
-                        type: string
-                      reason:
-                        description: Shows reason of MCOCondition
-                        type: string
-                      message:
-                        description: Shows exact message get from depolyments
-                        type: string
-                    type: object
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                  type:
+                    type: string
                 type: object
               type: array
           type: object

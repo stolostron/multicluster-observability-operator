@@ -176,7 +176,14 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
-		Spec:       mcov1beta1.MultiClusterObservabilitySpec{},
+		Spec: mcov1beta1.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta1.StorageConfigObject{
+				MetricObjectStorage: &mcov1beta1.PreConfiguredStorage{
+					Key:  "test",
+					Name: "test",
+				},
+			},
+		},
 	}
 
 	// Register operator types with the runtime scheme.
