@@ -176,7 +176,14 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
-		Spec:       mcov1beta1.MultiClusterObservabilitySpec{},
+		Spec: mcov1beta1.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta1.StorageConfigObject{
+				MetricObjectStorage: &mcov1beta1.PreConfiguredStorage{
+					Key:  "test",
+					Name: "test",
+				},
+			},
+		},
 	}
 
 	// Register operator types with the runtime scheme.
@@ -218,7 +225,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	if updatedMCO.Status.Conditions[0].Installing.Message != "Installing condition initializing" {
+	if updatedMCO.Status.Conditions[0].Message != "Installing condition initializing" {
 		t.Fatalf("Failed to get correct MCO installing status, expect installing condition initializing")
 	}
 	log.Info("updated MultiClusterObservability successfully", "MultiClusterObservability", updatedMCO)
@@ -244,7 +251,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	if updatedMCO.Status.Conditions[0].Installing.Message != "Installing still in process" {
+	if updatedMCO.Status.Conditions[0].Message != "Installing still in process" {
 		t.Fatalf("Failed to get correct MCO installing status, expect Installing still in process")
 	}
 
@@ -294,7 +301,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	if updatedMCO.Status.Conditions[0].Failed.Message != "No deployment found." {
+	if updatedMCO.Status.Conditions[0].Message != "No deployment found." {
 		t.Fatalf("Failed to get correct MCO installing status, expect Installed and showing Failed message")
 	}
 
@@ -313,7 +320,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	if updatedMCO.Status.Conditions[0].Ready.Type != "Ready" {
+	if updatedMCO.Status.Conditions[0].Type != "Ready" {
 		t.Fatalf("Failed to get correct MCO status, expect Ready")
 	}
 	log.Info("updated MultiClusterObservability successfully", "MultiClusterObservability", updatedMCO)
@@ -333,7 +340,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	if updatedMCO.Status.Conditions[0].Failed.Message != "Deployment failed for monitoring-fake-failed-deployment" {
+	if updatedMCO.Status.Conditions[0].Message != "Deployment failed for monitoring-fake-failed-deployment" {
 		t.Fatalf("Failed to get correct MCO status, expect failed with failed deployment")
 	}
 	log.Info("updated MultiClusterObservability successfully", "MultiClusterObservability", updatedMCO)
@@ -348,5 +355,81 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	_, err = r.Reconcile(req)
 	if err != nil {
 		t.Fatalf("reconcile for finalizer: (%v)", err)
+	}
+}
+
+func TestCheckS3Conf(t *testing.T) {
+	mco := &mcov1beta1.MultiClusterObservability{
+		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
+		Spec: mcov1beta1.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta1.StorageConfigObject{
+				MetricObjectStorage: &mcov1beta1.PreConfiguredStorage{
+					Key:  "test",
+					Name: "test",
+				},
+			},
+		},
+	}
+
+	s := scheme.Scheme
+	mcov1beta1.SchemeBuilder.AddToScheme(s)
+	objs := []runtime.Object{mco}
+	c := fake.NewFakeClient(objs...)
+	mcoCondition := CheckS3Conf(c, mco)
+	if mcoCondition == nil {
+		t.Errorf("check s3 conf failed: got %v, expected non-nil", mcoCondition)
+	}
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "test",
+		},
+
+		Type: "Opaque",
+		StringData: map[string]string{"test": `type: s3
+config:
+  bucket: bucket
+  endpoint: endpoint
+  insecure: true
+  access_key: access_key
+  secret_key: secret_key`},
+	}
+
+	err := c.Create(context.TODO(), secret)
+	if err != nil {
+		t.Fatalf("Failed to create secret: (%v)", err)
+	}
+
+	mcoCondition = CheckS3Conf(c, mco)
+	if mcoCondition != nil {
+		t.Errorf("check s3 conf failed: got %v, expected nil", mcoCondition)
+	}
+
+	secret = &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "test",
+		},
+
+		Type: "Opaque",
+		StringData: map[string]string{"error": `type: s3
+config:
+  bucket: bucket
+  endpoint: endpoint
+  insecure: true
+  access_key: access_key
+  secret_key: secret_key`},
+	}
+
+	err = c.Update(context.TODO(), secret)
+	if err != nil {
+		t.Fatalf("Failed to update secret: (%v)", err)
+	}
+
+	mcoCondition = CheckS3Conf(c, mco)
+	if mcoCondition == nil {
+		t.Errorf("check s3 conf failed: got %v, expected no-nil", mcoCondition)
 	}
 }
