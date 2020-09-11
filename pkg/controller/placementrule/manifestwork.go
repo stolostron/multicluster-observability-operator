@@ -252,9 +252,8 @@ func getMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 				log.Error(err, "Failed to get internal metrics whitelist configmap")
 				return nil, err
 			}
-		} else {
-			metricsWhitelist.Data = found.Data
 		}
+		metricsWhitelist.Data = found.Data
 	}
 	return metricsWhitelist, nil
 }
