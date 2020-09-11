@@ -126,47 +126,8 @@ type MultiClusterObservabilityStatus struct {
 
 // MCOCondition defines the aggregated state of entire MultiClusterObservability CR
 type MCOCondition struct {
-	//Return the installing status of dependent deployments of MCO CR
-	// +optional
-	Installing Installing `json:"installing"`
-
-	// Return ready if deployment is ready, not present if it is failed
-	// +optional
-	Ready Ready `json:"ready,omitempty"`
-
-	// Return ready if deployment is ready, not present if it is failed
-	// +optional
-	EnableMetrics EnableMetrics `json:"enableMetrics,omitempty"`
-
-	// Return failed if deployment is failed, not present if it is ready
-	// +optional
-	Failed Failed `json:"fail,omitempty"`
-}
-
-// Installing defines the installing status of MCO CR
-type Installing struct {
-	Type 	string `json:"type"`
-	Reason  string `json:"reason"`
-	Message string `json:"message"`
-}
-
-// Ready defines the ready status of MCO CR
-type Ready struct {
 	Type    string `json:"type,omitempty"`
 	Reason  string `json:"reason,omitempty"`
-	Message string `json:"message,omitempty"`
-}
-
-// Failed defines the failed status of MCO CR
-type Failed struct {
-	Type    string `json:"type,omitempty"`
-	Reason  string `json:"reason,omitempty"`
-	Message string `json:"message,omitempty"`
-}
-
-// EnableMetrics defines the metrics status, shown if MCO Addon is enabled and EnableMetrics is disabled
-type EnableMetrics struct {
-	Type string `json:"type,omitempty"`
 	Message string `json:"message,omitempty"`
 }
 
