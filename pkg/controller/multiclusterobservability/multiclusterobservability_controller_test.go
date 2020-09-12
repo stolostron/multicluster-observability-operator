@@ -14,6 +14,7 @@ import (
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"
+	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -372,6 +373,21 @@ func TestCheckS3Conf(t *testing.T) {
 		},
 	}
 
+	s3Conf := &mcoconfig.ObjectStorgeConf{
+		Type: "s3",
+		Config: mcoconfig.Config{
+			Bucket:    "bucket",
+			Endpoint:  "endpoint",
+			Insecure:  true,
+			AccessKey: "access_key",
+			SecretKey: "secret_key`",
+		},
+	}
+	configYaml, err := yaml.Marshal(s3Conf)
+
+	configYamlMap := map[string][]byte{}
+	configYamlMap["test"] = configYaml
+
 	s := scheme.Scheme
 	mcov1beta1.SchemeBuilder.AddToScheme(s)
 	objs := []runtime.Object{mco}
@@ -386,18 +402,11 @@ func TestCheckS3Conf(t *testing.T) {
 			Name:      "test",
 			Namespace: "test",
 		},
-
 		Type: "Opaque",
-		StringData: map[string]string{"test": `type: s3
-config:
-  bucket: bucket
-  endpoint: endpoint
-  insecure: true
-  access_key: access_key
-  secret_key: secret_key`},
+		Data: configYamlMap,
 	}
 
-	err := c.Create(context.TODO(), secret)
+	err = c.Create(context.TODO(), secret)
 	if err != nil {
 		t.Fatalf("Failed to create secret: (%v)", err)
 	}
@@ -407,20 +416,14 @@ config:
 		t.Errorf("check s3 conf failed: got %v, expected nil", mcoCondition)
 	}
 
+	configYamlMap = map[string][]byte{}
+	configYamlMap["error"] = configYaml
 	secret = &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
 			Namespace: "test",
 		},
-
-		Type: "Opaque",
-		StringData: map[string]string{"error": `type: s3
-config:
-  bucket: bucket
-  endpoint: endpoint
-  insecure: true
-  access_key: access_key
-  secret_key: secret_key`},
+		Data: configYamlMap,
 	}
 
 	err = c.Update(context.TODO(), secret)

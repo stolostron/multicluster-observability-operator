@@ -14,7 +14,7 @@ import (
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -150,7 +150,7 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 	instance := &mcov1beta1.MultiClusterObservability{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
@@ -261,6 +261,7 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	reqLogger := log.WithValues("Request.Namespace", mco.Namespace, "Request.Name", mco.Name)
+	requeue := false
 
 	deployList := &appsv1.DeploymentList{}
 	deploymentListOpts := []client.ListOption{
@@ -289,51 +290,57 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 		}
 	}
 
-	if installingCondition.Type != "Ready" {
-		conditions = append(conditions, installingCondition)
-	} else if len(deployList.Items) == 0 {
-		conditions = append(conditions, mcov1beta1.MCOCondition{
-			Type:    "Failed",
-			Reason:  "Failed",
-			Message: "No deployment found.",
-		})
+	// validate s3 conf
+	s3condition := CheckS3Conf(r.client, mco)
+	if s3condition != nil {
+		conditions = append(conditions, *s3condition)
+		requeue = true
 	} else {
-		if allDeploymentReady {
-			ready := mcov1beta1.MCOCondition{}
-			if mco.Spec.ObservabilityAddonSpec != nil && mco.Spec.ObservabilityAddonSpec.EnableMetrics == false {
-				ready = mcov1beta1.MCOCondition{
-					Type:    "Ready",
-					Reason:  "Ready",
-					Message: "Observability components deployed and running",
-				}
-				conditions = append(conditions, ready)
-				enableMetrics := mcov1beta1.MCOCondition{
-					Type:    "Disabled",
-					Reason:  "Disabled",
-					Message: "Enable metrics is set to false in MCO Addon Spec",
-				}
-				conditions = append(conditions, enableMetrics)
-			} else {
-				ready = mcov1beta1.MCOCondition{
-					Type:    "Ready",
-					Reason:  "Ready",
-					Message: "Observability components deployed and running",
-				}
-				conditions = append(conditions, ready)
-			}
-
-		} else {
-			failedMessage := fmt.Sprintf("Deployment failed for %s", failedDeployment)
-			failed := mcov1beta1.MCOCondition{
+		if installingCondition.Type != "Ready" {
+			conditions = append(conditions, installingCondition)
+			requeue = true
+		} else if len(deployList.Items) == 0 {
+			conditions = append(conditions, mcov1beta1.MCOCondition{
 				Type:    "Failed",
 				Reason:  "Failed",
-				Message: failedMessage,
-			}
-			conditions = append(conditions, failed)
+				Message: "No deployment found.",
+			})
+			requeue = true
+		} else {
+			if allDeploymentReady {
+				ready := mcov1beta1.MCOCondition{}
+				requeue = false
+				if mco.Spec.ObservabilityAddonSpec != nil && mco.Spec.ObservabilityAddonSpec.EnableMetrics == false {
+					ready = mcov1beta1.MCOCondition{
+						Type:    "Ready",
+						Reason:  "Ready",
+						Message: "Observability components are deployed and running",
+					}
+					conditions = append(conditions, ready)
+					enableMetrics := mcov1beta1.MCOCondition{
+						Type:    "Disabled",
+						Reason:  "Disabled",
+						Message: "Collect metrics from the managed clusters is disabled",
+					}
+					conditions = append(conditions, enableMetrics)
+				} else {
+					ready = mcov1beta1.MCOCondition{
+						Type:    "Ready",
+						Reason:  "Ready",
+						Message: "Observability components are deployed and running",
+					}
+					conditions = append(conditions, ready)
+				}
 
-			s3condition := CheckS3Conf(r.client, mco)
-			if s3condition != nil {
-				conditions = append(conditions, *s3condition)
+			} else {
+				failedMessage := fmt.Sprintf("Deployment is failed for %s", failedDeployment)
+				failed := mcov1beta1.MCOCondition{
+					Type:    "Failed",
+					Reason:  "Failed",
+					Message: failedMessage,
+				}
+				conditions = append(conditions, failed)
+				requeue = true
 			}
 		}
 	}
@@ -341,7 +348,7 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 	mco.Status.Conditions = conditions
 	err = r.client.Status().Update(context.TODO(), mco)
 	if err != nil {
-		if errors.IsConflict(err) {
+		if apierrors.IsConflict(err) {
 			// Error from object being modified is normal behavior and should not be treated like an error
 			log.Info("Failed to update status", "Reason", "Object has been modified")
 			return &reconcile.Result{RequeueAfter: time.Second}, nil
@@ -349,6 +356,9 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 
 		log.Error(err, fmt.Sprintf("Failed to update %s/%s status ", mco.Namespace, mco.Name))
 		return &reconcile.Result{}, err
+	}
+	if requeue {
+		return &reconcile.Result{RequeueAfter: time.Second * 2}, nil
 	}
 	return nil, nil
 }
@@ -434,7 +444,7 @@ func CheckInstallStatus(c client.Client,
 		installingCondition = mcov1beta1.MCOCondition{
 			Type:    "Installing",
 			Reason:  "Installing",
-			Message: "Installing condition initializing",
+			Message: "Installation is in progress",
 		}
 	} else if mco.Status.Conditions[0].Type == "Installing" {
 		installingCondition = mco.Status.Conditions[0]
@@ -485,7 +495,7 @@ func CheckInstallStatus(c client.Client,
 			installingCondition = mcov1beta1.MCOCondition{
 				Type:    "Installing",
 				Reason:  "Installing",
-				Message: "Installing still in process",
+				Message: "Installation is still in process",
 			}
 		} else {
 			installingCondition = mcov1beta1.MCOCondition{
@@ -512,7 +522,7 @@ func CheckS3Conf(c client.Client,
 
 	failed := mcov1beta1.MCOCondition{
 		Type:   "Failed",
-		Reason: "Check s3 configuration",
+		Reason: "Failed",
 	}
 
 	err := c.Get(context.TODO(), namespacedName, secret)
@@ -521,13 +531,13 @@ func CheckS3Conf(c client.Client,
 		return &failed
 	}
 
-	data, ok := secret.StringData[objStorageConf.Key]
+	data, ok := secret.Data[objStorageConf.Key]
 	if !ok {
-		failed.Message = "Failed to found object storage conf"
+		failed.Message = "Failed to found the object storage configuration"
 		return &failed
 	}
 
-	ok, err = util.IsValidS3Conf([]byte(data))
+	ok, err = config.IsValidS3Conf(data)
 	if !ok {
 		failed.Message = err.Error()
 		return &failed
