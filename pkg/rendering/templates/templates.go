@@ -78,6 +78,11 @@ func (r *TemplateRenderer) GetTemplates(
 		return resourceList, err
 	}
 
+	// add config template
+	if err := r.AddTemplateFromPath(basePath+"/config", &resourceList); err != nil {
+		return resourceList, err
+	}
+
 	return resourceList, nil
 }
 

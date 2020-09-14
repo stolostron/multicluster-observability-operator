@@ -22,7 +22,7 @@ import (
 
 const (
 	pullSecretName   = "test-pull-secret"
-	mainfestworkSize = 9
+	mainfestworkSize = 10
 )
 
 func newTestMCO() *mcov1beta1.MultiClusterObservability {
@@ -78,11 +78,25 @@ func newCertSecret(namespaces ...string) *corev1.Secret {
 	}
 }
 
+func newMetricsWhiteListCM() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      configMapName,
+			Namespace: mcoNamespace,
+		},
+		Data: map[string]string{"metrics_list.yaml": `
+default:
+	- a
+	- b
+`},
+	}
+}
+
 func TestManifestWork(t *testing.T) {
 	initSchema(t)
 
 	objs := []runtime.Object{newSATokenSecret(), newTestSA(), newTestInfra(),
-		newTestRoute(), newCASecret(), newCertSecret()}
+		newTestRoute(), newCASecret(), newCertSecret(), newMetricsWhiteListCM()}
 	c := fake.NewFakeClient(objs...)
 
 	wd, err := os.Getwd()

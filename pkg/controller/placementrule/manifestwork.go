@@ -20,7 +20,12 @@ import (
 )
 
 const (
-	workName = "endpoint-observability-work"
+	workName      = "endpoint-observability-work"
+	configMapName = "observability-metrics-whitelist"
+)
+
+var (
+	metricsWhitelist = &corev1.ConfigMap{}
 )
 
 func deleteManifestWork(client client.Client, namespace string) error {
@@ -114,6 +119,13 @@ func createManifestWork(client client.Client, clusterNamespace string,
 		return err
 	}
 	manifests = injectIntoWork(manifests, certs)
+
+	// inject the metrics whitelist configmap
+	mList, err := getMetricsListCM(client)
+	if err != nil {
+		return err
+	}
+	manifests = injectIntoWork(manifests, mList)
 
 	work.Spec.Workload.Manifests = manifests
 
@@ -210,4 +222,32 @@ func getCerts(client client.Client, namespace string) (*corev1.Secret, error) {
 			"tls.key": certs.Data["tls.key"],
 		},
 	}, nil
+}
+
+func getMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
+	if metricsWhitelist.Name == "" {
+		metricsWhitelist = &corev1.ConfigMap{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: corev1.SchemeGroupVersion.String(),
+				Kind:       "ConfigMap",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      configMapName,
+				Namespace: spokeNameSpace,
+			},
+		}
+
+		found := &corev1.ConfigMap{}
+		namespacedName := types.NamespacedName{
+			Name:      configMapName,
+			Namespace: config.GetDefaultNamespace(),
+		}
+		err := client.Get(context.TODO(), namespacedName, found)
+		if err != nil {
+			log.Error(err, "Failed to get metrics whitelist configmap")
+			return nil, err
+		}
+		metricsWhitelist.Data = found.Data
+	}
+	return metricsWhitelist, nil
 }
