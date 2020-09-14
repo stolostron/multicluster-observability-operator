@@ -34,7 +34,11 @@ import (
 )
 
 const (
-	certFinalizer = "observability.open-cluster-management.io/cert-cleanup"
+	certFinalizer   = "observability.open-cluster-management.io/cert-cleanup"
+	Installing      = "Installing"
+	Failed          = "Failed"
+	Ready           = "Ready"
+	MetricsDisabled = "Disabled"
 )
 
 var (
@@ -301,8 +305,8 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 			requeue = true
 		} else if len(deployList.Items) == 0 {
 			conditions = append(conditions, mcov1beta1.MCOCondition{
-				Type:    "Failed",
-				Reason:  "Failed",
+				Type:    Failed,
+				Reason:  Failed,
 				Message: "No deployment found.",
 			})
 			requeue = true
@@ -312,21 +316,21 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 				requeue = false
 				if mco.Spec.ObservabilityAddonSpec != nil && mco.Spec.ObservabilityAddonSpec.EnableMetrics == false {
 					ready = mcov1beta1.MCOCondition{
-						Type:    "Ready",
-						Reason:  "Ready",
+						Type:    Ready,
+						Reason:  Ready,
 						Message: "Observability components are deployed and running",
 					}
 					conditions = append(conditions, ready)
 					enableMetrics := mcov1beta1.MCOCondition{
-						Type:    "Disabled",
-						Reason:  "Disabled",
+						Type:    MetricsDisabled,
+						Reason:  MetricsDisabled,
 						Message: "Collect metrics from the managed clusters is disabled",
 					}
 					conditions = append(conditions, enableMetrics)
 				} else {
 					ready = mcov1beta1.MCOCondition{
-						Type:    "Ready",
-						Reason:  "Ready",
+						Type:    Ready,
+						Reason:  Ready,
 						Message: "Observability components are deployed and running",
 					}
 					conditions = append(conditions, ready)
@@ -335,8 +339,8 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 			} else {
 				failedMessage := fmt.Sprintf("Deployment is failed for %s", failedDeployment)
 				failed := mcov1beta1.MCOCondition{
-					Type:    "Failed",
-					Reason:  "Failed",
+					Type:    Failed,
+					Reason:  Failed,
 					Message: failedMessage,
 				}
 				conditions = append(conditions, failed)
@@ -409,7 +413,7 @@ func getResourceConditions(podList *corev1.PodList, statefulSetList *appsv1.Stat
 				*podCounter++
 				singlePodReady := false
 				for _, podCondition := range pod.Status.Conditions {
-					if podCondition.Type == "Ready" {
+					if podCondition.Type == Ready {
 						singlePodReady = true
 					}
 				}
@@ -442,11 +446,11 @@ func CheckInstallStatus(c client.Client,
 	installingCondition := mcov1beta1.MCOCondition{}
 	if len(mco.Status.Conditions) == 0 {
 		installingCondition = mcov1beta1.MCOCondition{
-			Type:    "Installing",
-			Reason:  "Installing",
+			Type:    Installing,
+			Reason:  Installing,
 			Message: "Installation is in progress",
 		}
-	} else if mco.Status.Conditions[0].Type == "Installing" {
+	} else if mco.Status.Conditions[0].Type == Installing {
 		installingCondition = mco.Status.Conditions[0]
 		watchingPods := []string{
 			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-observatorium-api"}, "-"),
@@ -493,18 +497,18 @@ func CheckInstallStatus(c client.Client,
 		if podCounter == 0 || statefulSetCounter == 0 || allPodsReady != true ||
 			podCounter < len(watchingPods) || allstatefulSetReady != true || statefulSetCounter < len(watchingStatefulSets) {
 			installingCondition = mcov1beta1.MCOCondition{
-				Type:    "Installing",
-				Reason:  "Installing",
+				Type:    Installing,
+				Reason:  Installing,
 				Message: "Installation is still in process",
 			}
 		} else {
 			installingCondition = mcov1beta1.MCOCondition{
-				Type: "Ready",
+				Type: Ready,
 			}
 		}
 	} else {
 		installingCondition = mcov1beta1.MCOCondition{
-			Type: "Ready",
+			Type: Ready,
 		}
 	}
 
@@ -521,8 +525,8 @@ func CheckS3Conf(c client.Client,
 	}
 
 	failed := mcov1beta1.MCOCondition{
-		Type:   "Failed",
-		Reason: "Failed",
+		Type:   Failed,
+		Reason: Failed,
 	}
 
 	err := c.Get(context.TODO(), namespacedName, secret)
