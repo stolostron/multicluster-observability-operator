@@ -14,6 +14,7 @@ import (
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"
+	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,7 +65,7 @@ func createObservatoriumAPIService(name, namespace string) *corev1.Service {
 
 func createReadyPod(name, namespace, podName string) *corev1.Pod {
 	ready := corev1.PodCondition{
-		Type: "Ready",
+		Type: Ready,
 	}
 	return &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -225,11 +226,13 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	if updatedMCO.Status.Conditions[0].Message != "Installing condition initializing" {
-		t.Fatalf("Failed to get correct MCO installing status, expect installing condition initializing")
+	if updatedMCO.Status.Conditions[0].Type != Failed {
+		t.Fatalf("Failed to get correct MCO installing status, expect failed")
 	}
-	log.Info("updated MultiClusterObservability successfully", "MultiClusterObservability", updatedMCO)
-
+	err = cl.Create(context.TODO(), createSecret("test", "test", namespace))
+	if err != nil {
+		t.Fatalf("Failed to create secret: (%v)", err)
+	}
 	// Update client with 1 pod 1 statefulSet
 	grafanaPod := createReadyPod(name, namespace, "grafana")
 	err = cl.Create(context.TODO(), grafanaPod)
@@ -250,9 +253,6 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	err = r.client.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
-	}
-	if updatedMCO.Status.Conditions[0].Message != "Installing still in process" {
-		t.Fatalf("Failed to get correct MCO installing status, expect Installing still in process")
 	}
 
 	// Update client with all pods all statefulSet
@@ -320,7 +320,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	if updatedMCO.Status.Conditions[0].Type != "Ready" {
+	if updatedMCO.Status.Conditions[0].Type != Ready {
 		t.Fatalf("Failed to get correct MCO status, expect Ready")
 	}
 	log.Info("updated MultiClusterObservability successfully", "MultiClusterObservability", updatedMCO)
@@ -340,7 +340,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	if updatedMCO.Status.Conditions[0].Message != "Deployment failed for monitoring-fake-failed-deployment" {
+	if updatedMCO.Status.Conditions[0].Message != "Deployment is failed for monitoring-fake-failed-deployment" {
 		t.Fatalf("Failed to get correct MCO status, expect failed with failed deployment")
 	}
 	log.Info("updated MultiClusterObservability successfully", "MultiClusterObservability", updatedMCO)
@@ -355,6 +355,33 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	_, err = r.Reconcile(req)
 	if err != nil {
 		t.Fatalf("reconcile for finalizer: (%v)", err)
+	}
+}
+
+func createSecret(key, name, namespace string) *corev1.Secret {
+
+	s3Conf := &mcoconfig.ObjectStorgeConf{
+		Type: "s3",
+		Config: mcoconfig.Config{
+			Bucket:    "bucket",
+			Endpoint:  "endpoint",
+			Insecure:  true,
+			AccessKey: "access_key",
+			SecretKey: "secret_key`",
+		},
+	}
+	configYaml, _ := yaml.Marshal(s3Conf)
+
+	configYamlMap := map[string][]byte{}
+	configYamlMap[key] = configYaml
+
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Type: "Opaque",
+		Data: configYamlMap,
 	}
 }
 
@@ -381,23 +408,7 @@ func TestCheckS3Conf(t *testing.T) {
 		t.Errorf("check s3 conf failed: got %v, expected non-nil", mcoCondition)
 	}
 
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "test",
-		},
-
-		Type: "Opaque",
-		StringData: map[string]string{"test": `type: s3
-config:
-  bucket: bucket
-  endpoint: endpoint
-  insecure: true
-  access_key: access_key
-  secret_key: secret_key`},
-	}
-
-	err := c.Create(context.TODO(), secret)
+	err := c.Create(context.TODO(), createSecret("test", "test", "test"))
 	if err != nil {
 		t.Fatalf("Failed to create secret: (%v)", err)
 	}
@@ -407,23 +418,7 @@ config:
 		t.Errorf("check s3 conf failed: got %v, expected nil", mcoCondition)
 	}
 
-	secret = &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "test",
-		},
-
-		Type: "Opaque",
-		StringData: map[string]string{"error": `type: s3
-config:
-  bucket: bucket
-  endpoint: endpoint
-  insecure: true
-  access_key: access_key
-  secret_key: secret_key`},
-	}
-
-	err = c.Update(context.TODO(), secret)
+	err = c.Update(context.TODO(), createSecret("error", "test", "test"))
 	if err != nil {
 		t.Fatalf("Failed to update secret: (%v)", err)
 	}

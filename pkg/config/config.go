@@ -61,6 +61,12 @@ type AnnotationImageInfo struct {
 	ImageTagSuffix  string
 }
 
+// ObjectStorgeConf is used to Unmarshal from bytes to do validation
+type ObjectStorgeConf struct {
+	Type   string `yaml:"type"`
+	Config Config `yaml:"config"`
+}
+
 var (
 	log                 = logf.Log.WithName("config")
 	monitoringCRName    = ""

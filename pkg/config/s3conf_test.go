@@ -1,40 +1,10 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package util
+package config
 
 import (
 	"testing"
 )
-
-func TestParseConfig(t *testing.T) {
-	valid := []byte(`bucket: abcd
-insecure: false`)
-	cfg, err := parseConfig(valid)
-
-	if err != nil {
-		t.Errorf("parsing of bucket failed: got %v, expected nil", err)
-	}
-
-	if cfg.Bucket != "abcd" {
-		t.Errorf("parsing of bucket failed: got %v, expected %v", cfg.Bucket, "abcd")
-	}
-
-	if cfg.Insecure {
-		t.Errorf("parsing of insecure failed: got %v, expected %v", cfg.Insecure, false)
-	}
-
-	invalid := []byte(`error
-insecure: true`)
-	cfg, err = parseConfig(invalid)
-
-	if err == nil {
-		t.Errorf("parsing of bucket failed: got %v, expected non-nil", err)
-	}
-
-	if cfg.Insecure {
-		t.Errorf("parsing of insecure failed: got %v, expected %v", cfg.Insecure, false)
-	}
-}
 
 func TestIsValidS3Conf(t *testing.T) {
 	caseList := []struct {
