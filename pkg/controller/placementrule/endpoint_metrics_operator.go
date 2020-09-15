@@ -112,6 +112,10 @@ func updateLeaseController(mco *mcov1beta1.MultiClusterObservability,
 	container.Image = getImage(mco, leaseImageName, mcoconfig.LeaseControllerImageTagSuffix)
 	container.ImagePullPolicy = mco.Spec.ImagePullPolicy
 	for i, arg := range container.Args {
+		if arg == "-lease-name" {
+			container.Args[i+1] = leaseName
+			break
+		}
 		if arg == "-lease-namespace" {
 			container.Args[i+1] = namespace
 			break
