@@ -56,9 +56,9 @@ spec:
           - -hub-kubeconfig-secret
           - hub-kube-config
           - -lease-duration
-          - "5"
+          - "60"
           - -startup-delay
-          - "2"
+          - "10"
           env:
           - name: WATCH_NAMESPACE
             valueFrom:
