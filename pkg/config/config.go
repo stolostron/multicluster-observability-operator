@@ -3,19 +3,24 @@
 package config
 
 import (
+	"bytes"
 	"context"
 	"strings"
 
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
@@ -196,7 +201,106 @@ func GetTenantUID() string {
 	return tenantUID
 }
 
-// Get observatorium api service
+// GetObsAPISvc returns observatorium api service
 func GetObsAPISvc(instanceName string) string {
 	return instanceName + "-observatorium" + "-observatorium-api." + defaultNamespace + ".svc.cluster.local"
+}
+
+// GenerateMonitoringCR is used to generate monitoring CR with the default values
+// w/ or w/o customized values
+func GenerateMonitoringCR(c client.Client,
+	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
+
+	if mco.Spec.ImagePullPolicy == "" {
+		mco.Spec.ImagePullPolicy = DefaultImgPullPolicy
+	}
+
+	if mco.Spec.ImagePullSecret == "" {
+		mco.Spec.ImagePullSecret = DefaultImgPullSecret
+	}
+
+	if mco.Spec.NodeSelector == nil {
+		mco.Spec.NodeSelector = map[string]string{}
+	}
+
+	if mco.Spec.StorageConfig == nil {
+		mco.Spec.StorageConfig = &mcov1beta1.StorageConfigObject{}
+	}
+
+	if mco.Spec.StorageConfig.StatefulSetSize == "" {
+		mco.Spec.StorageConfig.StatefulSetSize = DefaultStorageSize
+	}
+
+	if mco.Spec.StorageConfig.StatefulSetStorageClass == "" {
+		mco.Spec.StorageConfig.StatefulSetStorageClass = DefaultStorageClass
+	}
+
+	if mco.Spec.EnableDownSampling != false {
+		mco.Spec.EnableDownSampling = DefaultEnableDownsampling
+	}
+
+	if mco.Spec.RetentionResolution1h == "" {
+		mco.Spec.RetentionResolution1h = DefaultRetentionResolution1h
+	}
+
+	if mco.Spec.RetentionResolution5m == "" {
+		mco.Spec.RetentionResolution5m = DefaultRetentionResolution5m
+	}
+
+	if mco.Spec.RetentionResolutionRaw == "" {
+		mco.Spec.RetentionResolutionRaw = DefaultRetentionResolutionRaw
+	}
+
+	if mco.Spec.ObservabilityAddonSpec == nil {
+		mco.Spec.ObservabilityAddonSpec = &mcov1beta1.ObservabilityAddonSpec{
+			EnableMetrics: true,
+			Interval:      DefaultAddonInterval,
+		}
+	}
+
+	if !availabilityConfigIsValid(mco.Spec.AvailabilityConfig) {
+		mco.Spec.AvailabilityConfig = mcov1beta1.HAHigh
+	}
+
+	found := &mcov1beta1.MultiClusterObservability{}
+	err := c.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name: mco.Name,
+		},
+		found,
+	)
+	if err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	desired, err := yaml.Marshal(mco.Spec)
+	if err != nil {
+		log.Error(err, "cannot parse the desired MultiClusterObservability values")
+	}
+	current, err := yaml.Marshal(found.Spec)
+	if err != nil {
+		log.Error(err, "cannot parse the current MultiClusterObservability values")
+	}
+
+	if res := bytes.Compare(desired, current); res != 0 {
+		log.Info("Update MultiClusterObservability CR.")
+		newObj := found.DeepCopy()
+		newObj.Spec = mco.Spec
+		err = c.Update(context.TODO(), newObj)
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
+	}
+
+	return nil, nil
+}
+
+func availabilityConfigIsValid(config mcov1beta1.AvailabilityType) bool {
+	switch config {
+	case mcov1beta1.HAHigh, mcov1beta1.HABasic:
+		return true
+	default:
+		return false
+	}
 }

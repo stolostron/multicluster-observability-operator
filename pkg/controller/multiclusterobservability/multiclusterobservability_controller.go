@@ -173,7 +173,7 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return reconcile.Result{}, err
 	}
 
-	if result, err := GenerateMonitoringCR(r.client, instance); result != nil {
+	if result, err := config.GenerateMonitoringCR(r.client, instance); result != nil {
 		return *result, err
 	}
 

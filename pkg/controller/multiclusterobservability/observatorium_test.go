@@ -138,7 +138,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
 
-	if _, err := GenerateMonitoringCR(cl, mco); err != nil {
+	if _, err := mcoconfig.GenerateMonitoringCR(cl, mco); err != nil {
 		t.Errorf("Failed to generate monitoring CR: %v", err)
 	}
 

@@ -23,6 +23,7 @@ import (
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
@@ -183,6 +184,7 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability,
 	obs.API.RBAC = newAPIRBAC()
 	obs.API.Tenants = newAPITenants()
 	obs.API.TLS = newAPITLS()
+	obs.API.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "Deployments")
 	obs.Compact = newCompactSpec(mco, scSelected)
 
 	obs.Hashrings = []*observatoriumv1alpha1.Hashring{
@@ -209,9 +211,11 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability,
 
 	obs.Query.Image = defaultThanosImage
 	obs.Query.Version = defaultThanosVersion
+	obs.Query.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "Deployments")
 
-	obs.APIQuery.Image = defaultThanosImage
-	obs.APIQuery.Version = defaultThanosVersion
+	obs.QueryCache.Image = defaultThanosImage
+	obs.QueryCache.Version = defaultThanosVersion
+	obs.QueryCache.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "Deployments")
 
 	if mcoconfig.IsNeededReplacement(mco.Annotations, obs.API.Image) {
 
@@ -328,6 +332,7 @@ func newReceiversSpec(
 	scSelected string) observatoriumv1alpha1.ReceiversSpec {
 	receSpec := observatoriumv1alpha1.ReceiversSpec{}
 	receSpec.Image = defaultThanosImage
+	receSpec.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
 	receSpec.Version = defaultThanosVersion
 	if mcoconfig.IsNeededReplacement(mco.Annotations, receSpec.Image) {
 		receSpec.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/" +
@@ -344,6 +349,7 @@ func newReceiversSpec(
 func newRuleSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) observatoriumv1alpha1.RuleSpec {
 	ruleSpec := observatoriumv1alpha1.RuleSpec{}
 	ruleSpec.Image = defaultThanosImage
+	ruleSpec.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
 	ruleSpec.Version = defaultThanosVersion
 	if mcoconfig.IsNeededReplacement(mco.Annotations, ruleSpec.Image) {
 		ruleSpec.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/" +
@@ -369,8 +375,7 @@ func newStoreSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) 
 	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.StatefulSetSize,
 		scSelected)
-	shards := int32(1)
-	storeSpec.Shards = &shards
+	storeSpec.Shards = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
 	storeSpec.Cache = newStoreCacheSpec(mco)
 
 	return storeSpec
@@ -379,6 +384,7 @@ func newStoreSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) 
 func newStoreCacheSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha1.StoreCacheSpec {
 	storeCacheSpec := observatoriumv1alpha1.StoreCacheSpec{}
 	storeCacheSpec.Image = "docker.io/memcached:1.6.3-alpine"
+	storeCacheSpec.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
 	storeCacheSpec.Version = "1.6.3-alpine"
 	storeCacheSpec.ExporterImage = "prom/memcached-exporter:v0.6.0"
 	storeCacheSpec.ExporterVersion = "v0.6.0"
@@ -405,6 +411,7 @@ func newStoreCacheSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv
 func newCompactSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) observatoriumv1alpha1.CompactSpec {
 	compactSpec := observatoriumv1alpha1.CompactSpec{}
 	compactSpec.Image = defaultThanosImage
+	compactSpec.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
 	compactSpec.Version = defaultThanosVersion
 	if mcoconfig.IsNeededReplacement(mco.Annotations, compactSpec.Image) {
 		compactSpec.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/" + thanosImgName + ":" +

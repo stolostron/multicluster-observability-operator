@@ -3,14 +3,21 @@
 package config
 
 import (
+	"reflect"
 	"testing"
 
+	observatoriumv1alpha1 "github.com/observatorium/deployments/operator/api/v1alpha1"
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/kubectl/pkg/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 var (
@@ -265,5 +272,142 @@ func TestIsPaused(t *testing.T) {
 				t.Errorf("case (%v) output (%v) is not the expected (%v)", c.name, output, c.expected)
 			}
 		})
+	}
+}
+
+func NewFakeClient(mco *mcov1beta1.MultiClusterObservability,
+	obs *observatoriumv1alpha1.Observatorium) client.Client {
+	s := scheme.Scheme
+	s.AddKnownTypes(mcov1beta1.SchemeGroupVersion, mco)
+	s.AddKnownTypes(observatoriumv1alpha1.GroupVersion, obs)
+	objs := []runtime.Object{mco, obs}
+	return fake.NewFakeClientWithScheme(s, objs...)
+}
+
+func TestGenerateMonitoringCR(t *testing.T) {
+	mco := &mcov1beta1.MultiClusterObservability{
+		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
+		Spec: mcov1beta1.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta1.StorageConfigObject{},
+		},
+	}
+
+	result, err := GenerateMonitoringCR(NewFakeClient(mco, &observatoriumv1alpha1.Observatorium{}), mco)
+	if result != nil || err != nil {
+		t.Errorf("Should return nil for result (%v) and err (%v)", result, err)
+	}
+
+	if mco.Spec.ImagePullPolicy != DefaultImgPullPolicy {
+		t.Errorf("ImagePullPolicy (%v) is not the expected (%v)",
+			mco.Spec.ImagePullPolicy, DefaultImgPullPolicy)
+	}
+
+	if mco.Spec.ImagePullSecret != DefaultImgPullSecret {
+		t.Errorf("ImagePullSecret (%v) is not the expected (%v)",
+			mco.Spec.ImagePullSecret, DefaultImgPullSecret)
+	}
+
+	if mco.Spec.NodeSelector == nil {
+		t.Errorf("NodeSelector (%v) is not the expected (non-nil)", mco.Spec.NodeSelector)
+	}
+
+	if mco.Spec.StorageConfig.StatefulSetSize != DefaultStorageSize {
+		t.Errorf("StatefulSetSize (%v) is not the expected (%v)",
+			mco.Spec.StorageConfig.StatefulSetSize,
+			DefaultStorageSize)
+	}
+
+	if mco.Spec.StorageConfig.StatefulSetStorageClass != DefaultStorageClass {
+		t.Errorf("StatefulSetStorageClass (%v) is not the expected (%v)",
+			mco.Spec.StorageConfig.StatefulSetStorageClass,
+			DefaultStorageClass)
+	}
+
+	defaultObservabilityAddonSpec := &mcov1beta1.ObservabilityAddonSpec{
+		EnableMetrics: true,
+		Interval:      DefaultAddonInterval,
+	}
+
+	if !reflect.DeepEqual(mco.Spec.ObservabilityAddonSpec, defaultObservabilityAddonSpec) {
+		t.Errorf("ObservabilityAddonSpec (%v) is not the expected (%v)",
+			mco.Spec.ObservabilityAddonSpec,
+			defaultObservabilityAddonSpec)
+	}
+}
+
+func TestGenerateMonitoringCustomizedCR(t *testing.T) {
+	addonSpec := &mcov1beta1.ObservabilityAddonSpec{
+		EnableMetrics: true,
+		Interval:      60,
+	}
+
+	mco := &mcov1beta1.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "test",
+			Name:      "test",
+			Annotations: map[string]string{
+				"test": "test",
+			},
+		},
+
+		Spec: mcov1beta1.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta1.StorageConfigObject{
+				StatefulSetSize:         "1Gi",
+				StatefulSetStorageClass: "gp2",
+			},
+			ObservabilityAddonSpec: addonSpec,
+		},
+	}
+
+	fakeClient := NewFakeClient(mco, &observatoriumv1alpha1.Observatorium{})
+	result, err := GenerateMonitoringCR(fakeClient, mco)
+	if result != nil || err != nil {
+		t.Fatalf("Should return nil for result (%v) and err (%v)", result, err)
+	}
+
+	if mco.Spec.ImagePullPolicy != DefaultImgPullPolicy {
+		t.Errorf("ImagePullPolicy (%v) is not the expected (%v)",
+			mco.Spec.ImagePullPolicy, DefaultImgPullPolicy)
+	}
+
+	if mco.Spec.ImagePullSecret != DefaultImgPullSecret {
+		t.Errorf("ImagePullSecret (%v) is not the expected (%v)",
+			mco.Spec.ImagePullSecret, DefaultImgPullSecret)
+	}
+
+	if mco.Spec.NodeSelector == nil {
+		t.Errorf("NodeSelector (%v) is not the expected (non-nil)", mco.Spec.NodeSelector)
+	}
+
+	if mco.Spec.StorageConfig.StatefulSetSize != "1Gi" {
+		t.Errorf("StatefulSetSize (%v) is not the expected (%v)",
+			mco.Spec.StorageConfig.StatefulSetSize, "1Gi")
+	}
+
+	if mco.Spec.StorageConfig.StatefulSetStorageClass != "gp2" {
+		t.Errorf("StatefulSetStorageClass (%v) is not the expected (%v)",
+			mco.Spec.StorageConfig.StatefulSetStorageClass, "gp2")
+	}
+
+	if !reflect.DeepEqual(mco.Spec.ObservabilityAddonSpec, addonSpec) {
+		t.Errorf("ObservabilityAddonSpec (%v) is not the expected (%v)",
+			mco.Spec.ObservabilityAddonSpec,
+			addonSpec)
+	}
+
+	mco.Annotations[AnnotationKeyImageRepository] = "test_repo"
+	mco.Annotations[AnnotationKeyImageTagSuffix] = "test_suffix"
+
+	fakeClient = NewFakeClient(mco, &observatoriumv1alpha1.Observatorium{})
+	result, err = GenerateMonitoringCR(fakeClient, mco)
+	if result != nil || err != nil {
+		t.Fatalf("Should return nil for result (%v) and err (%v)", result, err)
+	}
+
+	if util.GetAnnotation(mco.Annotations, AnnotationKeyImageTagSuffix) != "test_suffix" {
+		t.Errorf("ImageTagSuffix (%v) is not the expected (%v)",
+			util.GetAnnotation(mco.Annotations, AnnotationKeyImageTagSuffix), "test_suffix")
 	}
 }

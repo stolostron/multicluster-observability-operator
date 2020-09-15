@@ -94,6 +94,8 @@ type ThanosReceiveControllerSpec struct {
 type ReceiversSpec struct {
 	// Thanos image
 	Image string `json:"image,omitempty"`
+	// Number of Receiver replicas.
+	Replicas *int32 `json:"replicas,omitempty"`
 	// Version of Thanos image to be deployed.
 	Version string `json:"version,omitempty"`
 	// VolumeClaimTemplate
@@ -230,6 +232,8 @@ type TLS struct {
 type APISpec struct {
 	// API image
 	Image string `json:"image,omitempty"`
+	// Number of API replicas.
+	Replicas *int32 `json:"replicas,omitempty"`
 	// Version describes the version of API to use.
 	Version string `json:"version,omitempty"`
 	// TLS configuration for the Observatorium API.
@@ -250,6 +254,8 @@ type APIQuerySpec struct {
 type QuerySpec struct {
 	// Thanos image
 	Image string `json:"image,omitempty"`
+	// Number of Query replicas.
+	Replicas *int32 `json:"replicas,omitempty"`
 	// Version of Thanos image to be deployed.
 	Version string `json:"version,omitempty"`
 }
@@ -257,6 +263,8 @@ type QuerySpec struct {
 type RuleSpec struct {
 	// Thanos image
 	Image string `json:"image,omitempty"`
+	// Number of Rule replicas.
+	Replicas *int32 `json:"replicas,omitempty"`
 	// Version of Thanos image to be deployed.
 	Version string `json:"version,omitempty"`
 	// VolumeClaimTemplate
@@ -266,6 +274,8 @@ type RuleSpec struct {
 type CompactSpec struct {
 	// Thanos image
 	Image string `json:"image,omitempty"`
+	// Number of Compact replicas.
+	Replicas *int32 `json:"replicas,omitempty"`
 	// Version of Thanos image to be deployed.
 	Version string `json:"version,omitempty"`
 	// VolumeClaimTemplate

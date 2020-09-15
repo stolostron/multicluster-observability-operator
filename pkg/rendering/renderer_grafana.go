@@ -5,6 +5,8 @@ package rendering
 import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
+
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 func (r *Renderer) newGranfanaRenderer() {
@@ -27,12 +29,11 @@ func (r *Renderer) renderGrafanaDeployments(res *resource.Resource) (*unstructur
 	if err != nil {
 		return nil, err
 	}
-	//TODO: handle the HA
-	// spec, ok := u.Object["spec"].(map[string]interface{})
-	// if ok {
-	// 	spec["replicas"] = r.cr.Spec.Grafana.Replicas
-	// }
 
+	spec, ok := u.Object["spec"].(map[string]interface{})
+	if ok {
+		spec["replicas"] = util.GetReplicaCount(r.cr.Spec.AvailabilityConfig, "Deployment")
+	}
 	return u, nil
 }
 
