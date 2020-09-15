@@ -114,11 +114,9 @@ func updateLeaseController(mco *mcov1beta1.MultiClusterObservability,
 	for i, arg := range container.Args {
 		if arg == "-lease-name" {
 			container.Args[i+1] = leaseName
-			break
 		}
 		if arg == "-lease-namespace" {
 			container.Args[i+1] = namespace
-			break
 		}
 	}
 	return container
