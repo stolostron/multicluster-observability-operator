@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -232,24 +231,10 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return *result, err
 	}
 
-	if result, err := GenerateDashboardMetricCM(r.client, r.scheme, instance); result != nil {
-		return *result, err
-	}
-
 	// generate grafana datasource to point to observatorium api gateway
 	result, err = GenerateGrafanaDataSource(r.client, r.scheme, instance)
 	if result != nil {
 		return *result, err
-	}
-
-	// generate/update the configmap cluster-monitoring-config
-	flag, err := strconv.ParseBool(enableHubRemoteWrite)
-	if err != nil && flag {
-		reqLogger.Info("Update cluster-monitornig-config map to enable remote write")
-		result, err = UpdateHubClusterMonitoringConfig(r.client, r.ocpClient, instance.Namespace)
-		if result != nil {
-			return *result, err
-		}
 	}
 
 	result, err = r.UpdateStatus(instance)
