@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"context"
 
-	observatoriumv1alpha1 "github.com/observatorium/deployments/operator/api/v1alpha1"
+	observatoriumv1alpha1 "github.com/observatorium/operator/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	v1 "k8s.io/api/core/v1"
 	storv1 "k8s.io/api/storage/v1"
@@ -213,9 +213,9 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability,
 	obs.Query.Version = defaultThanosVersion
 	obs.Query.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "Deployments")
 
-	obs.QueryCache.Image = defaultThanosImage
-	obs.QueryCache.Version = defaultThanosVersion
-	obs.QueryCache.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "Deployments")
+	obs.QueryFrontend.Image = defaultThanosImage
+	obs.QueryFrontend.Version = defaultThanosVersion
+	obs.QueryFrontend.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "Deployments")
 
 	if mcoconfig.IsNeededReplacement(mco.Annotations, obs.API.Image) {
 
@@ -223,10 +223,10 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability,
 			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 		obs.API.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 	}
-	if mcoconfig.IsNeededReplacement(mco.Annotations, obs.QueryCache.Image) {
-		obs.QueryCache.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/cortex:" +
+	if mcoconfig.IsNeededReplacement(mco.Annotations, obs.QueryFrontend.Image) {
+		obs.QueryFrontend.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/cortex:" +
 			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-		obs.QueryCache.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+		obs.QueryFrontend.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 	}
 	if mcoconfig.IsNeededReplacement(mco.Annotations, obs.ThanosReceiveController.Image) {
 		obs.ThanosReceiveController.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository +
@@ -237,12 +237,6 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability,
 		obs.Query.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/" + thanosImgName + ":" +
 			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 		obs.Query.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-	}
-	if mcoconfig.IsNeededReplacement(mco.Annotations, obs.APIQuery.Image) {
-		obs.APIQuery.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/" + thanosImgName + ":" +
-			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-		obs.APIQuery.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-
 	}
 	return obs
 }
@@ -400,8 +394,6 @@ func newStoreCacheSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv
 		storeCacheSpec.ExporterVersion = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 	}
 
-	replicas := int32(1)
-	storeCacheSpec.Replicas = &replicas
 	limit := int32(1024)
 	storeCacheSpec.MemoryLimitMB = &limit
 

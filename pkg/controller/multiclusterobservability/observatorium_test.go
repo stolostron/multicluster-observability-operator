@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/yaml"
 
-	observatoriumv1alpha1 "github.com/observatorium/deployments/operator/api/v1alpha1"
+	observatoriumv1alpha1 "github.com/observatorium/operator/api/v1alpha1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"

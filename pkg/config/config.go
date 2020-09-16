@@ -52,7 +52,7 @@ const (
 	GrafanaImgTagSuffix = "7.1.3"
 
 	ObservatoriumImgRepo      = "quay.io/observatorium"
-	ObservatoriumImgTagSuffix = "master-2020-09-08-73265f5"
+	ObservatoriumImgTagSuffix = "master-2020-09-17-d861409"
 
 	EndpointControllerImgTagSuffix = "0.1.0-758599e8bcb0dfa9699a72ab17bd70807af5db12"
 

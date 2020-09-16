@@ -4,19 +4,17 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.54.0 // indirect
-	github.com/coreos/prometheus-operator v0.38.0
 	github.com/go-openapi/jsonreference v0.19.3 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/jetstack/cert-manager v0.0.0-00010101000000-000000000000
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/mailru/easyjson v0.7.0 // indirect
-	github.com/observatorium/deployments/operator v0.0.0-20200908122504-fc95f780cbc0
+	github.com/observatorium/operator v0.0.0-20200917055735-d861409997ee
 	github.com/open-cluster-management/api v0.0.0-20200602195039-a516cac2e038
 	github.com/open-cluster-management/multicloud-operators-placementrule v1.0.0-2020-05-08-20-30-09
 	github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
-	github.com/openshift/cluster-monitoring-operator v0.1.1-0.20200406225945-844f960a2a8d
 	github.com/operator-framework/operator-sdk v0.17.0
 	github.com/spf13/pflag v1.0.5
 	go.uber.org/zap v1.15.0 // indirect
