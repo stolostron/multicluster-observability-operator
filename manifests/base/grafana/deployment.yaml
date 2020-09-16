@@ -56,8 +56,8 @@ spec:
           name: grafana-dashboard-k8s-compute-resources-namespace-workloads
         - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-node-pods
           name: grafana-dashboard-k8s-compute-resources-node-pods
-        - mountPath: /grafana-dashboard-definitions/0/k8s-resources-pod
-          name: grafana-dashboard-k8s-resources-pod
+        - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-pod
+          name: grafana-dashboard-k8s-compute-resources-pod
         - mountPath: grafana-dashboard-definitions/0/k8s-resources-workloads-namespace
           name: grafana-dashboard-k8s-resources-workloads-namespace
         - mountPath: /grafana-dashboard-definitions/0/node-cluster-rsrc-use
