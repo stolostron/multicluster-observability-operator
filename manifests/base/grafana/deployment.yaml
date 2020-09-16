@@ -50,11 +50,10 @@ spec:
           name: grafana-dashboard-k8s-networking-cluster
         - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-cluster
           name: grafana-dashboard-k8s-compute-resources-cluster
+        - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-namespace-pods
+          name: grafana-dashboard-k8s-compute-resources-namespace-pods
 
-
-
-        - mountPath: /grafana-dashboard-definitions/0/k8s-resources-namespace
-          name: grafana-dashboard-k8s-resources-namespace
+          
         - mountPath: /grafana-dashboard-definitions/0/k8s-resources-node
           name: grafana-dashboard-k8s-resources-node
         - mountPath: /grafana-dashboard-definitions/0/k8s-resources-pod
