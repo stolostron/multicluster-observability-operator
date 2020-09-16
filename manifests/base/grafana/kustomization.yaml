@@ -8,6 +8,6 @@ resources:
 - deployment.yaml
 - ingress.yaml
 - service.yaml
-- ocp-dashboards.yaml
+# - ocp-dashboards.yaml
 - acm-multicluster-dash.yaml
 - k8s-mixin-dashboards.yaml

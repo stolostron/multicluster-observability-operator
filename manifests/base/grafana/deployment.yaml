@@ -48,9 +48,11 @@ spec:
           name: grafana-dashboard-acm-control-plane
         - mountPath: /grafana-dashboard-definitions/0/k8s-networking-cluster
           name: grafana-dashboard-k8s-networking-cluster
+        - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-cluster
+          name: grafana-dashboard-k8s-compute-resources-cluster
 
-        - mountPath: /grafana-dashboard-definitions/0/k8s-resources-cluster
-          name: grafana-dashboard-k8s-resources-cluster
+
+
         - mountPath: /grafana-dashboard-definitions/0/k8s-resources-namespace
           name: grafana-dashboard-k8s-resources-namespace
         - mountPath: /grafana-dashboard-definitions/0/k8s-resources-node
