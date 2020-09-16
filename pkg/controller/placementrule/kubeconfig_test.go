@@ -35,7 +35,7 @@ func TestCreateKubeSecret(t *testing.T) {
 		t.Fatalf("Failed to create kubeconfig secret: (%v)", err)
 	}
 	config := &clientv1.Config{}
-	err = yaml.Unmarshal(kubeconfig.Data["config"], config)
+	err = yaml.Unmarshal(kubeconfig.Data["kubeconfig"], config)
 	if err != nil {
 		t.Fatalf("Failed to unmarshal config in kubeconfig secret: (%v)", err)
 	}

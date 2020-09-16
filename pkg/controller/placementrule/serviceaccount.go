@@ -162,7 +162,6 @@ func createRole(client client.Client, namespace string) error {
 			{
 				Resources: []string{
 					"pods",
-					"secrets",
 				},
 				Verbs: []string{
 					"watch",
@@ -171,6 +170,21 @@ func createRole(client client.Client, namespace string) error {
 				},
 				APIGroups: []string{
 					"",
+				},
+			},
+			{
+				Resources: []string{
+					"leases",
+				},
+				Verbs: []string{
+					"watch",
+					"list",
+					"get",
+					"create",
+					"update",
+				},
+				APIGroups: []string{
+					"coordination.k8s.io",
 				},
 			},
 		},

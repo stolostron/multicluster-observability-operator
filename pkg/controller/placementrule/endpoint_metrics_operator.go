@@ -17,8 +17,9 @@ import (
 
 const (
 	deployName         = "endpoint-observability-operator"
-	imageName          = "endpoint-monitoring-operator"
+	endpoinImageName   = "endpoint-monitoring-operator"
 	collectorImageName = "metrics-collector"
+	leaseImageName     = "klusterlet-addon-lease-controller"
 	saName             = "endpoint-observability-operator-sa"
 	rolebindingName    = "endpoint-observability-operator-rb"
 )
@@ -63,24 +64,12 @@ func updateRes(r *resource.Resource, namespace string,
 	// set the images and watch_namespace for endpoint metrics operator
 	if r.GetKind() == "Deployment" && r.GetName() == deployName {
 		spec := obj.(*v1.Deployment).Spec.Template.Spec
-		spec.Containers[0].Image = mcoconfig.DefaultImgRepository +
-			"/" + imageName + ":" + mcoconfig.EndpointControllerImgTagSuffix
-		if mcoconfig.IsNeededReplacement(mco.Annotations, spec.Containers[0].Image) {
-			spec.Containers[0].Image = mcoconfig.GetAnnotationImageInfo().ImageRepository +
-				"/" + imageName + ":" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-		}
-		spec.Containers[0].ImagePullPolicy = mco.Spec.ImagePullPolicy
-		for i, env := range spec.Containers[0].Env {
-			if env.Name == "WATCH_NAMESPACE" {
-				spec.Containers[0].Env[i].Value = namespace
+		for i, container := range spec.Containers {
+			if container.Name == "endpoint-observability-operator" {
+				spec.Containers[i] = updateEndpointOperator(mco, namespace, container)
 			}
-			if env.Name == "COLLECTOR_IMAGE" {
-				spec.Containers[0].Env[i].Value = mcoconfig.DefaultImgRepository +
-					"/" + collectorImageName + ":" + mcoconfig.MetricsCollectorImgTagSuffix
-				if mcoconfig.IsNeededReplacement(mco.Annotations, spec.Containers[0].Env[i].Value) {
-					spec.Containers[0].Env[i].Value = mcoconfig.GetAnnotationImageInfo().ImageRepository +
-						"/" + collectorImageName + ":" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-				}
+			if container.Name == "observability-lease-controller" {
+				spec.Containers[i] = updateLeaseController(mco, namespace, container)
 			}
 		}
 	}
@@ -101,4 +90,45 @@ func updateRes(r *resource.Resource, namespace string,
 	}
 
 	return obj, nil
+}
+
+func updateEndpointOperator(mco *mcov1beta1.MultiClusterObservability,
+	namespace string, container corev1.Container) corev1.Container {
+	container.Image = getImage(mco, endpoinImageName, mcoconfig.EndpointControllerImgTagSuffix)
+	container.ImagePullPolicy = mco.Spec.ImagePullPolicy
+	for i, env := range container.Env {
+		if env.Name == "WATCH_NAMESPACE" {
+			container.Env[i].Value = namespace
+		}
+		if env.Name == "COLLECTOR_IMAGE" {
+			container.Env[i].Value = getImage(mco, collectorImageName, mcoconfig.MetricsCollectorImgTagSuffix)
+		}
+	}
+	return container
+}
+
+func updateLeaseController(mco *mcov1beta1.MultiClusterObservability,
+	namespace string, container corev1.Container) corev1.Container {
+	container.Image = getImage(mco, leaseImageName, mcoconfig.LeaseControllerImageTagSuffix)
+	container.ImagePullPolicy = mco.Spec.ImagePullPolicy
+	for i, arg := range container.Args {
+		if arg == "-lease-name" {
+			container.Args[i+1] = leaseName
+		}
+		if arg == "-lease-namespace" {
+			container.Args[i+1] = namespace
+		}
+	}
+	return container
+}
+
+func getImage(mco *mcov1beta1.MultiClusterObservability,
+	name string, tag string) string {
+	image := mcoconfig.DefaultImgRepository +
+		"/" + name + ":" + tag
+	if mcoconfig.IsNeededReplacement(mco.Annotations, image) {
+		image = mcoconfig.GetAnnotationImageInfo().ImageRepository +
+			"/" + name + ":" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+	}
+	return image
 }
