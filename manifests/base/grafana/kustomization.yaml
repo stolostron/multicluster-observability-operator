@@ -10,3 +10,4 @@ resources:
 - service.yaml
 - ocp-dashboards.yaml
 - acm-multicluster-dash.yaml
+- k8s-mixin-dashboards.yaml
