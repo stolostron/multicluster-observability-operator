@@ -51,6 +51,9 @@ const (
 	GrafanaImgRepo      = "grafana"
 	GrafanaImgTagSuffix = "7.1.3"
 
+	AlertManagerImgRepo   = "registry.redhat.io/openshift4"
+	ConfigReloaderImgRepo = "registry.redhat.io/openshift4/ose-configmap-reloader"
+
 	ObservatoriumImgRepo      = "quay.io/observatorium"
 	ObservatoriumImgTagSuffix = "master-2020-09-17-d861409"
 

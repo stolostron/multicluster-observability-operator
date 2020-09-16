@@ -92,6 +92,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		OwnerType:    &mcov1beta1.MultiClusterObservability{},
 	})
 
+	// Watch for changes to secondary resource statefulSet and requeue the owner MultiClusterObservability
+	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &mcov1beta1.MultiClusterObservability{},
+	})
+
 	// Watch for changes to secondary resource ConfigMap and requeue the owner MultiClusterObservability
 	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
