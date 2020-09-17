@@ -4,12 +4,8 @@ cloud.google.com/go/compute/metadata
 github.com/PuerkitoBio/purell
 # github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578
 github.com/PuerkitoBio/urlesc
-# github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d
-github.com/alecthomas/units
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
-# github.com/cespare/xxhash v1.1.0
-github.com/cespare/xxhash
 # github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
 # github.com/coreos/prometheus-operator v0.38.0
@@ -24,11 +20,6 @@ github.com/emicklei/go-restful
 github.com/emicklei/go-restful/log
 # github.com/evanphx/json-patch v4.5.0+incompatible
 github.com/evanphx/json-patch
-# github.com/go-kit/kit v0.10.0
-github.com/go-kit/kit/log
-github.com/go-kit/kit/log/level
-# github.com/go-logfmt/logfmt v0.5.0
-github.com/go-logfmt/logfmt
 # github.com/go-logr/logr v0.1.0
 github.com/go-logr/logr
 # github.com/go-logr/zapr v0.1.1
@@ -86,10 +77,8 @@ github.com/matttproud/golang_protobuf_extensions/pbutil
 github.com/modern-go/concurrent
 # github.com/modern-go/reflect2 v1.0.1
 github.com/modern-go/reflect2
-# github.com/observatorium/deployments/operator v0.0.0-20200908122504-fc95f780cbc0
-github.com/observatorium/deployments/operator/api/v1alpha1
-# github.com/oklog/ulid v1.3.1
-github.com/oklog/ulid
+# github.com/observatorium/operator v0.0.0-20200917055735-d861409997ee
+github.com/observatorium/operator/api/v1alpha1
 # github.com/open-cluster-management/api v0.0.0-20200602195039-a516cac2e038
 github.com/open-cluster-management/api/work/v1
 # github.com/open-cluster-management/multicloud-operators-placementrule v1.0.0-2020-05-08-20-30-09
@@ -97,21 +86,12 @@ github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/a
 # github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad
 github.com/openshift/api/config/v1
 github.com/openshift/api/route/v1
-github.com/openshift/api/security/v1
 # github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
 github.com/openshift/client-go/config/clientset/versioned
 github.com/openshift/client-go/config/clientset/versioned/fake
 github.com/openshift/client-go/config/clientset/versioned/scheme
 github.com/openshift/client-go/config/clientset/versioned/typed/config/v1
 github.com/openshift/client-go/config/clientset/versioned/typed/config/v1/fake
-# github.com/openshift/cluster-monitoring-operator v0.1.1-0.20200406225945-844f960a2a8d
-github.com/openshift/cluster-monitoring-operator/pkg/manifests
-github.com/openshift/cluster-monitoring-operator/pkg/promqlgen
-# github.com/openshift/library-go v0.0.0-20200120084036-bb27e57e2f2b
-github.com/openshift/library-go/pkg/crypto
-# github.com/opentracing/opentracing-go v1.1.0
-github.com/opentracing/opentracing-go
-github.com/opentracing/opentracing-go/log
 # github.com/operator-framework/operator-sdk v0.17.0
 github.com/operator-framework/operator-sdk/pkg/k8sutil
 github.com/operator-framework/operator-sdk/pkg/kube-metrics
@@ -124,7 +104,6 @@ github.com/pkg/errors
 # github.com/prometheus/client_golang v1.5.1
 github.com/prometheus/client_golang/prometheus
 github.com/prometheus/client_golang/prometheus/internal
-github.com/prometheus/client_golang/prometheus/promauto
 github.com/prometheus/client_golang/prometheus/promhttp
 # github.com/prometheus/client_model v0.2.0
 github.com/prometheus/client_model/go
@@ -136,29 +115,6 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/prometheus/prometheus v2.9.2+incompatible => github.com/prometheus/prometheus v0.0.0-20190424153033-d3245f150225
-github.com/prometheus/prometheus/pkg/gate
-github.com/prometheus/prometheus/pkg/labels
-github.com/prometheus/prometheus/pkg/textparse
-github.com/prometheus/prometheus/pkg/timestamp
-github.com/prometheus/prometheus/pkg/value
-github.com/prometheus/prometheus/promql
-github.com/prometheus/prometheus/storage
-github.com/prometheus/prometheus/storage/tsdb
-github.com/prometheus/prometheus/util/stats
-github.com/prometheus/prometheus/util/strutil
-github.com/prometheus/prometheus/util/testutil
-# github.com/prometheus/tsdb v0.7.1
-github.com/prometheus/tsdb
-github.com/prometheus/tsdb/chunkenc
-github.com/prometheus/tsdb/chunks
-github.com/prometheus/tsdb/encoding
-github.com/prometheus/tsdb/errors
-github.com/prometheus/tsdb/fileutil
-github.com/prometheus/tsdb/goversion
-github.com/prometheus/tsdb/index
-github.com/prometheus/tsdb/labels
-github.com/prometheus/tsdb/wal
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
 # go.uber.org/atomic v1.6.0
@@ -187,8 +143,6 @@ golang.org/x/oauth2/google
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-golang.org/x/sync/errgroup
 # golang.org/x/sys v0.0.0-20200413165638-669c56c373c4
 golang.org/x/sys/unix
 golang.org/x/sys/windows
@@ -250,6 +204,7 @@ gopkg.in/inf.v0
 # gopkg.in/yaml.v2 v2.3.0
 gopkg.in/yaml.v2
 # k8s.io/api v0.18.3 => k8s.io/api v0.0.0-20191016110408-35e52d86657a
+k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1
 k8s.io/api/admissionregistration/v1
 k8s.io/api/admissionregistration/v1beta1
@@ -274,6 +229,7 @@ k8s.io/api/core/v1
 k8s.io/api/discovery/v1alpha1
 k8s.io/api/events/v1beta1
 k8s.io/api/extensions/v1beta1
+k8s.io/api/imagepolicy/v1alpha1
 k8s.io/api/networking/v1
 k8s.io/api/networking/v1beta1
 k8s.io/api/node/v1alpha1
@@ -340,8 +296,6 @@ k8s.io/apimachinery/pkg/version
 k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/reflect
-# k8s.io/apiserver v0.17.3 => k8s.io/apiserver v0.0.0-20191016112112-5190913f932d
-k8s.io/apiserver/pkg/authentication/user
 # k8s.io/client-go v12.0.0+incompatible => k8s.io/client-go v0.0.0-20191016111102-bec269661e48
 k8s.io/client-go/discovery
 k8s.io/client-go/discovery/fake
@@ -423,15 +377,14 @@ k8s.io/client-go/util/workqueue
 k8s.io/cluster-registry/pkg/apis/clusterregistry/v1alpha1
 # k8s.io/klog v1.0.0
 k8s.io/klog
-# k8s.io/kube-aggregator v0.17.3 => k8s.io/kube-aggregator v0.0.0-20191016112429-9587704a8ad4
-k8s.io/kube-aggregator/pkg/apis/apiregistration
-k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1
 # k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6
 k8s.io/kube-openapi/pkg/common
 k8s.io/kube-openapi/pkg/util/proto
 # k8s.io/kube-state-metrics v1.7.2
 k8s.io/kube-state-metrics/pkg/metric
 k8s.io/kube-state-metrics/pkg/metrics_store
+# k8s.io/kubectl v0.17.4 => k8s.io/kubectl v0.0.0-20191016120415-2ed914427d51
+k8s.io/kubectl/pkg/scheme
 # k8s.io/utils v0.0.0-20200327001022-6496210b90e8
 k8s.io/utils/buffer
 k8s.io/utils/integer

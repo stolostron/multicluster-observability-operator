@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: grafana
+    app: multicluster-observability-grafana
     observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
   name: grafana
   namespace: open-cluster-management
@@ -10,14 +10,35 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: grafana
+      app: multicluster-observability-grafana
       observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
   template:
     metadata:
       labels:
-        app: grafana
+        app: multicluster-observability-grafana
         observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 70
+            podAffinityTerm:
+              topologyKey: failure-domain.beta.kubernetes.io/zone
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - multicluster-observability-grafana
+          - weight: 30
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - multicluster-observability-grafana
       containers:
       - args:
         - -config=/etc/grafana/grafana.ini

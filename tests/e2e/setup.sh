@@ -105,6 +105,7 @@ deploy_mco_operator() {
     $sed_command "s~spec:.*$~spec: ~g" deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
     printf "\n    statefulSetSize: 10Gi\n" >> deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
     printf "\n    statefulSetStorageClass: standard\n" >> deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
+    printf "\n  availabilityConfig: Basic\n" >> deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
     # Install the multicluster-observability-operator
     kubectl create ns ${MONITORING_NS}
     kubectl config set-context --current --namespace ${MONITORING_NS}
