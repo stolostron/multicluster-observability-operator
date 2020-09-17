@@ -51,6 +51,8 @@ const (
 	GrafanaImgRepo      = "grafana"
 	GrafanaImgTagSuffix = "7.1.3"
 
+	AlertManagerImgRepo = "quay.io/openshift"
+
 	ObservatoriumImgRepo      = "quay.io/observatorium"
 	ObservatoriumImgTagSuffix = "master-2020-09-17-d861409"
 

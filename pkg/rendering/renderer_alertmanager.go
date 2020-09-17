@@ -1,0 +1,103 @@
+// Copyright (c) 2020 Red Hat, Inc.
+
+package rendering
+
+import (
+	"strings"
+
+	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apiresource "k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/kustomize/v3/pkg/resource"
+
+	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
+)
+
+func (r *Renderer) newAlertManagerRenderer() {
+	r.renderAlertManagerFns = map[string]renderFn{
+		"StatefulSet":           r.renderAlertManagerStatefulSet,
+		"Service":               r.renderNamespace,
+		"ServiceAccount":        r.renderNamespace,
+		"ConfigMap":             r.renderNamespace,
+		"ClusterRoleBinding":    r.renderClusterRoleBinding,
+		"Secret":                r.renderNamespace,
+		"Role":                  r.renderNamespace,
+		"RoleBinding":           r.renderNamespace,
+		"Ingress":               r.renderNamespace,
+		"PersistentVolumeClaim": r.renderNamespace,
+	}
+}
+
+func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstructured.Unstructured, error) {
+	u, err := r.renderDeployments(res)
+	if err != nil {
+		return nil, err
+	}
+	obj := util.GetK8sObj(u.GetKind())
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, obj)
+	if err != nil {
+		return nil, err
+	}
+	dep := obj.(*v1.StatefulSet)
+	dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+	dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
+	dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+	dep.Spec.Replicas = util.GetReplicaCount(r.cr.Spec.AvailabilityConfig, "StatefulSet")
+
+	spec := &dep.Spec.Template.Spec
+	spec.Containers[0].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
+	args := spec.Containers[0].Args
+	for idx := range args {
+		args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", r.cr.Namespace, 1)
+	}
+	spec.Containers[1].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
+	spec.NodeSelector = r.cr.Spec.NodeSelector
+	spec.ImagePullSecrets = []corev1.LocalObjectReference{
+		{Name: r.cr.Spec.ImagePullSecret},
+	}
+	alertManagerImgRepo := mcoconfig.AlertManagerImgRepo
+
+	//replace the alertmanager and config-reloader images
+	if mcoconfig.IsNeededReplacement(r.cr.Annotations, alertManagerImgRepo) {
+		spec.Containers[0].Image = mcoconfig.GetAnnotationImageInfo().ImageRepository +
+			"/origin-prometheus-alertmanager" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+		spec.Containers[1].Image = mcoconfig.GetAnnotationImageInfo().ImageRepository +
+			"/origin-configmap-reloader" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+	}
+	//replace the volumeClaimTemplate
+	dep.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = &r.cr.Spec.StorageConfig.StatefulSetStorageClass
+	dep.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] =
+		apiresource.MustParse(r.cr.Spec.StorageConfig.StatefulSetSize)
+
+	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	return &unstructured.Unstructured{Object: unstructuredObj}, nil
+}
+
+func (r *Renderer) renderAlertManagerTemplates(templates []*resource.Resource) ([]*unstructured.Unstructured, error) {
+	uobjs := []*unstructured.Unstructured{}
+	for _, template := range templates {
+		render, ok := r.renderAlertManagerFns[template.GetKind()]
+		if !ok {
+			uobjs = append(uobjs, &unstructured.Unstructured{Object: template.Map()})
+			continue
+		}
+		uobj, err := render(template.DeepCopy())
+		if err != nil {
+			return []*unstructured.Unstructured{}, err
+		}
+		if uobj == nil {
+			continue
+		}
+		uobjs = append(uobjs, uobj)
+
+	}
+
+	return uobjs, nil
+}

@@ -33,6 +33,7 @@ func NewDeployer(client client.Client) *Deployer {
 	deployer := &Deployer{client: client}
 	deployer.deployerFns = map[string]deployerFn{
 		"Deployment":         deployer.updateDeployment,
+		"StatefulSet":        deployer.updateDeployment,
 		"Service":            deployer.updateService,
 		"ConfigMap":          deployer.updateConfigMap,
 		"Secret":             deployer.updateSecret,
