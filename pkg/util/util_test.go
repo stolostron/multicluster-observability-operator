@@ -30,6 +30,7 @@ func TestGetAnnotation(t *testing.T) {
 }
 
 func TestGetReplicaCount(t *testing.T) {
+	var replicas1 int32 = 1
 	var replicas2 int32 = 2
 	var replicas3 int32 = 3
 	caseList := []struct {
@@ -42,7 +43,7 @@ func TestGetReplicaCount(t *testing.T) {
 			availabilityType: mcov1beta1.HABasic,
 			name:             "Have 1 instance",
 			resourceType:     "",
-			expected:         new(int32),
+			expected:         &replicas1,
 		},
 		{
 			availabilityType: mcov1beta1.HAHigh,

@@ -43,10 +43,11 @@ func GetAnnotation(annotations map[string]string, key string) string {
 // if it is HABasic, return 1
 // if it is HAHigh, return 2 for deployment and 3 for statefulset
 func GetReplicaCount(availabilityType mcov1beta1.AvailabilityType, resourceType string) *int32 {
+	var replicas1 int32 = 1
 	var replicas2 int32 = 2
 	var replicas3 int32 = 3
 	if availabilityType == mcov1beta1.HABasic {
-		return new(int32)
+		return &replicas1
 	} else {
 		if resourceType == "Deployment" {
 			return &replicas2
