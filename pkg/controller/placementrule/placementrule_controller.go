@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
+	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,6 +37,7 @@ const (
 	ownerLabelValue = "multicluster-observability-operator"
 	certificateName = "observability-managed-cluster-certificate"
 	certsName       = "observability-managed-cluster-certs"
+	leaseName       = "observability-lease"
 )
 
 var (
@@ -382,6 +384,17 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 		},
 	}
 	err := client.Delete(context.TODO(), certificate)
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+
+	lease := &coordinationv1.Lease{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      leaseName,
+			Namespace: namespace,
+		},
+	}
+	err = client.Delete(context.TODO(), lease)
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}

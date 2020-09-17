@@ -58,6 +58,8 @@ const (
 
 	MetricsCollectorImgTagSuffix = "2.1.0-1aa917b69ceb64c5a77b999ffb69529aa6fb069c"
 
+	LeaseControllerImageTagSuffix = "2.1.0-a2899de5ce144e2c0441063e9ee8c4addf3ecb4a"
+
 	DefaultAddonInterval = 60
 )
 
