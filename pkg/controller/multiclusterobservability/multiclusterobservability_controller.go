@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	observatoriumv1alpha1 "github.com/observatorium/deployments/operator/api/v1alpha1"
+	observatoriumv1alpha1 "github.com/observatorium/operator/api/v1alpha1"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -88,6 +88,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// Watch for changes to secondary resource Deployment and requeue the owner MultiClusterObservability
 	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &mcov1beta1.MultiClusterObservability{},
+	})
+
+	// Watch for changes to secondary resource statefulSet and requeue the owner MultiClusterObservability
+	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &mcov1beta1.MultiClusterObservability{},
 	})
@@ -172,7 +178,7 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return reconcile.Result{}, err
 	}
 
-	if result, err := GenerateMonitoringCR(r.client, instance); result != nil {
+	if result, err := config.GenerateMonitoringCR(r.client, instance); result != nil {
 		return *result, err
 	}
 

@@ -31,6 +31,7 @@ func GetK8sObj(kind string) runtime.Object {
 	objs := map[string]runtime.Object{
 		"Namespace":             &corev1.Namespace{},
 		"Deployment":            &v1.Deployment{},
+		"StatefulSet":           &v1.StatefulSet{},
 		"ClusterRole":           &rbacv1.ClusterRole{},
 		"ClusterRoleBinding":    &rbacv1.ClusterRoleBinding{},
 		"ServiceAccount":        &corev1.ServiceAccount{},

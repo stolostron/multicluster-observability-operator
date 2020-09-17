@@ -33,9 +33,10 @@ var log = logf.Log.WithName("renderer")
 type renderFn func(*resource.Resource) (*unstructured.Unstructured, error)
 
 type Renderer struct {
-	cr               *monitoringv1.MultiClusterObservability
-	renderFns        map[string]renderFn
-	renderGrafanaFns map[string]renderFn
+	cr                    *monitoringv1.MultiClusterObservability
+	renderFns             map[string]renderFn
+	renderGrafanaFns      map[string]renderFn
+	renderAlertManagerFns map[string]renderFn
 }
 
 func NewRenderer(multipleClusterMonitoring *monitoringv1.MultiClusterObservability) *Renderer {
@@ -53,6 +54,7 @@ func NewRenderer(multipleClusterMonitoring *monitoringv1.MultiClusterObservabili
 		"PersistentVolumeClaim": renderer.renderNamespace,
 	}
 	renderer.newGranfanaRenderer()
+	renderer.newAlertManagerRenderer()
 	return renderer
 }
 
@@ -77,6 +79,18 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 		return nil, err
 	}
 	resources = append(resources, grafanaResources...)
+
+	//render alertmanager templates
+	alertTemplates, err := templates.GetTemplateRenderer().GetAlertManagerTemplates(r.cr)
+	if err != nil {
+		return nil, err
+	}
+	alertResources, err := r.renderAlertManagerTemplates(alertTemplates)
+	if err != nil {
+		return nil, err
+	}
+	resources = append(resources, alertResources...)
+
 	for idx, _ := range resources {
 		if resources[idx].GetKind() == "Deployment" {
 			obj := util.GetK8sObj(resources[idx].GetKind())

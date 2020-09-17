@@ -66,6 +66,20 @@ func (r *TemplateRenderer) GetGrafanaTemplates(
 	return resourceList, nil
 }
 
+// GetAlertManagerTemplates reads the alertmanager manifests
+func (r *TemplateRenderer) GetAlertManagerTemplates(
+	mco *mcov1beta1.MultiClusterObservability) ([]*resource.Resource, error) {
+	basePath := path.Join(r.templatesPath, "base")
+	// resourceList contains all kustomize resources
+	resourceList := []*resource.Resource{}
+
+	// add grafana template
+	if err := r.AddTemplateFromPath(basePath+"/alertmanager", &resourceList); err != nil {
+		return resourceList, err
+	}
+	return resourceList, nil
+}
+
 // GetTemplates reads base manifest
 func (r *TemplateRenderer) GetTemplates(
 	mco *mcov1beta1.MultiClusterObservability) ([]*resource.Resource, error) {
