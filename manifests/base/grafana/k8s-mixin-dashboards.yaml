@@ -12997,7 +12997,7 @@ data:
     }
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-k8s-compute-resources-pod
+  name: grafana-dashboard-k8s-compute-resources-workload
   namespace: open-cluster-management
 ---
 apiVersion: v1

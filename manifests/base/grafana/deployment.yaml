@@ -108,7 +108,7 @@ spec:
       - configMap:
           defaultMode: 420
           name: grafana-dashboard-k8s-compute-resources-node-pods
-        name: grafana-dashboard-k8s-rcompute-esources-node-pods
+        name: grafana-dashboard-k8s-compute-resources-node-pods
       - configMap:
           defaultMode: 420
           name: grafana-dashboard-k8s-compute-resources-pod
