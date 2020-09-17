@@ -119,6 +119,16 @@ func GenerateObservatoriumCR(
 
 	if res := bytes.Compare(newSpecBytes, oldSpecBytes); res != 0 {
 		newObj := observatoriumCRFound.DeepCopy()
+
+		// keep the tenant id unchanged
+		for i, newTenant := range newSpec.API.Tenants {
+			for _, oldTenant := range oldSpec.API.Tenants {
+				if oldTenant.Name == newTenant.Name {
+					newSpec.API.Tenants[i].ID = oldTenant.ID
+				}
+			}
+		}
+
 		newObj.Spec = newSpec
 		err = cl.Update(context.TODO(), newObj)
 		if err != nil {
