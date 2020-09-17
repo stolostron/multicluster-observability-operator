@@ -4,8 +4,7 @@ metadata:
   name: observability-metrics-whitelist
 data:
   metrics_list.yaml: |
-    default:
-      - ALERTS
+    names:
       - :node_memory_MemAvailable_bytes:sum
       - apiserver_request_count
       - apiserver_request_duration_seconds_bucket
@@ -105,3 +104,5 @@ data:
       - workqueue_adds_total
       - workqueue_depth
       - workqueue_queue_duration_seconds_bucket
+    matches:
+      - __name__="ALERTS",alertname!~"AlertmanagerReceiversNotConfigured|Watchdog"

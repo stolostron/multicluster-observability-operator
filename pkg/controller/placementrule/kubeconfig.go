@@ -78,7 +78,7 @@ func createKubeSecret(client client.Client, namespace string) (*corev1.Secret, e
 			Namespace: spokeNameSpace,
 		},
 		Data: map[string][]byte{
-			"config": configYaml,
+			"kubeconfig": configYaml,
 		},
 	}, nil
 }
