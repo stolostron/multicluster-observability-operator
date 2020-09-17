@@ -55,7 +55,7 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: status.podIP
-        image: registry.redhat.io/openshift4/ose-prometheus-alertmanager:v4.5.0
+        image: quay.io/openshift/origin-prometheus-alertmanager:4.5.0
         imagePullPolicy: IfNotPresent
         name: alertmanager
         ports:
@@ -77,7 +77,7 @@ spec:
       - args:
         - -webhook-url=http://localhost:9093/-/reload
         - -volume-dir=/etc/alertmanager/config
-        image: registry.redhat.io/openshift4/ose-configmap-reloader:v4.5.0
+        image: quay.io/openshift/origin-configmap-reloader:4.5.0
         imagePullPolicy: IfNotPresent
         name: config-reloader
         resources:

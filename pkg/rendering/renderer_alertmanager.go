@@ -59,17 +59,13 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 		{Name: r.cr.Spec.ImagePullSecret},
 	}
 	alertManagerImgRepo := mcoconfig.AlertManagerImgRepo
-	reloaderImgRepo := mcoconfig.ConfigReloaderImgRepo
 
-	//replace the alertmanager image
+	//replace the alertmanager and config-reloader images
 	if mcoconfig.IsNeededReplacement(r.cr.Annotations, alertManagerImgRepo) {
 		spec.Containers[0].Image = mcoconfig.GetAnnotationImageInfo().ImageRepository +
-			"/ose-prometheus-alertmanager" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-	}
-	//replace the config-reloader image
-	if mcoconfig.IsNeededReplacement(r.cr.Annotations, reloaderImgRepo) {
+			"/origin-prometheus-alertmanager" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 		spec.Containers[1].Image = mcoconfig.GetAnnotationImageInfo().ImageRepository +
-			"/ose-configmap-reloader" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+			"/origin-configmap-reloader" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 	}
 	//replace the volumeClaimTemplate
 	dep.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = &r.cr.Spec.StorageConfig.StatefulSetStorageClass
