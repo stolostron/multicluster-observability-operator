@@ -13,6 +13,8 @@ spec:
         name: multicluster-observability-operator
     spec:
       serviceAccountName: multicluster-observability-operator
+      imagePullSecrets:
+      - name: multiclusterhub-operator-pull-secret
       containers:
         - name: multicluster-observability-operator
           # Replace this with the built image name

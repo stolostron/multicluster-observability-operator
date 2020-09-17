@@ -62,6 +62,8 @@ const (
 
 	LeaseControllerImageTagSuffix = "2.1.0-a2899de5ce144e2c0441063e9ee8c4addf3ecb4a"
 
+	RbacQueryProxyImageTagSuffix = "0.1.0-6e6cdcbb3123ceac483afbe2e347ca65cf538fae"
+
 	DefaultAddonInterval = 60
 )
 

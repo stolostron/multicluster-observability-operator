@@ -102,6 +102,7 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 			dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 			dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
 			dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+			dep.Spec.Replicas = util.GetReplicaCount(r.cr.Spec.AvailabilityConfig, "Deployment")
 
 			spec := &dep.Spec.Template.Spec
 			spec.Containers[0].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
@@ -114,15 +115,24 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 			observatoriumImgRepo := mcoconfig.ObservatoriumImgRepo
 			observatoriumImgTagSuffix := mcoconfig.ObservatoriumImgTagSuffix
 
+			proxyRepo := mcoconfig.DefaultImgRepository
+			proxyTagSuffix := mcoconfig.RbacQueryProxyImageTagSuffix
+
 			//replace the grafana image
 			if mcoconfig.IsNeededReplacement(r.cr.Annotations, grafanaImgRepo) {
 				grafanaImgRepo = mcoconfig.GetAnnotationImageInfo().ImageRepository
 				grafanaImgTagSuffix = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 			}
+
 			//replace the observatorium operator image
 			if mcoconfig.IsNeededReplacement(r.cr.Annotations, observatoriumImgRepo) {
 				observatoriumImgRepo = mcoconfig.GetAnnotationImageInfo().ImageRepository
 				observatoriumImgTagSuffix = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+			}
+
+			if mcoconfig.IsNeededReplacement(r.cr.Annotations, proxyRepo) {
+				proxyRepo = mcoconfig.GetAnnotationImageInfo().ImageRepository
+				proxyTagSuffix = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 			}
 
 			switch resources[idx].GetName() {
@@ -133,6 +143,8 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 			case "observatorium-operator":
 				spec.Containers[0].Image = observatoriumImgRepo + "/observatorium-operator:" + observatoriumImgTagSuffix
 
+			case "rbac-query-proxy":
+				spec.Containers[0].Image = proxyRepo + "/rbac-query-proxy:" + proxyTagSuffix
 			}
 
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
