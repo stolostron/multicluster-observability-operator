@@ -60,8 +60,8 @@ spec:
           name: grafana-dashboard-k8s-compute-resources-pod
         - mountPath: grafana-dashboard-definitions/0/k8s-compute-resources-workload
           name: grafana-dashboard-k8s-compute-resources-workload
-        - mountPath: /grafana-dashboard-definitions/0/node-cluster-rsrc-use
-          name: grafana-dashboard-node-cluster-rsrc-use
+        - mountPath: /grafana-dashboard-definitions/0/cluster-rsrc-use
+          name: grafana-dashboard-cluster-rsrc-use
         - mountPath: /grafana-dashboard-definitions/0/node-rsrc-use
           name: grafana-dashboard-node-rsrc-use
         - mountPath: /etc/grafana
@@ -95,36 +95,36 @@ spec:
         name: grafana-dashboard-managed-clusters
       - configMap:
           defaultMode: 420
-          name: grafana-dashboard-cluster-total
-        name: grafana-dashboard-cluster-total
+          name: grafana-dashboard-k8s-networking-cluster
+        name: grafana-dashboard-k8s-networking-cluster
       - configMap:
           defaultMode: 420
-          name: grafana-dashboard-k8s-resources-cluster
-        name: grafana-dashboard-k8s-resources-cluster
+          name: grafana-dashboard-k8s-compute-resources-cluster
+        name: grafana-dashboard-k8s-compute-resources-cluster
       - configMap:
           defaultMode: 420
-          name: grafana-dashboard-k8s-resources-namespace
-        name: grafana-dashboard-k8s-resources-namespace
+          name: grafana-dashboard-k8s-compute-resources-namespace-pods
+        name: grafana-dashboard-k8s-compute-resources-namespace-pods
       - configMap:
           defaultMode: 420
-          name: grafana-dashboard-k8s-resources-node
-        name: grafana-dashboard-k8s-resources-node
+          name: grafana-dashboard-k8s-compute-resources-node-pods
+        name: grafana-dashboard-k8s-rcompute-esources-node-pods
       - configMap:
           defaultMode: 420
-          name: grafana-dashboard-k8s-resources-pod
-        name: grafana-dashboard-k8s-resources-pod
+          name: grafana-dashboard-k8s-compute-resources-pod
+        name: grafana-dashboard-k8s-compute-resources-pod
       - configMap:
           defaultMode: 420
-          name: grafana-dashboard-k8s-resources-workload
-        name: grafana-dashboard-k8s-resources-workload
+          name: grafana-dashboard-k8s-compute-resources-workload
+        name: grafana-dashboard-k8s-compute-resources-workload
       - configMap:
           defaultMode: 420
-          name: grafana-dashboard-k8s-resources-workloads-namespace
-        name: grafana-dashboard-k8s-resources-workloads-namespace
+          name: grafana-dashboard-k8s-compute-resources-namespace-workloads
+        name: grafana-dashboard-k8s-compute-resources-namespace-workloads
       - configMap:
           defaultMode: 420
-          name: grafana-dashboard-node-cluster-rsrc-use
-        name: grafana-dashboard-node-cluster-rsrc-use
+          name: grafana-dashboard-cluster-rsrc-use
+        name: grafana-dashboard-cluster-rsrc-use
       - configMap:
           defaultMode: 420
           name: grafana-dashboard-node-rsrc-use
