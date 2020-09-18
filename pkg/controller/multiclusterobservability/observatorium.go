@@ -119,6 +119,22 @@ func GenerateObservatoriumCR(
 
 	if res := bytes.Compare(newSpecBytes, oldSpecBytes); res != 0 {
 		newObj := observatoriumCRFound.DeepCopy()
+
+		// keep the tenant id unchanged
+		for i, newTenant := range newSpec.API.Tenants {
+			for _, oldTenant := range oldSpec.API.Tenants {
+				if oldTenant.Name == newTenant.Name && newTenant.ID != oldTenant.ID {
+					newSpec.API.Tenants[i].ID = oldTenant.ID
+					for j, hashring := range newSpec.Hashrings {
+						if util.Contains(hashring.Tenants, newTenant.ID) {
+							newSpec.Hashrings[j].Tenants = util.Remove(newSpec.Hashrings[j].Tenants, newTenant.ID)
+							newSpec.Hashrings[j].Tenants = append(newSpec.Hashrings[0].Tenants, oldTenant.ID)
+						}
+					}
+				}
+			}
+		}
+
 		newObj.Spec = newSpec
 		err = cl.Update(context.TODO(), newObj)
 		if err != nil {

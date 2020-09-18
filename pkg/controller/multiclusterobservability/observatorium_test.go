@@ -69,13 +69,10 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	compactStorage := obs.Compact.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	obs = newDefaultObservatoriumSpec(mco, storageClassName)
 	APIImg := imgRepo + "/observatorium:" + imgVersion
-	queryCacheImg := imgRepo + "/cortex:" + imgVersion
 	controllerImg := imgRepo + "/thanos-receive-controller:" + imgVersion
 	thanosImg := imgRepo + "/" + thanosImgName + ":" + imgVersion
 	if obs.API.Image != APIImg ||
 		obs.API.Version != imgVersion ||
-		obs.QueryCache.Image != queryCacheImg ||
-		obs.QueryCache.Version != imgVersion ||
 		obs.ThanosReceiveController.Image != controllerImg ||
 		obs.ThanosReceiveController.Version != imgVersion ||
 		obs.Query.Image != thanosImg ||
@@ -100,8 +97,6 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 		obs.Store.Cache.Version != imgVersion ||
 		obs.Store.Cache.ExporterImage != imgRepo+"/memcached-exporter:"+imgVersion ||
 		obs.Store.Cache.ExporterVersion != imgVersion ||
-		obs.APIQuery.Image != thanosImg ||
-		obs.APIQuery.Version != imgVersion ||
 		obs.ObjectStorageConfig.Thanos.Key != "key" ||
 		obs.ObjectStorageConfig.Thanos.Name != "name" {
 		t.Errorf("Failed to newDefaultObservatorium")
