@@ -16,7 +16,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 const (
@@ -62,32 +61,6 @@ func GenerateGrafanaDataSource(
 	scheme *runtime.Scheme,
 	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
-	clientSecret := &corev1.Secret{}
-	err := client.Get(context.TODO(),
-		types.NamespacedName{
-			Name:      GetGrafanaCerts(),
-			Namespace: config.GetDefaultNamespace(),
-		},
-		clientSecret)
-	if err != nil {
-		return &reconcile.Result{}, err
-	}
-	serverSecret := &corev1.Secret{}
-	err = client.Get(context.TODO(),
-		types.NamespacedName{
-			Name:      GetServerCerts(),
-			Namespace: config.GetDefaultNamespace(),
-		},
-		serverSecret)
-	if err != nil {
-		return &reconcile.Result{}, err
-	}
-	tlsConfig := &SecureJsonData{
-		TLSCACert:     string(serverSecret.Data["ca.crt"]),
-		TLSClientCert: string(clientSecret.Data["tls.crt"]),
-		TLSClientKey:  string(clientSecret.Data["tls.key"]),
-	}
-
 	grafanaDatasources, err := yaml.Marshal(GrafanaDatasources{
 		APIVersion: 1,
 		Datasources: []*GrafanaDatasource{
@@ -95,12 +68,7 @@ func GenerateGrafanaDataSource(
 				Name:   "Observatorium",
 				Type:   "prometheus",
 				Access: "proxy",
-				JSONData: &JsonData{
-					TLSAuth:   true,
-					TLSAuthCA: true,
-				},
-				SecureJSONData: tlsConfig,
-				URL:            "https://" + config.GetObsAPISvc(mco.GetName()) + ":8080/api/metrics/v1/default",
+				URL:    "http://rbac-query-proxy." + mco.Namespace + ".svc.cluster.local:8080",
 			},
 		},
 	})
