@@ -57,6 +57,7 @@ replace (
 )
 
 replace (
+	bitbucket.org/ww/goautoneg => github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 	github.com/coreos/etcd => go.etcd.io/etcd v3.3.22+incompatible
 	github.com/gorilla/websocket => github.com/gorilla/websocket v1.4.2
 	github.com/jetstack/cert-manager => github.com/open-cluster-management/cert-manager v0.0.0-20200821135248-2fd523b053f5
@@ -64,5 +65,4 @@ replace (
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc7
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad
 	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.0.0-20190424153033-d3245f150225
-
 )
