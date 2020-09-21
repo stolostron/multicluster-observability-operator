@@ -54,6 +54,9 @@ const (
 	ImageManifestConfigmapName = "mch-image-manifest-"
 
 	ComponentVersion = "COMPONENT_VERSION"
+
+	ServerCerts  = "observability-server-certs"
+	GrafanaCerts = "observability-grafana-certs"
 )
 
 var (
@@ -92,11 +95,7 @@ var (
 	EndpointControllerImgTagSuffix = "0.1.0-758599e8bcb0dfa9699a72ab17bd70807af5db12"
 	MetricsCollectorImgTagSuffix   = "2.1.0-1aa917b69ceb64c5a77b999ffb69529aa6fb069c"
 	LeaseControllerImageTagSuffix  = "2.1.0-a2899de5ce144e2c0441063e9ee8c4addf3ecb4a"
-	RbacQueryProxyImageTagSuffix   = "0.1.0-b531dc0313c24ef01744fbbb1bca6f8f1901066f"
 	RbacQueryProxyImageName        = "rbac-query-proxy"
-
-	ServerCerts  = "observability-server-certs"
-	GrafanaCerts = "observability-grafana-certs"
 )
 
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation

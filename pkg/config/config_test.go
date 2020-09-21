@@ -316,8 +316,14 @@ func NewFakeClient(mco *mcov1beta1.MultiClusterObservability,
 
 func TestGenerateMonitoringCR(t *testing.T) {
 	mco := &mcov1beta1.MultiClusterObservability{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
+		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "test",
+			Name:      "test",
+			Annotations: map[string]string{
+				AnnotationKeyImageTagSuffix: "tag",
+			},
+		},
 		Spec: mcov1beta1.MultiClusterObservabilitySpec{
 			StorageConfig: &mcov1beta1.StorageConfigObject{},
 		},

@@ -126,10 +126,11 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 				if found {
 					spec.Containers[0].Image = image
 				}
-			}
 
 			case "rbac-query-proxy":
 				updateProxySpec(spec, r.cr)
+
+			}
 
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 			if err != nil {
@@ -144,12 +145,11 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 }
 
 func updateProxySpec(spec *corev1.PodSpec, mco *monitoringv1.MultiClusterObservability) {
-	found, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.DefaultImgRepository,
+	found, image := mcoconfig.ReplaceImage(mco.Annotations, mcoconfig.DefaultImgRepository,
 		mcoconfig.RbacQueryProxyImageName)
 	if found {
 		spec.Containers[0].Image = image
 	}
-
 
 	args := spec.Containers[0].Args
 	for idx := range args {

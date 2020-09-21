@@ -19,7 +19,6 @@ import (
 	observatoriumv1alpha1 "github.com/observatorium/operator/api/v1alpha1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 var (
@@ -60,25 +59,12 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 
 	obs := newDefaultObservatoriumSpec(mco, storageClassName)
 
-	imgRepo := util.GetAnnotation(mco.GetAnnotations(), mcoconfig.AnnotationKeyImageRepository)
-	imgVersion := util.GetAnnotation(mco.GetAnnotations(), mcoconfig.AnnotationKeyImageTagSuffix)
 	receiversStorage := obs.Receivers.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	ruleStorage := obs.Rule.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	storeStorage := obs.Store.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	compactStorage := obs.Compact.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	obs = newDefaultObservatoriumSpec(mco, storageClassName)
-	APIImg := imgRepo + "/observatorium:" + imgVersion
-	controllerImg := imgRepo + "/thanos-receive-controller:" + imgVersion
-	thanosImg := imgRepo + "/" + mcoconfig.ThanosImgName + ":" + imgVersion
-	if obs.API.Image != APIImg ||
-		obs.API.Version != imgVersion ||
-		obs.ThanosReceiveController.Image != controllerImg ||
-		obs.ThanosReceiveController.Version != imgVersion ||
-		obs.Query.Image != thanosImg ||
-		obs.Query.Version != imgVersion ||
-		obs.Receivers.Image != thanosImg ||
-		obs.Receivers.Version != imgVersion ||
-		*obs.Receivers.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
+	if *obs.Receivers.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
 		*obs.Rule.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
 		*obs.Store.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
 		*obs.Compact.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
@@ -86,16 +72,6 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 		ruleStorage.String() != statefulSetSize ||
 		storeStorage.String() != statefulSetSize ||
 		compactStorage.String() != statefulSetSize ||
-		obs.Rule.Image != thanosImg ||
-		obs.Rule.Version != imgVersion ||
-		obs.Store.Image != thanosImg ||
-		obs.Store.Version != imgVersion ||
-		obs.Compact.Image != thanosImg ||
-		obs.Compact.Version != imgVersion ||
-		obs.Store.Cache.Image != imgRepo+"/memcached:"+imgVersion ||
-		obs.Store.Cache.Version != imgVersion ||
-		obs.Store.Cache.ExporterImage != imgRepo+"/memcached-exporter:"+imgVersion ||
-		obs.Store.Cache.ExporterVersion != imgVersion ||
 		obs.ObjectStorageConfig.Thanos.Key != "key" ||
 		obs.ObjectStorageConfig.Thanos.Name != "name" {
 		t.Errorf("Failed to newDefaultObservatorium")
@@ -119,9 +95,15 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 
 	// A MultiClusterObservability object with metadata and spec.
 	mco := &mcov1beta1.MultiClusterObservability{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
-		Spec:       mcov1beta1.MultiClusterObservabilitySpec{},
+		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+			Annotations: map[string]string{
+				mcoconfig.AnnotationKeyImageTagSuffix: "tag",
+			},
+		},
+		Spec: mcov1beta1.MultiClusterObservabilitySpec{},
 	}
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
