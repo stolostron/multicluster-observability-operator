@@ -166,7 +166,7 @@ func updateProxySpec(spec *corev1.PodSpec, mco *monitoringv1.MultiClusterObserva
 	}
 	for idx := range spec.Volumes {
 		if spec.Volumes[idx].Name == "ca-certs" {
-			spec.Volumes[idx].Secret.SecretName = mcoconfig.ServerCACerts
+			spec.Volumes[idx].Secret.SecretName = mcoconfig.ServerCerts
 		}
 		if spec.Volumes[idx].Name == "client-certs" {
 			spec.Volumes[idx].Secret.SecretName = mcoconfig.GrafanaCerts
