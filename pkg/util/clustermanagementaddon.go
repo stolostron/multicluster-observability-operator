@@ -7,17 +7,14 @@ import (
 	"fmt"
 	"time"
 
-	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
+	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-var log = logf.Log.WithName("registering")
 
 const (
 	ObservabilityController = "observability-controller"
