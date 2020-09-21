@@ -23,7 +23,7 @@ spec:
       - name: multiclusterhub-operator-pull-secret
       containers:
       - name: rbac-query-proxy
-        image: quay.io/open-cluster-management/rbac-query-proxy:0.1.0-6e6cdcbb3123ceac483afbe2e347ca65cf538fae
+        image: quay.io/open-cluster-management/rbac-query-proxy:0.1.0-7f8235c135bd332688eb6f8062b5868af47cc0f9
         imagePullPolicy: Always
         args:
         - "--listen-address=0.0.0.0:8080"
