@@ -182,9 +182,6 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return *result, err
 	}
 
-	//set configured image repo and image tag from annotations
-	config.SetAnnotationImageInfo(instance.GetAnnotations())
-
 	// Do not reconcile objects if this instance of mch is labeled "paused"
 	if config.IsPaused(instance.GetAnnotations()) {
 		reqLogger.Info("MCO reconciliation is paused. Nothing more to do.")

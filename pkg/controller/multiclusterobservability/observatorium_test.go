@@ -57,7 +57,6 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 			},
 		},
 	}
-	mcoconfig.SetAnnotationImageInfo(mco.GetAnnotations())
 
 	obs := newDefaultObservatoriumSpec(mco, storageClassName)
 
@@ -70,7 +69,7 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	obs = newDefaultObservatoriumSpec(mco, storageClassName)
 	APIImg := imgRepo + "/observatorium:" + imgVersion
 	controllerImg := imgRepo + "/thanos-receive-controller:" + imgVersion
-	thanosImg := imgRepo + "/" + thanosImgName + ":" + imgVersion
+	thanosImg := imgRepo + "/" + mcoconfig.ThanosImgName + ":" + imgVersion
 	if obs.API.Image != APIImg ||
 		obs.API.Version != imgVersion ||
 		obs.ThanosReceiveController.Image != controllerImg ||
