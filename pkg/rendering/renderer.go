@@ -115,8 +115,6 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 			grafanaImgTagSuffix := mcoconfig.GrafanaImgTagSuffix
 			observatoriumImgRepo := mcoconfig.ObservatoriumImgRepo
 			observatoriumImgTagSuffix := mcoconfig.ObservatoriumImgTagSuffix
-			proxyRepo := mcoconfig.DefaultImgRepository
-			proxyTagSuffix := mcoconfig.RbacQueryProxyImageTagSuffix
 			//replace the grafana image
 			if mcoconfig.IsNeededReplacement(r.cr.Annotations, grafanaImgRepo) {
 				grafanaImgRepo = mcoconfig.GetAnnotationImageInfo().ImageRepository
@@ -126,11 +124,6 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 			if mcoconfig.IsNeededReplacement(r.cr.Annotations, observatoriumImgRepo) {
 				observatoriumImgRepo = mcoconfig.GetAnnotationImageInfo().ImageRepository
 				observatoriumImgTagSuffix = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-			}
-			//replace the query-proxy image
-			if mcoconfig.IsNeededReplacement(r.cr.Annotations, proxyRepo) {
-				proxyRepo = mcoconfig.GetAnnotationImageInfo().ImageRepository
-				proxyTagSuffix = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 			}
 
 			switch resources[idx].GetName() {
@@ -142,21 +135,9 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 				spec.Containers[0].Image = observatoriumImgRepo + "/observatorium-operator:" + observatoriumImgTagSuffix
 
 			case "rbac-query-proxy":
-				spec.Containers[0].Image = proxyRepo + "/rbac-query-proxy:" + proxyTagSuffix
-				args := spec.Containers[0].Args
-				for idx := range args {
-					args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", r.cr.Namespace, 1)
-					args[idx] = strings.Replace(args[idx], "{{MCO_CR_NAME}}", r.cr.Name, 1)
-				}
-				for idx := range spec.Volumes {
-					if spec.Volumes[idx].Name == "ca-certs" {
-						spec.Volumes[idx].Secret.SecretName = mcoconfig.ServerCACerts
-					}
-					if spec.Volumes[idx].Name == "client-certs" {
-						spec.Volumes[idx].Secret.SecretName = mcoconfig.GrafanaCerts
-					}
-				}
+				updateProxySpec(spec, r.cr)
 			}
+
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 			if err != nil {
 				return nil, err
@@ -167,6 +148,30 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 	}
 
 	return resources, nil
+}
+
+func updateProxySpec(spec *corev1.PodSpec, mco *monitoringv1.MultiClusterObservability) {
+	proxyRepo := mcoconfig.DefaultImgRepository
+	proxyTagSuffix := mcoconfig.RbacQueryProxyImageTagSuffix
+	//replace the query-proxy image
+	if mcoconfig.IsNeededReplacement(mco.Annotations, proxyRepo) {
+		proxyRepo = mcoconfig.GetAnnotationImageInfo().ImageRepository
+		proxyTagSuffix = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+	}
+	spec.Containers[0].Image = proxyRepo + "/rbac-query-proxy:" + proxyTagSuffix
+	args := spec.Containers[0].Args
+	for idx := range args {
+		args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", mco.Namespace, 1)
+		args[idx] = strings.Replace(args[idx], "{{MCO_CR_NAME}}", mco.Name, 1)
+	}
+	for idx := range spec.Volumes {
+		if spec.Volumes[idx].Name == "ca-certs" {
+			spec.Volumes[idx].Secret.SecretName = mcoconfig.ServerCACerts
+		}
+		if spec.Volumes[idx].Name == "client-certs" {
+			spec.Volumes[idx].Secret.SecretName = mcoconfig.GrafanaCerts
+		}
+	}
 }
 
 func (r *Renderer) renderTemplates(templates []*resource.Resource) ([]*unstructured.Unstructured, error) {
