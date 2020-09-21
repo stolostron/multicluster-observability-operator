@@ -5,6 +5,7 @@ package rendering
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -114,22 +115,19 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 			grafanaImgTagSuffix := mcoconfig.GrafanaImgTagSuffix
 			observatoriumImgRepo := mcoconfig.ObservatoriumImgRepo
 			observatoriumImgTagSuffix := mcoconfig.ObservatoriumImgTagSuffix
-
 			proxyRepo := mcoconfig.DefaultImgRepository
 			proxyTagSuffix := mcoconfig.RbacQueryProxyImageTagSuffix
-
 			//replace the grafana image
 			if mcoconfig.IsNeededReplacement(r.cr.Annotations, grafanaImgRepo) {
 				grafanaImgRepo = mcoconfig.GetAnnotationImageInfo().ImageRepository
 				grafanaImgTagSuffix = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 			}
-
 			//replace the observatorium operator image
 			if mcoconfig.IsNeededReplacement(r.cr.Annotations, observatoriumImgRepo) {
 				observatoriumImgRepo = mcoconfig.GetAnnotationImageInfo().ImageRepository
 				observatoriumImgTagSuffix = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
 			}
-
+			//replace the query-proxy image
 			if mcoconfig.IsNeededReplacement(r.cr.Annotations, proxyRepo) {
 				proxyRepo = mcoconfig.GetAnnotationImageInfo().ImageRepository
 				proxyTagSuffix = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
@@ -145,8 +143,20 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 
 			case "rbac-query-proxy":
 				spec.Containers[0].Image = proxyRepo + "/rbac-query-proxy:" + proxyTagSuffix
+				args := spec.Containers[0].Args
+				for idx := range args {
+					args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", r.cr.Namespace, 1)
+					args[idx] = strings.Replace(args[idx], "{{MCO_CR_NAME}}", r.cr.Name, 1)
+				}
+				for idx := range spec.Volumes {
+					if spec.Volumes[idx].Name == "ca-certs" {
+						spec.Volumes[idx].Secret.SecretName = mcoconfig.ServerCACerts
+					}
+					if spec.Volumes[idx].Name == "client-certs" {
+						spec.Volumes[idx].Secret.SecretName = mcoconfig.GrafanaCerts
+					}
+				}
 			}
-
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 			if err != nil {
 				return nil, err

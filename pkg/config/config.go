@@ -65,6 +65,9 @@ const (
 	RbacQueryProxyImageTagSuffix = "0.1.0-6e6cdcbb3123ceac483afbe2e347ca65cf538fae"
 
 	DefaultAddonInterval = 60
+
+	ServerCACerts = "observability-server-ca-certs"
+	GrafanaCerts  = "observability-grafana-certs"
 )
 
 type AnnotationImageInfo struct {

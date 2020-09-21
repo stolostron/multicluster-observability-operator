@@ -27,7 +27,6 @@ const (
 	serverSelfSignIssuer = "observability-server-selfsign-issuer"
 	serverCAIssuer       = "observability-server-ca-issuer"
 	serverCACertifcate   = "observability-server-ca-certificate"
-	serverCACerts        = "observability-server-ca-certs"
 	serverCertificate    = "observability-server-certificate"
 	serverCerts          = "observability-server-certs"
 
@@ -37,7 +36,6 @@ const (
 	clientCACerts        = "observability-client-ca-certs"
 
 	grafanaCertificate = "observability-grafana-certificate"
-	grafanaCerts       = "observability-grafana-certs"
 	grafanaSubject     = "grafana"
 
 	managedClusterCertOrg = "acm"
@@ -60,7 +58,7 @@ func GetClientCAIssuer() string {
 
 // GetClientCACert is used to return clientCACert
 func GetClientCACert() string {
-	return grafanaCerts
+	return config.GrafanaCerts
 }
 
 // GetServerCerts is used to return serverCerts
@@ -70,7 +68,7 @@ func GetServerCerts() string {
 
 // GetGrafanaCerts is used to return grafanaCerts
 func GetGrafanaCerts() string {
-	return grafanaCerts
+	return config.GrafanaCerts
 }
 
 // CreateCertificateSpec is used to create a struct of CertificateSpec
@@ -318,7 +316,7 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 		return err
 	}
 
-	spec := CreateCertificateSpec(serverCACerts, false, serverSelfSignIssuer, true,
+	spec := CreateCertificateSpec(config.ServerCACerts, false, serverSelfSignIssuer, true,
 		serverCACertifcate, []string{}, []string{})
 	err = CreateCertificate(client, scheme, mco,
 		serverCACertifcate, ns, spec)
@@ -327,7 +325,7 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 	}
 
 	err = createIssuer(client, scheme, mco,
-		serverCAIssuer, ns, serverCACerts)
+		serverCAIssuer, ns, config.ServerCACerts)
 	if err != nil {
 		return err
 	}
@@ -372,7 +370,7 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 	}
 
 	log.Info("Creating certificates for grafana")
-	spec = CreateCertificateSpec(grafanaCerts, true, clientCAIssuer, false,
+	spec = CreateCertificateSpec(GetGrafanaCerts(), true, clientCAIssuer, false,
 		grafanaSubject, []string{}, []string{})
 	err = CreateCertificate(client, scheme, mco,
 		grafanaCertificate, config.GetDefaultNamespace(), spec)

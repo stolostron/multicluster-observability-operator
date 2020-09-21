@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   labels:
     app: rbac-query-proxy
-    observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
+    observability.open-cluster-management.io/name: "{{MCO_CR_NAME}}"
   name: rbac-query-proxy
   namespace: open-cluster-management-observability
 spec:
@@ -11,12 +11,12 @@ spec:
   selector:
     matchLabels:
       app: rbac-query-proxy
-      observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
+      observability.open-cluster-management.io/name: "{{MCO_CR_NAME}}"
   template:
     metadata:
       labels:
         app: rbac-query-proxy
-        observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
+        observability.open-cluster-management.io/name: "{{MCO_CR_NAME}}"
     spec:
       serviceAccountName: rbac-query-proxy
       imagePullSecrets:
@@ -27,7 +27,7 @@ spec:
         imagePullPolicy: Always
         args:
         - "--listen-address=0.0.0.0:8080"
-        - "--metrics-server=https://observability-observatorium-observatorium-api.open-cluster-management-observability.svc.cluster.local:8080/api/metrics/v1/default"
+        - "--metrics-server=https://{{MCO_CR_NAME}}-observatorium-observatorium-api.{{MCO_NAMESPACE}}.svc.cluster.local:8080/api/metrics/v1/default"
         ports:
         - containerPort: 8080
           name: http
