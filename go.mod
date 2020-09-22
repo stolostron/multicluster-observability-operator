@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.54.0 // indirect
+	github.com/cloudflare/cfssl v1.4.1 // indirect
 	github.com/go-openapi/jsonreference v0.19.3 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/imdario/mergo v0.3.8 // indirect

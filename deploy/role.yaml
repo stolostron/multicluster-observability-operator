@@ -205,3 +205,13 @@ rules:
   verbs:
   - create
   - get 
+  - delete
+- apiGroups: 
+  - addon.open-cluster-management.io
+  resources: 
+  - managedclusteraddons
+  verbs:
+  - create
+  - delete
+  - get
+  - list

@@ -376,6 +376,13 @@ func createManagedClusterRes(client client.Client,
 		log.Error(err, "Failed to create observabilityaddon")
 		return err
 	}
+
+	err = util.CreateManagedClusterAddonCR(client, namespace)
+	if err != nil {
+		log.Error(err, "Failed to create ManagedClusterAddon")
+		return err
+	}
+
 	err = createManifestWork(client, namespace, name, mco, imagePullSecret)
 	if err != nil {
 		log.Error(err, "Failed to create manifestwork")
