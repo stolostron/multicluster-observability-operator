@@ -36,11 +36,14 @@ data:
       - container_network_transmit_bytes_total
       - container_network_transmit_packets_dropped_total
       - container_network_transmit_packets_total
+      - container_spec_cpu_quota
+      - etcd_disk_backend_commit_duration_seconds_bucket
       - etcd_helper_cache_entry_total
       - etcd_helper_cache_hit_total
       - etcd_helper_cache_miss_total
       - etcd_request_cache_get_duration_seconds_bucket
       - etcd_request_cache_add_duration_seconds_bucket
+      - etcd_server_quota_backend_bytes
       - go_goroutines
       - haproxy_backend_connections_total
       - http_requests_total
@@ -76,6 +79,7 @@ data:
       - kube_pod_container_status_waiting
       - kube_pod_info
       - kube_pod_status_ready
+      - kube_pod_status_phase
       - kube_resourcequota
       - kubelet_running_container_count
       - kubelet_runtime_operations
@@ -83,6 +87,9 @@ data:
       - machine_cpu_cores
       - machine_memory_bytes
       - mixin_pod_workload
+      - namespace:kube_pod_container_resource_requests_cpu_cores:sum
+      - namespace:kube_pod_container_resource_requests_memory_bytes:sum
+      - namespace:container_memory_usage_bytes:sum
       - node_cpu_seconds_total
       - node_filesystem_avail_bytes
       - node_filesystem_free_bytes
