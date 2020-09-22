@@ -290,8 +290,8 @@ spec:
   keywords:
   - MultiClusterObservability
   maintainers:
-  - email: ssli@redhat.com
-    name: Song Song Li
+  - email: acm-contact@redhat.com
+    name: Red Hat, Inc
   maturity: alpha
   provider:
     name: Red Hat, Inc.
