@@ -97,6 +97,11 @@ func (r *TemplateRenderer) GetTemplates(
 		return resourceList, err
 	}
 
+	// add proxy template
+	if err := r.AddTemplateFromPath(basePath+"/proxy", &resourceList); err != nil {
+		return resourceList, err
+	}
+
 	return resourceList, nil
 }
 

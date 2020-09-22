@@ -62,7 +62,12 @@ const (
 
 	LeaseControllerImageTagSuffix = "2.1.0-a2899de5ce144e2c0441063e9ee8c4addf3ecb4a"
 
+	RbacQueryProxyImageTagSuffix = "0.1.0-b531dc0313c24ef01744fbbb1bca6f8f1901066f"
+
 	DefaultAddonInterval = 60
+
+	ServerCerts  = "observability-server-certs"
+	GrafanaCerts = "observability-grafana-certs"
 )
 
 type AnnotationImageInfo struct {

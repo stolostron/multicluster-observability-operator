@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: rbac-query-proxy
+    observability.open-cluster-management.io/name: "{{MCO_CR_NAME}}"
+  name: rbac-query-proxy
+  namespace: open-cluster-management-observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rbac-query-proxy
+      observability.open-cluster-management.io/name: "{{MCO_CR_NAME}}"
+  template:
+    metadata:
+      labels:
+        app: rbac-query-proxy
+        observability.open-cluster-management.io/name: "{{MCO_CR_NAME}}"
+    spec:
+      serviceAccountName: rbac-query-proxy
+      imagePullSecrets:
+      - name: multiclusterhub-operator-pull-secret
+      containers:
+      - name: rbac-query-proxy
+        image: quay.io/open-cluster-management/rbac-query-proxy:0.1.0-7f8235c135bd332688eb6f8062b5868af47cc0f9
+        imagePullPolicy: Always
+        args:
+        - "--listen-address=0.0.0.0:8080"
+        - "--metrics-server=https://{{MCO_CR_NAME}}-observatorium-observatorium-api.{{MCO_NAMESPACE}}.svc.cluster.local:8080/api/metrics/v1/default"
+        ports:
+        - containerPort: 8080
+          name: http
+        volumeMounts:
+        - name: ca-certs
+          mountPath: /var/rbac_proxy/ca
+        - name: client-certs
+          mountPath: /var/rbac_proxy/certs
+      volumes:
+      - name: ca-certs
+        secret:
+          secretName: observability-server-certs
+      - name: client-certs
+        secret:
+          secretName: observability-grafana-certs
