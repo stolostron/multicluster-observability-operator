@@ -126,9 +126,9 @@ func getImage(mco *mcov1beta1.MultiClusterObservability,
 	name string, tag string) string {
 	image := mcoconfig.DefaultImgRepository +
 		"/" + name + ":" + tag
-	if mcoconfig.IsNeededReplacement(mco.Annotations, image) {
-		image = mcoconfig.GetAnnotationImageInfo().ImageRepository +
-			"/" + name + ":" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+	found, replacedImage := mcoconfig.ReplaceImage(mco.Annotations, mcoconfig.DefaultImgRepository, name)
+	if found {
+		return replacedImage
 	}
 	return image
 }

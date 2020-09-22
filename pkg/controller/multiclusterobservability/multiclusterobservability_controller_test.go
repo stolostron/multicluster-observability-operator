@@ -175,8 +175,14 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 
 	// A MultiClusterObservability object with metadata and spec.
 	mco := &mcov1beta1.MultiClusterObservability{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
+		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+			Annotations: map[string]string{
+				mcoconfig.AnnotationKeyImageTagSuffix: "tag",
+			},
+		},
 		Spec: mcov1beta1.MultiClusterObservabilitySpec{
 			StorageConfig: &mcov1beta1.StorageConfigObject{
 				MetricObjectStorage: &mcov1beta1.PreConfiguredStorage{
