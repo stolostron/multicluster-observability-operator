@@ -211,6 +211,7 @@ rules:
   resources: 
   - managedclusteraddons
   verbs:
+  - watch  
   - create
   - delete
   - get
