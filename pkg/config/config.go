@@ -59,14 +59,16 @@ const (
 	GrafanaCerts = "observability-grafana-certs"
 )
 
-var (
+const (
 	ObservatoriumImgRepo           = "quay.io/observatorium"
 	ObservatoriumAPIImgName        = "observatorium"
 	ObservatoriumAPIImgTag         = "latest"
-	ObservatoriumOperatorImgName   = "observatorium-operator"
+	ObservatoriumOperatorImgName   = "observatorium_operator"
 	ObservatoriumOperatorImgTag    = "master-2020-09-17-d861409"
 	ThanosReceiveControllerImgName = "thanos-receive-controller"
-	ThanosReceiveControllerImgTag  = "master-2020-06-17-a9d9169"
+	//ThanosReceiveControllerKey is used to get from mch-image-manifest.xxx configmap
+	ThanosReceiveControllerKey    = "thanos_receive_controller"
+	ThanosReceiveControllerImgTag = "master-2020-06-17-a9d9169"
 
 	ThanosImgRepo = "quay.io/thanos"
 	ThanosImgName = "thanos"
@@ -78,24 +80,31 @@ var (
 
 	MemcachedExporterImgRepo = "prom"
 	MemcachedExporterImgName = "memcached-exporter"
+	MemcachedExporterKey     = "memcached_exporter"
 	MemcachedExporterImgTag  = "v0.6.0"
 
 	GrafanaImgRepo      = "grafana"
 	GrafanaImgName      = "grafana"
 	GrafanaImgTagSuffix = "7.1.3"
 
-	AlertManagerImgRepo = "quay.io/openshift"
-	AlertManagerImgName = "alertmanager"
-	AlertManagerImgTag  = "4.5"
-
+	AlertManagerImgRepo      = "quay.io/openshift"
+	AlertManagerKey          = "prometheus-alertmanager"
 	ConfigmapReloaderImgRepo = "quay.io/openshift"
-	ConfigmapReloaderImgName = "configmap-reloader"
-	ConfigmapReloaderImgTag  = "4.5"
+	ConfigmapReloaderKey     = "prometheus-config-reloader"
 
 	EndpointControllerImgTagSuffix = "0.1.0-758599e8bcb0dfa9699a72ab17bd70807af5db12"
-	MetricsCollectorImgTagSuffix   = "2.1.0-1aa917b69ceb64c5a77b999ffb69529aa6fb069c"
-	LeaseControllerImageTagSuffix  = "2.1.0-a2899de5ce144e2c0441063e9ee8c4addf3ecb4a"
-	RbacQueryProxyImageName        = "rbac-query-proxy"
+	EndpointControllerImgName      = "endpoint-monitoring-operator"
+	EndpointControllerKey          = "endpoint_monitoring_operator"
+
+	MetricsCollectorImgTagSuffix = "2.1.0-1aa917b69ceb64c5a77b999ffb69529aa6fb069c"
+	MetricsCollectorImgName      = "metrics-collector"
+	MetricsCollectorKey          = "metrics_collector"
+
+	LeaseControllerImageTagSuffix = "2.1.0-a2899de5ce144e2c0441063e9ee8c4addf3ecb4a"
+	LeaseControllerImageName      = "klusterlet-addon-lease-controller"
+	LeaseControllerKey            = "klusterlet_addon_lease_controller"
+
+	RbacQueryProxyKey = "rbac_query_proxy"
 )
 
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation
