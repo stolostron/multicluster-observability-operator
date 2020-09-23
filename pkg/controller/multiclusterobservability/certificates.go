@@ -5,6 +5,7 @@ package multiclusterobservability
 import (
 	"context"
 	"net"
+	"os"
 	"reflect"
 	"time"
 
@@ -22,8 +23,6 @@ import (
 )
 
 const (
-	certMgrClusterRsNs = "ibm-common-services"
-
 	serverSelfSignIssuer = "observability-server-selfsign-issuer"
 	serverCAIssuer       = "observability-server-ca-issuer"
 	serverCACertifcate   = "observability-server-ca-certificate"
@@ -41,6 +40,10 @@ const (
 	grafanaCerts       = config.GrafanaCerts
 
 	managedClusterCertOrg = "acm"
+)
+
+var (
+	certMgrClusterRsNs = os.Getenv("POD_NAMESPACE") + "-issuer"
 )
 
 // GetManagedClusterOrg is used to return managedClusterCertOrg
