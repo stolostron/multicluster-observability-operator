@@ -251,6 +251,13 @@ type QuerySpec struct {
 	Version string `json:"version,omitempty"`
 }
 
+type RuleConfig struct {
+	// Rule ConfigMap Name
+	Name string `json:"name"`
+	// Rule ConfigMap key
+	Key string `json:"key"`
+}
+
 type RuleSpec struct {
 	// Thanos image
 	Image string `json:"image,omitempty"`
@@ -260,6 +267,12 @@ type RuleSpec struct {
 	Version string `json:"version,omitempty"`
 	// VolumeClaimTemplate
 	VolumeClaimTemplate VolumeClaimTemplate `json:"volumeClaimTemplate"`
+	// RulesConfig configures rules from the configmaps
+	// +optional
+	RulesConfig []RuleConfig `json:"rulesConfig,omitempty"`
+	// AlertmanagersURL
+	// +optional
+	AlertmanagersURL []string `json:"alertmanagersURL,omitempty"`
 }
 
 type CompactSpec struct {

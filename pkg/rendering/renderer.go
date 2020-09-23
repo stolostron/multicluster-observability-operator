@@ -103,7 +103,6 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 			dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 			dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
 			dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
-			dep.Spec.Replicas = util.GetReplicaCount(r.cr.Spec.AvailabilityConfig, "Deployment")
 
 			spec := &dep.Spec.Template.Spec
 			spec.Containers[0].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
@@ -128,8 +127,8 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 				}
 
 			case "rbac-query-proxy":
+				dep.Spec.Replicas = util.GetReplicaCount(r.cr.Spec.AvailabilityConfig, "Deployment")
 				updateProxySpec(spec, r.cr)
-
 			}
 
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
