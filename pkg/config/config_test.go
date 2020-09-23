@@ -32,12 +32,14 @@ func TestGetClusterNameLabelKey(t *testing.T) {
 	}
 }
 
-func TestIsNeededReplacement(t *testing.T) {
+func TestReplaceImage(t *testing.T) {
+
 	caseList := []struct {
 		annotations map[string]string
 		name        string
 		imageRepo   string
 		expected    bool
+		cm          map[string]string
 	}{
 		{
 			annotations: map[string]string{
@@ -47,6 +49,17 @@ func TestIsNeededReplacement(t *testing.T) {
 			name:      "Image is in different org",
 			imageRepo: "test.org",
 			expected:  false,
+			cm:        nil,
+		},
+
+		{
+			annotations: map[string]string{
+				AnnotationKeyImageRepository: DefaultImgRepository,
+			},
+			name:      "Image is in different org",
+			imageRepo: "test.org",
+			expected:  false,
+			cm:        nil,
 		},
 
 		{
@@ -57,6 +70,29 @@ func TestIsNeededReplacement(t *testing.T) {
 			name:      "Image is in the same org",
 			imageRepo: DefaultImgRepository,
 			expected:  true,
+			cm:        nil,
+		},
+
+		{
+			annotations: map[string]string{
+				AnnotationKeyImageRepository: DefaultImgRepository,
+			},
+			name:      "Image is in the same org",
+			imageRepo: DefaultImgRepository,
+			expected:  false,
+			cm:        nil,
+		},
+
+		{
+			annotations: map[string]string{
+				AnnotationKeyImageRepository: DefaultImgRepository,
+			},
+			name:      "Image is in the same org",
+			imageRepo: DefaultImgRepository,
+			expected:  true,
+			cm: map[string]string{
+				"test": "test.org",
+			},
 		},
 
 		{
@@ -66,25 +102,30 @@ func TestIsNeededReplacement(t *testing.T) {
 			},
 			name:      "Image is from the ds build",
 			imageRepo: "test.org",
+			expected:  false,
+			cm:        nil,
+		},
+
+		{
+			annotations: map[string]string{
+				AnnotationKeyImageRepository: DefaultDSImgRepository,
+			},
+			name:      "Image is from the ds build",
+			imageRepo: "test.org",
 			expected:  true,
+			cm: map[string]string{
+				"test": "test.org",
+			},
 		},
 
 		{
 			annotations: map[string]string{
-				AnnotationKeyImageRepository: "test.org",
+				AnnotationKeyImageRepository: DefaultDSImgRepository,
 			},
-			name:      "no img tag",
+			name:      "Image is from the ds build",
 			imageRepo: "test.org",
 			expected:  false,
-		},
-
-		{
-			annotations: map[string]string{
-				AnnotationKeyImageTagSuffix: "test",
-			},
-			name:      "no img repo",
-			imageRepo: "test.org",
-			expected:  false,
+			cm:        nil,
 		},
 
 		{
@@ -95,6 +136,7 @@ func TestIsNeededReplacement(t *testing.T) {
 			name:      "the img repo is empty",
 			imageRepo: "",
 			expected:  false,
+			cm:        nil,
 		},
 
 		{
@@ -102,6 +144,7 @@ func TestIsNeededReplacement(t *testing.T) {
 			name:        "no img info",
 			imageRepo:   "test.org",
 			expected:    false,
+			cm:          nil,
 		},
 
 		{
@@ -109,12 +152,14 @@ func TestIsNeededReplacement(t *testing.T) {
 			name:        "annotations is nil",
 			imageRepo:   "test.org",
 			expected:    false,
+			cm:          nil,
 		},
 	}
 
 	for _, c := range caseList {
 		t.Run(c.name, func(t *testing.T) {
-			output := IsNeededReplacement(c.annotations, c.imageRepo)
+			SetImageManifests(c.cm)
+			output, _ := ReplaceImage(c.annotations, c.imageRepo, "test")
 			if output != c.expected {
 				t.Errorf("case (%v) output (%v) is not the expected (%v)", c.name, output, c.expected)
 			}
@@ -213,21 +258,6 @@ func TestGetObsAPIUrl(t *testing.T) {
 	}
 }
 
-func TestGetAnnotationImageInfo(t *testing.T) {
-	SetAnnotationImageInfo(map[string]string{
-		AnnotationKeyImageRepository: DefaultImgRepository,
-		AnnotationKeyImageTagSuffix:  DefaultImgTagSuffix,
-	})
-	imageInfo := GetAnnotationImageInfo()
-
-	if imageInfo.ImageRepository != DefaultImgRepository {
-		t.Errorf("ImageRepository (%v) is not the expected (%v)", imageInfo.ImageRepository, DefaultImgRepository)
-	}
-	if imageInfo.ImageTagSuffix != DefaultImgTagSuffix {
-		t.Errorf("ImageTagSuffix (%v) is not the expected (%v)", imageInfo.ImageRepository, DefaultImgRepository)
-	}
-}
-
 func TestIsPaused(t *testing.T) {
 	caseList := []struct {
 		annotations map[string]string
@@ -286,8 +316,14 @@ func NewFakeClient(mco *mcov1beta1.MultiClusterObservability,
 
 func TestGenerateMonitoringCR(t *testing.T) {
 	mco := &mcov1beta1.MultiClusterObservability{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
+		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "test",
+			Name:      "test",
+			Annotations: map[string]string{
+				AnnotationKeyImageTagSuffix: "tag",
+			},
+		},
 		Spec: mcov1beta1.MultiClusterObservabilitySpec{
 			StorageConfig: &mcov1beta1.StorageConfigObject{},
 		},

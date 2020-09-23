@@ -16,12 +16,9 @@ import (
 )
 
 const (
-	deployName         = "endpoint-observability-operator"
-	endpoinImageName   = "endpoint-monitoring-operator"
-	collectorImageName = "metrics-collector"
-	leaseImageName     = "klusterlet-addon-lease-controller"
-	saName             = "endpoint-observability-operator-sa"
-	rolebindingName    = "endpoint-observability-operator-rb"
+	deployName      = "endpoint-observability-operator"
+	saName          = "endpoint-observability-operator-sa"
+	rolebindingName = "endpoint-observability-operator-rb"
 )
 
 var (
@@ -94,14 +91,16 @@ func updateRes(r *resource.Resource, namespace string,
 
 func updateEndpointOperator(mco *mcov1beta1.MultiClusterObservability,
 	namespace string, container corev1.Container) corev1.Container {
-	container.Image = getImage(mco, endpoinImageName, mcoconfig.EndpointControllerImgTagSuffix)
+	container.Image = getImage(mco, mcoconfig.EndpointControllerImgName,
+		mcoconfig.EndpointControllerImgTagSuffix, mcoconfig.EndpointControllerKey)
 	container.ImagePullPolicy = mco.Spec.ImagePullPolicy
 	for i, env := range container.Env {
 		if env.Name == "WATCH_NAMESPACE" {
 			container.Env[i].Value = namespace
 		}
 		if env.Name == "COLLECTOR_IMAGE" {
-			container.Env[i].Value = getImage(mco, collectorImageName, mcoconfig.MetricsCollectorImgTagSuffix)
+			container.Env[i].Value = getImage(mco, mcoconfig.MetricsCollectorImgName,
+				mcoconfig.MetricsCollectorImgTagSuffix, mcoconfig.MetricsCollectorKey)
 		}
 	}
 	return container
@@ -109,7 +108,8 @@ func updateEndpointOperator(mco *mcov1beta1.MultiClusterObservability,
 
 func updateLeaseController(mco *mcov1beta1.MultiClusterObservability,
 	namespace string, container corev1.Container) corev1.Container {
-	container.Image = getImage(mco, leaseImageName, mcoconfig.LeaseControllerImageTagSuffix)
+	container.Image = getImage(mco, mcoconfig.LeaseControllerImageName,
+		mcoconfig.LeaseControllerImageTagSuffix, mcoconfig.LeaseControllerKey)
 	container.ImagePullPolicy = mco.Spec.ImagePullPolicy
 	for i, arg := range container.Args {
 		if arg == "-lease-name" {
@@ -123,12 +123,12 @@ func updateLeaseController(mco *mcov1beta1.MultiClusterObservability,
 }
 
 func getImage(mco *mcov1beta1.MultiClusterObservability,
-	name string, tag string) string {
+	name, tag, key string) string {
 	image := mcoconfig.DefaultImgRepository +
 		"/" + name + ":" + tag
-	if mcoconfig.IsNeededReplacement(mco.Annotations, image) {
-		image = mcoconfig.GetAnnotationImageInfo().ImageRepository +
-			"/" + name + ":" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+	found, replacedImage := mcoconfig.ReplaceImage(mco.Annotations, mcoconfig.DefaultImgRepository, key)
+	if found {
+		return replacedImage
 	}
 	return image
 }
