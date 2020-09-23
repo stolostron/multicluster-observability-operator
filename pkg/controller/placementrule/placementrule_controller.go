@@ -10,9 +10,11 @@ import (
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -60,9 +62,10 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcilePlacementRule{
-		client:    mgr.GetClient(),
-		apiReader: mgr.GetAPIReader(),
-		scheme:    mgr.GetScheme(),
+		client:     mgr.GetClient(),
+		apiReader:  mgr.GetAPIReader(),
+		scheme:     mgr.GetScheme(),
+		restMapper: mgr.GetRESTMapper(),
 	}
 }
 
@@ -139,32 +142,36 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	workPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == workName && e.MetaNew.GetLabels()[ownerLabelKey] == ownerLabelValue {
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == workName && e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
-				return true
-			}
-			return false
-		},
-	}
+	gk := schema.GroupKind{Group: workv1.GroupVersion.Group, Kind: "ManifestWork"}
+	_, err = r.(*ReconcilePlacementRule).restMapper.RESTMapping(gk, workv1.GroupVersion.Version)
+	if err == nil {
+		workPred := predicate.Funcs{
+			CreateFunc: func(e event.CreateEvent) bool {
+				return false
+			},
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				if e.MetaNew.GetName() == workName && e.MetaNew.GetLabels()[ownerLabelKey] == ownerLabelValue {
+					return true
+				}
+				return false
+			},
+			DeleteFunc: func(e event.DeleteEvent) bool {
+				if e.Meta.GetName() == workName && e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
+					return true
+				}
+				return false
+			},
+		}
 
-	// secondary watch for manifestwork
-	err = c.Watch(&source.Kind{Type: &workv1.ManifestWork{}},
-		&handler.EnqueueRequestsFromMapFunc{
-			ToRequests: mapFn,
-		},
-		workPred)
-	if err != nil {
-		return err
+		// secondary watch for manifestwork
+		err = c.Watch(&source.Kind{Type: &workv1.ManifestWork{}},
+			&handler.EnqueueRequestsFromMapFunc{
+				ToRequests: mapFn,
+			},
+			workPred)
+		if err != nil {
+			return err
+		}
 	}
 
 	mcoPred := predicate.Funcs{
@@ -199,9 +206,10 @@ var _ reconcile.Reconciler = &ReconcilePlacementRule{}
 type ReconcilePlacementRule struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client    client.Client
-	apiReader client.Reader
-	scheme    *runtime.Scheme
+	client     client.Client
+	apiReader  client.Reader
+	scheme     *runtime.Scheme
+	restMapper meta.RESTMapper
 }
 
 // Reconcile reads that state of the cluster for a PlacementRule object and makes changes based on the state read

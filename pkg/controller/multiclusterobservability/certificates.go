@@ -29,7 +29,7 @@ const (
 	serverCACertifcate   = "observability-server-ca-certificate"
 	serverCACerts        = "observability-server-ca-certs"
 	serverCertificate    = "observability-server-certificate"
-	serverCerts          = "observability-server-certs"
+	serverCerts          = config.ServerCerts
 
 	clientSelfSignIssuer = "observability-client-selfsign-issuer"
 	clientCAIssuer       = "observability-client-ca-issuer"
@@ -37,8 +37,8 @@ const (
 	clientCACerts        = "observability-client-ca-certs"
 
 	grafanaCertificate = "observability-grafana-certificate"
-	grafanaCerts       = "observability-grafana-certs"
 	grafanaSubject     = "grafana"
+	grafanaCerts       = config.GrafanaCerts
 
 	managedClusterCertOrg = "acm"
 )

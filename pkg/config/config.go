@@ -5,6 +5,7 @@ package config
 import (
 	"bytes"
 	"context"
+	"os"
 	"strings"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
@@ -48,27 +49,54 @@ const (
 	DefaultRetentionResolution5m  = "14d"
 	DefaultRetentionResolutionRaw = "5d"
 
+	DefaultAddonInterval = 60
+
+	ImageManifestConfigmapName = "mch-image-manifest-"
+
+	ComponentVersion = "COMPONENT_VERSION"
+
+	ServerCerts  = "observability-server-certs"
+	GrafanaCerts = "observability-grafana-certs"
+)
+
+var (
+	ObservatoriumImgRepo           = "quay.io/observatorium"
+	ObservatoriumAPIImgName        = "observatorium"
+	ObservatoriumAPIImgTag         = "latest"
+	ObservatoriumOperatorImgName   = "observatorium-operator"
+	ObservatoriumOperatorImgTag    = "master-2020-09-17-d861409"
+	ThanosReceiveControllerImgName = "thanos-receive-controller"
+	ThanosReceiveControllerImgTag  = "master-2020-06-17-a9d9169"
+
+	ThanosImgRepo = "quay.io/thanos"
+	ThanosImgName = "thanos"
+	ThanosImgTag  = "master-2020-08-12-70f89d83"
+
+	MemcachedImgRepo = "docker.io"
+	MemcachedImgName = "memcached"
+	MemcachedImgTag  = "1.6.3-alpine"
+
+	MemcachedExporterImgRepo = "prom"
+	MemcachedExporterImgName = "memcached-exporter"
+	MemcachedExporterImgTag  = "v0.6.0"
+
 	GrafanaImgRepo      = "grafana"
+	GrafanaImgName      = "grafana"
 	GrafanaImgTagSuffix = "7.1.3"
 
 	AlertManagerImgRepo = "quay.io/openshift"
+	AlertManagerImgName = "alertmanager"
+	AlertManagerImgTag  = "4.5"
 
-	ObservatoriumImgRepo      = "quay.io/observatorium"
-	ObservatoriumImgTagSuffix = "master-2020-09-17-d861409"
+	ConfigmapReloaderImgRepo = "quay.io/openshift"
+	ConfigmapReloaderImgName = "configmap-reloader"
+	ConfigmapReloaderImgTag  = "4.5"
 
 	EndpointControllerImgTagSuffix = "0.1.0-758599e8bcb0dfa9699a72ab17bd70807af5db12"
-
-	MetricsCollectorImgTagSuffix = "2.1.0-1aa917b69ceb64c5a77b999ffb69529aa6fb069c"
-
-	LeaseControllerImageTagSuffix = "2.1.0-a2899de5ce144e2c0441063e9ee8c4addf3ecb4a"
-
-	DefaultAddonInterval = 60
+	MetricsCollectorImgTagSuffix   = "2.1.0-1aa917b69ceb64c5a77b999ffb69529aa6fb069c"
+	LeaseControllerImageTagSuffix  = "2.1.0-a2899de5ce144e2c0441063e9ee8c4addf3ecb4a"
+	RbacQueryProxyImageName        = "rbac-query-proxy"
 )
-
-type AnnotationImageInfo struct {
-	ImageRepository string
-	ImageTagSuffix  string
-}
 
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation
 type ObjectStorgeConf struct {
@@ -77,10 +105,10 @@ type ObjectStorgeConf struct {
 }
 
 var (
-	log                 = logf.Log.WithName("config")
-	monitoringCRName    = ""
-	annotationImageInfo = AnnotationImageInfo{}
-	tenantUID           = ""
+	log              = logf.Log.WithName("config")
+	monitoringCRName = ""
+	tenantUID        = ""
+	imageManifests   = map[string]string{}
 )
 
 // GetClusterNameLabelKey returns the key for the injected label
@@ -88,23 +116,34 @@ func GetClusterNameLabelKey() string {
 	return clusterNameLabelKey
 }
 
-func IsNeededReplacement(annotations map[string]string, imageRepo string) bool {
+func ReplaceImage(annotations map[string]string, imageRepo, componentName string) (bool, string) {
 	if annotations != nil {
-		annotationImageRepo, hasImage := annotations[AnnotationKeyImageRepository]
-		_, hasTagSuffix := annotations[AnnotationKeyImageTagSuffix]
+		annotationImageRepo, _ := annotations[AnnotationKeyImageRepository]
+		tagSuffix, hasTagSuffix := annotations[AnnotationKeyImageTagSuffix]
 		sameOrg := strings.Contains(imageRepo, DefaultImgRepository)
-		isFromDS := strings.Contains(annotationImageRepo, DefaultDSImgRepository)
-		if isFromDS {
-			return hasImage && hasTagSuffix
+
+		if hasTagSuffix && sameOrg {
+			image := annotationImageRepo + "/" + componentName + ":" + tagSuffix
+			return true, image
+		} else if !hasTagSuffix {
+			image, found := imageManifests[componentName]
+			if found {
+				return true, image
+			}
+			return false, ""
 		}
-		return hasImage && hasTagSuffix && sameOrg
+		return false, ""
 	}
-	return false
+	return false, ""
 }
 
 // GetDefaultTenantName returns the default tenant name
 func GetDefaultTenantName() string {
 	return defaultTenantName
+}
+
+func SetImageManifests(images map[string]string) {
+	imageManifests = images
 }
 
 // GetObsAPIUrl is used to get the URL for observartium api gateway
@@ -120,25 +159,6 @@ func GetObsAPIUrl(client client.Client, namespace string) (string, error) {
 
 func GetDefaultNamespace() string {
 	return defaultNamespace
-}
-
-// GetAnnotationImageInfo returns the configured image repo and tag
-func GetAnnotationImageInfo() AnnotationImageInfo {
-	return annotationImageInfo
-}
-
-// SetAnnotationImageInfo set the configured image repo and tag
-func SetAnnotationImageInfo(annotations map[string]string) AnnotationImageInfo {
-	imgRepo := util.GetAnnotation(annotations, AnnotationKeyImageRepository)
-	imgVersion := util.GetAnnotation(annotations, AnnotationKeyImageTagSuffix)
-	if imgVersion == "" {
-		imgVersion = DefaultImgTagSuffix
-	}
-	annotationImageInfo = AnnotationImageInfo{
-		ImageRepository: imgRepo,
-		ImageTagSuffix:  imgVersion,
-	}
-	return annotationImageInfo
 }
 
 // GetMonitoringCRName returns monitoring cr name
@@ -259,6 +279,42 @@ func GenerateMonitoringCR(c client.Client,
 		mco.Spec.ObservabilityAddonSpec = &mcov1beta1.ObservabilityAddonSpec{
 			EnableMetrics: true,
 			Interval:      DefaultAddonInterval,
+		}
+	}
+	// set mco-imageRepository if needed
+	if util.GetAnnotation(mco.Annotations, AnnotationKeyImageRepository) == "" {
+		// set the default image repo
+		mco.Annotations[AnnotationKeyImageRepository] = DefaultImgRepository
+		imageCMName := ImageManifestConfigmapName + "2.1.0"
+		componentVersion, found := os.LookupEnv(ComponentVersion)
+		if found {
+			imageCMName = ImageManifestConfigmapName + componentVersion
+		}
+
+		podNamespace, found := os.LookupEnv("POD_NAMESPACE")
+		if found {
+			//Get image manifest configmap
+			imageCM := &corev1.ConfigMap{}
+			err := c.Get(
+				context.TODO(),
+				types.NamespacedName{
+					Name:      imageCMName,
+					Namespace: podNamespace,
+				},
+				imageCM)
+			if err == nil {
+				imageManifests = imageCM.Data
+			} else {
+				log.Info("Cannot get image manifest configmap", "configmap name", imageCMName)
+			}
+			if len(imageManifests) != 0 {
+				for _, value := range imageManifests {
+					if strings.Contains(value, DefaultDSImgRepository) {
+						mco.Annotations[AnnotationKeyImageRepository] = DefaultDSImgRepository
+						break
+					}
+				}
+			}
 		}
 	}
 

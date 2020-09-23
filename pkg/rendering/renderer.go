@@ -5,6 +5,7 @@ package rendering
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -102,6 +103,7 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 			dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 			dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
 			dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+			dep.Spec.Replicas = util.GetReplicaCount(r.cr.Spec.AvailabilityConfig, "Deployment")
 
 			spec := &dep.Spec.Template.Spec
 			spec.Containers[0].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
@@ -109,29 +111,24 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 			spec.ImagePullSecrets = []corev1.LocalObjectReference{
 				{Name: r.cr.Spec.ImagePullSecret},
 			}
-			grafanaImgRepo := mcoconfig.GrafanaImgRepo
-			grafanaImgTagSuffix := mcoconfig.GrafanaImgTagSuffix
-			observatoriumImgRepo := mcoconfig.ObservatoriumImgRepo
-			observatoriumImgTagSuffix := mcoconfig.ObservatoriumImgTagSuffix
-
-			//replace the grafana image
-			if mcoconfig.IsNeededReplacement(r.cr.Annotations, grafanaImgRepo) {
-				grafanaImgRepo = mcoconfig.GetAnnotationImageInfo().ImageRepository
-				grafanaImgTagSuffix = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-			}
-			//replace the observatorium operator image
-			if mcoconfig.IsNeededReplacement(r.cr.Annotations, observatoriumImgRepo) {
-				observatoriumImgRepo = mcoconfig.GetAnnotationImageInfo().ImageRepository
-				observatoriumImgTagSuffix = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-			}
 
 			switch resources[idx].GetName() {
 
 			case "grafana":
-				spec.Containers[0].Image = grafanaImgRepo + "/grafana:" + grafanaImgTagSuffix
+				found, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.GrafanaImgRepo, mcoconfig.GrafanaImgName)
+				if found {
+					spec.Containers[0].Image = image
+				}
 
 			case "observatorium-operator":
-				spec.Containers[0].Image = observatoriumImgRepo + "/observatorium-operator:" + observatoriumImgTagSuffix
+				found, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.ObservatoriumImgRepo,
+					mcoconfig.ObservatoriumOperatorImgName)
+				if found {
+					spec.Containers[0].Image = image
+				}
+
+			case "rbac-query-proxy":
+				updateProxySpec(spec, r.cr)
 
 			}
 
@@ -145,6 +142,28 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 	}
 
 	return resources, nil
+}
+
+func updateProxySpec(spec *corev1.PodSpec, mco *monitoringv1.MultiClusterObservability) {
+	found, image := mcoconfig.ReplaceImage(mco.Annotations, mcoconfig.DefaultImgRepository,
+		mcoconfig.RbacQueryProxyImageName)
+	if found {
+		spec.Containers[0].Image = image
+	}
+
+	args := spec.Containers[0].Args
+	for idx := range args {
+		args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", mco.Namespace, 1)
+		args[idx] = strings.Replace(args[idx], "{{MCO_CR_NAME}}", mco.Name, 1)
+	}
+	for idx := range spec.Volumes {
+		if spec.Volumes[idx].Name == "ca-certs" {
+			spec.Volumes[idx].Secret.SecretName = mcoconfig.ServerCerts
+		}
+		if spec.Volumes[idx].Name == "client-certs" {
+			spec.Volumes[idx].Secret.SecretName = mcoconfig.GrafanaCerts
+		}
+	}
 }
 
 func (r *Renderer) renderTemplates(templates []*resource.Resource) ([]*unstructured.Unstructured, error) {

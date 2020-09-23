@@ -30,11 +30,6 @@ const (
 	obsPartoOfName = "-observatorium"
 	obsAPIGateway  = "observatorium-api"
 
-	defaultThanosImage   = "quay.io/thanos/thanos:master-2020-08-12-70f89d83"
-	defaultThanosVersion = "master-2020-08-12-70f89d83"
-
-	thanosImgName = "thanos"
-
 	readOnlyRoleName  = "read-only-metrics"
 	writeOnlyRoleName = "write-only-metrics"
 )
@@ -219,41 +214,41 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability,
 	obs.Store = newStoreSpec(mco, scSelected)
 
 	//set the default observatorium components' image
-	obs.API.Image = "quay.io/observatorium/observatorium:latest"
-	obs.API.Version = "latest"
+	obs.API.Image = mcoconfig.ObservatoriumImgRepo + "/" + mcoconfig.ObservatoriumAPIImgName +
+		":" + mcoconfig.ObservatoriumAPIImgTag
+	obs.API.Version = mcoconfig.ObservatoriumAPIImgTag
 
-	obs.ThanosReceiveController.Image = "quay.io/observatorium/thanos-receive-controller:master-2020-06-17-a9d9169"
-	obs.ThanosReceiveController.Version = "master-2020-06-17-a9d9169"
+	obs.ThanosReceiveController.Image = mcoconfig.ObservatoriumImgRepo + "/" +
+		mcoconfig.ThanosReceiveControllerImgName +
+		":" + mcoconfig.ThanosReceiveControllerImgTag
+	obs.ThanosReceiveController.Version = mcoconfig.ThanosReceiveControllerImgTag
 
-	obs.Query.Image = defaultThanosImage
-	obs.Query.Version = defaultThanosVersion
+	obs.Query.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
+	obs.Query.Version = mcoconfig.ThanosImgTag
 	obs.Query.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "Deployments")
 
-	obs.QueryFrontend.Image = defaultThanosImage
-	obs.QueryFrontend.Version = defaultThanosVersion
+	obs.QueryFrontend.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
+	obs.QueryFrontend.Version = mcoconfig.ThanosImgTag
 	obs.QueryFrontend.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "Deployments")
 
-	if mcoconfig.IsNeededReplacement(mco.Annotations, obs.API.Image) {
+	replace, image := mcoconfig.ReplaceImage(mco.Annotations, obs.API.Image, mcoconfig.ObservatoriumAPIImgName)
+	if replace {
+		obs.API.Image = image
+	}
+	replace, image = mcoconfig.ReplaceImage(mco.Annotations, obs.QueryFrontend.Image, mcoconfig.ThanosImgName)
+	if replace {
+		obs.QueryFrontend.Image = image
+	}
+	replace, image = mcoconfig.ReplaceImage(mco.Annotations, obs.Query.Image, mcoconfig.ThanosImgName)
+	if replace {
+		obs.Query.Image = image
+	}
+	replace, image = mcoconfig.ReplaceImage(mco.Annotations, obs.ThanosReceiveController.Image,
+		mcoconfig.ThanosReceiveControllerImgName)
+	if replace {
+		obs.ThanosReceiveController.Image = image
+	}
 
-		obs.API.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/observatorium:" +
-			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-		obs.API.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-	}
-	if mcoconfig.IsNeededReplacement(mco.Annotations, obs.QueryFrontend.Image) {
-		obs.QueryFrontend.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/cortex:" +
-			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-		obs.QueryFrontend.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-	}
-	if mcoconfig.IsNeededReplacement(mco.Annotations, obs.ThanosReceiveController.Image) {
-		obs.ThanosReceiveController.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository +
-			"/thanos-receive-controller:" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-		obs.ThanosReceiveController.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-	}
-	if mcoconfig.IsNeededReplacement(mco.Annotations, obs.Query.Image) {
-		obs.Query.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/" + thanosImgName + ":" +
-			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-		obs.Query.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-	}
 	return obs
 }
 
@@ -341,13 +336,12 @@ func newReceiversSpec(
 	mco *mcov1beta1.MultiClusterObservability,
 	scSelected string) observatoriumv1alpha1.ReceiversSpec {
 	receSpec := observatoriumv1alpha1.ReceiversSpec{}
-	receSpec.Image = defaultThanosImage
+	receSpec.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
 	receSpec.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
-	receSpec.Version = defaultThanosVersion
-	if mcoconfig.IsNeededReplacement(mco.Annotations, receSpec.Image) {
-		receSpec.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/" +
-			thanosImgName + ":" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-		receSpec.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+	receSpec.Version = mcoconfig.ThanosImgTag
+	found, image := mcoconfig.ReplaceImage(mco.Annotations, receSpec.Image, mcoconfig.ThanosImgName)
+	if found {
+		receSpec.Image = image
 	}
 	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.StatefulSetSize,
@@ -358,13 +352,12 @@ func newReceiversSpec(
 
 func newRuleSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) observatoriumv1alpha1.RuleSpec {
 	ruleSpec := observatoriumv1alpha1.RuleSpec{}
-	ruleSpec.Image = defaultThanosImage
+	ruleSpec.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
 	ruleSpec.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
-	ruleSpec.Version = defaultThanosVersion
-	if mcoconfig.IsNeededReplacement(mco.Annotations, ruleSpec.Image) {
-		ruleSpec.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/" +
-			thanosImgName + ":" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-		ruleSpec.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+	ruleSpec.Version = mcoconfig.ThanosImgTag
+	found, image := mcoconfig.ReplaceImage(mco.Annotations, ruleSpec.Image, mcoconfig.ThanosImgName)
+	if found {
+		ruleSpec.Image = image
 	}
 	ruleSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.StatefulSetSize,
@@ -375,12 +368,11 @@ func newRuleSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) o
 
 func newStoreSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) observatoriumv1alpha1.StoreSpec {
 	storeSpec := observatoriumv1alpha1.StoreSpec{}
-	storeSpec.Image = defaultThanosImage
-	storeSpec.Version = defaultThanosVersion
-	if mcoconfig.IsNeededReplacement(mco.Annotations, storeSpec.Image) {
-		storeSpec.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/" +
-			thanosImgName + ":" + mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-		storeSpec.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+	storeSpec.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
+	storeSpec.Version = mcoconfig.ThanosImgTag
+	found, image := mcoconfig.ReplaceImage(mco.Annotations, storeSpec.Image, mcoconfig.ThanosImgName)
+	if found {
+		storeSpec.Image = image
 	}
 	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.StatefulSetSize,
@@ -393,21 +385,22 @@ func newStoreSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) 
 
 func newStoreCacheSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha1.StoreCacheSpec {
 	storeCacheSpec := observatoriumv1alpha1.StoreCacheSpec{}
-	storeCacheSpec.Image = "docker.io/memcached:1.6.3-alpine"
+	storeCacheSpec.Image = mcoconfig.MemcachedImgRepo + "/" +
+		mcoconfig.MemcachedImgName + ":" + mcoconfig.MemcachedImgTag
+	storeCacheSpec.Version = mcoconfig.MemcachedImgTag
 	storeCacheSpec.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
-	storeCacheSpec.Version = "1.6.3-alpine"
-	storeCacheSpec.ExporterImage = "prom/memcached-exporter:v0.6.0"
-	storeCacheSpec.ExporterVersion = "v0.6.0"
+	storeCacheSpec.ExporterImage = mcoconfig.MemcachedExporterImgRepo + "/" +
+		mcoconfig.MemcachedExporterImgName + ":" + mcoconfig.MemcachedExporterImgTag
+	storeCacheSpec.ExporterVersion = mcoconfig.MemcachedExporterImgTag
 
-	if mcoconfig.IsNeededReplacement(mco.Annotations, storeCacheSpec.Image) {
-		storeCacheSpec.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/memcached:" +
-			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-		storeCacheSpec.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+	found, image := mcoconfig.ReplaceImage(mco.Annotations, storeCacheSpec.Image, mcoconfig.MemcachedImgName)
+	if found {
+		storeCacheSpec.Image = image
 	}
-	if mcoconfig.IsNeededReplacement(mco.Annotations, storeCacheSpec.ExporterImage) {
-		storeCacheSpec.ExporterImage = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/memcached-exporter:" +
-			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-		storeCacheSpec.ExporterVersion = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+
+	found, image = mcoconfig.ReplaceImage(mco.Annotations, storeCacheSpec.ExporterImage, mcoconfig.MemcachedExporterImgName)
+	if found {
+		storeCacheSpec.ExporterImage = image
 	}
 
 	limit := int32(1024)
@@ -418,13 +411,12 @@ func newStoreCacheSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv
 
 func newCompactSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) observatoriumv1alpha1.CompactSpec {
 	compactSpec := observatoriumv1alpha1.CompactSpec{}
-	compactSpec.Image = defaultThanosImage
+	compactSpec.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
 	compactSpec.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
-	compactSpec.Version = defaultThanosVersion
-	if mcoconfig.IsNeededReplacement(mco.Annotations, compactSpec.Image) {
-		compactSpec.Image = mcoconfig.GetAnnotationImageInfo().ImageRepository + "/" + thanosImgName + ":" +
-			mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
-		compactSpec.Version = mcoconfig.GetAnnotationImageInfo().ImageTagSuffix
+	compactSpec.Version = mcoconfig.ThanosImgTag
+	found, image := mcoconfig.ReplaceImage(mco.Annotations, compactSpec.Image, mcoconfig.ThanosImgName)
+	if found {
+		compactSpec.Image = image
 	}
 	compactSpec.EnableDownsampling = mco.Spec.EnableDownSampling
 	compactSpec.RetentionResolutionRaw = mco.Spec.RetentionResolutionRaw
