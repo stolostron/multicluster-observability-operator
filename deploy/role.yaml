@@ -206,6 +206,8 @@ rules:
   - create
   - get 
   - delete
+  - list
+  - watch
 - apiGroups: 
   - addon.open-cluster-management.io
   resources: 
