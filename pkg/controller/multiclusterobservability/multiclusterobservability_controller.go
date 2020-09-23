@@ -43,9 +43,8 @@ const (
 )
 
 var (
-	log                             = logf.Log.WithName("controller_multiclustermonitoring")
-	enableHubRemoteWrite            = os.Getenv("ENABLE_HUB_REMOTEWRITE")
-	isClusterManagementAddonCreated = false
+	log                  = logf.Log.WithName("controller_multiclustermonitoring")
+	enableHubRemoteWrite = os.Getenv("ENABLE_HUB_REMOTEWRITE")
 )
 
 /**
@@ -109,7 +108,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Meta.GetName() == config.AlertRuleCustomConfigMapName && 
+			if e.Meta.GetName() == config.AlertRuleCustomConfigMapName &&
 				e.Meta.GetNamespace() == config.GetDefaultNamespace() {
 				config.SetCustomRuleConfigMap(true)
 				return true
@@ -120,7 +119,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == config.AlertRuleCustomConfigMapName && 
+			if e.Meta.GetName() == config.AlertRuleCustomConfigMapName &&
 				e.Meta.GetNamespace() == config.GetDefaultNamespace() {
 				config.SetCustomRuleConfigMap(false)
 				return true
@@ -186,14 +185,6 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 	//set request name to be used in placementrule controller
 	config.SetMonitoringCRName(request.Name)
 
-	//Check if ClusterManagementAddon is created or create it
-	if !isClusterManagementAddonCreated {
-		err := util.CreateClusterManagementAddon(r.client)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-		isClusterManagementAddonCreated = true
-	}
 	// Fetch the MultiClusterObservability instance
 	instance := &mcov1beta1.MultiClusterObservability{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
