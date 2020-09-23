@@ -1778,4 +1778,4 @@ data:
 kind: ConfigMap
 metadata:
   name: grafana-dashboard-k8s-networking-cluster
-  namespace: open-cluster-management
+  namespace: open-cluster-management-observability
