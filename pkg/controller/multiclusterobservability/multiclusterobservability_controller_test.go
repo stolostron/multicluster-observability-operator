@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
+	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
@@ -60,6 +61,27 @@ func createObservatoriumAPIService(name, namespace string) *corev1.Service {
 			},
 		},
 		Spec: corev1.ServiceSpec{},
+	}
+}
+
+func newClusterManagementAddon() *addonv1alpha1.ClusterManagementAddOn {
+	return &addonv1alpha1.ClusterManagementAddOn{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
+			Kind:       "ClusterManagementAddOn",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ObservabilityController",
+		},
+		Spec: addonv1alpha1.ClusterManagementAddOnSpec{
+			AddOnMeta: addonv1alpha1.AddOnMeta{
+				DisplayName: "ObservabilityController",
+				Description: "ObservabilityController Description",
+			},
+			AddOnConfiguration: addonv1alpha1.ConfigCoordinates{
+				CRDName: "observabilityaddons.observability.open-cluster-management.io",
+			},
+		},
 	}
 }
 
@@ -200,12 +222,14 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	routev1.AddToScheme(s)
 	placementv1.AddToScheme(s)
 	cert.AddToScheme(s)
+	addonv1alpha1.AddToScheme(s)
 
 	svc := createObservatoriumAPIService(name, namespace)
 	grafanaCert := newTestCert(GetGrafanaCerts(), namespace)
 	serverCert := newTestCert(GetServerCerts(), namespace)
+	clustermgmtAddon := newClusterManagementAddon()
 
-	objs := []runtime.Object{mco, svc, grafanaCert, serverCert}
+	objs := []runtime.Object{mco, svc, grafanaCert, serverCert, clustermgmtAddon}
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
 
