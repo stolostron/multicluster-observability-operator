@@ -87,6 +87,8 @@ func CreateCertificateSpec(secret string,
 	if isCA {
 		spec.IsCA = isCA
 		spec.Duration = &metav1.Duration{time.Hour * 24 * 365 * 5}
+	} else {
+		spec.Duration = &metav1.Duration{time.Hour * 24 * 365}
 	}
 	spec.IssuerRef = cert.ObjectReference{
 		Kind: kind,
