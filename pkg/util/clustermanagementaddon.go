@@ -69,6 +69,10 @@ func newClusterManagementAddon() *addonv1alpha1.ClusterManagementAddOn {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ObservabilityController,
+			Annotations: map[string]string{
+				"console.open-cluster-management.io/launch-link":      "/grafana/d/gSyJ7YIMk/acm-clusters-overview",
+				"console.open-cluster-management.io/launch-link-text": "Grafana",
+			},
 		},
 		Spec: addonv1alpha1.ClusterManagementAddOnSpec{
 			AddOnMeta: addonv1alpha1.AddOnMeta{
