@@ -244,7 +244,7 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability,
 		obs.Query.Image = image
 	}
 	replace, image = mcoconfig.ReplaceImage(mco.Annotations, obs.ThanosReceiveController.Image,
-		mcoconfig.ThanosReceiveControllerImgName)
+		mcoconfig.ThanosReceiveControllerKey)
 	if replace {
 		obs.ThanosReceiveController.Image = image
 	}
@@ -398,7 +398,7 @@ func newStoreCacheSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv
 		storeCacheSpec.Image = image
 	}
 
-	found, image = mcoconfig.ReplaceImage(mco.Annotations, storeCacheSpec.ExporterImage, mcoconfig.MemcachedExporterImgName)
+	found, image = mcoconfig.ReplaceImage(mco.Annotations, storeCacheSpec.ExporterImage, mcoconfig.MemcachedExporterKey)
 	if found {
 		storeCacheSpec.ExporterImage = image
 	}
