@@ -10,6 +10,7 @@ import (
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -18,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
+	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
@@ -60,6 +62,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	logf.SetLogger(logf.ZapLogger(true))
 
 	s := scheme.Scheme
+	addonv1alpha1.AddToScheme(s)
 	initSchema(t)
 	config.SetMonitoringCRName(mcoName)
 
@@ -84,7 +87,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	}
 	mco := newTestMCO()
 	objs := []runtime.Object{p, mco, newTestPullSecret(), newTestRoute(), newTestInfra(), newCASecret(), newCertSecret(),
-		newSATokenSecret(), newTestSA(), newSATokenSecret(namespace2), newTestSA(namespace2), newCertSecret(namespace2)}
+		newSATokenSecret(), newTestSA(), newSATokenSecret(namespace2), newTestSA(namespace2), newCertSecret(namespace2), newManagedClusterAddon()}
 	c := fake.NewFakeClient(objs...)
 
 	r := &ReconcilePlacementRule{client: c, scheme: s}
@@ -172,5 +175,17 @@ func TestObservabilityAddonController(t *testing.T) {
 	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork for cluster1: (%v)", err)
+	}
+}
+func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
+	return &addonv1alpha1.ManagedClusterAddOn{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
+			Kind:       "ManagedClusterAddOn",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "managedClusterAddonName",
+			Namespace: namespace,
+		},
 	}
 }

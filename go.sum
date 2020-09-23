@@ -1,7 +1,6 @@
 bazil.org/fuse v0.0.0-20160811212531-371fbbdaa898/go.mod h1:Xbm+BRKSBEpa4q4hTSxohYNQpsxXPbPry4JJWOB3LB8=
 bitbucket.org/bertimus9/systemstat v0.0.0-20180207000608-0eeff89b0690/go.mod h1:Ulb78X89vxKYgdL24HMTiXYHlyHEvruOj1ZPlqeNEZM=
 bitbucket.org/liamstask/goose v0.0.0-20150115234039-8488cc47d90c/go.mod h1:hSVuE3qU7grINVSwrmzHfpg9k87ALBk+XaualNyUzI4=
-bitbucket.org/ww/goautoneg v0.0.0-20120707110453-75cd24fc2f2c/go.mod h1:1vhO7Mn/FZMgOgDVGLy5X1mE6rq1HbkBdkF/yj8zkcg=
 bou.ke/monkey v1.0.1/go.mod h1:FgHuK96Rv2Nlf+0u1OOVDpCMdsWyOFmeeketDHE7LIg=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
@@ -997,8 +996,8 @@ github.com/nrdcg/goinwx v0.6.1/go.mod h1:XPiut7enlbEdntAqalBIqcYcTEVhpv/dKWgDCX2
 github.com/nrdcg/namesilo v0.2.1/go.mod h1:lwMvfQTyYq+BbjJd30ylEG4GPSS6PII0Tia4rRpRiyw=
 github.com/observatorium/observatorium v0.1.1 h1:HEHqxQCM3CQaqkuWKihKAOuerzuLYBjMl3blNsBLZAI=
 github.com/observatorium/observatorium v0.1.1/go.mod h1:OBSZE3oAaZGCDOzjEeyYnZQXo3/p9HRw0mYUNIHpm5k=
-github.com/observatorium/operator v0.0.0-20200917055735-d861409997ee h1:fhUrldj5Lr9af4sbSA8Lvj1wgPxWcbTPXXTs6K87MK8=
-github.com/observatorium/operator v0.0.0-20200917055735-d861409997ee/go.mod h1:8ge81R8EOl/CMSTz8y0iK93gNbSHTpPrn8bwTv9iZIU=
+github.com/observatorium/operator v0.0.0-20200923135241-55feecd281df h1:sovWYURFxti7q3FFWiflGouuBcVQjEbXBhOqNAeObqg=
+github.com/observatorium/operator v0.0.0-20200923135241-55feecd281df/go.mod h1:8ge81R8EOl/CMSTz8y0iK93gNbSHTpPrn8bwTv9iZIU=
 github.com/observatorium/up v0.0.0-20200415082017-83c3d20f7088/go.mod h1:ysto9FMxd/1rHh9N9l1JfHLjT3X7ix4oWjMfnyrpqsY=
 github.com/oklog/oklog v0.0.0-20170918173356-f857583a70c3/go.mod h1:FCV+B7mhrz4o+ueLpx+KqkyXRGMWOYEvfiXtdGtbWGs=
 github.com/oklog/oklog v0.3.2/go.mod h1:FCV+B7mhrz4o+ueLpx+KqkyXRGMWOYEvfiXtdGtbWGs=
@@ -1029,6 +1028,8 @@ github.com/onsi/gomega v1.7.1/go.mod h1:XdKZgCCFLUoM/7CFJVPcG8C1xQ1AJ0vpAezJrB7J
 github.com/onsi/gomega v1.8.1 h1:C5Dqfs/LeauYDX0jJXIe2SWmwCbGzx9yF8C8xy3Lh34=
 github.com/onsi/gomega v1.8.1/go.mod h1:Ho0h+IUsWyvy1OpqCwxlQ/21gkhVunqlU8fDGcoTdcA=
 github.com/op/go-logging v0.0.0-20160315200505-970db520ece7/go.mod h1:HzydrMdWErDVzsI23lYNej1Htcns9BCg93Dk0bBINWk=
+github.com/open-cluster-management/addon-framework v0.0.0-20200904153721-299d23c69ccf h1:9SLH3a3r8+Sl11ftFF+nmVjqDt8SSZVAoS0wCBA9FKQ=
+github.com/open-cluster-management/addon-framework v0.0.0-20200904153721-299d23c69ccf/go.mod h1:2PtG2VPvxID/ypQgVPree9PmTlrUMPlaZNMSAcu8zJ0=
 github.com/open-cluster-management/api v0.0.0-20200602195039-a516cac2e038 h1:ZpSgcQERvBBvfwqhdPbxIami9gZpX+RwjNPqwx4+axY=
 github.com/open-cluster-management/api v0.0.0-20200602195039-a516cac2e038/go.mod h1:+vUECYB7WkfCb52r0J7rxgD1mseSGAqGi8rTLLRcbgw=
 github.com/open-cluster-management/cert-manager v0.0.0-20200821135248-2fd523b053f5 h1:tn9/99huKRhQtytoBaJKiCdJsVc8Vz6BRgtSmrCu2ts=

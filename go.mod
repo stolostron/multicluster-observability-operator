@@ -4,13 +4,15 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.54.0 // indirect
+	github.com/cloudflare/cfssl v1.4.1 // indirect
 	github.com/go-openapi/jsonreference v0.19.3 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/jetstack/cert-manager v0.0.0-00010101000000-000000000000
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/mailru/easyjson v0.7.0 // indirect
-	github.com/observatorium/operator v0.0.0-20200917055735-d861409997ee
+	github.com/observatorium/operator v0.0.0-20200923135241-55feecd281df
+	github.com/open-cluster-management/addon-framework v0.0.0-20200904153721-299d23c69ccf
 	github.com/open-cluster-management/api v0.0.0-20200602195039-a516cac2e038
 	github.com/open-cluster-management/multicloud-operators-placementrule v1.0.0-2020-05-08-20-30-09
 	github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible
@@ -22,7 +24,7 @@ require (
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.18.3
-	k8s.io/apimachinery v0.18.3
+	k8s.io/apimachinery v0.18.4
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6 // indirect
 	k8s.io/kubectl v0.17.4

@@ -19,9 +19,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -41,8 +43,9 @@ const (
 )
 
 var (
-	log                  = logf.Log.WithName("controller_multiclustermonitoring")
-	enableHubRemoteWrite = os.Getenv("ENABLE_HUB_REMOTEWRITE")
+	log                             = logf.Log.WithName("controller_multiclustermonitoring")
+	enableHubRemoteWrite            = os.Getenv("ENABLE_HUB_REMOTEWRITE")
+	isClusterManagementAddonCreated = false
 )
 
 /**
@@ -104,6 +107,33 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		OwnerType:    &mcov1beta1.MultiClusterObservability{},
 	})
 
+	pred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Meta.GetName() == config.AlertRuleCustomConfigMapName && 
+				e.Meta.GetNamespace() == config.GetDefaultNamespace() {
+				config.SetCustomRuleConfigMap(true)
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Meta.GetName() == config.AlertRuleCustomConfigMapName && 
+				e.Meta.GetNamespace() == config.GetDefaultNamespace() {
+				config.SetCustomRuleConfigMap(false)
+				return true
+			}
+			return false
+		},
+	}
+	// Watch the configmap
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, pred)
+	if err != nil {
+		return err
+	}
+
 	// Watch for changes to secondary resource Secret and requeue the owner MultiClusterObservability
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
@@ -155,6 +185,15 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 
 	//set request name to be used in placementrule controller
 	config.SetMonitoringCRName(request.Name)
+
+	//Check if ClusterManagementAddon is created or create it
+	if !isClusterManagementAddonCreated {
+		err := util.CreateClusterManagementAddon(r.client)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		isClusterManagementAddonCreated = true
+	}
 	// Fetch the MultiClusterObservability instance
 	instance := &mcov1beta1.MultiClusterObservability{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)

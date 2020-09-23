@@ -44,7 +44,7 @@ spec:
         - --cluster.listen-address=[$(POD_IP)]:9094
         - --storage.path=/alertmanager
         - --data.retention=120h
-        - --web.listen-address=127.0.0.1:9093
+        - --web.listen-address=0.0.0.0:9093
         - --web.route-prefix=/
         - --cluster.peer=alertmanager-0.alertmanager-operated.{{MCO_NAMESPACE}}.svc:9094
         - --cluster.peer=alertmanager-1.alertmanager-operated.{{MCO_NAMESPACE}}.svc:9094
@@ -61,6 +61,9 @@ spec:
         ports:
         - containerPort: 9094
           name: mesh-tcp
+          protocol: TCP
+        - containerPort: 9093
+          name: web
           protocol: TCP
         - containerPort: 9094
           name: mesh-udp
