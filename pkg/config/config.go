@@ -57,6 +57,12 @@ const (
 
 	ServerCerts  = "observability-server-certs"
 	GrafanaCerts = "observability-grafana-certs"
+
+	AlertRuleDefaultConfigMapName = "thanos-ruler-default-rules"
+	AlertRuleDefaultFileKey       = "default_rules.yaml"
+	AlertRuleCustomConfigMapName  = "thanos-ruler-custom-rules"
+	AlertRuleCustomFileKey        = "custom_rules.yaml"
+	AlertmanagerURL               = "http://alertmanager:9093"
 )
 
 const (
@@ -114,10 +120,11 @@ type ObjectStorgeConf struct {
 }
 
 var (
-	log              = logf.Log.WithName("config")
-	monitoringCRName = ""
-	tenantUID        = ""
-	imageManifests   = map[string]string{}
+	log                    = logf.Log.WithName("config")
+	monitoringCRName       = ""
+	tenantUID              = ""
+	imageManifests         = map[string]string{}
+	hasCustomRuleConfigMap = false
 )
 
 // GetClusterNameLabelKey returns the key for the injected label
@@ -372,4 +379,14 @@ func availabilityConfigIsValid(config mcov1beta1.AvailabilityType) bool {
 	default:
 		return false
 	}
+}
+
+// HasCustomRuleConfigMap returns true if there is custom rule configmap
+func HasCustomRuleConfigMap() bool {
+	return hasCustomRuleConfigMap
+}
+
+// SetCustomRuleConfigMap set true if there is custom rule configmap
+func SetCustomRuleConfigMap(hasConfigMap bool) {
+	hasCustomRuleConfigMap = hasConfigMap
 }

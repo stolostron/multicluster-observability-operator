@@ -8,6 +8,8 @@ data:
       - :node_memory_MemAvailable_bytes:sum
       - apiserver_request_count
       - apiserver_request_duration_seconds_bucket
+      - apiserver_request_duration_seconds_count
+      - apiserver_request_duration_seconds_sum
       - apiserver_request_latencies_summary_count
       - apiserver_request_latencies_summary_sum
       - apiserver_request_total
@@ -37,14 +39,26 @@ data:
       - container_network_transmit_packets_dropped_total
       - container_network_transmit_packets_total
       - container_spec_cpu_quota
+      - etcd_debugging_mvcc_db_total_size_in_bytes
+      - etcd_debugging_snap_save_total_duration_seconds_sum
       - etcd_disk_backend_commit_duration_seconds_bucket
-      - etcd_helper_cache_entry_total
-      - etcd_helper_cache_hit_total
-      - etcd_helper_cache_miss_total
-      - etcd_request_cache_get_duration_seconds_bucket
-      - etcd_request_cache_add_duration_seconds_bucket
+      - etcd_disk_backend_commit_duration_seconds_sum
+      - etcd_disk_wal_fsync_duration_seconds_bucket
+      - etcd_disk_wal_fsync_duration_seconds_sum
+      - etcd_network_client_grpc_received_bytes_total
+      - etcd_network_client_grpc_sent_bytes_total
+      - etcd_network_peer_received_bytes_total
+      - etcd_network_peer_sent_bytes_total
+      - etcd_server_has_leader
+      - etcd_server_leader_changes_seen_total
+      - etcd_server_proposals_failed_total
+      - etcd_server_proposals_pending
+      - etcd_server_proposals_committed_total
+      - etcd_server_proposals_applied_total
       - etcd_server_quota_backend_bytes
       - go_goroutines
+      - grpc_server_started_total
+      - grpc_server_handled_total
       - haproxy_backend_connections_total
       - http_requests_total
       - instance:node_filesystem_usage:sum

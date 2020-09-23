@@ -363,6 +363,32 @@ func newRuleSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) o
 		mco.Spec.StorageConfig.StatefulSetSize,
 		scSelected)
 
+	//configure alertmanager in ruler
+	ruleSpec.AlertmanagersURL = []string{mcoconfig.AlertmanagerURL}
+	ruleSpec.RulesConfig = []observatoriumv1alpha1.RuleConfig{
+		{
+			Name: mcoconfig.AlertRuleDefaultConfigMapName,
+			Key:  mcoconfig.AlertRuleDefaultFileKey,
+		},
+	}
+
+	if mcoconfig.HasCustomRuleConfigMap() {
+		customRuleConfig := []observatoriumv1alpha1.RuleConfig{
+			{
+				Name: mcoconfig.AlertRuleCustomConfigMapName,
+				Key:  mcoconfig.AlertRuleCustomFileKey,
+			},
+		}
+		ruleSpec.RulesConfig = append(ruleSpec.RulesConfig, customRuleConfig...)
+	} else {
+		ruleSpec.RulesConfig = []observatoriumv1alpha1.RuleConfig{
+			{
+				Name: mcoconfig.AlertRuleDefaultConfigMapName,
+				Key:  mcoconfig.AlertRuleDefaultFileKey,
+			},
+		}
+	}
+
 	return ruleSpec
 }
 
