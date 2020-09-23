@@ -356,8 +356,8 @@ patch_for_clusterrole()  {
 
 deploy_cert_manager() {
     curl -L https://github.com/jetstack/cert-manager/releases/download/v0.10.0/cert-manager-openshift.yaml -o cert-manager-openshift.yaml
-    echo "Replace namespace with ibm-common-services"
-    $sed_command "s~--cluster-resource-namespace=.*~--cluster-resource-namespace=ibm-common-services~g" cert-manager-openshift.yaml
+    echo "Replace namespace with open-cluster-management-issuer"
+    $sed_command "s~--cluster-resource-namespace=.*~--cluster-resource-namespace=open-cluster-management-issuer~g" cert-manager-openshift.yaml
     if kubectl apply -f cert-manager-openshift.yaml ; then
         echo "cert-manager was successfully deployed"
     else
