@@ -12,14 +12,6 @@ import (
 
 	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	observatoriumAPIs "github.com/observatorium/operator/api/v1alpha1"
-	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
-	workv1 "github.com/open-cluster-management/api/work/v1"
-	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
-	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller"
-	utils "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/version"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
@@ -38,6 +30,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 	"sigs.k8s.io/controller-runtime/pkg/scheme"
+
+	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
+	workv1 "github.com/open-cluster-management/api/work/v1"
+	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
+	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/version"
 )
 
 // Change below variables to serve metrics on different host or port.
@@ -88,12 +88,6 @@ func main() {
 	ctx := context.TODO()
 	// Become the leader before proceeding
 	err = leader.Become(ctx, "multicluster-observability-operator-lock")
-	if err != nil {
-		log.Error(err, "")
-		os.Exit(1)
-	}
-
-	kubeclient, err := utils.CreateNewK8s(cfg)
 	if err != nil {
 		log.Error(err, "")
 		os.Exit(1)
@@ -168,8 +162,6 @@ func main() {
 		log.Error(err, "")
 		os.Exit(1)
 	}
-	//Register Observability ClusterManagementAddon
-	utils.CreateClusterManagementAddon(kubeclient)
 
 	// Add the Metrics Service
 	addMetrics(ctx, cfg, mcoconfig.GetDefaultNamespace())

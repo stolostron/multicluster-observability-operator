@@ -189,6 +189,7 @@ func createRole(client client.Client, namespace string) error {
 			},
 			{
 				Resources: []string{
+					"managedclusteraddons",
 					"managedclusteraddons/status",
 				},
 				Verbs: []string{

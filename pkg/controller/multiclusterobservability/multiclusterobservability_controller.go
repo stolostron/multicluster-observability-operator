@@ -41,8 +41,9 @@ const (
 )
 
 var (
-	log                  = logf.Log.WithName("controller_multiclustermonitoring")
-	enableHubRemoteWrite = os.Getenv("ENABLE_HUB_REMOTEWRITE")
+	log                             = logf.Log.WithName("controller_multiclustermonitoring")
+	enableHubRemoteWrite            = os.Getenv("ENABLE_HUB_REMOTEWRITE")
+	isClusterManagementAddonCreated = false
 )
 
 /**
@@ -155,6 +156,15 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 
 	//set request name to be used in placementrule controller
 	config.SetMonitoringCRName(request.Name)
+
+	//Check if ClusterManagementAddon is created or create it
+	if !isClusterManagementAddonCreated {
+		err := util.CreateClusterManagementAddon(r.client)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		isClusterManagementAddonCreated = true
+	}
 	// Fetch the MultiClusterObservability instance
 	instance := &mcov1beta1.MultiClusterObservability{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)

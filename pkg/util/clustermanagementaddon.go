@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
 )
 
 const (
@@ -24,19 +24,20 @@ type clusterManagementAddOnSpec struct {
 	CRDName     string `json:"crdName"`
 }
 
-func CreateClusterManagementAddon(c client.Client) {
+func CreateClusterManagementAddon(c client.Client) error {
 	addOnFound := false
 	clusterManagementAddon := &addonv1alpha1.ClusterManagementAddOn{}
 	for !addOnFound {
-		if err := c.Get(context.TODO(), types.NamespacedName{Name: ObservabilityController}, clusterManagementAddon); err != nil {
+		if err := c.Get(context.TODO(), types.NamespacedName{Name: ObservabilityController},
+			clusterManagementAddon); err != nil {
 			if errors.IsNotFound(err) {
 				clusterManagementAddon := newClusterManagementAddon()
 				if err := c.Create(context.TODO(), clusterManagementAddon); err != nil {
 					log.Error(err, "Failed to create observability-controller clustermanagementaddon ")
-					break
+					return err
 				}
 				log.Info("Created observability-controller clustermanagementaddon")
-				break
+				return nil
 			}
 			switch err.(type) {
 			case *cache.ErrCacheNotStarted:
@@ -45,19 +46,20 @@ func CreateClusterManagementAddon(c client.Client) {
 			default:
 				log.Error(err, "Cannot create observability-controller clustermanagementaddon")
 			}
-			break
+			return err
 		}
 
 		log.Info(fmt.Sprintf("%s clustermanagementaddon is present ", ObservabilityController))
-		addOnFound = true
+		return nil
 	}
+	return nil
 }
 
 func newClusterManagementAddon() *addonv1alpha1.ClusterManagementAddOn {
 	clusterManagementAddOnSpec := clusterManagementAddOnSpec{
 		DisplayName: "Observability Controller",
 		Description: "Manages Observability components.",
-		CRDName:     "klusterletaddonconfigs.agent.open-cluster-management.io",
+		CRDName:     "observabilityaddons.observability.open-cluster-management.io",
 	}
 	return &addonv1alpha1.ClusterManagementAddOn{
 		TypeMeta: metav1.TypeMeta{
