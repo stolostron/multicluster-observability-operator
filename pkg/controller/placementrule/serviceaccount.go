@@ -187,6 +187,21 @@ func createRole(client client.Client, namespace string) error {
 					"coordination.k8s.io",
 				},
 			},
+			{
+				Resources: []string{
+					"managedclusteraddons",
+					"managedclusteraddons/status",
+				},
+				Verbs: []string{
+					"watch",
+					"list",
+					"get",
+					"update",
+				},
+				APIGroups: []string{
+					"addon.open-cluster-management.io",
+				},
+			},
 		},
 	}
 
