@@ -42,13 +42,20 @@ config:
 
 You will need to provide a value for the `bucket`, `endpoint`, `access_key`, and `secret_key` keys. For more details, please refer to https://thanos.io/tip/thanos/storage.md/#s3.
 
-Then encode object storage configuration with base64, fill it in `example/object-storage-secret.yaml` `thanos.yaml`field, and create the Secret using folllowing commands:
+Then encode object storage configuration with base64, fill it in `example/object-storage-secret.yaml` `thanos.yaml`field
 
-Only for development or testing purposes, you can [deploy your object storage](./README.md#setup-object-storage).
 ```
 $ cat your-object-storage-configuration | base64
+```
+
+After filled in, create the Secret using folllowing commands:
+
+```
 $ oc apply --namespace=open-cluster-management-observability -f example/object-storage-secret.yaml
 ```
+
+Only for development or testing purposes, you can [deploy your object storage](./README.md#setup-object-storage).
+
 
 5. [Optional] Modify the operator and instance to use a new SNAPSHOT tag
 
@@ -102,7 +109,7 @@ NAME                                                              READY   STATUS
 multicluster-observability-operator-55bc57d65c-tk2c2              1/1     Running   0          7h8m
 ```
 
-8. Deploy `MultiClusterObservability` instance to `open-cluster-management-observability` namespace
+8. Deploy `MultiClusterObservability` instance
 
 ```
 oc project open-cluster-management-observability
