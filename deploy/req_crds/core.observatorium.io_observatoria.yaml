@@ -782,12 +782,21 @@ spec:
                   description: Number of Rule replicas.
                   format: int32
                   type: integer
-                ruleFileKey:
-                  description: RuleFileKey
-                  type: string
-                rulesConfigMapName:
-                  description: RuleConfigMapName
-                  type: string
+                rulesConfig:
+                  description: RulesConfig configures rules from the configmaps
+                  items:
+                    properties:
+                      key:
+                        description: Rule ConfigMap key
+                        type: string
+                      name:
+                        description: Rule ConfigMap Name
+                        type: string
+                    required:
+                    - key
+                    - name
+                    type: object
+                  type: array
                 version:
                   description: Version of Thanos image to be deployed.
                   type: string
