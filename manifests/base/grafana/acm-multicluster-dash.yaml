@@ -24,7 +24,7 @@ data:
       "panels": [
         {
           "collapsed": false,
-          "datasource": null,
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -258,7 +258,7 @@ data:
         },
         {
           "collapsed": false,
-          "datasource": null,
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -271,7 +271,7 @@ data:
           "type": "row"
         },
         {
-          "datasource": null,
+          "datasource": "$datasource",
           "description": "Highlights % differences between CPU/Memory requests commitments vs utilization.  When this difference is large, it means that resources are reserved but unused.",
           "fieldConfig": {
             "defaults": {
@@ -506,7 +506,7 @@ data:
         },
         {
           "collapsed": false,
-          "datasource": null,
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -1147,7 +1147,7 @@ data:
         },
         {
           "collapsed": false,
-          "datasource": null,
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -1989,8 +1989,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Prometheus",
-              "value": "Prometheus"
+              "text": "Observatorium",
+              "value": "Observatorium"
             },
             "hide": 2,
             "includeAll": false,
