@@ -33,7 +33,7 @@ data:
           },
           "id": 138,
           "panels": [],
-          "title": "Control Plane Health and Optimization",
+          "title": "Control Plane Health",
           "type": "row"
         },
         {
