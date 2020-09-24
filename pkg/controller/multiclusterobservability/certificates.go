@@ -337,14 +337,16 @@ func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme
 		return err
 	}
 
+	hosts := []string{config.GetObsAPISvc(mco.GetName())}
 	url, err := config.GetObsAPIUrl(client, ns)
 	if err != nil {
-		log.Error(err, "Failed to get api gateway")
-		return err
+		log.Info("Failed to get api route address", "error", err.Error())
+	} else {
+		hosts = append(hosts, url)
 	}
 
 	spec = CreateCertificateSpec(serverCerts, false, serverCAIssuer, false,
-		serverCertificate, []string{}, []string{url, config.GetObsAPISvc(mco.GetName())})
+		serverCertificate, []string{}, hosts)
 	err = CreateCertificate(client, scheme, mco,
 		serverCertificate, ns, spec)
 	if err != nil {

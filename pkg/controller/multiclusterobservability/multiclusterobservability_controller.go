@@ -252,12 +252,6 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return reconcile.Result{}, err
 	}
 
-	// create the placementrule
-	err = createPlacementRule(r.client, r.scheme, instance)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
 	// create an Observatorium CR
 	result, err = GenerateObservatoriumCR(r.client, r.scheme, instance)
 	if result != nil {
@@ -268,6 +262,15 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 	result, err = GenerateGrafanaDataSource(r.client, r.scheme, instance)
 	if result != nil {
 		return *result, err
+	}
+
+	enableManagedCluster, found := os.LookupEnv("ENABLE_MANAGED_CLUSTER")
+	if !found || enableManagedCluster != "false" {
+		// create the placementrule
+		err = createPlacementRule(r.client, r.scheme, instance)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
 	result, err = r.UpdateStatus(instance)
