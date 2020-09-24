@@ -125,5 +125,3 @@ data:
       - workqueue_adds_total
       - workqueue_depth
       - workqueue_queue_duration_seconds_bucket
-    matches:
-      - __name__="ALERTS",alertname!~"AlertmanagerReceiversNotConfigured|Watchdog"
