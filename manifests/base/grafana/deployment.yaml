@@ -65,6 +65,8 @@ spec:
           name: grafana-dashboards
         - mountPath: /grafana-dashboard-definitions/0/acm-clusters-overview
           name: grafana-dashboard-acm-clusters-overview
+        - mountPath: /grafana-dashboard-definitions/0/acm-optimization-overview
+          name: grafana-dashboard-acm-optimization-overview
         - mountPath: /grafana-dashboard-definitions/0/acm-control-plane
           name: grafana-dashboard-acm-control-plane
         - mountPath: /grafana-dashboard-definitions/0/k8s-apiserver
@@ -108,6 +110,10 @@ spec:
           defaultMode: 420
           name: grafana-dashboard-acm-clusters-overview
         name: grafana-dashboard-acm-clusters-overview
+      - configMap:
+          defaultMode: 420
+          name: grafana-dashboard-acm-optimization-overview
+        name: grafana-dashboard-acm-optimization-overview
       - configMap:
           defaultMode: 420
           name: grafana-dashboard-acm-control-plane
