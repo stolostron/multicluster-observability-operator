@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
@@ -337,6 +338,12 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 			return reconcile.Result{}, err
 		}
 		isCRoleCreated = false
+		//delete ClusterManagementAddon
+		err = deleteClusterManagementAddon(r.client)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		isClusterManagementAddonCreated = false
 	}
 
 	epList = &mcov1beta1.ObservabilityAddonList{}
@@ -402,13 +409,25 @@ func createManagedClusterRes(client client.Client,
 }
 
 func deleteManagedClusterRes(client client.Client, namespace string) error {
+
+	managedclusteraddon := &addonv1alpha1.ManagedClusterAddOn{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      util.ManagedClusterAddonName,
+			Namespace: namespace,
+		},
+	}
+	err := client.Delete(context.TODO(), managedclusteraddon)
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+
 	certificate := &certv1alpha1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      certificateName,
 			Namespace: namespace,
 		},
 	}
-	err := client.Delete(context.TODO(), certificate)
+	err = client.Delete(context.TODO(), certificate)
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}

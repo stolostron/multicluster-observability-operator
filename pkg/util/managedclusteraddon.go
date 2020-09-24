@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	managedClusterAddonName = "observability-controller"
+	ManagedClusterAddonName = "observability-controller"
 )
 
 func CreateManagedClusterAddonCR(client client.Client, namespace string) error {
@@ -22,7 +22,7 @@ func CreateManagedClusterAddonCR(client client.Client, namespace string) error {
 	if err := client.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      managedClusterAddonName,
+			Name:      ManagedClusterAddonName,
 			Namespace: namespace,
 		},
 		managedClusterAddon,
@@ -34,7 +34,7 @@ func CreateManagedClusterAddonCR(client client.Client, namespace string) error {
 				Kind:       "ManagedClusterAddOn",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      managedClusterAddonName,
+				Name:      ManagedClusterAddonName,
 				Namespace: namespace,
 			},
 		}
