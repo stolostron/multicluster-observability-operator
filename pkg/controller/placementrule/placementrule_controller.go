@@ -43,9 +43,10 @@ const (
 )
 
 var (
-	log            = logf.Log.WithName("controller_placementrule")
-	watchNamespace = config.GetDefaultNamespace()
-	isCRoleCreated = false
+	log                             = logf.Log.WithName("controller_placementrule")
+	watchNamespace                  = config.GetDefaultNamespace()
+	isCRoleCreated                  = false
+	isClusterManagementAddonCreated = false
 )
 
 /**
@@ -260,10 +261,19 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		// create the clusterrole if not there
 		if !isCRoleCreated {
 			err = createClusterRole(r.client)
+
 			if err != nil {
 				return reconcile.Result{}, err
 			}
 			isCRoleCreated = true
+		}
+		//Check if ClusterManagementAddon is created or create it
+		if !isClusterManagementAddonCreated {
+			err := util.CreateClusterManagementAddon(r.client)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			isClusterManagementAddonCreated = true
 		}
 
 		imagePullSecret := &corev1.Secret{}
