@@ -3978,7 +3978,7 @@ metadata:
 ---
 apiVersion: v1
 data:
-  acm-control-plane.json: |-
+  acm-optimization-overview.json: |-
     {
       "annotations": {
         "list": [
