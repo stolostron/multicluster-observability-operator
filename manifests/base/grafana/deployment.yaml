@@ -77,8 +77,8 @@ spec:
           name: grafana-dashboard-k8s-compute-resources-namespace-workloads
         - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-workload
           name: grafana-dashboard-k8s-compute-resources-workload
-        - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-node-pod
-          name: grafana-dashboard-k8s-compute-resources-node-pod
+        - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-node-pods
+          name: grafana-dashboard-k8s-compute-resources-node-pods
         - mountPath: /etc/grafana
           name: grafana-config
       serviceAccount: grafana
