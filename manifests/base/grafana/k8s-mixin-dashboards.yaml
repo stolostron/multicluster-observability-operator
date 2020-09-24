@@ -13053,4 +13053,4 @@ data:
 kind: ConfigMap
 metadata:
   name: grafana-dashboard-k8s-compute-resources-pod
-  namespace: open-cluster-management
+  namespace: open-cluster-management-observability
