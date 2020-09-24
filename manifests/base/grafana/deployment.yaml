@@ -75,6 +75,8 @@ spec:
           name: grafana-dashboard-k8s-compute-resources-namespace-pods
         - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-namespace-workloads
           name: grafana-dashboard-k8s-compute-resources-namespace-workloads
+        - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-workload
+          name: grafana-dashboard-k8s-compute-resources-workload
         - mountPath: /etc/grafana
           name: grafana-config
       serviceAccount: grafana
@@ -116,6 +118,10 @@ spec:
           defaultMode: 420
           name: grafana-dashboard-k8s-compute-resources-namespace-workloads
         name: grafana-dashboard-k8s-compute-resources-namespace-workloads
+      - configMap:
+          defaultMode: 420
+          name: grafana-dashboard-k8s-compute-resources-workload
+        name: grafana-dashboard-k8s-compute-resources-workload
       - name: grafana-config
         secret:
           defaultMode: 420
