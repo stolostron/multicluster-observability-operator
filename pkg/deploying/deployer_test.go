@@ -117,6 +117,47 @@ func TestDeploy(t *testing.T) {
 			},
 		},
 		{
+			name: "create and update the statefulset",
+			createObj: &appsv1.StatefulSet{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apps/v1",
+					Kind:       "StatefulSet",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-statefulSet",
+					Namespace: "ns1",
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: &replicas1,
+				},
+			},
+			updateObj: &appsv1.StatefulSet{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apps/v1",
+					Kind:       "StatefulSet",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-statefulSet",
+					Namespace: "ns1",
+				},
+				Spec: appsv1.StatefulSetSpec{
+					Replicas: &(replicas2),
+				},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{
+					Name:      "test-statefulSet",
+					Namespace: "ns1",
+				}
+				obj := &appsv1.StatefulSet{}
+				client.Get(context.Background(), namespacedName, obj)
+
+				if *obj.Spec.Replicas != 2 {
+					t.Fatalf("fail to update the statefulset")
+				}
+			},
+		},
+		{
 			name: "create and update the configmap",
 			createObj: &corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
