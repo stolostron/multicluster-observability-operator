@@ -67,6 +67,8 @@ spec:
           name: grafana-dashboard-acm-clusters-overview
         - mountPath: /grafana-dashboard-definitions/0/acm-control-plane
           name: grafana-dashboard-acm-control-plane
+        - mountPath: /grafana-dashboard-definitions/0/k8s-apiserver
+          name: grafana-dashboard-k8s-apiserver
         - mountPath: /grafana-dashboard-definitions/0/k8s-networking-cluster
           name: grafana-dashboard-k8s-networking-cluster
         - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-cluster
@@ -83,6 +85,8 @@ spec:
           name: grafana-dashboard-k8s-compute-resources-pod
         - mountPath: /grafana-dashboard-definitions/0/cluster-rsrc-use
           name: grafana-dashboard-cluster-rsrc-use
+        - mountPath: /grafana-dashboard-definitions/0/node-rsrc-use
+          name: grafana-dashboard-node-rsrc-use
         - mountPath: /etc/grafana
           name: grafana-config
       serviceAccount: grafana
@@ -108,6 +112,10 @@ spec:
           defaultMode: 420
           name: grafana-dashboard-acm-control-plane
         name: grafana-dashboard-acm-control-plane
+      - configMap:
+          defaultMode: 420
+          name: grafana-dashboard-k8s-apiserver
+        name: grafana-dashboard-k8s-apiserver
       - configMap:
           defaultMode: 420
           name: grafana-dashboard-k8s-networking-cluster
@@ -140,6 +148,10 @@ spec:
           defaultMode: 420
           name: grafana-dashboard-cluster-rsrc-use
         name: grafana-dashboard-cluster-rsrc-use
+      - configMap:
+          defaultMode: 420
+          name: grafana-dashboard-node-rsrc-use
+        name: grafana-dashboard-node-rsrc-use
       - name: grafana-config
         secret:
           defaultMode: 420
