@@ -33,7 +33,7 @@ func NewDeployer(client client.Client) *Deployer {
 	deployer := &Deployer{client: client}
 	deployer.deployerFns = map[string]deployerFn{
 		"Deployment":         deployer.updateDeployment,
-		"StatefulSet":        deployer.updateDeployment,
+		"StatefulSet":        deployer.updateStatefulSet,
 		"Service":            deployer.updateService,
 		"ConfigMap":          deployer.updateConfigMap,
 		"Secret":             deployer.updateSecret,
@@ -81,6 +81,32 @@ func (d *Deployer) updateDeployment(desiredObj, runtimeObj *unstructured.Unstruc
 	if !apiequality.Semantic.DeepDerivative(desiredDepoly.Spec, runtimeDepoly.Spec) {
 		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
 		return d.client.Update(context.TODO(), desiredDepoly)
+	}
+
+	return nil
+}
+
+func (d *Deployer) updateStatefulSet(desiredObj, runtimeObj *unstructured.Unstructured) error {
+	runtimeJSON, _ := runtimeObj.MarshalJSON()
+	runtimeDepoly := &appsv1.StatefulSet{}
+	err := json.Unmarshal(runtimeJSON, runtimeDepoly)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime StatefulSet %s", runtimeObj.GetName()))
+	}
+
+	desiredJSON, _ := desiredObj.MarshalJSON()
+	desiredDepoly := &appsv1.StatefulSet{}
+	err = json.Unmarshal(desiredJSON, desiredDepoly)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to Unmarshal StatefulSet %s", runtimeObj.GetName()))
+	}
+
+	if !apiequality.Semantic.DeepDerivative(desiredDepoly.Spec.Template, runtimeDepoly.Spec.Template) ||
+		!apiequality.Semantic.DeepDerivative(desiredDepoly.Spec.Replicas, runtimeDepoly.Spec.Replicas) {
+		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
+		runtimeDepoly.Spec.Replicas = desiredDepoly.Spec.Replicas
+		runtimeDepoly.Spec.Template = desiredDepoly.Spec.Template
+		return d.client.Update(context.TODO(), runtimeDepoly)
 	}
 
 	return nil
