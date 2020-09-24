@@ -5,7 +5,7 @@ metadata:
     app: multicluster-observability-grafana
     observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
   name: grafana
-  namespace: open-cluster-management
+  namespace: open-cluster-management-observability
 spec:
   replicas: 1
   selector:
@@ -63,28 +63,28 @@ spec:
           name: grafana-datasources
         - mountPath: /etc/grafana/provisioning/dashboards
           name: grafana-dashboards
-        - mountPath: /grafana-dashboard-definitions/0/managed-clusters
-          name: grafana-dashboard-managed-clusters
         - mountPath: /grafana-dashboard-definitions/0/acm-clusters-overview
           name: grafana-dashboard-acm-clusters-overview
         - mountPath: /grafana-dashboard-definitions/0/acm-control-plane
           name: grafana-dashboard-acm-control-plane
-        - mountPath: /grafana-dashboard-definitions/0/cluster-tota
-          name: grafana-dashboard-cluster-total
-        - mountPath: /grafana-dashboard-definitions/0/k8s-resources-cluster
-          name: grafana-dashboard-k8s-resources-cluster
-        - mountPath: /grafana-dashboard-definitions/0/k8s-resources-namespace
-          name: grafana-dashboard-k8s-resources-namespace
-        - mountPath: /grafana-dashboard-definitions/0/k8s-resources-node
-          name: grafana-dashboard-k8s-resources-node
-        - mountPath: /grafana-dashboard-definitions/0/k8s-resources-pod
-          name: grafana-dashboard-k8s-resources-pod
-        - mountPath: /grafana-dashboard-definitions/0/k8s-resources-workload
-          name: grafana-dashboard-k8s-resources-workload
-        - mountPath: grafana-dashboard-definitions/0/k8s-resources-workloads-namespace
-          name: grafana-dashboard-k8s-resources-workloads-namespace
-        - mountPath: /grafana-dashboard-definitions/0/node-cluster-rsrc-use
-          name: grafana-dashboard-node-cluster-rsrc-use
+        - mountPath: /grafana-dashboard-definitions/0/k8s-apiserver
+          name: grafana-dashboard-k8s-apiserver
+        - mountPath: /grafana-dashboard-definitions/0/k8s-networking-cluster
+          name: grafana-dashboard-k8s-networking-cluster
+        - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-cluster
+          name: grafana-dashboard-k8s-compute-resources-cluster
+        - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-namespace-pods
+          name: grafana-dashboard-k8s-compute-resources-namespace-pods
+        - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-namespace-workloads
+          name: grafana-dashboard-k8s-compute-resources-namespace-workloads
+        - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-workload
+          name: grafana-dashboard-k8s-compute-resources-workload
+        - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-node-pods
+          name: grafana-dashboard-k8s-compute-resources-node-pods
+        - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-pod
+          name: grafana-dashboard-k8s-compute-resources-pod
+        - mountPath: /grafana-dashboard-definitions/0/cluster-rsrc-use
+          name: grafana-dashboard-cluster-rsrc-use
         - mountPath: /grafana-dashboard-definitions/0/node-rsrc-use
           name: grafana-dashboard-node-rsrc-use
         - mountPath: /etc/grafana
@@ -114,40 +114,40 @@ spec:
         name: grafana-dashboard-acm-control-plane
       - configMap:
           defaultMode: 420
-          name: grafana-dashboard-managed-clusters
-        name: grafana-dashboard-managed-clusters
+          name: grafana-dashboard-k8s-apiserver
+        name: grafana-dashboard-k8s-apiserver
       - configMap:
           defaultMode: 420
-          name: grafana-dashboard-cluster-total
-        name: grafana-dashboard-cluster-total
+          name: grafana-dashboard-k8s-networking-cluster
+        name: grafana-dashboard-k8s-networking-cluster
       - configMap:
           defaultMode: 420
-          name: grafana-dashboard-k8s-resources-cluster
-        name: grafana-dashboard-k8s-resources-cluster
+          name: grafana-dashboard-k8s-compute-resources-cluster
+        name: grafana-dashboard-k8s-compute-resources-cluster
       - configMap:
           defaultMode: 420
-          name: grafana-dashboard-k8s-resources-namespace
-        name: grafana-dashboard-k8s-resources-namespace
+          name: grafana-dashboard-k8s-compute-resources-namespace-pods
+        name: grafana-dashboard-k8s-compute-resources-namespace-pods
       - configMap:
           defaultMode: 420
-          name: grafana-dashboard-k8s-resources-node
-        name: grafana-dashboard-k8s-resources-node
+          name: grafana-dashboard-k8s-compute-resources-namespace-workloads
+        name: grafana-dashboard-k8s-compute-resources-namespace-workloads
       - configMap:
           defaultMode: 420
-          name: grafana-dashboard-k8s-resources-pod
-        name: grafana-dashboard-k8s-resources-pod
+          name: grafana-dashboard-k8s-compute-resources-workload
+        name: grafana-dashboard-k8s-compute-resources-workload
       - configMap:
           defaultMode: 420
-          name: grafana-dashboard-k8s-resources-workload
-        name: grafana-dashboard-k8s-resources-workload
+          name: grafana-dashboard-k8s-compute-resources-node-pods
+        name: grafana-dashboard-k8s-compute-resources-node-pods
       - configMap:
           defaultMode: 420
-          name: grafana-dashboard-k8s-resources-workloads-namespace
-        name: grafana-dashboard-k8s-resources-workloads-namespace
+          name: grafana-dashboard-k8s-compute-resources-pod
+        name: grafana-dashboard-k8s-compute-resources-pod
       - configMap:
           defaultMode: 420
-          name: grafana-dashboard-node-cluster-rsrc-use
-        name: grafana-dashboard-node-cluster-rsrc-use
+          name: grafana-dashboard-cluster-rsrc-use
+        name: grafana-dashboard-cluster-rsrc-use
       - configMap:
           defaultMode: 420
           name: grafana-dashboard-node-rsrc-use

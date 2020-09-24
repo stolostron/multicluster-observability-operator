@@ -3629,4 +3629,4 @@ data:
 kind: ConfigMap
 metadata:
   name: grafana-dashboard-acm-control-plane
-  namespace: open-cluster-management
+  namespace: open-cluster-management-observability
