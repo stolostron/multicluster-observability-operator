@@ -81,6 +81,8 @@ spec:
           name: grafana-dashboard-k8s-compute-resources-node-pods
         - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-pod
           name: grafana-dashboard-k8s-compute-resources-pod
+        - mountPath: /grafana-dashboard-definitions/0/cluster-rsrc-use
+          name: grafana-dashboard-cluster-rsrc-use
         - mountPath: /etc/grafana
           name: grafana-config
       serviceAccount: grafana
@@ -134,6 +136,10 @@ spec:
           defaultMode: 420
           name: grafana-dashboard-k8s-compute-resources-pod
         name: grafana-dashboard-k8s-compute-resources-pod
+      - configMap:
+          defaultMode: 420
+          name: grafana-dashboard-cluster-rsrc-use
+        name: grafana-dashboard-cluster-rsrc-use
       - name: grafana-config
         secret:
           defaultMode: 420
