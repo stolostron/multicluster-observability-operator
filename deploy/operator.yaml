@@ -38,4 +38,4 @@ spec:
             - name: TEMPLATES_PATH
               value: /usr/local/manifests
             - name: SPOKE_NAMESPACE
-              value: open-cluster-management-observability
+              value: open-cluster-management-addon-observability
