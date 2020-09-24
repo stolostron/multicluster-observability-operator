@@ -69,6 +69,8 @@ spec:
           name: grafana-dashboard-acm-control-plane
         - mountPath: /grafana-dashboard-definitions/0/k8s-networking-cluster
           name: grafana-dashboard-k8s-networking-cluster
+        - mountPath: /grafana-dashboard-definitions/0/k8s-compute-resources-cluster
+          name: grafana-dashboard-k8s-compute-resources-cluster
         - mountPath: /etc/grafana
           name: grafana-config
       serviceAccount: grafana
@@ -98,6 +100,10 @@ spec:
           defaultMode: 420
           name: grafana-dashboard-k8s-networking-cluster
         name: grafana-dashboard-k8s-networking-cluster
+      - configMap:
+          defaultMode: 420
+          name: grafana-dashboard-k8s-compute-resources-cluster
+        name: grafana-dashboard-k8s-compute-resources-cluster
       - name: grafana-config
         secret:
           defaultMode: 420
