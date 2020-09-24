@@ -5,6 +5,7 @@ package placementrule
 import (
 	"context"
 	"fmt"
+	"os"
 
 	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	coordinationv1 "k8s.io/api/coordination/v1"
@@ -58,6 +59,10 @@ var (
 // Add creates a new PlacementRule Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
+	enableManagedCluster, found := os.LookupEnv("ENABLE_MANAGED_CLUSTER")
+	if found && enableManagedCluster == "false" {
+		return nil
+	}
 	return add(mgr, newReconciler(mgr))
 }
 
@@ -73,6 +78,7 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
+
 	// Create a new controller
 	c, err := controller.New("placementrule-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
