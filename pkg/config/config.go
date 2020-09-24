@@ -132,6 +132,7 @@ func GetClusterNameLabelKey() string {
 	return clusterNameLabelKey
 }
 
+// ReplaceImage is used to replace the image with specified annotation or imagemanifest configmap
 func ReplaceImage(annotations map[string]string, imageRepo, componentName string) (bool, string) {
 	if annotations != nil {
 		annotationImageRepo, _ := annotations[AnnotationKeyImageRepository]
@@ -139,7 +140,9 @@ func ReplaceImage(annotations map[string]string, imageRepo, componentName string
 		sameOrg := strings.Contains(imageRepo, DefaultImgRepository)
 
 		if hasTagSuffix && sameOrg {
-			image := annotationImageRepo + "/" + componentName + ":" + tagSuffix
+			repoSlice := strings.Split(imageRepo, "/")
+			imageName := strings.Split(repoSlice[len(repoSlice)-1], ":")[0]
+			image := annotationImageRepo + "/" + imageName + ":" + tagSuffix
 			return true, image
 		} else if !hasTagSuffix {
 			image, found := imageManifests[componentName]
