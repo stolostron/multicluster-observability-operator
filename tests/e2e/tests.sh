@@ -6,6 +6,7 @@ export KUBECONFIG=$HOME/.kube/kind-config-hub
 export SPOKE_KUBECONFIG=$HOME/.kube/kind-config-spoke
 MONITORING_NS="open-cluster-management-observability"
 DEFAULT_NS="open-cluster-management"
+SPOKE_NS="open-cluster-management-addon-observability"
 HUB_KUBECONFIG=$HOME/.kube/kind-config-hub
 kubectl config set-context --current --namespace $MONITORING_NS
 
@@ -238,7 +239,7 @@ run_test_endpoint_operator() {
         echo "The manifestwork endpoint-observability-work created"
     fi
 
-    wait_for_popup secret hub-kube-config kind-config-spoke $MONITORING_NS
+    wait_for_popup secret hub-kube-config kind-config-spoke $SPOKE_NS
     if [ $? -ne 0 ]; then
         echo "The secret hub-kube-config not created"
         exit 1
@@ -246,7 +247,7 @@ run_test_endpoint_operator() {
         echo "The secret hub-kube-config created"
     fi
 
-    wait_for_popup deployment endpoint-observability-operator kind-config-spoke $MONITORING_NS
+    wait_for_popup deployment endpoint-observability-operator kind-config-spoke $SPOKE_NS
     if [ $? -ne 0 ]; then
         echo "The deployment endpoint-observability-operator not created"
         exit 1
@@ -254,7 +255,7 @@ run_test_endpoint_operator() {
         echo "The deployment endpoint-observability-operator created"
     fi
 
-    wait_for_popup deployment metrics-collector-deployment kind-config-spoke $MONITORING_NS
+    wait_for_popup deployment metrics-collector-deployment kind-config-spoke $SPOKE_NS
     if [ $? -ne 0 ]; then
         echo "The deployment metrics-collector-deployment not created"
         exit 1
