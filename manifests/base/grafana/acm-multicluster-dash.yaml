@@ -24,7 +24,7 @@ data:
       "panels": [
         {
           "collapsed": false,
-          "datasource": null,
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -258,7 +258,7 @@ data:
         },
         {
           "collapsed": false,
-          "datasource": null,
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -271,7 +271,7 @@ data:
           "type": "row"
         },
         {
-          "datasource": null,
+          "datasource": "$datasource",
           "description": "Highlights % differences between CPU/Memory requests commitments vs utilization.  When this difference is large, it means that resources are reserved but unused.",
           "fieldConfig": {
             "defaults": {
@@ -289,7 +289,7 @@ data:
                   },
                   {
                     "color": "green",
-                    "value": 0.1
+                    "value": 0.0001
                   },
                   {
                     "color": "red",
@@ -345,7 +345,7 @@ data:
           "fill": 0,
           "gridPos": {
             "h": 6,
-            "w": 24,
+            "w": 8,
             "x": 0,
             "y": 9
           },
@@ -490,7 +490,7 @@ data:
         },
         {
           "collapsed": false,
-          "datasource": null,
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -1143,7 +1143,7 @@ data:
         },
         {
           "collapsed": false,
-          "datasource": null,
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
