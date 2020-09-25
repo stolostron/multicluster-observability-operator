@@ -3,23 +3,4 @@ apiVersion: v1
 metadata:
   name: thanos-ruler-default-rules
 data:
-  default_rules.yaml: |
-    groups:
-    - name: metamonitoring
-      rules:
-      - alert: PrometheusReplicaDown
-        annotations:
-          message: Prometheus replica in cluster {{$labels.cluster}} has disappeared from Prometheus target discovery.
-        expr: |
-          sum(up{cluster="a-import-zero", job="kube-state-metrics"}) by (job,cluster) < 3
-        for: 15s
-        labels:
-          severity: critical
-      - alert: AlertRelayTest
-        annotations:
-          message: Relaying alerts from managed clusters {{$labels.cluster}}.
-        expr: |
-          alerts{alertstate="firing"} >0
-        for: 15s
-        labels:
-          severity: critical
+  default_rules.yaml: ""
