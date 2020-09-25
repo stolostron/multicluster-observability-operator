@@ -23,6 +23,7 @@ rules:
   resources:
   - services
   verbs:
+  - get
   - create
 - apiGroups:
   - ""
