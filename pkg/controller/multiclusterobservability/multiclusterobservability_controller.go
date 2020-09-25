@@ -133,6 +133,33 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	pred = predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Meta.GetName() == config.AlertmanagerCustomConfigName &&
+				e.Meta.GetNamespace() == config.GetDefaultNamespace() {
+				config.SetCustomAlertmanagerConfig(true)
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Meta.GetName() == config.AlertmanagerCustomConfigName &&
+				e.Meta.GetNamespace() == config.GetDefaultNamespace() {
+				config.SetCustomAlertmanagerConfig(false)
+				return true
+			}
+			return false
+		},
+	}
+	// Watch the configmap
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, pred)
+	if err != nil {
+		return err
+	}
+
 	// Watch for changes to secondary resource Secret and requeue the owner MultiClusterObservability
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,

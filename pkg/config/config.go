@@ -63,6 +63,8 @@ const (
 	AlertRuleCustomConfigMapName  = "thanos-ruler-custom-rules"
 	AlertRuleCustomFileKey        = "custom_rules.yaml"
 	AlertmanagerURL               = "http://alertmanager:9093"
+	AlertmanagerDefaultConfigName = "alertmanager-default-config"
+	AlertmanagerCustomConfigName  = "alertmanager-custom-config"
 )
 
 const (
@@ -120,11 +122,12 @@ type ObjectStorgeConf struct {
 }
 
 var (
-	log                    = logf.Log.WithName("config")
-	monitoringCRName       = ""
-	tenantUID              = ""
-	imageManifests         = map[string]string{}
-	hasCustomRuleConfigMap = false
+	log                         = logf.Log.WithName("config")
+	monitoringCRName            = ""
+	tenantUID                   = ""
+	imageManifests              = map[string]string{}
+	hasCustomRuleConfigMap      = false
+	hasCustomAlertmanagerConfig = false
 )
 
 // GetClusterNameLabelKey returns the key for the injected label
@@ -392,4 +395,14 @@ func HasCustomRuleConfigMap() bool {
 // SetCustomRuleConfigMap set true if there is custom rule configmap
 func SetCustomRuleConfigMap(hasConfigMap bool) {
 	hasCustomRuleConfigMap = hasConfigMap
+}
+
+// HasCustomAlertmanagerConfig returns true if there is custom alertmanager config defined
+func HasCustomAlertmanagerConfig() bool {
+	return hasCustomAlertmanagerConfig
+}
+
+// SetCustomAlertmanagerConfig set true if there is custom alertmanager config defined
+func SetCustomAlertmanagerConfig(hasAlertmanagerConfig bool) {
+	hasCustomAlertmanagerConfig = hasAlertmanagerConfig
 }
