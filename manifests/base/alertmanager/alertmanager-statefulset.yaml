@@ -97,7 +97,7 @@ spec:
       - name: config-volume
         secret:
           defaultMode: 420
-          secretName: alertmanager-config
+          secretName: alertmanager-default-config
   volumeClaimTemplates:
   - metadata:
       name: alertmanager-db 
