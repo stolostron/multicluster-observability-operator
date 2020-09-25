@@ -34,7 +34,7 @@ type GrafanaDatasource struct {
 	BasicAuthPassword string          `yaml:"basicAuthPassword"`
 	BasicAuthUser     string          `yaml:"basicAuthUser"`
 	Editable          bool            `yaml:"editable"`
-	ISDEFAULT         bool            `yaml:"isDefault"`
+	IsDefault         bool            `yaml:"isDefault"`
 	Name              string          `yaml:"name"`
 	OrgID             int             `yaml:"orgId"`
 	Type              string          `yaml:"type"`
@@ -69,7 +69,7 @@ func GenerateGrafanaDataSource(
 				Name:      "Observatorium",
 				Type:      "prometheus",
 				Access:    "proxy",
-				ISDEFAULT: true,
+				IsDefault: true,
 				URL:       "http://rbac-query-proxy." + mco.Namespace + ".svc.cluster.local:8080",
 			},
 		},
