@@ -154,7 +154,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			return false
 		},
 	}
-	// Watch the configmap
+	// Watch the Secret
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, pred)
 	if err != nil {
 		return err
