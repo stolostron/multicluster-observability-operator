@@ -303,7 +303,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "CPU Requested - CPU Utilized -        "
+                  "options": "CPU Requested - CPU Utilized :"
                 },
                 "properties": [
                   {
@@ -325,7 +325,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Memory Requested - Memory Utilized"
+                  "options": "Memory Requested - Memory Utilized :"
                 },
                 "properties": [
                   {
@@ -345,7 +345,7 @@ data:
           "fill": 0,
           "gridPos": {
             "h": 6,
-            "w": 8,
+            "w": 24,
             "x": 0,
             "y": 9
           },
@@ -2051,7 +2051,7 @@ data:
       "timezone": "browser",
       "title": "ACM - Clusters Overview",
       "uid": "gSyJ7YIMk",
-      "version": 76
+      "version": 77
     }
 kind: ConfigMap
 metadata:
