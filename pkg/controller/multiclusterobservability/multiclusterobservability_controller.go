@@ -116,6 +116,11 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetName() == config.AlertRuleCustomConfigMapName &&
+				e.MetaNew.GetNamespace() == config.GetDefaultNamespace() {
+				config.SetCustomRuleConfigMap(true)
+				return true
+			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
@@ -143,6 +148,11 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetName() == config.AlertmanagerCustomConfigName &&
+				e.MetaNew.GetNamespace() == config.GetDefaultNamespace() {
+				config.SetCustomAlertmanagerConfig(true)
+				return true
+			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
