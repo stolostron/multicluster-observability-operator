@@ -3,7 +3,18 @@ kind: MultiClusterObservability
 metadata:
   name: observability
 spec:
+  availabilityConfig: High
+  imagePullPolicy: Always
+  imagePullSecret: multiclusterhub-operator-pull-secret
+  observabilityAddonSpec:
+    enableMetrics: true
+    interval: 60
+  retentionResolution1h: 30d
+  retentionResolution5m: 14d
+  retentionResolutionRaw: 5d
   storageConfigObject:
     metricObjectStorage:
-      name: thanos-object-storage
       key: thanos.yaml
+      name: thanos-object-storage
+    statefulSetSize: 10Gi
+    statefulSetStorageClass: gp2
