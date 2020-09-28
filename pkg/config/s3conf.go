@@ -4,6 +4,7 @@ package config
 
 import (
 	"errors"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -46,7 +47,7 @@ func IsValidS3Conf(data []byte) (bool, error) {
 		return false, err
 	}
 
-	if objectConfg.Type != "s3" {
+	if strings.ToLower(objectConfg.Type) != "s3" {
 		return false, errors.New("invalid type config, only s3 type is supported")
 	}
 
