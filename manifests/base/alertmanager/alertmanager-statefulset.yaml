@@ -11,6 +11,7 @@ spec:
     matchLabels:
       app: multicluster-observability-alertmanager
       alertmanager: observability
+  serviceName: alertmanager-operated
   template:
     metadata:
       labels:
