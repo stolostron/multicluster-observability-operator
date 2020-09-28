@@ -33,26 +33,34 @@ oc get secret multiclusterhub-operator-pull-secret -n open-cluster-management --
 ```
 4. Create Secret for object storage
 
-You need to create a Secret for object storage in advance. Assume you're using `thanos` on `AWS S3`, firstly create the object storage configuration as following:
+You need to create a Secret for object storage in advance. Assume you're using `thanos` on `AWS S3`, firstly create the object storage configuration file `example/object-storage-secret.yaml` as following:
 
 ```
-type: s3
-config:
-  bucket: YOUR_S3_BUCKET
-  endpoint: YOUR_S3_ENDPOINT
-  insecure: true
-  access_key: YOUR_ACCESS_KEY
-  secret_key: YOUR_SECRET_KEY
+apiVersion: v1
+stringData:
+  thanos.yaml: |
+    type: s3
+    config:
+      bucket: YOUR_S3_BUCKET
+      endpoint: YOUR_S3_ENDPOINT
+      insecure: false
+      access_key: YOUR_ACCESS_KEY
+      secret_key: YOUR_SECRET_KEY
+metadata:
+  name: thanos-object-storage
+type: Opaque
+kind: Secret
 ```
 
-You will need to provide a value for the `bucket`, `endpoint`, `access_key`, and `secret_key` keys. For more details, please refer to https://thanos.io/tip/thanos/storage.md/#s3.
+You will need to provide a value for the `bucket`, `endpoint`, `access_key`, and `secret_key` keys above. For more details, please refer to https://thanos.io/tip/thanos/storage.md/#s3.
 
-Save the above as `your_s3_secrets.yaml`, then encode object storage configuration with base64.
+<!-- Save the above as `your_s3_secrets.yaml`, then encode object storage configuration with base64.
+
 
 ```
 cat your_s3_secrets.yaml | base64
 ```
-**Fill the returned encoded value into `example/object-storage-secret.yaml` file in `thanos.yaml`field.**
+Fill the returned encoded value into `example/object-storage-secret.yaml` file in `thanos.yaml`field. -->
 
 After filled in, create the Secret using folllowing commands:
 
@@ -87,19 +95,21 @@ kind: MultiClusterObservability
 metadata:
   name: observability #Your customized name of MulticlusterObservability CR
 spec:
-  availabilityConfig: High
+  availabilityConfig: High # Available values are High or Basic
   imagePullPolicy: Always
   imagePullSecret: multiclusterhub-operator-pull-secret
-  observabilityAddonSpec:
-    enableMetrics: true
-    interval: 60
-  retentionResolution1h: 30d
+  observabilityAddonSpec: # The ObservabilityAddonSpec defines the global settings for all managed clusters which have observability add-on enabled
+    enableMetrics: true # EnableMetrics indicates the observability addon push metrics to hub server
+    interval: 60 # Interval for the observability addon push metrics to hub server
+  retentionResolution1h: 30d # How long to retain samples of 1 hour in bucket
   retentionResolution5m: 14d
   retentionResolutionRaw: 5d
-  storageConfigObject:
+  storageConfigObject: # Specifies the storage to be used by Observability
     metricObjectStorage:
       name: thanos-object-storage
       key: thanos.yaml
+    statefulSetSize: 10Gi # The amount of storage applied to the Observability stateful sets, i.e. Thanos store, Rule, compact and receiver.
+    statefulSetStorageClass: gp2
 ```
 
 <!-- Note: Find snapshot tags here: https://quay.io/repository/open-cluster-management/acm-custom-registry?tab=tags -->
@@ -123,7 +133,6 @@ multicluster-observability-operator-55bc57d65c-tk2c2              1/1     Runnin
 After doing your own modification, just do
 
 ```
-oc project open-cluster-management-observability
 oc apply -f deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
 ```
 
@@ -148,7 +157,7 @@ observatorium-operator-686cc5bf6-l9zcx                            1/1     Runnin
 
 6. View metrics in dashboard
 
-Access Grafana console at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "ACM:Cluster Monitoring"
+Access Grafana console at https://{YOUR_ACM_CONSOLE_DOMAIN}/grafana, view the metrics in the dashboard named "ACM:Cluster Monitoring"
 
 7. [Optional] Delete MulticlusterObservability CR
 To delete the MulticlusterObservability object you just deployed, just do
