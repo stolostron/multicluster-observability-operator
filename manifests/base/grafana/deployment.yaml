@@ -91,6 +91,8 @@ spec:
           name: grafana-dashboard-node-rsrc-use
         - mountPath: /etc/grafana
           name: grafana-config
+      - name: grafana-dashboard-loader
+        image: clyang/grafana-dashboard-loader:latest      
       serviceAccount: grafana
       imagePullSecrets:
       - name: multiclusterhub-operator-pull-secret
