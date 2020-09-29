@@ -547,7 +547,7 @@ func CheckInstallStatus(c client.Client,
 			installingCondition = mcov1beta1.MCOCondition{
 				Type:    Installing,
 				Reason:  Installing,
-				Message: "Installation is still in process",
+				Message: "Installation is in progress",
 			}
 		} else {
 			installingCondition = mcov1beta1.MCOCondition{
