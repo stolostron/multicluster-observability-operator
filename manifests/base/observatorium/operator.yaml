@@ -35,3 +35,4 @@ spec:
             memory: 600Mi
       imagePullSecrets:
       - name: "{{MULTICLUSTEROBSERVABILITY_IMAGE_PULL_SECRET}}"
+      serviceAccountName: observatorium
