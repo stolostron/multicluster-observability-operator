@@ -18,8 +18,9 @@ require (
 	github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
 	github.com/operator-framework/operator-sdk v0.17.0
-	github.com/spf13/pflag v1.0.5
-	go.uber.org/zap v1.15.0 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/sykesm/zap-logfmt v0.0.4
+	go.uber.org/zap v1.15.0
 	golang.org/x/net v0.0.0-20200625001655-4c5254603344 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0
