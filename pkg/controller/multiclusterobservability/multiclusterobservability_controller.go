@@ -88,6 +88,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			config.SetMonitoringCRName(e.Meta.GetName())
 			return true
 		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return e.MetaOld.GetGeneration() != e.MetaNew.GetGeneration()
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return !e.DeleteStateUnknown
+		},
 	}
 	// Watch for changes to primary resource MultiClusterObservability
 	err = c.Watch(&source.Kind{Type: &mcov1beta1.MultiClusterObservability{}}, &handler.EnqueueRequestForObject{}, pred)
@@ -123,11 +129,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == config.AlertRuleCustomConfigMapName &&
-				e.MetaNew.GetNamespace() == config.GetDefaultNamespace() {
-				config.SetCustomRuleConfigMap(true)
-				return e.MetaOld.GetGeneration() != e.MetaNew.GetGeneration()
-			}
+			// Find a way to restart the alertmanager to take the update
+			// if e.MetaNew.GetName() == config.AlertRuleCustomConfigMapName &&
+			// 	e.MetaNew.GetNamespace() == config.GetDefaultNamespace() {
+			// 	config.SetCustomRuleConfigMap(true)
+			// 	return e.MetaOld.GetResourceVersion() != e.MetaNew.GetResourceVersion()
+			// }
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
@@ -155,11 +162,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == config.AlertmanagerCustomConfigName &&
-				e.MetaNew.GetNamespace() == config.GetDefaultNamespace() {
-				config.SetCustomAlertmanagerConfig(true)
-				return e.MetaOld.GetGeneration() != e.MetaNew.GetGeneration()
-			}
+			// Find a way to restart the thanos rules to take the update
+			// if e.MetaNew.GetName() == config.AlertmanagerCustomConfigName &&
+			// 	e.MetaNew.GetNamespace() == config.GetDefaultNamespace() {
+			// 	config.SetCustomAlertmanagerConfig(true)
+			// 	return e.MetaOld.GetResourceVersion() != e.MetaNew.GetResourceVersion()
+			// }
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
@@ -228,7 +236,9 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 
 	// Fetch the MultiClusterObservability instance
 	instance := &mcov1beta1.MultiClusterObservability{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.client.Get(context.TODO(), types.NamespacedName{
+		Name: config.GetMonitoringCRName(),
+	}, instance)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
