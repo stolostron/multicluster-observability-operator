@@ -82,8 +82,15 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	pred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			//set request name to be used in placementrule controller
+			config.SetMonitoringCRName(e.Meta.GetName())
+			return true
+		},
+	}
 	// Watch for changes to primary resource MultiClusterObservability
-	err = c.Watch(&source.Kind{Type: &mcov1beta1.MultiClusterObservability{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &mcov1beta1.MultiClusterObservability{}}, &handler.EnqueueRequestForObject{}, pred)
 	if err != nil {
 		return err
 	}
@@ -106,7 +113,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		OwnerType:    &mcov1beta1.MultiClusterObservability{},
 	})
 
-	pred := predicate.Funcs{
+	pred = predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Meta.GetName() == config.AlertRuleCustomConfigMapName &&
 				e.Meta.GetNamespace() == config.GetDefaultNamespace() {
@@ -119,7 +126,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			if e.MetaNew.GetName() == config.AlertRuleCustomConfigMapName &&
 				e.MetaNew.GetNamespace() == config.GetDefaultNamespace() {
 				config.SetCustomRuleConfigMap(true)
-				return true
+				return e.MetaOld.GetGeneration() != e.MetaNew.GetGeneration()
 			}
 			return false
 		},
@@ -151,7 +158,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			if e.MetaNew.GetName() == config.AlertmanagerCustomConfigName &&
 				e.MetaNew.GetNamespace() == config.GetDefaultNamespace() {
 				config.SetCustomAlertmanagerConfig(true)
-				return true
+				return e.MetaOld.GetGeneration() != e.MetaNew.GetGeneration()
 			}
 			return false
 		},
@@ -218,9 +225,6 @@ type ReconcileMultiClusterObservability struct {
 func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling MultiClusterObservability")
-
-	//set request name to be used in placementrule controller
-	config.SetMonitoringCRName(request.Name)
 
 	// Fetch the MultiClusterObservability instance
 	instance := &mcov1beta1.MultiClusterObservability{}
