@@ -529,6 +529,7 @@ func CheckInstallStatus(c client.Client,
 			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-query"}, "-"),
 			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-receive-controller"}, "-"),
 			"grafana",
+			"alertmanager",
 		}
 		podList := &corev1.PodList{}
 		podListOpts := []client.ListOption{
