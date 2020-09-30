@@ -13,6 +13,7 @@ import (
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	storv1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -269,7 +270,29 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return reconcile.Result{}, nil
 	}
 
+	storageClassSelected := instance.Spec.StorageConfig.StatefulSetStorageClass
+	// for the test, the reader is just nil
+	storageClassList := &storv1.StorageClassList{}
+	err = r.client.List(context.TODO(), storageClassList, &client.ListOptions{})
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	configuredWithValidSC := false
+	storageClassDefault := ""
+	for _, storageClass := range storageClassList.Items {
+		if storageClass.ObjectMeta.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
+			storageClassDefault = storageClass.ObjectMeta.Name
+		}
+		if storageClass.ObjectMeta.Name == storageClassSelected {
+			configuredWithValidSC = true
+		}
+	}
+	if !configuredWithValidSC {
+		storageClassSelected = storageClassDefault
+	}
+
 	instance.Namespace = config.GetDefaultNamespace()
+	instance.Spec.StorageConfig.StatefulSetStorageClass = storageClassSelected
 	//Render the templates with a specified CR
 	renderer := rendering.NewRenderer(instance)
 	toDeploy, err := renderer.Render(r.client)
