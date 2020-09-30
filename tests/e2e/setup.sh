@@ -116,7 +116,7 @@ deploy_mco_operator() {
     kubectl apply -f tests/e2e/req_crds
     $sed_command "s~storageClassName:.*$~storageClassName: standard~g" tests/e2e/minio/minio-pvc.yaml
     kubectl apply -f tests/e2e/minio
-    sleep 2
+    sleep 4
     kubectl apply -f tests/e2e/req_crds/hub_cr
     kubectl create ns ${DEFAULT_NS}
     kubectl create secret -n ${DEFAULT_NS} docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
@@ -171,7 +171,7 @@ deploy_hub_core() {
     kubectl config set-context --current --namespace $DEFAULT_NS
     kubectl apply -f deploy/cluster-manager/
     kubectl apply -f deploy/cluster-manager/crds/*crd.yaml
-    sleep 2
+    sleep 4
     kubectl create ns $HUB_NS || true
     kubectl create quota test --hard=pods=4 -n $HUB_NS
     kubectl apply -f deploy/cluster-manager/crds
@@ -226,10 +226,10 @@ deploy_spoke_core() {
     fi
     kubectl apply -f deploy/klusterlet/
     kubectl apply -f deploy/klusterlet/crds/*crd.yaml
-    sleep 2
+    sleep 4
     kubectl apply -f deploy/klusterlet/crds
     kubectl apply -f ${WORKDIR}/tests/e2e/req_crds
-    sleep 2
+    sleep 4
     kubectl apply -f ${WORKDIR}/tests/e2e/req_crds/spoke_cr
     rm -rf ${WORKDIR}/../registration-operator
     kind get kubeconfig --name hub --internal > $HOME/.kube/kind-config-hub-internal
