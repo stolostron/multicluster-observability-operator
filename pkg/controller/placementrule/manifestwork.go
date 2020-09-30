@@ -145,6 +145,11 @@ func createManifestWork(client client.Client, clusterNamespace string,
 		return err
 	}
 
+	if found.GetDeletionTimestamp() != nil {
+		log.Error(err, "Existing manifestwork is terminating, skip and reconcile later")
+		return err
+	}
+
 	updated := false
 	if len(found.Spec.Workload.Manifests) == len(manifests) {
 		for i, m := range found.Spec.Workload.Manifests {
