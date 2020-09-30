@@ -18,6 +18,27 @@ spec:
         app: rbac-query-proxy
         observability.open-cluster-management.io/name: "{{MCO_CR_NAME}}"
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 70
+            podAffinityTerm:
+              topologyKey: topology.kubernetes.io/zone
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - rbac-query-proxy
+          - weight: 30
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - rbac-query-proxy
       serviceAccountName: rbac-query-proxy
       imagePullSecrets:
       - name: multiclusterhub-operator-pull-secret
