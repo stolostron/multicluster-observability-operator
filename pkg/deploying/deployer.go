@@ -16,8 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 var log = logf.Log.WithName("deploying")
@@ -102,20 +100,9 @@ func (d *Deployer) updateStatefulSet(desiredObj, runtimeObj *unstructured.Unstru
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Failed to Unmarshal StatefulSet %s", runtimeObj.GetName()))
 	}
-	//update the statefulset to take the custom configmap
-	if runtimeObj.GetName() == "alertmanager" {
-		if config.HasCustomAlertmanagerConfig() {
-			for _, volume := range desiredDepoly.Spec.Template.Spec.Volumes {
-				if volume.VolumeSource.Secret.SecretName == config.AlertmanagerDefaultConfigName {
-					volume.VolumeSource.Secret.SecretName = config.AlertmanagerCustomConfigName
-				}
-			}
-		}
 
-	}
-
-	if !apiequality.Semantic.DeepDerivative(desiredDepoly.Spec.Template, runtimeDepoly.Spec.Template) ||
-		!apiequality.Semantic.DeepDerivative(desiredDepoly.Spec.Replicas, runtimeDepoly.Spec.Replicas) {
+	if !apiequality.Semantic.DeepDerivative(runtimeDepoly.Spec.Template, desiredDepoly.Spec.Template) ||
+		!apiequality.Semantic.DeepDerivative(runtimeDepoly.Spec.Replicas, desiredDepoly.Spec.Replicas) {
 		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
 		runtimeDepoly.Spec.Replicas = desiredDepoly.Spec.Replicas
 		runtimeDepoly.Spec.Template = desiredDepoly.Spec.Template
