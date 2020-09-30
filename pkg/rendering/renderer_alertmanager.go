@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
@@ -53,6 +54,29 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	for idx := range args {
 		args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", r.cr.Namespace, 1)
 	}
+
+	if r.cr.Spec.AvailabilityConfig == mcov1beta1.HABasic {
+		// it is not for HA, so remove the cluster.peer
+		for idx := 0; idx < len(args); {
+			if strings.Contains(args[idx], "cluster.peer=") {
+				args = util.Remove(args, args[idx])
+				idx--
+				continue
+			}
+			idx++
+		}
+	}
+	spec.Containers[0].Args = args
+
+	//update the statefulset to take the custom configmap
+	if mcoconfig.HasCustomAlertmanagerConfig() {
+		for _, volume := range spec.Volumes {
+			if volume.VolumeSource.Secret.SecretName == mcoconfig.AlertmanagerDefaultConfigName {
+				volume.VolumeSource.Secret.SecretName = mcoconfig.AlertmanagerCustomConfigName
+			}
+		}
+	}
+
 	spec.Containers[1].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
 	spec.NodeSelector = r.cr.Spec.NodeSelector
 	spec.ImagePullSecrets = []corev1.LocalObjectReference{

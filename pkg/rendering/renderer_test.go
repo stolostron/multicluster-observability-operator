@@ -33,6 +33,7 @@ func TestRender(t *testing.T) {
 				StatefulSetStorageClass: "gp2",
 				StatefulSetSize:         "1Gi",
 			},
+			AvailabilityConfig: mcov1beta1.HABasic,
 		},
 	}
 
