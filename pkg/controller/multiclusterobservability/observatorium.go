@@ -50,18 +50,17 @@ func GenerateObservatoriumCR(
 	if err != nil {
 		return &reconcile.Result{}, err
 	}
-	hasValidSC := false
+	configuredWithValidSC := false
 	storageClassDefault := ""
 	for _, storageClass := range storageClassList.Items {
-		if storageClass.ObjectMeta.Name == storageClassSelected {
-			hasValidSC = true
-			break
-		}
 		if storageClass.ObjectMeta.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
 			storageClassDefault = storageClass.ObjectMeta.Name
 		}
+		if storageClass.ObjectMeta.Name == storageClassSelected {
+			configuredWithValidSC = true
+		}
 	}
-	if !hasValidSC {
+	if !configuredWithValidSC {
 		storageClassSelected = storageClassDefault
 	}
 
