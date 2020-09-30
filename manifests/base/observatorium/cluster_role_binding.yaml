@@ -12,6 +12,6 @@ roleRef:
   name: observatorium-operator
 subjects:
 - kind: ServiceAccount
-  name: default
-  namespace: default
+  name: observatorium
+  namespace: open-cluster-management-observability
 
