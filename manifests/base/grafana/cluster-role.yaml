@@ -15,11 +15,3 @@ rules:
   - subjectaccessreviews
   verbs:
   - create
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  verbs:
-  - get
-  - list
-  - watch

@@ -3,6 +3,8 @@
 package util
 
 import (
+	"net/http"
+
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
@@ -56,4 +58,11 @@ func GetReplicaCount(availabilityType mcov1beta1.AvailabilityType, resourceType 
 		}
 		return &replicas2
 	}
+}
+
+// GetHTTPClient returns http.client
+func GetHTTPClient() *http.Client {
+	transport := &http.Transport{}
+	client := &http.Client{Transport: transport}
+	return client
 }
