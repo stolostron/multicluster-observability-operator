@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -16,6 +17,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 var log = logf.Log.WithName("deploying")
@@ -54,6 +57,17 @@ func (d *Deployer) Deploy(obj *unstructured.Unstructured) error {
 			return d.client.Create(context.TODO(), obj)
 		}
 		return err
+	}
+
+	metadata, ok := obj.Object["metadata"].(map[string]interface{})
+	if ok {
+		annotations, ok := metadata["annotations"].(map[string]interface{})
+		if ok && annotations != nil && annotations[config.AnnotationSkipCreation] != nil {
+			if strings.ToLower(annotations[config.AnnotationSkipCreation].(string)) == "true" {
+				log.Info("Skip creation", "Kind:", obj.GroupVersionKind(), "Name:", obj.GetName())
+				return nil
+			}
+		}
 	}
 
 	deployerFn, ok := d.deployerFns[found.GetKind()]
