@@ -258,25 +258,9 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return reconcile.Result{}, nil
 	}
 
-	storageClassSelected := instance.Spec.StorageConfig.StatefulSetStorageClass
-	// for the test, the reader is just nil
-	storageClassList := &storv1.StorageClassList{}
-	err = r.client.List(context.TODO(), storageClassList, &client.ListOptions{})
+	storageClassSelected, err := getStorageClass(instance, r.client)
 	if err != nil {
 		return reconcile.Result{}, err
-	}
-	configuredWithValidSC := false
-	storageClassDefault := ""
-	for _, storageClass := range storageClassList.Items {
-		if storageClass.ObjectMeta.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
-			storageClassDefault = storageClass.ObjectMeta.Name
-		}
-		if storageClass.ObjectMeta.Name == storageClassSelected {
-			configuredWithValidSC = true
-		}
-	}
-	if !configuredWithValidSC {
-		storageClassSelected = storageClassDefault
 	}
 
 	instance.Namespace = config.GetDefaultNamespace()
@@ -632,4 +616,28 @@ func CheckS3Conf(c client.Client,
 	}
 
 	return nil
+}
+
+func getStorageClass(mco *mcov1beta1.MultiClusterObservability, cl client.Client) (string, error) {
+	storageClassSelected := mco.Spec.StorageConfig.StatefulSetStorageClass
+	// for the test, the reader is just nil
+	storageClassList := &storv1.StorageClassList{}
+	err := cl.List(context.TODO(), storageClassList, &client.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+	configuredWithValidSC := false
+	storageClassDefault := ""
+	for _, storageClass := range storageClassList.Items {
+		if storageClass.ObjectMeta.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
+			storageClassDefault = storageClass.ObjectMeta.Name
+		}
+		if storageClass.ObjectMeta.Name == storageClassSelected {
+			configuredWithValidSC = true
+		}
+	}
+	if !configuredWithValidSC {
+		storageClassSelected = storageClassDefault
+	}
+	return storageClassSelected, nil
 }
