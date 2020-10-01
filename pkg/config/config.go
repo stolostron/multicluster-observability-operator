@@ -35,6 +35,7 @@ const (
 	AnnotationKeyImageRepository = "mco-imageRepository"
 	AnnotationKeyImageTagSuffix  = "mco-imageTagSuffix"
 	AnnotationMCOPause           = "mco-pause"
+	AnnotationSkipCreation       = "skip-creation-if-exist"
 
 	DefaultImgPullPolicy   = corev1.PullAlways
 	DefaultImgPullSecret   = "multiclusterhub-operator-pull-secret"
@@ -63,8 +64,7 @@ const (
 	AlertRuleCustomConfigMapName  = "thanos-ruler-custom-rules"
 	AlertRuleCustomFileKey        = "custom_rules.yaml"
 	AlertmanagerURL               = "http://alertmanager:9093"
-	AlertmanagerDefaultConfigName = "alertmanager-default-config"
-	AlertmanagerCustomConfigName  = "alertmanager-custom-config"
+	AlertmanagerConfigName        = "alertmanager-config"
 )
 
 const (
@@ -387,22 +387,12 @@ func availabilityConfigIsValid(config mcov1beta1.AvailabilityType) bool {
 	}
 }
 
-// HasCustomRuleConfigMap returns true if there is custom rule configmap
-func HasCustomRuleConfigMap() bool {
-	return hasCustomRuleConfigMap
-}
-
 // SetCustomRuleConfigMap set true if there is custom rule configmap
 func SetCustomRuleConfigMap(hasConfigMap bool) {
 	hasCustomRuleConfigMap = hasConfigMap
 }
 
-// HasCustomAlertmanagerConfig returns true if there is custom alertmanager config defined
-func HasCustomAlertmanagerConfig() bool {
-	return hasCustomAlertmanagerConfig
-}
-
-// SetCustomAlertmanagerConfig set true if there is custom alertmanager config defined
-func SetCustomAlertmanagerConfig(hasAlertmanagerConfig bool) {
-	hasCustomAlertmanagerConfig = hasAlertmanagerConfig
+// HasCustomRuleConfigMap returns true if there is custom rule configmap
+func HasCustomRuleConfigMap() bool {
+	return hasCustomRuleConfigMap
 }
