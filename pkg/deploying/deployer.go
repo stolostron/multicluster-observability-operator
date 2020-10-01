@@ -59,6 +59,7 @@ func (d *Deployer) Deploy(obj *unstructured.Unstructured) error {
 		return err
 	}
 
+	// if resource has annotation skip-creation-if-exist: true, don't update it to keep customized changes from users
 	metadata, ok := obj.Object["metadata"].(map[string]interface{})
 	if ok {
 		annotations, ok := metadata["annotations"].(map[string]interface{})
