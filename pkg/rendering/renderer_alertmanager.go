@@ -68,15 +68,6 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	}
 	spec.Containers[0].Args = args
 
-	//update the statefulset to take the custom configmap
-	if mcoconfig.HasCustomAlertmanagerConfig() {
-		for _, volume := range spec.Volumes {
-			if volume.VolumeSource.Secret.SecretName == mcoconfig.AlertmanagerDefaultConfigName {
-				volume.VolumeSource.Secret.SecretName = mcoconfig.AlertmanagerCustomConfigName
-			}
-		}
-	}
-
 	spec.Containers[1].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
 	spec.NodeSelector = r.cr.Spec.NodeSelector
 	spec.ImagePullSecrets = []corev1.LocalObjectReference{

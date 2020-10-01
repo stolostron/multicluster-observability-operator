@@ -155,26 +155,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	pred = predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Meta.GetName() == config.AlertmanagerCustomConfigName &&
-				e.Meta.GetNamespace() == config.GetDefaultNamespace() {
-				config.SetCustomAlertmanagerConfig(true)
-				return true
-			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			// Find a way to restart the thanos rules to take the update
-			// if e.MetaNew.GetName() == config.AlertmanagerCustomConfigName &&
-			// 	e.MetaNew.GetNamespace() == config.GetDefaultNamespace() {
-			// 	config.SetCustomAlertmanagerConfig(true)
-			// 	return e.MetaOld.GetResourceVersion() != e.MetaNew.GetResourceVersion()
-			// }
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == config.AlertmanagerCustomConfigName &&
+			if e.Meta.GetName() == config.AlertmanagerConfigName &&
 				e.Meta.GetNamespace() == config.GetDefaultNamespace() {
-				config.SetCustomAlertmanagerConfig(false)
 				return true
 			}
 			return false
