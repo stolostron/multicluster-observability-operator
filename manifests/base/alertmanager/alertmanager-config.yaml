@@ -18,6 +18,8 @@ stringData:
         "receiver": "null"
 kind: Secret
 metadata:
-  name: alertmanager-default-config
+  name: alertmanager-config
   namespace: open-cluster-management
+  annotations:
+    skip-creation-if-exist: "true"
 type: Opaque
