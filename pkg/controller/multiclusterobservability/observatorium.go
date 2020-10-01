@@ -9,7 +9,6 @@ import (
 	observatoriumv1alpha1 "github.com/observatorium/operator/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	v1 "k8s.io/api/core/v1"
-	storv1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,29 +42,12 @@ func GenerateObservatoriumCR(
 		"app": mco.Name,
 	}
 
-	storageClassSelected := mco.Spec.StorageConfig.StatefulSetStorageClass
-	// for the test, the reader is just nil
-	storageClassList := &storv1.StorageClassList{}
-	err := cl.List(context.TODO(), storageClassList, &client.ListOptions{})
+	storageClassSelected, err := getStorageClass(mco, cl)
 	if err != nil {
 		return &reconcile.Result{}, err
 	}
-	configuredWithValidSC := false
-	storageClassDefault := ""
-	for _, storageClass := range storageClassList.Items {
-		if storageClass.ObjectMeta.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
-			storageClassDefault = storageClass.ObjectMeta.Name
-		}
-		if storageClass.ObjectMeta.Name == storageClassSelected {
-			configuredWithValidSC = true
-		}
-	}
-	if !configuredWithValidSC {
-		storageClassSelected = storageClassDefault
-	}
 
 	log.Info("storageClassSelected", "storageClassSelected", storageClassSelected)
-	log.Info("storageClassDefault", "storageClassDefault", storageClassDefault)
 
 	observatoriumCR := &observatoriumv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
