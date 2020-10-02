@@ -67,8 +67,6 @@ spec:
           name: grafana-dashboard-acm-clusters-overview
         - mountPath: /grafana-dashboard-definitions/0/acm-optimization-overview
           name: grafana-dashboard-acm-optimization-overview
-        - mountPath: /grafana-dashboard-definitions/0/acm-control-plane
-          name: grafana-dashboard-acm-control-plane
         - mountPath: /grafana-dashboard-definitions/0/k8s-apiserver
           name: grafana-dashboard-k8s-apiserver
         - mountPath: /grafana-dashboard-definitions/0/k8s-networking-cluster
