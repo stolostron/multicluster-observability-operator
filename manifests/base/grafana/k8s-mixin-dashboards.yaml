@@ -9565,13 +9565,13 @@ data:
       "editable": true,
       "gnetId": 12121,
       "graphTooltip": 0,
-      "id": 11,
-      "iteration": 1600914381924,
+      "id": 19,
+      "iteration": 1601585543577,
       "links": [],
       "panels": [
         {
           "collapsed": false,
-          "datasource": "$dashboard",
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -9590,13 +9590,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -9607,7 +9600,6 @@ data:
           },
           "hiddenSeries": false,
           "id": 1,
-          "interval": "",
           "legend": {
             "avg": false,
             "current": false,
@@ -9621,8 +9613,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -9634,8 +9628,7 @@ data:
             {
               "expr": "sum(\n    node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\", namespace=\"$namespace\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{pod}}",
               "legendLink": null,
               "refId": "A",
@@ -9685,7 +9678,7 @@ data:
         },
         {
           "collapsed": false,
-          "datasource": "$dashboard",
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -9699,84 +9692,14 @@ data:
           "type": "row"
         },
         {
+          "aliasColors": {},
+          "bars": false,
+          "columns": [],
+          "dashLength": 10,
+          "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {
-                "align": "center"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Pod"
-                },
-                "properties": [
-                  {
-                    "id": "custom.align",
-                    "value": null
-                  },
-                  {
-                    "id": "links",
-                    "value": [
-                      {
-                        "targetBlank": true,
-                        "title": "Drill down to pod",
-                        "url": "./d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=${__data.fields[pod]}"
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "CPU Requests %"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "CPU Limits %"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  }
-                ]
-              }
-            ]
-          },
+          "fill": 1,
+          "fontSize": "100%",
           "gridPos": {
             "h": 7,
             "w": 24,
@@ -9784,18 +9707,151 @@ data:
             "y": 9
           },
           "id": 2,
-          "links": [],
-          "options": {
-            "showHeader": true
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
           },
-          "pluginVersion": "7.1.3",
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "nullPointMode": "null as zero",
+          "options": {},
+          "pageSize": null,
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "showHeader": true,
+          "sort": {
+            "col": 0,
+            "desc": true
+          },
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "styles": [
+            {
+              "alias": "Time",
+              "align": "auto",
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "pattern": "Time",
+              "type": "hidden"
+            },
+            {
+              "alias": "CPU Usage",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #A",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            },
+            {
+              "alias": "CPU Requests",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #B",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            },
+            {
+              "alias": "CPU Requests %",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #C",
+              "thresholds": [],
+              "type": "number",
+              "unit": "percentunit"
+            },
+            {
+              "alias": "CPU Limits",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #D",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            },
+            {
+              "alias": "CPU Limits %",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #E",
+              "thresholds": [],
+              "type": "number",
+              "unit": "percentunit"
+            },
+            {
+              "alias": "Pod",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": true,
+              "linkTooltip": "Drill down",
+              "linkUrl": "./d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=$__cell",
+              "pattern": "pod",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            },
+            {
+              "alias": "",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "pattern": "/.*/",
+              "thresholds": [],
+              "type": "string",
+              "unit": "short"
+            }
+          ],
           "targets": [
             {
               "expr": "sum(\n    node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\", namespace=\"$namespace\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "A",
               "step": 10
@@ -9804,8 +9860,7 @@ data:
               "expr": "sum(\n    kube_pod_container_resource_requests_cpu_cores{cluster=\"$cluster\", namespace=\"$namespace\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "B",
               "step": 10
@@ -9814,8 +9869,7 @@ data:
               "expr": "sum(\n    node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\", namespace=\"$namespace\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n/sum(\n    kube_pod_container_resource_requests_cpu_cores{cluster=\"$cluster\", namespace=\"$namespace\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "C",
               "step": 10
@@ -9824,8 +9878,7 @@ data:
               "expr": "sum(\n    kube_pod_container_resource_limits_cpu_cores{cluster=\"$cluster\", namespace=\"$namespace\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "D",
               "step": 10
@@ -9834,47 +9887,52 @@ data:
               "expr": "sum(\n    node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\", namespace=\"$namespace\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n/sum(\n    kube_pod_container_resource_limits_cpu_cores{cluster=\"$cluster\", namespace=\"$namespace\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "E",
               "step": 10
             }
           ],
+          "thresholds": [],
           "timeFrom": null,
           "timeShift": null,
           "title": "CPU Quota",
-          "transformations": [
+          "tooltip": {
+            "shared": false,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "transform": "table",
+          "type": "table",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
             {
-              "id": "seriesToColumns",
-              "options": {
-                "byField": "pod"
-              }
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": 0,
+              "show": true
             },
             {
-              "id": "organize",
-              "options": {
-                "excludeByName": {
-                  "Time": true
-                },
-                "indexByName": {},
-                "renameByName": {
-                  "Time": "",
-                  "Value #A": "CPU Usage",
-                  "Value #B": "CPU Requests",
-                  "Value #C": "CPU Requests %",
-                  "Value #D": "CPU Limits",
-                  "Value #E": "CPU Limits %",
-                  "pod": "Pod"
-                }
-              }
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": false
             }
-          ],
-          "type": "table"
+          ]
         },
         {
           "collapsed": false,
-          "datasource": "$dashboard",
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -9893,13 +9951,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -9923,8 +9974,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -9986,7 +10039,7 @@ data:
         },
         {
           "collapsed": false,
-          "datasource": "$dashboard",
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -10000,85 +10053,14 @@ data:
           "type": "row"
         },
         {
+          "aliasColors": {},
+          "bars": false,
+          "columns": [],
+          "dashLength": 10,
+          "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {
-                "align": "center"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "bytes"
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Pod"
-                },
-                "properties": [
-                  {
-                    "id": "custom.align",
-                    "value": null
-                  },
-                  {
-                    "id": "links",
-                    "value": [
-                      {
-                        "targetBlank": true,
-                        "title": "Drill down to pod",
-                        "url": "./d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=${__data.fields[pod]}"
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Memory Requests %"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Memory Limits %"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  }
-                ]
-              }
-            ]
-          },
+          "fill": 1,
+          "fontSize": "100%",
           "gridPos": {
             "h": 7,
             "w": 24,
@@ -10086,18 +10068,151 @@ data:
             "y": 25
           },
           "id": 4,
-          "links": [],
-          "options": {
-            "showHeader": true
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
           },
-          "pluginVersion": "7.1.3",
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "nullPointMode": "null as zero",
+          "options": {},
+          "pageSize": null,
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "showHeader": true,
+          "sort": {
+            "col": 0,
+            "desc": true
+          },
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "styles": [
+            {
+              "alias": "Time",
+              "align": "auto",
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "pattern": "Time",
+              "type": "hidden"
+            },
+            {
+              "alias": "Memory Usage",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #A",
+              "thresholds": [],
+              "type": "number",
+              "unit": "bytes"
+            },
+            {
+              "alias": "Memory Requests",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #B",
+              "thresholds": [],
+              "type": "number",
+              "unit": "bytes"
+            },
+            {
+              "alias": "Memory Requests %",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #C",
+              "thresholds": [],
+              "type": "number",
+              "unit": "percentunit"
+            },
+            {
+              "alias": "Memory Limits",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #D",
+              "thresholds": [],
+              "type": "number",
+              "unit": "bytes"
+            },
+            {
+              "alias": "Memory Limits %",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #E",
+              "thresholds": [],
+              "type": "number",
+              "unit": "percentunit"
+            },
+            {
+              "alias": "Pod",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": true,
+              "linkTooltip": "Drill down",
+              "linkUrl": "./d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=$__cell",
+              "pattern": "pod",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            },
+            {
+              "alias": "",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "pattern": "/.*/",
+              "thresholds": [],
+              "type": "string",
+              "unit": "short"
+            }
+          ],
           "targets": [
             {
               "expr": "sum(\n    container_memory_working_set_bytes{cluster=\"$cluster\", namespace=\"$namespace\", container!=\"\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "A",
               "step": 10
@@ -10106,8 +10221,7 @@ data:
               "expr": "sum(\n    kube_pod_container_resource_requests_memory_bytes{cluster=\"$cluster\", namespace=\"$namespace\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "B",
               "step": 10
@@ -10116,8 +10230,7 @@ data:
               "expr": "sum(\n    container_memory_working_set_bytes{cluster=\"$cluster\", namespace=\"$namespace\", container!=\"\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n/sum(\n    kube_pod_container_resource_requests_memory_bytes{cluster=\"$cluster\", namespace=\"$namespace\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "C",
               "step": 10
@@ -10126,8 +10239,7 @@ data:
               "expr": "sum(\n    kube_pod_container_resource_limits_memory_bytes{cluster=\"$cluster\", namespace=\"$namespace\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "D",
               "step": 10
@@ -10136,46 +10248,52 @@ data:
               "expr": "sum(\n    container_memory_working_set_bytes{cluster=\"$cluster\", namespace=\"$namespace\", container!=\"\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n/sum(\n    kube_pod_container_resource_limits_memory_bytes{cluster=\"$cluster\", namespace=\"$namespace\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "E",
               "step": 10
             }
           ],
+          "thresholds": [],
           "timeFrom": null,
           "timeShift": null,
           "title": "Memory Quota",
-          "transformations": [
+          "tooltip": {
+            "shared": false,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "transform": "table",
+          "type": "table",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
             {
-              "id": "seriesToColumns",
-              "options": {
-                "byField": "pod"
-              }
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": 0,
+              "show": true
             },
             {
-              "id": "organize",
-              "options": {
-                "excludeByName": {
-                  "Time": true
-                },
-                "indexByName": {},
-                "renameByName": {
-                  "Value #A": "Memory Usage",
-                  "Value #B": "Memory Requests",
-                  "Value #C": "Memory Requests %",
-                  "Value #D": "Memory Limits",
-                  "Value #E": "Memory Limits %",
-                  "pod": "Pod"
-                }
-              }
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": false
             }
-          ],
-          "type": "table"
+          ]
         },
         {
           "collapsed": false,
-          "datasource": "$dashboard",
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -10189,85 +10307,14 @@ data:
           "type": "row"
         },
         {
+          "aliasColors": {},
+          "bars": false,
+          "columns": [],
+          "dashLength": 10,
+          "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {
-                "align": "center"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "pps"
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Pod"
-                },
-                "properties": [
-                  {
-                    "id": "custom.align",
-                    "value": null
-                  },
-                  {
-                    "id": "links",
-                    "value": [
-                      {
-                        "targetBlank": true,
-                        "title": "Drill down to pod",
-                        "url": "./d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=${__data.fields[pod]}"
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Current Receive Bandwidth"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "Bps"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Current Transmit Bandwidth"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "Bps"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  }
-                ]
-              }
-            ]
-          },
+          "fill": 1,
+          "fontSize": "100%",
           "gridPos": {
             "h": 7,
             "w": 24,
@@ -10275,18 +10322,166 @@ data:
             "y": 33
           },
           "id": 5,
-          "links": [],
-          "options": {
-            "showHeader": true
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
           },
-          "pluginVersion": "7.1.3",
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "nullPointMode": "null as zero",
+          "options": {},
+          "pageSize": null,
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "showHeader": true,
+          "sort": {
+            "col": 0,
+            "desc": true
+          },
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "styles": [
+            {
+              "alias": "Time",
+              "align": "auto",
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "pattern": "Time",
+              "type": "hidden"
+            },
+            {
+              "alias": "Current Receive Bandwidth",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #A",
+              "thresholds": [],
+              "type": "number",
+              "unit": "Bps"
+            },
+            {
+              "alias": "Current Transmit Bandwidth",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #B",
+              "thresholds": [],
+              "type": "number",
+              "unit": "Bps"
+            },
+            {
+              "alias": "Rate of Received Packets",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #C",
+              "thresholds": [],
+              "type": "number",
+              "unit": "pps"
+            },
+            {
+              "alias": "Rate of Transmitted Packets",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #D",
+              "thresholds": [],
+              "type": "number",
+              "unit": "pps"
+            },
+            {
+              "alias": "Rate of Received Packets Dropped",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #E",
+              "thresholds": [],
+              "type": "number",
+              "unit": "pps"
+            },
+            {
+              "alias": "Rate of Transmitted Packets Dropped",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #F",
+              "thresholds": [],
+              "type": "number",
+              "unit": "pps"
+            },
+            {
+              "alias": "Pod",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": true,
+              "linkTooltip": "Drill down",
+              "linkUrl": "./d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=$__cell",
+              "pattern": "pod",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            },
+            {
+              "alias": "",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "pattern": "/.*/",
+              "thresholds": [],
+              "type": "string",
+              "unit": "short"
+            }
+          ],
           "targets": [
             {
               "expr": "(sum(irate(container_network_receive_bytes_total{cluster=\"$cluster\", namespace=~\"$namespace\"}[$interval])\n* on (namespace,pod)\ngroup_left(workload,workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", workload_type=\"$type\"}) by (pod))\n",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "A",
               "step": 10
@@ -10295,8 +10490,7 @@ data:
               "expr": "(sum(irate(container_network_transmit_bytes_total{cluster=\"$cluster\", namespace=~\"$namespace\"}[$interval])\n* on (namespace,pod)\ngroup_left(workload,workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", workload_type=\"$type\"}) by (pod))\n",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "B",
               "step": 10
@@ -10305,8 +10499,7 @@ data:
               "expr": "(sum(irate(container_network_receive_packets_total{cluster=\"$cluster\", namespace=~\"$namespace\"}[$interval])\n* on (namespace,pod)\ngroup_left(workload,workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", workload_type=\"$type\"}) by (pod))\n",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "C",
               "step": 10
@@ -10315,8 +10508,7 @@ data:
               "expr": "(sum(irate(container_network_transmit_packets_total{cluster=\"$cluster\", namespace=~\"$namespace\"}[$interval])\n* on (namespace,pod)\ngroup_left(workload,workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", workload_type=\"$type\"}) by (pod))\n",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "D",
               "step": 10
@@ -10325,8 +10517,7 @@ data:
               "expr": "(sum(irate(container_network_receive_packets_dropped_total{cluster=\"$cluster\", namespace=~\"$namespace\"}[$interval])\n* on (namespace,pod)\ngroup_left(workload,workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", workload_type=\"$type\"}) by (pod))\n",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "E",
               "step": 10
@@ -10335,47 +10526,52 @@ data:
               "expr": "(sum(irate(container_network_transmit_packets_dropped_total{cluster=\"$cluster\", namespace=~\"$namespace\"}[$interval])\n* on (namespace,pod)\ngroup_left(workload,workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", workload_type=\"$type\"}) by (pod))\n",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "F",
               "step": 10
             }
           ],
+          "thresholds": [],
           "timeFrom": null,
           "timeShift": null,
           "title": "Current Network Usage",
-          "transformations": [
+          "tooltip": {
+            "shared": false,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "transform": "table",
+          "type": "table",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
             {
-              "id": "seriesToColumns",
-              "options": {
-                "byField": "pod"
-              }
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": 0,
+              "show": true
             },
             {
-              "id": "organize",
-              "options": {
-                "excludeByName": {
-                  "Time": true
-                },
-                "indexByName": {},
-                "renameByName": {
-                  "Value #A": "Current Receive Bandwidth",
-                  "Value #B": "Current Transmit Bandwidth",
-                  "Value #C": "Rate of Received Packets",
-                  "Value #D": "Rate of Transmitted Packets",
-                  "Value #E": "Rate of Received Packets Dropped",
-                  "Value #F": "Rate of Transmitted Packets Dropped",
-                  "pod": "Pod"
-                }
-              }
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": false
             }
-          ],
-          "type": "table"
+          ]
         },
         {
           "collapsed": false,
-          "datasource": "$dashboard",
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -10394,13 +10590,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -10425,8 +10614,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -10438,8 +10629,7 @@ data:
             {
               "expr": "(sum(irate(container_network_receive_bytes_total{cluster=\"$cluster\", namespace=~\"$namespace\"}[$__interval])\n* on (namespace,pod)\ngroup_left(workload,workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", workload_type=\"$type\"}) by (pod))\n",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{pod}}",
               "legendLink": null,
               "refId": "A",
@@ -10489,7 +10679,7 @@ data:
         },
         {
           "collapsed": false,
-          "datasource": "$dashboard",
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -10508,13 +10698,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -10539,8 +10722,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -10602,7 +10787,7 @@ data:
         },
         {
           "collapsed": false,
-          "datasource": "$dashboard",
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -10621,13 +10806,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -10652,8 +10830,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -10665,8 +10845,7 @@ data:
             {
               "expr": "(avg(irate(container_network_receive_bytes_total{cluster=\"$cluster\", namespace=~\"$namespace\"}[$__interval])\n* on (namespace,pod)\ngroup_left(workload,workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", workload_type=\"$type\"}) by (pod))\n",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{pod}}",
               "legendLink": null,
               "refId": "A",
@@ -10716,7 +10895,7 @@ data:
         },
         {
           "collapsed": false,
-          "datasource": "$dashboard",
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -10735,13 +10914,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -10766,8 +10938,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -10779,8 +10953,7 @@ data:
             {
               "expr": "(avg(irate(container_network_transmit_bytes_total{cluster=\"$cluster\", namespace=~\"$namespace\"}[$__interval])\n* on (namespace,pod)\ngroup_left(workload,workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", workload_type=\"$type\"}) by (pod))\n",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{pod}}",
               "legendLink": null,
               "refId": "A",
@@ -10830,7 +11003,7 @@ data:
         },
         {
           "collapsed": false,
-          "datasource": "$dashboard",
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -10849,13 +11022,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -10880,8 +11046,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -10893,8 +11061,7 @@ data:
             {
               "expr": "(sum(irate(container_network_receive_packets_total{cluster=\"$cluster\", namespace=~\"$namespace\"}[$__interval])\n* on (namespace,pod)\ngroup_left(workload,workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", workload_type=\"$type\"}) by (pod))\n",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{pod}}",
               "legendLink": null,
               "refId": "A",
@@ -10944,7 +11111,7 @@ data:
         },
         {
           "collapsed": false,
-          "datasource": "$dashboard",
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -10963,13 +11130,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -10994,8 +11154,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -11007,8 +11169,7 @@ data:
             {
               "expr": "(sum(irate(container_network_transmit_packets_total{cluster=\"$cluster\", namespace=~\"$namespace\"}[$__interval])\n* on (namespace,pod)\ngroup_left(workload,workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", workload_type=\"$type\"}) by (pod))\n",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{pod}}",
               "legendLink": null,
               "refId": "A",
@@ -11058,7 +11219,7 @@ data:
         },
         {
           "collapsed": false,
-          "datasource": "$dashboard",
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -11077,13 +11238,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -11094,7 +11248,7 @@ data:
           },
           "hiddenSeries": false,
           "id": 12,
-          "interval": "4m",
+          "interval": "2m",
           "legend": {
             "avg": false,
             "current": false,
@@ -11108,8 +11262,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -11121,8 +11277,7 @@ data:
             {
               "expr": "(sum(irate(container_network_receive_packets_dropped_total{cluster=\"$cluster\", namespace=~\"$namespace\"}[$interval])\n* on (namespace,pod)\ngroup_left(workload,workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", workload_type=\"$type\"}) by (pod))\n",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{pod}}",
               "legendLink": null,
               "refId": "A",
@@ -11172,7 +11327,7 @@ data:
         },
         {
           "collapsed": false,
-          "datasource": "$dashboard",
+          "datasource": "$datasource",
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -11191,13 +11346,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -11208,7 +11356,7 @@ data:
           },
           "hiddenSeries": false,
           "id": 13,
-          "interval": "4m",
+          "interval": "2m",
           "legend": {
             "avg": false,
             "current": false,
@@ -11222,8 +11370,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -11235,8 +11385,7 @@ data:
             {
               "expr": "(sum(irate(container_network_transmit_packets_dropped_total{cluster=\"$cluster\", namespace=~\"$namespace\"}[$interval])\n* on (namespace,pod)\ngroup_left(workload,workload_type) mixin_pod_workload{cluster=\"$cluster\", namespace=~\"$namespace\", workload=~\"$workload\", workload_type=\"$type\"}) by (pod))\n",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{pod}}",
               "legendLink": null,
               "refId": "A",
@@ -11286,7 +11435,7 @@ data:
         }
       ],
       "refresh": "10s",
-      "schemaVersion": 26,
+      "schemaVersion": 21,
       "style": "dark",
       "tags": [
         "kubernetes-mixin"
@@ -11295,7 +11444,6 @@ data:
         "list": [
           {
             "current": {
-              "selected": false,
               "text": "Observatorium",
               "value": "Observatorium"
             },
@@ -11314,15 +11462,14 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
               "text": "",
               "value": ""
             },
             "datasource": "$datasource",
             "definition": "",
-            "hide": 0,
+            "hide": 2,
             "includeAll": false,
-            "label": "Cluster",
+            "label": null,
             "multi": false,
             "name": "cluster",
             "options": [],
@@ -11340,7 +11487,6 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
               "text": "",
               "value": ""
             },
@@ -11348,7 +11494,7 @@ data:
             "definition": "",
             "hide": 0,
             "includeAll": false,
-            "label": "Namespace",
+            "label": null,
             "multi": false,
             "name": "namespace",
             "options": [],
@@ -11366,7 +11512,6 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
               "text": "",
               "value": ""
             },
@@ -11374,7 +11519,7 @@ data:
             "definition": "",
             "hide": 0,
             "includeAll": false,
-            "label": "Workload",
+            "label": null,
             "multi": false,
             "name": "workload",
             "options": [],
@@ -11392,7 +11537,6 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
               "text": "deployment",
               "value": "deployment"
             },
@@ -11400,7 +11544,7 @@ data:
             "definition": "",
             "hide": 0,
             "includeAll": false,
-            "label": "Type",
+            "label": null,
             "multi": false,
             "name": "type",
             "options": [],
@@ -11421,25 +11565,20 @@ data:
             "auto_min": "10s",
             "current": {
               "selected": false,
-              "text": "5m",
-              "value": "5m"
+              "text": "10m",
+              "value": "10m"
             },
             "hide": 0,
-            "label": "Interval",
+            "label": null,
             "name": "interval",
             "options": [
               {
                 "selected": false,
-                "text": "1m",
-                "value": "1m"
-              },
-              {
-                "selected": true,
                 "text": "5m",
                 "value": "5m"
               },
               {
-                "selected": false,
+                "selected": true,
                 "text": "10m",
                 "value": "10m"
               },
@@ -11474,8 +11613,7 @@ data:
                 "value": "7d"
               }
             ],
-            "query": "1m,5m,10m,30m,1h,6h,12h,1d,7d",
-            "queryValue": "",
+            "query": "5m,10m,30m,1h,6h,12h,1d,7d",
             "refresh": 2,
             "skipUrlSync": false,
             "type": "interval"
@@ -11511,10 +11649,10 @@ data:
           "30d"
         ]
       },
-      "timezone": "browser",
+      "timezone": "",
       "title": "Kubernetes / Compute Resources / Workload",
       "uid": "a164a7f0339f99e89cea5cb47e9be617",
-      "version": 5
+      "version": 2
     }
 kind: ConfigMap
 metadata:
