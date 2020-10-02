@@ -178,8 +178,8 @@ git clone https://github.com/open-cluster-management/multicluster-monitoring-ope
 2. Provide the username and password for downloading multicluster-observability-operator image from quay.io.
 
 ```
-export DOCKER_USER=<quay.io username>
-export DOCKER_PASS=<quay.io password>
+export QUAY_USER=<quay.io username>
+export QUAY_PASS=<quay.io password>
 ```
 
 3. Deploy using the ./tests/e2e/setup.sh script
