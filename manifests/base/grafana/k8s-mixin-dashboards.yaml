@@ -16634,42 +16634,27 @@ data:
       "editable": true,
       "gnetId": 12116,
       "graphTooltip": 0,
-      "id": 5,
-      "iteration": 1600923653540,
+      "id": 9,
+      "iteration": 1601611776431,
       "links": [],
       "panels": [
         {
           "cacheTimeout": null,
+          "colorBackground": false,
+          "colorValue": false,
+          "colors": [
+            "#299c46",
+            "rgba(237, 129, 40, 0.89)",
+            "#d44a3a"
+          ],
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "mappings": [
-                {
-                  "id": 0,
-                  "op": "=",
-                  "text": "N/A",
-                  "type": 1,
-                  "value": "null"
-                }
-              ],
-              "nullValueMode": "connected",
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "none"
-            },
-            "overrides": []
+          "format": "none",
+          "gauge": {
+            "maxValue": 100,
+            "minValue": 0,
+            "show": false,
+            "thresholdLabels": false,
+            "thresholdMarkers": true
           },
           "gridPos": {
             "h": 7,
@@ -16680,22 +16665,42 @@ data:
           "id": 2,
           "interval": null,
           "links": [],
-          "maxDataPoints": 100,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "min"
-              ],
-              "fields": "",
-              "values": false
+          "mappingType": 1,
+          "mappingTypes": [
+            {
+              "name": "value to text",
+              "value": 1
             },
-            "textMode": "auto"
-          },
+            {
+              "name": "range to text",
+              "value": 2
+            }
+          ],
+          "maxDataPoints": 100,
+          "nullPointMode": "connected",
+          "nullText": null,
+          "options": {},
           "pluginVersion": "7.1.3",
+          "postfix": "",
+          "postfixFontSize": "50%",
+          "prefix": "",
+          "prefixFontSize": "50%",
+          "rangeMaps": [
+            {
+              "from": "null",
+              "text": "N/A",
+              "to": "null"
+            }
+          ],
+          "sparkline": {
+            "fillColor": "rgba(31, 118, 189, 0.18)",
+            "full": false,
+            "lineColor": "rgb(31, 120, 193)",
+            "show": false,
+            "ymax": null,
+            "ymin": null
+          },
+          "tableColumn": "",
           "targets": [
             {
               "expr": "sum(up{job=\"apiserver\", cluster=\"$cluster\"})",
@@ -16705,8 +16710,124 @@ data:
               "refId": "A"
             }
           ],
-          "title": "Up",
-          "type": "stat"
+          "thresholds": "",
+          "title": "API Servers Up",
+          "type": "singlestat",
+          "valueFontSize": "200%",
+          "valueMaps": [
+            {
+              "op": "=",
+              "text": "N/A",
+              "value": "null"
+            }
+          ],
+          "valueName": "avg"
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "links": []
+            },
+            "overrides": []
+          },
+          "fill": 1,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 7,
+            "w": 20,
+            "x": 4,
+            "y": 0
+          },
+          "hiddenSeries": false,
+          "id": 7,
+          "interval": "4m",
+          "legend": {
+            "alignAsTable": true,
+            "avg": false,
+            "current": true,
+            "max": false,
+            "min": false,
+            "rightSide": true,
+            "show": true,
+            "sort": "current",
+            "sortDesc": true,
+            "total": false,
+            "values": true
+          },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
+          "percentage": false,
+          "pluginVersion": "7.1.3",
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "repeat": null,
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(workqueue_queue_duration_seconds_bucket{job=\"apiserver\", instance=~\"$instance\", cluster=\"$cluster\"}[5m])) by (instance, name, le))",
+              "format": "time_series",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "{{instance}} {{name}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "API Server Latency",
+          "tooltip": {
+            "shared": false,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "s",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "s",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
         },
         {
           "aliasColors": {},
@@ -16739,9 +16860,9 @@ data:
           "fillGradient": 0,
           "gridPos": {
             "h": 7,
-            "w": 10,
-            "x": 4,
-            "y": 0
+            "w": 12,
+            "x": 0,
+            "y": 7
           },
           "hiddenSeries": false,
           "id": 3,
@@ -16761,6 +16882,9 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
           "pluginVersion": "7.1.3",
           "pointradius": 5,
@@ -16809,7 +16933,7 @@ data:
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "RPC Rate",
+          "title": "Request Rate",
           "tooltip": {
             "shared": false,
             "sort": 0,
@@ -16863,9 +16987,9 @@ data:
           "fillGradient": 0,
           "gridPos": {
             "h": 7,
-            "w": 10,
-            "x": 14,
-            "y": 0
+            "w": 12,
+            "x": 12,
+            "y": 7
           },
           "hiddenSeries": false,
           "id": 4,
@@ -16885,6 +17009,9 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
           "pluginVersion": "7.1.3",
           "pointradius": 5,
@@ -16952,6 +17079,7 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
+          "description": "Number of required actions per unit time.",
           "fieldConfig": {
             "defaults": {
               "custom": {},
@@ -16965,7 +17093,7 @@ data:
             "h": 7,
             "w": 12,
             "x": 0,
-            "y": 7
+            "y": 14
           },
           "hiddenSeries": false,
           "id": 5,
@@ -16985,6 +17113,9 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
           "pluginVersion": "7.1.3",
           "pointradius": 5,
@@ -16997,7 +17128,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(workqueue_adds_total{job=\"apiserver\", instance=~\"$instance\", cluster=\"$cluster\"}[5m])) by (instance, name)",
+              "expr": "sum(rate(workqueue_adds_total{job=\"apiserver\" ,instance=~\"$instance\", cluster=\"$cluster\"}[5m])) by (instance, name)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -17052,6 +17183,7 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
+          "description": "Number of actions waiting in the queue to be performed.",
           "fieldConfig": {
             "defaults": {
               "custom": {},
@@ -17065,7 +17197,7 @@ data:
             "h": 7,
             "w": 12,
             "x": 12,
-            "y": 7
+            "y": 14
           },
           "hiddenSeries": false,
           "id": 6,
@@ -17085,6 +17217,9 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
           "pluginVersion": "7.1.3",
           "pointradius": 5,
@@ -17163,106 +17298,6 @@ data:
           "fillGradient": 0,
           "gridPos": {
             "h": 7,
-            "w": 24,
-            "x": 0,
-            "y": 14
-          },
-          "hiddenSeries": false,
-          "id": 7,
-          "interval": "4m",
-          "legend": {
-            "alignAsTable": true,
-            "avg": false,
-            "current": true,
-            "max": false,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "total": false,
-            "values": true
-          },
-          "lines": true,
-          "linewidth": 1,
-          "links": [],
-          "nullPointMode": "null",
-          "percentage": false,
-          "pluginVersion": "7.1.3",
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "repeat": null,
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "histogram_quantile(0.99, sum(rate(workqueue_queue_duration_seconds_bucket{job=\"apiserver\", instance=~\"$instance\", cluster=\"$cluster\"}[5m])) by (instance, name, le))",
-              "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "{{instance}} {{name}}",
-              "refId": "A"
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Work Queue Latency",
-          "tooltip": {
-            "shared": false,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "s",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            },
-            {
-              "format": "s",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
-          "fill": 1,
-          "fillGradient": 0,
-          "gridPos": {
-            "h": 7,
             "w": 8,
             "x": 0,
             "y": 21
@@ -17285,6 +17320,9 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
           "pluginVersion": "7.1.3",
           "pointradius": 5,
@@ -17385,6 +17423,9 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
           "pluginVersion": "7.1.3",
           "pointradius": 5,
@@ -17485,6 +17526,9 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
           "pluginVersion": "7.1.3",
           "pointradius": 5,
@@ -17548,7 +17592,7 @@ data:
         }
       ],
       "refresh": "10s",
-      "schemaVersion": 26,
+      "schemaVersion": 21,
       "style": "dark",
       "tags": [
         "kubernetes-mixin"
@@ -17557,7 +17601,6 @@ data:
         "list": [
           {
             "current": {
-              "selected": false,
               "text": "Observatorium",
               "value": "Observatorium"
             },
@@ -17577,7 +17620,6 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
               "text": "",
               "value": ""
             },
@@ -17604,8 +17646,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "",
-              "value": ""
+              "text": "All",
+              "value": "$__all"
             },
             "datasource": "$datasource",
             "definition": "",
@@ -17660,7 +17702,7 @@ data:
       "timezone": "browser",
       "title": "Kubernetes / API server",
       "uid": "09ec8aa1e996d6ffcd6817bbaff4db1b",
-      "version": 3
+      "version": 6
     }
 kind: ConfigMap
 metadata:
