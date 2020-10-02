@@ -20,7 +20,7 @@ data:
       "gnetId": 12124,
       "graphTooltip": 0,
       "id": 20,
-      "iteration": 1601585790719,
+      "iteration": 1601666129007,
       "links": [],
       "panels": [
         {
@@ -1654,7 +1654,6 @@ data:
           {
             "allValue": null,
             "current": {
-              "tags": [],
               "text": "",
               "value": ""
             },
@@ -1665,20 +1664,9 @@ data:
             "label": null,
             "multi": false,
             "name": "cluster",
-            "options": [
-              {
-                "selected": false,
-                "text": "",
-                "value": ""
-              },
-              {
-                "selected": true,
-                "text": "",
-                "value": ""
-              }
-            ],
+            "options": [],
             "query": "label_values(node_cpu_seconds_total, cluster)",
-            "refresh": 0,
+            "refresh": 1,
             "regex": "",
             "skipUrlSync": false,
             "sort": 0,
@@ -1817,7 +1805,7 @@ data:
       "timezone": "",
       "title": "Kubernetes / Networking / Cluster",
       "uid": "ff635a025bcfea7bc3dd4f508990a3e9",
-      "version": 4
+      "version": 7
     }
 kind: ConfigMap
 metadata:
@@ -17658,7 +17646,7 @@ data:
             "name": "instance",
             "options": [],
             "query": "label_values(apiserver_request_total{job=\"apiserver\", cluster=\"$cluster\"}, instance)",
-            "refresh": 2,
+            "refresh": 1,
             "regex": "",
             "skipUrlSync": false,
             "sort": 1,
