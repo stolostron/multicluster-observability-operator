@@ -14423,8 +14423,8 @@ data:
       "editable": true,
       "gnetId": 12135,
       "graphTooltip": 0,
-      "id": 4,
-      "iteration": 1600922956454,
+      "id": 24,
+      "iteration": 1601607511586,
       "links": [],
       "panels": [
         {
@@ -14448,13 +14448,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -14478,8 +14471,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -14491,8 +14486,7 @@ data:
             {
               "expr": "(\n  instance:node_cpu_utilisation:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}\n*\n  instance:node_num_cpu:sum{cluster=\"$cluster\",job=\"node-exporter\"}\n)\n/ scalar(sum(instance:node_num_cpu:sum{cluster=\"$cluster\",job=\"node-exporter\"}))\n",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{instance}}",
               "legendLink": "/dashboard/file/node-rsrc-use.json",
               "refId": "A",
@@ -14546,13 +14540,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -14576,8 +14563,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -14589,8 +14578,7 @@ data:
             {
               "expr": "instance:node_load1_per_cpu:ratio{cluster=\"$cluster\",job=\"node-exporter\"}\n/ scalar(count(instance:node_load1_per_cpu:ratio{cluster=\"$cluster\",job=\"node-exporter\"}))\n",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{instance}}",
               "legendLink": "/dashboard/file/node-rsrc-use.json",
               "refId": "A",
@@ -14659,13 +14647,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -14689,8 +14670,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -14702,8 +14685,7 @@ data:
             {
               "expr": "instance:node_memory_utilisation:ratio{cluster=\"$cluster\",job=\"node-exporter\"}\n/ scalar(count(instance:node_memory_utilisation:ratio{cluster=\"$cluster\",job=\"node-exporter\"}))\n",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{instance}}",
               "legendLink": "/dashboard/file/node-rsrc-use.json",
               "refId": "A",
@@ -14757,13 +14739,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -14787,8 +14762,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -14800,8 +14777,7 @@ data:
             {
               "expr": "instance:node_vmstat_pgmajfault:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{instance}}",
               "legendLink": "/dashboard/file/node-rsrc-use.json",
               "refId": "A",
@@ -14870,13 +14846,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -14887,7 +14856,6 @@ data:
           },
           "hiddenSeries": false,
           "id": 5,
-          "interval": "",
           "legend": {
             "avg": false,
             "current": false,
@@ -14901,8 +14869,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -14924,8 +14894,7 @@ data:
             {
               "expr": "instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{instance}} Receive",
               "legendLink": "/dashboard/file/node-rsrc-use.json",
               "refId": "A",
@@ -14934,8 +14903,7 @@ data:
             {
               "expr": "instance:node_network_transmit_bytes_excluding_lo:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{instance}} Transmit",
               "legendLink": "/dashboard/file/node-rsrc-use.json",
               "refId": "B",
@@ -14989,13 +14957,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -15019,8 +14980,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -15042,8 +15005,7 @@ data:
             {
               "expr": "instance:node_network_receive_drop_excluding_lo:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{instance}} Receive",
               "legendLink": "/dashboard/file/node-rsrc-use.json",
               "refId": "A",
@@ -15052,8 +15014,7 @@ data:
             {
               "expr": "instance:node_network_transmit_drop_excluding_lo:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{instance}} Transmit",
               "legendLink": "/dashboard/file/node-rsrc-use.json",
               "refId": "B",
@@ -15122,13 +15083,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -15139,7 +15093,6 @@ data:
           },
           "hiddenSeries": false,
           "id": 7,
-          "interval": "",
           "legend": {
             "avg": false,
             "current": false,
@@ -15153,8 +15106,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -15166,8 +15121,7 @@ data:
             {
               "expr": "instance_device:node_disk_io_time_seconds:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}\n/ scalar(count(instance_device:node_disk_io_time_seconds:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}))\n",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{instance}} {{device}}",
               "legendLink": "/dashboard/file/node-rsrc-use.json",
               "refId": "A",
@@ -15197,7 +15151,7 @@ data:
               "format": "percentunit",
               "label": null,
               "logBase": 1,
-              "max": 1,
+              "max": "1",
               "min": 0,
               "show": true
             },
@@ -15221,13 +15175,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -15251,8 +15198,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -15264,8 +15213,7 @@ data:
             {
               "expr": "instance_device:node_disk_io_time_weighted_seconds:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}\n/ scalar(count(instance_device:node_disk_io_time_weighted_seconds:rate1m{cluster=\"$cluster\",job=\"node-exporter\"}))\n",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{instance}} {{device}}",
               "legendLink": "/dashboard/file/node-rsrc-use.json",
               "refId": "A",
@@ -15295,7 +15243,7 @@ data:
               "format": "percentunit",
               "label": null,
               "logBase": 1,
-              "max": 1,
+              "max": "1",
               "min": 0,
               "show": true
             },
@@ -15334,13 +15282,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -15364,8 +15305,10 @@ data:
           "linewidth": 0,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "dataLinks": []
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -15377,8 +15320,7 @@ data:
             {
               "expr": "sum without (device) (\n  max without (fstype, mountpoint) (\n    node_filesystem_size_bytes{cluster=\"$cluster\",job=\"node-exporter\", fstype!=\"\"} - node_filesystem_avail_bytes{cluster=\"$cluster\",job=\"node-exporter\", fstype!=\"\"}\n  )\n) \n/ scalar(sum(max without (fstype, mountpoint) (node_filesystem_size_bytes{cluster=\"$cluster\",job=\"node-exporter\", fstype!=\"\"})))\n",
               "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "{{instance}}",
               "legendLink": "/dashboard/file/node-rsrc-use.json",
               "refId": "A",
@@ -15408,7 +15350,7 @@ data:
               "format": "percentunit",
               "label": null,
               "logBase": 1,
-              "max": 1,
+              "max": "1",
               "min": 0,
               "show": true
             },
@@ -15428,14 +15370,13 @@ data:
         }
       ],
       "refresh": "10s",
-      "schemaVersion": 26,
+      "schemaVersion": 21,
       "style": "dark",
       "tags": [],
       "templating": {
         "list": [
           {
             "current": {
-              "selected": false,
               "text": "Observatorium",
               "value": "Observatorium"
             },
@@ -15446,7 +15387,6 @@ data:
             "name": "datasource",
             "options": [],
             "query": "prometheus",
-            "queryValue": "",
             "refresh": 1,
             "regex": "",
             "skipUrlSync": false,
@@ -15455,7 +15395,7 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
+              "tags": [],
               "text": "",
               "value": ""
             },
@@ -15463,15 +15403,26 @@ data:
             "definition": "label_values(node_filesystem_size_bytes, cluster)",
             "hide": 0,
             "includeAll": false,
-            "label": "Cluster",
+            "label": null,
             "multi": false,
             "name": "cluster",
-            "options": [],
+            "options": [
+              {
+                "selected": true,
+                "text": "",
+                "value": ""
+              },
+              {
+                "selected": false,
+                "text": "",
+                "value": ""
+              }
+            ],
             "query": "label_values(node_filesystem_size_bytes, cluster)",
-            "refresh": 1,
+            "refresh": 0,
             "regex": "",
             "skipUrlSync": false,
-            "sort": 1,
+            "sort": 0,
             "tagValuesQuery": "",
             "tags": [],
             "tagsQuery": "",
@@ -15509,10 +15460,10 @@ data:
           "30d"
         ]
       },
-      "timezone": "browser",
+      "timezone": "",
       "title": "USE Method / Cluster",
       "uid": "3e97d1d02672cdd0861f4c97c64f89b2",
-      "version": 4
+      "version": 6
     }
 kind: ConfigMap
 metadata:
