@@ -307,7 +307,13 @@ spec:
                 image: quay.io/open-cluster-management/multicluster-observability-operator:0.1.0-426050808a84d6152586f3f13278ca244f1f3259
                 imagePullPolicy: Always
                 name: multicluster-observability-operator
-                resources: {}
+                resources:
+                  limits:
+                    cpu: 300m
+                    memory: 512Mi
+                  requests:
+                    cpu: 100m
+                    memory: 128Mi
               serviceAccountName: multicluster-observability-operator
     strategy: deployment
   installModes:

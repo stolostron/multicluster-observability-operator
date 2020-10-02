@@ -93,7 +93,7 @@ const (
 
 	GrafanaImgRepo      = "grafana"
 	GrafanaImgName      = "grafana"
-	GrafanaImgTagSuffix = "7.1.3"
+	GrafanaImgTagSuffix = "6.5.3"
 
 	AlertManagerImgRepo      = "quay.io/openshift"
 	AlertManagerKey          = "prometheus-alertmanager"
