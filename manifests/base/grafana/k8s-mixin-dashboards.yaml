@@ -19,8 +19,8 @@ data:
       "editable": true,
       "gnetId": 12124,
       "graphTooltip": 0,
-      "id": 12,
-      "iteration": 1600907890286,
+      "id": 20,
+      "iteration": 1601585790719,
       "links": [],
       "panels": [
         {
@@ -49,13 +49,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 2,
           "fillGradient": 0,
           "gridPos": {
@@ -66,7 +59,6 @@ data:
           },
           "hiddenSeries": false,
           "id": 3,
-          "interval": "4m",
           "legend": {
             "alignAsTable": true,
             "avg": false,
@@ -87,9 +79,11 @@ data:
           "links": [],
           "minSpan": 24,
           "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
           "paceLength": 10,
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -101,9 +95,8 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_receive_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_receive_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
-              "interval": "",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
               "refId": "A",
@@ -159,13 +152,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 2,
           "fillGradient": 0,
           "gridPos": {
@@ -176,7 +162,6 @@ data:
           },
           "hiddenSeries": false,
           "id": 4,
-          "interval": "4m",
           "legend": {
             "alignAsTable": true,
             "avg": false,
@@ -197,9 +182,11 @@ data:
           "links": [],
           "minSpan": 24,
           "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
           "paceLength": 10,
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -211,9 +198,8 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_transmit_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_transmit_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
-              "interval": "",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
               "refId": "A",
@@ -264,107 +250,51 @@ data:
           }
         },
         {
-          "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {
-                "align": "center"
-              },
-              "decimals": 2,
-              "mappings": [],
-              "noValue": "-",
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "Bps"
+          "columns": [
+            {
+              "text": "Time",
+              "value": "Time"
             },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Namespace"
-                },
-                "properties": [
-                  {
-                    "id": "custom.align",
-                    "value": null
-                  },
-                  {
-                    "id": "custom.width",
-                    "value": null
-                  },
-                  {
-                    "id": "links",
-                    "value": [
-                      {
-                        "targetBlank": true,
-                        "title": "Drill down to pods",
-                        "url": "d/Bfk6ByvMk/kubernetes-compute-resources-namespace-pods-v7?var-cluster=$cluster&var-namespace=${__data.fields[namespace]}"
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Rate of Received Packets"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "pps"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Rate of Transmitted Packets"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "pps"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Rate of Received Packets Dropped"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "pps"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Rate of Transmitted Packets Dropped"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "pps"
-                  }
-                ]
-              }
-            ]
-          },
+            {
+              "text": "Value #A",
+              "value": "Value #A"
+            },
+            {
+              "text": "Value #B",
+              "value": "Value #B"
+            },
+            {
+              "text": "Value #C",
+              "value": "Value #C"
+            },
+            {
+              "text": "Value #D",
+              "value": "Value #D"
+            },
+            {
+              "text": "Value #E",
+              "value": "Value #E"
+            },
+            {
+              "text": "Value #F",
+              "value": "Value #F"
+            },
+            {
+              "text": "Value #G",
+              "value": "Value #G"
+            },
+            {
+              "text": "Value #H",
+              "value": "Value #H"
+            },
+            {
+              "text": "namespace",
+              "value": "namespace"
+            }
+          ],
+          "datasource": "$datasource",
+          "fill": 1,
+          "fontSize": "90%",
           "gridPos": {
             "h": 9,
             "w": 24,
@@ -372,95 +302,242 @@ data:
             "y": 10
           },
           "id": 5,
-          "interval": "4m",
+          "lines": true,
+          "linewidth": 1,
           "minSpan": 24,
-          "options": {
-            "showHeader": true,
-            "sortBy": [
-              {
-                "desc": false,
-                "displayName": "Rate of Transmitted Packets"
-              }
-            ]
+          "nullPointMode": "null as zero",
+          "options": {},
+          "pageSize": null,
+          "renderer": "flot",
+          "scroll": true,
+          "showHeader": true,
+          "sort": {
+            "col": 2,
+            "desc": false
           },
-          "pluginVersion": "7.1.3",
+          "spaceLength": 10,
+          "span": 24,
+          "styles": [
+            {
+              "alias": "Time",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Time",
+              "thresholds": [],
+              "type": "hidden",
+              "unit": "short"
+            },
+            {
+              "alias": "Current Bandwidth Received",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #A",
+              "thresholds": [],
+              "type": "number",
+              "unit": "Bps"
+            },
+            {
+              "alias": "Current Bandwidth Transmitted",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #B",
+              "thresholds": [],
+              "type": "number",
+              "unit": "Bps"
+            },
+            {
+              "alias": "Average Bandwidth Received",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #C",
+              "thresholds": [],
+              "type": "number",
+              "unit": "Bps"
+            },
+            {
+              "alias": "Average Bandwidth Transmitted",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #D",
+              "thresholds": [],
+              "type": "number",
+              "unit": "Bps"
+            },
+            {
+              "alias": "Rate of Received Packets",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #E",
+              "thresholds": [],
+              "type": "number",
+              "unit": "pps"
+            },
+            {
+              "alias": "Rate of Transmitted Packets",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #F",
+              "thresholds": [],
+              "type": "number",
+              "unit": "pps"
+            },
+            {
+              "alias": "Rate of Received Packets Dropped",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #G",
+              "thresholds": [],
+              "type": "number",
+              "unit": "pps"
+            },
+            {
+              "alias": "Rate of Transmitted Packets Dropped",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": false,
+              "linkTooltip": "Drill down",
+              "linkUrl": "",
+              "pattern": "Value #H",
+              "thresholds": [],
+              "type": "number",
+              "unit": "pps"
+            },
+            {
+              "alias": "Namespace",
+              "align": "auto",
+              "colorMode": null,
+              "colors": [],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": true,
+              "linkTooltip": "Drill down",
+              "linkUrl": "d/8b7a8b326d7a6f1f04244066368c67af/kubernetes-networking-namespace-pods?orgId=1&refresh=30s&var-namespace=$__cell",
+              "pattern": "namespace",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            }
+          ],
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_receive_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_receive_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "A",
               "step": 10
             },
             {
-              "expr": "sort_desc(sum(irate(container_network_transmit_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_transmit_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "B",
               "step": 10
             },
             {
-              "expr": "sort_desc(avg(irate(container_network_receive_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(avg(irate(container_network_receive_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "C",
               "step": 10
             },
             {
-              "expr": "sort_desc(avg(irate(container_network_transmit_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(avg(irate(container_network_transmit_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "D",
               "step": 10
             },
             {
-              "expr": "sort_desc(sum(irate(container_network_receive_packets_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_receive_packets_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "E",
               "step": 10
             },
             {
-              "expr": "sort_desc(sum(irate(container_network_transmit_packets_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_transmit_packets_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "F",
               "step": 10
             },
             {
-              "expr": "sort_desc(sum(irate(container_network_receive_packets_dropped_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_receive_packets_dropped_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "G",
               "step": 10
             },
             {
-              "expr": "sort_desc(sum(irate(container_network_transmit_packets_dropped_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_transmit_packets_dropped_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "table",
               "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
+              "intervalFactor": 2,
               "legendFormat": "",
               "refId": "H",
               "step": 10
@@ -469,34 +546,7 @@ data:
           "timeFrom": null,
           "timeShift": null,
           "title": "Current Status",
-          "transformations": [
-            {
-              "id": "seriesToColumns",
-              "options": {
-                "byField": "namespace"
-              }
-            },
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {
-                  "Time": true
-                },
-                "indexByName": {},
-                "renameByName": {
-                  "Value #A": "Current Bandwidth Received",
-                  "Value #B": "Current Bandwidth Transmitted",
-                  "Value #C": "Average Bandwidth Received",
-                  "Value #D": "Average Bandwidth Transmitted",
-                  "Value #E": "Rate of Received Packets",
-                  "Value #F": "Rate of Transmitted Packets",
-                  "Value #G": "Rate of Received Packets Dropped",
-                  "Value #H": "Rate of Transmitted Packets Dropped",
-                  "namespace": "Namespace"
-                }
-              }
-            }
-          ],
+          "transform": "table",
           "type": "table"
         },
         {
@@ -525,12 +575,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {}
-            },
-            "overrides": []
-          },
           "fill": 2,
           "fillGradient": 0,
           "gridPos": {
@@ -561,9 +605,11 @@ data:
           "links": [],
           "minSpan": 24,
           "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
           "paceLength": 10,
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -575,9 +621,8 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(avg(irate(container_network_receive_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(avg(irate(container_network_receive_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
-              "interval": "",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
               "refId": "A",
@@ -633,12 +678,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {}
-            },
-            "overrides": []
-          },
           "fill": 2,
           "fillGradient": 0,
           "gridPos": {
@@ -669,9 +708,11 @@ data:
           "links": [],
           "minSpan": 24,
           "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
           "paceLength": 10,
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -683,9 +724,8 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(avg(irate(container_network_transmit_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(avg(irate(container_network_transmit_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
-              "interval": "",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
               "refId": "A",
@@ -761,13 +801,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 2,
           "fillGradient": 0,
           "gridPos": {
@@ -778,7 +811,6 @@ data:
           },
           "hiddenSeries": false,
           "id": 10,
-          "interval": "4m",
           "legend": {
             "alignAsTable": true,
             "avg": true,
@@ -797,9 +829,11 @@ data:
           "links": [],
           "minSpan": 24,
           "nullPointMode": "connected",
+          "options": {
+            "dataLinks": []
+          },
           "paceLength": 10,
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -811,9 +845,8 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_receive_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_receive_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
-              "interval": "",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
               "refId": "A",
@@ -867,13 +900,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 2,
           "fillGradient": 0,
           "gridPos": {
@@ -884,7 +910,6 @@ data:
           },
           "hiddenSeries": false,
           "id": 11,
-          "interval": "4m",
           "legend": {
             "alignAsTable": true,
             "avg": true,
@@ -895,8 +920,6 @@ data:
             "min": true,
             "rightSide": true,
             "show": true,
-            "sort": "max",
-            "sortDesc": true,
             "total": false,
             "values": true
           },
@@ -905,9 +928,11 @@ data:
           "links": [],
           "minSpan": 24,
           "nullPointMode": "connected",
+          "options": {
+            "dataLinks": []
+          },
           "paceLength": 10,
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -919,9 +944,8 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_transmit_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_transmit_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
-              "interval": "",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
               "refId": "A",
@@ -995,13 +1019,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 2,
           "fillGradient": 0,
           "gridPos": {
@@ -1012,7 +1029,6 @@ data:
           },
           "hiddenSeries": false,
           "id": 13,
-          "interval": "4m",
           "legend": {
             "alignAsTable": true,
             "avg": true,
@@ -1031,9 +1047,11 @@ data:
           "links": [],
           "minSpan": 24,
           "nullPointMode": "connected",
+          "options": {
+            "dataLinks": []
+          },
           "paceLength": 10,
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -1045,9 +1063,8 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_receive_packets_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_receive_packets_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
-              "interval": "",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
               "refId": "A",
@@ -1101,13 +1118,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 2,
           "fillGradient": 0,
           "gridPos": {
@@ -1118,7 +1128,6 @@ data:
           },
           "hiddenSeries": false,
           "id": 14,
-          "interval": "4m",
           "legend": {
             "alignAsTable": true,
             "avg": true,
@@ -1137,9 +1146,11 @@ data:
           "links": [],
           "minSpan": 24,
           "nullPointMode": "connected",
+          "options": {
+            "dataLinks": []
+          },
           "paceLength": 10,
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -1151,9 +1162,8 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_transmit_packets_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_transmit_packets_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
-              "interval": "",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
               "refId": "A",
@@ -1227,13 +1237,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 2,
           "fillGradient": 0,
           "gridPos": {
@@ -1244,7 +1247,7 @@ data:
           },
           "hiddenSeries": false,
           "id": 16,
-          "interval": "4m",
+          "interval": "",
           "legend": {
             "alignAsTable": true,
             "avg": true,
@@ -1263,9 +1266,11 @@ data:
           "links": [],
           "minSpan": 24,
           "nullPointMode": "connected",
+          "options": {
+            "dataLinks": []
+          },
           "paceLength": 10,
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -1277,9 +1282,8 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_receive_packets_dropped_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_receive_packets_dropped_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
-              "interval": "",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
               "refId": "A",
@@ -1333,13 +1337,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 2,
           "fillGradient": 0,
           "gridPos": {
@@ -1350,7 +1347,7 @@ data:
           },
           "hiddenSeries": false,
           "id": 17,
-          "interval": "4m",
+          "interval": "2m",
           "legend": {
             "alignAsTable": true,
             "avg": true,
@@ -1369,9 +1366,11 @@ data:
           "links": [],
           "minSpan": 24,
           "nullPointMode": "connected",
+          "options": {
+            "dataLinks": []
+          },
           "paceLength": 10,
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -1383,9 +1382,8 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_transmit_packets_dropped_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_transmit_packets_dropped_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
-              "interval": "",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
               "refId": "A",
@@ -1439,13 +1437,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 2,
           "fillGradient": 0,
           "gridPos": {
@@ -1456,7 +1447,6 @@ data:
           },
           "hiddenSeries": false,
           "id": 18,
-          "interval": "4m",
           "legend": {
             "alignAsTable": true,
             "avg": true,
@@ -1481,9 +1471,11 @@ data:
           ],
           "minSpan": 24,
           "nullPointMode": "connected",
+          "options": {
+            "dataLinks": []
+          },
           "paceLength": 10,
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -1495,9 +1487,8 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(rate(node_netstat_Tcp_RetransSegs{cluster=\"$cluster\"}[$interval:$resolution]) / rate(node_netstat_Tcp_OutSegs{cluster=\"$cluster\"}[$interval:$resolution])) by (instance))",
+              "expr": "sort_desc(sum(rate(node_netstat_Tcp_RetransSegs[$interval:$resolution]) / rate(node_netstat_Tcp_OutSegs[$interval:$resolution])) by (instance))",
               "format": "time_series",
-              "interval": "",
               "intervalFactor": 1,
               "legendFormat": "{{instance}}",
               "refId": "A",
@@ -1551,13 +1542,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
           "fill": 2,
           "fillGradient": 0,
           "gridPos": {
@@ -1568,7 +1552,7 @@ data:
           },
           "hiddenSeries": false,
           "id": 19,
-          "interval": "4m",
+          "interval": "2m",
           "legend": {
             "alignAsTable": true,
             "avg": true,
@@ -1593,9 +1577,11 @@ data:
           ],
           "minSpan": 24,
           "nullPointMode": "connected",
+          "options": {
+            "dataLinks": []
+          },
           "paceLength": 10,
           "percentage": false,
-          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -1607,9 +1593,8 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(rate(node_netstat_TcpExt_TCPSynRetrans{cluster=\"$cluster\"}[$interval:$resolution]) / rate(node_netstat_Tcp_RetransSegs{cluster=\"$cluster\"}[$interval:$resolution])) by (instance))",
+              "expr": "sort_desc(sum(rate(node_netstat_TcpExt_TCPSynRetrans[$interval:$resolution]) / rate(node_netstat_Tcp_RetransSegs[$interval:$resolution])) by (instance))",
               "format": "time_series",
-              "interval": "",
               "intervalFactor": 1,
               "legendFormat": "{{instance}}",
               "refId": "A",
@@ -1659,7 +1644,7 @@ data:
         }
       ],
       "refresh": "10s",
-      "schemaVersion": 26,
+      "schemaVersion": 21,
       "style": "dark",
       "tags": [
         "kubernetes-mixin"
@@ -1667,28 +1652,9 @@ data:
       "templating": {
         "list": [
           {
-            "current": {
-              "selected": false,
-              "text": "Observatorium",
-              "value": "Observatorium"
-            },
-            "hide": 2,
-            "includeAll": false,
-            "label": null,
-            "multi": false,
-            "name": "datasource",
-            "options": [],
-            "query": "prometheus",
-            "queryValue": "",
-            "refresh": 1,
-            "regex": "",
-            "skipUrlSync": false,
-            "type": "datasource"
-          },
-          {
             "allValue": null,
             "current": {
-              "selected": false,
+              "tags": [],
               "text": "",
               "value": ""
             },
@@ -1696,64 +1662,30 @@ data:
             "definition": "label_values(node_cpu_seconds_total, cluster)",
             "hide": 0,
             "includeAll": false,
-            "label": "Cluster",
+            "label": null,
             "multi": false,
             "name": "cluster",
-            "options": [],
+            "options": [
+              {
+                "selected": false,
+                "text": "",
+                "value": ""
+              },
+              {
+                "selected": true,
+                "text": "",
+                "value": ""
+              }
+            ],
             "query": "label_values(node_cpu_seconds_total, cluster)",
-            "refresh": 1,
+            "refresh": 0,
             "regex": "",
             "skipUrlSync": false,
-            "sort": 1,
+            "sort": 0,
             "tagValuesQuery": "",
             "tags": [],
             "tagsQuery": "",
             "type": "query",
-            "useTags": false
-          },
-          {
-            "allValue": null,
-            "auto": false,
-            "auto_count": 30,
-            "auto_min": "10s",
-            "current": {
-              "selected": false,
-              "text": "5m",
-              "value": "5m"
-            },
-            "datasource": "$datasource",
-            "hide": 0,
-            "includeAll": false,
-            "label": "Resolution",
-            "multi": false,
-            "name": "resolution",
-            "options": [
-              {
-                "selected": false,
-                "text": "1m",
-                "value": "1m"
-              },
-              {
-                "selected": true,
-                "text": "5m",
-                "value": "5m"
-              },
-              {
-                "selected": false,
-                "text": "1h",
-                "value": "1h"
-              }
-            ],
-            "query": "1m,5m,1h",
-            "queryValue": "",
-            "refresh": 2,
-            "regex": "",
-            "skipUrlSync": false,
-            "sort": 1,
-            "tagValuesQuery": "",
-            "tags": [],
-            "tagsQuery": "",
-            "type": "interval",
             "useTags": false
           },
           {
@@ -1789,6 +1721,67 @@ data:
             "tagsQuery": "",
             "type": "interval",
             "useTags": false
+          },
+          {
+            "allValue": null,
+            "auto": false,
+            "auto_count": 30,
+            "auto_min": "10s",
+            "current": {
+              "selected": false,
+              "text": "5m",
+              "value": "5m"
+            },
+            "datasource": "$datasource",
+            "hide": 0,
+            "includeAll": false,
+            "label": null,
+            "multi": false,
+            "name": "resolution",
+            "options": [
+              {
+                "selected": false,
+                "text": "1m",
+                "value": "1m"
+              },
+              {
+                "selected": true,
+                "text": "5m",
+                "value": "5m"
+              },
+              {
+                "selected": false,
+                "text": "1h",
+                "value": "1h"
+              }
+            ],
+            "query": "1m,5m,1h",
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "tagValuesQuery": "",
+            "tags": [],
+            "tagsQuery": "",
+            "type": "interval",
+            "useTags": false
+          },
+          {
+            "current": {
+              "text": "Observatorium",
+              "value": "Observatorium"
+            },
+            "hide": 2,
+            "includeAll": false,
+            "label": null,
+            "multi": false,
+            "name": "datasource",
+            "options": [],
+            "query": "prometheus",
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "type": "datasource"
           }
         ]
       },
@@ -1821,10 +1814,10 @@ data:
           "30d"
         ]
       },
-      "timezone": "browser",
+      "timezone": "",
       "title": "Kubernetes / Networking / Cluster",
       "uid": "ff635a025bcfea7bc3dd4f508990a3e9",
-      "version": 8
+      "version": 4
     }
 kind: ConfigMap
 metadata:

@@ -24,6 +24,7 @@ data:
       - cluster_infrastructure_provider
       - cluster_version
       - cluster_version_payload
+      - container_cpu_cfs_periods_total
       - container_cpu_cfs_throttled_periods_total
       - container_cpu_usage_seconds_total
       - container_fs_limit_bytes
