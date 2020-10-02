@@ -91,6 +91,8 @@ spec:
           name: grafana-dashboard-node-rsrc-use
         - mountPath: /etc/grafana
           name: grafana-config
+      - name: grafana-dashboard-loader
+        image: quay.io/open-cluster-management/grafana-dashboard-loader:2.1.0-6225f3df1702bfc065b19cd68bae5531b6ce3b73     
       serviceAccount: grafana
       imagePullSecrets:
       - name: multiclusterhub-operator-pull-secret

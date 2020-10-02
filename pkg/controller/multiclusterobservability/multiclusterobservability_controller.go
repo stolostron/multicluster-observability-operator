@@ -127,15 +127,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 				config.SetCustomRuleConfigMap(true)
 				return true
 			}
-			if e.Meta.GetNamespace() == config.GetDefaultNamespace() {
-				for key, value := range e.Meta.GetLabels() {
-					if key == "grafana-custom-dashboard" && value == "true" {
-						log.Info("detect there is a new dashboard customized", "name", e.Meta.GetName())
-						UpdateDashboard(e.Object, false)
-						return false
-					}
-				}
-			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -145,15 +136,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			// 	config.SetCustomRuleConfigMap(true)
 			// 	return e.MetaOld.GetResourceVersion() != e.MetaNew.GetResourceVersion()
 			// }
-			if e.MetaNew.GetNamespace() == config.GetDefaultNamespace() && e.MetaOld.GetResourceVersion() != e.MetaNew.GetResourceVersion() {
-				for key, value := range e.MetaNew.GetLabels() {
-					if key == "grafana-custom-dashboard" && value == "true" {
-						log.Info("detect there is a new dashboard customized", "name", e.MetaNew.GetName())
-						UpdateDashboard(e.MetaNew, false)
-						return false
-					}
-				}
-			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
@@ -161,15 +143,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 				e.Meta.GetNamespace() == config.GetDefaultNamespace() {
 				config.SetCustomRuleConfigMap(false)
 				return true
-			}
-			if e.Meta.GetNamespace() == config.GetDefaultNamespace() {
-				for key, value := range e.Meta.GetLabels() {
-					if key == "grafana-custom-dashboard" && value == "true" {
-						log.Info("delete the customized dashboard", "name", e.Meta.GetName())
-						DeleteDashboard(e.Meta.GetName(), e.Meta.GetNamespace())
-						return false
-					}
-				}
 			}
 			return false
 		},

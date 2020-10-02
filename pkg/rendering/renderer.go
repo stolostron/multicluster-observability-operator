@@ -118,6 +118,11 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 				if found {
 					spec.Containers[0].Image = image
 				}
+				found, image = mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.DefaultImgRepository,
+					mcoconfig.GrafanaDashboardLoaderKey)
+				if found {
+					spec.Containers[1].Image = image
+				}
 
 			case "observatorium-operator":
 				found, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.ObservatoriumImgRepo,
