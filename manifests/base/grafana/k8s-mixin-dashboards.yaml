@@ -15407,7 +15407,7 @@ data:
               }
             ],
             "query": "label_values(node_filesystem_size_bytes, cluster)",
-            "refresh": 1,
+            "refresh": 0,
             "regex": "",
             "skipUrlSync": false,
             "sort": 0,
@@ -17608,7 +17608,6 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
               "text": "",
               "value": ""
             },
