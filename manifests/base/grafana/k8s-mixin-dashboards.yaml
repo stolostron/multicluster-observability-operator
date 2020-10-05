@@ -16623,7 +16623,7 @@ data:
       "gnetId": 12116,
       "graphTooltip": 0,
       "id": 9,
-      "iteration": 1601611776431,
+      "iteration": 1601904232518,
       "links": [],
       "panels": [
         {
@@ -17067,7 +17067,7 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "description": "Number of required actions per unit time.",
+          "description": "How fast we are scheduling new actions to be  performed by controller.",
           "fieldConfig": {
             "defaults": {
               "custom": {},
@@ -17608,6 +17608,7 @@ data:
           {
             "allValue": null,
             "current": {
+              "selected": false,
               "text": "",
               "value": ""
             },
@@ -17633,7 +17634,7 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
+              "selected": true,
               "text": "All",
               "value": "$__all"
             },
@@ -17690,7 +17691,7 @@ data:
       "timezone": "browser",
       "title": "Kubernetes / API server",
       "uid": "09ec8aa1e996d6ffcd6817bbaff4db1b",
-      "version": 6
+      "version": 11
     }
 kind: ConfigMap
 metadata:
