@@ -15407,7 +15407,7 @@ data:
               }
             ],
             "query": "label_values(node_filesystem_size_bytes, cluster)",
-            "refresh": 0,
+            "refresh": 1,
             "regex": "",
             "skipUrlSync": false,
             "sort": 0,
