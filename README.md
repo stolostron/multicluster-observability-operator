@@ -90,7 +90,7 @@ Edit `observability.open-cluster-management.io_v1beta1_multiclusterobservability
 
 You can customize the operator instance by updating `observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml`. Below is a sample which has the configuration with default values. 
 ```
-apiVersion: observability.open-cluster-management.io/v1alpha1
+apiVersion: observability.open-cluster-management.io/v1beta1
 kind: MultiClusterObservability
 metadata:
   name: observability #Your customized name of MulticlusterObservability CR
