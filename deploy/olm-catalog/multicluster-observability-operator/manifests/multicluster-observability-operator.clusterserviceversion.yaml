@@ -35,12 +35,12 @@ spec:
     - name: observatoria.core.observatorium.io
       version: v1alpha1
       kind: Observatorium
-      displayName: observatorium
+      displayName: Observatorium
       description: Observatorium is the Schema for the observatoria API
     - name: observabilityaddons.observability.open-cluster-management.io
       version: v1beta1
       kind: ObservabilityAddon
-      displayName: observability addon
+      displayName: Observability Addon
       description: ObservabilityAddon is the Schema for the observabilityaddon API
   description: |
     The multicluster-observability-operator is a component of ACM observability feature. It is designed to install into Hub Cluster.
