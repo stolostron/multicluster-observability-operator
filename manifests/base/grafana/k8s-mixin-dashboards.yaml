@@ -16623,7 +16623,7 @@ data:
       "gnetId": 12116,
       "graphTooltip": 0,
       "id": 5,
-      "iteration": 1602040417685,
+      "iteration": 1602087383248,
       "links": [],
       "panels": [
         {
@@ -16724,11 +16724,11 @@ data:
             },
             "overrides": []
           },
-          "fill": 1,
+          "fill": 0,
           "fillGradient": 0,
           "gridPos": {
             "h": 7,
-            "w": 9,
+            "w": 10,
             "x": 4,
             "y": 0
           },
@@ -16736,15 +16736,15 @@ data:
           "id": 4,
           "interval": "4m",
           "legend": {
-            "alignAsTable": true,
+            "alignAsTable": false,
             "avg": false,
-            "current": true,
+            "current": false,
             "max": false,
             "min": false,
-            "rightSide": true,
+            "rightSide": false,
             "show": true,
             "total": false,
-            "values": true
+            "values": false
           },
           "lines": true,
           "linewidth": 1,
@@ -16759,18 +16759,25 @@ data:
           "points": false,
           "renderer": "flot",
           "repeat": null,
-          "seriesOverrides": [],
+          "seriesOverrides": [
+            {}
+          ],
           "spaceLength": 10,
           "stack": false,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", instance=~\"$instance\", verb!=\"WATCH\", cluster=\"$cluster\"}[5m])) by (verb, le))",
+              "expr": "histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", instance=~\"$instance\", verb!=\"WATCH\", cluster=\"$cluster\"}[5m])) by (le))",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "{{verb}}",
+              "legendFormat": "Latency",
               "refId": "A"
+            },
+            {
+              "expr": "1",
+              "legendFormat": "Latency Threshold",
+              "refId": "B"
             }
           ],
           "thresholds": [],
@@ -16845,8 +16852,8 @@ data:
           "fillGradient": 0,
           "gridPos": {
             "h": 7,
-            "w": 11,
-            "x": 13,
+            "w": 10,
+            "x": 14,
             "y": 0
           },
           "hiddenSeries": false,
@@ -16919,7 +16926,7 @@ data:
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Request Rate",
+          "title": "Request Rate by  HTTP Return Code",
           "tooltip": {
             "shared": false,
             "sort": 0,
@@ -16957,20 +16964,6 @@ data:
           }
         },
         {
-          "collapsed": false,
-          "datasource": "$datasource",
-          "gridPos": {
-            "h": 1,
-            "w": 24,
-            "x": 0,
-            "y": 7
-          },
-          "id": 15,
-          "panels": [],
-          "title": "Saturation",
-          "type": "row"
-        },
-        {
           "aliasColors": {},
           "bars": false,
           "dashLength": 10,
@@ -16987,10 +16980,10 @@ data:
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 7,
+            "h": 9,
             "w": 24,
             "x": 0,
-            "y": 8
+            "y": 7
           },
           "hiddenSeries": false,
           "id": 7,
@@ -17029,6 +17022,7 @@ data:
             {
               "expr": "histogram_quantile(0.99, sum(rate(workqueue_queue_duration_seconds_bucket{job=\"apiserver\", instance=~\"$instance\", cluster=\"$cluster\"}[5m])) by (instance, name, le))",
               "format": "time_series",
+              "hide": false,
               "interval": "",
               "intervalFactor": 1,
               "legendFormat": "{{instance}} {{name}}",
@@ -17039,7 +17033,7 @@ data:
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Work Queue Latency",
+          "title": "Latency by Requestor",
           "tooltip": {
             "shared": false,
             "sort": 0,
@@ -17077,6 +17071,20 @@ data:
           }
         },
         {
+          "collapsed": false,
+          "datasource": "$datasource",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 16
+          },
+          "id": 15,
+          "panels": [],
+          "title": "Saturation",
+          "type": "row"
+        },
+        {
           "aliasColors": {},
           "bars": false,
           "dashLength": 10,
@@ -17096,7 +17104,7 @@ data:
             "h": 7,
             "w": 12,
             "x": 0,
-            "y": 15
+            "y": 17
           },
           "hiddenSeries": false,
           "id": 6,
@@ -17143,7 +17151,7 @@ data:
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Work Queue Depth",
+          "title": "Queue Depth",
           "tooltip": {
             "shared": false,
             "sort": 0,
@@ -17200,7 +17208,7 @@ data:
             "h": 7,
             "w": 12,
             "x": 12,
-            "y": 15
+            "y": 17
           },
           "hiddenSeries": false,
           "id": 5,
@@ -17247,7 +17255,7 @@ data:
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Work Queue Add Rate",
+          "title": "Queue Add Rate",
           "tooltip": {
             "shared": false,
             "sort": 0,
@@ -17285,20 +17293,6 @@ data:
           }
         },
         {
-          "collapsed": false,
-          "datasource": "$datasource",
-          "gridPos": {
-            "h": 1,
-            "w": 24,
-            "x": 0,
-            "y": 22
-          },
-          "id": 17,
-          "panels": [],
-          "title": "Utilization",
-          "type": "row"
-        },
-        {
           "aliasColors": {},
           "bars": false,
           "dashLength": 10,
@@ -17317,7 +17311,7 @@ data:
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 23
+            "y": 24
           },
           "hiddenSeries": false,
           "id": 11,
@@ -17420,7 +17414,7 @@ data:
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 23
+            "y": 24
           },
           "hiddenSeries": false,
           "id": 12,
@@ -17523,7 +17517,7 @@ data:
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 23
+            "y": 24
           },
           "hiddenSeries": false,
           "id": 13,
@@ -17671,7 +17665,7 @@ data:
             "definition": "",
             "hide": 0,
             "includeAll": true,
-            "label": "Instance",
+            "label": "node",
             "multi": false,
             "name": "instance",
             "options": [],
@@ -17720,7 +17714,7 @@ data:
       "timezone": "browser",
       "title": "Kubernetes / API server",
       "uid": "09ec8aa1e996d6ffcd6817bbaff4db1b",
-      "version": 5
+      "version": 12
     }
 kind: ConfigMap
 metadata:
