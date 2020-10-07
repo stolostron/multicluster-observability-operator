@@ -3,7 +3,6 @@ resources:
 - cluster-role-binding.yaml
 - service-account.yaml
 - config.yaml
-- dashboard-definitions.yaml
 - dashboard-sources.yaml
 - deployment.yaml
 - ingress.yaml
