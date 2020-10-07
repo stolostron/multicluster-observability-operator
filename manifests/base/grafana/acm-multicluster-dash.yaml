@@ -19,7 +19,7 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 1,
-      "iteration": 1602040748025,
+      "iteration": 1602087238743,
       "links": [],
       "panels": [
         {
@@ -270,7 +270,7 @@ data:
               "decimals": 2,
               "link": true,
               "linkTooltip": "Drill down to cluster",
-              "linkUrl": "/d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1",
+              "linkUrl": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1",
               "mappingType": 1,
               "pattern": "cluster",
               "thresholds": [],
@@ -400,7 +400,7 @@ data:
               "decimals": 2,
               "link": true,
               "linkTooltip": "Drill down to cluster",
-              "linkUrl": "/d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1",
+              "linkUrl": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1",
               "mappingType": 1,
               "pattern": "cluster",
               "thresholds": [],
@@ -658,7 +658,7 @@ data:
               "decimals": 2,
               "link": true,
               "linkTooltip": "Drill down to cluster",
-              "linkUrl": "/d/8Qvi3edMz/acm-resource-utilization-cluster?var-cluster=$__cell_1",
+              "linkUrl": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1",
               "mappingType": 1,
               "pattern": "cluster",
               "thresholds": [],
@@ -1014,7 +1014,7 @@ data:
               "decimals": 2,
               "link": true,
               "linkTooltip": "Drill down to cluster",
-              "linkUrl": "/d/8Qvi3edMz/acm-resource-utilization-cluster?var-cluster=$__cell_1",
+              "linkUrl": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1",
               "mappingType": 1,
               "pattern": "cluster",
               "thresholds": [],
@@ -1610,7 +1610,7 @@ data:
       "timezone": "browser",
       "title": "ACM - Clusters Overview",
       "uid": "gSyJ7YIMk",
-      "version": 7
+      "version": 11
     }
 kind: ConfigMap
 metadata:
@@ -1637,8 +1637,8 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": 13,
-      "iteration": 1601905907486,
+      "id": 2,
+      "iteration": 1602087121403,
       "links": [],
       "panels": [
         {
@@ -1658,11 +1658,11 @@ data:
         {
           "cacheTimeout": null,
           "colorBackground": false,
-          "colorValue": false,
+          "colorValue": true,
           "colors": [
             "#299c46",
-            "rgba(237, 129, 40, 0.89)",
-            "#d44a3a"
+            "#F2495C",
+            "#F2495C"
           ],
           "datasource": "$datasource",
           "format": "percentunit",
@@ -1679,8 +1679,8 @@ data:
             "x": 0,
             "y": 1
           },
-          "id": 4,
-          "interval": null,
+          "id": 8,
+          "interval": "4m",
           "links": [],
           "mappingType": 1,
           "mappingTypes": [
@@ -1720,17 +1720,17 @@ data:
           "tableColumn": "",
           "targets": [
             {
-              "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\", cluster=\"$cluster\"}[$__interval]))",
+              "expr": "(sum(kube_pod_container_resource_requests_cpu_cores) by (cluster) / sum(kube_node_status_allocatable_cpu_cores) by (cluster)) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__interval])) by (cluster))",
               "format": "time_series",
               "instant": true,
-              "intervalFactor": 2,
+              "intervalFactor": 1,
               "refId": "A"
             }
           ],
-          "thresholds": "",
+          "thresholds": ".2",
           "timeFrom": null,
           "timeShift": null,
-          "title": "CPU Utilisation",
+          "title": "Overestimation",
           "type": "singlestat",
           "valueFontSize": "150%",
           "valueMaps": [
@@ -1949,7 +1949,7 @@ data:
             "x": 0,
             "y": 9
           },
-          "id": 8,
+          "id": 4,
           "interval": null,
           "links": [],
           "mappingType": 1,
@@ -1990,7 +1990,7 @@ data:
           "tableColumn": "",
           "targets": [
             {
-              "expr": "sum(kube_pod_container_resource_limits_cpu_cores{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable_cpu_cores{cluster=\"$cluster\"})",
+              "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\", cluster=\"$cluster\"}[$__interval]))",
               "format": "time_series",
               "instant": true,
               "intervalFactor": 2,
@@ -2000,7 +2000,7 @@ data:
           "thresholds": "",
           "timeFrom": null,
           "timeShift": null,
-          "title": "CPU Limits Commitment",
+          "title": "CPU Utilisation",
           "type": "singlestat",
           "valueFontSize": "150%",
           "valueMaps": [
@@ -2379,11 +2379,11 @@ data:
         {
           "cacheTimeout": null,
           "colorBackground": false,
-          "colorValue": false,
+          "colorValue": true,
           "colors": [
             "#299c46",
-            "rgba(237, 129, 40, 0.89)",
-            "#d44a3a"
+            "#F2495C",
+            "#F2495C"
           ],
           "datasource": "$datasource",
           "format": "percentunit",
@@ -2400,8 +2400,8 @@ data:
             "x": 0,
             "y": 23
           },
-          "id": 10,
-          "interval": null,
+          "id": 14,
+          "interval": "4m",
           "links": [],
           "mappingType": 1,
           "mappingTypes": [
@@ -2441,19 +2441,17 @@ data:
           "tableColumn": "",
           "targets": [
             {
-              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable_memory_bytes{cluster=\"$cluster\"})",
+              "expr": "(sum(kube_pod_container_resource_requests_memory_bytes{cluster=\"$cluster\"})/ sum(kube_node_status_allocatable_memory_bytes{cluster=\"$cluster\"}))\n-\n(1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=\"$cluster\"})/ sum(kube_node_status_allocatable_memory_bytes{cluster=\"$cluster\"}))",
               "format": "time_series",
               "instant": true,
-              "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "",
               "refId": "A"
             }
           ],
-          "thresholds": "",
+          "thresholds": ".2",
           "timeFrom": null,
           "timeShift": null,
-          "title": "Memory Utilisation",
+          "title": "Overestimation",
           "type": "singlestat",
           "valueFontSize": "150%",
           "valueMaps": [
@@ -2680,8 +2678,8 @@ data:
             "x": 0,
             "y": 31
           },
-          "id": 14,
-          "interval": null,
+          "id": 10,
+          "interval": "4m",
           "links": [],
           "mappingType": 1,
           "mappingTypes": [
@@ -2721,17 +2719,20 @@ data:
           "tableColumn": "",
           "targets": [
             {
-              "expr": "sum(kube_pod_container_resource_limits_memory_bytes{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable_memory_bytes{cluster=\"$cluster\"})",
+              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable_memory_bytes{cluster=\"$cluster\"})",
               "format": "time_series",
+              "hide": false,
               "instant": true,
-              "intervalFactor": 2,
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "",
               "refId": "A"
             }
           ],
           "thresholds": "",
           "timeFrom": null,
           "timeShift": null,
-          "title": "Memory Limits Commitment",
+          "title": "Memory Utilisation",
           "type": "singlestat",
           "valueFontSize": "150%",
           "valueMaps": [
@@ -3098,6 +3099,7 @@ data:
           "type": "table"
         }
       ],
+      "refresh": "10s",
       "schemaVersion": 21,
       "style": "dark",
       "tags": [
@@ -3126,7 +3128,7 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
+              "selected": true,
               "text": "",
               "value": ""
             },
@@ -3172,7 +3174,7 @@ data:
       "timezone": "browser",
       "title": "ACM - Resource Optimization / Cluster",
       "uid": "8Qvi3edMz",
-      "version": 10
+      "version": 7
     }
 kind: ConfigMap
 metadata:
