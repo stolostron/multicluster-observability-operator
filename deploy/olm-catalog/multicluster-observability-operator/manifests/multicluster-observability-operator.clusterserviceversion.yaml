@@ -21,26 +21,26 @@ metadata:
         }
       ]
     capabilities: Basic Install
+    operators.operatorframework.io/internal-objects: '["observatoria.core.observatorium.io","observabilityaddons.observability.open-cluster-management.io"]'
   name: multicluster-observability-operator.v0.1.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: MultiClusterObservability is the Schema for the multiclusterobservability
-        API
+    - description: MulticlusterObservability defines the configuration for the Observability installation on Hub and Managed Clusters all through this one custom resource.
       kind: MultiClusterObservability
       name: multiclusterobservabilities.observability.open-cluster-management.io
       version: v1beta1
     - name: observatoria.core.observatorium.io
       version: v1alpha1
       kind: Observatorium
-      displayName: observatorium
+      displayName: Observatorium
       description: Observatorium is the Schema for the observatoria API
     - name: observabilityaddons.observability.open-cluster-management.io
       version: v1beta1
       kind: ObservabilityAddon
-      displayName: observability addon
+      displayName: ObservabilityAddon
       description: ObservabilityAddon is the Schema for the observabilityaddon API
   description: |
     The multicluster-observability-operator is a component of ACM observability feature. It is designed to install into Hub Cluster.
