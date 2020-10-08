@@ -50,14 +50,6 @@ Install the `multicluster-observability-operator` on Red Hat Advanced Cluster Ma
    kind: Secret
    ```
 
-<!-- Save the above as `your_s3_secrets.yaml`, then encode object storage configuration with base64.
-
-
-```
-cat your_s3_secrets.yaml | base64
-```
-Fill the returned encoded value into `example/object-storage-secret.yaml` file in `thanos.yaml`field. -->
-
 5. Apply the secret for the object storage by running the folllowing command:
 
    ```
@@ -96,11 +88,14 @@ Fill the returned encoded value into `example/object-storage-secret.yaml` file i
 
 7. View metrics in Grafana by navigating to the following URL: https://{YOUR_ACM_CONSOLE_DOMAIN}/grafana. The metrics are in the dashboard named _ACM:Cluster Monitoring_.
 
-8. [Optional] Delete MulticlusterObservability CR
-To delete the MulticlusterObservability object you just deployed, just do
-```
-oc delete mco observability #Your customized name of MulticlusterObservability CR
-```
+8. [Optional] You can delete the MulticlusterObservability resource by running the following command:
+
+   ```
+   oc delete mco observability #Your customized name of MulticlusterObservability CR
+   ```
+
+9. [Optional] You can scale the MultiClusterObservability deployment to zero to cease data collection.
+
 ## Customizing _multicluster-observability-operator_
 
 You can customize the operator instance by updating `observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml`. View the following `multicluster-observability-operator` file with default values:
@@ -140,64 +135,74 @@ spec:
 
 ```
 
+### Install _multicluster-observability-operator_ on Kubernetes KinD cluster
 
+Complete the following steps to install the observability operator into a KinD cluster to verify some basic functionalities:
 
-### Install this operator on KinD
+1. Clone the `open-cluster-management/multicluster-monitoring-operator` repository locally. Run the following command:
 
-We provided an easy way to install this operator into KinD cluster to verify some basic functionalities.
+   ```
+   git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
+   ```
 
-1. Clone this repo locally
+2. Provide the username and password for downloading the `multicluster-observability-operator` image from Quay. Run the following command:
 
-```
-git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
-```
+   ```
+   export DOCKER_USER=<quay.io username>
+   export DOCKER_PASS=<quay.io password>
+   ```
 
-2. Provide the username and password for downloading multicluster-observability-operator image from quay.io.
+3. Deploy the operator with the `./tests/e2e/setup.sh` script. To install the latest `multicluster-observability-operator` image, you can find the latest tag at [Red Hat Quay.io](https://quay.io/repository/open-cluster-management/multicluster-monitoring-operator?tab=tags). Then install by
 
-```
-export DOCKER_USER=<quay.io username>
-export DOCKER_PASS=<quay.io password>
-```
+   ```
+   ./tests/e2e/setup.sh quay.io/open-cluster-management/multicluster-observability-operator:<latest tag>
+   ```
 
-3. Deploy using the ./tests/e2e/setup.sh script
-```
-./tests/e2e/setup.sh
-```
-If you want to install the latest multicluster-observability-operator image, you can find the latest tag here https://quay.io/repository/open-cluster-management/multicluster-monitoring-operator?tab=tags. Then install by
-```
-./tests/e2e/setup.sh quay.io/open-cluster-management/multicluster-observability-operator:<latest tag>
-```
+4. Access the hub KinD cluster and configure it by running the following commands:
 
-4. Access the KinD cluster
-
-Access `hub` KinD cluster by `export KUBECONFIG=$HOME/.kube/kind-config-hub`
-Access `hub` KinD cluster by `export KUBECONFIG=$HOME/.kube/kind-config-spoke`
+  ```
+  export KUBECONFIG=$HOME/.kube/kind-config-hub
+  export KUBECONFIG=$HOME/.kube/kind-config-spoke
+  ```
 
 ## Developer Guide
 
-### Prerequisites
+**Prerequisites**:
 
-- [git][git_tool]
-- [go][go_tool] version v1.13.9+.
-- [docker][docker_tool] version 19.03+.
-- [kubectl][kubectl_tool] version v1.14+.
+- Install [Git](https://git-scm.com/downloads).
+- Install [Go](https://golang.org/dl/) version v1.13.9+.
+- Install [Docker](https://docs.docker.com/install/) version 19.03+.
+- Install [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) version v1.14+.
 - Access to a Kubernetes v1.11.3+ cluster.
+- Install [Operator_SDK CLI_tool v0.17.0](https://github.com/operator-framework/operator-sdk/releases/tag/v0.17.0).
+- Install [Prometheus relabel configuration](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config).
 
 ### Install the Operator SDK CLI
 
-Follow the steps in the [installation guide][install_guide] to learn how to install the Operator SDK CLI tool. It requires [version v0.17.0][operator_sdk_v0.17.0].
-Or just use this command to download `operator-sdk` for Mac:
+Run the following command to install the Operator SDK CLI tool:
+
 ```
 curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.17.0/operator-sdk-v0.17.0-x86_64-apple-darwin -o operator-sdk
 ```
 
-### Build the Operator
+### Build the observability operator
 
-- git clone this repository.
-- `go mod vendor`
-- `operator-sdk build <repo>/<component>:<tag>` for example: quay.io/multicluster-monitoring-operator:v0.1.0.
-- Replace the image in `deploy/operator.yaml`.
-- Update your namespace in `deploy/role_binding.yaml`
+
+1. 1. Clone the `open-cluster-management/multicluster-monitoring-operator` repository locally. Run the following command:
+
+   ```
+   git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
+   ```
+   
+2. Run the following command to access Go:
+  
+  ```
+  go mod vendor
+  ```
+3. Access the Operator SDK repository from Quay. For example, quay.io/multicluster-monitoring-operator:v0.1.0.
+
+4. Replace the image in `deploy/operator.yaml`.
+5. Update your namespace in `deploy/role_binding.yaml`.
 
 ### Setup object storage
 
