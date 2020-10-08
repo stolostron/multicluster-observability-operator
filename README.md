@@ -94,6 +94,13 @@ Fill the returned encoded value into `example/object-storage-secret.yaml` file i
    observatorium-operator-686cc5bf6-l9zcx                            1/1     Running   0          7h8m
    ```
 
+7. View metrics in Grafana by navigating to the following URL: https://{YOUR_ACM_CONSOLE_DOMAIN}/grafana. The metrics are in the dashboard named _ACM:Cluster Monitoring_.
+
+8. [Optional] Delete MulticlusterObservability CR
+To delete the MulticlusterObservability object you just deployed, just do
+```
+oc delete mco observability #Your customized name of MulticlusterObservability CR
+```
 ## Customizing _multicluster-observability-operator_
 
 You can customize the operator instance by updating `observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml`. View the following `multicluster-observability-operator` file with default values:
@@ -133,15 +140,7 @@ spec:
 
 ```
 
-6. View metrics in dashboard
 
-Access Grafana console at https://{YOUR_ACM_CONSOLE_DOMAIN}/grafana, view the metrics in the dashboard named "ACM:Cluster Monitoring"
-
-7. [Optional] Delete MulticlusterObservability CR
-To delete the MulticlusterObservability object you just deployed, just do
-```
-oc delete mco observability #Your customized name of MulticlusterObservability CR
-```
 
 ### Install this operator on KinD
 
