@@ -2,57 +2,53 @@
 
 ## Overview
 
-The multicluster-observability-operator is a component of ACM observability feature. It is designed to install into Hub Cluster. 
+The `multicluster-observability-operator` is a component for Red Hat Advanced Cluster Management for Kubernetes observability feature. `multicluster-observability-operator` is installed automatically in the hub cluster. 
+
+**Prerequisites**: 
+
+* You must install a Red Hat Advanced Cluster Management hub cluster.
+* You must create a secret for object storage. For example, you can use Thanos as a storage solution. For more information, see [Thanos documentation](https://thanos.io/tip/thanos/storage.md/#configuration). 
 
 ## Installation
 
-### Install this operator on RHACM
+Install the `multicluster-observability-operator` on Red Hat Advanced Cluster Management to visualize and monitor the health of your managed clusters. Complete the following steps:
 
-<!-- 1. Clone this repo locally
+1. Log in to your OpenShift Container Platform cluster by running the following command: 
+   
+   ```
+   oc login --token=YOUR_TOKEN --server=YOUR_OCP_CLUSTER
+   ```
 
-```
-git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
-git checkout origin/release-2.1
-``` -->
-1. Login to your clusters using `oc login` with your credentials, for example
-```
-oc login --token=YOUR_TOKEN --server=YOUR_OCP_CLUSTER
-```
+2. Create a new namespace for the observability service. For example, run the following command to create `open-cluster-management-observability`namespace:
 
-2. Create new namespace `open-cluster-management-observability`
+   ```
+   oc create namespace open-cluster-management-observability
+   ```
 
-```
-oc create namespace open-cluster-management-observability
-```
-3. Generate your pull-secret
+3. Generate your pull-secret. If Red Hat Advanced Cluster Management is installed in the `open-cluster-management` namespace, run the following command to generate your secret:
 
-Assume RHACM is installed in `open-cluster-management` namespace. Generate your pull-screct by
+   ```
+   oc get secret multiclusterhub-operator-pull-secret -n open-cluster-management --export -o yaml |   kubectl apply --namespace=open-cluster-management-observability -f -
+   ```
+   
+4. Create a secret for object storage. For example, create a secret with Thanos on a Amazon Web Service cluster. Your file might resemble the following information:
 
-```
-oc get secret multiclusterhub-operator-pull-secret -n open-cluster-management --export -o yaml |   kubectl apply --namespace=open-cluster-management-observability -f -
-```
-4. Create Secret for object storage
-
-You need to create a Secret for object storage in advance. Assume you're using `thanos` on `AWS S3`, firstly create the object storage configuration file `example/object-storage-secret.yaml` as following:
-
-```
-apiVersion: v1
-stringData:
-  thanos.yaml: |
-    type: s3
-    config:
-      bucket: YOUR_S3_BUCKET
-      endpoint: YOUR_S3_ENDPOINT
-      insecure: false
-      access_key: YOUR_ACCESS_KEY
-      secret_key: YOUR_SECRET_KEY
-metadata:
-  name: thanos-object-storage
-type: Opaque
-kind: Secret
-```
-
-You will need to provide a value for the `bucket`, `endpoint`, `access_key`, and `secret_key` keys above. For more details, please refer to https://thanos.io/tip/thanos/storage.md/#s3.
+   ```
+   apiVersion: v1
+   stringData:
+     thanos.yaml: |
+       type: s3
+       config:
+         bucket: YOUR_S3_BUCKET
+         endpoint: YOUR_S3_ENDPOINT
+         insecure: false
+         access_key: YOUR_ACCESS_KEY
+         secret_key: YOUR_SECRET_KEY
+   metadata:
+     name: thanos-object-storage
+   type: Opaque
+   kind: Secret
+   ```
 
 <!-- Save the above as `your_s3_secrets.yaml`, then encode object storage configuration with base64.
 
@@ -62,33 +58,46 @@ cat your_s3_secrets.yaml | base64
 ```
 Fill the returned encoded value into `example/object-storage-secret.yaml` file in `thanos.yaml`field. -->
 
-After filled in, create the Secret using folllowing commands:
+5. Apply the secret for the object storage by running the folllowing command:
 
-```
-oc apply --namespace=open-cluster-management-observability -f example/object-storage-secret.yaml
-```
+   ```
+   oc apply --namespace=open-cluster-management-observability -f example/object-storage-secret.yaml
+   ```
 
-For development or testing purposes, you can [deploy your object storage](./README.md#setup-object-storage).
+   For development or testing purposes, you can [deploy your object storage](./README.md#setup-object-storage).
 
+6. Deploy `multicluster-observability-operator` to `open-cluster-management` namespace by running the following commands:
 
-<!-- 5. [Optional] Modify the operator and instance
+   ```
+   oc project open-cluster-management
+   oc apply -f deploy/req_crds/observability.open-cluster-management.io_observabilityaddon_crd.yaml
+   oc apply -f deploy/req_crds/core.observatorium.io_observatoria.yaml
+   oc apply -f deploy/crds/observability.open-cluster-management.io_multiclusterobservabilities_crd.yaml
+   oc apply -f deploy/
+   ```
+   When you successfully install the `multicluster-observability-operator`, the following pods are available in `open-cluster-management` namespace:
 
-To change ImageTag, edit `deploy/operator.yaml` file and change image tag
-```
-    spec:
-      serviceAccountName: multicluster-observability-operator
-      containers:
-        - name: multicluster-observability-operator
-          # Replace this with the built image name
-          image: ...
+   ```
+   NAME                                                              READY   STATUS    RESTARTS   AGE
+   alertmanager-0                                                    2/2     Running   0          10m
+   rbac-query-proxy-59d4c45846-8hrlz                                 1/1     Running   0          10m
+   grafana-7cb7c6b698-4kbdc                                          1/1     Running   0          7h8m
+   observability-observatorium-cortex-query-frontend-56bd7954zk4hs   1/1     Running   0          7h6m
+   observability-observatorium-observatorium-api-7cbb7766b-k5lxf     1/1     Running   0          7h7m
+   observability-observatorium-thanos-compact-0                      1/1     Running   0          7h4m
+   observability-observatorium-thanos-query-6658db5979-5dvjq         1/1     Running   0          7h4m
+   observability-observatorium-thanos-receive-controller-5965wbpqs   1/1     Running   0          7h1m
+   observability-observatorium-thanos-receive-default-0              1/1     Running   0          7h1m
+   observability-observatorium-thanos-rule-0                         1/1     Running   0          7h
+   observability-observatorium-thanos-store-memcached-0              2/2     Running   0          7h5m
+   observability-observatorium-thanos-store-shard-0-0                1/1     Running   0          6h59m
+   observatorium-operator-686cc5bf6-l9zcx                            1/1     Running   0          7h8m
+   ```
 
-```
+## Customizing _multicluster-observability-operator_
 
-Edit `observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml` file to change `mco-imageTagSuffix` and `storageConfigObject`. In  `storageConfigObject.metricObjectStorage`, `name` is the name of the Secret created in step 4, `key` is the key of the data in that Secret. -->
+You can customize the operator instance by updating `observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml`. View the following `multicluster-observability-operator` file with default values:
 
-5. Customize the configuration for the operator instance and deploy
-
-You can customize the operator instance by updating `observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml`. Below is a sample which has the configuration with default values. 
 ```
 apiVersion: observability.open-cluster-management.io/v1beta1
 kind: MultiClusterObservability
@@ -112,47 +121,16 @@ spec:
     statefulSetStorageClass: gp2
 ```
 
-<!-- Note: Find snapshot tags here: https://quay.io/repository/open-cluster-management/acm-custom-registry?tab=tags -->
-
-<!-- 7. Deploy the `multicluster-observability-operator` to `open-cluster-management` namespace
+For example, change ImageTag by editing the `deploy/operator.yaml` file. your change might reflect the following information:
 
 ```
-oc project open-cluster-management
-oc apply -f deploy/req_crds/observability.open-cluster-management.io_observabilityaddon_crd.yaml
-oc apply -f deploy/req_crds/core.observatorium.io_observatoria.yaml
-oc apply -f deploy/crds/observability.open-cluster-management.io_multiclusterobservabilities_crd.yaml
-oc apply -f deploy/
-```
-When you successfully install the `multicluster-observability-operator`, the following pods are available in `open-cluster-management` namespace:
+spec:
+  serviceAccountName: multicluster-observability-operator
+  containers:
+    - name: multicluster-observability-operator
+      # Replace this with the built image name
+      image: ...
 
-```
-NAME                                                              READY   STATUS    RESTARTS   AGE
-multicluster-observability-operator-55bc57d65c-tk2c2              1/1     Running   0          7h8m
-``` -->
-
-After doing your own modification, just do
-
-```
-oc apply -f deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
-```
-
-The following pods are available in `open-cluster-management-observability` namespace after installed successfully.
-
-```
-NAME                                                              READY   STATUS    RESTARTS   AGE
-alertmanager-0                                                    2/2     Running            0          10m
-rbac-query-proxy-59d4c45846-8hrlz                                 1/1     Running            0          10m
-grafana-7cb7c6b698-4kbdc                                          1/1     Running   0          7h8m
-observability-observatorium-cortex-query-frontend-56bd7954zk4hs   1/1     Running   0          7h6m
-observability-observatorium-observatorium-api-7cbb7766b-k5lxf     1/1     Running   0          7h7m
-observability-observatorium-thanos-compact-0                      1/1     Running   0          7h4m
-observability-observatorium-thanos-query-6658db5979-5dvjq         1/1     Running   0          7h4m
-observability-observatorium-thanos-receive-controller-5965wbpqs   1/1     Running   0          7h1m
-observability-observatorium-thanos-receive-default-0              1/1     Running   0          7h1m
-observability-observatorium-thanos-rule-0                         1/1     Running   0          7h
-observability-observatorium-thanos-store-memcached-0              2/2     Running   0          7h5m
-observability-observatorium-thanos-store-shard-0-0                1/1     Running   0          6h59m
-observatorium-operator-686cc5bf6-l9zcx                            1/1     Running   0          7h8m
 ```
 
 6. View metrics in dashboard
