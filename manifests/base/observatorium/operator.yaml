@@ -23,7 +23,7 @@ spec:
       containers:
       - args:
         - --log-level=debug
-        image: quay.io/observatorium/observatorium-operator:master-2020-09-23-55feecd
+        image: quay.io/observatorium/observatorium-operator:master-2020-10-09-ecc37fc
         imagePullPolicy: "{{MULTICLUSTEROBSERVABILITY_IMAGE_PULL_POLICY}}"
         name: observatorium-operator
         resources:

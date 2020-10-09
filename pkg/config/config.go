@@ -72,7 +72,7 @@ const (
 	ObservatoriumAPIImgName        = "observatorium"
 	ObservatoriumAPIImgTag         = "latest"
 	ObservatoriumOperatorImgName   = "observatorium_operator"
-	ObservatoriumOperatorImgTag    = "master-2020-09-23-55feecd"
+	ObservatoriumOperatorImgTag    = "master-2020-10-09-ecc37fc"
 	ThanosReceiveControllerImgName = "thanos-receive-controller"
 	//ThanosReceiveControllerKey is used to get from mch-image-manifest.xxx configmap
 	ThanosReceiveControllerKey    = "thanos_receive_controller"
