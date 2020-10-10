@@ -20,6 +20,13 @@ spec:
           command:
           - mco-operator
           imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: 300m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
           env:
             - name: WATCH_NAMESPACE
               value: ""
