@@ -155,8 +155,13 @@ func ReplaceImage(annotations map[string]string, imageRepo, componentName string
 			return false, ""
 		}
 		return false, ""
+	} else {
+		image, found := imageManifests[componentName]
+		if found {
+			return true, image
+		}
+		return false, ""
 	}
-	return false, ""
 }
 
 // GetDefaultTenantName returns the default tenant name
@@ -368,10 +373,26 @@ func GenerateMonitoringCR(c client.Client,
 		log.Error(err, "cannot parse the current MultiClusterObservability values")
 	}
 
+	needUpdate := false
+	newObj := found.DeepCopy()
+	//set default annotation
+	if util.GetAnnotation(found.GetAnnotations(), AnnotationKeyImageRepository) !=
+		util.GetAnnotation(mco.Annotations, AnnotationKeyImageRepository) {
+		if newObj.Annotations == nil {
+			newObj.Annotations = map[string]string{}
+		}
+		newObj.Annotations[AnnotationKeyImageRepository] =
+			util.GetAnnotation(mco.Annotations, AnnotationKeyImageRepository)
+		needUpdate = true
+	}
+
 	if res := bytes.Compare(desired, current); res != 0 {
-		log.Info("Update MultiClusterObservability CR.")
-		newObj := found.DeepCopy()
 		newObj.Spec = mco.Spec
+		needUpdate = true
+	}
+
+	if needUpdate {
+		log.Info("Update MultiClusterObservability CR.")
 		err = c.Update(context.TODO(), newObj)
 		if err != nil {
 			return &reconcile.Result{}, err
