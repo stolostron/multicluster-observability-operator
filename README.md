@@ -2,7 +2,7 @@
 
 ## Overview
 
-The multicluster-observability-operator is a component of ACM observability feature. It is designed to install into Hub Cluster. 
+The multicluster-observability-operator is a component of ACM observability feature. It is designed to install into Hub Cluster.
 
 ## Installation
 
@@ -88,7 +88,8 @@ Edit `observability.open-cluster-management.io_v1beta1_multiclusterobservability
 
 5. Customize the configuration for the operator instance and deploy
 
-You can customize the operator instance by updating `observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml`. Below is a sample which has the configuration with default values. 
+You can customize the operator instance by updating `observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml`. Below is a sample which has the configuration with default values.
+
 ```
 apiVersion: observability.open-cluster-management.io/v1beta1
 kind: MultiClusterObservability
@@ -108,9 +109,15 @@ spec:
     metricObjectStorage:
       name: thanos-object-storage
       key: thanos.yaml
-    statefulSetSize: 10Gi # The amount of storage applied to the Observability stateful sets, i.e. Thanos store, Rule, compact and receiver.
+    statefulSetSize: 10Gi # The amount of storage applied to the Observability stateful sets, i.e. Thanos store, rule, compact and receiver.
     statefulSetStorageClass: gp2
 ```
+
+For `statefulSetStorageClass` field, the operator have the following behavior:
+
+- If you specify storage class doesn't exist, the operator will use the default storage class
+- If you specify storage class exist and no previous PVC, the operator will use the specified storage class
+- If you specify storage exist and do not delete the previous PVC, the operator will use the PVC directly, it does not use the specified storage class
 
 <!-- Note: Find snapshot tags here: https://quay.io/repository/open-cluster-management/acm-custom-registry?tab=tags -->
 
