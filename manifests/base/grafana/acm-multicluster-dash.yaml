@@ -1637,8 +1637,8 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": 2,
-      "iteration": 1602171211574,
+      "id": 1,
+      "iteration": 1602535997331,
       "links": [],
       "panels": [
         {
@@ -1906,7 +1906,7 @@ data:
               "expr": "sum(kube_pod_container_resource_requests_cpu_cores{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable_cpu_cores{cluster=\"$cluster\"})",
               "format": "time_series",
               "instant": true,
-              "intervalFactor": 2,
+              "intervalFactor": 1,
               "refId": "A"
             }
           ],
@@ -1950,7 +1950,7 @@ data:
             "y": 9
           },
           "id": 4,
-          "interval": null,
+          "interval": "4m",
           "links": [],
           "mappingType": 1,
           "mappingTypes": [
@@ -1993,7 +1993,7 @@ data:
               "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\", cluster=\"$cluster\"}[$__interval]))",
               "format": "time_series",
               "instant": true,
-              "intervalFactor": 2,
+              "intervalFactor": 1,
               "refId": "A"
             }
           ],
@@ -3173,7 +3173,7 @@ data:
       "timezone": "browser",
       "title": "ACM - Resource Optimization / Cluster",
       "uid": "8Qvi3edMz",
-      "version": 12
+      "version": 2
     }
 kind: ConfigMap
 metadata:
