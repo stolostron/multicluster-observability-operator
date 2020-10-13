@@ -13,6 +13,8 @@ data:
       - apiserver_request_latencies_summary_count
       - apiserver_request_latencies_summary_sum
       - apiserver_request_total
+      - authenticated_user_requests
+      - authenticated_user_requests
       - cluster:capacity_cpu_cores:sum
       - cluster:capacity_memory_bytes:sum
       - cluster:container_cpu_usage:ratio
@@ -40,17 +42,24 @@ data:
       - container_network_transmit_packets_dropped_total
       - container_network_transmit_packets_total
       - container_spec_cpu_quota
+      - coredns_dns_request_count_total
+      - coredns_dns_request_duration_seconds_sum
+      - coredns_dns_request_type_count_total
+      - coredns_dns_response_rcode_count_total
       - etcd_debugging_mvcc_db_total_size_in_bytes
       - etcd_debugging_snap_save_total_duration_seconds_sum
       - etcd_disk_backend_commit_duration_seconds_bucket
       - etcd_disk_backend_commit_duration_seconds_sum
       - etcd_disk_wal_fsync_duration_seconds_bucket
       - etcd_disk_wal_fsync_duration_seconds_sum
+      - etcd_object_counts
       - etcd_network_client_grpc_received_bytes_total
       - etcd_network_client_grpc_sent_bytes_total
       - etcd_network_peer_received_bytes_total
       - etcd_network_peer_sent_bytes_total
+      - etcd_server_client_requests_total
       - etcd_server_has_leader
+      - etcd_server_health_failures
       - etcd_server_leader_changes_seen_total
       - etcd_server_proposals_failed_total
       - etcd_server_proposals_pending
@@ -60,7 +69,13 @@ data:
       - go_goroutines
       - grpc_server_started_total
       - grpc_server_handled_total
+      - haproxy_backend_connection_errors_total
       - haproxy_backend_connections_total
+      - haproxy_backend_current_queue
+      - haproxy_backend_http_average_response_latency_milliseconds
+      - haproxy_backend_max_sessions
+      - haproxy_backend_response_errors_total
+      - haproxy_backend_up
       - http_requests_total
       - instance:node_filesystem_usage:sum
       - instance:node_cpu_utilisation:rate1m
