@@ -31,7 +31,7 @@ Install the `multicluster-observability-operator` on Red Hat Advanced Cluster Ma
    oc get secret multiclusterhub-operator-pull-secret -n open-cluster-management --export -o yaml |   kubectl apply --namespace=open-cluster-management-observability -f -
    ```
    
-4. Create a secret for object storage. For example, create a secret with Thanos on a Amazon Web Service cluster. Your file might resemble the following information:
+4. Create and save the secret for object storage. For example, create a secret with Thanos on a Amazon Web Service cluster. Your file might resemble the following information:
 
    ```
    apiVersion: v1
@@ -50,10 +50,10 @@ Install the `multicluster-observability-operator` on Red Hat Advanced Cluster Ma
    kind: Secret
    ```
 
-5. Apply the secret for the object storage by running the folllowing command:
+5. Apply the `object-storage-secret.yaml` by running the folllowing command:
 
    ```
-   oc apply --namespace=open-cluster-management-observability -f example/object-storage-secret.yaml
+   oc apply --namespace=open-cluster-management-observability -f object-storage-secret.yaml
    ```
 
    For development or testing purposes, you can [deploy your object storage](./README.md#setup-object-storage).
@@ -67,6 +67,7 @@ Install the `multicluster-observability-operator` on Red Hat Advanced Cluster Ma
    oc apply -f deploy/crds/observability.open-cluster-management.io_multiclusterobservabilities_crd.yaml
    oc apply -f deploy/
    ```
+   
    When you successfully install the `multicluster-observability-operator`, the following pods are available in `open-cluster-management` namespace:
 
    ```
@@ -98,7 +99,7 @@ Install the `multicluster-observability-operator` on Red Hat Advanced Cluster Ma
 
 ## Customizing _multicluster-observability-operator_
 
-You can customize the operator instance by updating `observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml`. View the following `multicluster-observability-operator` file with default values:
+You can customize the operand by updating `observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml`. View the following `multicluster-observability-operator` file with default values:
 
 ```
 apiVersion: observability.open-cluster-management.io/v1beta1
@@ -119,11 +120,17 @@ spec:
     metricObjectStorage:
       name: thanos-object-storage
       key: thanos.yaml
-    statefulSetSize: 10Gi # The amount of storage applied to the Observability stateful sets, i.e. Thanos store, Rule, compact and receiver.
+    statefulSetSize: 10Gi # The amount of storage applied to the Observability stateful sets, i.e. Thanos store, rule, compact and receiver.
     statefulSetStorageClass: gp2
 ```
 
-For example, change ImageTag by editing the `deploy/operator.yaml` file. your change might reflect the following information:
+   For `statefulSetStorageClass` field, view the following scenarios of the operator:
+
+   - If you specify that a storage class does not exist, the operator uses the default storage class.
+   - If you specify that a storage class exists and no previous PersistentVolumeClaim (PVC), the operator uses the specified storage class
+   - If you specify that a storage class exists and use the previous PVC, the operator uses the PVC directly.
+
+For example, change ImageTag by editing the operator instance, `deploy/operator.yaml`. Your change might reflect the following information:
 
 ```
 spec:
@@ -152,7 +159,7 @@ Complete the following steps to install the observability operator into a KinD c
    export DOCKER_PASS=<quay.io password>
    ```
 
-3. Deploy the operator with the `./tests/e2e/setup.sh` script. To install the latest `multicluster-observability-operator` image, you can find the latest tag at [Red Hat Quay.io](https://quay.io/repository/open-cluster-management/multicluster-monitoring-operator?tab=tags). Then install by
+3. Deploy the operator with the `./tests/e2e/setup.sh` script. To install the latest `multicluster-observability-operator` image, you can find the latest tag at [Red Hat Quay.io](https://quay.io/repository/open-cluster-management/multicluster-monitoring-operator?tab=tags). Then install the observability service with the following command:
 
    ```
    ./tests/e2e/setup.sh quay.io/open-cluster-management/multicluster-observability-operator:<latest tag>
@@ -187,38 +194,45 @@ curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.
 
 ### Build the observability operator
 
+Complete the following steps to build the observability operator:
 
-1. 1. Clone the `open-cluster-management/multicluster-monitoring-operator` repository locally. Run the following command:
+1. Clone the `open-cluster-management/multicluster-monitoring-operator` repository locally. Run the following command:
 
    ```
    git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
    ```
    
-2. Run the following command to access Go:
+2. Run the following command to access your vendor:
   
   ```
   go mod vendor
   ```
-3. Access the Operator SDK repository from Quay. For example, quay.io/multicluster-monitoring-operator:v0.1.0.
+  
+3. Access the Operator SDK repository from Quay. For example, your URL might resemble the following: quay.io/multicluster-monitoring-operator:v0.1.0.
 
-4. Replace the image in `deploy/operator.yaml`.
-5. Update your namespace in `deploy/role_binding.yaml`.
+4. Replace the vaule for `image` in the `deploy/operator.yaml` file with the image that you built.
+
+5. Update your namespace in the `deploy/role_binding.yaml` file.
 
 ### Setup object storage
 
-For development or testing purposes, you can set up your own object storage. We provide some examples for you to set up your own object storage through [Minio](https://min.io/), you can find these examples in `tests/e2e/minio/` path. You need to update the storageclass in `tests/e2e/minio/minio-pvc.yaml` firstly, then create minio deployment as follows:
+For development or testing purposes, you can set up your own object storage. We provide some examples for you to set up your own object storage through [Minio](https://min.io/), you can find these examples in `tests/e2e/minio/` path. You need to update the storageclass in `tests/e2e/minio/minio-pvc.yaml` first, then create a Minio deployment.
+
+Run the following commands to setup the object storage:
 
 ```
-$ oc create ns open-cluster-management-observability
+oc create ns open-cluster-management-observability
 namespace/open-cluster-management-observability created
-$ oc apply -f tests/e2e/minio/
+
+
+oc apply -f tests/e2e/minio/
 deployment.apps/minio created
 persistentvolumeclaim/minio created
 secret/thanos-object-storage created
 service/minio created
 ```
 
-When minio starts successfully, Edit `observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml` file to change `metricObjectStorage` field. Fill the Secret `name` and `data key` in `metricObjectStorage` field. The Secret should as following:
+When Minio starts successfully, edit the `observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml` file to change the `metricObjectStorage` field. Fill the secret `name` and `data key` in `metricObjectStorage` field. Your Secret resource might resemble the following information:
 
 ```
 apiVersion: v1
@@ -230,10 +244,12 @@ metadata:
 type: Opaque
 ```
 
-You can run the following command to get the object storage configuration:
+You can access object storage configuration by running the following command: 
 
 ```
-$ kubectl get secret thanos-object-storage -o 'go-template={{index .data "thanos.yaml"}}' | base64 --decode
+kubectl get secret thanos-object-storage -o 'go-template={{index .data "thanos.yaml"}}' | base64 --decode
+```
+```
 type: s3
 config:
   bucket: "thanos"
@@ -245,9 +261,14 @@ config:
 
 ### Endpoint monitoring operator installation & endpoint monitoring configuration
 
-1. By default, the endpoint monitoring operator will be installed on any managed clusters. If want to disable this in a cluster, need to add label using key/value "monitoring"/"disabled" on it.
-2. Once the endpoint monitoring operator installed in the managed cluster, it will update the configmap cluster-monitoring-config automatically, and then the metrics will be pushed to hub side.
-3. In cluster's namespace in hub side, one default endpointmonitoring resource named as "endpoint-config"  will be created automatically. Users can edit section "relabelConfigs" in this resource to update the configuration for metrics collect in managed cluster side, such as filtering the metrics collected, injecting addtional labels([Prometheus relabel configuration]). A sample endpointmonitoring resource is as below:
+1. By default, the endpoint monitoring operator is installed on any managed clusters. If you want to disable this in a cluster, you must update the configuration file using key/value "monitoring"/"disabled" on it.
+
+2. Once the endpoint monitoring operator installed in the managed cluster, the `multicluster-monitoring-config` updates automatically. Metrics are pushed to your hub cluster.
+
+3. The `multicluster-endpoint-config` is automatically create in the hub cluster namespace. Update the `multicluster-endpoint-config` to update the configuration  for metrics collection on your managed cluster. You can also add labels. 
+
+Update the labels in the EndpointMonitoring file. Your `endpointmonitoring` file might resemble the following contents:
+
 ```
 apiVersion: monitoring.open-cluster-management.io/v1alpha1
 kind: EndpointMonitoring
@@ -267,12 +288,3 @@ spec:
       targetLabel: cluster
     type: OCP_PROMETHEUS
 ```
-
-[install_kind]: https://github.com/kubernetes-sigs/kind
-[install_guide]: https://github.com/operator-framework/operator-sdk/blob/master/doc/user/install-operator-sdk.md
-[git_tool]:https://git-scm.com/downloads
-[go_tool]:https://golang.org/dl/
-[docker_tool]:https://docs.docker.com/install/
-[kubectl_tool]:https://kubernetes.io/docs/tasks/tools/install-kubectl/
-[operator_sdk_v0.17.0]:https://github.com/operator-framework/operator-sdk/releases/tag/v0.17.0
-[Prometheus relabel configuration]:https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
