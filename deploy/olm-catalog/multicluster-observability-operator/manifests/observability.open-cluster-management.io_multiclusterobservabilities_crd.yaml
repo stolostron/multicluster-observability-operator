@@ -16,8 +16,8 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: MultiClusterObservability is the Schema for the multiclusterobservability
-        API
+      description: MultiClusterObservability defines the configuration for the Observability
+        installation on Hub and Managed Clusters all through this one custom resource.
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation

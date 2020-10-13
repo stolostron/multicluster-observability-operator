@@ -1,0 +1,14 @@
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: __CLUSTER_NAME__-clusters-metrics-collector-view
+  annotations:
+    owner: multicluster-operator
+subjects:
+  - kind: ServiceAccount
+    name: endpoint-observability-operator-sa
+    namespace: __CLUSTER_NAME__
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-monitoring-view

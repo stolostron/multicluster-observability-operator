@@ -133,7 +133,8 @@ type MCOCondition struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// MultiClusterObservability is the Schema for the multiclusterobservability API
+// MultiClusterObservability defines the configuration for the Observability installation on
+// Hub and Managed Clusters all through this one custom resource.
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=multiclusterobservabilities,scope=Cluster,shortName=mco
 type MultiClusterObservability struct {
