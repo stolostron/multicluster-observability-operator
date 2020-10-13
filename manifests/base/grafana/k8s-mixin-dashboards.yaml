@@ -16693,7 +16693,8 @@ data:
             {
               "expr": "(sum(up{job=\"apiserver\",cluster=\"$cluster\"} == 1) / count(up{job=\"apiserver\",cluster=\"$cluster\"}))",
               "format": "time_series",
-              "intervalFactor": 2,
+              "instant": true,
+              "intervalFactor": 1,
               "legendFormat": "",
               "refId": "A"
             }
