@@ -18,6 +18,4 @@ e2e-tests:
 
 # should set the correct IMAGE_TAG and IMAGE_NAME for the new csv
 update-csv:
-	./cicd-scripts/install-dependencies.sh
-	operator-sdk generate csv --crd-dir=deploy/crds --deploy-dir=deploy/ --output-dir=deploy/olm-catalog/multicluster-observability-operator --operator-name=multicluster-observability-operator --csv-version=0.1.0
-	./cicd-scripts/check-mco-csv.sh
+	./cicd-scripts/update-check-mco-csv.sh

@@ -28,8 +28,8 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: MultiClusterObservability is the Schema for the multiclusterobservability
-        API
+    - description: MultiClusterObservability defines the configuration for the Observability
+        installation on Hub and Managed Clusters all through this one custom resource.
       kind: MultiClusterObservability
       name: multiclusterobservabilities.observability.open-cluster-management.io
       version: v1beta1
