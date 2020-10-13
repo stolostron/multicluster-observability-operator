@@ -28,7 +28,8 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: MulticlusterObservability defines the configuration for the Observability installation on Hub and Managed Clusters all through this one custom resource.
+    - description: MultiClusterObservability defines the configuration for the Observability
+        installation on Hub and Managed Clusters all through this one custom resource.
       kind: MultiClusterObservability
       name: multiclusterobservabilities.observability.open-cluster-management.io
       version: v1beta1
@@ -246,22 +247,22 @@ spec:
           - leases
           verbs:
           - delete
-        - apiGroups: 
+        - apiGroups:
           - addon.open-cluster-management.io
-          resources: 
+          resources:
           - clustermanagementaddons
           verbs:
           - create
-          - get 
+          - get
           - delete
           - list
           - watch
-        - apiGroups: 
+        - apiGroups:
           - addon.open-cluster-management.io
-          resources: 
+          resources:
           - managedclusteraddons
           verbs:
-          - watch  
+          - watch
           - create
           - delete
           - get
