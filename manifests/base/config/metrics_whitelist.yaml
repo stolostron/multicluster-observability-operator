@@ -14,7 +14,7 @@ data:
       - apiserver_request_latencies_summary_sum
       - apiserver_request_total
       - authenticated_user_requests
-      - authenticated_user_requests
+      - authentication_attempts
       - cluster:capacity_cpu_cores:sum
       - cluster:capacity_memory_bytes:sum
       - cluster:container_cpu_usage:ratio
