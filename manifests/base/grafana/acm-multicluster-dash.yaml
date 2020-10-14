@@ -18,8 +18,8 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": 1,
-      "iteration": 1602087238743,
+      "id": 6,
+      "iteration": 1602715833782,
       "links": [],
       "panels": [
         {
@@ -52,7 +52,7 @@ data:
           "pageSize": null,
           "showHeader": true,
           "sort": {
-            "col": null,
+            "col": 1,
             "desc": false
           },
           "styles": [
@@ -196,8 +196,8 @@ data:
           "pageSize": null,
           "showHeader": true,
           "sort": {
-            "col": 0,
-            "desc": true
+            "col": 1,
+            "desc": false
           },
           "styles": [
             {
@@ -326,8 +326,8 @@ data:
           "pageSize": null,
           "showHeader": true,
           "sort": {
-            "col": 0,
-            "desc": true
+            "col": 1,
+            "desc": false
           },
           "styles": [
             {
@@ -944,8 +944,8 @@ data:
           "pluginVersion": "7.1.3",
           "showHeader": true,
           "sort": {
-            "col": 0,
-            "desc": true
+            "col": 1,
+            "desc": false
           },
           "styles": [
             {
@@ -1299,8 +1299,8 @@ data:
           "pluginVersion": "7.1.3",
           "showHeader": true,
           "sort": {
-            "col": 0,
-            "desc": true
+            "col": 1,
+            "desc": false
           },
           "styles": [
             {
@@ -1610,7 +1610,7 @@ data:
       "timezone": "browser",
       "title": "ACM - Clusters Overview",
       "uid": "gSyJ7YIMk",
-      "version": 11
+      "version": 3
     }
 kind: ConfigMap
 metadata:
