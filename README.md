@@ -261,7 +261,7 @@ config:
 
 ### Endpoint monitoring operator installation & endpoint monitoring configuration
 
-1. By default, the endpoint monitoring operator is installed on any managed clusters. If you want to disable this in a cluster, you must update the configuration file using key/value "monitoring"/"disabled" on it.
+1. By default, the endpoint monitoring operator is installed on any managed clusters. If you want to disable this in a cluster, you must update the configuration file using key/value "observability"/"disabled" on it.
 
 2. Once the endpoint monitoring operator installed in the managed cluster, the `multicluster-monitoring-config` updates automatically. Metrics are pushed to your hub cluster.
 
