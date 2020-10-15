@@ -49,6 +49,7 @@ Install the `multicluster-observability-operator` on Red Hat Advanced Cluster Ma
    type: Opaque
    kind: Secret
    ```
+    You will need to provide a value for the bucket, endpoint, access_key, and secret_key keys above. For more details, please refer to https://thanos.io/tip/thanos/storage.md/#s3.
 
 5. Apply the `object-storage-secret.yaml` by running the folllowing command:
 
@@ -58,17 +59,13 @@ Install the `multicluster-observability-operator` on Red Hat Advanced Cluster Ma
 
    For development or testing purposes, you can [deploy your object storage](./README.md#setup-object-storage).
 
-6. Deploy `multicluster-observability-operator` to `open-cluster-management` namespace by running the following commands:
+6. Deploy the observability feature by running the following command:
 
    ```
-   oc project open-cluster-management
-   oc apply -f deploy/req_crds/observability.open-cluster-management.io_observabilityaddon_crd.yaml
-   oc apply -f deploy/req_crds/core.observatorium.io_observatoria.yaml
-   oc apply -f deploy/crds/observability.open-cluster-management.io_multiclusterobservabilities_crd.yaml
-   oc apply -f deploy/
+   oc apply -f deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
    ```
    
-   When you successfully install the `multicluster-observability-operator`, the following pods are available in `open-cluster-management` namespace:
+   You should be able to have the following pods in `open-cluster-management-observability` namespace.
 
    ```
    NAME                                                              READY   STATUS    RESTARTS   AGE
@@ -84,7 +81,6 @@ Install the `multicluster-observability-operator` on Red Hat Advanced Cluster Ma
    observability-observatorium-thanos-rule-0                         1/1     Running   0          7h
    observability-observatorium-thanos-store-memcached-0              2/2     Running   0          7h5m
    observability-observatorium-thanos-store-shard-0-0                1/1     Running   0          6h59m
-   observatorium-operator-686cc5bf6-l9zcx                            1/1     Running   0          7h8m
    ```
 
 7. View metrics in Grafana by navigating to the following URL: https://{YOUR_ACM_CONSOLE_DOMAIN}/grafana. The metrics are in the dashboard named _ACM:Cluster Monitoring_.
@@ -130,18 +126,6 @@ spec:
    - If you specify that a storage class exists and no previous PersistentVolumeClaim (PVC), the operator uses the specified storage class
    - If you specify that a storage class exists and use the previous PVC, the operator uses the PVC directly.
 
-For example, change ImageTag by editing the operator instance, `deploy/operator.yaml`. Your change might reflect the following information:
-
-```
-spec:
-  serviceAccountName: multicluster-observability-operator
-  containers:
-    - name: multicluster-observability-operator
-      # Replace this with the built image name
-      image: ...
-
-```
-
 ### Install _multicluster-observability-operator_ on Kubernetes KinD cluster
 
 Complete the following steps to install the observability operator into a KinD cluster to verify some basic functionalities:
@@ -169,7 +153,6 @@ Complete the following steps to install the observability operator into a KinD c
 
   ```
   export KUBECONFIG=$HOME/.kube/kind-config-hub
-  export KUBECONFIG=$HOME/.kube/kind-config-spoke
   ```
 
 ## Developer Guide
