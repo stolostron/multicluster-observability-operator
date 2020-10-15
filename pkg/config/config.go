@@ -72,7 +72,7 @@ const (
 	ObservatoriumAPIImgName        = "observatorium"
 	ObservatoriumAPIImgTag         = "latest"
 	ObservatoriumOperatorImgName   = "observatorium_operator"
-	ObservatoriumOperatorImgTag    = "master-2020-09-17-d861409"
+	ObservatoriumOperatorImgTag    = "master-2020-10-09-ecc37fc"
 	ThanosReceiveControllerImgName = "thanos-receive-controller"
 	//ThanosReceiveControllerKey is used to get from mch-image-manifest.xxx configmap
 	ThanosReceiveControllerKey    = "thanos_receive_controller"
@@ -156,8 +156,13 @@ func ReplaceImage(annotations map[string]string, imageRepo, componentName string
 			return false, ""
 		}
 		return false, ""
+	} else {
+		image, found := imageManifests[componentName]
+		if found {
+			return true, image
+		}
+		return false, ""
 	}
-	return false, ""
 }
 
 // GetDefaultTenantName returns the default tenant name
@@ -307,6 +312,9 @@ func GenerateMonitoringCR(c client.Client,
 	// set mco-imageRepository if needed
 	if util.GetAnnotation(mco.Annotations, AnnotationKeyImageRepository) == "" {
 		// set the default image repo
+		if mco.Annotations == nil {
+			mco.Annotations = map[string]string{}
+		}
 		mco.Annotations[AnnotationKeyImageRepository] = DefaultImgRepository
 		imageCMName := ImageManifestConfigmapName + "2.1.0"
 		componentVersion, found := os.LookupEnv(ComponentVersion)
@@ -366,10 +374,26 @@ func GenerateMonitoringCR(c client.Client,
 		log.Error(err, "cannot parse the current MultiClusterObservability values")
 	}
 
+	needUpdate := false
+	newObj := found.DeepCopy()
+	//set default annotation
+	if util.GetAnnotation(found.GetAnnotations(), AnnotationKeyImageRepository) !=
+		util.GetAnnotation(mco.Annotations, AnnotationKeyImageRepository) {
+		if newObj.Annotations == nil {
+			newObj.Annotations = map[string]string{}
+		}
+		newObj.Annotations[AnnotationKeyImageRepository] =
+			util.GetAnnotation(mco.Annotations, AnnotationKeyImageRepository)
+		needUpdate = true
+	}
+
 	if res := bytes.Compare(desired, current); res != 0 {
-		log.Info("Update MultiClusterObservability CR.")
-		newObj := found.DeepCopy()
 		newObj.Spec = mco.Spec
+		needUpdate = true
+	}
+
+	if needUpdate {
+		log.Info("Update MultiClusterObservability CR.")
 		err = c.Update(context.TODO(), newObj)
 		if err != nil {
 			return &reconcile.Result{}, err

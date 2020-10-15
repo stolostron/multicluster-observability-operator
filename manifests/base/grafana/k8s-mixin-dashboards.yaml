@@ -19,8 +19,8 @@ data:
       "editable": true,
       "gnetId": 12124,
       "graphTooltip": 0,
-      "id": 20,
-      "iteration": 1601585790719,
+      "id": 12,
+      "iteration": 1602169908282,
       "links": [],
       "panels": [
         {
@@ -95,7 +95,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_receive_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_receive_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
@@ -198,7 +198,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_transmit_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_transmit_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
@@ -471,7 +471,7 @@ data:
           ],
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_receive_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_receive_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -480,7 +480,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sort_desc(sum(irate(container_network_transmit_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_transmit_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -489,7 +489,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sort_desc(avg(irate(container_network_receive_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(avg(irate(container_network_receive_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -498,7 +498,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sort_desc(avg(irate(container_network_transmit_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(avg(irate(container_network_transmit_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -507,7 +507,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sort_desc(sum(irate(container_network_receive_packets_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_receive_packets_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -516,7 +516,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sort_desc(sum(irate(container_network_transmit_packets_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_transmit_packets_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -525,7 +525,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sort_desc(sum(irate(container_network_receive_packets_dropped_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_receive_packets_dropped_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -534,7 +534,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sort_desc(sum(irate(container_network_transmit_packets_dropped_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_transmit_packets_dropped_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -621,7 +621,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(avg(irate(container_network_receive_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(avg(irate(container_network_receive_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
@@ -724,7 +724,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(avg(irate(container_network_transmit_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(avg(irate(container_network_transmit_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
@@ -845,7 +845,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_receive_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_receive_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
@@ -944,7 +944,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_transmit_bytes_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_transmit_bytes_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
@@ -1063,7 +1063,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_receive_packets_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_receive_packets_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
@@ -1162,7 +1162,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_transmit_packets_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_transmit_packets_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
@@ -1282,7 +1282,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_receive_packets_dropped_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_receive_packets_dropped_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
@@ -1382,7 +1382,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(irate(container_network_transmit_packets_dropped_total{namespace=~\".+\"}[$interval:$resolution])) by (namespace))",
+              "expr": "sort_desc(sum(irate(container_network_transmit_packets_dropped_total{namespace=~\".+\",cluster=\"$cluster\"}[$interval:$resolution])) by (namespace))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{namespace}}",
@@ -1487,7 +1487,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(rate(node_netstat_Tcp_RetransSegs[$interval:$resolution]) / rate(node_netstat_Tcp_OutSegs[$interval:$resolution])) by (instance))",
+              "expr": "sort_desc(sum(rate(node_netstat_Tcp_RetransSegs{cluster=\"$cluster\"}[$interval:$resolution]) / rate(node_netstat_Tcp_OutSegs{cluster=\"$cluster\"}[$interval:$resolution])) by (instance))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{instance}}",
@@ -1593,7 +1593,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sort_desc(sum(rate(node_netstat_TcpExt_TCPSynRetrans[$interval:$resolution]) / rate(node_netstat_Tcp_RetransSegs[$interval:$resolution])) by (instance))",
+              "expr": "sort_desc(sum(rate(node_netstat_TcpExt_TCPSynRetrans{cluster=\"$cluster\"}[$interval:$resolution]) / rate(node_netstat_Tcp_RetransSegs{cluster=\"$cluster\"}[$interval:$resolution])) by (instance))",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "{{instance}}",
@@ -1654,7 +1654,6 @@ data:
           {
             "allValue": null,
             "current": {
-              "tags": [],
               "text": "",
               "value": ""
             },
@@ -1665,20 +1664,9 @@ data:
             "label": null,
             "multi": false,
             "name": "cluster",
-            "options": [
-              {
-                "selected": false,
-                "text": "",
-                "value": ""
-              },
-              {
-                "selected": true,
-                "text": "",
-                "value": ""
-              }
-            ],
+            "options": [],
             "query": "label_values(node_cpu_seconds_total, cluster)",
-            "refresh": 0,
+            "refresh": 1,
             "regex": "",
             "skipUrlSync": false,
             "sort": 0,
@@ -1817,7 +1805,7 @@ data:
       "timezone": "",
       "title": "Kubernetes / Networking / Cluster",
       "uid": "ff635a025bcfea7bc3dd4f508990a3e9",
-      "version": 4
+      "version": 10
     }
 kind: ConfigMap
 metadata:
@@ -4779,8 +4767,8 @@ data:
       "editable": true,
       "gnetId": 12117,
       "graphTooltip": 0,
-      "id": 15,
-      "iteration": 1601606821241,
+      "id": 1,
+      "iteration": 1602712230891,
       "links": [],
       "panels": [
         {
@@ -7196,7 +7184,7 @@ data:
             },
             "datasource": "$datasource",
             "definition": "",
-            "hide": 2,
+            "hide": 0,
             "includeAll": false,
             "label": null,
             "multi": false,
@@ -7272,7 +7260,7 @@ data:
       "timezone": "",
       "title": "Kubernetes / Compute Resources / Namespace (Pods)",
       "uid": "85a562078cdf77779eaa1add43ccec1e",
-      "version": 7
+      "version": 2
     }
 kind: ConfigMap
 metadata:
@@ -7300,8 +7288,8 @@ data:
       "editable": true,
       "gnetId": 12118,
       "graphTooltip": 0,
-      "id": 16,
-      "iteration": 1601607108173,
+      "id": 2,
+      "iteration": 1602712355716,
       "links": [],
       "panels": [
         {
@@ -9368,12 +9356,37 @@ data:
           },
           {
             "allValue": null,
+            "current": {
+              "text": "",
+              "value": ""
+            },
+            "datasource": "$datasource",
+            "definition": "",
+            "hide": 0,
+            "includeAll": false,
+            "label": null,
+            "multi": false,
+            "name": "cluster",
+            "options": [],
+            "query": "label_values(kube_pod_info, cluster)",
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "tagValuesQuery": "",
+            "tags": [],
+            "tagsQuery": "",
+            "type": "query",
+            "useTags": false
+          },
+          {
+            "allValue": null,
             "auto": false,
             "auto_count": 30,
             "auto_min": "10s",
             "current": {
-              "text": "",
-              "value": ""
+              "text": "deployment",
+              "value": "deployment"
             },
             "datasource": "$datasource",
             "definition": "label_values(mixin_pod_workload{namespace=~\"$namespace\", workload=~\".+\"}, workload_type)",
@@ -9388,31 +9401,6 @@ data:
             "regex": "",
             "skipUrlSync": false,
             "sort": 0,
-            "tagValuesQuery": "",
-            "tags": [],
-            "tagsQuery": "",
-            "type": "query",
-            "useTags": false
-          },
-          {
-            "allValue": null,
-            "current": {
-              "text": "",
-              "value": ""
-            },
-            "datasource": "$datasource",
-            "definition": "",
-            "hide": 2,
-            "includeAll": false,
-            "label": null,
-            "multi": false,
-            "name": "cluster",
-            "options": [],
-            "query": "label_values(kube_pod_info, cluster)",
-            "refresh": 1,
-            "regex": "",
-            "skipUrlSync": false,
-            "sort": 1,
             "tagValuesQuery": "",
             "tags": [],
             "tagsQuery": "",
@@ -9537,7 +9525,7 @@ data:
       "timezone": "",
       "title": "Kubernetes / Compute Resources / Namespace (Workloads)",
       "uid": "a87fb0d919ec0ea5f6543124e16c42a5",
-      "version": 8
+      "version": 2
     }
 kind: ConfigMap
 metadata:
@@ -9565,8 +9553,8 @@ data:
       "editable": true,
       "gnetId": 12121,
       "graphTooltip": 0,
-      "id": 19,
-      "iteration": 1601585543577,
+      "id": 5,
+      "iteration": 1602712624030,
       "links": [],
       "panels": [
         {
@@ -11467,7 +11455,7 @@ data:
             },
             "datasource": "$datasource",
             "definition": "",
-            "hide": 2,
+            "hide": 0,
             "includeAll": false,
             "label": null,
             "multi": false,
@@ -12619,8 +12607,8 @@ data:
       "editable": true,
       "gnetId": 12120,
       "graphTooltip": 0,
-      "id": 18,
-      "iteration": 1601584706378,
+      "id": 4,
+      "iteration": 1602712486313,
       "links": [],
       "panels": [
         {
@@ -14269,7 +14257,6 @@ data:
         "list": [
           {
             "current": {
-              "selected": true,
               "text": "Observatorium",
               "value": "Observatorium"
             },
@@ -14293,7 +14280,7 @@ data:
             },
             "datasource": "$datasource",
             "definition": "",
-            "hide": 2,
+            "hide": 0,
             "includeAll": false,
             "label": null,
             "multi": false,
@@ -14313,7 +14300,6 @@ data:
           {
             "allValue": null,
             "current": {
-              "tags": [],
               "text": "",
               "value": ""
             },
@@ -14395,7 +14381,7 @@ data:
       "timezone": "",
       "title": "Kubernetes / Compute Resources / Pod",
       "uid": "6581e46e4e5c7ba40a07646395ef7b23",
-      "version": 4
+      "version": 2
     }
 kind: ConfigMap
 metadata:
@@ -15419,7 +15405,7 @@ data:
               }
             ],
             "query": "label_values(node_filesystem_size_bytes, cluster)",
-            "refresh": 0,
+            "refresh": 1,
             "regex": "",
             "skipUrlSync": false,
             "sort": 0,
@@ -16634,8 +16620,8 @@ data:
       "editable": true,
       "gnetId": 12116,
       "graphTooltip": 0,
-      "id": 9,
-      "iteration": 1601611776431,
+      "id": 5,
+      "iteration": 1602087383248,
       "links": [],
       "panels": [
         {
@@ -16648,7 +16634,7 @@ data:
             "#d44a3a"
           ],
           "datasource": "$datasource",
-          "format": "none",
+          "format": "percentunit",
           "gauge": {
             "maxValue": 100,
             "minValue": 0,
@@ -16703,7 +16689,7 @@ data:
           "tableColumn": "",
           "targets": [
             {
-              "expr": "sum(up{job=\"apiserver\", cluster=\"$cluster\"})",
+              "expr": "(sum(up{job=\"apiserver\",cluster=\"$cluster\"} == 1) / count(up{job=\"apiserver\",cluster=\"$cluster\"}))",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "",
@@ -16729,7 +16715,6 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
-          "description": "",
           "fieldConfig": {
             "defaults": {
               "custom": {},
@@ -16737,29 +16722,27 @@ data:
             },
             "overrides": []
           },
-          "fill": 1,
+          "fill": 0,
           "fillGradient": 0,
           "gridPos": {
             "h": 7,
-            "w": 20,
+            "w": 10,
             "x": 4,
             "y": 0
           },
           "hiddenSeries": false,
-          "id": 7,
+          "id": 4,
           "interval": "4m",
           "legend": {
-            "alignAsTable": true,
+            "alignAsTable": false,
             "avg": false,
-            "current": true,
+            "current": false,
             "max": false,
             "min": false,
-            "rightSide": true,
+            "rightSide": false,
             "show": true,
-            "sort": "current",
-            "sortDesc": true,
             "total": false,
-            "values": true
+            "values": false
           },
           "lines": true,
           "linewidth": 1,
@@ -16774,27 +16757,34 @@ data:
           "points": false,
           "renderer": "flot",
           "repeat": null,
-          "seriesOverrides": [],
+          "seriesOverrides": [
+            {}
+          ],
           "spaceLength": 10,
           "stack": false,
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.99, sum(rate(workqueue_queue_duration_seconds_bucket{job=\"apiserver\", instance=~\"$instance\", cluster=\"$cluster\"}[5m])) by (instance, name, le))",
+              "expr": "histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", instance=~\"$instance\", verb!=\"WATCH\", cluster=\"$cluster\"}[5m])) by (le))",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "{{instance}} {{name}}",
+              "legendFormat": "Latency",
               "refId": "A"
+            },
+            {
+              "expr": "1",
+              "legendFormat": "Latency Threshold",
+              "refId": "B"
             }
           ],
           "thresholds": [],
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "API Server Latency",
+          "title": "Latency (99th percentile)",
           "tooltip": {
-            "shared": false,
+            "shared": true,
             "sort": 0,
             "value_type": "individual"
           },
@@ -16860,9 +16850,9 @@ data:
           "fillGradient": 0,
           "gridPos": {
             "h": 7,
-            "w": 12,
-            "x": 0,
-            "y": 7
+            "w": 10,
+            "x": 14,
+            "y": 0
           },
           "hiddenSeries": false,
           "id": 3,
@@ -16907,6 +16897,7 @@ data:
             {
               "expr": "sum(rate(apiserver_request_total{job=\"apiserver\", instance=~\"$instance\",code=~\"3..\", cluster=\"$cluster\"}[5m]))",
               "format": "time_series",
+              "hide": false,
               "interval": "",
               "intervalFactor": 1,
               "legendFormat": "3xx",
@@ -16933,7 +16924,7 @@ data:
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Request Rate",
+          "title": "Request Rate by  HTTP Return Code",
           "tooltip": {
             "shared": false,
             "sort": 0,
@@ -16976,6 +16967,7 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
+          "description": "",
           "fieldConfig": {
             "defaults": {
               "custom": {},
@@ -16986,13 +16978,13 @@ data:
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 7,
-            "w": 12,
-            "x": 12,
+            "h": 9,
+            "w": 24,
+            "x": 0,
             "y": 7
           },
           "hiddenSeries": false,
-          "id": 4,
+          "id": 7,
           "interval": "4m",
           "legend": {
             "alignAsTable": true,
@@ -17002,6 +16994,8 @@ data:
             "min": false,
             "rightSide": true,
             "show": true,
+            "sort": "current",
+            "sortDesc": true,
             "total": false,
             "values": true
           },
@@ -17024,11 +17018,12 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", instance=~\"$instance\", verb!=\"WATCH\", cluster=\"$cluster\"}[5m])) by (verb, le))",
+              "expr": "histogram_quantile(0.99, sum(rate(workqueue_queue_duration_seconds_bucket{job=\"apiserver\", instance=~\"$instance\", cluster=\"$cluster\"}[5m])) by (instance, name, le))",
               "format": "time_series",
+              "hide": false,
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "{{verb}}",
+              "legendFormat": "{{instance}} {{name}}",
               "refId": "A"
             }
           ],
@@ -17036,7 +17031,7 @@ data:
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Request duration 99th quantile",
+          "title": "Latency by Requestor",
           "tooltip": {
             "shared": false,
             "sort": 0,
@@ -17074,108 +17069,18 @@ data:
           }
         },
         {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
+          "collapsed": false,
           "datasource": "$datasource",
-          "description": "Number of required actions per unit time.",
-          "fieldConfig": {
-            "defaults": {
-              "custom": {},
-              "links": []
-            },
-            "overrides": []
-          },
-          "fill": 1,
-          "fillGradient": 0,
           "gridPos": {
-            "h": 7,
-            "w": 12,
+            "h": 1,
+            "w": 24,
             "x": 0,
-            "y": 14
+            "y": 16
           },
-          "hiddenSeries": false,
-          "id": 5,
-          "interval": "4m",
-          "legend": {
-            "alignAsTable": false,
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "rightSide": false,
-            "show": false,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 1,
-          "links": [],
-          "nullPointMode": "null",
-          "options": {
-            "dataLinks": []
-          },
-          "percentage": false,
-          "pluginVersion": "7.1.3",
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "repeat": null,
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "sum(rate(workqueue_adds_total{job=\"apiserver\" ,instance=~\"$instance\", cluster=\"$cluster\"}[5m])) by (instance, name)",
-              "format": "time_series",
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "{{instance}} {{name}}",
-              "refId": "A"
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Work Queue Add Rate",
-          "tooltip": {
-            "shared": false,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "ops",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": 0,
-              "show": true
-            },
-            {
-              "format": "ops",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": 0,
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
+          "id": 15,
+          "panels": [],
+          "title": "Saturation",
+          "type": "row"
         },
         {
           "aliasColors": {},
@@ -17196,8 +17101,8 @@ data:
           "gridPos": {
             "h": 7,
             "w": 12,
-            "x": 12,
-            "y": 14
+            "x": 0,
+            "y": 17
           },
           "hiddenSeries": false,
           "id": 6,
@@ -17244,7 +17149,7 @@ data:
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Work Queue Depth",
+          "title": "Queue Depth",
           "tooltip": {
             "shared": false,
             "sort": 0,
@@ -17287,6 +17192,110 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
+          "description": "How fast we are scheduling new actions to be  performed by controller.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "links": []
+            },
+            "overrides": []
+          },
+          "fill": 1,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 12,
+            "y": 17
+          },
+          "hiddenSeries": false,
+          "id": 5,
+          "interval": "4m",
+          "legend": {
+            "alignAsTable": false,
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "rightSide": false,
+            "show": false,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "nullPointMode": "null",
+          "options": {
+            "dataLinks": []
+          },
+          "percentage": false,
+          "pluginVersion": "7.1.3",
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "repeat": null,
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(rate(workqueue_adds_total{job=\"apiserver\" ,instance=~\"$instance\", cluster=\"$cluster\"}[5m])) by (instance, name)",
+              "format": "time_series",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "{{instance}} {{name}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Queue Add Rate",
+          "tooltip": {
+            "shared": false,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "ops",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": 0,
+              "show": true
+            },
+            {
+              "format": "ops",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": 0,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "custom": {},
@@ -17300,7 +17309,7 @@ data:
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 21
+            "y": 24
           },
           "hiddenSeries": false,
           "id": 11,
@@ -17403,7 +17412,7 @@ data:
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 21
+            "y": 24
           },
           "hiddenSeries": false,
           "id": 12,
@@ -17506,7 +17515,7 @@ data:
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 21
+            "y": 24
           },
           "hiddenSeries": false,
           "id": 13,
@@ -17620,6 +17629,7 @@ data:
           {
             "allValue": null,
             "current": {
+              "selected": true,
               "text": "",
               "value": ""
             },
@@ -17645,7 +17655,7 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
+              "selected": true,
               "text": "All",
               "value": "$__all"
             },
@@ -17653,12 +17663,12 @@ data:
             "definition": "",
             "hide": 0,
             "includeAll": true,
-            "label": "Instance",
+            "label": "node",
             "multi": false,
             "name": "instance",
             "options": [],
             "query": "label_values(apiserver_request_total{job=\"apiserver\", cluster=\"$cluster\"}, instance)",
-            "refresh": 2,
+            "refresh": 1,
             "regex": "",
             "skipUrlSync": false,
             "sort": 1,
@@ -17702,7 +17712,7 @@ data:
       "timezone": "browser",
       "title": "Kubernetes / API server",
       "uid": "09ec8aa1e996d6ffcd6817bbaff4db1b",
-      "version": 6
+      "version": 12
     }
 kind: ConfigMap
 metadata:
