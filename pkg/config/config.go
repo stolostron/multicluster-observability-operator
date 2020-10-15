@@ -91,9 +91,10 @@ const (
 	MemcachedExporterKey     = "memcached_exporter"
 	MemcachedExporterImgTag  = "v0.6.0"
 
-	GrafanaImgRepo      = "grafana"
-	GrafanaImgName      = "grafana"
-	GrafanaImgTagSuffix = "6.5.3"
+	GrafanaImgRepo            = "grafana"
+	GrafanaImgName            = "grafana"
+	GrafanaImgTagSuffix       = "6.5.3"
+	GrafanaDashboardLoaderKey = "grafana_dashboard_loader"
 
 	AlertManagerImgRepo      = "quay.io/openshift"
 	AlertManagerKey          = "prometheus-alertmanager"

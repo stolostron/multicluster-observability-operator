@@ -19,7 +19,6 @@ import (
 )
 
 const (
-	defaultHostport int32 = 3001
 	defaultReplicas int32 = 1
 )
 

@@ -139,8 +139,8 @@ Complete the following steps to install the observability operator into a KinD c
 2. Provide the username and password for downloading the `multicluster-observability-operator` image from Quay. Run the following command:
 
    ```
-   export DOCKER_USER=<quay.io username>
-   export DOCKER_PASS=<quay.io password>
+   export QUAY_USER=<quay.io username>
+   export QUAY_PASS=<quay.io password>
    ```
 
 3. Deploy the operator with the `./tests/e2e/setup.sh` script. To install the latest `multicluster-observability-operator` image, you can find the latest tag at [Red Hat Quay.io](https://quay.io/repository/open-cluster-management/multicluster-monitoring-operator?tab=tags). Then install the observability service with the following command:

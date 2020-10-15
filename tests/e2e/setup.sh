@@ -110,7 +110,7 @@ deploy_mco_operator() {
     kubectl create ns ${MONITORING_NS}
     kubectl config set-context --current --namespace ${MONITORING_NS}
     # create image pull secret
-    kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
+    kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$QUAY_USER --docker-password=$QUAY_PASS
     kubectl apply -f deploy/req_crds
     kubectl apply -f deploy/crds/observability.open-cluster-management.io_multiclusterobservabilities_crd.yaml
     kubectl apply -f tests/e2e/req_crds
@@ -119,7 +119,7 @@ deploy_mco_operator() {
     sleep 4
     kubectl apply -f tests/e2e/req_crds/hub_cr
     kubectl create ns ${DEFAULT_NS}
-    kubectl create secret -n ${DEFAULT_NS} docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
+    kubectl create secret -n ${DEFAULT_NS} docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$QUAY_USER --docker-password=$QUAY_PASS
     kubectl apply -n ${DEFAULT_NS} -f deploy/operator.yaml
     kubectl apply -n ${DEFAULT_NS} -f deploy/role.yaml
     kubectl apply -n ${DEFAULT_NS} -f deploy/role_binding.yaml
@@ -212,10 +212,10 @@ deploy_spoke_core() {
 
     kubectl create ns ${DEFAULT_NS}
     kubectl config set-context --current --namespace ${DEFAULT_NS}
-    kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS
+    kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$QUAY_USER --docker-password=$QUAY_PASS
 
     kubectl create namespace $MONITORING_NS
-    kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS -n $MONITORING_NS
+    kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$QUAY_USER --docker-password=$QUAY_PASS -n $MONITORING_NS
 
     if [[ "$(uname)" == "Darwin" ]]; then
         $sed_command "\$a\\
