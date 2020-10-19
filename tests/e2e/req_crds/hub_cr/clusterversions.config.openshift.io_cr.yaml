@@ -1,8 +1,0 @@
-apiVersion: config.openshift.io/v1
-kind: ClusterVersion
-metadata:
-  name: version
-spec:
-  channel: stable-4.4
-  clusterID: c6877d73-43a5-4558-b4c1-6b0f54e96553
-  upstream: https://api.openshift.com/api/upgrades_info/v1/graph

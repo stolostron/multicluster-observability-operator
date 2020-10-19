@@ -118,7 +118,7 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 				if found {
 					spec.Containers[0].Image = image
 				}
-				found, image = mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.DefaultImgRepository,
+				found, image = mcoconfig.ReplaceImage(r.cr.Annotations, spec.Containers[1].Image,
 					mcoconfig.GrafanaDashboardLoaderKey)
 				if found {
 					spec.Containers[1].Image = image
