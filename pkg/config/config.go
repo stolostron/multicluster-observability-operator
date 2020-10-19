@@ -140,10 +140,18 @@ func GetClusterNameLabelKey() string {
 func ReplaceImage(annotations map[string]string, imageRepo, componentName string) (bool, string) {
 	if annotations != nil {
 		annotationImageRepo, _ := annotations[AnnotationKeyImageRepository]
+		// This is for test only. e.g.:
+		// if there is "mco-metrics_collector-tag" defined in annotation, use it for testing
+		componentTagSuffix, hasComponentTagSuffix := annotations["mco-"+componentName+"-tag"]
 		tagSuffix, hasTagSuffix := annotations[AnnotationKeyImageTagSuffix]
 		sameOrg := strings.Contains(imageRepo, DefaultImgRepository)
 
-		if hasTagSuffix && sameOrg {
+		if hasComponentTagSuffix {
+			repoSlice := strings.Split(imageRepo, "/")
+			imageName := strings.Split(repoSlice[len(repoSlice)-1], ":")[0]
+			image := annotationImageRepo + "/" + imageName + ":" + componentTagSuffix
+			return true, image
+		} else if hasTagSuffix && sameOrg {
 			repoSlice := strings.Split(imageRepo, "/")
 			imageName := strings.Split(repoSlice[len(repoSlice)-1], ":")[0]
 			image := annotationImageRepo + "/" + imageName + ":" + tagSuffix
