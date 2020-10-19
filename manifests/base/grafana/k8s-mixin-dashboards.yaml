@@ -1811,6 +1811,9 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboard-k8s-networking-cluster
   namespace: open-cluster-management-observability
+  labels:
+    grafana-custom-dashboard: "true"
+    general-folder: "true"
 ---
 apiVersion: v1
 data:
@@ -4745,6 +4748,9 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboard-k8s-compute-resources-cluster
   namespace: open-cluster-management-observability
+  labels:
+    grafana-custom-dashboard: "true"
+    general-folder: "true"
 ---
 apiVersion: v1
 data:
@@ -7266,6 +7272,9 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboard-k8s-compute-resources-namespace-pods
   namespace: open-cluster-management-observability
+  labels:
+    grafana-custom-dashboard: "true"
+    general-folder: "true"
 ---
 apiVersion: v1
 data:
@@ -9531,6 +9540,9 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboard-k8s-compute-resources-namespace-workloads
   namespace: open-cluster-management-observability
+  labels:
+    grafana-custom-dashboard: "true"
+    general-folder: "true"
 ---
 apiVersion: v1
 data:
@@ -11646,6 +11658,9 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboard-k8s-compute-resources-workload
   namespace: open-cluster-management-observability
+  labels:
+    grafana-custom-dashboard: "true"
+    general-folder: "true"
 ---
 apiVersion: v1
 data:
@@ -12585,6 +12600,9 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboard-k8s-compute-resources-node-pods
   namespace: open-cluster-management-observability
+  labels:
+    grafana-custom-dashboard: "true"
+    general-folder: "true"
 ---
 apiVersion: v1
 data:
@@ -14387,6 +14405,9 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboard-k8s-compute-resources-pod
   namespace: open-cluster-management-observability
+  labels:
+    grafana-custom-dashboard: "true"
+    general-folder: "true"
 ---
 apiVersion: v1
 data:
@@ -15455,6 +15476,9 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboard-cluster-rsrc-use
   namespace: open-cluster-management-observability
+  labels:
+    grafana-custom-dashboard: "true"
+    general-folder: "true"
 ---
 apiVersion: v1
 data:
@@ -16598,6 +16622,9 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboard-node-rsrc-use
   namespace: open-cluster-management-observability
+  labels:
+    grafana-custom-dashboard: "true"
+    general-folder: "true"
 ---
 apiVersion: v1
 data:
@@ -17718,3 +17745,6 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboard-k8s-apiserver
   namespace: open-cluster-management-observability
+  labels:
+    grafana-custom-dashboard: "true"
+    general-folder: "true"
