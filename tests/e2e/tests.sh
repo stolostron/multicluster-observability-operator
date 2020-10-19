@@ -110,29 +110,6 @@ run_test_readiness() {
     done
 }
 
-# test grafana replicas changes
-run_test_scale_grafana() {
-    kubectl patch MultiClusterObservability observability --patch '{"spec":{"grafana":{"replicas":2}}}' --type=merge
-
-    n=1
-    while true
-    do
-        # check there are 2 grafana pods here
-        replicas=$(kubectl get deployment grafana | grep -v AVAILABLE | awk '{ print $4 }') || true
-        if [[ $replicas -eq 2 ]]; then
-            echo "grafana replicas is update to 2 successfully."
-            break
-        fi
-        if [[ $n -ge 10 ]]; then
-            echo "grafana replicas changes test is failed."
-            exit 1
-        fi
-        n=$((n+1))
-        echo "Retrying in 10s..."
-        sleep 10
-    done
-}
-
 run_test_teardown() {
     kubectl delete MultiClusterObservability observability
     kubectl delete -n $MONITORING_NS -f tests/e2e/minio
@@ -213,7 +190,7 @@ run_test_access_grafana() {
 
 run_test_access_grafana_dashboard() {
     RESULT=$(curl -s -H "Host: grafana.local" -H "X-Forwarded-User: test"  http://127.0.0.1/api/search?folderIds=1 | jq '. | length')
-    if [ "$RESULT" -eq 10  ]; then
+    if [ "$RESULT" -eq 12  ]; then
         echo "There are 10 dashboards in default folder."
     else
         echo "The dashboard number is not equal to 10 in default folder."
@@ -319,9 +296,8 @@ run_test_monitoring_disable() {
 
 run_test_readiness
 run_test_reconciling
-# run_test_scale_grafana
-# run_test_access_grafana
-# run_test_access_grafana_dashboard
-#run_test_endpoint_operator
+run_test_access_grafana
+run_test_access_grafana_dashboard
+run_test_endpoint_operator
 run_test_monitoring_disable
 run_test_teardown
