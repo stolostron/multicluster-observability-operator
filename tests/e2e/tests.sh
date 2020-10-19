@@ -189,7 +189,7 @@ run_test_access_grafana() {
 }
 
 run_test_access_grafana_dashboard() {
-    RESULT=$(curl -s -H "Host: grafana.local" -H "X-Forwarded-User: test"  http://127.0.0.1/api/search?folderIds=1 | jq '. | length')
+    RESULT=$(curl -s -H "Host: grafana.local" -H "X-Forwarded-User: test"  http://127.0.0.1/api/search?folderIds=0 | jq '. | length')
     if [ "$RESULT" -eq 12  ]; then
         echo "There are 10 dashboards in default folder."
     else
