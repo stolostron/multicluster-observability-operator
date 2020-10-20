@@ -2,6 +2,7 @@
 build/_output
 build/_test
 temp/
+vendor/
 # Created by https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 ### Emacs ###
 # -*- mode: gitignore; -*-
