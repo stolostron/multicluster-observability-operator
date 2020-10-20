@@ -5,6 +5,7 @@ package placementrule
 import (
 	"context"
 
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,13 +21,13 @@ import (
 )
 
 const (
-	workName      = "endpoint-observability-work"
-	configMapName = "observability-metrics-whitelist"
+	workName = "endpoint-observability-work"
 )
 
-var (
-	metricsWhitelist = &corev1.ConfigMap{}
-)
+type MetricsWhitelist struct {
+	NameList  []string `yaml:"names"`
+	MatchList []string `yaml:"matches"`
+}
 
 func deleteManifestWork(client client.Client, namespace string) error {
 	err := deleteRes(client, namespace)
@@ -230,29 +231,56 @@ func getCerts(client client.Client, namespace string) (*corev1.Secret, error) {
 }
 
 func getMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
-	if metricsWhitelist.Name == "" {
-		metricsWhitelist = &corev1.ConfigMap{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: corev1.SchemeGroupVersion.String(),
-				Kind:       "ConfigMap",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      configMapName,
-				Namespace: spokeNameSpace,
-			},
-		}
-
-		found := &corev1.ConfigMap{}
-		namespacedName := types.NamespacedName{
-			Name:      configMapName,
-			Namespace: config.GetDefaultNamespace(),
-		}
-		err := client.Get(context.TODO(), namespacedName, found)
-		if err != nil {
-			log.Error(err, "Failed to get metrics whitelist configmap")
-			return nil, err
-		}
-		metricsWhitelist.Data = found.Data
+	metricsWhitelist := &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "ConfigMap",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.WhitelistConfigMapName,
+			Namespace: spokeNameSpace,
+		},
+		Data: map[string]string{},
 	}
+
+	whitelist, err := getWhiteList(client, config.WhitelistConfigMapName)
+	if err != nil {
+		log.Error(err, "Failed to get metrics whitelist configmap "+config.WhitelistConfigMapName)
+		return nil, err
+	}
+
+	customWhitelist, err := getWhiteList(client, config.WhitelistCustomConfigMapName)
+	if err == nil {
+		whitelist.NameList = append(whitelist.NameList, customWhitelist.NameList...)
+		whitelist.MatchList = append(whitelist.MatchList, customWhitelist.MatchList...)
+	} else {
+		log.Info("Failed to find metrics custom whitelist configmap")
+	}
+
+	data, err := yaml.Marshal(whitelist)
+	if err != nil {
+		log.Error(err, "Failed to marshal whitelist data")
+		return nil, err
+	}
+	metricsWhitelist.Data["metrics_list.yaml"] = string(data)
 	return metricsWhitelist, nil
+}
+
+func getWhiteList(client client.Client, name string) (*MetricsWhitelist, error) {
+	found := &corev1.ConfigMap{}
+	namespacedName := types.NamespacedName{
+		Name:      name,
+		Namespace: config.GetDefaultNamespace(),
+	}
+	err := client.Get(context.TODO(), namespacedName, found)
+	if err != nil {
+		return nil, err
+	}
+	whitelist := &MetricsWhitelist{}
+	err = yaml.Unmarshal([]byte(found.Data["metrics_list.yaml"]), whitelist)
+	if err != nil {
+		log.Error(err, "Failed to unmarshal data in configmap "+name)
+		return nil, err
+	}
+	return whitelist, nil
 }
