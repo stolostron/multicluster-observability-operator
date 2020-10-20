@@ -126,35 +126,6 @@ spec:
    - If you specify that a storage class exists and no previous PersistentVolumeClaim (PVC), the operator uses the specified storage class
    - If you specify that a storage class exists and use the previous PVC, the operator uses the PVC directly.
 
-### Install _multicluster-observability-operator_ on Kubernetes KinD cluster
-
-Complete the following steps to install the observability operator into a KinD cluster to verify some basic functionalities:
-
-1. Clone the `open-cluster-management/multicluster-monitoring-operator` repository locally. Run the following command:
-
-   ```
-   git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
-   ```
-
-2. Provide the username and password for downloading the `multicluster-observability-operator` image from Quay. Run the following command:
-
-   ```
-   export QUAY_USER=<quay.io username>
-   export QUAY_PASS=<quay.io password>
-   ```
-
-3. Deploy the operator with the `./tests/e2e/setup.sh` script. To install the latest `multicluster-observability-operator` image, you can find the latest tag at [Red Hat Quay.io](https://quay.io/repository/open-cluster-management/multicluster-monitoring-operator?tab=tags). Then install the observability service with the following command:
-
-   ```
-   ./tests/e2e/setup.sh quay.io/open-cluster-management/multicluster-observability-operator:<latest tag>
-   ```
-
-4. Access the hub KinD cluster and configure it by running the following commands:
-
-  ```
-  export KUBECONFIG=$HOME/.kube/kind-config-hub
-  ```
-
 ## Developer Guide
 
 **Prerequisites**:
