@@ -141,13 +141,13 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// secondary watch for mco
-	err = watchMCO(c, mapFn)
+	err = watchMultiClusterObservability(c, mapFn)
 	if err != nil {
 		return err
 	}
 
 	// secondary watch for custom whitelist configmap
-	err = watchWhitelistCM(c, mapFn)
+	err = watchWhitelistConfigmap(c, mapFn)
 	if err != nil {
 		return err
 	}
@@ -463,7 +463,7 @@ func watchManifestwork(c controller.Controller, mapFn handler.ToRequestsFunc) er
 	return nil
 }
 
-func watchMCO(c controller.Controller, mapFn handler.ToRequestsFunc) error {
+func watchMultiClusterObservability(c controller.Controller, mapFn handler.ToRequestsFunc) error {
 	mcoPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Meta.GetName() == config.WhitelistCustomConfigMapName {
@@ -496,7 +496,7 @@ func watchMCO(c controller.Controller, mapFn handler.ToRequestsFunc) error {
 	return nil
 }
 
-func watchWhitelistCM(c controller.Controller, mapFn handler.ToRequestsFunc) error {
+func watchWhitelistConfigmap(c controller.Controller, mapFn handler.ToRequestsFunc) error {
 	customWhitelistPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			return true
