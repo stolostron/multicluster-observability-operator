@@ -124,113 +124,30 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			}
 		})
 
-	// Only handle delete event for observabilityaddon
-	epPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == epConfigName && e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
-				return true
-			}
-			return false
-		},
-	}
-
 	// secondary watch for observabilityaddon
-	err = c.Watch(&source.Kind{Type: &mcov1beta1.ObservabilityAddon{}},
-		&handler.EnqueueRequestsFromMapFunc{
-			ToRequests: mapFn,
-		},
-		epPred)
+	err = watchObservabilityaddon(c, mapFn)
 	if err != nil {
 		return err
 	}
 
+	// secondary watch for manifestwork
 	gk := schema.GroupKind{Group: workv1.GroupVersion.Group, Kind: "ManifestWork"}
 	_, err = r.(*ReconcilePlacementRule).restMapper.RESTMapping(gk, workv1.GroupVersion.Version)
 	if err == nil {
-		workPred := predicate.Funcs{
-			CreateFunc: func(e event.CreateEvent) bool {
-				return false
-			},
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				if e.MetaNew.GetName() == workName && e.MetaNew.GetLabels()[ownerLabelKey] == ownerLabelValue {
-					return true
-				}
-				return false
-			},
-			DeleteFunc: func(e event.DeleteEvent) bool {
-				if e.Meta.GetName() == workName && e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
-					return true
-				}
-				return false
-			},
-		}
-
-		// secondary watch for manifestwork
-		err = c.Watch(&source.Kind{Type: &workv1.ManifestWork{}},
-			&handler.EnqueueRequestsFromMapFunc{
-				ToRequests: mapFn,
-			},
-			workPred)
+		err = watchManifestwork(c, mapFn)
 		if err != nil {
 			return err
 		}
 	}
 
-	mcoPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Meta.GetName() == config.WhitelistCustomConfigMapName {
-				return true
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == config.WhitelistCustomConfigMapName {
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == config.WhitelistCustomConfigMapName {
-				return true
-			}
-			return true
-		},
-	}
-
 	// secondary watch for mco
-	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}},
-		&handler.EnqueueRequestsFromMapFunc{
-			ToRequests: mapFn,
-		},
-		mcoPred)
+	err = watchMCO(c, mapFn)
 	if err != nil {
 		return err
 	}
 
-	customWhitelistPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			return true
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return true
-		},
-	}
-
 	// secondary watch for custom whitelist configmap
-	err = c.Watch(&source.Kind{Type: &mcov1beta1.MultiClusterObservability{}},
-		&handler.EnqueueRequestsFromMapFunc{
-			ToRequests: mapFn,
-		},
-		customWhitelistPred)
+	err = watchWhitelistCM(c, mapFn)
 	if err != nil {
 		return err
 	}
@@ -483,6 +400,121 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 	err = deleteManifestWork(client, namespace)
 	if err != nil {
 		log.Error(err, "Failed to delete manifestwork")
+		return err
+	}
+	return nil
+}
+
+func watchObservabilityaddon(c controller.Controller, mapFn handler.ToRequestsFunc) error {
+	// Only handle delete event for observabilityaddon
+	epPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Meta.GetName() == epConfigName && e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
+				return true
+			}
+			return false
+		},
+	}
+
+	err := c.Watch(&source.Kind{Type: &mcov1beta1.ObservabilityAddon{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: mapFn,
+		},
+		epPred)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func watchManifestwork(c controller.Controller, mapFn handler.ToRequestsFunc) error {
+	workPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetName() == workName && e.MetaNew.GetLabels()[ownerLabelKey] == ownerLabelValue {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Meta.GetName() == workName && e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
+				return true
+			}
+			return false
+		},
+	}
+
+	err := c.Watch(&source.Kind{Type: &workv1.ManifestWork{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: mapFn,
+		},
+		workPred)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func watchMCO(c controller.Controller, mapFn handler.ToRequestsFunc) error {
+	mcoPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Meta.GetName() == config.WhitelistCustomConfigMapName {
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetName() == config.WhitelistCustomConfigMapName {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Meta.GetName() == config.WhitelistCustomConfigMapName {
+				return true
+			}
+			return true
+		},
+	}
+
+	err := c.Watch(&source.Kind{Type: &corev1.ConfigMap{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: mapFn,
+		},
+		mcoPred)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func watchWhitelistCM(c controller.Controller, mapFn handler.ToRequestsFunc) error {
+	customWhitelistPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return true
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return true
+		},
+	}
+
+	err := c.Watch(&source.Kind{Type: &mcov1beta1.MultiClusterObservability{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: mapFn,
+		},
+		customWhitelistPred)
+	if err != nil {
 		return err
 	}
 	return nil
