@@ -184,6 +184,37 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	mcoPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Meta.GetName() == config.WhitelistCustomConfigMapName {
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetName() == config.WhitelistCustomConfigMapName {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Meta.GetName() == config.WhitelistCustomConfigMapName {
+				return true
+			}
+			return true
+		},
+	}
+
+	// secondary watch for mco
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: mapFn,
+		},
+		mcoPred)
+	if err != nil {
+		return err
+	}
+
+	customWhitelistPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -194,12 +225,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		},
 	}
 
-	// secondary watch for mco
+	// secondary watch for custom whitelist configmap
 	err = c.Watch(&source.Kind{Type: &mcov1beta1.MultiClusterObservability{}},
 		&handler.EnqueueRequestsFromMapFunc{
 			ToRequests: mapFn,
 		},
-		mcoPred)
+		customWhitelistPred)
 	if err != nil {
 		return err
 	}
