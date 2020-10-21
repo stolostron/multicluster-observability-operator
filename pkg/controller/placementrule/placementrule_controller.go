@@ -141,13 +141,13 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// secondary watch for mco
-	err = watchMultiClusterObservability(c, mapFn)
+	err = watchMCO(c, mapFn)
 	if err != nil {
 		return err
 	}
 
 	// secondary watch for custom whitelist configmap
-	err = watchWhitelistConfigmap(c, mapFn)
+	err = watchWhitelistCM(c, mapFn)
 	if err != nil {
 		return err
 	}
@@ -463,22 +463,25 @@ func watchManifestwork(c controller.Controller, mapFn handler.ToRequestsFunc) er
 	return nil
 }
 
-func watchMultiClusterObservability(c controller.Controller, mapFn handler.ToRequestsFunc) error {
-	mcoPred := predicate.Funcs{
+func watchWhitelistCM(c controller.Controller, mapFn handler.ToRequestsFunc) error {
+	customWhitelistPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Meta.GetName() == config.WhitelistCustomConfigMapName {
+			if e.Meta.GetName() == config.WhitelistCustomConfigMapName &&
+				e.Meta.GetNamespace() == config.GetDefaultNamespace() {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == config.WhitelistCustomConfigMapName {
+			if e.MetaNew.GetName() == config.WhitelistCustomConfigMapName &&
+				e.MetaNew.GetNamespace() == config.GetDefaultNamespace() {
 				return true
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == config.WhitelistCustomConfigMapName {
+			if e.Meta.GetName() == config.WhitelistCustomConfigMapName &&
+				e.Meta.GetNamespace() == config.GetDefaultNamespace() {
 				return true
 			}
 			return true
@@ -489,15 +492,15 @@ func watchMultiClusterObservability(c controller.Controller, mapFn handler.ToReq
 		&handler.EnqueueRequestsFromMapFunc{
 			ToRequests: mapFn,
 		},
-		mcoPred)
+		customWhitelistPred)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func watchWhitelistConfigmap(c controller.Controller, mapFn handler.ToRequestsFunc) error {
-	customWhitelistPred := predicate.Funcs{
+func watchMCO(c controller.Controller, mapFn handler.ToRequestsFunc) error {
+	mcoPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			return true
 		},
@@ -513,7 +516,7 @@ func watchWhitelistConfigmap(c controller.Controller, mapFn handler.ToRequestsFu
 		&handler.EnqueueRequestsFromMapFunc{
 			ToRequests: mapFn,
 		},
-		customWhitelistPred)
+		mcoPred)
 	if err != nil {
 		return err
 	}
