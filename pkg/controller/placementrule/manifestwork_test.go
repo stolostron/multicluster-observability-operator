@@ -17,6 +17,7 @@ import (
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/multiclusterobservability"
 )
 
@@ -78,25 +79,39 @@ func newCertSecret(namespaces ...string) *corev1.Secret {
 	}
 }
 
-func newMetricsWhiteListCM() *corev1.ConfigMap {
+func NewMetricsWhiteListCM() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      configMapName,
+			Name:      config.WhitelistConfigMapName,
 			Namespace: mcoNamespace,
 		},
 		Data: map[string]string{"metrics_list.yaml": `
-default:
-	- a
-	- b
+  names:
+    - a
+    - b
 `},
 	}
 }
 
+func NewMetricsCustomWhiteListCM() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.WhitelistCustomConfigMapName,
+			Namespace: mcoNamespace,
+		},
+		Data: map[string]string{"metrics_list.yaml": `
+  names:
+    - c
+    - d
+`},
+	}
+}
 func TestManifestWork(t *testing.T) {
+
 	initSchema(t)
 
 	objs := []runtime.Object{newSATokenSecret(), newTestSA(), newTestInfra(),
-		newTestRoute(), newCASecret(), newCertSecret(), newMetricsWhiteListCM()}
+		newTestRoute(), newCASecret(), newCertSecret(), NewMetricsWhiteListCM(), NewMetricsCustomWhiteListCM()}
 	c := fake.NewFakeClient(objs...)
 
 	wd, err := os.Getwd()

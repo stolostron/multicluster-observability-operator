@@ -32,7 +32,10 @@ const (
 	clusterName  = "cluster1"
 	clusterName2 = "cluster2"
 	mcoName      = "test-mco"
-	mcoNamespace = "open-cluster-management-observability"
+)
+
+var (
+	mcoNamespace = config.GetDefaultNamespace()
 )
 
 func initSchema(t *testing.T) {
@@ -86,7 +89,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		},
 	}
 	mco := newTestMCO()
-	objs := []runtime.Object{p, mco, newTestPullSecret(), newTestRoute(), newTestInfra(), newCASecret(), newCertSecret(),
+	objs := []runtime.Object{p, mco, newTestPullSecret(), newTestRoute(), newTestInfra(), newCASecret(), newCertSecret(), NewMetricsWhiteListCM(),
 		newSATokenSecret(), newTestSA(), newSATokenSecret(namespace2), newTestSA(namespace2), newCertSecret(namespace2), newManagedClusterAddon()}
 	c := fake.NewFakeClient(objs...)
 

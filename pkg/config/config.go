@@ -65,6 +65,9 @@ const (
 	AlertRuleCustomFileKey        = "custom_rules.yaml"
 	AlertmanagerURL               = "http://alertmanager:9093"
 	AlertmanagerConfigName        = "alertmanager-config"
+
+	WhitelistConfigMapName       = "observability-metrics-whitelist"
+	WhitelistCustomConfigMapName = "observability-metrics-custom-whitelist"
 )
 
 const (
