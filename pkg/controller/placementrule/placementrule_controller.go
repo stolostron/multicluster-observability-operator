@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
+	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
@@ -293,7 +293,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		}
 		isCRoleCreated = false
 		//delete ClusterManagementAddon
-		err = deleteClusterManagementAddon(r.client)
+		err = util.DeleteClusterManagementAddon(r.client)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
