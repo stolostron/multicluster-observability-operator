@@ -152,6 +152,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// secondary watch for certificate secrets
+	err = watchCertficate(c, mapFn)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -517,6 +523,40 @@ func watchMCO(c controller.Controller, mapFn handler.ToRequestsFunc) error {
 			ToRequests: mapFn,
 		},
 		mcoPred)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func watchCertficate(c controller.Controller, mapFn handler.ToRequestsFunc) error {
+	customWhitelistPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Meta.GetName() == certsName ||
+				e.Meta.GetName() == config.ServerCerts &&
+					e.Meta.GetNamespace() == config.GetDefaultNamespace() {
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetName() == certsName ||
+				e.MetaNew.GetName() == config.ServerCerts &&
+					e.MetaNew.GetNamespace() == config.GetDefaultNamespace() {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+		},
+	}
+
+	err := c.Watch(&source.Kind{Type: &corev1.Secret{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: mapFn,
+		},
+		customWhitelistPred)
 	if err != nil {
 		return err
 	}
