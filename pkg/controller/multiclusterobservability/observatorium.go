@@ -130,7 +130,7 @@ func GenerateAPIGatewayRoute(
 	apiGateway := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obsAPIGateway,
-			Namespace: mco.Namespace,
+			Namespace: config.GetDefaultNamespace(),
 		},
 		Spec: routev1.RouteSpec{
 			Port: &routev1.RoutePort{
