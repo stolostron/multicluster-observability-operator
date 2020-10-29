@@ -3,9 +3,8 @@ module github.com/open-cluster-management/multicluster-monitoring-operator
 go 1.13
 
 require (
-	cloud.google.com/go v0.54.0 // indirect
 	github.com/jetstack/cert-manager v0.0.0-00010101000000-000000000000
-	github.com/observatorium/operator v0.0.0-20200923135241-55feecd281df
+	github.com/observatorium/operator v0.0.0-20201030090558-9e06bdda60b3
 	github.com/open-cluster-management/api v0.0.0-20201007180356-41d07eee4294
 	github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20201013190828-d760a392d21d
 	github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible
