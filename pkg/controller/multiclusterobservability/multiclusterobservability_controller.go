@@ -263,7 +263,7 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return reconcile.Result{}, err
 	}
 
-	instance.Namespace = config.GetDefaultNamespace()
+	//instance.Namespace = config.GetDefaultNamespace()
 	instance.Spec.StorageConfig.StatefulSetStorageClass = storageClassSelected
 	//Render the templates with a specified CR
 	renderer := rendering.NewRenderer(instance)
@@ -336,7 +336,7 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 
 	deployList := &appsv1.DeploymentList{}
 	deploymentListOpts := []client.ListOption{
-		client.InNamespace(mco.Namespace),
+		client.InNamespace(config.GetDefaultNamespace()),
 		client.MatchingLabels(labelsForMultiClusterMonitoring(mco.Name)),
 	}
 
@@ -422,10 +422,24 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 		if apierrors.IsConflict(err) {
 			// Error from object being modified is normal behavior and should not be treated like an error
 			log.Info("Failed to update status", "Reason", "Object has been modified")
+			found := &mcov1beta1.MultiClusterObservability{}
+			err = r.client.Get(context.TODO(), types.NamespacedName{
+				Name: config.GetMonitoringCRName(),
+			}, found)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Failed to get existing mco %s", mco.Name))
+				return &reconcile.Result{}, err
+			}
+			mco.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+			err = r.client.Status().Update(context.TODO(), mco)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Failed to update %s status ", mco.Name))
+				return &reconcile.Result{}, err
+			}
 			return &reconcile.Result{RequeueAfter: time.Second}, nil
 		}
 
-		log.Error(err, fmt.Sprintf("Failed to update %s/%s status ", mco.Namespace, mco.Name))
+		log.Error(err, fmt.Sprintf("Failed to update %s status ", mco.Name))
 		return &reconcile.Result{}, err
 	}
 	if requeue {
@@ -589,7 +603,7 @@ func CheckS3Conf(c client.Client,
 	secret := &corev1.Secret{}
 	namespacedName := types.NamespacedName{
 		Name:      objStorageConf.Name,
-		Namespace: mco.Namespace,
+		Namespace: config.GetDefaultNamespace(),
 	}
 
 	failed := mcov1beta1.MCOCondition{

@@ -38,8 +38,7 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "test",
-			Name:      "test",
+			Name: "test",
 			Annotations: map[string]string{
 				mcoconfig.AnnotationKeyImageRepository: "quay.io:443/acm-d",
 				mcoconfig.AnnotationKeyImageTagSuffix:  "tag",
@@ -97,8 +96,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
+			Name: name,
 			Annotations: map[string]string{
 				mcoconfig.AnnotationKeyImageTagSuffix: "tag",
 			},

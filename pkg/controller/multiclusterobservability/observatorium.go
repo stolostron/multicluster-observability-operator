@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
@@ -52,7 +53,7 @@ func GenerateObservatoriumCR(
 	observatoriumCR := &observatoriumv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mco.Name + obsPartoOfName,
-			Namespace: mco.Namespace,
+			Namespace: config.GetDefaultNamespace(),
 			Labels:    labels,
 		},
 		Spec: *newDefaultObservatoriumSpec(mco, storageClassSelected),

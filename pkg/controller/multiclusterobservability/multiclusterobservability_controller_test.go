@@ -30,6 +30,7 @@ import (
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
@@ -199,8 +200,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
+			Name: name,
 			Annotations: map[string]string{
 				mcoconfig.AnnotationKeyImageTagSuffix: "tag",
 			},
@@ -236,13 +236,12 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	ocpClient := fakeconfigclient.NewSimpleClientset([]runtime.Object{createClusterVersion()}...)
 	// Create a ReconcileMemcached object with the scheme and fake client.
 	r := &ReconcileMultiClusterObservability{client: cl, scheme: s, ocpClient: ocpClient}
-
+	config.SetMonitoringCRName(name)
 	// Mock request to simulate Reconcile() being called on an event for a
 	// watched resource .
 	req := reconcile.Request{
 		NamespacedName: types.NamespacedName{
-			Name:      name,
-			Namespace: namespace,
+			Name: name,
 		},
 	}
 
@@ -378,6 +377,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	//Test finalizer
 	mco.ObjectMeta.DeletionTimestamp = &v1.Time{time.Now()}
 	mco.ObjectMeta.Finalizers = []string{certFinalizer, "test-finalizerr"}
+	mco.ObjectMeta.ResourceVersion = updatedMCO.ObjectMeta.ResourceVersion
 	err = cl.Update(context.TODO(), mco)
 	if err != nil {
 		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
@@ -418,7 +418,7 @@ func createSecret(key, name, namespace string) *corev1.Secret {
 func TestCheckS3Conf(t *testing.T) {
 	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
+		ObjectMeta: metav1.ObjectMeta{Name: "test"},
 		Spec: mcov1beta1.MultiClusterObservabilitySpec{
 			StorageConfig: &mcov1beta1.StorageConfigObject{
 				MetricObjectStorage: &mcov1beta1.PreConfiguredStorage{
@@ -438,7 +438,7 @@ func TestCheckS3Conf(t *testing.T) {
 		t.Errorf("check s3 conf failed: got %v, expected non-nil", mcoCondition)
 	}
 
-	err := c.Create(context.TODO(), createSecret("test", "test", "test"))
+	err := c.Create(context.TODO(), createSecret("test", "test", mcoconfig.GetDefaultNamespace()))
 	if err != nil {
 		t.Fatalf("Failed to create secret: (%v)", err)
 	}
@@ -448,7 +448,9 @@ func TestCheckS3Conf(t *testing.T) {
 		t.Errorf("check s3 conf failed: got %v, expected nil", mcoCondition)
 	}
 
-	err = c.Update(context.TODO(), createSecret("error", "test", "test"))
+	updateSecret := createSecret("error", "test", mcoconfig.GetDefaultNamespace())
+	updateSecret.ObjectMeta.ResourceVersion = "1"
+	err = c.Update(context.TODO(), updateSecret)
 	if err != nil {
 		t.Fatalf("Failed to update secret: (%v)", err)
 	}
