@@ -329,8 +329,7 @@ func TestGenerateMonitoringCR(t *testing.T) {
 	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "test",
-			Name:      "test",
+			Name: "test",
 			Annotations: map[string]string{
 				AnnotationKeyImageTagSuffix: "tag",
 			},
@@ -392,8 +391,7 @@ func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "test",
-			Name:      "test",
+			Name: "test",
 			Annotations: map[string]string{
 				"test": "test",
 			},
