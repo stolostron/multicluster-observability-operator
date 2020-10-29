@@ -157,7 +157,7 @@ func updateProxySpec(spec *corev1.PodSpec, mco *monitoringv1.MultiClusterObserva
 
 	args := spec.Containers[0].Args
 	for idx := range args {
-		args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", mco.Namespace, 1)
+		args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", mcoconfig.GetDefaultNamespace(), 1)
 		args[idx] = strings.Replace(args[idx], "{{MCO_CR_NAME}}", mco.Name, 1)
 	}
 	for idx := range spec.Volumes {
@@ -198,7 +198,7 @@ func (r *Renderer) renderDeployments(res *resource.Resource) (*unstructured.Unst
 		return nil, err
 	}
 
-	res.SetNamespace(r.cr.Namespace)
+	res.SetNamespace(mcoconfig.GetDefaultNamespace())
 	u := &unstructured.Unstructured{Object: res.Map()}
 	return u, nil
 }
@@ -206,7 +206,7 @@ func (r *Renderer) renderDeployments(res *resource.Resource) (*unstructured.Unst
 func (r *Renderer) renderNamespace(res *resource.Resource) (*unstructured.Unstructured, error) {
 	u := &unstructured.Unstructured{Object: res.Map()}
 	if UpdateNamespace(u) {
-		res.SetNamespace(r.cr.Namespace)
+		res.SetNamespace(mcoconfig.GetDefaultNamespace())
 	}
 
 	return u, nil
@@ -226,7 +226,7 @@ func (r *Renderer) renderClusterRoleBinding(res *resource.Resource) (*unstructur
 	}
 
 	if UpdateNamespace(u) {
-		subject["namespace"] = r.cr.Namespace
+		subject["namespace"] = mcoconfig.GetDefaultNamespace()
 	}
 
 	return u, nil
@@ -257,6 +257,6 @@ func (r *Renderer) renderMutatingWebhookConfiguration(res *resource.Resource) (*
 	clientConfig := webhook["clientConfig"].(map[string]interface{})
 	service := clientConfig["service"].(map[string]interface{})
 
-	service["namespace"] = r.cr.Namespace
+	service["namespace"] = mcoconfig.GetDefaultNamespace()
 	return u, nil
 }

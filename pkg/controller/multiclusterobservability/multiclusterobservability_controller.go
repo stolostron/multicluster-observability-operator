@@ -263,7 +263,7 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return reconcile.Result{}, err
 	}
 
-	instance.Namespace = config.GetDefaultNamespace()
+	//instance.Namespace = config.GetDefaultNamespace()
 	instance.Spec.StorageConfig.StatefulSetStorageClass = storageClassSelected
 	//Render the templates with a specified CR
 	renderer := rendering.NewRenderer(instance)
@@ -331,19 +331,19 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 func (r *ReconcileMultiClusterObservability) UpdateStatus(
 	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
-	reqLogger := log.WithValues("Request.Namespace", mco.Namespace, "Request.Name", mco.Name)
+	reqLogger := log.WithValues("Request.Name", mco.Name)
 	requeue := false
 
 	deployList := &appsv1.DeploymentList{}
 	deploymentListOpts := []client.ListOption{
-		client.InNamespace(mco.Namespace),
+		client.InNamespace(config.GetDefaultNamespace()),
 		client.MatchingLabels(labelsForMultiClusterMonitoring(mco.Name)),
 	}
 
 	err := r.client.List(context.TODO(), deployList, deploymentListOpts...)
 	if err != nil {
 		reqLogger.Error(err, "Failed to list deployments.",
-			"MultiClusterObservability.Namespace", mco.Namespace,
+			"MultiClusterObservability.Namespace", config.GetDefaultNamespace(),
 			"MemcaMultiClusterMonitoringched.Name", mco.Name,
 		)
 		return &reconcile.Result{}, err
@@ -422,10 +422,24 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 		if apierrors.IsConflict(err) {
 			// Error from object being modified is normal behavior and should not be treated like an error
 			log.Info("Failed to update status", "Reason", "Object has been modified")
+			found := &mcov1beta1.MultiClusterObservability{}
+			err = r.client.Get(context.TODO(), types.NamespacedName{
+				Name: config.GetMonitoringCRName(),
+			}, found)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Failed to get existing mco %s", mco.Name))
+				return &reconcile.Result{}, err
+			}
+			mco.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+			err = r.client.Status().Update(context.TODO(), mco)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Failed to update %s status ", mco.Name))
+				return &reconcile.Result{}, err
+			}
 			return &reconcile.Result{RequeueAfter: time.Second}, nil
 		}
 
-		log.Error(err, fmt.Sprintf("Failed to update %s/%s status ", mco.Namespace, mco.Name))
+		log.Error(err, fmt.Sprintf("Failed to update %s status ", mco.Name))
 		return &reconcile.Result{}, err
 	}
 	if requeue {
@@ -451,7 +465,7 @@ func (r *ReconcileMultiClusterObservability) initFinalization(
 		mco.SetFinalizers(util.Remove(mco.GetFinalizers(), certFinalizer))
 		err = r.client.Update(context.TODO(), mco)
 		if err != nil {
-			log.Error(err, "Failed to remove finalizer from mco resource", "namespace", mco.Namespace)
+			log.Error(err, "Failed to remove finalizer from mco resource")
 			return false, err
 		}
 		log.Info("Finalizer removed from mco resource")
@@ -461,7 +475,7 @@ func (r *ReconcileMultiClusterObservability) initFinalization(
 		mco.SetFinalizers(append(mco.GetFinalizers(), certFinalizer))
 		err := r.client.Update(context.TODO(), mco)
 		if err != nil {
-			log.Error(err, "Failed to add finalizer to mco resource", "namespace", mco.Namespace)
+			log.Error(err, "Failed to add finalizer to mco resource")
 			return false, err
 		}
 		log.Info("Finalizer added to mco resource")
@@ -528,12 +542,12 @@ func CheckInstallStatus(c client.Client,
 		}
 		podList := &corev1.PodList{}
 		podListOpts := []client.ListOption{
-			client.InNamespace(mco.Namespace),
+			client.InNamespace(config.GetDefaultNamespace()),
 		}
 		err := c.List(context.TODO(), podList, podListOpts...)
 		if err != nil {
 			log.Error(err, "Failed to list pods.",
-				"MultiClusterObservability.Namespace", mco.Namespace,
+				"MultiClusterObservability.Namespace", config.GetDefaultNamespace(),
 			)
 			return installingCondition
 		}
@@ -548,12 +562,12 @@ func CheckInstallStatus(c client.Client,
 		}
 		statefulSetList := &appsv1.StatefulSetList{}
 		statefulSetListOpts := []client.ListOption{
-			client.InNamespace(mco.Namespace),
+			client.InNamespace(config.GetDefaultNamespace()),
 		}
 		err = c.List(context.TODO(), statefulSetList, statefulSetListOpts...)
 		if err != nil {
 			log.Error(err, "Failed to list statefulSets.",
-				"MultiClusterObservability.Namespace", mco.Namespace,
+				"MultiClusterObservability.Namespace", config.GetDefaultNamespace(),
 			)
 			return installingCondition
 		}
@@ -589,7 +603,7 @@ func CheckS3Conf(c client.Client,
 	secret := &corev1.Secret{}
 	namespacedName := types.NamespacedName{
 		Name:      objStorageConf.Name,
-		Namespace: mco.Namespace,
+		Namespace: config.GetDefaultNamespace(),
 	}
 
 	failed := mcov1beta1.MCOCondition{

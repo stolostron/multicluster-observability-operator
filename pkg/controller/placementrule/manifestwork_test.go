@@ -29,8 +29,7 @@ const (
 func newTestMCO() *mcov1beta1.MultiClusterObservability {
 	return &mcov1beta1.MultiClusterObservability{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      mcoName,
-			Namespace: mcoNamespace,
+			Name: mcoName,
 		},
 		Spec: mcov1beta1.MultiClusterObservabilitySpec{
 			ImagePullSecret: pullSecretName,

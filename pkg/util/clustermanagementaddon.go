@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
+	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 )
 
 const (
@@ -53,6 +53,21 @@ func CreateClusterManagementAddon(c client.Client) error {
 		log.Info(fmt.Sprintf("%s clustermanagementaddon is present ", ObservabilityController))
 		return nil
 	}
+	return nil
+}
+
+func DeleteClusterManagementAddon(client client.Client) error {
+	clustermanagementaddon := &addonv1alpha1.ClusterManagementAddOn{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ObservabilityController,
+		},
+	}
+	err := client.Delete(context.TODO(), clustermanagementaddon)
+	if err != nil && !errors.IsNotFound(err) {
+		log.Error(err, "Failed to delete clustermanagementaddon", "name", ObservabilityController)
+		return err
+	}
+	log.Info("ClusterManagementAddon deleted", "name", ObservabilityController)
 	return nil
 }
 

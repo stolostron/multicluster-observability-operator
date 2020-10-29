@@ -12,9 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	addonv1alpha1 "github.com/open-cluster-management/addon-framework/api/v1alpha1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
@@ -358,21 +355,6 @@ func getSAToken(client client.Client, namespace string) ([]byte, []byte, error) 
 		}
 	}
 	return nil, nil, errors.NewNotFound(corev1.Resource("secret"), saFound.Name+"-token-*")
-}
-
-func deleteClusterManagementAddon(client client.Client) error {
-	clustermanagementaddon := &addonv1alpha1.ClusterManagementAddOn{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: util.ObservabilityController,
-		},
-	}
-	err := client.Delete(context.TODO(), clustermanagementaddon)
-	if err != nil && !errors.IsNotFound(err) {
-		log.Error(err, "Failed to delete clustermanagementaddon", "name", util.ObservabilityController)
-		return err
-	}
-	log.Info("ClusterManagementAddon deleted", "name", util.ObservabilityController)
-	return nil
 }
 
 func deleteClusterRole(client client.Client) error {

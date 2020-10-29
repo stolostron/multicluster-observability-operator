@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 const (
@@ -69,7 +70,7 @@ func GenerateGrafanaDataSource(
 				Type:      "prometheus",
 				Access:    "proxy",
 				IsDefault: true,
-				URL:       "http://rbac-query-proxy." + mco.Namespace + ".svc.cluster.local:8080",
+				URL:       "http://rbac-query-proxy." + config.GetDefaultNamespace() + ".svc.cluster.local:8080",
 			},
 		},
 	})
@@ -80,7 +81,7 @@ func GenerateGrafanaDataSource(
 	dsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "grafana-datasources",
-			Namespace: mco.Namespace,
+			Namespace: config.GetDefaultNamespace(),
 		},
 		Type: "Opaque",
 		StringData: map[string]string{
