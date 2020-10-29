@@ -52,8 +52,9 @@ func TestDeploy(t *testing.T) {
 					Kind:       "Deployment",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-deployment",
-					Namespace: "ns1",
+					Name:            "test-deployment",
+					Namespace:       "ns1",
+					ResourceVersion: "1",
 				},
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &(replicas2),
@@ -80,7 +81,7 @@ func TestDeploy(t *testing.T) {
 					Kind:       "Deployment",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-deployment",
+					Name:      "test-deployment-2",
 					Namespace: "ns1",
 				},
 				Spec: appsv1.DeploymentSpec{
@@ -93,11 +94,12 @@ func TestDeploy(t *testing.T) {
 					Kind:       "Deployment",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-deployment",
+					Name:      "test-deployment-2",
 					Namespace: "ns1",
 					Labels: map[string]string{
 						"test-label": "label-value",
 					},
+					ResourceVersion: "1",
 				},
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &replicas1,
@@ -105,7 +107,7 @@ func TestDeploy(t *testing.T) {
 			},
 			validateResults: func(client client.Client) {
 				namespacedName := types.NamespacedName{
-					Name:      "test-deployment",
+					Name:      "test-deployment-2",
 					Namespace: "ns1",
 				}
 				obj := &appsv1.Deployment{}
@@ -137,8 +139,9 @@ func TestDeploy(t *testing.T) {
 					Kind:       "StatefulSet",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-statefulSet",
-					Namespace: "ns1",
+					Name:            "test-statefulSet",
+					Namespace:       "ns1",
+					ResourceVersion: "1",
 				},
 				Spec: appsv1.StatefulSetSpec{
 					Replicas: &(replicas2),
@@ -178,8 +181,9 @@ func TestDeploy(t *testing.T) {
 					Kind:       "ConfigMap",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cm",
-					Namespace: "ns2",
+					Name:            "test-cm",
+					Namespace:       "ns2",
+					ResourceVersion: "1",
 				},
 				Data: map[string]string{
 					"test-key": "test-value-2",
@@ -221,8 +225,9 @@ func TestDeploy(t *testing.T) {
 					Kind:       "Service",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-svc",
-					Namespace: "ns2",
+					Name:            "test-svc",
+					Namespace:       "ns2",
+					ResourceVersion: "1",
 				},
 				Spec: corev1.ServiceSpec{
 					Selector: map[string]string{
@@ -261,8 +266,9 @@ func TestDeploy(t *testing.T) {
 					Kind:       "Secret",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-secret",
-					Namespace: "ns2",
+					Name:            "test-secret",
+					Namespace:       "ns2",
+					ResourceVersion: "1",
 				},
 				Data: map[string][]byte{
 					"username": []byte("YWRtaW4="),
@@ -299,7 +305,8 @@ func TestDeploy(t *testing.T) {
 					Kind:       "ClusterRole",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-clusterrole",
+					Name:            "test-clusterrole",
+					ResourceVersion: "1",
 				},
 				Rules: []rbacv1.PolicyRule{
 					{
@@ -346,7 +353,8 @@ func TestDeploy(t *testing.T) {
 					Kind:       "ClusterRoleBinding",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "test-clusterrolebinding",
+					Name:            "test-clusterrolebinding",
+					ResourceVersion: "1",
 				},
 				RoleRef: rbacv1.RoleRef{
 					Kind:     "Role",
@@ -396,6 +404,7 @@ func TestDeploy(t *testing.T) {
 					Labels: map[string]string{
 						"test-label": "label-value",
 					},
+					ResourceVersion: "1",
 				},
 			},
 			validateResults: func(client client.Client) {
