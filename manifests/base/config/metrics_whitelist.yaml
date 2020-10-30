@@ -98,6 +98,9 @@ data:
       - kubelet_running_container_count
       - kubelet_runtime_operations
       - kubelet_runtime_operations_latency_microseconds
+      - kubelet_volume_stats_available_bytes
+      - kubelet_volume_stats_capacity_bytes
+      - kube_persistentvolume_status_phase
       - machine_cpu_cores
       - machine_memory_bytes
       - mixin_pod_workload
