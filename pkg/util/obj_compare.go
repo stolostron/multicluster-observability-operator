@@ -65,8 +65,7 @@ func getObject(re runtime.RawExtension) (runtime.Object, error) {
 	if re.Object != nil {
 		return re.Object, nil
 	}
-	versions := &runtime.VersionedObjects{}
-	_, gvk, err := unstructured.UnstructuredJSONScheme.Decode(re.Raw, nil, versions)
+	_, gvk, err := unstructured.UnstructuredJSONScheme.Decode(re.Raw, nil, re.Object)
 	if err != nil {
 		log.Error(err, "Failed to decode the raw")
 		return nil, err

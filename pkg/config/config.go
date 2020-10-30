@@ -228,7 +228,7 @@ func GetKubeAPIServerAddress(client client.Client) (string, error) {
 
 // GetClusterID is used to get the cluster uid
 func GetClusterID(ocpClient ocpClientSet.Interface) (string, error) {
-	clusterVersion, err := ocpClient.ConfigV1().ClusterVersions().Get("version", v1.GetOptions{})
+	clusterVersion, err := ocpClient.ConfigV1().ClusterVersions().Get(context.TODO(), "version", v1.GetOptions{})
 	if err != nil {
 		log.Error(err, "Failed to get clusterVersion")
 		return "", err

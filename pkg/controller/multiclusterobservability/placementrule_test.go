@@ -11,21 +11,21 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
-	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 )
 
 func TestCreatePlacementRule(t *testing.T) {
 	var (
 		name       = "monitoring"
 		namespace  = mcoconfig.GetDefaultNamespace()
-		pName = mcoconfig.GetPlacementRuleName()
+		pName      = mcoconfig.GetPlacementRuleName()
 		testSuffix = "-test"
 	)
 	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
+		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec:       mcov1beta1.MultiClusterObservabilitySpec{},
 	}
 
