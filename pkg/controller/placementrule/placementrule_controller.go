@@ -95,7 +95,9 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == name && e.MetaNew.GetNamespace() == watchNamespace {
+			if e.MetaNew.GetName() == name &&
+				e.MetaNew.GetNamespace() == watchNamespace &&
+				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
 				return true
 			}
 			return false
@@ -148,6 +150,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// secondary watch for custom whitelist configmap
 	err = watchWhitelistCM(c, mapFn)
+	if err != nil {
+		return err
+	}
+
+	// secondary watch for certificate secrets
+	err = watchCertficate(c, mapFn)
 	if err != nil {
 		return err
 	}
@@ -415,7 +423,8 @@ func watchObservabilityaddon(c controller.Controller, mapFn handler.ToRequestsFu
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == epConfigName && e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
+			if e.Meta.GetName() == epConfigName &&
+				e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				return true
 			}
 			return false
@@ -439,7 +448,9 @@ func watchManifestwork(c controller.Controller, mapFn handler.ToRequestsFunc) er
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == workName && e.MetaNew.GetLabels()[ownerLabelKey] == ownerLabelValue {
+			if e.MetaNew.GetName() == workName &&
+				e.MetaNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
+				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
 				return true
 			}
 			return false
@@ -474,7 +485,8 @@ func watchWhitelistCM(c controller.Controller, mapFn handler.ToRequestsFunc) err
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.MetaNew.GetName() == config.WhitelistCustomConfigMapName &&
-				e.MetaNew.GetNamespace() == config.GetDefaultNamespace() {
+				e.MetaNew.GetNamespace() == config.GetDefaultNamespace() &&
+				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
 				return true
 			}
 			return false
@@ -517,6 +529,41 @@ func watchMCO(c controller.Controller, mapFn handler.ToRequestsFunc) error {
 			ToRequests: mapFn,
 		},
 		mcoPred)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func watchCertficate(c controller.Controller, mapFn handler.ToRequestsFunc) error {
+	customWhitelistPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Meta.GetName() == certsName ||
+				e.Meta.GetName() == config.ServerCerts &&
+					e.Meta.GetNamespace() == config.GetDefaultNamespace() {
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if (e.MetaNew.GetName() == certsName ||
+				e.MetaNew.GetName() == config.ServerCerts &&
+					e.MetaNew.GetNamespace() == config.GetDefaultNamespace()) &&
+				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+		},
+	}
+
+	err := c.Watch(&source.Kind{Type: &corev1.Secret{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: mapFn,
+		},
+		customWhitelistPred)
 	if err != nil {
 		return err
 	}
