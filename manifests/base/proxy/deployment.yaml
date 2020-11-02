@@ -57,6 +57,15 @@ spec:
           mountPath: /var/rbac_proxy/ca
         - name: client-certs
           mountPath: /var/rbac_proxy/certs
+        - name: probe-command
+          mountPath: /etc/probe
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - /etc/probe/check.sh
+          periodSeconds: 60
       volumes:
       - name: ca-certs
         secret:
@@ -64,3 +73,7 @@ spec:
       - name: client-certs
         secret:
           secretName: observability-grafana-certs
+      - name: probe-command
+        configMap:
+          name: rbac-query-proxy-probe
+          defaultMode: 0777
