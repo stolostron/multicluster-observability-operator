@@ -7,6 +7,7 @@ data:
     #!/bin/bash
     if [ -e /tmp/health ]
     then
+        cat /tmp/health
         exit 1
     else
         echo 0

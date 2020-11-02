@@ -59,7 +59,7 @@ spec:
           mountPath: /var/rbac_proxy/certs
         - name: probe-command
           mountPath: /etc/probe
-        readinessProbe:
+        livenessProbe:
           exec:
             command:
             - /bin/sh
