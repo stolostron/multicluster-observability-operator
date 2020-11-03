@@ -415,7 +415,7 @@ func createSecret(key, name, namespace string) *corev1.Secret {
 	}
 }
 
-func TestCheckS3Conf(t *testing.T) {
+func TestGetObjStorageCondition(t *testing.T) {
 	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Name: "test"},
@@ -433,7 +433,7 @@ func TestCheckS3Conf(t *testing.T) {
 	mcov1beta1.SchemeBuilder.AddToScheme(s)
 	objs := []runtime.Object{mco}
 	c := fake.NewFakeClient(objs...)
-	mcoCondition := CheckS3Conf(c, mco)
+	mcoCondition := getObjStorageCondition(c, mco)
 	if mcoCondition == nil {
 		t.Errorf("check s3 conf failed: got %v, expected non-nil", mcoCondition)
 	}
@@ -443,7 +443,7 @@ func TestCheckS3Conf(t *testing.T) {
 		t.Fatalf("Failed to create secret: (%v)", err)
 	}
 
-	mcoCondition = CheckS3Conf(c, mco)
+	mcoCondition = getObjStorageCondition(c, mco)
 	if mcoCondition != nil {
 		t.Errorf("check s3 conf failed: got %v, expected nil", mcoCondition)
 	}
@@ -455,7 +455,7 @@ func TestCheckS3Conf(t *testing.T) {
 		t.Fatalf("Failed to update secret: (%v)", err)
 	}
 
-	mcoCondition = CheckS3Conf(c, mco)
+	mcoCondition = getObjStorageCondition(c, mco)
 	if mcoCondition == nil {
 		t.Errorf("check s3 conf failed: got %v, expected no-nil", mcoCondition)
 	}
