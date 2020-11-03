@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestIsValidS3Conf(t *testing.T) {
+func TestCheckObjStorageConf(t *testing.T) {
 	caseList := []struct {
 		conf     []byte
 		name     string
@@ -20,7 +20,28 @@ config:
   insecure: true
   access_key: access_key
   secret_key: secret_key`),
-			name:     "valid conf",
+			name:     "valid s3 conf",
+			expected: true,
+		},
+
+		{
+			conf: []byte(`type: azure
+config:
+  storage_account: ""
+  storage_account_key: ""
+  container: ""
+  endpoint: ""
+  max_retries: 0`),
+			name:     "valid azure conf",
+			expected: true,
+		},
+
+		{
+			conf: []byte(`type: gcs
+config:
+  bucket: ""
+  service_account: ""`),
+			name:     "valid gcs conf",
 			expected: true,
 		},
 
@@ -105,7 +126,7 @@ config:
 
 	for _, c := range caseList {
 		t.Run(c.name, func(t *testing.T) {
-			output, _ := IsValidS3Conf(c.conf)
+			output, _ := CheckObjStorageConf(c.conf)
 			if output != c.expected {
 				t.Errorf("case (%v) output (%v) is not the expected (%v)", c.name, output, c.expected)
 			}

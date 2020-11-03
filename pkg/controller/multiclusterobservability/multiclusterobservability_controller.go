@@ -361,10 +361,9 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 		}
 	}
 
-	// validate s3 conf
-	s3condition := CheckS3Conf(r.client, mco)
-	if s3condition != nil {
-		conditions = append(conditions, *s3condition)
+	objStorageCondition := getObjStorageCondition(r.client, mco)
+	if objStorageCondition != nil {
+		conditions = append(conditions, *objStorageCondition)
 		requeue = true
 	} else {
 		if installingCondition.Type != "Ready" {
@@ -597,8 +596,9 @@ func CheckInstallStatus(c client.Client,
 	return installingCondition
 }
 
-func CheckS3Conf(c client.Client,
+func getObjStorageCondition(c client.Client,
 	mco *mcov1beta1.MultiClusterObservability) *mcov1beta1.MCOCondition {
+
 	objStorageConf := mco.Spec.StorageConfig.MetricObjectStorage
 	secret := &corev1.Secret{}
 	namespacedName := types.NamespacedName{
@@ -623,7 +623,7 @@ func CheckS3Conf(c client.Client,
 		return &failed
 	}
 
-	ok, err = config.IsValidS3Conf(data)
+	ok, err = config.CheckObjStorageConf(data)
 	if !ok {
 		failed.Message = err.Error()
 		return &failed
