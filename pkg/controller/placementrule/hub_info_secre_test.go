@@ -35,7 +35,7 @@ func TestNewSecret(t *testing.T) {
 	objs := []runtime.Object{newTestRoute()}
 	c := fake.NewFakeClient(objs...)
 
-	hubInfo, err := newHubInfoSecret(c, mcoNamespace, namespace, clusterName)
+	hubInfo, err := newHubInfoSecret(c, mcoNamespace, namespace, clusterName, newTestMCO())
 	if err != nil {
 		t.Fatalf("Failed to initial the hub info secret: (%v)", err)
 	}
@@ -44,7 +44,8 @@ func TestNewSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
 	}
-	if hub.ClusterName != clusterName || !strings.HasPrefix(hub.Endpoint, "https://test-host") {
+	if hub.ClusterName != clusterName || !strings.HasPrefix(hub.Endpoint, "https://test-host") ||
+		!hub.EnableMetrics || hub.Interval != 1 {
 		t.Fatalf("Wrong content in hub info secret: (%s)", hub.ClusterName+" "+hub.Endpoint)
 	}
 }

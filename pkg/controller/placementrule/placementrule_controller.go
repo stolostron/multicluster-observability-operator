@@ -517,6 +517,9 @@ func watchMCO(c controller.Controller, mapFn handler.ToRequestsFunc) error {
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
+				return true
+			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {

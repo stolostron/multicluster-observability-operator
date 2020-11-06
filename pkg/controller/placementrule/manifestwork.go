@@ -108,7 +108,7 @@ func createManifestWork(client client.Client, clusterNamespace string,
 	manifests = injectIntoWork(manifests, pull)
 
 	// inject the hub info secret
-	hubInfo, err := newHubInfoSecret(client, config.GetDefaultNamespace(), spokeNameSpace, clusterName)
+	hubInfo, err := newHubInfoSecret(client, config.GetDefaultNamespace(), spokeNameSpace, clusterName, mco)
 	if err != nil {
 		return err
 	}
