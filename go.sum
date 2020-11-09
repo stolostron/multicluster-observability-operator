@@ -1036,6 +1036,8 @@ github.com/open-cluster-management/cert-manager v0.0.0-20200821135248-2fd523b053
 github.com/open-cluster-management/cert-manager v0.0.0-20200821135248-2fd523b053f5/go.mod h1:hnMl9tQOA0wxgPAlZYYKvcuxbzQgP0GFQp9u9XFJpGs=
 github.com/open-cluster-management/multicloud-operators-placementrule v1.0.0-2020-05-08-20-30-09 h1:q/M6OOhPvvVtaN7nXlDxLwddGYitiXoPu2KMiIixAuk=
 github.com/open-cluster-management/multicloud-operators-placementrule v1.0.0-2020-05-08-20-30-09/go.mod h1:mgU+3nfxS4FgPcywx9VpQiQosWY+o0XXHhBJiT3fr2o=
+github.com/open-cluster-management/observatorium-operator v0.0.0-20201109060222-c8df536b59fa h1:BqBPpQ7upp2L4p5kPtQEYeTY+C6IiBP7CabNkzSmz0s=
+github.com/open-cluster-management/observatorium-operator v0.0.0-20201109060222-c8df536b59fa/go.mod h1:OdCknWcPfFANcJZRIY+b5yUXEtfMbBJoiywdAXjCzus=
 github.com/opencontainers/go-digest v0.0.0-20170106003457-a6d0ee40d420/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
 github.com/opencontainers/go-digest v0.0.0-20180430190053-c9281466c8b2/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
 github.com/opencontainers/go-digest v1.0.0-rc1/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=

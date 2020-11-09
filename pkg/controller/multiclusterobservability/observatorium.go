@@ -173,6 +173,7 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability,
 	scSelected string) *observatoriumv1alpha1.ObservatoriumSpec {
 
 	obs := &observatoriumv1alpha1.ObservatoriumSpec{}
+	obs.NodeSelector = mco.Spec.NodeSelector
 	obs.API.RBAC = newAPIRBAC()
 	obs.API.Tenants = newAPITenants()
 	obs.API.TLS = newAPITLS()

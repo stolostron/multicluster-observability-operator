@@ -543,6 +543,12 @@ spec:
               - image
               - volumeClaimTemplate
               type: object
+            nodeSelector:
+              additionalProperties:
+                type: string
+              description: NodeSelector causes all components to be scheduled on nodes
+                with matching labels.
+              type: object
             objectStorageConfig:
               description: Objest Storage Configuration
               properties:
