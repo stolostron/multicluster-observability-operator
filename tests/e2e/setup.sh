@@ -157,6 +157,7 @@ deploy_hub_core() {
     cd ${WORKDIR}/..
     git clone https://github.com/open-cluster-management/registration-operator.git
     cd registration-operator/
+    git checkout release-2.1
     $sed_command "s~replicas: 3~replicas: 1~g" deploy/cluster-manager/*.yaml
     $sed_command "s~cpu: 100m~cpu: 10m~g" deploy/cluster-manager/*.yaml
 
