@@ -1,0 +1,14 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: rbac-query-proxy-probe
+data:
+  check.sh: |
+    #!/bin/bash
+    if [ -e /tmp/health ]
+    then
+        cat /tmp/health
+        exit 1
+    else
+        echo 0
+    fi
