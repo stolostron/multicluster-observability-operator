@@ -3,6 +3,7 @@
 package config
 
 import (
+	"os"
 	"reflect"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubectl/pkg/scheme"
@@ -445,5 +447,69 @@ func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 	if util.GetAnnotation(mco.Annotations, AnnotationKeyImageTagSuffix) != "test_suffix" {
 		t.Errorf("ImageTagSuffix (%v) is not the expected (%v)",
 			util.GetAnnotation(mco.Annotations, AnnotationKeyImageTagSuffix), "test_suffix")
+	}
+}
+
+func TestReadImageManifestConfigMap(t *testing.T) {
+
+	cm := &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "ConfigMap",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ImageManifestConfigMapName + "2.2.0",
+			Namespace: "ns2",
+		},
+		Data: map[string]string{
+			"test-key": "test-value-1",
+		},
+	}
+	os.Setenv("POD_NAMESPACE", "ns2")
+	scheme := runtime.NewScheme()
+	corev1.AddToScheme(scheme)
+	client := fake.NewFakeClientWithScheme(scheme, cm)
+
+	caseList := []struct {
+		expected bool
+		name     string
+		data     map[string]string
+		preFunc  func()
+	}{
+		{
+			name:     "read the " + ImageManifestConfigMapName + "2.2.0",
+			expected: true,
+			data: map[string]string{
+				"test-key": "test-value-1",
+			},
+			preFunc: func() {},
+		},
+		{
+			name:     "Should not read the " + ImageManifestConfigMapName + "2.2.0 again",
+			expected: false,
+			data: map[string]string{
+				"test-key": "test-value-1",
+			},
+			preFunc: func() {},
+		},
+		{
+			name:     ImageManifestConfigMapName + "2.2.0 configmap does not exist",
+			expected: true,
+			data:     map[string]string{},
+			preFunc:  func() { os.Setenv(ComponentVersion, "invalid") },
+		},
+	}
+
+	for _, c := range caseList {
+		t.Run(c.name, func(t *testing.T) {
+			c.preFunc()
+			output := ReadImageManifestConfigMap(client)
+			if output != c.expected {
+				t.Errorf("case (%v) output (%v) is not the expected (%v)", c.name, output, c.expected)
+			}
+			if !reflect.DeepEqual(GetImageManifests(), c.data) {
+				t.Errorf("case (%v) output (%v) is not the expected (%v)", c.name, GetImageManifests(), c.data)
+			}
+		})
 	}
 }
