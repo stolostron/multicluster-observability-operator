@@ -211,6 +211,9 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, nil
 	}
 
+	//read image manifest configmap to be used to replace the image for each component.
+	config.ReadImageManifestConfigMap(r.client)
+
 	opts := &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
 	}

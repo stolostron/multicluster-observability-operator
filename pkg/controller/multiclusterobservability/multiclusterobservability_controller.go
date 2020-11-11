@@ -247,6 +247,8 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		reqLogger.Info("MCO instance is in Terminating status, skip the reconcile")
 		return reconcile.Result{}, err
 	}
+	//read image manifest configmap to be used to replace the image for each component.
+	config.ReadImageManifestConfigMap(r.client)
 
 	if result, err := config.GenerateMonitoringCR(r.client, instance); result != nil {
 		return *result, err
