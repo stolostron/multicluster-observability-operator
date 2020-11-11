@@ -281,7 +281,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 
 		for _, cluster := range currentClusters {
 			reqLogger.Info("To delete observabilityAddon", "namespace", cluster)
-			err = deleteEndpointConfigCR(r.client, cluster)
+			err = deleteObsAddon(r.client, cluster)
 			if err != nil {
 				reqLogger.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
 				return reconcile.Result{}, err
@@ -289,7 +289,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		}
 	} else {
 		for _, ep := range epList.Items {
-			err = deleteEndpointConfigCR(r.client, ep.Namespace)
+			err = deleteObsAddon(r.client, ep.Namespace)
 			if err != nil {
 				reqLogger.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
 				return reconcile.Result{}, err
@@ -350,7 +350,7 @@ func createManagedClusterRes(client client.Client,
 		return err
 	}
 
-	err = createEndpointConfigCR(client, namespace)
+	err = createObsAddon(client, namespace)
 	if err != nil {
 		log.Error(err, "Failed to create observabilityaddon")
 		return err

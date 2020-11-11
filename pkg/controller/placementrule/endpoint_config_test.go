@@ -19,7 +19,7 @@ func TestEndpointConfigCR(t *testing.T) {
 	objs := []runtime.Object{newTestRoute(), newTestInfra()}
 	c := fake.NewFakeClient(objs...)
 
-	err := createEndpointConfigCR(c, namespace)
+	err := createObsAddon(c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to create observabilityaddon: (%v)", err)
 	}
@@ -29,12 +29,12 @@ func TestEndpointConfigCR(t *testing.T) {
 		t.Fatalf("Failed to get observabilityaddon: (%v)", err)
 	}
 
-	err = createEndpointConfigCR(c, namespace)
+	err = createObsAddon(c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to create observabilityaddon: (%v)", err)
 	}
 
-	err = deleteEndpointConfigCR(c, namespace)
+	err = deleteObsAddon(c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}
@@ -43,7 +43,7 @@ func TestEndpointConfigCR(t *testing.T) {
 		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}
 
-	err = deleteEndpointConfigCR(c, namespace)
+	err = deleteObsAddon(c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}

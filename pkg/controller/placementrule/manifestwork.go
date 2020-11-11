@@ -82,13 +82,21 @@ func createManifestWork(client client.Client, clusterNamespace string,
 		},
 	}
 
+	manifests := work.Spec.Workload.Manifests
+
+	// inject the hub info secret
+	hubInfo, err := newHubInfoSecret(client, config.GetDefaultNamespace(), spokeNameSpace, clusterName, mco)
+	if err != nil {
+		return err
+	}
+	manifests = injectIntoWork(manifests, hubInfo)
+
 	// inject resouces in templates
 	templates, err := loadTemplates(clusterNamespace, mco)
 	if err != nil {
 		log.Error(err, "Failed to load templates")
 		return err
 	}
-	manifests := work.Spec.Workload.Manifests
 	for _, raw := range templates {
 		manifests = append(manifests, workv1.Manifest{raw})
 	}
@@ -106,13 +114,6 @@ func createManifestWork(client client.Client, clusterNamespace string,
 	//create image pull secret
 	pull := getPullSecret(imagePullSecret)
 	manifests = injectIntoWork(manifests, pull)
-
-	// inject the hub info secret
-	hubInfo, err := newHubInfoSecret(client, config.GetDefaultNamespace(), spokeNameSpace, clusterName, mco)
-	if err != nil {
-		return err
-	}
-	manifests = injectIntoWork(manifests, hubInfo)
 
 	// inject the certificates
 	certs, err := getCerts(client, clusterNamespace)

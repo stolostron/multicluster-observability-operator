@@ -17,7 +17,7 @@ const (
 	epConfigName = "observability-addon"
 )
 
-func deleteEndpointConfigCR(client client.Client, namespace string) error {
+func deleteObsAddon(client client.Client, namespace string) error {
 	found := &obv1beta1.ObservabilityAddon{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: epConfigName, Namespace: namespace}, found)
 	if err != nil {
@@ -31,11 +31,14 @@ func deleteEndpointConfigCR(client client.Client, namespace string) error {
 	if err != nil {
 		log.Error(err, "Failed to delete observabilityaddon", "namespace", namespace)
 	}
+
+	err = updateDeleteFlag(client, namespace)
+
 	log.Info("observabilityaddon is deleted", "namespace", namespace)
 	return err
 }
 
-func createEndpointConfigCR(client client.Client, namespace string) error {
+func createObsAddon(client client.Client, namespace string) error {
 	ec := &obv1beta1.ObservabilityAddon{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      epConfigName,
