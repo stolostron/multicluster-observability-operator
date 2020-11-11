@@ -13,6 +13,7 @@ import (
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -52,7 +53,7 @@ const (
 
 	DefaultAddonInterval = 60
 
-	ImageManifestConfigmapName = "mch-image-manifest-"
+	ImageManifestConfigMapName = "mch-image-manifest-"
 
 	ComponentVersion = "COMPONENT_VERSION"
 
@@ -134,10 +135,62 @@ func GetClusterNameLabelKey() string {
 	return clusterNameLabelKey
 }
 
+// ReadImageManifestConfigMap reads configmap with the name is mch-image-manifest-xxx
+func ReadImageManifestConfigMap(c client.Client) (bool, error) {
+	//Only need to read if imageManifests is empty
+	if len(imageManifests) != 0 {
+		return false, nil
+	}
+
+	imageCMName := ImageManifestConfigMapName
+	componentVersion, found := os.LookupEnv(ComponentVersion)
+	if found {
+		imageCMName = ImageManifestConfigMapName + componentVersion
+	}
+
+	podNamespace, found := os.LookupEnv("POD_NAMESPACE")
+	if found {
+		//Get image manifest configmap
+		imageCM := &corev1.ConfigMap{}
+		err := c.Get(
+			context.TODO(),
+			types.NamespacedName{
+				Name:      imageCMName,
+				Namespace: podNamespace,
+			},
+			imageCM)
+		if err == nil {
+			imageManifests = imageCM.Data
+		} else {
+			if errors.IsNotFound(err) {
+				log.Info("Cannot get image manifest configmap", "configmap name", imageCMName)
+			} else {
+				log.Error(err, "Failed to read mch-image-manifest configmap")
+				return false, err
+			}
+
+		}
+	}
+	return true, nil
+}
+
+// GetImageManifests...
+func GetImageManifests() map[string]string {
+	return imageManifests
+}
+
+// SetImageManifests sets imageManifests
+func SetImageManifests(images map[string]string) {
+	imageManifests = images
+}
+
 // ReplaceImage is used to replace the image with specified annotation or imagemanifest configmap
 func ReplaceImage(annotations map[string]string, imageRepo, componentName string) (bool, string) {
 	if annotations != nil {
 		annotationImageRepo, _ := annotations[AnnotationKeyImageRepository]
+		if annotationImageRepo == "" {
+			annotationImageRepo = DefaultImgRepository
+		}
 		tagSuffix, hasTagSuffix := annotations[AnnotationKeyImageTagSuffix]
 		sameOrg := strings.Contains(imageRepo, DefaultImgRepository)
 
@@ -166,10 +219,6 @@ func ReplaceImage(annotations map[string]string, imageRepo, componentName string
 // GetDefaultTenantName returns the default tenant name
 func GetDefaultTenantName() string {
 	return defaultTenantName
-}
-
-func SetImageManifests(images map[string]string) {
-	imageManifests = images
 }
 
 // GetObsAPIUrl is used to get the URL for observartium api gateway
@@ -305,45 +354,6 @@ func GenerateMonitoringCR(c client.Client,
 		mco.Spec.ObservabilityAddonSpec = &mcov1beta1.ObservabilityAddonSpec{
 			EnableMetrics: true,
 			Interval:      DefaultAddonInterval,
-		}
-	}
-	// set mco-imageRepository if needed
-	if util.GetAnnotation(mco.Annotations, AnnotationKeyImageRepository) == "" {
-		// set the default image repo
-		if mco.Annotations == nil {
-			mco.Annotations = map[string]string{}
-		}
-		mco.Annotations[AnnotationKeyImageRepository] = DefaultImgRepository
-		imageCMName := ImageManifestConfigmapName + "2.1.1"
-		componentVersion, found := os.LookupEnv(ComponentVersion)
-		if found {
-			imageCMName = ImageManifestConfigmapName + componentVersion
-		}
-
-		podNamespace, found := os.LookupEnv("POD_NAMESPACE")
-		if found {
-			//Get image manifest configmap
-			imageCM := &corev1.ConfigMap{}
-			err := c.Get(
-				context.TODO(),
-				types.NamespacedName{
-					Name:      imageCMName,
-					Namespace: podNamespace,
-				},
-				imageCM)
-			if err == nil {
-				imageManifests = imageCM.Data
-			} else {
-				log.Info("Cannot get image manifest configmap", "configmap name", imageCMName)
-			}
-			if len(imageManifests) != 0 {
-				for _, value := range imageManifests {
-					if strings.Contains(value, DefaultDSImgRepository) {
-						mco.Annotations[AnnotationKeyImageRepository] = DefaultDSImgRepository
-						break
-					}
-				}
-			}
 		}
 	}
 
