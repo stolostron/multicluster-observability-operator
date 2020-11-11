@@ -505,7 +505,10 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 			name:     ImageManifestConfigMapName + "2.2.0 configmap does not exist",
 			expected: true,
 			data:     map[string]string{},
-			preFunc:  func() { os.Setenv(ComponentVersion, "invalid") },
+			preFunc: func() {
+				SetImageManifests(map[string]string{})
+				os.Setenv(ComponentVersion, "invalid")
+			},
 		},
 	}
 

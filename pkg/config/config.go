@@ -185,6 +185,9 @@ func SetImageManifests(images map[string]string) {
 func ReplaceImage(annotations map[string]string, imageRepo, componentName string) (bool, string) {
 	if annotations != nil {
 		annotationImageRepo, _ := annotations[AnnotationKeyImageRepository]
+		if annotationImageRepo == "" {
+			annotationImageRepo = DefaultImgRepository
+		}
 		// This is for test only. e.g.:
 		// if there is "mco-metrics_collector-tag" defined in annotation, use it for testing
 		componentTagSuffix, hasComponentTagSuffix := annotations["mco-"+componentName+"-tag"]
