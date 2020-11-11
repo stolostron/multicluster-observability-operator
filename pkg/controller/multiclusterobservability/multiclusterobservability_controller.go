@@ -248,7 +248,9 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return reconcile.Result{}, err
 	}
 	//read image manifest configmap to be used to replace the image for each component.
-	config.ReadImageManifestConfigMap(r.client)
+	if _, err = config.ReadImageManifestConfigMap(r.client); err != nil {
+		return reconcile.Result{}, err
+	}
 
 	if result, err := config.GenerateMonitoringCR(r.client, instance); result != nil {
 		return *result, err

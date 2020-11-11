@@ -25,6 +25,7 @@ import (
 var (
 	apiServerURL = "http://example.com"
 	clusterID    = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+	version      = "2.1.1"
 )
 
 func TestGetClusterNameLabelKey(t *testing.T) {
@@ -451,14 +452,13 @@ func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 }
 
 func TestReadImageManifestConfigMap(t *testing.T) {
-
 	cm := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
 			Kind:       "ConfigMap",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ImageManifestConfigMapName + "2.1.1",
+			Name:      ImageManifestConfigMapName + version,
 			Namespace: "ns2",
 		},
 		Data: map[string]string{
@@ -466,6 +466,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 		},
 	}
 	os.Setenv("POD_NAMESPACE", "ns2")
+	os.Setenv("COMPONENT_VERSION", version)
 	scheme := runtime.NewScheme()
 	corev1.AddToScheme(scheme)
 	client := fake.NewFakeClientWithScheme(scheme, cm)
@@ -506,7 +507,10 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 	for _, c := range caseList {
 		t.Run(c.name, func(t *testing.T) {
 			c.preFunc()
-			output := ReadImageManifestConfigMap(client)
+			output, err := ReadImageManifestConfigMap(client)
+			if err != nil {
+				t.Errorf("Failed read image manifest configmap due to %v", err)
+			}
 			if output != c.expected {
 				t.Errorf("case (%v) output (%v) is not the expected (%v)", c.name, output, c.expected)
 			}

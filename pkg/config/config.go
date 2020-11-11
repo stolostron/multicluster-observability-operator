@@ -13,6 +13,7 @@ import (
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -135,13 +136,13 @@ func GetClusterNameLabelKey() string {
 }
 
 // ReadImageManifestConfigMap reads configmap with the name is mch-image-manifest-xxx
-func ReadImageManifestConfigMap(c client.Client) bool {
+func ReadImageManifestConfigMap(c client.Client) (bool, error) {
 	//Only need to read if imageManifests is empty
 	if len(imageManifests) != 0 {
-		return false
+		return false, nil
 	}
 
-	imageCMName := ImageManifestConfigMapName + "2.1.1"
+	imageCMName := ImageManifestConfigMapName
 	componentVersion, found := os.LookupEnv(ComponentVersion)
 	if found {
 		imageCMName = ImageManifestConfigMapName + componentVersion
@@ -161,10 +162,16 @@ func ReadImageManifestConfigMap(c client.Client) bool {
 		if err == nil {
 			imageManifests = imageCM.Data
 		} else {
-			log.Info("Cannot get image manifest configmap", "configmap name", imageCMName)
+			if errors.IsNotFound(err) {
+				log.Info("Cannot get image manifest configmap", "configmap name", imageCMName)
+			} else {
+				log.Error(err, "Failed to read mch-image-manifest configmap")
+				return false, err
+			}
+
 		}
 	}
-	return true
+	return true, nil
 }
 
 // GetImageManifests...
