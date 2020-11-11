@@ -75,7 +75,6 @@ const (
 	ObservatoriumAPIImgName        = "observatorium"
 	ObservatoriumAPIImgTag         = "master-2020-09-18-v0.1.1-148-gb105421"
 	ObservatoriumOperatorImgName   = "observatorium_operator"
-	ObservatoriumOperatorImgTag    = "master-2020-10-30-a163410"
 	ThanosReceiveControllerImgName = "thanos-receive-controller"
 	//ThanosReceiveControllerKey is used to get from mch-image-manifest.xxx configmap
 	ThanosReceiveControllerKey    = "thanos_receive_controller"
@@ -327,7 +326,7 @@ func GenerateMonitoringCR(c client.Client,
 			mco.Annotations = map[string]string{}
 		}
 		mco.Annotations[AnnotationKeyImageRepository] = DefaultImgRepository
-		imageCMName := ImageManifestConfigmapName + "2.1.0"
+		imageCMName := ImageManifestConfigmapName + "2.2.0"
 		componentVersion, found := os.LookupEnv(ComponentVersion)
 		if found {
 			imageCMName = ImageManifestConfigmapName + componentVersion
