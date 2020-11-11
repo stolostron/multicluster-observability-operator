@@ -181,6 +181,9 @@ func SetImageManifests(images map[string]string) {
 func ReplaceImage(annotations map[string]string, imageRepo, componentName string) (bool, string) {
 	if annotations != nil {
 		annotationImageRepo, _ := annotations[AnnotationKeyImageRepository]
+		if annotationImageRepo == "" {
+			annotationImageRepo = DefaultImgRepository
+		}
 		tagSuffix, hasTagSuffix := annotations[AnnotationKeyImageTagSuffix]
 		sameOrg := strings.Contains(imageRepo, DefaultImgRepository)
 

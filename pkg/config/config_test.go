@@ -458,7 +458,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 			Kind:       "ConfigMap",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ImageManifestConfigMapName + "2.2.0",
+			Name:      ImageManifestConfigMapName + "2.1.1",
 			Namespace: "ns2",
 		},
 		Data: map[string]string{
@@ -477,7 +477,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 		preFunc  func()
 	}{
 		{
-			name:     "read the " + ImageManifestConfigMapName + "2.2.0",
+			name:     "read the " + ImageManifestConfigMapName + "2.1.1",
 			expected: true,
 			data: map[string]string{
 				"test-key": "test-value-1",
@@ -485,7 +485,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 			preFunc: func() {},
 		},
 		{
-			name:     "Should not read the " + ImageManifestConfigMapName + "2.2.0 again",
+			name:     "Should not read the " + ImageManifestConfigMapName + "2.1.1 again",
 			expected: false,
 			data: map[string]string{
 				"test-key": "test-value-1",
@@ -493,10 +493,13 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 			preFunc: func() {},
 		},
 		{
-			name:     ImageManifestConfigMapName + "2.2.0 configmap does not exist",
+			name:     ImageManifestConfigMapName + "2.1.1 configmap does not exist",
 			expected: true,
 			data:     map[string]string{},
-			preFunc:  func() { os.Setenv(ComponentVersion, "invalid") },
+			preFunc: func() {
+				SetImageManifests(map[string]string{})
+				os.Setenv(ComponentVersion, "invalid")
+			},
 		},
 	}
 
