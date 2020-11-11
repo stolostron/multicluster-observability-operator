@@ -103,8 +103,10 @@ func createManifestWork(client client.Client, clusterNamespace string,
 	manifests = injectIntoWork(manifests, secret)
 
 	//create image pull secret
-	pull := getPullSecret(imagePullSecret)
-	manifests = injectIntoWork(manifests, pull)
+	if imagePullSecret != nil {
+		pull := getPullSecret(imagePullSecret)
+		manifests = injectIntoWork(manifests, pull)
+	}
 
 	// inject the hub info secret
 	hubInfo, err := newHubInfoSecret(client, mco.Namespace, spokeNameSpace, clusterName)
