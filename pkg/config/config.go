@@ -326,7 +326,7 @@ func GenerateMonitoringCR(c client.Client,
 			mco.Annotations = map[string]string{}
 		}
 		mco.Annotations[AnnotationKeyImageRepository] = DefaultImgRepository
-		imageCMName := ImageManifestConfigmapName + "2.1.0"
+		imageCMName := ImageManifestConfigmapName + "2.2.0"
 		componentVersion, found := os.LookupEnv(ComponentVersion)
 		if found {
 			imageCMName = ImageManifestConfigmapName + componentVersion
