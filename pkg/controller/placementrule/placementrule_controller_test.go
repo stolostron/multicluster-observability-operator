@@ -86,7 +86,8 @@ func TestObservabilityAddonController(t *testing.T) {
 		},
 	}
 	mco := newTestMCO()
-	objs := []runtime.Object{p, mco, newTestPullSecret(), newTestRoute(), newTestInfra(), newCASecret(), newCertSecret(),
+	pull := newTestPullSecret()
+	objs := []runtime.Object{p, mco, pull, newTestRoute(), newTestInfra(), newCASecret(), newCertSecret(),
 		newSATokenSecret(), newTestSA(), newSATokenSecret(namespace2), newTestSA(namespace2), newCertSecret(namespace2), newManagedClusterAddon()}
 	c := fake.NewFakeClient(objs...)
 
@@ -140,6 +141,15 @@ func TestObservabilityAddonController(t *testing.T) {
 	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace2}, found)
 	if err == nil || !errors.IsNotFound(err) {
 		t.Fatalf("Failed to delete manifestwork for cluster2: (%v)", err)
+	}
+
+	err = c.Delete(context.TODO(), pull)
+	if err != nil {
+		t.Fatalf("Failed to delete pull secret: (%v)", err)
+	}
+	_, err = r.Reconcile(req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
 	}
 
 	err = c.Delete(context.TODO(), mco)
