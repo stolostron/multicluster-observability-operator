@@ -491,37 +491,35 @@ func getResourceConditions(podList *corev1.PodList, statefulSetList *appsv1.Stat
 	allPodsReady *bool, allstatefulSetReady *bool,
 	podCounter *int, statefulSetCounter *int,
 ) {
+
 	for _, pod := range podList.Items {
 		for _, name := range watchingPods {
-			if strings.HasPrefix(pod.Name, name) {
-				*podCounter++
-				singlePodReady := false
-				for _, podCondition := range pod.Status.Conditions {
-					if podCondition.Type == Ready {
-						singlePodReady = true
-					}
-				}
-				if singlePodReady == false {
+			if !strings.HasPrefix(pod.Name, name) {
+				continue
+			}
+			*podCounter++
+			for _, podCondition := range pod.Status.Conditions {
+				if podCondition.Type != Ready {
 					*allPodsReady = false
+				} else {
+					*allPodsReady = true
+					break
 				}
 			}
 		}
 	}
+
 	for _, statefulSet := range statefulSetList.Items {
 		for _, name := range watchingStatefulSets {
-			if strings.HasPrefix(statefulSet.Name, name) {
-				*statefulSetCounter++
-				singleStatefulSetReady := false
-				if statefulSet.Status.ReadyReplicas >= 1 {
-					singleStatefulSetReady = true
-				}
-				if singleStatefulSetReady == false {
-					*allstatefulSetReady = false
-				}
+			if !strings.HasPrefix(statefulSet.Name, name) {
+				continue
+			}
+			*statefulSetCounter++
+			if statefulSet.Status.ReadyReplicas < 1 {
+				*allstatefulSetReady = false
 			}
 		}
 	}
-	return
 }
 
 func CheckInstallStatus(c client.Client,
