@@ -118,6 +118,7 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to get work dir: (%v)", err)
 	}
 	templatePath = path.Join(wd, "../../../manifests/endpoint-observability")
+
 	err = createManifestWork(c, namespace, clusterName, newTestMCO(), newTestPullSecret())
 	if err != nil {
 		t.Fatalf("Failed to create manifestwork: (%v)", err)
@@ -128,6 +129,18 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to get manifestwork: (%v)", err)
 	}
 	if len(found.Spec.Workload.Manifests) != mainfestworkSize {
+		t.Fatal("Wrong size of manifests in the mainfestwork")
+	}
+
+	err = createManifestWork(c, namespace, clusterName, newTestMCO(), nil)
+	if err != nil {
+		t.Fatalf("Failed to create manifestwork: (%v)", err)
+	}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	if err != nil {
+		t.Fatalf("Failed to get manifestwork: (%v)", err)
+	}
+	if len(found.Spec.Workload.Manifests) != mainfestworkSize-1 {
 		t.Fatal("Wrong size of manifests in the mainfestwork")
 	}
 
