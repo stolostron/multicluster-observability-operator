@@ -101,7 +101,7 @@ func GenerateObservatoriumCR(
 	// keep the tenant id unchanged
 	for i, newTenant := range newSpec.API.Tenants {
 		for _, oldTenant := range oldSpec.API.Tenants {
-			updateTenantID(&newSpec, &newTenant, &oldTenant, i)
+			updateTenantID(&newSpec, newTenant, oldTenant, i)
 		}
 	}
 
@@ -117,8 +117,8 @@ func GenerateObservatoriumCR(
 
 func updateTenantID(
 	newSpec *observatoriumv1alpha1.ObservatoriumSpec,
-	newTenant *observatoriumv1alpha1.APITenant,
-	oldTenant *observatoriumv1alpha1.APITenant,
+	newTenant observatoriumv1alpha1.APITenant,
+	oldTenant observatoriumv1alpha1.APITenant,
 	idx int) {
 
 	if oldTenant.Name == newTenant.Name && newTenant.ID == oldTenant.ID {
