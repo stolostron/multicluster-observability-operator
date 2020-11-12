@@ -211,6 +211,11 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, nil
 	}
 
+	//read image manifest configmap to be used to replace the image for each component.
+	if _, err = config.ReadImageManifestConfigMap(r.client); err != nil {
+		return reconcile.Result{}, err
+	}
+
 	opts := &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
 	}
@@ -246,8 +251,12 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 				Namespace: request.Namespace,
 			}, imagePullSecret)
 		if err != nil {
-			// Error reading the object - requeue the request.
-			return reconcile.Result{}, err
+			if errors.IsNotFound(err) {
+				imagePullSecret = nil
+			} else {
+				// Error reading the object - requeue the request.
+				return reconcile.Result{}, err
+			}
 		}
 		mco.Namespace = watchNamespace
 		// Fetch the PlacementRule instance
