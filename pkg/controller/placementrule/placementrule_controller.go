@@ -251,8 +251,12 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 				Namespace: request.Namespace,
 			}, imagePullSecret)
 		if err != nil {
-			// Error reading the object - requeue the request.
-			return reconcile.Result{}, err
+			if errors.IsNotFound(err) {
+				imagePullSecret = nil
+			} else {
+				// Error reading the object - requeue the request.
+				return reconcile.Result{}, err
+			}
 		}
 		mco.Namespace = watchNamespace
 		// Fetch the PlacementRule instance
