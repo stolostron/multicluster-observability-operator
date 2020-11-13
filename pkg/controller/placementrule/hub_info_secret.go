@@ -79,7 +79,7 @@ func updateDeleteFlag(client client.Client, namespace string) error {
 		if errors.IsNotFound(err) {
 			return nil
 		}
-		log.Error(err, "Failed to check monitoring-endpoint-monitoring-work work", "namespace", namespace)
+		log.Error(err, "Failed to check manifestwork", "namespace", namespace, "name", workName)
 		return err
 	}
 
@@ -111,7 +111,7 @@ func updateDeleteFlag(client client.Client, namespace string) error {
 
 	err = client.Update(context.TODO(), found)
 	if err != nil {
-		log.Error(err, "Failed to update monitoring-endpoint-monitoring-work work")
+		log.Error(err, "Failed to update manifestwork", "namespace", namespace, "name", workName)
 		return err
 	}
 	return nil

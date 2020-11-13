@@ -33,9 +33,12 @@ func deleteObsAddon(client client.Client, namespace string) error {
 	}
 
 	err = updateDeleteFlag(client, namespace)
+	if err != nil {
+		return err
+	}
 
 	log.Info("observabilityaddon is deleted", "namespace", namespace)
-	return err
+	return nil
 }
 
 func createObsAddon(client client.Client, namespace string) error {
