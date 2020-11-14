@@ -21,9 +21,9 @@ spec:
           - endpoint-monitoring-operator
           imagePullPolicy: Always
           env:
-            - name: WATCH_NAMESPACE
+            - name: HUB_NAMESPACE
               value: REPLACE_WITH_HUB_CLUSTER_NAMESPACE
-            - name: NAMESPACE
+            - name: WATCH_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
