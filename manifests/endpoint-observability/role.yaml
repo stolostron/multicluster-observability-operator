@@ -74,6 +74,16 @@ rules:
   - list
   - watch
 - apiGroups:
+    - addon.open-cluster-management.io
+  resources:
+    - managedclusteraddons
+    - managedclusteraddons/status
+  verbs:
+  - watch
+  - list
+  - get
+  - update
+- apiGroups:
   - config.openshift.io
   resources:
   - clusterversions
