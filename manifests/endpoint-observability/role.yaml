@@ -24,6 +24,8 @@ rules:
   - services
   verbs:
   - get
+  - list
+  - watch
   - create
 - apiGroups:
   - ""
@@ -31,6 +33,8 @@ rules:
   - configmaps
   verbs:
   - get
+  - list
+  - watch
   - create
   - update
   - delete
@@ -46,6 +50,8 @@ rules:
   - deployments
   verbs:
   - get
+  - list
+  - watch
   - create
   - update
   - delete
@@ -55,6 +61,8 @@ rules:
   - clusterrolebindings
   verbs:
   - get
+  - list
+  - watch
   - create
   - delete
 - apiGroups:

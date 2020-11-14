@@ -95,7 +95,7 @@ func updateEndpointOperator(mco *mcov1beta1.MultiClusterObservability,
 		mcoconfig.EndpointControllerImgTagSuffix, mcoconfig.EndpointControllerKey)
 	container.ImagePullPolicy = mco.Spec.ImagePullPolicy
 	for i, env := range container.Env {
-		if env.Name == "WATCH_NAMESPACE" {
+		if env.Name == "HUB_NAMESPACE" {
 			container.Env[i].Value = namespace
 		}
 		if env.Name == "COLLECTOR_IMAGE" {
