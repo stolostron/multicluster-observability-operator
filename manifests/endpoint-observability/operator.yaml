@@ -24,8 +24,6 @@ spec:
             - name: HUB_NAMESPACE
               value: REPLACE_WITH_HUB_CLUSTER_NAMESPACE
             - name: WATCH_NAMESPACE
-              value: REPLACE_WITH_HUB_CLUSTER_NAMESPACE
-            - name: NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
