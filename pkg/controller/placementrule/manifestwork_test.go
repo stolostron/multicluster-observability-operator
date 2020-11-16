@@ -33,6 +33,10 @@ func newTestMCO() *mcov1beta1.MultiClusterObservability {
 		},
 		Spec: mcov1beta1.MultiClusterObservabilitySpec{
 			ImagePullSecret: pullSecretName,
+			ObservabilityAddonSpec: &mcov1beta1.ObservabilityAddonSpec{
+				EnableMetrics: true,
+				Interval:      1,
+			},
 		},
 	}
 }

@@ -18,12 +18,15 @@ rules:
   - get
   - list
   - watch
+  - delete
 - apiGroups:
   - ""
   resources:
   - services
   verbs:
   - get
+  - list
+  - watch
   - create
 - apiGroups:
   - ""
@@ -31,6 +34,8 @@ rules:
   - configmaps
   verbs:
   - get
+  - list
+  - watch
   - create
   - update
   - delete
@@ -46,6 +51,8 @@ rules:
   - deployments
   verbs:
   - get
+  - list
+  - watch
   - create
   - update
   - delete
@@ -55,6 +62,8 @@ rules:
   - clusterrolebindings
   verbs:
   - get
+  - list
+  - watch
   - create
   - delete
 - apiGroups:
@@ -65,6 +74,16 @@ rules:
   verbs:
   - list
   - watch
+- apiGroups:
+    - addon.open-cluster-management.io
+  resources:
+    - managedclusteraddons
+    - managedclusteraddons/status
+  verbs:
+  - watch
+  - list
+  - get
+  - update
 - apiGroups:
   - config.openshift.io
   resources:

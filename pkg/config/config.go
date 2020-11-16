@@ -104,11 +104,11 @@ const (
 	ConfigmapReloaderImgRepo = "quay.io/openshift"
 	ConfigmapReloaderKey     = "prometheus-config-reloader"
 
-	EndpointControllerImgTagSuffix = "0.1.0-758599e8bcb0dfa9699a72ab17bd70807af5db12"
+	EndpointControllerImgTagSuffix = "2.2.0-6a5ea47fc39d51fb4fade6157843f2977442996e"
 	EndpointControllerImgName      = "endpoint-monitoring-operator"
 	EndpointControllerKey          = "endpoint_monitoring_operator"
 
-	MetricsCollectorImgTagSuffix = "2.1.0-1aa917b69ceb64c5a77b999ffb69529aa6fb069c"
+	MetricsCollectorImgTagSuffix = "2.2.0-ff79e6ec8783756b942a77f08b3ab763dfd2dc15"
 	MetricsCollectorImgName      = "metrics-collector"
 	MetricsCollectorKey          = "metrics_collector"
 

@@ -44,11 +44,11 @@ func GetK8sObj(kind string) runtime.Object {
 
 // CompareObject is used to compare two k8s objs are same or not
 func CompareObject(re1 runtime.RawExtension, re2 runtime.RawExtension) bool {
-	obj1, err := getObject(re1)
+	obj1, err := GetObject(re1)
 	if err != nil {
 		return false
 	}
-	obj2, err := getObject(re2)
+	obj2, err := GetObject(re2)
 	if err != nil {
 		return false
 	}
@@ -61,7 +61,7 @@ func CompareObject(re1 runtime.RawExtension, re2 runtime.RawExtension) bool {
 	return compFns[kind1](obj1, obj2)
 }
 
-func getObject(re runtime.RawExtension) (runtime.Object, error) {
+func GetObject(re runtime.RawExtension) (runtime.Object, error) {
 	if re.Object != nil {
 		return re.Object, nil
 	}
