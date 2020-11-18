@@ -98,9 +98,6 @@ func updateEndpointOperator(mco *mcov1beta1.MultiClusterObservability,
 		if env.Name == "HUB_NAMESPACE" {
 			container.Env[i].Value = namespace
 		}
-		if env.Name == "WATCH_NAMESPACE" {
-			container.Env[i].Value = namespace
-		}
 		if env.Name == "COLLECTOR_IMAGE" {
 			container.Env[i].Value = getImage(mco, mcoconfig.MetricsCollectorImgName,
 				mcoconfig.MetricsCollectorImgTagSuffix, mcoconfig.MetricsCollectorKey)

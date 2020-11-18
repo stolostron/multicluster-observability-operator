@@ -342,7 +342,7 @@ func newRuleSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) o
 	if found {
 		ruleSpec.Image = image
 	}
-	ruleSpec.Image = mcoconfig.ConfigmapReloaderImgRepo + "/" +
+	ruleSpec.ReloaderImage = mcoconfig.ConfigmapReloaderImgRepo + "/" +
 		mcoconfig.ConfigmapReloaderImgName + ":" + mcoconfig.ConfigmapReloaderImgTagSuffix
 	found, reloaderImage := mcoconfig.ReplaceImage(mco.Annotations,
 		mcoconfig.ConfigmapReloaderImgRepo, mcoconfig.ConfigmapReloaderKey)
