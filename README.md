@@ -2,19 +2,19 @@
 
 ## Overview
 
-The `multicluster-observability-operator` is a component for Red Hat Advanced Cluster Management for Kubernetes observability feature. `multicluster-observability-operator` is installed automatically in the hub cluster. 
+The `multicluster-observability-operator` is a component for Red Hat Advanced Cluster Management for Kubernetes observability feature. `multicluster-observability-operator` is installed automatically in the hub cluster.
 
-**Prerequisites**: 
+**Prerequisites**:
 
 * You must install a Red Hat Advanced Cluster Management hub cluster.
-* You must create a secret for object storage. For example, you can use Thanos as a storage solution. For more information, see [Thanos documentation](https://thanos.io/tip/thanos/storage.md/#configuration). 
+* You must create a secret for object storage. For example, you can use Thanos as a storage solution. For more information, see [Thanos documentation](https://thanos.io/tip/thanos/storage.md/#configuration).
 
 ## Installation
 
 Install the `multicluster-observability-operator` on Red Hat Advanced Cluster Management to visualize and monitor the health of your managed clusters. Complete the following steps:
 
-1. Log in to your OpenShift Container Platform cluster by running the following command: 
-   
+1. Log in to your OpenShift Container Platform cluster by running the following command:
+
    ```
    oc login --token=YOUR_TOKEN --server=YOUR_OCP_CLUSTER
    ```
@@ -28,9 +28,13 @@ Install the `multicluster-observability-operator` on Red Hat Advanced Cluster Ma
 3. Generate your pull-secret. If Red Hat Advanced Cluster Management is installed in the `open-cluster-management` namespace, run the following command to generate your secret:
 
    ```
-   oc get secret multiclusterhub-operator-pull-secret -n open-cluster-management --export -o yaml |   kubectl apply --namespace=open-cluster-management-observability -f -
+   DOCKER_CONFIG_JSON=`oc extract secret/multiclusterhub-operator-pull-secret -n open-cluster-management --to=-`
+   oc create secret generic multiclusterhub-operator-pull-secret \
+       -n open-cluster-management-observability \
+       --from-literal=.dockerconfigjson="$DOCKER_CONFIG_JSON" \
+       --type=kubernetes.io/dockerconfigjson
    ```
-   
+
 4. Create and save the secret for object storage. For example, create a secret with Thanos on a Amazon Web Service cluster. Your file might resemble the following information:
 
    ```
@@ -64,23 +68,41 @@ Install the `multicluster-observability-operator` on Red Hat Advanced Cluster Ma
    ```
    oc apply -f deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
    ```
-   
+
    You should be able to have the following pods in `open-cluster-management-observability` namespace.
 
    ```
    NAME                                                              READY   STATUS    RESTARTS   AGE
-   alertmanager-0                                                    2/2     Running   0          10m
-   rbac-query-proxy-59d4c45846-8hrlz                                 1/1     Running   0          10m
-   grafana-7cb7c6b698-4kbdc                                          1/1     Running   0          7h8m
-   observability-observatorium-cortex-query-frontend-56bd7954zk4hs   1/1     Running   0          7h6m
-   observability-observatorium-observatorium-api-7cbb7766b-k5lxf     1/1     Running   0          7h7m
-   observability-observatorium-thanos-compact-0                      1/1     Running   0          7h4m
-   observability-observatorium-thanos-query-6658db5979-5dvjq         1/1     Running   0          7h4m
-   observability-observatorium-thanos-receive-controller-5965wbpqs   1/1     Running   0          7h1m
-   observability-observatorium-thanos-receive-default-0              1/1     Running   0          7h1m
-   observability-observatorium-thanos-rule-0                         1/1     Running   0          7h
-   observability-observatorium-thanos-store-memcached-0              2/2     Running   0          7h5m
-   observability-observatorium-thanos-store-shard-0-0                1/1     Running   0          6h59m
+   alertmanager-0                                                    2/2     Running   0          8m57s
+   alertmanager-1                                                    2/2     Running   0          8m36s
+   alertmanager-2                                                    2/2     Running   0          8m18s
+   grafana-658d56d649-6p9q5                                          2/2     Running   0          8m59s
+   grafana-658d56d649-vpcth                                          2/2     Running   0          8m59s
+   observability-observatorium-observatorium-api-6884555dd7-7zzff    1/1     Running   0          8m36s
+   observability-observatorium-observatorium-api-6884555dd7-hfp6g    1/1     Running   0          8m36s
+   observability-observatorium-thanos-compact-0                      1/1     Running   0          8m36s
+   observability-observatorium-thanos-compact-1                      1/1     Running   0          8m21s
+   observability-observatorium-thanos-compact-2                      1/1     Running   0          8m2s
+   observability-observatorium-thanos-query-55c767cc97-64njg         1/1     Running   0          8m36s
+   observability-observatorium-thanos-query-55c767cc97-t5nmw         1/1     Running   0          8m36s
+   observability-observatorium-thanos-query-frontend-578d44f97c8tf   1/1     Running   0          8m36s
+   observability-observatorium-thanos-query-frontend-578d44f9jq647   1/1     Running   0          8m36s
+   observability-observatorium-thanos-receive-controller-5965wd5vk   1/1     Running   0          8m35s
+   observability-observatorium-thanos-receive-default-0              1/1     Running   0          8m36s
+   observability-observatorium-thanos-receive-default-1              1/1     Running   0          8m9s
+   observability-observatorium-thanos-receive-default-2              1/1     Running   0          7m38s
+   observability-observatorium-thanos-rule-0                         1/1     Running   0          8m36s
+   observability-observatorium-thanos-rule-1                         1/1     Running   0          8m10s
+   observability-observatorium-thanos-rule-2                         1/1     Running   0          7m39s
+   observability-observatorium-thanos-store-memcached-0              2/2     Running   0          8m36s
+   observability-observatorium-thanos-store-memcached-1              2/2     Running   0          8m32s
+   observability-observatorium-thanos-store-memcached-2              2/2     Running   0          8m29s
+   observability-observatorium-thanos-store-shard-0-0                1/1     Running   0          8m36s
+   observability-observatorium-thanos-store-shard-1-0                1/1     Running   0          8m36s
+   observability-observatorium-thanos-store-shard-2-0                1/1     Running   0          8m36s
+   observatorium-operator-6c6d88c5db-x7xss                           1/1     Running   0          8m58s
+   rbac-query-proxy-7ffb8bc6c9-pt96z                                 1/1     Running   0          8m58s
+   rbac-query-proxy-7ffb8bc6c9-z7sng                                 1/1     Running   0          8m58s
    ```
 
 7. View metrics in Grafana by navigating to the following URL: https://{YOUR_ACM_CONSOLE_DOMAIN}/grafana. The metrics are in the dashboard named _ACM:Cluster Monitoring_.
@@ -155,13 +177,13 @@ Complete the following steps to build the observability operator:
    ```
    git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
    ```
-   
+
 2. Run the following command to access your vendor:
-  
+
   ```
   go mod vendor
   ```
-  
+
 3. Access the Operator SDK repository from Quay. For example, your URL might resemble the following: quay.io/multicluster-monitoring-operator:v0.1.0.
 
 4. Replace the vaule for `image` in the `deploy/operator.yaml` file with the image that you built.
@@ -198,7 +220,7 @@ metadata:
 type: Opaque
 ```
 
-You can access object storage configuration by running the following command: 
+You can access object storage configuration by running the following command:
 
 ```
 kubectl get secret thanos-object-storage -o 'go-template={{index .data "thanos.yaml"}}' | base64 --decode
@@ -219,7 +241,7 @@ config:
 
 2. Once the endpoint monitoring operator installed in the managed cluster, the `multicluster-monitoring-config` updates automatically. Metrics are pushed to your hub cluster.
 
-3. The `multicluster-endpoint-config` is automatically create in the hub cluster namespace. Update the `multicluster-endpoint-config` to update the configuration  for metrics collection on your managed cluster. You can also add labels. 
+3. The `multicluster-endpoint-config` is automatically create in the hub cluster namespace. Update the `multicluster-endpoint-config` to update the configuration  for metrics collection on your managed cluster. You can also add labels.
 
 Update the labels in the EndpointMonitoring file. Your `endpointmonitoring` file might resemble the following contents:
 
