@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"context"
 
-	observatoriumv1alpha1 "github.com/observatorium/operator/api/v1alpha1"
+	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -342,6 +342,14 @@ func newRuleSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) o
 	if found {
 		ruleSpec.Image = image
 	}
+	ruleSpec.Image = mcoconfig.ConfigmapReloaderImgRepo + "/" +
+		mcoconfig.ConfigmapReloaderImgName + ":" + mcoconfig.ConfigmapReloaderImgTagSuffix
+	found, reloaderImage := mcoconfig.ReplaceImage(mco.Annotations,
+		mcoconfig.ConfigmapReloaderImgRepo, mcoconfig.ConfigmapReloaderKey)
+	if found {
+		ruleSpec.ReloaderImage = reloaderImage
+	}
+
 	ruleSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.StatefulSetSize,
 		scSelected)
