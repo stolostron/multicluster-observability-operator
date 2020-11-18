@@ -65,6 +65,7 @@ rules:
   - list
   - watch
   - create
+  - update
   - delete
 - apiGroups:
   - observability.open-cluster-management.io
