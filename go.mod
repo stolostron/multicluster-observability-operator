@@ -4,15 +4,14 @@ go 1.13
 
 require (
 	github.com/jetstack/cert-manager v0.0.0-00010101000000-000000000000
-	github.com/observatorium/operator v0.0.0-20201030090558-9e06bdda60b3
 	github.com/open-cluster-management/api v0.0.0-20201007180356-41d07eee4294
 	github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20201013190828-d760a392d21d
+	github.com/open-cluster-management/observatorium-operator v0.0.0-20201118025659-91de49676eca
 	github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible
 	github.com/openshift/client-go v0.0.0-20201020082437-7737f16e53fc
 	github.com/operator-framework/operator-sdk v0.18.0
 	github.com/sykesm/zap-logfmt v0.0.4
 	go.uber.org/zap v1.15.0
-	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.19.2
 	k8s.io/apimachinery v0.19.2

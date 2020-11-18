@@ -99,10 +99,12 @@ const (
 	GrafanaImgTagSuffix       = "6.5.3"
 	GrafanaDashboardLoaderKey = "grafana_dashboard_loader"
 
-	AlertManagerImgRepo      = "quay.io/openshift"
-	AlertManagerKey          = "prometheus-alertmanager"
-	ConfigmapReloaderImgRepo = "quay.io/openshift"
-	ConfigmapReloaderKey     = "prometheus-config-reloader"
+	AlertManagerImgRepo           = "quay.io/openshift"
+	AlertManagerKey               = "prometheus-alertmanager"
+	ConfigmapReloaderImgRepo      = "quay.io/openshift"
+	ConfigmapReloaderImgName      = "origin-configmap-reloader"
+	ConfigmapReloaderImgTagSuffix = "4.5.0"
+	ConfigmapReloaderKey          = "prometheus-config-reloader"
 
 	EndpointControllerImgTagSuffix = "2.2.0-6a5ea47fc39d51fb4fade6157843f2977442996e"
 	EndpointControllerImgName      = "endpoint-monitoring-operator"
