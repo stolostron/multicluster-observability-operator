@@ -198,9 +198,9 @@ rules:
   - leases
   verbs:
   - delete
-- apiGroups: 
+- apiGroups:
   - addon.open-cluster-management.io
-  resources: 
+  resources:
   - clustermanagementaddons
   verbs:
   - create
@@ -208,9 +208,9 @@ rules:
   - delete
   - list
   - watch
-- apiGroups: 
+- apiGroups:
   - addon.open-cluster-management.io
-  resources: 
+  resources:
   - managedclusteraddons
   - managedclusteraddons/status
   verbs:
