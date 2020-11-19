@@ -257,13 +257,15 @@ spec:
           - delete
           - list
           - watch
-        - apiGroups:
+        - apiGroups: 
           - addon.open-cluster-management.io
-          resources:
+          resources: 
           - managedclusteraddons
+          - managedclusteraddons/status
           verbs:
           - watch
           - create
+          - update
           - delete
           - get
           - list

@@ -212,9 +212,11 @@ rules:
   - addon.open-cluster-management.io
   resources: 
   - managedclusteraddons
+  - managedclusteraddons/status
   verbs:
-  - watch  
+  - watch
   - create
+  - update
   - delete
   - get
   - list

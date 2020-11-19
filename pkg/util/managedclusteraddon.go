@@ -40,7 +40,7 @@ func CreateManagedClusterAddonCR(client client.Client, namespace string) error {
 			Status: addonv1alpha1.ManagedClusterAddOnStatus{
 				AddOnConfiguration: addonv1alpha1.ConfigCoordinates{
 					CRDName: "observabilityaddons.observability.open-cluster-management.io",
-					CRName: "observability-addon",
+					CRName:  "observability-addon",
 				},
 				AddOnMeta: addonv1alpha1.AddOnMeta{
 					DisplayName: "Observability Controller",
@@ -52,10 +52,15 @@ func CreateManagedClusterAddonCR(client client.Client, namespace string) error {
 			log.Error(err, "Cannot create observability-controller  ManagedClusterAddOn")
 			return err
 		}
+		if err := client.Status().Update(context.TODO(), newManagedClusterAddon); err != nil {
+			log.Error(err, "Cannot update status for observability-controller  ManagedClusterAddOn")
+			return err
+		}
 	} else if err != nil {
 		log.Error(err, "Failed to get ManagedClusterAddOn ", "namespace", namespace)
 		return err
 	}
 	log.Info("ManagedClusterAddOn already present", "namespace", namespace)
+
 	return nil
 }
