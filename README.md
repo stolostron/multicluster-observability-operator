@@ -35,6 +35,16 @@ Install the `multicluster-observability-operator` on Red Hat Advanced Cluster Ma
        --type=kubernetes.io/dockerconfigjson
    ```
 
+   If the `multiclusterhub-operator-pull-secret` is not defined in the `open-cluster-management` namespace, copy the `pull-secret` from the `openshift-config` namespace into the `open-cluster-management-observability` namespace. Run the following command:
+
+   ```
+   DOCKER_CONFIG_JSON=`oc extract secret/pull-secret -n openshift-config --to=-`
+   oc create secret generic multiclusterhub-operator-pull-secret \
+       -n open-cluster-management-observability \
+       --from-literal=.dockerconfigjson="$DOCKER_CONFIG_JSON" \
+       --type=kubernetes.io/dockerconfigjson
+   ```
+
 4. Create and save the secret for object storage. For example, create a secret with Thanos on a Amazon Web Service cluster. Your file might resemble the following information:
 
    ```
