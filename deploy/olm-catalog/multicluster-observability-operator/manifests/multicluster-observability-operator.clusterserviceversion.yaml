@@ -261,9 +261,11 @@ spec:
           - addon.open-cluster-management.io
           resources:
           - managedclusteraddons
+          - managedclusteraddons/status
           verbs:
           - watch
           - create
+          - update
           - delete
           - get
           - list
