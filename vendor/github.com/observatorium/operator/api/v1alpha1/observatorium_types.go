@@ -101,6 +101,8 @@ type ReceiversSpec struct {
 	Version string `json:"version,omitempty"`
 	// VolumeClaimTemplate
 	VolumeClaimTemplate VolumeClaimTemplate `json:"volumeClaimTemplate"`
+	// ReplicationFactor defines the number of copies of every time-series
+	ReplicationFactor *int32 `json:"replicationFactor,omitempty"`
 }
 
 type StoreSpec struct {

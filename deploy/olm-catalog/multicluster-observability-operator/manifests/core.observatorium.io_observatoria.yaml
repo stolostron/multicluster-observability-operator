@@ -630,6 +630,10 @@ spec:
                   description: Number of Receiver replicas.
                   format: int32
                   type: integer
+                replicationFactor:
+                  description: ReplicationFactor defines the number of copies of every time-series
+                  format: int32
+                  type: integer
                 version:
                   description: Version of Thanos image to be deployed.
                   type: string
