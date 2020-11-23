@@ -125,7 +125,7 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 				}
 
 			case "observatorium-operator":
-				found, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.ObservatoriumImgRepo,
+				found, image := mcoconfig.ReplaceImage(r.cr.Annotations, spec.Containers[0].Image,
 					mcoconfig.ObservatoriumOperatorImgName)
 				if found {
 					spec.Containers[0].Image = image
