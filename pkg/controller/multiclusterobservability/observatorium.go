@@ -321,6 +321,7 @@ func newReceiversSpec(
 	receSpec := observatoriumv1alpha1.ReceiversSpec{}
 	receSpec.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
 	receSpec.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
+	receSpec.ReplicationFactor = receSpec.Replicas
 	receSpec.Version = mcoconfig.ThanosImgTag
 	found, image := mcoconfig.ReplaceImage(mco.Annotations, receSpec.Image, mcoconfig.ThanosImgName)
 	if found {
