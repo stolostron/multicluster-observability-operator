@@ -19,7 +19,10 @@ rules:
   - ""
   resources:
   - configmaps
+  - pods
   verbs:
+  - create
   - get
   - list
+  - update
   - watch
