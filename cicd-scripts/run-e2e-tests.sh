@@ -24,6 +24,8 @@ go get -u github.com/onsi/ginkgo/ginkgo
 export KUBECONFIG=$HOME/.kube/kind-config-hub
 export SKIP_INSTALL_STEP=true
 
+git clone https://github.com/open-cluster-management/observability-gitops.git
+
 printf "options:" >> resources/options.yaml
 printf "\n  hub:" >> resources/options.yaml
 printf "\n    baseDomain: placeholder" >> resources/options.yaml
@@ -35,9 +37,9 @@ printf "\n    - name: spoke" >> resources/options.yaml
 printf "\n      masterURL: https://127.0.0.1:32807" >> resources/options.yaml
 printf "\n      kubeconfig: $HOME/.kube/kind-config-spoke" >> resources/options.yaml
 
-ginkgo -v -- -options=resources/options.yaml
+ginkgo -v ./pkg/tests -- -options=../../resources/options.yaml
 
-cat results.xml | grep failures=\"0\" | grep errors=\"0\"
+cat ./pkg/tests/results.xml | grep failures=\"0\" | grep errors=\"0\"
 if [ $? -ne 0 ]; then
     echo "Cannot pass all test cases."
     cat results.xml
