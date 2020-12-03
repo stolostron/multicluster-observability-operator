@@ -285,7 +285,8 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 			}
 		}
 		if err := deployer.Deploy(res); err != nil {
-			reqLogger.Error(err, fmt.Sprintf("Failed to deploy %s %s/%s", res.GetKind(), config.GetDefaultNamespace(), res.GetName()))
+			reqLogger.Error(err, fmt.Sprintf("Failed to deploy %s %s/%s",
+				res.GetKind(), config.GetDefaultNamespace(), res.GetName()))
 			return reconcile.Result{}, err
 		}
 	}
