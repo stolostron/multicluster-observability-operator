@@ -279,13 +279,14 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 	deployer := deploying.NewDeployer(r.client)
 	//Deploy the resources
 	for _, res := range toDeploy {
-		if res.GetNamespace() == instance.Namespace {
+		if res.GetNamespace() == config.GetDefaultNamespace() {
 			if err := controllerutil.SetControllerReference(instance, res, r.scheme); err != nil {
 				reqLogger.Error(err, "Failed to set controller reference")
 			}
 		}
 		if err := deployer.Deploy(res); err != nil {
-			reqLogger.Error(err, fmt.Sprintf("Failed to deploy %s %s/%s", res.GetKind(), instance.Namespace, res.GetName()))
+			reqLogger.Error(err, fmt.Sprintf("Failed to deploy %s %s/%s",
+				res.GetKind(), config.GetDefaultNamespace(), res.GetName()))
 			return reconcile.Result{}, err
 		}
 	}
