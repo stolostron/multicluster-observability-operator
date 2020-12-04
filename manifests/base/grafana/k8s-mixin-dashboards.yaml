@@ -462,7 +462,7 @@ data:
               "decimals": 2,
               "link": true,
               "linkTooltip": "Drill down",
-              "linkUrl": "d/8b7a8b326d7a6f1f04244066368c67af/kubernetes-networking-namespace-pods?orgId=1&refresh=30s&var-namespace=$__cell",
+              "linkUrl": "d/8b7a8b326d7a6f1f04244066368c67af/kubernetes-networking-namespace-pods?orgId=1&refresh=1m&var-namespace=$__cell",
               "pattern": "namespace",
               "thresholds": [],
               "type": "number",
@@ -1643,7 +1643,7 @@ data:
           }
         }
       ],
-      "refresh": "10s",
+      "refresh": "1m",
       "schemaVersion": 21,
       "style": "dark",
       "tags": [
@@ -1779,9 +1779,6 @@ data:
       },
       "timepicker": {
         "refresh_intervals": [
-          "5s",
-          "10s",
-          "30s",
           "1m",
           "5m",
           "15m",
@@ -4657,7 +4654,7 @@ data:
           }
         }
       ],
-      "refresh": "10s",
+      "refresh": "1m",
       "schemaVersion": 21,
       "style": "dark",
       "tags": [
@@ -4716,9 +4713,6 @@ data:
       },
       "timepicker": {
         "refresh_intervals": [
-          "5s",
-          "10s",
-          "30s",
           "1m",
           "5m",
           "15m",
@@ -7157,7 +7151,7 @@ data:
           }
         }
       ],
-      "refresh": "10s",
+      "refresh": "1m",
       "schemaVersion": 21,
       "style": "dark",
       "tags": [
@@ -7240,9 +7234,6 @@ data:
       },
       "timepicker": {
         "refresh_intervals": [
-          "5s",
-          "10s",
-          "30s",
           "1m",
           "5m",
           "15m",
@@ -9338,7 +9329,7 @@ data:
           }
         }
       ],
-      "refresh": "10s",
+      "refresh": "1m",
       "schemaVersion": 21,
       "style": "dark",
       "tags": [
@@ -9508,9 +9499,6 @@ data:
       },
       "timepicker": {
         "refresh_intervals": [
-          "5s",
-          "10s",
-          "30s",
           "1m",
           "5m",
           "15m",
@@ -11434,7 +11422,7 @@ data:
           }
         }
       ],
-      "refresh": "10s",
+      "refresh": "1m",
       "schemaVersion": 21,
       "style": "dark",
       "tags": [
@@ -11626,9 +11614,6 @@ data:
       },
       "timepicker": {
         "refresh_intervals": [
-          "5s",
-          "10s",
-          "30s",
           "1m",
           "5m",
           "15m",
@@ -12483,7 +12468,7 @@ data:
           ]
         }
       ],
-      "refresh": "10s",
+      "refresh": "1m",
       "schemaVersion": 21,
       "style": "dark",
       "tags": [
@@ -12568,9 +12553,6 @@ data:
       },
       "timepicker": {
         "refresh_intervals": [
-          "5s",
-          "10s",
-          "30s",
           "1m",
           "5m",
           "15m",
@@ -14265,7 +14247,7 @@ data:
           }
         }
       ],
-      "refresh": "10s",
+      "refresh": "1m",
       "schemaVersion": 21,
       "style": "dark",
       "tags": [
@@ -14373,9 +14355,6 @@ data:
       },
       "timepicker": {
         "refresh_intervals": [
-          "5s",
-          "10s",
-          "30s",
           "1m",
           "5m",
           "15m",
@@ -15376,7 +15355,7 @@ data:
           }
         }
       ],
-      "refresh": "10s",
+      "refresh": "1m",
       "schemaVersion": 21,
       "style": "dark",
       "tags": [],
@@ -15444,9 +15423,6 @@ data:
       },
       "timepicker": {
         "refresh_intervals": [
-          "5s",
-          "10s",
-          "30s",
           "1m",
           "5m",
           "15m",
@@ -16505,7 +16481,7 @@ data:
           }
         }
       ],
-      "refresh": "10s",
+      "refresh": "1m",
       "schemaVersion": 26,
       "style": "dark",
       "tags": [],
@@ -16590,9 +16566,6 @@ data:
       },
       "timepicker": {
         "refresh_intervals": [
-          "5s",
-          "10s",
-          "30s",
           "1m",
           "5m",
           "15m",
@@ -17627,7 +17600,7 @@ data:
           }
         }
       ],
-      "refresh": "10s",
+      "refresh": "1m",
       "schemaVersion": 21,
       "style": "dark",
       "tags": [
@@ -17713,9 +17686,6 @@ data:
       },
       "timepicker": {
         "refresh_intervals": [
-          "5s",
-          "10s",
-          "30s",
           "1m",
           "5m",
           "15m",
