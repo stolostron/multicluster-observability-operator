@@ -1535,7 +1535,7 @@ data:
           }
         }
       ],
-      "refresh": "10s",
+      "refresh": "1m",
       "schemaVersion": 21,
       "style": "light",
       "tags": [
@@ -1595,9 +1595,6 @@ data:
       },
       "timepicker": {
         "refresh_intervals": [
-          "5s",
-          "10s",
-          "30s",
           "1m",
           "5m",
           "15m",
@@ -2096,7 +2093,7 @@ data:
                       {
                         "targetBlank": true,
                         "title": "Drill down to workloads",
-                        "url": "d/a87fb0d919ec0ea5f6543124e16c42a5/kubernetes-compute-resources-namespace-workloads?orgId=1&refresh=10s&var-datasource=$datasource&var-type=deployment&var-cluster=$cluster&var-namespace=${__data.fields[namespace]}&var-interval=5m"
+                        "url": "d/a87fb0d919ec0ea5f6543124e16c42a5/kubernetes-compute-resources-namespace-workloads?orgId=1&refresh=1m&var-datasource=$datasource&var-type=deployment&var-cluster=$cluster&var-namespace=${__data.fields[namespace]}&var-interval=5m"
                       }
                     ]
                   }
@@ -2828,7 +2825,7 @@ data:
                       {
                         "targetBlank": true,
                         "title": "Drill down to workloads",
-                        "url": "d/a87fb0d919ec0ea5f6543124e16c42a5/kubernetes-compute-resources-namespace-workloads?orgId=1&refresh=10s&var-datasource=$datasource&var-type=deployment&var-cluster=$cluster&var-namespace=${__data.fields[namespace]}&var-interval=5m"
+                        "url": "d/a87fb0d919ec0ea5f6543124e16c42a5/kubernetes-compute-resources-namespace-workloads?orgId=1&refresh=1m&var-datasource=$datasource&var-type=deployment&var-cluster=$cluster&var-namespace=${__data.fields[namespace]}&var-interval=5m"
                       }
                     ]
                   }
@@ -3102,7 +3099,7 @@ data:
           "type": "table"
         }
       ],
-      "refresh": "10s",
+      "refresh": "1m",
       "schemaVersion": 21,
       "style": "dark",
       "tags": [
@@ -3161,9 +3158,6 @@ data:
       },
       "timepicker": {
         "refresh_intervals": [
-          "5s",
-          "10s",
-          "30s",
           "1m",
           "5m",
           "15m",
