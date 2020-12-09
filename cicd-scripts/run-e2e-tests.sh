@@ -37,7 +37,7 @@ printf "\n    - name: spoke" >> resources/options.yaml
 printf "\n      masterURL: https://127.0.0.1:32807" >> resources/options.yaml
 printf "\n      kubeconfig: $HOME/.kube/kind-config-spoke" >> resources/options.yaml
 
-ginkgo -v ./pkg/tests -- -options=../../resources/options.yaml
+ginkgo --skip="should work in basic mode \(reconcile/g0\)" -v ./pkg/tests -- -options=../../resources/options.yaml
 
 cat ./pkg/tests/results.xml | grep failures=\"0\" | grep errors=\"0\"
 if [ $? -ne 0 ]; then
