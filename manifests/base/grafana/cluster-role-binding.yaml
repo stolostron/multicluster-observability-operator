@@ -1,11 +1,11 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: grafana
+  name: open-cluster-management:grafana
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: grafana
+  name: open-cluster-management:grafana
 subjects:
 - kind: ServiceAccount
   name: grafana
