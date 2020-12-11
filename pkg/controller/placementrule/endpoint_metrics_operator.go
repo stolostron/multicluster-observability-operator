@@ -18,7 +18,7 @@ import (
 const (
 	deployName      = "endpoint-observability-operator"
 	saName          = "endpoint-observability-operator-sa"
-	rolebindingName = "endpoint-observability-operator-rb"
+	rolebindingName = "open-cluster-management:endpoint-observability-operator-rb"
 )
 
 var (
