@@ -269,7 +269,7 @@ spec:
           - delete
           - get
           - list
-        serviceAccountName: open-cluster-management:multicluster-observability-operator
+        serviceAccountName: multicluster-observability-operator
       deployments:
       - name: multicluster-observability-operator
         spec:
