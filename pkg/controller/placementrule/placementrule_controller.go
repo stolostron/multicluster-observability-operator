@@ -8,6 +8,7 @@ import (
 	"os"
 
 	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
+	ocinfrav1 "github.com/openshift/api/config/v1"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -156,6 +157,26 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// secondary watch for certificate secrets
 	err = watchCertficate(c, mapFn)
+	if err != nil {
+		return err
+	}
+
+	pred = predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+		},
+	}
+	// watch APIServer for kubeconfig
+	err = c.Watch(&source.Kind{Type: &ocinfrav1.APIServer{}}, &handler.EnqueueRequestForObject{}, pred)
 	if err != nil {
 		return err
 	}
