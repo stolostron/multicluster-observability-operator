@@ -161,24 +161,28 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	pred = predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return false
-		},
-	}
 	// watch APIServer for kubeconfig
-	err = c.Watch(&source.Kind{Type: &ocinfrav1.APIServer{}}, &handler.EnqueueRequestForObject{}, pred)
-	if err != nil && !meta.IsNoMatchError(err) {
-		return err
+	gk = schema.GroupKind{Group: ocinfrav1.GroupVersion.Group, Kind: "APIServer"}
+	_, err = r.(*ReconcilePlacementRule).restMapper.RESTMapping(gk, ocinfrav1.GroupVersion.Version)
+	if err == nil {
+		pred = predicate.Funcs{
+			CreateFunc: func(e event.CreateEvent) bool {
+				return false
+			},
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				if e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
+					return true
+				}
+				return false
+			},
+			DeleteFunc: func(e event.DeleteEvent) bool {
+				return false
+			},
+		}
+		err = c.Watch(&source.Kind{Type: &ocinfrav1.APIServer{}}, &handler.EnqueueRequestForObject{}, pred)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
