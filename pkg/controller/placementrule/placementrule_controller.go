@@ -4,7 +4,6 @@ package placementrule
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
@@ -186,7 +185,8 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	reqLogger.Info("Reconciling PlacementRule")
 
 	if config.GetMonitoringCRName() == "" {
-		return reconcile.Result{}, fmt.Errorf("multicluster observability resource is not available")
+		reqLogger.Info("multicluster observability resource is not available")
+		return reconcile.Result{}, nil
 	}
 
 	// Fetch the MultiClusterObservability instance
