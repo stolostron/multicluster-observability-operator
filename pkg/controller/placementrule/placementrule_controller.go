@@ -177,7 +177,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 	// watch APIServer for kubeconfig
 	err = c.Watch(&source.Kind{Type: &ocinfrav1.APIServer{}}, &handler.EnqueueRequestForObject{}, pred)
-	if err != nil {
+	if err != nil && !meta.IsNoMatchError(err) {
 		return err
 	}
 

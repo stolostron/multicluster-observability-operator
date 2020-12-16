@@ -33,12 +33,12 @@ func createKubeConfig(client client.Client, namespace string) (*clientv1.Config,
 		return nil, err
 	}
 
-	kubeAPIServer, err := getKubeAPIServerAddress(client)
+	apiServer, err := config.GetKubeAPIServerAddress(client)
 	if err != nil {
 		return nil, err
 	}
 	// if there is customized certs for api server, use the customized cert for kubeconfig
-	if u, err := url.Parse(kubeAPIServer); err == nil {
+	if u, err := url.Parse(apiServer); err == nil {
 		apiServerCertSecretName, err := getKubeAPIServerSecretName(client, u.Hostname())
 		if err != nil {
 			return nil, err
@@ -51,10 +51,7 @@ func createKubeConfig(client client.Client, namespace string) (*clientv1.Config,
 			ca = apiServerCert
 		}
 	}
-	apiServer, err := config.GetKubeAPIServerAddress(client)
-	if err != nil {
-		return nil, err
-	}
+
 	return &clientv1.Config{
 		Kind:       "Config",
 		APIVersion: "v1",
