@@ -34,7 +34,7 @@ func TestCreateKubeSecret(t *testing.T) {
 	objs := []runtime.Object{newSATokenSecret(), newTestSA(), newTestInfra()}
 	c := fake.NewFakeClient(objs...)
 
-	kubeconfig, err := createKubeSecret(c, namespace)
+	kubeconfig, err := createKubeSecret(c, nil, namespace)
 	if err != nil {
 		t.Fatalf("Failed to create kubeconfig secret: (%v)", err)
 	}
@@ -108,7 +108,7 @@ func TestGetKubeAPIServerSecretName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getKubeAPIServerSecretName(tt.args.client, tt.args.name)
+			got, err := getKubeAPIServerSecretName(tt.args.client, nil, tt.args.name)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getKubeAPIServerSecretName() error = %v, wantErr %v", err, tt.wantErr)
 				return

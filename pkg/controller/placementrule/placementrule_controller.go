@@ -306,7 +306,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		for _, decision := range instance.Status.Decisions {
 			reqLogger.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
 			currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
-			err = createManagedClusterRes(r.client, mco, imagePullSecret,
+			err = createManagedClusterRes(r.client, r.restMapper, mco, imagePullSecret,
 				decision.ClusterName, decision.ClusterNamespace)
 			if err != nil {
 				return reconcile.Result{}, err
@@ -371,7 +371,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	return reconcile.Result{}, nil
 }
 
-func createManagedClusterRes(client client.Client,
+func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 	mco *mcov1beta1.MultiClusterObservability, imagePullSecret *corev1.Secret,
 	name string, namespace string) error {
 	org := multiclusterobservability.GetManagedClusterOrg()
@@ -396,7 +396,7 @@ func createManagedClusterRes(client client.Client,
 		return err
 	}
 
-	err = createManifestWork(client, namespace, name, mco, imagePullSecret)
+	err = createManifestWork(client, restMapper, namespace, name, mco, imagePullSecret)
 	if err != nil {
 		log.Error(err, "Failed to create manifestwork")
 		return err

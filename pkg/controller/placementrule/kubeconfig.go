@@ -11,7 +11,9 @@ import (
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	clientv1 "k8s.io/client-go/tools/clientcmd/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -27,7 +29,7 @@ const (
 	openshiftConfigNamespace = "openshift-config"
 )
 
-func createKubeConfig(client client.Client, namespace string) (*clientv1.Config, error) {
+func createKubeConfig(client client.Client, restMapper meta.RESTMapper, namespace string) (*clientv1.Config, error) {
 	ca, token, err := getSAToken(client, namespace)
 	if err != nil {
 		return nil, err
@@ -39,7 +41,7 @@ func createKubeConfig(client client.Client, namespace string) (*clientv1.Config,
 	}
 	// if there is customized certs for api server, use the customized cert for kubeconfig
 	if u, err := url.Parse(apiServer); err == nil {
-		apiServerCertSecretName, err := getKubeAPIServerSecretName(client, u.Hostname())
+		apiServerCertSecretName, err := getKubeAPIServerSecretName(client, restMapper, u.Hostname())
 		if err != nil {
 			return nil, err
 		}
@@ -86,8 +88,8 @@ func createKubeConfig(client client.Client, namespace string) (*clientv1.Config,
 	}, nil
 }
 
-func createKubeSecret(client client.Client, namespace string) (*corev1.Secret, error) {
-	config, err := createKubeConfig(client, namespace)
+func createKubeSecret(client client.Client, restMapper meta.RESTMapper, namespace string) (*corev1.Secret, error) {
+	config, err := createKubeConfig(client, restMapper, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +125,17 @@ func getKubeAPIServerAddress(client client.Client) (string, error) {
 
 // getKubeAPIServerSecretName iterate through all namespacedCertificates
 // returns the first one which has a name matches the given dnsName
-func getKubeAPIServerSecretName(client client.Client, dnsName string) (string, error) {
+func getKubeAPIServerSecretName(client client.Client, restMapper meta.RESTMapper, dnsName string) (string, error) {
+
+	if restMapper != nil {
+		gk := schema.GroupKind{Group: ocinfrav1.GroupVersion.Group, Kind: "APIServer"}
+		_, err := restMapper.RESTMapping(gk, ocinfrav1.GroupVersion.Version)
+		if err != nil {
+			log.Info("the server doesn't have a resource type APIServer", "error", err)
+			return "", nil
+		}
+	}
+
 	apiserver := &ocinfrav1.APIServer{}
 	if err := client.Get(
 		context.TODO(),
