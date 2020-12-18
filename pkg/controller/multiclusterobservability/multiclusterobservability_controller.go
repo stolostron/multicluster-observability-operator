@@ -98,9 +98,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 	// Watch for changes to primary resource MultiClusterObservability
 	err = c.Watch(&source.Kind{Type: &mcov1beta1.MultiClusterObservability{}}, &handler.EnqueueRequestForObject{}, pred)
-	if err != nil {
-		return err
-	}
 
 	// Watch for changes to secondary resource Deployment and requeue the owner MultiClusterObservability
 	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
@@ -116,6 +113,24 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// Watch for changes to secondary resource ConfigMap and requeue the owner MultiClusterObservability
 	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &mcov1beta1.MultiClusterObservability{},
+	})
+
+	// Watch for changes to secondary resource Secret and requeue the owner MultiClusterObservability
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &mcov1beta1.MultiClusterObservability{},
+	})
+
+	// Watch for changes to secondary resource Service and requeue the owner MultiClusterObservability
+	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &mcov1beta1.MultiClusterObservability{},
+	})
+
+	// Watch for changes to secondary Observatorium CR and requeue the owner MultiClusterObservability
+	err = c.Watch(&source.Kind{Type: &observatoriumv1alpha1.Observatorium{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &mcov1beta1.MultiClusterObservability{},
 	})
@@ -149,9 +164,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 	// Watch the configmap
 	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, pred)
-	if err != nil {
-		return err
-	}
 
 	pred = predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
@@ -170,27 +182,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 	// Watch the Secret
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, pred)
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to secondary resource Secret and requeue the owner MultiClusterObservability
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &mcov1beta1.MultiClusterObservability{},
-	})
-
-	// Watch for changes to secondary resource Service and requeue the owner MultiClusterObservability
-	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &mcov1beta1.MultiClusterObservability{},
-	})
-
-	// Watch for changes to secondary Observatorium CR and requeue the owner MultiClusterObservability
-	err = c.Watch(&source.Kind{Type: &observatoriumv1alpha1.Observatorium{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &mcov1beta1.MultiClusterObservability{},
-	})
 
 	if err != nil {
 		return err
