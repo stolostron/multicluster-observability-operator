@@ -116,8 +116,8 @@ func (d *Deployer) updateStatefulSet(desiredObj, runtimeObj *unstructured.Unstru
 		log.Error(err, fmt.Sprintf("Failed to Unmarshal StatefulSet %s", runtimeObj.GetName()))
 	}
 
-	if !apiequality.Semantic.DeepDerivative(runtimeDepoly.Spec.Template, desiredDepoly.Spec.Template) ||
-		!apiequality.Semantic.DeepDerivative(runtimeDepoly.Spec.Replicas, desiredDepoly.Spec.Replicas) {
+	if !apiequality.Semantic.DeepDerivative(desiredDepoly.Spec.Template, runtimeDepoly.Spec.Template) ||
+		!apiequality.Semantic.DeepDerivative(desiredDepoly.Spec.Replicas, runtimeDepoly.Spec.Replicas) {
 		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
 		runtimeDepoly.Spec.Replicas = desiredDepoly.Spec.Replicas
 		runtimeDepoly.Spec.Template = desiredDepoly.Spec.Template
