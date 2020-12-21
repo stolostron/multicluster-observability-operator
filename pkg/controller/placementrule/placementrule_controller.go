@@ -505,7 +505,7 @@ func watchWhitelistCM(c controller.Controller, mapFn handler.ToRequestsFunc) err
 				e.Meta.GetNamespace() == config.GetDefaultNamespace() {
 				return true
 			}
-			return true
+			return false
 		},
 	}
 
