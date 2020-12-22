@@ -8,6 +8,7 @@ import (
 	"os"
 
 	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
+	ocinfrav1 "github.com/openshift/api/config/v1"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -204,6 +205,30 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// watch APIServer for kubeconfig
+	gk = schema.GroupKind{Group: ocinfrav1.GroupVersion.Group, Kind: "APIServer"}
+	_, err = r.(*ReconcilePlacementRule).restMapper.RESTMapping(gk, ocinfrav1.GroupVersion.Version)
+	if err == nil {
+		pred = predicate.Funcs{
+			CreateFunc: func(e event.CreateEvent) bool {
+				return false
+			},
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				if e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
+					return true
+				}
+				return false
+			},
+			DeleteFunc: func(e event.DeleteEvent) bool {
+				return false
+			},
+		}
+		err = c.Watch(&source.Kind{Type: &ocinfrav1.APIServer{}}, &handler.EnqueueRequestForObject{}, pred)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -325,7 +350,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		for _, decision := range instance.Status.Decisions {
 			reqLogger.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
 			currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
-			err = createManagedClusterRes(r.client, mco, imagePullSecret,
+			err = createManagedClusterRes(r.client, r.restMapper, mco, imagePullSecret,
 				decision.ClusterName, decision.ClusterNamespace)
 			if err != nil {
 				return reconcile.Result{}, err
@@ -390,7 +415,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	return reconcile.Result{}, nil
 }
 
-func createManagedClusterRes(client client.Client,
+func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 	mco *mcov1beta1.MultiClusterObservability, imagePullSecret *corev1.Secret,
 	name string, namespace string) error {
 	org := multiclusterobservability.GetManagedClusterOrg()
@@ -415,7 +440,7 @@ func createManagedClusterRes(client client.Client,
 		return err
 	}
 
-	err = createManifestWork(client, namespace, name, mco, imagePullSecret)
+	err = createManifestWork(client, restMapper, namespace, name, mco, imagePullSecret)
 	if err != nil {
 		log.Error(err, "Failed to create manifestwork")
 		return err

@@ -104,7 +104,8 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to get work dir: (%v)", err)
 	}
 	templatePath = path.Join(wd, "../../../manifests/endpoint-observability")
-	err = createManifestWork(c, namespace, clusterName, newTestMCO(), newTestPullSecret())
+
+	err = createManifestWork(c, nil, namespace, clusterName, newTestMCO(), newTestPullSecret())
 	if err != nil {
 		t.Fatalf("Failed to create manifestwork: (%v)", err)
 	}
@@ -118,7 +119,7 @@ func TestManifestWork(t *testing.T) {
 	}
 
 	spokeNameSpace = "spoke-ns"
-	err = createManifestWork(c, namespace, clusterName, newTestMCO(), newTestPullSecret())
+	err = createManifestWork(c, nil, namespace, clusterName, newTestMCO(), newTestPullSecret())
 	if err != nil {
 		t.Fatalf("Failed to create manifestwork with updated namespace: (%v)", err)
 	}

@@ -7,6 +7,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -61,8 +62,8 @@ func injectIntoWork(works []workv1.Manifest, obj runtime.Object) []workv1.Manife
 	return works
 }
 
-func createManifestWork(client client.Client, clusterNamespace string,
-	clusterName string,
+func createManifestWork(client client.Client, restMapper meta.RESTMapper,
+	clusterNamespace string, clusterName string,
 	mco *mcov1beta1.MultiClusterObservability,
 	imagePullSecret *corev1.Secret) error {
 
@@ -96,7 +97,7 @@ func createManifestWork(client client.Client, clusterNamespace string,
 	manifests = injectIntoWork(manifests, createNameSpace())
 
 	// inject kube secret
-	secret, err := createKubeSecret(client, clusterNamespace)
+	secret, err := createKubeSecret(client, restMapper, clusterNamespace)
 	if err != nil {
 		return err
 	}
