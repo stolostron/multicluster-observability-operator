@@ -123,7 +123,7 @@ func TestManifestWork(t *testing.T) {
 	}
 	templatePath = path.Join(wd, "../../../manifests/endpoint-observability")
 
-	err = createManifestWork(c, namespace, clusterName, newTestMCO(), newTestPullSecret())
+	err = createManifestWork(c, nil, namespace, clusterName, newTestMCO(), newTestPullSecret())
 	if err != nil {
 		t.Fatalf("Failed to create manifestwork: (%v)", err)
 	}
@@ -136,7 +136,7 @@ func TestManifestWork(t *testing.T) {
 		t.Fatal("Wrong size of manifests in the mainfestwork")
 	}
 
-	err = createManifestWork(c, namespace, clusterName, newTestMCO(), nil)
+	err = createManifestWork(c, nil, namespace, clusterName, newTestMCO(), nil)
 	if err != nil {
 		t.Fatalf("Failed to create manifestwork: (%v)", err)
 	}
@@ -149,7 +149,7 @@ func TestManifestWork(t *testing.T) {
 	}
 
 	spokeNameSpace = "spoke-ns"
-	err = createManifestWork(c, namespace, clusterName, newTestMCO(), newTestPullSecret())
+	err = createManifestWork(c, nil, namespace, clusterName, newTestMCO(), newTestPullSecret())
 	if err != nil {
 		t.Fatalf("Failed to create manifestwork with updated namespace: (%v)", err)
 	}
