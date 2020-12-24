@@ -1,0 +1,32 @@
+
+apiVersion: v1
+stringData:
+  grafana.ini: |
+    [auth]
+    disable_login_form = true
+    disable_signout_menu = true
+    [auth.basic]
+    enabled = false
+    [auth.proxy]
+    auto_sign_up = true
+    enabled = true
+    header_name = X-Forwarded-User
+    [paths]
+    data = /var/lib/grafana
+    logs = /var/lib/grafana/logs
+    plugins = /var/lib/grafana/plugins
+    provisioning = /etc/grafana/provisioning
+    [security]
+    admin_user = WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000
+    cookie_secure = true
+    [server]
+    http_port = 3001
+    root_url = %(protocol)s://%(domain)s/grafana-dev/
+    domain = localhost
+    [users]
+    viewers_can_edit = true
+kind: Secret
+metadata:
+  name: grafana-dev-config
+  namespace: open-cluster-management-observability
+type: Opaque

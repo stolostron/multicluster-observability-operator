@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: multicluster-observability-grafana-dev
+  name: grafana-dev
+  namespace: open-cluster-management-observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: multicluster-observability-grafana-dev
+  template:
+    metadata:
+      labels:
+        app: multicluster-observability-grafana-dev
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 70
+            podAffinityTerm:
+              topologyKey: topology.kubernetes.io/zone
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - multicluster-observability-grafana-dev
+          - weight: 30
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - multicluster-observability-grafana-dev
+      containers:
+      - args:
+        - -config=/etc/grafana/grafana.ini
+        image: quay.io/open-cluster-management/grafana@sha256:bd4e0164edef503e9a4838c95fadc6d449569de47eeb3e10907cd60710199057
+        imagePullPolicy: Always
+        name: grafana-dev
+        ports:
+        - containerPort: 3001
+          name: http
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 4m
+            memory: 100Mi
+        volumeMounts:
+        - mountPath: /var/lib/grafana
+          name: grafana-dev-storage
+        - mountPath: /etc/grafana/provisioning/datasources
+          name: grafana-dev-datasources
+        - mountPath: /etc/grafana
+          name: grafana-dev-config
+      - name: grafana-dashboard-loader
+        image: quay.io/open-cluster-management/grafana-dashboard-loader@sha256:d8e2a9c709b820bc3d9d2631def14ae83ff1aa56861b769099572297c880e970
+        imagePullPolicy: Always   
+      serviceAccount: grafana
+      imagePullSecrets:
+      - name: multiclusterhub-operator-pull-secret
+      serviceAccountName: grafana-dev
+      volumes:
+      - emptyDir: {}
+        name: grafana-dev-storage
+      - name: grafana-dev-datasources
+        secret:
+          defaultMode: 420
+          secretName: grafana-dev-datasources
+      - name: grafana-dev-config
+        secret:
+          defaultMode: 420
+          secretName: grafana-dev-config

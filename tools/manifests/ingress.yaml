@@ -1,0 +1,15 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    ingress.open-cluster-management.io/rewrite-target: /
+    kubernetes.io/ingress.class: ingress-open-cluster-management
+  name: grafana-dev
+spec:
+  rules:
+  - http:
+      paths:
+      - backend:
+          serviceName: grafana-dev
+          servicePort: 3001
+        path: /grafana-dev
