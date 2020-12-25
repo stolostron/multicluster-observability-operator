@@ -11,6 +11,7 @@ metadata:
             "name": "observability"
           },
           "spec": {
+            "observabilityAddonSpec": {},
             "storageConfigObject": {
               "metricObjectStorage": {}
             }
