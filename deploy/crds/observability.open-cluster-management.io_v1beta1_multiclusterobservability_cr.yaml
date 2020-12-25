@@ -4,6 +4,4 @@ metadata:
   name: observability
 spec:
   storageConfigObject:
-    metricObjectStorage:
-      name: thanos-object-storage
-      key: thanos.yaml
+    metricObjectStorage: {}

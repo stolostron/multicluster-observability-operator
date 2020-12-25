@@ -44,7 +44,7 @@ observability.open-cluster-management.io/v1beta1
    </td>
   </tr>
   <tr>
-   <td>EnableDownSampling
+   <td>EnableDownsampling
    </td>
    <td>bool
    </td>

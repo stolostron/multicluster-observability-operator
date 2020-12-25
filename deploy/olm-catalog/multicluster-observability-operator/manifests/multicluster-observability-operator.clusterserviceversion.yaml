@@ -12,10 +12,7 @@ metadata:
           },
           "spec": {
             "storageConfigObject": {
-              "metricObjectStorage": {
-                "key": "thanos.yaml",
-                "name": "thanos-object-storage"
-              }
+              "metricObjectStorage": {}
             }
           }
         }
