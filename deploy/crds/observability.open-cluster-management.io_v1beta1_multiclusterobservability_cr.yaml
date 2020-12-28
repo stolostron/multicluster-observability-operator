@@ -3,7 +3,6 @@ kind: MultiClusterObservability
 metadata:
   name: observability
 spec:
+  observabilityAddonSpec: {}
   storageConfigObject:
-    metricObjectStorage:
-      name: thanos-object-storage
-      key: thanos.yaml
+    metricObjectStorage: {}

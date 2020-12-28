@@ -11,11 +11,9 @@ metadata:
             "name": "observability"
           },
           "spec": {
+            "observabilityAddonSpec": {},
             "storageConfigObject": {
-              "metricObjectStorage": {
-                "key": "thanos.yaml",
-                "name": "thanos-object-storage"
-              }
+              "metricObjectStorage": {}
             }
           }
         }

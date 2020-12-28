@@ -1,4 +1,4 @@
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: multiclusterobservabilities.observability.open-cluster-management.io
@@ -12,130 +12,138 @@ spec:
     - mco
     singular: multiclusterobservability
   scope: Cluster
-  subresources:
-    status: {}
-  validation:
-    openAPIV3Schema:
-      description: MultiClusterObservability defines the configuration for the Observability
-        installation on Hub and Managed Clusters all through this one custom resource.
-      properties:
-        apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-          type: string
-        kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-          type: string
-        metadata:
-          type: object
-        spec:
-          description: MultiClusterObservabilitySpec defines the desired state of
-            MultiClusterObservability
-          properties:
-            availabilityConfig:
-              description: 'ReplicaCount for HA support. Does not affect data stores.
-                Enabled will toggle HA support. This will provide better support in
-                cases of failover but consumes more resources. Options are: Basic
-                and High (default).'
-              type: string
-            enableDownSampling:
-              description: Enable or disable the downsample. The default value is
-                false. This is not recommended as querying long time ranges without
-                non-downsampled data is not efficient and useful.
-              type: boolean
-            imagePullPolicy:
-              description: Pull policy of the MultiClusterObservability images
-              type: string
-            imagePullSecret:
-              description: Pull secret of the MultiClusterObservability images
-              type: string
-            nodeSelector:
-              additionalProperties:
-                type: string
-              description: Spec of NodeSelector
-              type: object
-            observabilityAddonSpec:
-              description: The ObservabilityAddonSpec defines the global settings
-                for all managed clusters which have observability add-on enabled.
-              properties:
-                enableMetrics:
-                  description: EnableMetrics indicates the observability addon push
-                    metrics to hub server. The default is true
-                  type: boolean
-                interval:
-                  description: Interval for the observability addon push metrics to
-                    hub server. The default is 60 seconds
-                  format: int32
-                  type: integer
-                  minimum: 15
-                  maximum: 3600
-              type: object
-            retentionResolution1h:
-              description: How long to retain samples of resolution 2 (1 hour) in
-                bucket. Default is 30d.
-              type: string
-            retentionResolution5m:
-              description: How long to retain samples of resolution 1 (5 minutes)
-                in bucket. Default is 14d
-              type: string
-            retentionResolutionRaw:
-              description: How long to retain raw samples in a bucket. Default is
-                5d
-              type: string
-            storageConfigObject:
-              description: Specifies the storage to be used by Observability
-              properties:
-                metricObjectStorage:
-                  description: Object store config secret for metrics
-                  properties:
-                    key:
-                      description: The key of the secret to select from. Must be a
-                        valid secret key. Refer to https://thanos.io/storage.md/#configuration
-                        for a valid content of key.
-                      type: string
-                    name:
-                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
-                      type: string
-                  type: object
-                statefulSetSize:
-                  description: The amount of storage applied to the Observability
-                    stateful sets, i.e. Thanos store, Rule, compact and receiver.
-                    The default is 10Gi
-                  type: string
-                statefulSetStorageClass:
-                  description: "\tSpecify the storageClass Stateful Sets. This storage
-                    class will also be used for Object Storage if MetricObjectStorage
-                    was configured for the system to create the storage. The default
-                    is gp2."
-                  type: string
-              type: object
-          type: object
-        status:
-          description: MultiClusterObservabilityStatus defines the observed state
-            of MultiClusterObservability
-          properties:
-            conditions:
-              description: Represents the status of each deployment
-              items:
-                description: MCOCondition defines the aggregated state of entire MultiClusterObservability
-                  CR
-                properties:
-                  message:
-                    type: string
-                  reason:
-                    type: string
-                  type:
-                    type: string
-                type: object
-              type: array
-          type: object
-      type: object
-  version: v1beta1
   versions:
   - name: v1beta1
+    schema:
+      openAPIV3Schema:
+        description: MultiClusterObservability defines the configuration for the Observability
+          installation on Hub and Managed Clusters all through this one custom resource.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: MultiClusterObservabilitySpec defines the desired state of
+              MultiClusterObservability
+            properties:
+              availabilityConfig:
+                default: High
+                description: 'ReplicaCount for HA support. Does not affect data stores.
+                  Enabled will toggle HA support. This will provide better support
+                  in cases of failover but consumes more resources. Options are: Basic
+                  and High (default).'
+                type: string
+              enableDownsampling:
+                default: true
+                description: Enable or disable the downsample. The default value is
+                  true. This is not recommended as querying long time ranges without
+                  non-downsampled data is not efficient and useful.
+                type: boolean
+              imagePullPolicy:
+                default: Always
+                description: Pull policy of the MultiClusterObservability images
+                type: string
+              imagePullSecret:
+                default: multiclusterhub-operator-pull-secret
+                description: Pull secret of the MultiClusterObservability images
+                type: string
+              nodeSelector:
+                additionalProperties:
+                  type: string
+                description: Spec of NodeSelector
+                type: object
+              observabilityAddonSpec:
+                description: The ObservabilityAddonSpec defines the global settings
+                  for all managed clusters which have observability add-on enabled.
+                properties:
+                  enableMetrics:
+                    default: true
+                    description: EnableMetrics indicates the observability addon push
+                      metrics to hub server.
+                    type: boolean
+                  interval:
+                    default: 60
+                    description: Interval for the observability addon push metrics
+                      to hub server.
+                    format: int32
+                    maximum: 3600
+                    minimum: 15
+                    type: integer
+                type: object
+              retentionResolution1h:
+                default: 30d
+                description: How long to retain samples of resolution 2 (1 hour) in
+                  bucket.
+                type: string
+              retentionResolution5m:
+                default: 14d
+                description: How long to retain samples of resolution 1 (5 minutes)
+                  in bucket.
+                type: string
+              retentionResolutionRaw:
+                default: 5d
+                description: How long to retain raw samples in a bucket.
+                type: string
+              storageConfigObject:
+                description: Specifies the storage to be used by Observability
+                properties:
+                  metricObjectStorage:
+                    description: Object store config secret for metrics
+                    properties:
+                      key:
+                        default: thanos.yaml
+                        description: The key of the secret to select from. Must be
+                          a valid secret key. Refer to https://thanos.io/storage.md/#configuration
+                          for a valid content of key.
+                        type: string
+                      name:
+                        default: thanos-object-storage
+                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                        type: string
+                    type: object
+                  statefulSetSize:
+                    default: 10Gi
+                    description: The amount of storage applied to the Observability
+                      stateful sets, i.e. Thanos store, Rule, compact and receiver.
+                    type: string
+                  statefulSetStorageClass:
+                    default: gp2
+                    description: "\tSpecify the storageClass Stateful Sets. This storage
+                      class will also be used for Object Storage if MetricObjectStorage
+                      was configured for the system to create the storage."
+                    type: string
+                type: object
+            type: object
+          status:
+            description: MultiClusterObservabilityStatus defines the observed state
+              of MultiClusterObservability
+            properties:
+              conditions:
+                description: Represents the status of each deployment
+                items:
+                  description: MCOCondition defines the aggregated state of entire
+                    MultiClusterObservability CR
+                  properties:
+                    message:
+                      type: string
+                    reason:
+                      type: string
+                    type:
+                      type: string
+                  type: object
+                type: array
+            type: object
+        type: object
     served: true
     storage: true
-  preserveUnknownFields: false
+    subresources:
+      status: {}
