@@ -3,7 +3,7 @@
 
 echo "install dependencies"
 
-_OPERATOR_SDK_VERSION=v0.18.0
+_OPERATOR_SDK_VERSION=v0.18.2
 
 if ! [ -x "$(command -v operator-sdk)" ]; then
     if [[ "$OSTYPE" == "linux-gnu" ]]; then

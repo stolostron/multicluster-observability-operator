@@ -262,10 +262,6 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return reconcile.Result{}, err
 	}
 
-	if result, err := config.GenerateMonitoringCR(r.client, instance); result != nil {
-		return *result, err
-	}
-
 	// Do not reconcile objects if this instance of mch is labeled "paused"
 	if config.IsPaused(instance.GetAnnotations()) {
 		reqLogger.Info("MCO reconciliation is paused. Nothing more to do.")
