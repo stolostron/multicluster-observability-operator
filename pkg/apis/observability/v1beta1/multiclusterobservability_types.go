@@ -27,20 +27,24 @@ type MultiClusterObservabilitySpec struct {
 	// Enabled will toggle HA support. This will provide better support in cases of failover
 	// but consumes more resources. Options are: Basic and High (default).
 	// +optional
+	// +kubebuilder:default:=High
 	AvailabilityConfig AvailabilityType `json:"availabilityConfig,omitempty"`
 
 	// Enable or disable the downsample.
 	// The default value is false.
 	// This is not recommended as querying long time ranges
 	// without non-downsampled data is not efficient and useful.
+	// +kubebuilder:default:=false
 	EnableDownSampling bool `json:"enableDownSampling,omitempty"`
 
 	// Pull policy of the MultiClusterObservability images
 	// +optional
+	// +kubebuilder:default:=Always
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 
 	// Pull secret of the MultiClusterObservability images
 	// +optional
+	// +kubebuilder:default:=multiclusterhub-operator-pull-secret
 	ImagePullSecret string `json:"imagePullSecret,omitempty"`
 
 	// Spec of NodeSelector
@@ -51,18 +55,19 @@ type MultiClusterObservabilitySpec struct {
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
-	// How long to retain raw samples in a bucket. Default is 5d
+	// How long to retain raw samples in a bucket.
 	// +optional
+	// +kubebuilder:default:="5d"
 	RetentionResolutionRaw string `json:"retentionResolutionRaw,omitempty"`
 
 	// How long to retain samples of resolution 1 (5 minutes) in bucket.
-	// Default is 14d
 	// +optional
+	// +kubebuilder:default:="14d"
 	RetentionResolution5m string `json:"retentionResolution5m,omitempty"`
 
 	// How long to retain samples of resolution 2 (1 hour) in bucket.
-	// Default is 30d.
 	// +optional
+	// +kubebuilder:default:="30d"
 	RetentionResolution1h string `json:"retentionResolution1h,omitempty"`
 
 	// Specifies the storage to be used by Observability
@@ -78,13 +83,15 @@ type MultiClusterObservabilitySpec struct {
 // ObservabilityAddonSpec is the spec of observability addon
 type ObservabilityAddonSpec struct {
 	// EnableMetrics indicates the observability addon push metrics to hub server.
-	// The default is true
 	// +optional
+	// +kubebuilder:default:=true
 	EnableMetrics bool `json:"enableMetrics,omitempty"`
 
 	// Interval for the observability addon push metrics to hub server.
-	// The default is 30 seconds
 	// +optional
+	// +kubebuilder:default:=30
+	// +kubebuilder:validation:Minimum=15
+	// +kubebuilder:validation:Maximum=3600
 	Interval int32 `json:"interval,omitempty"`
 }
 
@@ -95,15 +102,15 @@ type StorageConfigObject struct {
 	MetricObjectStorage *PreConfiguredStorage `json:"metricObjectStorage,omitempty"`
 	// The amount of storage applied to the Observability stateful sets, i.e.
 	// Thanos store, Rule, compact and receiver.
-	// The default is 10Gi
 	// +optional
+	// +kubebuilder:default:="10Gi"
 	StatefulSetSize string `json:"statefulSetSize,omitempty"`
 
 	// 	Specify the storageClass Stateful Sets. This storage class will also
 	// be used for Object Storage if MetricObjectStorage was configured for
 	// the system to create the storage.
-	// The default is gp2.
 	// +optional
+	// +kubebuilder:default:=gp2
 	StatefulSetStorageClass string `json:"statefulSetStorageClass,omitempty"`
 }
 
@@ -184,6 +191,7 @@ type Condition struct {
 // MultiClusterObservability defines the configuration for the Observability installation on
 // Hub and Managed Clusters all through this one custom resource.
 // +kubebuilder:subresource:status
+// +kubebuilder:pruning:PreserveUnknownFields
 // +kubebuilder:resource:path=multiclusterobservabilities,scope=Cluster,shortName=mco
 type MultiClusterObservability struct {
 	metav1.TypeMeta   `json:",inline"`

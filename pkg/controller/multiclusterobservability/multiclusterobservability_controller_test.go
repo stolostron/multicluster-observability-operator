@@ -206,6 +206,8 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 					Key:  "test",
 					Name: "test",
 				},
+				StatefulSetSize:         "1Gi",
+				StatefulSetStorageClass: "gp2",
 			},
 			ObservabilityAddonSpec: &mcov1beta1.ObservabilityAddonSpec{
 				EnableMetrics: false,
