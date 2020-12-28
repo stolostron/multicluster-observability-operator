@@ -1,6 +1,6 @@
 module github.com/open-cluster-management/multicluster-monitoring-operator
 
-go 1.13
+go 1.14
 
 require (
 	github.com/jetstack/cert-manager v0.0.0-00010101000000-000000000000
@@ -9,7 +9,7 @@ require (
 	github.com/open-cluster-management/observatorium-operator v0.0.0-20201120185949-78ef423af039
 	github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible
 	github.com/openshift/client-go v0.0.0-20201020082437-7737f16e53fc
-	github.com/operator-framework/operator-sdk v0.18.0
+	github.com/operator-framework/operator-sdk v0.18.2
 	github.com/sykesm/zap-logfmt v0.0.4
 	go.uber.org/zap v1.15.0
 	gopkg.in/yaml.v2 v2.3.0

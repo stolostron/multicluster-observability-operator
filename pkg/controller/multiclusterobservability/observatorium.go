@@ -428,15 +428,18 @@ func newStoreCacheSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv
 }
 
 func newCompactSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) observatoriumv1alpha1.CompactSpec {
+	var replicas1 int32 = 1
 	compactSpec := observatoriumv1alpha1.CompactSpec{}
 	compactSpec.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
-	compactSpec.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
+	//Compactor, generally, does not need to be highly available.
+	//Compactions are needed from time to time, only when new blocks appear.
+	compactSpec.Replicas = &replicas1
 	compactSpec.Version = mcoconfig.ThanosImgTag
 	found, image := mcoconfig.ReplaceImage(mco.Annotations, compactSpec.Image, mcoconfig.ThanosImgName)
 	if found {
 		compactSpec.Image = image
 	}
-	compactSpec.EnableDownsampling = mco.Spec.EnableDownSampling
+	compactSpec.EnableDownsampling = mco.Spec.EnableDownsampling
 	compactSpec.RetentionResolutionRaw = mco.Spec.RetentionResolutionRaw
 	compactSpec.RetentionResolution5m = mco.Spec.RetentionResolution5m
 	compactSpec.RetentionResolution1h = mco.Spec.RetentionResolution1h
