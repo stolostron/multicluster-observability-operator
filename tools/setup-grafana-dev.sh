@@ -23,9 +23,9 @@ EOF
 deploy() {
   echo "Check MCO CR and fetch grafana image info ..."
   if kubectl get mco observability >/dev/null 2>&1; then
-    grafana_img=`kubectl get deployment -l app=multicluster-observability-grafana -o yaml | grep quay.io/open-cluster-management/grafana@ | awk '{print $2}'`
+    grafana_img=`kubectl get deployment -n open-cluster-management-observability -l app=multicluster-observability-grafana -o yaml | grep quay.io/open-cluster-management/grafana@ | awk '{print $2}'`
     $sed_command "s~image: quay.io/open-cluster-management/grafana@.*$~image: $grafana_img~g" manifests/deployment.yaml
-    grafana_dashboard_loader_img=`kubectl get deployment -l app=multicluster-observability-grafana -o yaml | grep quay.io/open-cluster-management/grafana-dashboard-loader@ | awk '{print $3}'`
+    grafana_dashboard_loader_img=`kubectl get deployment -n open-cluster-management-observability -l app=multicluster-observability-grafana -o yaml | grep quay.io/open-cluster-management/grafana-dashboard-loader@ | awk '{print $3}'`
     $sed_command "s~image: quay.io/open-cluster-management/grafana-dashboard-loader.*$~image: $grafana_dashboard_loader_img~g" manifests/deployment.yaml
   else
     echo "Failed to get MCO CR, exit"
