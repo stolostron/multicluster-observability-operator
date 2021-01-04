@@ -35,13 +35,13 @@ start() {
   fi
 
   podName=`kubectl get pods -n open-cluster-management-observability -l app=multicluster-observability-grafana-dev --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}'`
-    if [ $? -ne 0 ] || [ -z "$podName" ]; then
+  if [ $? -ne 0 ] || [ -z "$podName" ]; then
       echo "Failed to get grafana pod name, please check your grafana-dev deployment"
       exit 1
   fi
 
   dashboard_name=`echo ${1// /-}`
-  curlCMD="kubectl exec -it -n open-cluster-management-observability $podName -c grafana-dev -- /usr/bin/curl"
+  curlCMD="kubectl exec -it -n open-cluster-management-observability $podName -c grafana-dashboard-loader -- /usr/bin/curl"
   XForwardedUser="WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000"
   dashboardUID=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User: $XForwardedUser" 127.0.0.1:3001/api/dashboards/db/$dashboard_name | python -c "import sys, json; print(json.load(sys.stdin)['dashboard']['uid'])" 2>/dev/null`
   if [ $? -ne 0 ]; then
