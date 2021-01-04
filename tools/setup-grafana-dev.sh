@@ -36,6 +36,7 @@ deploy() {
       exit 1
   fi
   $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-deploy.yaml
+  $sed_command "s~replicas:.*$~replicas: 1~g" grafana-dev-deploy.yaml
   $sed_command "s~grafana-config$~grafana-dev-config~g" grafana-dev-deploy.yaml
   $sed_command "s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-dev~g" grafana-dev-deploy.yaml
   kubectl apply -f grafana-dev-deploy.yaml
