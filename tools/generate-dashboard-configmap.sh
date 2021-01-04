@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Copyright (c) 2020 Red Hat, Inc.
 
 usage() {
   cat <<EOF
@@ -39,9 +40,10 @@ start() {
       exit 1
   fi
 
+  dashboard_name=`echo ${$1// /-}`
   curlCMD="kubectl exec -it -n open-cluster-management-observability $podName -c grafana-dev -- /usr/bin/curl"
   XForwardedUser="WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000"
-  dashboardUID=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User: $XForwardedUser" 127.0.0.1:3001/api/dashboards/db/$1 | python -c "import sys, json; print(json.load(sys.stdin)['dashboard']['uid'])" 2>/dev/null`
+  dashboardUID=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User: $XForwardedUser" 127.0.0.1:3001/api/dashboards/db/$dashboard_name | python -c "import sys, json; print(json.load(sys.stdin)['dashboard']['uid'])" 2>/dev/null`
   if [ $? -ne 0 ]; then
       echo "Failed to fetch dashboard UID, please check your dashboard name"
       exit 1
@@ -49,23 +51,23 @@ start() {
   
   dashboardJson=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User:$XForwardedUser" 127.0.0.1:3001/api/dashboards/uid/$dashboardUID | python -c "import sys, json; print(json.load(sys.stdin)['dashboard'])"`
   if [ $? -ne 0 ]; then
-      echo "Failed to fetch dashboard json data <$1>"
+      echo "Failed to fetch dashboard json data <$dashboard_name>"
       exit 1
   fi
 
-  cat > $save_path/$1.yaml <<EOF
+  cat > $save_path/$dashboard_name.yaml <<EOF
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: $1
+  name: $dashboard_name
   namespace: open-cluster-management-observability
   labels:
     grafana-custom-dashboard: "true"
 data:
-  $1.json: |
+  $dashboard_name.json: |
     $dashboardJson
 EOF
-  echo "Save dashboard <$1> to $save_path/$1.yaml"
+  echo "Save dashboard <$dashboard_name> to $save_path/$dashboard_name.yaml"
 }
 
 start "$@"

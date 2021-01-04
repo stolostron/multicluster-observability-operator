@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Copyright (c) 2020 Red Hat, Inc.
 
 sed_command='sed -i-e -e'
 if [[ "$(uname)" == "Darwin" ]]; then
