@@ -22,23 +22,53 @@ EOF
 }
 
 deploy() {
-  echo "Check MCO CR and fetch grafana image info ..."
-  if kubectl get mco observability >/dev/null 2>&1; then
-    grafana_img=`kubectl get deployment -n open-cluster-management-observability -l app=multicluster-observability-grafana -o yaml | grep quay.io/open-cluster-management/grafana@ | awk '{print $2}'`
-    $sed_command "s~image: quay.io/open-cluster-management/grafana@.*$~image: $grafana_img~g" manifests/deployment.yaml
-    grafana_dashboard_loader_img=`kubectl get deployment -n open-cluster-management-observability -l app=multicluster-observability-grafana -o yaml | grep quay.io/open-cluster-management/grafana-dashboard-loader@ | awk '{print $3}'`
-    $sed_command "s~image: quay.io/open-cluster-management/grafana-dashboard-loader.*$~image: $grafana_dashboard_loader_img~g" manifests/deployment.yaml
-  else
-    echo "Failed to get MCO CR, exit"
-    exit 1
+  kubectl get secret grafana-config -o 'go-template={{index .data "grafana.ini"}}' | base64 --decode > grafana-dev-config.ini
+  if [ $? -ne 0 ]; then
+      echo "Failed to get grafana config secret"
+      exit 1
   fi
-  echo "Deploy all related grafana resources ..."
-  kubectl apply -k ./manifests
+  $sed_command "s~%(domain)s/grafana/$~%(domain)s/grafana-dev/~g" grafana-dev-config.ini
+  kubectl create secret generic grafana-dev-config -n open-cluster-management-observability --from-file=grafana.ini=grafana-dev-config.ini
+
+  kubectl get deployment -n open-cluster-management-observability -l app=multicluster-observability-grafana -o yaml > grafana-dev-deploy.yaml
+  if [ $? -ne 0 ]; then
+      echo "Failed to get grafana deployment"
+      exit 1
+  fi
+  $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-deploy.yaml
+  $sed_command "s~grafana-config$~grafana-dev-config~g" grafana-dev-deploy.yaml
+  $sed_command "s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-dev~g" grafana-dev-deploy.yaml
+  kubectl apply -f grafana-dev-deploy.yaml
+
+  kubectl get svc -n open-cluster-management-observability -l app=multicluster-observability-grafana -o yaml > grafana-dev-svc.yaml
+  if [ $? -ne 0 ]; then
+      echo "Failed to get grafana service"
+      exit 1
+  fi
+  $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-svc.yaml
+  $sed_command "s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-dev~g" grafana-dev-svc.yaml
+  $sed_command "s~clusterIP:.*$~ ~g" grafana-dev-svc.yaml
+  kubectl apply -f grafana-dev-svc.yaml
+
+  kubectl get ingress -n open-cluster-management-observability grafana -o yaml > grafana-dev-ingress.yaml
+  if [ $? -ne 0 ]; then
+      echo "Failed to get grafana ingress"
+      exit 1
+  fi
+  $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-ingress.yaml
+  $sed_command "s~serviceName: grafana$~serviceName: grafana-dev~g" grafana-dev-ingress.yaml
+  $sed_command "s~path: /grafana$~path: /grafana-dev~g" grafana-dev-ingress.yaml
+  kubectl apply -f grafana-dev-ingress.yaml
+  
+  # clean all tmp files
+  rm -rf grafana-dev-deploy.yaml* grafana-dev-svc.yaml* grafana-dev-ingress.yaml* grafana-dev-config.ini*
 }
 
 clean() {
-  echo "Clean all related grafana resources ..."
-  kubectl delete -k ./manifests
+  kubectl delete secret -n open-cluster-management-observability grafana-dev-config
+  kubectl delete deployment -n open-cluster-management-observability grafana-dev
+  kubectl delete svc -n open-cluster-management-observability grafana-dev
+  kubectl delete ingress -n open-cluster-management-observability grafana-dev
 }
 
 msg() {
