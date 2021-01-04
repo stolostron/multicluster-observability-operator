@@ -21,15 +21,15 @@ start() {
     usage
   fi
 
-  save_path="."
+  savePath="."
   if [ $# -eq 2 ]; then
-    save_path=$2
+    savePath=$2
   fi
 
-  if [ ! -d $save_path ]; then
-    mkdir -p $save_path
+  if [ ! -d $savePath ]; then
+    mkdir -p $savePath
     if [ $? -ne 0 ]; then
-        echo "Failed to create directory <$save_path>"
+        echo "Failed to create directory <$savePath>"
         exit 1
     fi
   fi
@@ -40,7 +40,7 @@ start() {
       exit 1
   fi
 
-  dashboard_name=`echo ${$1// /-}`
+  dashboard_name=`echo ${1// /-}`
   curlCMD="kubectl exec -it -n open-cluster-management-observability $podName -c grafana-dev -- /usr/bin/curl"
   XForwardedUser="WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000"
   dashboardUID=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User: $XForwardedUser" 127.0.0.1:3001/api/dashboards/db/$dashboard_name | python -c "import sys, json; print(json.load(sys.stdin)['dashboard']['uid'])" 2>/dev/null`
@@ -55,7 +55,7 @@ start() {
       exit 1
   fi
 
-  cat > $save_path/$dashboard_name.yaml <<EOF
+  cat > $savePath/$dashboard_name.yaml <<EOF
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -67,7 +67,7 @@ data:
   $dashboard_name.json: |
     $dashboardJson
 EOF
-  echo "Save dashboard <$dashboard_name> to $save_path/$dashboard_name.yaml"
+  echo "Save dashboard <$dashboard_name> to $savePath/$dashboard_name.yaml"
 }
 
 start "$@"
