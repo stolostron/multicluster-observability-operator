@@ -28,7 +28,7 @@ ingress.extensions "grafana-dev" deleted
 
 ## Swith user to be grafana admin
 
-Secondly, you should swith a user to be a grafana admin, and then use this user to manage dashboards, manage folders, manage users, etc.
+Secondly, you should use this script `switch-user-to-admin.sh` to switch a user to be a grafana admin, and then use this user to manage dashboards, manage folders, manage users, etc.
 
 ```
 $ ./switch-user-to-admin.sh kube:admin
@@ -45,7 +45,7 @@ Now, you can log in to grafana via access `https://ACM_URL/grafana-dev/`. and fo
 4. Click the **Save** icon in the top right corner of your screen to save the dashboard.
 5. Add a descriptive name, and then click **Save**.
 
-You can also use the following command to generate a dashboard configmap.
+You can use this script `generate-dashboard-configmap.sh` to generate a dashboard configmap and save it to local.
 
 ```
 ./generate-dashboard-configmap.sh your_dashboard_name
