@@ -49,7 +49,7 @@ start() {
       exit 1
   fi
   
-  dashboardJson=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User:$XForwardedUser" 127.0.0.1:3001/api/dashboards/uid/$dashboardUID | python -c "import sys, json; print(json.load(sys.stdin)['dashboard'])"`
+  dashboardJson=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User:$XForwardedUser" 127.0.0.1:3001/api/dashboards/uid/$dashboardUID | python -c "import sys, json; print(json.dumps(json.load(sys.stdin)['dashboard']))"`
   if [ $? -ne 0 ]; then
       echo "Failed to fetch dashboard json data <$dashboard_name>"
       exit 1
