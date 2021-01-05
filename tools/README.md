@@ -16,18 +16,6 @@ service/grafana-dev created
 ingress.extensions/grafana-dev created
 ```
 
-## Uninstall grafana develop instance
-
-You can use the following command to uninstall your grafana instance.
-
-```
-$ ./setup-grafana-dev.sh --clean
-secret "grafana-dev-config" deleted
-deployment.apps "grafana-dev" deleted
-service "grafana-dev" deleted
-ingress.extensions "grafana-dev" deleted
-```
-
 ## Swith user to be grafana admin
 
 Secondly, you should use this script `switch-to-grafana-admin.sh` to switch a user to be a grafana admin, and then use this user to manage dashboards, manage folders, manage users, etc.
@@ -72,4 +60,16 @@ metadata:
 data:
   $your_dashboard_name.json: |
     $your_dashboard_json
+```
+
+## Uninstall grafana develop instance
+
+You can use the following command to uninstall your grafana instance.
+
+```
+$ ./setup-grafana-dev.sh --clean
+secret "grafana-dev-config" deleted
+deployment.apps "grafana-dev" deleted
+service "grafana-dev" deleted
+ingress.extensions "grafana-dev" deleted
 ```
