@@ -1,8 +1,9 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package config
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,8 +19,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
@@ -34,9 +38,20 @@ const (
 	AnnotationMCOPause           = "mco-pause"
 	AnnotationSkipCreation       = "skip-creation-if-exist"
 
+	DefaultImgPullPolicy   = corev1.PullAlways
+	DefaultImgPullSecret   = "multiclusterhub-operator-pull-secret"
 	DefaultImgRepository   = "quay.io/open-cluster-management"
 	DefaultDSImgRepository = "quay.io:443/acm-d"
 	DefaultImgTagSuffix    = "latest"
+	DefaultStorageClass    = "gp2"
+	DefaultStorageSize     = "10Gi"
+
+	DefaultEnableDownsampling     = true
+	DefaultRetentionResolution1h  = "30d"
+	DefaultRetentionResolution5m  = "14d"
+	DefaultRetentionResolutionRaw = "5d"
+
+	DefaultAddonInterval = 60
 
 	ImageManifestConfigMapName = "mch-image-manifest-"
 
@@ -302,6 +317,112 @@ func GetTenantUID() string {
 // GetObsAPISvc returns observatorium api service
 func GetObsAPISvc(instanceName string) string {
 	return instanceName + "-observatorium" + "-observatorium-api." + defaultNamespace + ".svc.cluster.local"
+}
+
+// GenerateMonitoringCR is used to generate monitoring CR with the default values
+// w/ or w/o customized values
+func GenerateMonitoringCR(c client.Client,
+	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
+
+	if mco.Spec.ImagePullPolicy == "" {
+		mco.Spec.ImagePullPolicy = DefaultImgPullPolicy
+	}
+
+	if mco.Spec.ImagePullSecret == "" {
+		mco.Spec.ImagePullSecret = DefaultImgPullSecret
+	}
+
+	if mco.Spec.NodeSelector == nil {
+		mco.Spec.NodeSelector = map[string]string{}
+	}
+
+	if mco.Spec.StorageConfig == nil {
+		mco.Spec.StorageConfig = &mcov1beta1.StorageConfigObject{}
+	}
+
+	if mco.Spec.StorageConfig.StatefulSetSize == "" {
+		mco.Spec.StorageConfig.StatefulSetSize = DefaultStorageSize
+	}
+
+	if mco.Spec.StorageConfig.StatefulSetStorageClass == "" {
+		mco.Spec.StorageConfig.StatefulSetStorageClass = DefaultStorageClass
+	}
+
+	if mco.Spec.EnableDownSampling != false {
+		mco.Spec.EnableDownSampling = DefaultEnableDownsampling
+	}
+
+	if mco.Spec.RetentionResolution1h == "" {
+		mco.Spec.RetentionResolution1h = DefaultRetentionResolution1h
+	}
+
+	if mco.Spec.RetentionResolution5m == "" {
+		mco.Spec.RetentionResolution5m = DefaultRetentionResolution5m
+	}
+
+	if mco.Spec.RetentionResolutionRaw == "" {
+		mco.Spec.RetentionResolutionRaw = DefaultRetentionResolutionRaw
+	}
+
+	if mco.Spec.ObservabilityAddonSpec == nil {
+		mco.Spec.ObservabilityAddonSpec = &mcov1beta1.ObservabilityAddonSpec{
+			EnableMetrics: true,
+			Interval:      DefaultAddonInterval,
+		}
+	}
+
+	if !availabilityConfigIsValid(mco.Spec.AvailabilityConfig) {
+		mco.Spec.AvailabilityConfig = mcov1beta1.HAHigh
+	}
+
+	found := &mcov1beta1.MultiClusterObservability{}
+	err := c.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name: mco.Name,
+		},
+		found,
+	)
+	if err != nil {
+		return &reconcile.Result{}, err
+	}
+
+	desired, err := yaml.Marshal(mco.Spec)
+	if err != nil {
+		log.Error(err, "cannot parse the desired MultiClusterObservability values")
+	}
+	current, err := yaml.Marshal(found.Spec)
+	if err != nil {
+		log.Error(err, "cannot parse the current MultiClusterObservability values")
+	}
+
+	needUpdate := false
+	newObj := found.DeepCopy()
+	//set default annotation
+	if util.GetAnnotation(found.GetAnnotations(), AnnotationKeyImageRepository) !=
+		util.GetAnnotation(mco.Annotations, AnnotationKeyImageRepository) {
+		if newObj.Annotations == nil {
+			newObj.Annotations = map[string]string{}
+		}
+		newObj.Annotations[AnnotationKeyImageRepository] =
+			util.GetAnnotation(mco.Annotations, AnnotationKeyImageRepository)
+		needUpdate = true
+	}
+
+	if res := bytes.Compare(desired, current); res != 0 {
+		newObj.Spec = mco.Spec
+		needUpdate = true
+	}
+
+	if needUpdate {
+		log.Info("Update MultiClusterObservability CR.")
+		err = c.Update(context.TODO(), newObj)
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
+	}
+
+	return nil, nil
 }
 
 func availabilityConfigIsValid(config mcov1beta1.AvailabilityType) bool {

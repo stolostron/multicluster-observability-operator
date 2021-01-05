@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2020 Red Hat, Inc.
+# Copyright (c) 2021 Red Hat, Inc.
 
 # generate csv
 ./cicd-scripts/install-dependencies.sh
@@ -22,7 +22,6 @@ if [[ "$(uname)" == "Darwin" ]]; then
     sed_command='sed -i '-e' -e'
 fi
 
-$sed_command 's/serviceAccountName: open-cluster-management:multicluster-observability-operator/serviceAccountName: multicluster-observability-operator/g' deploy/olm-catalog/multicluster-observability-operator/manifests/multicluster-observability-operator.clusterserviceversion.yaml
 $sed_command '/version: v1beta1/r extra_text_tmp' deploy/olm-catalog/multicluster-observability-operator/manifests/multicluster-observability-operator.clusterserviceversion.yaml
 rm -rf extra_text_tmp deploy/olm-catalog/multicluster-observability-operator/manifests/multicluster-observability-operator.clusterserviceversion.yaml-e
 

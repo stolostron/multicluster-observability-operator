@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package multiclusterobservability
 
@@ -439,7 +439,7 @@ func newCompactSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string
 	if found {
 		compactSpec.Image = image
 	}
-	compactSpec.EnableDownsampling = mco.Spec.EnableDownsampling
+	compactSpec.EnableDownsampling = mco.Spec.EnableDownSampling
 	compactSpec.RetentionResolutionRaw = mco.Spec.RetentionResolutionRaw
 	compactSpec.RetentionResolution5m = mco.Spec.RetentionResolution5m
 	compactSpec.RetentionResolution1h = mco.Spec.RetentionResolution1h

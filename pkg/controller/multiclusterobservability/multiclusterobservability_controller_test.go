@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package multiclusterobservability
 
@@ -211,8 +211,6 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 					Key:  "test",
 					Name: "test",
 				},
-				StatefulSetSize:         "1Gi",
-				StatefulSetStorageClass: "gp2",
 			},
 		},
 	}

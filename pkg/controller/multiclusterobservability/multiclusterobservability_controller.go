@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package multiclusterobservability
 
@@ -264,6 +264,10 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 	//read image manifest configmap to be used to replace the image for each component.
 	if _, err = config.ReadImageManifestConfigMap(r.client); err != nil {
 		return reconcile.Result{}, err
+	}
+
+	if result, err := config.GenerateMonitoringCR(r.client, instance); result != nil {
+		return *result, err
 	}
 
 	// Do not reconcile objects if this instance of mch is labeled "paused"

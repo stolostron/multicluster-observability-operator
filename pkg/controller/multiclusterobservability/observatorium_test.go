@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package multiclusterobservability
 
@@ -28,7 +28,7 @@ var (
 func TestNewVolumeClaimTemplate(t *testing.T) {
 	vct := newVolumeClaimTemplate("10Gi", "test")
 	if vct.Spec.AccessModes[0] != v1.ReadWriteOnce ||
-		vct.Spec.Resources.Requests[v1.ResourceStorage] != resource.MustParse("10Gi") {
+		vct.Spec.Resources.Requests[v1.ResourceStorage] != resource.MustParse(mcoconfig.DefaultStorageSize) {
 		t.Errorf("Failed to newVolumeClaimTemplate")
 	}
 }
@@ -101,16 +101,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 				mcoconfig.AnnotationKeyImageTagSuffix: "tag",
 			},
 		},
-		Spec: mcov1beta1.MultiClusterObservabilitySpec{
-			StorageConfig: &mcov1beta1.StorageConfigObject{
-				MetricObjectStorage: &mcov1beta1.PreConfiguredStorage{
-					Key:  "test",
-					Name: "test",
-				},
-				StatefulSetSize:         "1Gi",
-				StatefulSetStorageClass: "gp2",
-			},
-		},
+		Spec: mcov1beta1.MultiClusterObservabilitySpec{},
 	}
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
@@ -120,6 +111,10 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	objs := []runtime.Object{mco}
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
+
+	if _, err := mcoconfig.GenerateMonitoringCR(cl, mco); err != nil {
+		t.Errorf("Failed to generate monitoring CR: %v", err)
+	}
 
 	GenerateObservatoriumCR(cl, s, mco)
 
