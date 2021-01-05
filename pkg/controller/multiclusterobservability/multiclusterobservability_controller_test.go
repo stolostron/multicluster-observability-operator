@@ -211,8 +211,6 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 					Key:  "test",
 					Name: "test",
 				},
-				StatefulSetSize:         "1Gi",
-				StatefulSetStorageClass: "gp2",
 			},
 		},
 	}
