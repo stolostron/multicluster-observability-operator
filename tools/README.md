@@ -4,7 +4,7 @@
 
 You must enable the observability service by creating a MultiClusterObservability CustomResource (CR) instance.
 
-## Setup your grafana instance
+## Setup grafana develop instance
 
 Firstly, you should use this script `setup-grafana-dev.sh` to setup your grafana instance.
 
@@ -16,7 +16,9 @@ service/grafana-dev created
 ingress.extensions/grafana-dev created
 ```
 
-You can also use the following command to uninstall your grafana instance.
+## Uninstall grafana develop instance
+
+You can use the following command to uninstall your grafana instance.
 
 ```
 $ ./setup-grafana-dev.sh --clean
@@ -28,10 +30,10 @@ ingress.extensions "grafana-dev" deleted
 
 ## Swith user to be grafana admin
 
-Secondly, you should use this script `switch-user-to-admin.sh` to switch a user to be a grafana admin, and then use this user to manage dashboards, manage folders, manage users, etc.
+Secondly, you should use this script `switch-to-grafana-admin.sh` to switch a user to be a grafana admin, and then use this user to manage dashboards, manage folders, manage users, etc.
 
 ```
-$ ./switch-user-to-admin.sh kube:admin
+$ ./switch-to-grafana-admin.sh kube:admin
 User <kube:admin> switched to be grafana admin
 ```
 
@@ -45,9 +47,29 @@ Now, you can log in to grafana via access `https://ACM_URL/grafana-dev/`. and fo
 4. Click the **Save** icon in the top right corner of your screen to save the dashboard.
 5. Add a descriptive name, and then click **Save**.
 
-You can use this script `generate-dashboard-configmap.sh` to generate a dashboard configmap and save it to local.
+You can use this script `generate-dashboard-configmap-yaml.sh` to generate a dashboard configmap and save it to local.
 
 ```
-./generate-dashboard-configmap.sh your_dashboard_name
+./generate-dashboard-configmap-yaml.sh your_dashboard_name
 Save dashboard <your_dashboard_name> to ./your_dashboard_name.yaml
+```
+
+If you have not permission to run this script `generate-dashboard-configmap-yaml.sh`, you can following these steps to create a dashboard configmap:
+
+1. Go to a dashboard, click the **Dashboard settings** icon.
+2. Click the **JSON Model** icon on the left panel.
+3. Copy the dashboard json data and put it in to `$your_dashboard_json` field.
+4. Modify `$your_dashboard_name` field.
+
+```yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: $your_dashboard_name
+  namespace: open-cluster-management-observability
+  labels:
+    grafana-custom-dashboard: "true"
+data:
+  $your_dashboard_name.json: |
+    $your_dashboard_json
 ```
