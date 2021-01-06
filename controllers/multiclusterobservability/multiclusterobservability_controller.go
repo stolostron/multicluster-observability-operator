@@ -13,7 +13,6 @@ import (
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	storev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -450,7 +449,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 		}),
 	}
 
-	err := r.client.List(context.TODO(), thanosPVCList, thanosPVCListOpts...)
+	err := r.Client.List(context.TODO(), thanosPVCList, thanosPVCListOpts...)
 	if err != nil {
 		return &reconcile.Result{}, err
 	}
@@ -461,7 +460,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 		client.MatchingLabels(labelsForMultiClusterMonitoring(mco.Name)),
 	}
 
-	err = r.client.List(context.TODO(), obsPVCList, obsPVCListOpts...)
+	err = r.Client.List(context.TODO(), obsPVCList, obsPVCListOpts...)
 	if err != nil {
 		return &reconcile.Result{}, err
 	}
@@ -470,10 +469,10 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 	// updates pvc directly
 	for index, pvc := range obsPVCItems {
 		if !pvc.Spec.Resources.Requests.Storage().Equal(resource.MustParse(mco.Spec.StorageConfig.StatefulSetSize)) {
-			obsPVCItems[index].Spec.Resources.Requests = v1.ResourceList{
-				v1.ResourceName(v1.ResourceStorage): resource.MustParse(mco.Spec.StorageConfig.StatefulSetSize),
+			obsPVCItems[index].Spec.Resources.Requests = corev1.ResourceList{
+				corev1.ResourceName(corev1.ResourceStorage): resource.MustParse(mco.Spec.StorageConfig.StatefulSetSize),
 			}
-			err = r.client.Update(context.TODO(), &obsPVCItems[index])
+			err = r.Client.Update(context.TODO(), &obsPVCItems[index])
 			log.Info("Update storage size for PVC", "pvc", pvc.Name)
 			if err != nil {
 				return &reconcile.Result{}, err
@@ -489,7 +488,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 		}),
 	}
 
-	err = r.client.List(context.TODO(), thanosSTSList, thanosSTSListOpts...)
+	err = r.Client.List(context.TODO(), thanosSTSList, thanosSTSListOpts...)
 	if err != nil {
 		return &reconcile.Result{}, err
 	}
@@ -500,14 +499,14 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 		client.MatchingLabels(labelsForMultiClusterMonitoring(mco.Name)),
 	}
 
-	err = r.client.List(context.TODO(), obsSTSList, obsSTSListOpts...)
+	err = r.Client.List(context.TODO(), obsSTSList, obsSTSListOpts...)
 	if err != nil {
 		return &reconcile.Result{}, err
 	}
 
 	obsSTSItems := append(obsSTSList.Items, thanosSTSList.Items...)
 	for index, sts := range obsSTSItems {
-		err = r.client.Delete(context.TODO(), &obsSTSItems[index], &client.DeleteOptions{})
+		err = r.Client.Delete(context.TODO(), &obsSTSItems[index], &client.DeleteOptions{})
 		log.Info("Successfully delete sts due to storage size changed", "sts", sts.Name)
 		if err != nil && !errors.IsNotFound(err) {
 			return &reconcile.Result{}, err

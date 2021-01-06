@@ -525,8 +525,6 @@ func TestHandleStorageSizeChange(t *testing.T) {
 		},
 	}
 
-	config.SetMonitoringCRName("test")
-
 	s := scheme.Scheme
 	mcov1beta1.SchemeBuilder.AddToScheme(s)
 	objs := []runtime.Object{
@@ -535,7 +533,7 @@ func TestHandleStorageSizeChange(t *testing.T) {
 		createPersistentVolumeClaim(mco.Name, config.GetDefaultNamespace(), "test"),
 	}
 	c := fake.NewFakeClient(objs...)
-	r := &ReconcileMultiClusterObservability{client: c, scheme: s}
+	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
 	r.HandleStorageSizeChange(mco)
 
 	pvc := &corev1.PersistentVolumeClaim{}
