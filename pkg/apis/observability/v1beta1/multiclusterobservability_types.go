@@ -47,6 +47,11 @@ type MultiClusterObservabilitySpec struct {
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
+	// How long to retain raw samples on local storage.
+	// 0d - disables this retention
+	// +optional
+	RetentionInLocal string `json:"retentionInLocal,omitempty"`
+
 	// How long to retain raw samples in a bucket. Default is 5d
 	// +optional
 	RetentionResolutionRaw string `json:"retentionResolutionRaw,omitempty"`
@@ -80,6 +85,8 @@ type ObservabilityAddonSpec struct {
 
 	// Interval for the observability addon push metrics to hub server.
 	// The default is 60 seconds
+	// +kubebuilder:validation:Minimum=15
+	// +kubebuilder:validation:Maximum=3600
 	// +optional
 	Interval int32 `json:"interval,omitempty"`
 }
@@ -89,11 +96,19 @@ type StorageConfigObject struct {
 	// Object store config secret for metrics
 	// +required
 	MetricObjectStorage *PreConfiguredStorage `json:"metricObjectStorage,omitempty"`
-	// The amount of storage applied to the Observability stateful sets, i.e.
-	// Thanos store, Rule, compact and receiver.
+
+	// The amount of storage applied to the Observability statefulsets if there is no single definition.
 	// The default is 10Gi
 	// +optional
 	StatefulSetSize string `json:"statefulSetSize,omitempty"`
+
+	// CompactStatefulSetSize defines the amount of storage for the thanos compact component.
+	// +optional
+	CompactStatefulSetSize string `json:"compactStatefulSetSize,omitempty"`
+
+	// ReceiverStatefulSetSize defines the amount of storage for the thanos receiver component.
+	// +optional
+	ReceiverStatefulSetSize string `json:"receiverStatefulSetSize,omitempty"`
 
 	// 	Specify the storageClass Stateful Sets. This storage class will also
 	// be used for Object Storage if MetricObjectStorage was configured for
