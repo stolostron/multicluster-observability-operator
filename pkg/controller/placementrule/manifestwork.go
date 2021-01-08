@@ -152,7 +152,7 @@ func createManifestWork(client client.Client, restMapper meta.RESTMapper,
 	}
 
 	if found.GetDeletionTimestamp() != nil {
-		log.Error(err, "Existing manifestwork is terminating, skip and reconcile later")
+		log.Info("Existing manifestwork is terminating, skip and reconcile later")
 		return errors.New("Existing manifestwork is terminating, skip and reconcile later")
 	}
 
