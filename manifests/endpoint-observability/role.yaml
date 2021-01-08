@@ -28,6 +28,7 @@ rules:
   - list
   - watch
   - create
+  - update
 - apiGroups:
   - ""
   resources:
@@ -91,3 +92,15 @@ rules:
   - clusterversions
   verbs:
   - get
+- apiGroups:
+    - work.open-cluster-management.io
+  resources:
+    - appliedmanifestworks
+  verbs:
+    - get
+- apiGroups:
+    - work.open-cluster-management.io
+  resources:
+    - appliedmanifestworks/finalizers
+  verbs:
+    - update
