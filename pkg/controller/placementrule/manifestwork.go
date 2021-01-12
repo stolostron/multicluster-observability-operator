@@ -259,7 +259,7 @@ func getMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 		whitelist.NameList = append(whitelist.NameList, customWhitelist.NameList...)
 		whitelist.MatchList = append(whitelist.MatchList, customWhitelist.MatchList...)
 	} else {
-		log.Info("Failed to find metrics custom whitelist configmap")
+		log.Info("There is no custom metrics whitelist configmap in the cluster")
 	}
 
 	data, err := yaml.Marshal(whitelist)
