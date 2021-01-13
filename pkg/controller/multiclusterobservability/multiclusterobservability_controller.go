@@ -368,6 +368,11 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 		return &reconcile.Result{}, err
 	}
 
+	// 1) install status
+	// 2) obj storage status
+	// 3) addon disable/enable status
+	// 4) ready status
+
 	installingCondition := CheckInstallStatus(r.client, mco)
 	conditions := []mcov1beta1.MCOCondition{}
 	allDeploymentReady := true
