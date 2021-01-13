@@ -137,4 +137,10 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	if res := bytes.Compare(newSpecBytes, oldSpecBytes); res != 0 {
 		t.Errorf("%v should be equal to %v", string(oldSpecBytes), string(newSpecBytes))
 	}
+
+	mco.Spec.AvailabilityConfig = mcov1beta1.HABasic
+	_, err := GenerateObservatoriumCR(cl, s, mco)
+	if err != nil {
+		t.Errorf("Failed to update observatorium due to %v", err)
+	}
 }

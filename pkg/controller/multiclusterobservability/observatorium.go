@@ -5,9 +5,11 @@ package multiclusterobservability
 import (
 	"bytes"
 	"context"
+	"fmt"
 
 	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -114,6 +116,12 @@ func GenerateObservatoriumCR(
 
 		newObj.Spec = newSpec
 		err = cl.Update(context.TODO(), newObj)
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
+
+		// delete the store-share statefulset in scalein scenario
+		err = deleteStoreSts(cl, observatoriumCR.Name, *oldSpec.Store.Shards, *newSpec.Store.Shards)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -475,4 +483,27 @@ func mergeVolumeClaimTemplate(oldVolumn,
 		oldVolumn.Spec.Resources.Limits[v1.ResourceStorage] = limitRes[v1.ResourceStorage]
 	}
 	return oldVolumn
+}
+
+func deleteStoreSts(cl client.Client, name string, oldNum int32, newNum int32) error {
+	if oldNum > newNum {
+		for i := newNum; i < oldNum; i++ {
+			stsName := fmt.Sprintf("%s-thanos-store-shard-%d", name, i)
+			found := &appsv1.StatefulSet{}
+			err := cl.Get(context.TODO(), types.NamespacedName{Name: stsName, Namespace: config.GetDefaultNamespace()}, found)
+			if err != nil {
+				if !errors.IsNotFound(err) {
+					log.Error(err, "Failed to get statefulset", "name", stsName)
+					return err
+				}
+			} else {
+				err = cl.Delete(context.TODO(), found)
+				if err != nil {
+					log.Error(err, "Failed to delete statefulset", "name", stsName)
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
