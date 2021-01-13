@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package config
 
@@ -9,16 +9,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Config is for s3 compatiable configuration
-type Config struct {
-	Bucket    string `yaml:"bucket"`
-	Endpoint  string `yaml:"endpoint"`
-	Insecure  bool   `yaml:"insecure"`
-	AccessKey string `yaml:"access_key"`
-	SecretKey string `yaml:"secret_key"`
-}
-
-func validate(conf Config) error {
+func validateS3(conf Config) error {
 
 	if conf.Bucket == "" {
 		return errors.New("no s3 bucket in config file")
@@ -51,7 +42,7 @@ func IsValidS3Conf(data []byte) (bool, error) {
 		return false, errors.New("invalid type config, only s3 type is supported")
 	}
 
-	err = validate(objectConfg.Config)
+	err = validateS3(objectConfg.Config)
 	if err != nil {
 		return false, err
 	}

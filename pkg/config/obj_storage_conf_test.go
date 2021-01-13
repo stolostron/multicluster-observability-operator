@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package config
 
@@ -27,10 +27,10 @@ config:
 		{
 			conf: []byte(`type: azure
 config:
-  storage_account: ""
-  storage_account_key: ""
-  container: ""
-  endpoint: ""
+  storage_account: storage_account
+  storage_account_key: storage_account_key
+  container: container
+  endpoint: endpoint
   max_retries: 0`),
 			name:     "valid azure conf",
 			expected: true,
@@ -39,8 +39,8 @@ config:
 		{
 			conf: []byte(`type: gcs
 config:
-  bucket: ""
-  service_account: ""`),
+  bucket: bucket
+  service_account: service_account`),
 			name:     "valid gcs conf",
 			expected: true,
 		},
@@ -90,6 +90,72 @@ config:
   access_key: access_key
   secret_key: ""`),
 			name:     "no secret_key",
+			expected: false,
+		},
+
+		{
+			conf: []byte(`type: gcs
+config:
+  bucket: ""
+  service_account: service_account`),
+			name:     "no bucket",
+			expected: false,
+		},
+
+		{
+			conf: []byte(`type: gcs
+config:
+  bucket: bucket
+  service_account: ""`),
+			name:     "no service_account",
+			expected: false,
+		},
+
+		{
+			conf: []byte(`type: azure
+config:
+  storage_account: ""
+  storage_account_key: storage_account_key
+  container: container
+  endpoint: endpoint
+  max_retries: 0`),
+			name:     "no storage_account",
+			expected: false,
+		},
+
+		{
+			conf: []byte(`type: azure
+config:
+  storage_account: storage_account
+  storage_account_key: ""
+  container: container
+  endpoint: endpoint
+  max_retries: 0`),
+			name:     "no storage_account_key",
+			expected: false,
+		},
+
+		{
+			conf: []byte(`type: azure
+config:
+  storage_account: storage_account
+  storage_account_key: storage_account_key
+  container: ""
+  endpoint: endpoint
+  max_retries: 0`),
+			name:     "no container",
+			expected: false,
+		},
+
+		{
+			conf: []byte(`type: azure
+config:
+  storage_account: storage_account
+  storage_account_key: storage_account_key
+  container: container
+  endpoint: ""
+  max_retries: 0`),
+			name:     "no endpoint",
 			expected: false,
 		},
 
