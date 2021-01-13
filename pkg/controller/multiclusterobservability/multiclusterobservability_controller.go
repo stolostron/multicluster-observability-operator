@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
@@ -15,6 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	storv1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,11 +36,7 @@ import (
 )
 
 const (
-	certFinalizer   = "observability.open-cluster-management.io/cert-cleanup"
-	Installing      = "Installing"
-	Failed          = "Failed"
-	Ready           = "Ready"
-	MetricsDisabled = "Disabled"
+	certFinalizer = "observability.open-cluster-management.io/cert-cleanup"
 )
 
 var (
@@ -349,98 +345,14 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 // UpdateStatus override UpdateStatus interface
 func (r *ReconcileMultiClusterObservability) UpdateStatus(
 	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
-
-	reqLogger := log.WithValues("Request.Name", mco.Name)
-	requeue := false
-
-	deployList := &appsv1.DeploymentList{}
-	deploymentListOpts := []client.ListOption{
-		client.InNamespace(config.GetDefaultNamespace()),
-		client.MatchingLabels(labelsForMultiClusterMonitoring(mco.Name)),
-	}
-
-	err := r.client.List(context.TODO(), deployList, deploymentListOpts...)
-	if err != nil {
-		reqLogger.Error(err, "Failed to list deployments.",
-			"MultiClusterObservability.Namespace", config.GetDefaultNamespace(),
-			"MemcaMultiClusterMonitoringched.Name", mco.Name,
-		)
-		return &reconcile.Result{}, err
-	}
-
-	// 1) install status
-	// 2) obj storage status
-	// 3) addon disable/enable status
-	// 4) ready status
-
-	installingCondition := CheckInstallStatus(r.client, mco)
-	conditions := []mcov1beta1.MCOCondition{}
-	allDeploymentReady := true
-	failedDeployment := ""
-	for _, deployment := range deployList.Items {
-		if deployment.Status.ReadyReplicas < 1 || deployment.Status.AvailableReplicas < 1 {
-			allDeploymentReady = false
-			failedDeployment = deployment.Name
-			break
-		}
-	}
-
-	objStorageCondition := getObjStorageCondition(r.client, mco)
-	if objStorageCondition != nil {
-		conditions = append(conditions, *objStorageCondition)
-		requeue = true
-	} else {
-		if installingCondition.Type != "Ready" {
-			conditions = append(conditions, installingCondition)
-			requeue = true
-		} else if len(deployList.Items) == 0 {
-			conditions = append(conditions, mcov1beta1.MCOCondition{
-				Type:    Failed,
-				Reason:  Failed,
-				Message: "No deployment found.",
-			})
-			requeue = true
-		} else {
-			if allDeploymentReady {
-				ready := mcov1beta1.MCOCondition{}
-				requeue = false
-				if mco.Spec.ObservabilityAddonSpec != nil && mco.Spec.ObservabilityAddonSpec.EnableMetrics == false {
-					ready = mcov1beta1.MCOCondition{
-						Type:    Ready,
-						Reason:  Ready,
-						Message: "Observability components are deployed and running",
-					}
-					conditions = append(conditions, ready)
-					enableMetrics := mcov1beta1.MCOCondition{
-						Type:    MetricsDisabled,
-						Reason:  MetricsDisabled,
-						Message: "Collect metrics from the managed clusters is disabled",
-					}
-					conditions = append(conditions, enableMetrics)
-				} else {
-					ready = mcov1beta1.MCOCondition{
-						Type:    Ready,
-						Reason:  Ready,
-						Message: "Observability components are deployed and running",
-					}
-					conditions = append(conditions, ready)
-				}
-
-			} else {
-				failedMessage := fmt.Sprintf("Deployment is failed for %s", failedDeployment)
-				failed := mcov1beta1.MCOCondition{
-					Type:    Failed,
-					Reason:  Failed,
-					Message: failedMessage,
-				}
-				conditions = append(conditions, failed)
-				requeue = true
-			}
-		}
-	}
-
-	mco.Status.Conditions = conditions
-	err = r.client.Status().Update(context.TODO(), mco)
+	log.Info("Update MCO status")
+	oldStatus := &mco.Status
+	newStatus := oldStatus.DeepCopy()
+	updateInstallStatus(&newStatus.Conditions)
+	updateReadyStatus(&newStatus.Conditions, r.client, mco)
+	updateAddonSpecStatus(&newStatus.Conditions, mco)
+	mco.Status.Conditions = newStatus.Conditions
+	err := r.client.Status().Update(context.TODO(), mco)
 	if err != nil {
 		if apierrors.IsConflict(err) {
 			// Error from object being modified is normal behavior and should not be treated like an error
@@ -459,15 +371,17 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 				log.Error(err, fmt.Sprintf("Failed to update %s status ", mco.Name))
 				return &reconcile.Result{}, err
 			}
-			return &reconcile.Result{RequeueAfter: time.Second}, nil
+			return &reconcile.Result{Requeue: true, RequeueAfter: time.Second}, nil
 		}
 
 		log.Error(err, fmt.Sprintf("Failed to update %s status ", mco.Name))
 		return &reconcile.Result{}, err
 	}
-	if requeue {
-		return &reconcile.Result{RequeueAfter: time.Second * 2}, nil
+
+	if meta.FindStatusCondition(newStatus.Conditions, "Ready") == nil {
+		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 2}, nil
 	}
+
 	return nil, nil
 }
 
@@ -504,156 +418,6 @@ func (r *ReconcileMultiClusterObservability) initFinalization(
 		log.Info("Finalizer added to mco resource")
 	}
 	return false, nil
-}
-
-func getResourceConditions(podList *corev1.PodList, statefulSetList *appsv1.StatefulSetList,
-	watchingPods []string, watchingStatefulSets []string,
-	allPodsReady *bool, allstatefulSetReady *bool,
-	podCounter *int, statefulSetCounter *int,
-) {
-	for _, pod := range podList.Items {
-		for _, name := range watchingPods {
-			if strings.HasPrefix(pod.Name, name) {
-				*podCounter++
-				singlePodReady := false
-				for _, podCondition := range pod.Status.Conditions {
-					if podCondition.Type == Ready {
-						singlePodReady = true
-					}
-				}
-				if singlePodReady == false {
-					*allPodsReady = false
-				}
-			}
-		}
-	}
-	for _, statefulSet := range statefulSetList.Items {
-		for _, name := range watchingStatefulSets {
-			if strings.HasPrefix(statefulSet.Name, name) {
-				*statefulSetCounter++
-				singleStatefulSetReady := false
-				if statefulSet.Status.ReadyReplicas >= 1 {
-					singleStatefulSetReady = true
-				}
-				if singleStatefulSetReady == false {
-					*allstatefulSetReady = false
-				}
-			}
-		}
-	}
-	return
-}
-
-func CheckInstallStatus(c client.Client,
-	mco *mcov1beta1.MultiClusterObservability) mcov1beta1.MCOCondition {
-
-	installingCondition := mcov1beta1.MCOCondition{}
-	if len(mco.Status.Conditions) == 0 {
-		installingCondition = mcov1beta1.MCOCondition{
-			Type:    Installing,
-			Reason:  Installing,
-			Message: "Installation is in progress",
-		}
-	} else if mco.Status.Conditions[0].Type == Installing {
-		installingCondition = mco.Status.Conditions[0]
-		watchingPods := []string{
-			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-observatorium-api"}, "-"),
-			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-query"}, "-"),
-			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-receive-controller"}, "-"),
-			"grafana",
-			"alertmanager",
-		}
-		podList := &corev1.PodList{}
-		podListOpts := []client.ListOption{
-			client.InNamespace(config.GetDefaultNamespace()),
-		}
-		err := c.List(context.TODO(), podList, podListOpts...)
-		if err != nil {
-			log.Error(err, "Failed to list pods.",
-				"MultiClusterObservability.Namespace", config.GetDefaultNamespace(),
-			)
-			return installingCondition
-		}
-		podCounter := 0
-		allPodsReady := true
-		watchingStatefulSets := []string{
-			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-compact"}, "-"),
-			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-receive-default"}, "-"),
-			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-rule"}, "-"),
-			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-store-memcached"}, "-"),
-			strings.Join([]string{mco.ObjectMeta.Name, "observatorium-thanos-store-shard-0"}, "-"),
-		}
-		statefulSetList := &appsv1.StatefulSetList{}
-		statefulSetListOpts := []client.ListOption{
-			client.InNamespace(config.GetDefaultNamespace()),
-		}
-		err = c.List(context.TODO(), statefulSetList, statefulSetListOpts...)
-		if err != nil {
-			log.Error(err, "Failed to list statefulSets.",
-				"MultiClusterObservability.Namespace", config.GetDefaultNamespace(),
-			)
-			return installingCondition
-		}
-		statefulSetCounter := 0
-		allstatefulSetReady := true
-		getResourceConditions(podList, statefulSetList, watchingPods, watchingStatefulSets,
-			&allPodsReady, &allstatefulSetReady, &podCounter, &statefulSetCounter)
-
-		if podCounter == 0 || statefulSetCounter == 0 || allPodsReady != true ||
-			podCounter < len(watchingPods) || allstatefulSetReady != true || statefulSetCounter < len(watchingStatefulSets) {
-			installingCondition = mcov1beta1.MCOCondition{
-				Type:    Installing,
-				Reason:  Installing,
-				Message: "Installation is in progress",
-			}
-		} else {
-			installingCondition = mcov1beta1.MCOCondition{
-				Type: Ready,
-			}
-		}
-	} else {
-		installingCondition = mcov1beta1.MCOCondition{
-			Type: Ready,
-		}
-	}
-
-	return installingCondition
-}
-
-func getObjStorageCondition(c client.Client,
-	mco *mcov1beta1.MultiClusterObservability) *mcov1beta1.MCOCondition {
-
-	objStorageConf := mco.Spec.StorageConfig.MetricObjectStorage
-	secret := &corev1.Secret{}
-	namespacedName := types.NamespacedName{
-		Name:      objStorageConf.Name,
-		Namespace: config.GetDefaultNamespace(),
-	}
-
-	failed := mcov1beta1.MCOCondition{
-		Type:   Failed,
-		Reason: Failed,
-	}
-
-	err := c.Get(context.TODO(), namespacedName, secret)
-	if err != nil {
-		failed.Message = err.Error()
-		return &failed
-	}
-
-	data, ok := secret.Data[objStorageConf.Key]
-	if !ok {
-		failed.Message = "Failed to found the object storage configuration"
-		return &failed
-	}
-
-	ok, err = config.CheckObjStorageConf(data)
-	if !ok {
-		failed.Message = err.Error()
-		return &failed
-	}
-
-	return nil
 }
 
 func getStorageClass(mco *mcov1beta1.MultiClusterObservability, cl client.Client) (string, error) {
