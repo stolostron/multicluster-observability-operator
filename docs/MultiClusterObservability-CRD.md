@@ -50,7 +50,7 @@ observability.open-cluster-management.io/v1beta1
    </td>
    <td>Enable or disable the downsample.
 <p>
-The default value is <strong>true</strong>.
+The default value is <strong>false</strong>.
 <p>
 Note: Disabling downsampling is not recommended as querying long time ranges without non-downsampled data is not efficient and useful.
    </td>
