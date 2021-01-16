@@ -126,6 +126,10 @@ data:
       - up
       - workqueue_adds_total
       - workqueue_depth
+      - cluster_monitoring_operator_reconcile_errors_total
+      - cluster_monitoring_operator_reconcile_attempts_total
+      - cluster_operator_conditions
+      - cluster_operator_up      
     matches:
       - __name__="apiserver_request_duration_seconds_bucket",job="apiserver",verb!="WATCH"
       - __name__="workqueue_queue_duration_seconds_bucket",job="apiserver"
