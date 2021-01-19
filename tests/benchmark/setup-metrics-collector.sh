@@ -1,9 +1,9 @@
 #!/bin/bash
 # Copyright (c) 2020 Red Hat, Inc.
 
-export IMAGE=quay.io/open-cluster-management/metrics-collector@sha256:b16a98e43577c14518f2b749bfea44848747ca487cb9bfb516fb58611d56c69b
+export IMAGE=quay.io/open-cluster-management/metrics-collector:2.2.0-SNAPSHOT-2021-01-17-18-45-18
 export FROM=https://prometheus-k8s.openshift-monitoring.svc:9091
-export TO=https://observatorium-api-open-cluster-management-observability.apps.soli-ocp44-acm.dev05.red-chesterfield.com/api/metrics/v1/default/api/v1/receive
+export TO=https://observatorium-api-open-cluster-management-observability.apps.cyang-ocp3.dev05.red-chesterfield.com/api/metrics/v1/default/api/v1/receive
 
 sed_command='sed -i-e -e'
 if [[ "$(uname)" == "Darwin" ]]; then
@@ -51,4 +51,11 @@ do
 	rm -rf "$rolebinding_yaml_file"-e
 	cat "$rolebinding_yaml_file" | kubectl -n ${cluster_name} apply -f -
 	rm -rf "$rolebinding_yaml_file"
+        
+        #deply image pull secret
+        DOCKER_CONFIG_JSON=`oc extract secret/multiclusterhub-operator-pull-secret -n open-cluster-management-observability --to=-`
+        oc create secret generic multiclusterhub-operator-pull-secret \
+        -n ${cluster_name} \
+        --from-literal=.dockerconfigjson="$DOCKER_CONFIG_JSON" \
+        --type=kubernetes.io/dockerconfigjson
 done
