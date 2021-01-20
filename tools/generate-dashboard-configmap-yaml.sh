@@ -40,21 +40,40 @@ start() {
       exit 1
   fi
 
-  dashboard_name=`echo ${1// /-}`
+  dashboard_name=`echo ${1// /-} | tr '[:upper:]' '[:lower:]'`
   curlCMD="kubectl exec -it -n open-cluster-management-observability $podName -c grafana-dashboard-loader -- /usr/bin/curl"
   XForwardedUser="WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000"
-  dashboardUID=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User: $XForwardedUser" 127.0.0.1:3001/api/dashboards/db/$dashboard_name | python -c "import sys, json; print(json.load(sys.stdin)['dashboard']['uid'])" 2>/dev/null`
+  dashboard=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User: $XForwardedUser" 127.0.0.1:3001/api/dashboards/db/$dashboard_name`
   if [ $? -ne 0 ]; then
       echo "Failed to fetch dashboard UID, please check your dashboard name"
       exit 1
   fi
+  dashboardUID=`echo $dashboard | python -c "import sys, json; print(json.load(sys.stdin)['dashboard']['uid'])" 2>/dev/null`
+  dashboardFolderId=`echo $dashboard | python -c "import sys, json; print(json.load(sys.stdin)['meta']['folderId'])" 2>/dev/null`
+  dashboardFolderTitle=`echo $dashboard | python -c "import sys, json; print(json.load(sys.stdin)['meta']['folderTitle'])" 2>/dev/null`
   
   dashboardJson=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User:$XForwardedUser" 127.0.0.1:3001/api/dashboards/uid/$dashboardUID | python -c "import sys, json; print(json.dumps(json.load(sys.stdin)['dashboard']))"`
   if [ $? -ne 0 ]; then
-      echo "Failed to fetch dashboard json data <$dashboard_name>"
+      echo "Failed to fetch dashboard json data <$1>"
       exit 1
   fi
 
+  if [ $dashboardFolderId -ne 0 ]; then
+  cat > $savePath/$dashboard_name.yaml <<EOF
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: $dashboard_name
+  namespace: open-cluster-management-observability
+  annotations:
+    observability.open-cluster-management.io/dashboard-folder: $dashboardFolderTitle
+  labels:
+    grafana-custom-dashboard: "true"
+data:
+  $dashboard_name.json: |
+    $dashboardJson
+EOF
+  else
   cat > $savePath/$dashboard_name.yaml <<EOF
 kind: ConfigMap
 apiVersion: v1
@@ -67,6 +86,7 @@ data:
   $dashboard_name.json: |
     $dashboardJson
 EOF
+  fi
   echo "Save dashboard <$dashboard_name> to $savePath/$dashboard_name.yaml"
 }
 

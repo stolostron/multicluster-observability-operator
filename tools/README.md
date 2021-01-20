@@ -62,6 +62,12 @@ data:
     $your_dashboard_json
 ```
 
+Note: if your dashboard is not in `General` folder,  you can specify the folder name in `annotations` of this ConfigMap:
+```
+annotations:
+  observability.open-cluster-management.io/dashboard-folder: xxx
+```
+
 ## Uninstall grafana develop instance
 
 You can use the following command to uninstall your grafana instance.
