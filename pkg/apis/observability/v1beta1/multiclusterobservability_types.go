@@ -121,14 +121,7 @@ type MultiClusterObservabilityStatus struct {
 
 	// Represents the status of each deployment
 	// +optional
-	Conditions []MCOCondition `json:"conditions,omitempty"`
-}
-
-// MCOCondition defines the aggregated state of entire MultiClusterObservability CR
-type MCOCondition struct {
-	Type    string `json:"type,omitempty"`
-	Reason  string `json:"reason,omitempty"`
-	Message string `json:"message,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
