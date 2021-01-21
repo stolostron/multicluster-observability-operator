@@ -244,106 +244,27 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 	opts := &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
 	}
-	epList := &mcov1beta1.ObservabilityAddonList{}
-	err = r.client.List(context.TODO(), epList, opts)
+	obsAddonList := &mcov1beta1.ObservabilityAddonList{}
+	err = r.client.List(context.TODO(), obsAddonList, opts)
 	if err != nil {
 		reqLogger.Error(err, "Failed to list observabilityaddon resource")
 		return reconcile.Result{}, err
 	}
+
 	if !deleteAll {
-		// create the clusterrole if not there
-		if !isCRoleCreated {
-			err = createClusterRole(r.client)
-
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-			isCRoleCreated = true
-		}
-		//Check if ClusterManagementAddon is created or create it
-		if !isClusterManagementAddonCreated {
-			err := util.CreateClusterManagementAddon(r.client)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-			isClusterManagementAddonCreated = true
-		}
-
-		imagePullSecret := &corev1.Secret{}
-		err = r.client.Get(context.TODO(),
-			types.NamespacedName{
-				Name:      mco.Spec.ImagePullSecret,
-				Namespace: request.Namespace,
-			}, imagePullSecret)
+		res, err := createAllRelatedRes(r.client, r.restMapper, request, mco, obsAddonList)
 		if err != nil {
-			if errors.IsNotFound(err) {
-				imagePullSecret = nil
-			} else {
-				// Error reading the object - requeue the request.
-				return reconcile.Result{}, err
-			}
-		}
-		mco.Namespace = watchNamespace
-		// Fetch the PlacementRule instance
-		instance := &appsv1.PlacementRule{}
-		err = r.client.Get(context.TODO(), request.NamespacedName, instance)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				// Request object not found, could have been deleted after reconcile request.
-				// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-				// Return and don't requeue
-				return reconcile.Result{}, nil
-			}
-			// Error reading the object - requeue the request.
-			return reconcile.Result{}, err
-		}
-
-		currentClusters := []string{}
-		for _, ep := range epList.Items {
-			currentClusters = append(currentClusters, ep.Namespace)
-		}
-
-		for _, decision := range instance.Status.Decisions {
-			reqLogger.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
-			currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
-			err = createManagedClusterRes(r.client, r.restMapper, mco, imagePullSecret,
-				decision.ClusterName, decision.ClusterNamespace)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-		}
-
-		for _, cluster := range currentClusters {
-			reqLogger.Info("To delete observabilityAddon", "namespace", cluster)
-			err = deleteObsAddon(r.client, cluster)
-			if err != nil {
-				reqLogger.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
-				return reconcile.Result{}, err
-			}
+			return res, err
 		}
 	} else {
-		for _, ep := range epList.Items {
-			err = deleteObsAddon(r.client, ep.Namespace)
-			if err != nil {
-				reqLogger.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
-				return reconcile.Result{}, err
-			}
-		}
-		err = deleteClusterRole(r.client)
+		res, err := deleteAllRelatedRes(r.client, obsAddonList)
 		if err != nil {
-			return reconcile.Result{}, err
+			return res, err
 		}
-		isCRoleCreated = false
-		//delete ClusterManagementAddon
-		err = util.DeleteClusterManagementAddon(r.client)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-		isClusterManagementAddonCreated = false
 	}
 
-	epList = &mcov1beta1.ObservabilityAddonList{}
-	err = r.client.List(context.TODO(), epList, opts)
+	obsAddonList = &mcov1beta1.ObservabilityAddonList{}
+	err = r.client.List(context.TODO(), obsAddonList, opts)
 	if err != nil {
 		reqLogger.Error(err, "Failed to list observabilityaddon resource")
 		return reconcile.Result{}, err
@@ -355,7 +276,7 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 	latestClusters := []string{}
-	for _, ep := range epList.Items {
+	for _, ep := range obsAddonList.Items {
 		latestClusters = append(latestClusters, ep.Namespace)
 	}
 	for _, work := range workList.Items {
@@ -368,6 +289,110 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		}
 	}
 
+	return reconcile.Result{}, nil
+}
+
+func createAllRelatedRes(
+	client client.Client,
+	restMapper meta.RESTMapper,
+	request reconcile.Request,
+	mco *mcov1beta1.MultiClusterObservability,
+	obsAddonList *mcov1beta1.ObservabilityAddonList) (reconcile.Result, error) {
+
+	// create the clusterrole if not there
+	if !isCRoleCreated {
+		err := createClusterRole(client)
+
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		isCRoleCreated = true
+	}
+	//Check if ClusterManagementAddon is created or create it
+	if !isClusterManagementAddonCreated {
+		err := util.CreateClusterManagementAddon(client)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		isClusterManagementAddonCreated = true
+	}
+
+	imagePullSecret := &corev1.Secret{}
+	err := client.Get(context.TODO(),
+		types.NamespacedName{
+			Name:      mco.Spec.ImagePullSecret,
+			Namespace: request.Namespace,
+		}, imagePullSecret)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			imagePullSecret = nil
+		} else {
+			// Error reading the object - requeue the request.
+			return reconcile.Result{}, err
+		}
+	}
+	mco.Namespace = watchNamespace
+	// Fetch the PlacementRule instance
+	instance := &appsv1.PlacementRule{}
+	err = client.Get(context.TODO(), request.NamespacedName, instance)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			return reconcile.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		return reconcile.Result{}, err
+	}
+
+	currentClusters := []string{}
+	for _, ep := range obsAddonList.Items {
+		currentClusters = append(currentClusters, ep.Namespace)
+	}
+
+	for _, decision := range instance.Status.Decisions {
+		log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
+		currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
+		err = createManagedClusterRes(client, restMapper, mco, imagePullSecret,
+			decision.ClusterName, decision.ClusterNamespace)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
+	for _, cluster := range currentClusters {
+		log.Info("To delete observabilityAddon", "namespace", cluster)
+		err = deleteObsAddon(client, cluster)
+		if err != nil {
+			log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
+			return reconcile.Result{}, err
+		}
+	}
+	return reconcile.Result{}, nil
+}
+
+func deleteAllRelatedRes(
+	client client.Client,
+	obsAddonList *mcov1beta1.ObservabilityAddonList) (reconcile.Result, error) {
+	for _, ep := range obsAddonList.Items {
+		err := deleteObsAddon(client, ep.Namespace)
+		if err != nil {
+			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
+			return reconcile.Result{}, err
+		}
+	}
+	err := deleteClusterRole(client)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	isCRoleCreated = false
+	//delete ClusterManagementAddon
+	err = util.DeleteClusterManagementAddon(client)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	isClusterManagementAddonCreated = false
 	return reconcile.Result{}, nil
 }
 
