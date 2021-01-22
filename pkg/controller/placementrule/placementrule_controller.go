@@ -209,21 +209,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	gk = schema.GroupKind{Group: ocinfrav1.GroupVersion.Group, Kind: "APIServer"}
 	_, err = r.(*ReconcilePlacementRule).restMapper.RESTMapping(gk, ocinfrav1.GroupVersion.Version)
 	if err == nil {
-		pred = predicate.Funcs{
-			CreateFunc: func(e event.CreateEvent) bool {
-				return false
-			},
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				if e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
-					return true
-				}
-				return false
-			},
-			DeleteFunc: func(e event.DeleteEvent) bool {
-				return false
-			},
-		}
-		err = c.Watch(&source.Kind{Type: &ocinfrav1.APIServer{}}, &handler.EnqueueRequestForObject{}, pred)
+		err = watchAPIServerForKubeconfig(c)
 		if err != nil {
 			return err
 		}
@@ -489,4 +475,24 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 		return err
 	}
 	return nil
+}
+
+func watchAPIServerForKubeconfig(c controller.Controller) error {
+	// watch APIServer for kubeconfig
+	pred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+		},
+	}
+
+	return c.Watch(&source.Kind{Type: &ocinfrav1.APIServer{}}, &handler.EnqueueRequestForObject{}, pred)
 }
