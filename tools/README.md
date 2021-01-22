@@ -18,7 +18,7 @@ ingress.extensions/grafana-dev created
 
 ## Swith user to be grafana admin
 
-Secondly, you should use this script `switch-to-grafana-admin.sh` to switch a user to be a grafana admin, and then use this user to manage dashboards, manage folders, manage users, etc.
+Secondly, you need to ask a user to login `https://$ACM_URL/grafana-dev/` before use this script `switch-to-grafana-admin.sh` to switch the user to be a grafana admin.
 
 ```
 $ ./switch-to-grafana-admin.sh kube:admin
@@ -27,7 +27,7 @@ User <kube:admin> switched to be grafana admin
 
 ## Design your grafana dashboard
 
-Now, you can log in to grafana via access `https://ACM_URL/grafana-dev/`. and following these steps to design your dashboard:
+Now, refresh the grafana console and follow these steps to design your dashboard:
 
 1. Click the **+** icon on the left panel, select **Create Dashboard**, and then click **Add new panel**.
 2. In the New Dashboard/Edit Panel view, go to the **Query** tab.
