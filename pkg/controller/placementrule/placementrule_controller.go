@@ -482,7 +482,7 @@ func watchObservabilityaddon(c controller.Controller, mapFn handler.ToRequestsFu
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == epConfigName &&
+			if e.Meta.GetName() == obsAddonName &&
 				e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				return true
 			}

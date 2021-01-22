@@ -86,6 +86,15 @@ func createManifestWork(client client.Client, restMapper meta.RESTMapper,
 
 	manifests := work.Spec.Workload.Manifests
 
+	// inject observabilityAddon
+	obaddon, err := getObservabilityAddon(client, clusterNamespace, mco)
+	if err != nil {
+		return err
+	}
+	if obaddon != nil {
+		manifests = injectIntoWork(manifests, obaddon)
+	}
+
 	// inject the hub info secret
 	hubInfo, err := newHubInfoSecret(client, config.GetDefaultNamespace(), spokeNameSpace, clusterName, mco)
 	if err != nil {
@@ -288,4 +297,56 @@ func getWhiteList(client client.Client, name string) (*MetricsWhitelist, error) 
 		return nil, err
 	}
 	return whitelist, nil
+}
+
+func getObservabilityAddon(c client.Client, namespace string,
+	mco *mcov1beta1.MultiClusterObservability) (*mcov1beta1.ObservabilityAddon, error) {
+	found := &mcov1beta1.ObservabilityAddon{}
+	namespacedName := types.NamespacedName{
+		Name:      obsAddonName,
+		Namespace: namespace,
+	}
+	err := c.Get(context.TODO(), namespacedName, found)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil, nil
+		}
+		log.Error(err, "Failed to check observabilityAddon")
+		return nil, err
+	}
+	if found.ObjectMeta.DeletionTimestamp != nil {
+		return nil, nil
+	}
+	return &mcov1beta1.ObservabilityAddon{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      obsAddonName,
+			Namespace: spokeNameSpace,
+		},
+		Spec: mcov1beta1.ObservabilityAddonSpec{
+			EnableMetrics: mco.Spec.ObservabilityAddonSpec.EnableMetrics,
+			Interval:      mco.Spec.ObservabilityAddonSpec.Interval,
+		},
+	}, nil
+}
+
+func removeObservabilityAddon(client client.Client, namespace string) error {
+	found := &workv1.ManifestWork{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
+		log.Error(err, "Failed to check manifestwork", "namespace", namespace, "name", workName)
+		return err
+	}
+
+	updateManifests := found.Spec.Workload.Manifests[1:]
+	found.Spec.Workload.Manifests = updateManifests
+
+	err = client.Update(context.TODO(), found)
+	if err != nil {
+		log.Error(err, "Failed to update manifestwork", "namespace", namespace, "name", workName)
+		return err
+	}
+	return nil
 }
