@@ -86,7 +86,7 @@ spec:
         name: config-reloader
         resources:
           limits:
-            cpu: 100m
+            cpu: 4m
             memory: 25Mi
         volumeMounts:
         - mountPath: /etc/alertmanager/config

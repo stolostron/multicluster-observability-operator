@@ -33,10 +33,11 @@ const (
 	defaultTenantName        = "default"
 	placementRuleName        = "observability"
 
-	AnnotationKeyImageRepository = "mco-imageRepository"
-	AnnotationKeyImageTagSuffix  = "mco-imageTagSuffix"
-	AnnotationMCOPause           = "mco-pause"
-	AnnotationSkipCreation       = "skip-creation-if-exist"
+	AnnotationKeyImageRepository          = "mco-imageRepository"
+	AnnotationKeyImageTagSuffix           = "mco-imageTagSuffix"
+	AnnotationMCOPause                    = "mco-pause"
+	AnnotationMCOWithoutResourcesRequests = "mco-thanos-without-resources-requests"
+	AnnotationSkipCreation                = "skip-creation-if-exist"
 
 	DefaultImgPullPolicy   = corev1.PullAlways
 	DefaultImgPullSecret   = "multiclusterhub-operator-pull-secret"
@@ -119,6 +120,39 @@ const (
 	LeaseControllerKey            = "klusterlet_addon_lease_controller"
 
 	RbacQueryProxyKey = "rbac_query_proxy"
+)
+
+const (
+	ObservatoriumAPICPURequets    = "20m"
+	ObservatoriumAPIMemoryRequets = "128Mi"
+
+	ThanosQueryFrontendCPURequets    = "100m"
+	ThanosQueryFrontendMemoryRequets = "256Mi"
+
+	ThanosQueryCPURequets    = "500m"
+	ThanosQueryMemoryRequets = "1Gi"
+
+	ThanosCompactCPURequets    = "100m"
+	ThanosCompactMemoryRequets = "512Mi"
+
+	ObservatoriumReceiveControllerCPURequets    = "4m"
+	ObservatoriumReceiveControllerMemoryRequets = "32Mi"
+
+	ThanosReceiveCPURequets    = "500m"
+	ThanosReceiveMemoryRequets = "512Mi"
+
+	ThanosRuleCPURequets            = "100m"
+	ThanosRuleMemoryRequets         = "512Mi"
+	ThanosRuleReloaderCPURequets    = "4m"
+	ThanosRuleReloaderMemoryRequets = "25Mi"
+
+	ThanosCahcedCPURequets            = "100m"
+	ThanosCahcedMemoryRequets         = "128Mi"
+	ThanosCahcedExporterCPURequets    = "10m"
+	ThanosCahcedExporterMemoryRequets = "50Mi"
+
+	ThanosStoreCPURequets    = "500m"
+	ThanosStoreMemoryRequets = "1Gi"
 )
 
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation
@@ -300,6 +334,21 @@ func IsPaused(annotations map[string]string) bool {
 
 	if annotations[AnnotationMCOPause] != "" &&
 		strings.EqualFold(annotations[AnnotationMCOPause], "true") {
+		return true
+	}
+
+	return false
+}
+
+// WithoutResourcesRequests returns true if the multiclusterobservability instance has annotation:
+// mco-thanos-without-resources-requests: true
+func WithoutResourcesRequests(annotations map[string]string) bool {
+	if annotations == nil {
+		return false
+	}
+
+	if annotations[AnnotationMCOWithoutResourcesRequests] != "" &&
+		strings.EqualFold(annotations[AnnotationMCOWithoutResourcesRequests], "true") {
 		return true
 	}
 
