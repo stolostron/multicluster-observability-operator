@@ -85,7 +85,7 @@ spec:
         imagePullPolicy: IfNotPresent
         name: config-reloader
         resources:
-          limits:
+          requests:
             cpu: 4m
             memory: 25Mi
         volumeMounts:
