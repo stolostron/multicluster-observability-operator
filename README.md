@@ -140,7 +140,7 @@ spec:
   imagePullSecret: multiclusterhub-operator-pull-secret
   observabilityAddonSpec: # The ObservabilityAddonSpec defines the global settings for all managed clusters which have observability add-on enabled
     enableMetrics: true # EnableMetrics indicates the observability addon push metrics to hub server
-    interval: 60 # Interval for the observability addon push metrics to hub server
+    interval: 30 # Interval for the observability addon push metrics to hub server
   retentionResolution1h: 30d # How long to retain samples of 1 hour in bucket
   retentionResolution5m: 14d
   retentionResolutionRaw: 5d

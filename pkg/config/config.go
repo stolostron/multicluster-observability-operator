@@ -51,7 +51,7 @@ const (
 	DefaultRetentionResolution5m  = "14d"
 	DefaultRetentionResolutionRaw = "5d"
 
-	DefaultAddonInterval = 60
+	DefaultAddonInterval = 30
 
 	ImageManifestConfigMapName = "mch-image-manifest-"
 

@@ -388,7 +388,7 @@ func TestGenerateMonitoringCR(t *testing.T) {
 func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 	addonSpec := &mcov1beta1.ObservabilityAddonSpec{
 		EnableMetrics: true,
-		Interval:      60,
+		Interval:      30,
 	}
 
 	mco := &mcov1beta1.MultiClusterObservability{
