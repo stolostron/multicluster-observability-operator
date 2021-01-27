@@ -4,9 +4,10 @@ package placementrule
 
 import (
 	"context"
+	"errors"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -38,7 +39,7 @@ func deleteManifestWork(client client.Client, namespace string) error {
 	found := &workv1.ManifestWork{}
 	err = client.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			return nil
 		}
 		log.Error(err, "Failed to check monitoring-endpoint-monitoring-work work", "namespace", namespace)
@@ -134,7 +135,7 @@ func createManifestWork(client client.Client, restMapper meta.RESTMapper,
 
 	found := &workv1.ManifestWork{}
 	err = client.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: clusterNamespace}, found)
-	if err != nil && errors.IsNotFound(err) {
+	if err != nil && k8serrors.IsNotFound(err) {
 		log.Info("Creating monitoring-endpoint-monitoring-work work", "namespace", clusterNamespace)
 
 		err = client.Create(context.TODO(), work)
@@ -150,7 +151,7 @@ func createManifestWork(client client.Client, restMapper meta.RESTMapper,
 
 	if found.GetDeletionTimestamp() != nil {
 		log.Error(err, "Existing manifestwork is terminating, skip and reconcile later")
-		return err
+		return errors.New("Existing manifestwork is terminating, skip and reconcile later")
 	}
 
 	updated := false
