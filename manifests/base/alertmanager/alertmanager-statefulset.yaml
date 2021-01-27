@@ -85,8 +85,8 @@ spec:
         imagePullPolicy: IfNotPresent
         name: config-reloader
         resources:
-          limits:
-            cpu: 100m
+          requests:
+            cpu: 4m
             memory: 25Mi
         volumeMounts:
         - mountPath: /etc/alertmanager/config

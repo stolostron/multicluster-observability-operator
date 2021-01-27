@@ -66,6 +66,10 @@ spec:
           timeoutSeconds: 1
           successThreshold: 1
           failureThreshold: 3
+        resources:
+          requests:
+            cpu: 20m
+            memory: 100Mi
       serviceAccountName: rbac-query-proxy
       imagePullSecrets:
       - name: multiclusterhub-operator-pull-secret

@@ -947,6 +947,8 @@ github.com/open-cluster-management/observatorium-operator v0.0.0-20201118025659-
 github.com/open-cluster-management/observatorium-operator v0.0.0-20201118025659-91de49676eca/go.mod h1:8QU64oDTkDAjPgcjndWD+M39tLwDSeeQX5OhOWleAtU=
 github.com/open-cluster-management/observatorium-operator v0.0.0-20201120185949-78ef423af039 h1:qKXTaEka6amffgluAwJgOLv/ded/F8BerISLfOfXd0c=
 github.com/open-cluster-management/observatorium-operator v0.0.0-20201120185949-78ef423af039/go.mod h1:8QU64oDTkDAjPgcjndWD+M39tLwDSeeQX5OhOWleAtU=
+github.com/open-cluster-management/observatorium-operator v0.0.0-20210114062211-5117c5d6f1fb h1:sm4lQNEV3KD3qR/g1yi6yAYBJbBTOCo1+OPVyNJDivQ=
+github.com/open-cluster-management/observatorium-operator v0.0.0-20210114062211-5117c5d6f1fb/go.mod h1:8QU64oDTkDAjPgcjndWD+M39tLwDSeeQX5OhOWleAtU=
 github.com/opencontainers/go-digest v0.0.0-20170106003457-a6d0ee40d420/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
 github.com/opencontainers/go-digest v0.0.0-20180430190053-c9281466c8b2/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
 github.com/opencontainers/go-digest v1.0.0-rc1/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=

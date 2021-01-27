@@ -23,7 +23,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
@@ -55,7 +54,7 @@ func GenerateObservatoriumCR(
 	observatoriumCR := &observatoriumv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mco.Name + obsPartoOfName,
-			Namespace: config.GetDefaultNamespace(),
+			Namespace: mcoconfig.GetDefaultNamespace(),
 			Labels:    labels,
 		},
 		Spec: *newDefaultObservatoriumSpec(mco, storageClassSelected),
@@ -144,7 +143,7 @@ func GenerateAPIGatewayRoute(
 	apiGateway := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obsAPIGateway,
-			Namespace: config.GetDefaultNamespace(),
+			Namespace: mcoconfig.GetDefaultNamespace(),
 		},
 		Spec: routev1.RouteSpec{
 			Port: &routev1.RoutePort{
@@ -193,6 +192,14 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability,
 	obs.API.Tenants = newAPITenants()
 	obs.API.TLS = newAPITLS()
 	obs.API.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "Deployments")
+	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
+		obs.API.Resources = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ObservatoriumAPICPURequets),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ObservatoriumAPIMemoryRequets),
+			},
+		}
+	}
 	obs.Compact = newCompactSpec(mco, scSelected)
 
 	obs.Hashrings = []*observatoriumv1alpha1.Hashring{
@@ -219,14 +226,38 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability,
 		mcoconfig.ThanosReceiveControllerImgName +
 		":" + mcoconfig.ThanosReceiveControllerImgTag
 	obs.ThanosReceiveController.Version = mcoconfig.ThanosReceiveControllerImgTag
+	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
+		obs.ThanosReceiveController.Resources = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ObservatoriumReceiveControllerCPURequets),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ObservatoriumReceiveControllerMemoryRequets),
+			},
+		}
+	}
 
 	obs.Query.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
 	obs.Query.Version = mcoconfig.ThanosImgTag
 	obs.Query.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "Deployments")
+	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
+		obs.Query.Resources = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosQueryCPURequets),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosQueryMemoryRequets),
+			},
+		}
+	}
 
 	obs.QueryFrontend.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
 	obs.QueryFrontend.Version = mcoconfig.ThanosImgTag
 	obs.QueryFrontend.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "Deployments")
+	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
+		obs.QueryFrontend.Resources = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosQueryFrontendCPURequets),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosQueryFrontendMemoryRequets),
+			},
+		}
+	}
 
 	replace, image := mcoconfig.ReplaceImage(mco.Annotations, obs.API.Image, mcoconfig.ObservatoriumAPIImgName)
 	if replace {
@@ -337,6 +368,14 @@ func newReceiversSpec(
 	receSpec.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
 	receSpec.ReplicationFactor = receSpec.Replicas
 	receSpec.Version = mcoconfig.ThanosImgTag
+	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
+		receSpec.Resources = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosReceiveCPURequets),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosReceiveMemoryRequets),
+			},
+		}
+	}
 	found, image := mcoconfig.ReplaceImage(mco.Annotations, receSpec.Image, mcoconfig.ThanosImgName)
 	if found {
 		receSpec.Image = image
@@ -353,6 +392,21 @@ func newRuleSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) o
 	ruleSpec.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
 	ruleSpec.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
 	ruleSpec.Version = mcoconfig.ThanosImgTag
+	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
+		ruleSpec.Resources = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosRuleCPURequets),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosRuleMemoryRequets),
+			},
+		}
+		ruleSpec.ReloaderResources = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosRuleReloaderCPURequets),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosRuleReloaderMemoryRequets),
+			},
+		}
+	}
+
 	found, image := mcoconfig.ReplaceImage(mco.Annotations, ruleSpec.Image, mcoconfig.ThanosImgName)
 	if found {
 		ruleSpec.Image = image
@@ -402,6 +456,14 @@ func newStoreSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) 
 	storeSpec := observatoriumv1alpha1.StoreSpec{}
 	storeSpec.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
 	storeSpec.Version = mcoconfig.ThanosImgTag
+	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
+		storeSpec.Resources = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosStoreCPURequets),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosStoreMemoryRequets),
+			},
+		}
+	}
 	found, image := mcoconfig.ReplaceImage(mco.Annotations, storeSpec.Image, mcoconfig.ThanosImgName)
 	if found {
 		storeSpec.Image = image
@@ -424,6 +486,20 @@ func newStoreCacheSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv
 	storeCacheSpec.ExporterImage = mcoconfig.MemcachedExporterImgRepo + "/" +
 		mcoconfig.MemcachedExporterImgName + ":" + mcoconfig.MemcachedExporterImgTag
 	storeCacheSpec.ExporterVersion = mcoconfig.MemcachedExporterImgTag
+	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
+		storeCacheSpec.Resources = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosCahcedCPURequets),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosCahcedMemoryRequets),
+			},
+		}
+		storeCacheSpec.ExporterResources = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosCahcedExporterCPURequets),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosCahcedExporterMemoryRequets),
+			},
+		}
+	}
 
 	found, image := mcoconfig.ReplaceImage(mco.Annotations, storeCacheSpec.Image, mcoconfig.MemcachedImgName)
 	if found {
@@ -449,6 +525,14 @@ func newCompactSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string
 	//Compactions are needed from time to time, only when new blocks appear.
 	compactSpec.Replicas = &replicas1
 	compactSpec.Version = mcoconfig.ThanosImgTag
+	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
+		compactSpec.Resources = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosCompactCPURequets),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosCompactMemoryRequets),
+			},
+		}
+	}
 	found, image := mcoconfig.ReplaceImage(mco.Annotations, compactSpec.Image, mcoconfig.ThanosImgName)
 	if found {
 		compactSpec.Image = image
@@ -496,7 +580,7 @@ func deleteStoreSts(cl client.Client, name string, oldNum int32, newNum int32) e
 		for i := newNum; i < oldNum; i++ {
 			stsName := fmt.Sprintf("%s-thanos-store-shard-%d", name, i)
 			found := &appsv1.StatefulSet{}
-			err := cl.Get(context.TODO(), types.NamespacedName{Name: stsName, Namespace: config.GetDefaultNamespace()}, found)
+			err := cl.Get(context.TODO(), types.NamespacedName{Name: stsName, Namespace: mcoconfig.GetDefaultNamespace()}, found)
 			if err != nil {
 				if !errors.IsNotFound(err) {
 					log.Error(err, "Failed to get statefulset", "name", stsName)
