@@ -341,7 +341,9 @@ func IsPaused(annotations map[string]string) bool {
 }
 
 // WithoutResourcesRequests returns true if the multiclusterobservability instance has annotation:
-// mco-thanos-without-resources-requests: true
+// mco-thanos-without-resources-requests: "true"
+// This is just for test purpose: the KinD cluster does not have enough resources for the requests.
+// We won't expose this annotation to the customer.
 func WithoutResourcesRequests(annotations map[string]string) bool {
 	if annotations == nil {
 		return false
