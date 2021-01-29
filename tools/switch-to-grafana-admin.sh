@@ -52,6 +52,14 @@ start() {
       exit 1
   fi
   echo "User <$1> switched to be grafana admin"
+
+  #disable getting start
+  kubectl exec -it -n open-cluster-management-observability $podName -c grafana-dev -- sqlite3 /var/lib/grafana/grafana.db "update user set help_flags1=1 where id=$userID;" > /dev/null
+  if [ $? -ne 0 ]; then
+      echo "Failed to disable getting start for the user <$1>"
+      exit 1
+  fi
+
 }
 
 start "$@"
