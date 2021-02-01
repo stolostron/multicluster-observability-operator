@@ -31,41 +31,41 @@ Now, refresh the grafana console and follow these steps to design your dashboard
 
 1. Click the **+** icon on the left panel, select **Create Dashboard**, and then click **Add new panel**.
 2. In the New Dashboard/Edit Panel view, go to the **Query** tab.
-3. Configure your query by selecting `-- Grafana --` from the data source selector. This generates the Random Walk dashboard.
+3. Configure your query by selecting `Observatorium` from the data source selector and enter a PromQL query.
 4. Click the **Save** icon in the top right corner of your screen to save the dashboard.
 5. Add a descriptive name, and then click **Save**.
 
 You can use this script `generate-dashboard-configmap-yaml.sh` to generate a dashboard configmap and save it to local.
 
 ```
-./generate-dashboard-configmap-yaml.sh your_dashboard_name
-Save dashboard <your_dashboard_name> to ./your_dashboard_name.yaml
+./generate-dashboard-configmap-yaml.sh "Your Dashboard Name"
+Save dashboard <your-dashboard-name> to ./your-dashboard-name.yaml
 ```
 
 If you have not permission to run this script `generate-dashboard-configmap-yaml.sh`, you can following these steps to create a dashboard configmap:
 
 1. Go to a dashboard, click the **Dashboard settings** icon.
 2. Click the **JSON Model** icon on the left panel.
-3. Copy the dashboard json data and put it in to `$your_dashboard_json` field.
-4. Modify `$your_dashboard_name` field.
+3. Copy the dashboard json data and put it in to `$your-dashboard-name` field.
+4. Modify `$your-dashboard-name` field.
 
 ```yaml
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: $your_dashboard_name
+  name: $your-dashboard-name
   namespace: open-cluster-management-observability
   labels:
     grafana-custom-dashboard: "true"
 data:
-  $your_dashboard_name.json: |
+  $your-dashboard-name.json: |
     $your_dashboard_json
 ```
 
 Note: if your dashboard is not in `General` folder,  you can specify the folder name in `annotations` of this ConfigMap:
 ```
 annotations:
-  observability.open-cluster-management.io/dashboard-folder: xxx
+  observability.open-cluster-management.io/dashboard-folder: Custom
 ```
 
 ## Uninstall grafana develop instance
