@@ -1614,7 +1614,6 @@ metadata:
   name: grafana-dashboard-acm-clusters-overview
   namespace: open-cluster-management-observability
   labels:
-    grafana-custom-dashboard: "true"
     general-folder: "true"
 ---
 apiVersion: v1
@@ -3177,5 +3176,4 @@ metadata:
   name: grafana-dashboard-acm-optimization-overview
   namespace: open-cluster-management-observability
   labels:
-    grafana-custom-dashboard: "true"
     general-folder: "true"
