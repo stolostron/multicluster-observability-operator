@@ -96,13 +96,20 @@ type StorageConfigObject struct {
 	// Object store config secret for metrics
 	// +required
 	MetricObjectStorage *PreConfiguredStorage `json:"metricObjectStorage,omitempty"`
-	// The amount of storage applied to the Observability stateful sets, i.e.
-	// Thanos store, Rule, compact and receiver.
+	// The amount of storage applies to the Observability stateful sets, i.e.
+	// Thanos store, Thanos rule and alertmanager.
+	// +optional
+	// +kubebuilder:default:="1Gi"
+	StatefulSetSize string `json:"statefulSetSize,omitempty"`
+	// CompactStatefulSetSize defines the amount of storage for the thanos compact component.
 	// +optional
 	// +kubebuilder:default:="10Gi"
-	StatefulSetSize string `json:"statefulSetSize,omitempty"`
-
-	// 	Specify the storageClass Stateful Sets. This storage class will also
+	CompactStatefulSetSize string `json:"compactStatefulSetSize,omitempty"`
+	// ReceiveStatefulSetSize defines the amount of storage for the thanos receiver component.
+	// +optional
+	// +kubebuilder:default:="10Gi"
+	ReceiveStatefulSetSize string `json:"receiveStatefulSetSize,omitempty"`
+	// Specify the storageClass Stateful Sets. This storage class will also
 	// be used for Object Storage if MetricObjectStorage was configured for
 	// the system to create the storage.
 	// +optional

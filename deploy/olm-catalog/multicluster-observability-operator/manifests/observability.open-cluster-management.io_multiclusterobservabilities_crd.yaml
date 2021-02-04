@@ -96,6 +96,11 @@ spec:
               storageConfigObject:
                 description: Specifies the storage to be used by Observability
                 properties:
+                  compactStatefulSetSize:
+                    default: 10Gi
+                    description: CompactStatefulSetSize defines the amount of storage
+                      for the thanos compact component.
+                    type: string
                   metricObjectStorage:
                     description: Object store config secret for metrics
                     properties:
@@ -108,16 +113,21 @@ spec:
                         description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
                         type: string
                     type: object
-                  statefulSetSize:
+                  receiveStatefulSetSize:
                     default: 10Gi
-                    description: The amount of storage applied to the Observability
-                      stateful sets, i.e. Thanos store, Rule, compact and receiver.
+                    description: ReceiveStatefulSetSize defines the amount of storage
+                      for the thanos receiver component.
+                    type: string
+                  statefulSetSize:
+                    default: 1Gi
+                    description: The amount of storage applies to the Observability
+                      stateful sets, i.e. Thanos store, Thanos rule and alertmanager.
                     type: string
                   statefulSetStorageClass:
                     default: gp2
-                    description: "\tSpecify the storageClass Stateful Sets. This storage
+                    description: Specify the storageClass Stateful Sets. This storage
                       class will also be used for Object Storage if MetricObjectStorage
-                      was configured for the system to create the storage."
+                      was configured for the system to create the storage.
                     type: string
                 type: object
             type: object
