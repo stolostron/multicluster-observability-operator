@@ -7,7 +7,8 @@
 package v1beta1
 
 import (
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -82,6 +83,13 @@ func (in *MultiClusterObservabilitySpec) DeepCopyInto(out *MultiClusterObservabi
 			(*out)[key] = val
 		}
 	}
+	if in.Tolerations != nil {
+		in, out := &in.Tolerations, &out.Tolerations
+		*out = make([]v1.Toleration, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.StorageConfig != nil {
 		in, out := &in.StorageConfig, &out.StorageConfig
 		*out = new(StorageConfigObject)
@@ -110,7 +118,7 @@ func (in *MultiClusterObservabilityStatus) DeepCopyInto(out *MultiClusterObserva
 	*out = *in
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make([]v1.Condition, len(*in))
+		*out = make([]metav1.Condition, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

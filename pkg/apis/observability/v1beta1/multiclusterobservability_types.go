@@ -47,6 +47,10 @@ type MultiClusterObservabilitySpec struct {
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
+	// Tolerations causes all components to tolerate any taints.
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
 	// How long to retain raw samples in a bucket. Default is 5d
 	// +optional
 	RetentionResolutionRaw string `json:"retentionResolutionRaw,omitempty"`
