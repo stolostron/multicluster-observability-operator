@@ -11,6 +11,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,7 +24,9 @@ import (
 )
 
 const (
-	workName = "endpoint-observability-work"
+	operatorWorkNameSuffix = "observability-operator"
+	resWorkNameSuffix      = "observability-operator-res"
+	localClusterName       = "local-cluster"
 )
 
 type MetricsWhitelist struct {
@@ -31,27 +34,29 @@ type MetricsWhitelist struct {
 	MatchList []string `yaml:"matches"`
 }
 
-func deleteManifestWork(client client.Client, namespace string) error {
-	err := deleteRes(client, namespace)
+func deleteManifestWorks(c client.Client, namespace string) error {
+	err := deleteRes(c, namespace)
 	if err != nil {
 		return err
 	}
 
-	found := &workv1.ManifestWork{}
-	err = client.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	workList := &workv1.ManifestWorkList{}
+	err = c.List(context.TODO(), workList, &client.ListOptions{
+		Namespace:     namespace,
+		LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
+	})
 	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			return nil
-		}
-		log.Error(err, "Failed to check monitoring-endpoint-monitoring-work work", "namespace", namespace)
+		log.Error(err, "Failed to list observability manifestwork", "namespace", namespace)
 		return err
 	}
-	err = client.Delete(context.TODO(), found)
-	if err != nil {
-		log.Error(err, "Failed to delete monitoring-endpoint-monitoring-work work", "namespace", namespace)
+	for _, work := range workList.Items {
+		err = c.Delete(context.TODO(), work)
+		if err != nil {
+			log.Error(err, "Failed to delete manifestwork", "namespace", namespace, "name", work.Name)
+		}
+		log.Info("manifestwork is deleted", "namespace", namespace, "name", work.Name)
+		return err
 	}
-	log.Info("manifestwork is deleted", "namespace", namespace)
-	return err
 }
 
 func injectIntoWork(works []workv1.Manifest, obj runtime.Object) []workv1.Manifest {
@@ -109,6 +114,10 @@ func createManifestWork(client client.Client, restMapper meta.RESTMapper,
 		return err
 	}
 	for _, raw := range templates {
+		if clusterName == localClusterName &&
+			raw.Object.GetObjectKind().GroupVersionKind().Kind == "CustomResourceDefinition" {
+			continue
+		}
 		manifests = append(manifests, workv1.Manifest{raw})
 	}
 
@@ -318,6 +327,7 @@ func getObservabilityAddon(c client.Client, namespace string,
 		return nil, nil
 	}
 	return &mcov1beta1.ObservabilityAddon{
+		TypeMeta: mco.TypeMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obsAddonName,
 			Namespace: spokeNameSpace,
