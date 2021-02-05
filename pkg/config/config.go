@@ -68,7 +68,7 @@ const (
 	AlertmanagerURL               = "http://alertmanager:9093"
 	AlertmanagerConfigName        = "alertmanager-config"
 
-	WhitelistConfigMapName       = "observability-metrics-whitelist"
+	WhitelistConfigMapName       = "observability-metrics-allowlist"
 	WhitelistCustomConfigMapName = "observability-metrics-custom-allowlist"
 )
 
