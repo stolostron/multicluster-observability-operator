@@ -107,6 +107,7 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 			spec := &dep.Spec.Template.Spec
 			spec.Containers[0].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
 			spec.NodeSelector = r.cr.Spec.NodeSelector
+			spec.Tolerations = r.cr.Spec.Tolerations
 			spec.ImagePullSecrets = []corev1.LocalObjectReference{
 				{Name: r.cr.Spec.ImagePullSecret},
 			}

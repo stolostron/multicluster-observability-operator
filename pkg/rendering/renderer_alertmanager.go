@@ -70,6 +70,7 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 
 	spec.Containers[1].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
 	spec.NodeSelector = r.cr.Spec.NodeSelector
+	spec.Tolerations = r.cr.Spec.Tolerations
 	spec.ImagePullSecrets = []corev1.LocalObjectReference{
 		{Name: r.cr.Spec.ImagePullSecret},
 	}
