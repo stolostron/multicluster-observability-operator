@@ -69,7 +69,7 @@ const (
 	AlertmanagerConfigName        = "alertmanager-config"
 
 	WhitelistConfigMapName       = "observability-metrics-whitelist"
-	WhitelistCustomConfigMapName = "observability-metrics-custom-whitelist"
+	WhitelistCustomConfigMapName = "observability-metrics-custom-allowlist"
 )
 
 const (
