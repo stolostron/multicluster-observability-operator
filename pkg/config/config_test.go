@@ -361,6 +361,10 @@ func TestGenerateMonitoringCR(t *testing.T) {
 		t.Errorf("NodeSelector (%v) is not the expected (non-nil)", mco.Spec.NodeSelector)
 	}
 
+	if len(mco.Spec.Tolerations) != 0 {
+		t.Errorf("Tolerations (%v) is not the expected ([])", mco.Spec.Tolerations)
+	}
+
 	if mco.Spec.StorageConfig.StatefulSetSize != DefaultStorageSize {
 		t.Errorf("StatefulSetSize (%v) is not the expected (%v)",
 			mco.Spec.StorageConfig.StatefulSetSize,
@@ -432,6 +436,10 @@ func TestGenerateMonitoringCustomizedCR(t *testing.T) {
 	if mco.Spec.StorageConfig.StatefulSetSize != "1Gi" {
 		t.Errorf("StatefulSetSize (%v) is not the expected (%v)",
 			mco.Spec.StorageConfig.StatefulSetSize, "1Gi")
+	}
+
+	if len(mco.Spec.Tolerations) != 0 {
+		t.Errorf("Tolerations (%v) is not the expected ([])", mco.Spec.Tolerations)
 	}
 
 	if mco.Spec.StorageConfig.StatefulSetStorageClass != "gp2" {
