@@ -36,11 +36,19 @@ func loadTemplates(namespace string,
 	}
 	rawExtensionList := []runtime.RawExtension{}
 	for _, r := range resourceList {
-		obj, err := updateRes(r, namespace, mco)
-		if err != nil {
-			return nil, err
+		if r.GetKind() == "CustomResourceDefinition" {
+			data, err := r.MarshalJSON()
+			if err != nil {
+				return nil, err
+			}
+			rawExtensionList = append(rawExtensionList, runtime.RawExtension{Raw: data})
+		} else {
+			obj, err := updateRes(r, namespace, mco)
+			if err != nil {
+				return nil, err
+			}
+			rawExtensionList = append(rawExtensionList, runtime.RawExtension{Object: obj})
 		}
-		rawExtensionList = append(rawExtensionList, runtime.RawExtension{Object: obj})
 	}
 	return rawExtensionList, nil
 }
@@ -55,7 +63,7 @@ func updateRes(r *resource.Resource, namespace string,
 	obj := util.GetK8sObj(kind)
 	err := runtime.DefaultUnstructuredConverter.FromUnstructured(r.Map(), obj)
 	if err != nil {
-		log.Error(err, "failed to convert the resource", r.GetName())
+		log.Error(err, "failed to convert the resource", "resource", r.GetName())
 		return nil, err
 	}
 	// set the images and watch_namespace for endpoint metrics operator

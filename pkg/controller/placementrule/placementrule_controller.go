@@ -421,7 +421,7 @@ func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 		return err
 	}
 
-	err = createManifestWork(client, restMapper, namespace, name, mco, imagePullSecret)
+	err = createManifestWorks(client, restMapper, namespace, name, mco, imagePullSecret)
 	if err != nil {
 		log.Error(err, "Failed to create manifestwork")
 		return err
@@ -464,7 +464,7 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 		return err
 	}
 
-	err = deleteManifestWork(client, namespace)
+	err = deleteManifestWorks(client, namespace)
 	if err != nil {
 		log.Error(err, "Failed to delete manifestwork")
 		return err
@@ -507,15 +507,14 @@ func watchManifestwork(c controller.Controller, mapFn handler.ToRequestsFunc) er
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == workName &&
-				e.MetaNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
+			if e.MetaNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
 				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
 				return true
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == workName && e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
+			if e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				return true
 			}
 			return false
