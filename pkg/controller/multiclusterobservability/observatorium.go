@@ -113,6 +113,12 @@ func GenerateObservatoriumCR(
 		return &reconcile.Result{}, err
 	}
 
+	// delete the store-share statefulset in scalein scenario
+	err = deleteStoreSts(cl, observatoriumCR.Name, *oldSpec.Store.Shards, *newSpec.Store.Shards)
+	if err != nil {
+		return &reconcile.Result{}, err
+	}
+
 	return nil, nil
 }
 
