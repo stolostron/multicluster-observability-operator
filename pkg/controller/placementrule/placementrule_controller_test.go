@@ -110,7 +110,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork for cluster1: (%v)", err)
 	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + resWorkNameSuffix, Namespace: namespace2}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace2 + resWorkNameSuffix, Namespace: namespace2}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork for cluster2: (%v)", err)
 	}
@@ -141,7 +141,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork for cluster1: (%v)", err)
 	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + resWorkNameSuffix, Namespace: namespace2}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace2 + resWorkNameSuffix, Namespace: namespace2}, found)
 	if err == nil || !errors.IsNotFound(err) {
 		t.Fatalf("Failed to delete manifestwork for cluster2: (%v)", err)
 	}

@@ -112,7 +112,7 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 	}
 
 	if updated {
-		log.Info("Updating manifestwork", namespace, "name", name)
+		log.Info("Updating manifestwork", namespace, namespace, "name", name)
 		work.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 		err = c.Update(context.TODO(), work)
 		if err != nil {
@@ -141,7 +141,8 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	}
 	for _, raw := range templates {
 		if clusterName == localClusterName &&
-			raw.Object.GetObjectKind().GroupVersionKind().Kind == "CustomResourceDefinition" {
+			raw.Object == nil {
+			//raw.Object.GetObjectKind().GroupVersionKind().Kind == "CustomResourceDefinition" {
 			continue
 		}
 		operatorWork.Spec.Workload.Manifests = append(operatorWork.Spec.Workload.Manifests, workv1.Manifest{raw})
@@ -332,7 +333,10 @@ func getObservabilityAddon(c client.Client, namespace string,
 		return nil, nil
 	}
 	return &mcov1beta1.ObservabilityAddon{
-		TypeMeta: mco.TypeMeta,
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "observability.open-cluster-management.io/v1beta1",
+			Kind:       "ObservabilityAddon",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obsAddonName,
 			Namespace: spokeNameSpace,
