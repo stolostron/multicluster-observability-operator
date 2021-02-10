@@ -17,7 +17,6 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -255,7 +254,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
 
-	status := meta.FindStatusCondition(updatedMCO.Status.Conditions, "Failed")
+	status := findStatusCondition(updatedMCO.Status.Conditions, "Failed")
 	if status == nil || status.Reason != "ObjectStorageSecretNotFound" {
 		t.Errorf("Failed to get correct MCO status, expect Failed")
 	}
@@ -273,7 +272,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	status = meta.FindStatusCondition(updatedMCO.Status.Conditions, "Failed")
+	status = findStatusCondition(updatedMCO.Status.Conditions, "Failed")
 	if status == nil || status.Reason != "DeploymentNotFound" {
 		t.Errorf("Failed to get correct MCO status, expect Failed")
 	}
@@ -295,7 +294,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
-	status = meta.FindStatusCondition(updatedMCO.Status.Conditions, "Failed")
+	status = findStatusCondition(updatedMCO.Status.Conditions, "Failed")
 	if status == nil || status.Reason != "StatefulSetNotFound" {
 		t.Errorf("Failed to get correct MCO status, expect Failed")
 	}
@@ -327,12 +326,12 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
 
-	status = meta.FindStatusCondition(updatedMCO.Status.Conditions, "Ready")
+	status = findStatusCondition(updatedMCO.Status.Conditions, "Ready")
 	if status == nil || status.Reason != "Ready" {
 		t.Errorf("Failed to get correct MCO status, expect Ready")
 	}
 
-	status = meta.FindStatusCondition(updatedMCO.Status.Conditions, "MetricsDisabled")
+	status = findStatusCondition(updatedMCO.Status.Conditions, "MetricsDisabled")
 	if status == nil || status.Reason != "MetricsDisabled" {
 		t.Errorf("Failed to get correct MCO status, expect MetricsDisabled")
 	}
@@ -357,7 +356,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
 
-	status = meta.FindStatusCondition(updatedMCO.Status.Conditions, "MetricsDisabled")
+	status = findStatusCondition(updatedMCO.Status.Conditions, "MetricsDisabled")
 	if status != nil {
 		t.Errorf("Should have not MetricsDisabled status")
 	}
@@ -382,7 +381,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
 
-	status = meta.FindStatusCondition(updatedMCO.Status.Conditions, "Ready")
+	status = findStatusCondition(updatedMCO.Status.Conditions, "Ready")
 	if status == nil || status.Reason != "Ready" {
 		t.Errorf("Failed to get correct MCO status, expect Ready")
 	}
@@ -416,7 +415,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
 
-	status = meta.FindStatusCondition(updatedMCO.Status.Conditions, "Ready")
+	status = findStatusCondition(updatedMCO.Status.Conditions, "Ready")
 	if status == nil || status.Reason != "Ready" {
 		t.Errorf("Failed to get correct MCO status, expect Ready")
 	}
