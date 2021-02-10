@@ -16,6 +16,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// fillup the status if there is no status and lastTransitionTime in upgrade case
+func fillupStatus(conditions *[]mcov1beta1.Condition) {
+	for idx, condition := range *conditions {
+		if condition.Status == "" {
+			(*conditions)[idx].Status = metav1.ConditionUnknown
+		}
+		if condition.LastTransitionTime.IsZero() {
+			(*conditions)[idx].LastTransitionTime = metav1.NewTime(time.Now())
+		}
+	}
+}
+
 func updateInstallStatus(conditions *[]mcov1beta1.Condition) {
 	setStatusCondition(conditions, *newInstallingCondition())
 }

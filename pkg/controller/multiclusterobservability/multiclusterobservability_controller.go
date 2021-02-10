@@ -350,6 +350,7 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 	updateInstallStatus(&newStatus.Conditions)
 	updateReadyStatus(&newStatus.Conditions, r.client, mco)
 	updateAddonSpecStatus(&newStatus.Conditions, mco)
+	fillupStatus(&newStatus.Conditions)
 	mco.Status.Conditions = newStatus.Conditions
 	err := r.client.Status().Update(context.TODO(), mco)
 	if err != nil {

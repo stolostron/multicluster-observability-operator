@@ -8,8 +8,37 @@ import (
 	"time"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func TestFillupStatus(t *testing.T) {
+
+	raw := `
+conditions:
+- message: Installation is in progress
+  reason: Installing
+  type: Installing
+- message: Observability components are deployed and running
+  reason: Ready
+  type: Ready
+`
+	status := mcov1beta1.MultiClusterObservabilityStatus{}
+	err := yaml.Unmarshal([]byte(raw), &status)
+	if err != nil {
+		t.Errorf("Failed to unmarshall MultiClusterObservabilityStatus %v", err)
+	}
+	newStatus := status.DeepCopy()
+	fillupStatus(&newStatus.Conditions)
+	for _, condition := range newStatus.Conditions {
+		if condition.Status == "" {
+			t.Fatal("Failed to fillup the status")
+		}
+		if condition.LastTransitionTime.IsZero() {
+			t.Fatal("Failed to fillup the status")
+		}
+	}
+}
 
 func TestSetStatusCondition(t *testing.T) {
 	oneHourBefore := time.Now().Add(-1 * time.Hour)
