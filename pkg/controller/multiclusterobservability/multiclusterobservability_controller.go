@@ -14,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	storv1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -378,7 +377,7 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 		return &reconcile.Result{}, err
 	}
 
-	if meta.FindStatusCondition(newStatus.Conditions, "Ready") == nil {
+	if findStatusCondition(newStatus.Conditions, "Ready") == nil {
 		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 2}, nil
 	}
 
