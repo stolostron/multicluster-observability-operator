@@ -39,6 +39,9 @@ deploy() {
   $sed_command "s~replicas:.*$~replicas: 1~g" grafana-dev-deploy.yaml
   $sed_command "s~grafana-config$~grafana-dev-config~g" grafana-dev-deploy.yaml
   $sed_command "s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-dev~g" grafana-dev-deploy.yaml
+  $sed_command "s~grafana-config$~grafana-dev-config~g" grafana-dev-deploy.yaml
+  sed "s~- emptyDir: {}$~- persistentVolumeClaim:$            claimName: grafana-dev~g" grafana-dev-deploy.yaml > grafana-dev-deploy.yaml.bak
+  tr $ '\n' < grafana-dev-deploy.yaml.bak > grafana-dev-deploy.yaml
   kubectl apply -f grafana-dev-deploy.yaml
 
   kubectl get svc -n open-cluster-management-observability -l app=multicluster-observability-grafana -o yaml > grafana-dev-svc.yaml
@@ -61,8 +64,26 @@ deploy() {
   $sed_command "s~path: /grafana$~path: /grafana-dev~g" grafana-dev-ingress.yaml
   kubectl apply -f grafana-dev-ingress.yaml
   
+  cat >grafana-pvc.yaml <<EOL
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: grafana-dev
+  namespace: open-cluster-management-observability
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: gp2
+EOL
+  PVC_CLASS=$(kubectl get pvc -n open-cluster-management-observability alertmanager-db-alertmanager-0 -o yaml|grep "  storageClassName")
+  $sed_command "s~  storageClassName:.*$~${PVC_CLASS}~g" grafana-pvc.yaml
+  kubectl apply -f grafana-pvc.yaml
+
   # clean all tmp files
-  rm -rf grafana-dev-deploy.yaml* grafana-dev-svc.yaml* grafana-dev-ingress.yaml* grafana-dev-config.ini*
+  rm -rf grafana-dev-deploy.yaml* grafana-dev-svc.yaml* grafana-dev-ingress.yaml* grafana-dev-config.ini* grafana-pvc.yaml*
 }
 
 clean() {
@@ -70,6 +91,7 @@ clean() {
   kubectl delete deployment -n open-cluster-management-observability grafana-dev
   kubectl delete svc -n open-cluster-management-observability grafana-dev
   kubectl delete ingress -n open-cluster-management-observability grafana-dev
+  kubectl delete pvc -n open-cluster-management-observability grafana-dev
 }
 
 msg() {

@@ -33,10 +33,11 @@ const (
 	defaultTenantName        = "default"
 	placementRuleName        = "observability"
 
-	AnnotationKeyImageRepository = "mco-imageRepository"
-	AnnotationKeyImageTagSuffix  = "mco-imageTagSuffix"
-	AnnotationMCOPause           = "mco-pause"
-	AnnotationSkipCreation       = "skip-creation-if-exist"
+	AnnotationKeyImageRepository          = "mco-imageRepository"
+	AnnotationKeyImageTagSuffix           = "mco-imageTagSuffix"
+	AnnotationMCOPause                    = "mco-pause"
+	AnnotationMCOWithoutResourcesRequests = "mco-thanos-without-resources-requests"
+	AnnotationSkipCreation                = "skip-creation-if-exist"
 
 	DefaultImgPullPolicy   = corev1.PullAlways
 	DefaultImgPullSecret   = "multiclusterhub-operator-pull-secret"
@@ -51,7 +52,7 @@ const (
 	DefaultRetentionResolution5m  = "14d"
 	DefaultRetentionResolutionRaw = "5d"
 
-	DefaultAddonInterval = 60
+	DefaultAddonInterval = 30
 
 	ImageManifestConfigMapName = "mch-image-manifest-"
 
@@ -67,8 +68,8 @@ const (
 	AlertmanagerURL               = "http://alertmanager:9093"
 	AlertmanagerConfigName        = "alertmanager-config"
 
-	WhitelistConfigMapName       = "observability-metrics-whitelist"
-	WhitelistCustomConfigMapName = "observability-metrics-custom-whitelist"
+	WhitelistConfigMapName       = "observability-metrics-allowlist"
+	WhitelistCustomConfigMapName = "observability-metrics-custom-allowlist"
 )
 
 const (
@@ -79,7 +80,7 @@ const (
 	ThanosReceiveControllerImgName = "thanos-receive-controller"
 	//ThanosReceiveControllerKey is used to get from mch-image-manifest.xxx configmap
 	ThanosReceiveControllerKey    = "thanos_receive_controller"
-	ThanosReceiveControllerImgTag = "master-2020-06-17-a9d9169"
+	ThanosReceiveControllerImgTag = "master-2021-02-08-36d6090"
 
 	ThanosImgRepo = "quay.io/thanos"
 	ThanosImgName = "thanos"
@@ -92,7 +93,7 @@ const (
 	MemcachedExporterImgRepo = "prom"
 	MemcachedExporterImgName = "memcached-exporter"
 	MemcachedExporterKey     = "memcached_exporter"
-	MemcachedExporterImgTag  = "v0.6.0"
+	MemcachedExporterImgTag  = "v0.8.0"
 
 	GrafanaImgRepo            = "grafana"
 	GrafanaImgName            = "grafana"
@@ -119,6 +120,39 @@ const (
 	LeaseControllerKey            = "klusterlet_addon_lease_controller"
 
 	RbacQueryProxyKey = "rbac_query_proxy"
+)
+
+const (
+	ObservatoriumAPICPURequets    = "20m"
+	ObservatoriumAPIMemoryRequets = "128Mi"
+
+	ThanosQueryFrontendCPURequets    = "100m"
+	ThanosQueryFrontendMemoryRequets = "256Mi"
+
+	ThanosQueryCPURequets    = "500m"
+	ThanosQueryMemoryRequets = "1Gi"
+
+	ThanosCompactCPURequets    = "100m"
+	ThanosCompactMemoryRequets = "512Mi"
+
+	ObservatoriumReceiveControllerCPURequets    = "4m"
+	ObservatoriumReceiveControllerMemoryRequets = "32Mi"
+
+	ThanosReceiveCPURequets    = "500m"
+	ThanosReceiveMemoryRequets = "512Mi"
+
+	ThanosRuleCPURequets            = "100m"
+	ThanosRuleMemoryRequets         = "512Mi"
+	ThanosRuleReloaderCPURequets    = "4m"
+	ThanosRuleReloaderMemoryRequets = "25Mi"
+
+	ThanosCahcedCPURequets            = "100m"
+	ThanosCahcedMemoryRequets         = "128Mi"
+	ThanosCahcedExporterCPURequets    = "10m"
+	ThanosCahcedExporterMemoryRequets = "50Mi"
+
+	ThanosStoreCPURequets    = "500m"
+	ThanosStoreMemoryRequets = "1Gi"
 )
 
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation
@@ -300,6 +334,23 @@ func IsPaused(annotations map[string]string) bool {
 
 	if annotations[AnnotationMCOPause] != "" &&
 		strings.EqualFold(annotations[AnnotationMCOPause], "true") {
+		return true
+	}
+
+	return false
+}
+
+// WithoutResourcesRequests returns true if the multiclusterobservability instance has annotation:
+// mco-thanos-without-resources-requests: "true"
+// This is just for test purpose: the KinD cluster does not have enough resources for the requests.
+// We won't expose this annotation to the customer.
+func WithoutResourcesRequests(annotations map[string]string) bool {
+	if annotations == nil {
+		return false
+	}
+
+	if annotations[AnnotationMCOWithoutResourcesRequests] != "" &&
+		strings.EqualFold(annotations[AnnotationMCOWithoutResourcesRequests], "true") {
 		return true
 	}
 

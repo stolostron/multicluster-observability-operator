@@ -5,60 +5,130 @@ package multiclusterobservability
 import (
 	"context"
 	"fmt"
+	"time"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func updateInstallStatus(conditions *[]metav1.Condition) {
-	meta.SetStatusCondition(conditions, *newInstallingCondition())
+// fillup the status if there is no status and lastTransitionTime in upgrade case
+func fillupStatus(conditions *[]mcov1beta1.Condition) {
+	for idx, condition := range *conditions {
+		if condition.Status == "" {
+			(*conditions)[idx].Status = metav1.ConditionUnknown
+		}
+		if condition.LastTransitionTime.IsZero() {
+			(*conditions)[idx].LastTransitionTime = metav1.NewTime(time.Now())
+		}
+	}
+}
+
+func updateInstallStatus(conditions *[]mcov1beta1.Condition) {
+	setStatusCondition(conditions, *newInstallingCondition())
 }
 
 func updateReadyStatus(
-	conditions *[]metav1.Condition,
+	conditions *[]mcov1beta1.Condition,
 	c client.Client,
 	mco *mcov1beta1.MultiClusterObservability) {
 
-	if meta.FindStatusCondition(*conditions, "Ready") != nil {
+	if findStatusCondition(*conditions, "Ready") != nil {
 		return
 	}
 
 	objStorageStatus := checkObjStorageStatus(c, mco)
 	if objStorageStatus != nil {
-		meta.SetStatusCondition(conditions, *objStorageStatus)
+		setStatusCondition(conditions, *objStorageStatus)
 		return
 	}
 
 	deployStatus := checkDeployStatus(c, mco)
 	if deployStatus != nil {
-		meta.SetStatusCondition(conditions, *deployStatus)
+		setStatusCondition(conditions, *deployStatus)
 		return
 	}
 
 	statefulStatus := checkStatefulSetStatus(c, mco)
 	if statefulStatus != nil {
-		meta.SetStatusCondition(conditions, *statefulStatus)
+		setStatusCondition(conditions, *statefulStatus)
 		return
 	}
 
-	meta.SetStatusCondition(conditions, *newReadyCondition())
-	meta.RemoveStatusCondition(conditions, "Failed")
+	setStatusCondition(conditions, *newReadyCondition())
+	removeStatusCondition(conditions, "Failed")
+}
+
+// setStatusCondition sets the corresponding condition in conditions to newCondition.
+// conditions must be non-nil.
+// 1. if the condition of the specified type already exists (all fields of the existing condition are updated to
+//    newCondition, LastTransitionTime is set to now if the new status differs from the old status)
+// 2. if a condition of the specified type does not exist (LastTransitionTime is set to now() if unset, and newCondition is appended)
+func setStatusCondition(conditions *[]mcov1beta1.Condition, newCondition mcov1beta1.Condition) {
+	if conditions == nil {
+		return
+	}
+	existingCondition := findStatusCondition(*conditions, newCondition.Type)
+	if existingCondition == nil {
+		if newCondition.LastTransitionTime.IsZero() {
+			newCondition.LastTransitionTime = metav1.NewTime(time.Now())
+		}
+		*conditions = append(*conditions, newCondition)
+		return
+	}
+
+	if existingCondition.Status != newCondition.Status {
+		existingCondition.Status = newCondition.Status
+		if !newCondition.LastTransitionTime.IsZero() {
+			existingCondition.LastTransitionTime = newCondition.LastTransitionTime
+		} else {
+			existingCondition.LastTransitionTime = metav1.NewTime(time.Now())
+		}
+	}
+
+	existingCondition.Reason = newCondition.Reason
+	existingCondition.Message = newCondition.Message
+}
+
+// removeStatusCondition removes the corresponding conditionType from conditions.
+// conditions must be non-nil.
+func removeStatusCondition(conditions *[]mcov1beta1.Condition, conditionType string) {
+	if conditions == nil {
+		return
+	}
+	newConditions := make([]mcov1beta1.Condition, 0, len(*conditions)-1)
+	for _, condition := range *conditions {
+		if condition.Type != conditionType {
+			newConditions = append(newConditions, condition)
+		}
+	}
+
+	*conditions = newConditions
+}
+
+// findStatusCondition finds the conditionType in conditions.
+func findStatusCondition(conditions []mcov1beta1.Condition, conditionType string) *mcov1beta1.Condition {
+	for i := range conditions {
+		if conditions[i].Type == conditionType {
+			return &conditions[i]
+		}
+	}
+
+	return nil
 }
 
 func updateAddonSpecStatus(
-	conditions *[]metav1.Condition,
+	conditions *[]mcov1beta1.Condition,
 	mco *mcov1beta1.MultiClusterObservability) {
 	addonStatus := checkAddonSpecStatus(mco)
 	if addonStatus != nil {
-		meta.SetStatusCondition(conditions, *addonStatus)
+		setStatusCondition(conditions, *addonStatus)
 	} else {
-		meta.RemoveStatusCondition(conditions, "MetricsDisabled")
+		removeStatusCondition(conditions, "MetricsDisabled")
 	}
 }
 
@@ -76,7 +146,7 @@ func getExpectedDeploymentNames(mcoCRName string) []string {
 
 func checkDeployStatus(
 	c client.Client,
-	mco *mcov1beta1.MultiClusterObservability) *metav1.Condition {
+	mco *mcov1beta1.MultiClusterObservability) *mcov1beta1.Condition {
 	mcoCRName := config.GetMonitoringCRName()
 	expectedDeploymentNames := getExpectedDeploymentNames(mcoCRName)
 	for _, name := range expectedDeploymentNames {
@@ -113,7 +183,7 @@ func getExpectedStatefulSetNames(mcoCRName string) []string {
 
 func checkStatefulSetStatus(
 	c client.Client,
-	mco *mcov1beta1.MultiClusterObservability) *metav1.Condition {
+	mco *mcov1beta1.MultiClusterObservability) *mcov1beta1.Condition {
 	expectedStatefulSetNames := getExpectedStatefulSetNames(config.GetMonitoringCRName())
 	for _, name := range expectedStatefulSetNames {
 		found := &appsv1.StatefulSet{}
@@ -138,7 +208,7 @@ func checkStatefulSetStatus(
 
 func checkObjStorageStatus(
 	c client.Client,
-	mco *mcov1beta1.MultiClusterObservability) *metav1.Condition {
+	mco *mcov1beta1.MultiClusterObservability) *mcov1beta1.Condition {
 	objStorageConf := mco.Spec.StorageConfig.MetricObjectStorage
 	secret := &corev1.Secret{}
 	namespacedName := types.NamespacedName{
@@ -165,7 +235,7 @@ func checkObjStorageStatus(
 	return nil
 }
 
-func checkAddonSpecStatus(mco *mcov1beta1.MultiClusterObservability) *metav1.Condition {
+func checkAddonSpecStatus(mco *mcov1beta1.MultiClusterObservability) *mcov1beta1.Condition {
 	addonSpec := mco.Spec.ObservabilityAddonSpec
 	if addonSpec != nil && addonSpec.EnableMetrics == false {
 		log.Info("Disable metrics collocter")
@@ -174,8 +244,8 @@ func checkAddonSpecStatus(mco *mcov1beta1.MultiClusterObservability) *metav1.Con
 	return nil
 }
 
-func newInstallingCondition() *metav1.Condition {
-	return &metav1.Condition{
+func newInstallingCondition() *mcov1beta1.Condition {
+	return &mcov1beta1.Condition{
 		Type:    "Installing",
 		Status:  "True",
 		Reason:  "Installing",
@@ -183,8 +253,8 @@ func newInstallingCondition() *metav1.Condition {
 	}
 }
 
-func newReadyCondition() *metav1.Condition {
-	return &metav1.Condition{
+func newReadyCondition() *mcov1beta1.Condition {
+	return &mcov1beta1.Condition{
 		Type:    "Ready",
 		Status:  "True",
 		Reason:  "Ready",
@@ -192,8 +262,8 @@ func newReadyCondition() *metav1.Condition {
 	}
 }
 
-func newFailedCondition(reason string, msg string) *metav1.Condition {
-	return &metav1.Condition{
+func newFailedCondition(reason string, msg string) *mcov1beta1.Condition {
+	return &mcov1beta1.Condition{
 		Type:    "Failed",
 		Status:  "False",
 		Reason:  reason,
@@ -201,8 +271,8 @@ func newFailedCondition(reason string, msg string) *metav1.Condition {
 	}
 }
 
-func newMetricsDisabledCondition() *metav1.Condition {
-	return &metav1.Condition{
+func newMetricsDisabledCondition() *mcov1beta1.Condition {
+	return &mcov1beta1.Condition{
 		Type:    "MetricsDisabled",
 		Status:  "True",
 		Reason:  "MetricsDisabled",

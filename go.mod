@@ -6,7 +6,7 @@ require (
 	github.com/jetstack/cert-manager v0.0.0-00010101000000-000000000000
 	github.com/open-cluster-management/api v0.0.0-20201007180356-41d07eee4294
 	github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20201013190828-d760a392d21d
-	github.com/open-cluster-management/observatorium-operator v0.0.0-20201120185949-78ef423af039
+	github.com/open-cluster-management/observatorium-operator v0.0.0-20210205021029-35e1e33ff3df
 	github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible
 	github.com/openshift/client-go v0.0.0-20201020082437-7737f16e53fc
 	github.com/operator-framework/operator-sdk v0.18.0
