@@ -52,7 +52,7 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	spec.Containers[0].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
 	args := spec.Containers[0].Args
 	for idx := range args {
-		args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", r.cr.Namespace, 1)
+		args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", mcoconfig.GetDefaultNamespace(), 1)
 	}
 
 	if r.cr.Spec.AvailabilityConfig == mcov1beta1.HABasic {
