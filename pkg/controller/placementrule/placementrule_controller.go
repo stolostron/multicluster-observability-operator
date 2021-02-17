@@ -289,7 +289,10 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		}
 	}
 
-	updateAddonStatus(r.client, *obsAddonList)
+	err = updateAddonStatus(r.client, *obsAddonList)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 
 	return reconcile.Result{}, nil
 }
