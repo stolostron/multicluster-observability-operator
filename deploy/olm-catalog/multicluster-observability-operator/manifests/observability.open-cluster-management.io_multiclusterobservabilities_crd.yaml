@@ -59,66 +59,11 @@ spec:
               nodeSelector:
                 additionalProperties:
                   type: string
-<<<<<<< HEAD
-              type: object
-            tolerations:
-              description: Tolerations causes all components to tolerate any taints.
-              items:
-                description: The pod this Toleration is attached to tolerates any
-                  taint that matches the triple <key,value,effect> using the matching
-                  operator <operator>.
-                properties:
-                  effect:
-                    description: Effect indicates the taint effect to match. Empty
-                      means match all taint effects. When specified, allowed values
-                      are NoSchedule, PreferNoSchedule and NoExecute.
-                    type: string
-                  key:
-                    description: Key is the taint key that the toleration applies
-                      to. Empty means match all taint keys. If the key is empty, operator
-                      must be Exists; this combination means to match all values and
-                      all keys.
-                    type: string
-                  operator:
-                    description: Operator represents a key's relationship to the value.
-                      Valid operators are Exists and Equal. Defaults to Equal. Exists
-                      is equivalent to wildcard for value, so that a pod can tolerate
-                      all taints of a particular category.
-                    type: string
-                  tolerationSeconds:
-                    description: TolerationSeconds represents the period of time the
-                      toleration (which must be of effect NoExecute, otherwise this
-                      field is ignored) tolerates the taint. By default, it is not
-                      set, which means tolerate the taint forever (do not evict).
-                      Zero and negative values will be treated as 0 (evict immediately)
-                      by the system.
-                    format: int64
-                    type: integer
-                  value:
-                    description: Value is the taint value the toleration matches to.
-                      If the operator is Exists, the value should be empty, otherwise
-                      just a regular string.
-                    type: string
-                type: object
-              type: array
-          type: object
-        status:
-          description: MultiClusterObservabilityStatus defines the observed state
-            of MultiClusterObservability
-          properties:
-            conditions:
-              description: Represents the status of each deployment
-              items:
-                description: Condition is from metav1.Condition. Cannot use it directly
-                  because the upgrade issue. Have to mark LastTransitionTime and Status
-                  as optional.
-=======
                 description: Spec of NodeSelector
                 type: object
               observabilityAddonSpec:
                 description: The ObservabilityAddonSpec defines the global settings
                   for all managed clusters which have observability add-on enabled.
->>>>>>> 8cfc590... Update with default value in crd (#303)
                 properties:
                   enableMetrics:
                     default: true
@@ -174,14 +119,47 @@ spec:
                       class will also be used for Object Storage if MetricObjectStorage
                       was configured for the system to create the storage."
                     type: string
-<<<<<<< HEAD
-                required:
-                - message
-                - reason
-                - type
-=======
->>>>>>> 8cfc590... Update with default value in crd (#303)
                 type: object
+              tolerations:
+                description: Tolerations causes all components to tolerate any taints.
+                items:
+                  description: The pod this Toleration is attached to tolerates any
+                    taint that matches the triple <key,value,effect> using the matching
+                    operator <operator>.
+                  properties:
+                    effect:
+                      description: Effect indicates the taint effect to match. Empty
+                        means match all taint effects. When specified, allowed values
+                        are NoSchedule, PreferNoSchedule and NoExecute.
+                      type: string
+                    key:
+                      description: Key is the taint key that the toleration applies
+                        to. Empty means match all taint keys. If the key is empty,
+                        operator must be Exists; this combination means to match all
+                        values and all keys.
+                      type: string
+                    operator:
+                      description: Operator represents a key's relationship to the
+                        value. Valid operators are Exists and Equal. Defaults to Equal.
+                        Exists is equivalent to wildcard for value, so that a pod
+                        can tolerate all taints of a particular category.
+                      type: string
+                    tolerationSeconds:
+                      description: TolerationSeconds represents the period of time
+                        the toleration (which must be of effect NoExecute, otherwise
+                        this field is ignored) tolerates the taint. By default, it
+                        is not set, which means tolerate the taint forever (do not
+                        evict). Zero and negative values will be treated as 0 (evict
+                        immediately) by the system.
+                      format: int64
+                      type: integer
+                    value:
+                      description: Value is the taint value the toleration matches
+                        to. If the operator is Exists, the value should be empty,
+                        otherwise just a regular string.
+                      type: string
+                  type: object
+                type: array
             type: object
           status:
             description: MultiClusterObservabilityStatus defines the observed state
@@ -190,16 +168,9 @@ spec:
               conditions:
                 description: Represents the status of each deployment
                 items:
-                  description: "Condition contains details for one aspect of the current
-                    state of this API Resource. --- This struct is intended for direct
-                    use as an array at the field path .status.conditions.  For example,
-                    type FooStatus struct{     // Represents the observations of a
-                    foo's current state.     // Known .status.conditions.type are:
-                    \"Available\", \"Progressing\", and \"Degraded\"     // +patchMergeKey=type
-                    \    // +patchStrategy=merge     // +listType=map     // +listMapKey=type
-                    \    Conditions []metav1.Condition `json:\"conditions,omitempty\"
-                    patchStrategy:\"merge\" patchMergeKey:\"type\" protobuf:\"bytes,1,rep,name=conditions\"`
-                    \n     // other fields }"
+                  description: Condition is from metav1.Condition. Cannot use it directly
+                    because the upgrade issue. Have to mark LastTransitionTime and
+                    Status as optional.
                   properties:
                     lastTransitionTime:
                       description: lastTransitionTime is the last time the condition
@@ -250,10 +221,8 @@ spec:
                       pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
                       type: string
                   required:
-                  - lastTransitionTime
                   - message
                   - reason
-                  - status
                   - type
                   type: object
                 type: array
