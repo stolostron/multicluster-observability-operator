@@ -12,3 +12,4 @@ public
 test-output
 vendor
 vbh
+zz_generated.deepcopy.go
