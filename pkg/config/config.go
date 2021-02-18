@@ -141,17 +141,17 @@ const (
 	ThanosReceiveCPURequets    = "500m"
 	ThanosReceiveMemoryRequets = "512Mi"
 
-	ThanosRuleCPURequets            = "100m"
+	ThanosRuleCPURequets            = "50m"
 	ThanosRuleMemoryRequets         = "512Mi"
 	ThanosRuleReloaderCPURequets    = "4m"
 	ThanosRuleReloaderMemoryRequets = "25Mi"
 
-	ThanosCahcedCPURequets            = "100m"
+	ThanosCahcedCPURequets            = "45m"
 	ThanosCahcedMemoryRequets         = "128Mi"
-	ThanosCahcedExporterCPURequets    = "10m"
+	ThanosCahcedExporterCPURequets    = "5m"
 	ThanosCahcedExporterMemoryRequets = "50Mi"
 
-	ThanosStoreCPURequets    = "500m"
+	ThanosStoreCPURequets    = "200m"
 	ThanosStoreMemoryRequets = "1Gi"
 )
 
