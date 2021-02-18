@@ -1,0 +1,8 @@
+domain: open-cluster-management.io
+layout: go.kubebuilder.io/v3
+projectName: multicluster-monitoring-operator
+repo: github.com/open-cluster-management/multicluster-monitoring-operator
+version: 3-alpha
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}
