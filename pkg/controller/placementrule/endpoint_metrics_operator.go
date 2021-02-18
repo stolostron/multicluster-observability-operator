@@ -108,8 +108,7 @@ func updateEndpointOperator(mco *mcov1beta1.MultiClusterObservability,
 			container.Env[i].Value = namespace
 		}
 		if env.Name == "COLLECTOR_IMAGE" {
-			container.Env[i].Value = getImage(mco, mcoconfig.MetricsCollectorImgName,
-				mcoconfig.MetricsCollectorImgTagSuffix, mcoconfig.MetricsCollectorKey)
+			container.Env[i].Value = "blue0/metrics-collector:0.1.0"
 		}
 	}
 	return container

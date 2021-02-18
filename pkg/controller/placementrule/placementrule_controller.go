@@ -478,12 +478,15 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 }
 
 func watchObservabilityaddon(c controller.Controller, mapFn handler.ToRequestsFunc) error {
-	// Only handle delete event for observabilityaddon
 	epPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetName() == obsAddonName &&
+				e.MetaNew.GetLabels()[ownerLabelKey] == ownerLabelValue {
+				return true
+			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
