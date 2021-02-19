@@ -1,0 +1,24 @@
+# permissions for end users to edit multiclusterobservabilities.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: multiclusterobservability-editor-role
+rules:
+- apiGroups:
+  - observability.open-cluster-management.io
+  resources:
+  - multiclusterobservabilities
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - observability.open-cluster-management.io
+  resources:
+  - multiclusterobservabilities/status
+  verbs:
+  - get

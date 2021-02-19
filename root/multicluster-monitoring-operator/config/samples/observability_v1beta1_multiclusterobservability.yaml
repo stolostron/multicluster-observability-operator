@@ -1,0 +1,7 @@
+apiVersion: observability.open-cluster-management.io/v1beta1
+kind: MultiClusterObservability
+metadata:
+  name: multiclusterobservability-sample
+spec:
+  # Add fields here
+  foo: bar
