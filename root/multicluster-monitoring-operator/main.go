@@ -86,6 +86,14 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "MultiClusterObservability")
 		os.Exit(1)
 	}
+	if err = (&controllers.PlacementRuleReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("PlacementRule"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "PlacementRule")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
