@@ -101,14 +101,14 @@ func updateEndpointOperator(mco *mcov1beta1.MultiClusterObservability,
 	namespace string, container corev1.Container) corev1.Container {
 	container.Image = getImage(mco, mcoconfig.EndpointControllerImgName,
 		mcoconfig.EndpointControllerImgTagSuffix, mcoconfig.EndpointControllerKey)
-	container.Image = "blue0/endpoint-metrics-operator:0.1.0"
+	container.Image = "quay.io/open-cluster-management/endpoint-monitoring-operator:2.2.0-PR66-89863263464fdcd9fd82ea8bc4c58526c84b500d"
 	container.ImagePullPolicy = mco.Spec.ImagePullPolicy
 	for i, env := range container.Env {
 		if env.Name == "HUB_NAMESPACE" {
 			container.Env[i].Value = namespace
 		}
 		if env.Name == "COLLECTOR_IMAGE" {
-			container.Env[i].Value = "blue0/metrics-collector:0.1.0"
+			container.Env[i].Value = "quay.io/open-cluster-management/metrics-collector:2.2.0-PR36-b04a198a8ffd0033d9439d8ffa4f5db0afdf79c7"
 		}
 	}
 	return container
