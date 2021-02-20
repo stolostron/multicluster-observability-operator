@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package placementrule
 
@@ -106,11 +106,11 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 	found := &workv1.ManifestWork{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + resWorkNameSuffix, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork for cluster1: (%v)", err)
 	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace2}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace2 + resWorkNameSuffix, Namespace: namespace2}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork for cluster2: (%v)", err)
 	}
@@ -137,11 +137,11 @@ func TestObservabilityAddonController(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + resWorkNameSuffix, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork for cluster1: (%v)", err)
 	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace2}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace2 + resWorkNameSuffix, Namespace: namespace2}, found)
 	if err == nil || !errors.IsNotFound(err) {
 		t.Fatalf("Failed to delete manifestwork for cluster2: (%v)", err)
 	}
@@ -185,7 +185,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + resWorkNameSuffix, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork for cluster1: (%v)", err)
 	}

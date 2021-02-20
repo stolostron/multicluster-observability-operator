@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package util
 
@@ -9,41 +9,51 @@ import (
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
+
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
 )
 
 type compFn func(runtime.Object, runtime.Object) bool
 
 var compFns = map[string]compFn{
-	"Namespace":          compareNamespaces,
-	"Deployment":         compareDeployments,
-	"ServiceAccount":     compareServiceAccounts,
-	"ClusterRole":        compareClusterRoles,
-	"ClusterRoleBinding": compareClusterRoleBindings,
-	"Secret":             compareSecrets,
-	"ConfigMap":          compareConfigMap,
+	"Namespace":                compareNamespaces,
+	"Deployment":               compareDeployments,
+	"ServiceAccount":           compareServiceAccounts,
+	"ClusterRole":              compareClusterRoles,
+	"ClusterRoleBinding":       compareClusterRoleBindings,
+	"Secret":                   compareSecrets,
+	"ConfigMap":                compareConfigMap,
+	"CustomResourceDefinition": compareCRD,
+	"ObservabilityAddon":       compareObsAddon,
 }
 
 // GetK8sObj is used to get k8s struct based on the passed-in Kind name
 func GetK8sObj(kind string) runtime.Object {
 	objs := map[string]runtime.Object{
-		"Namespace":             &corev1.Namespace{},
-		"Deployment":            &v1.Deployment{},
-		"StatefulSet":           &v1.StatefulSet{},
-		"ClusterRole":           &rbacv1.ClusterRole{},
-		"ClusterRoleBinding":    &rbacv1.ClusterRoleBinding{},
-		"ServiceAccount":        &corev1.ServiceAccount{},
-		"PersistentVolumeClaim": &corev1.PersistentVolumeClaim{},
-		"Secret":                &corev1.Secret{},
-		"ConfigMap":             &corev1.ConfigMap{},
+		"Namespace":                &corev1.Namespace{},
+		"Deployment":               &v1.Deployment{},
+		"StatefulSet":              &v1.StatefulSet{},
+		"ClusterRole":              &rbacv1.ClusterRole{},
+		"ClusterRoleBinding":       &rbacv1.ClusterRoleBinding{},
+		"ServiceAccount":           &corev1.ServiceAccount{},
+		"PersistentVolumeClaim":    &corev1.PersistentVolumeClaim{},
+		"Secret":                   &corev1.Secret{},
+		"ConfigMap":                &corev1.ConfigMap{},
+		"CustomResourceDefinition": &v1beta1.CustomResourceDefinition{},
+		"ObservabilityAddon":       &mcov1beta1.ObservabilityAddon{},
 	}
 	return objs[kind]
 }
 
 // CompareObject is used to compare two k8s objs are same or not
 func CompareObject(re1 runtime.RawExtension, re2 runtime.RawExtension) bool {
+	if re2.Object == nil {
+		return reflect.DeepEqual(re1.Raw, re2.Raw)
+	}
 	obj1, err := GetObject(re1)
 	if err != nil {
 		return false
@@ -171,4 +181,22 @@ func compareConfigMap(obj1 runtime.Object, obj2 runtime.Object) bool {
 		return false
 	}
 	return true
+}
+
+func compareCRD(obj1 runtime.Object, obj2 runtime.Object) bool {
+	crd1 := obj1.(*v1beta1.CustomResourceDefinition)
+	crd2 := obj2.(*v1beta1.CustomResourceDefinition)
+	if crd1.Name != crd2.Name {
+		log.Info("Find updated name for crd", "crd", crd1.Name)
+		return false
+	}
+	if !reflect.DeepEqual(crd1.Spec, crd2.Spec) {
+		log.Info("Find updated spec for crd", "crd", crd1.Name)
+		return false
+	}
+	return true
+}
+
+func compareObsAddon(obj1 runtime.Object, obj2 runtime.Object) bool {
+	return reflect.DeepEqual(obj1, obj2)
 }

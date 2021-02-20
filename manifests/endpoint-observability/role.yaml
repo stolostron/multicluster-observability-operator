@@ -76,14 +76,12 @@ rules:
   verbs:
   - list
   - watch
+  - get
 - apiGroups:
-    - addon.open-cluster-management.io
+  - observability.open-cluster-management.io
   resources:
-    - managedclusteraddons
-    - managedclusteraddons/status
+  - observabilityaddons/status
   verbs:
-  - watch
-  - list
   - get
   - update
 - apiGroups:

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package placementrule
 
@@ -36,11 +36,19 @@ func loadTemplates(namespace string,
 	}
 	rawExtensionList := []runtime.RawExtension{}
 	for _, r := range resourceList {
-		obj, err := updateRes(r, namespace, mco)
-		if err != nil {
-			return nil, err
+		if r.GetKind() == "CustomResourceDefinition" {
+			data, err := r.MarshalJSON()
+			if err != nil {
+				return nil, err
+			}
+			rawExtensionList = append(rawExtensionList, runtime.RawExtension{Raw: data})
+		} else {
+			obj, err := updateRes(r, namespace, mco)
+			if err != nil {
+				return nil, err
+			}
+			rawExtensionList = append(rawExtensionList, runtime.RawExtension{Object: obj})
 		}
-		rawExtensionList = append(rawExtensionList, runtime.RawExtension{Object: obj})
 	}
 	return rawExtensionList, nil
 }
@@ -55,7 +63,7 @@ func updateRes(r *resource.Resource, namespace string,
 	obj := util.GetK8sObj(kind)
 	err := runtime.DefaultUnstructuredConverter.FromUnstructured(r.Map(), obj)
 	if err != nil {
-		log.Error(err, "failed to convert the resource", r.GetName())
+		log.Error(err, "failed to convert the resource", "resource", r.GetName())
 		return nil, err
 	}
 	// set the images and watch_namespace for endpoint metrics operator
@@ -93,14 +101,14 @@ func updateEndpointOperator(mco *mcov1beta1.MultiClusterObservability,
 	namespace string, container corev1.Container) corev1.Container {
 	container.Image = getImage(mco, mcoconfig.EndpointControllerImgName,
 		mcoconfig.EndpointControllerImgTagSuffix, mcoconfig.EndpointControllerKey)
+	container.Image = "quay.io/open-cluster-management/endpoint-monitoring-operator:2.2.0-PR66-89863263464fdcd9fd82ea8bc4c58526c84b500d"
 	container.ImagePullPolicy = mco.Spec.ImagePullPolicy
 	for i, env := range container.Env {
 		if env.Name == "HUB_NAMESPACE" {
 			container.Env[i].Value = namespace
 		}
 		if env.Name == "COLLECTOR_IMAGE" {
-			container.Env[i].Value = getImage(mco, mcoconfig.MetricsCollectorImgName,
-				mcoconfig.MetricsCollectorImgTagSuffix, mcoconfig.MetricsCollectorKey)
+			container.Env[i].Value = "quay.io/open-cluster-management/metrics-collector:2.2.0-PR36-b04a198a8ffd0033d9439d8ffa4f5db0afdf79c7"
 		}
 	}
 	return container

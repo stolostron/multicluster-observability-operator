@@ -276,8 +276,8 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 	latestClusters := []string{}
-	for _, ep := range obsAddonList.Items {
-		latestClusters = append(latestClusters, ep.Namespace)
+	for _, addon := range obsAddonList.Items {
+		latestClusters = append(latestClusters, addon.Namespace)
 	}
 	for _, work := range workList.Items {
 		if !util.Contains(latestClusters, work.Namespace) {
@@ -287,6 +287,11 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 				return reconcile.Result{}, err
 			}
 		}
+	}
+
+	err = updateAddonStatus(r.client, *obsAddonList)
+	if err != nil {
+		return reconcile.Result{}, err
 	}
 
 	return reconcile.Result{}, nil
@@ -421,7 +426,7 @@ func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 		return err
 	}
 
-	err = createManifestWork(client, restMapper, namespace, name, mco, imagePullSecret)
+	err = createManifestWorks(client, restMapper, namespace, name, mco, imagePullSecret)
 	if err != nil {
 		log.Error(err, "Failed to create manifestwork")
 		return err
@@ -464,7 +469,7 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 		return err
 	}
 
-	err = deleteManifestWork(client, namespace)
+	err = deleteManifestWorks(client, namespace)
 	if err != nil {
 		log.Error(err, "Failed to delete manifestwork")
 		return err
@@ -473,16 +478,19 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 }
 
 func watchObservabilityaddon(c controller.Controller, mapFn handler.ToRequestsFunc) error {
-	// Only handle delete event for observabilityaddon
 	epPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.MetaNew.GetName() == obsAddonName &&
+				e.MetaNew.GetLabels()[ownerLabelKey] == ownerLabelValue {
+				return true
+			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == epConfigName &&
+			if e.Meta.GetName() == obsAddonName &&
 				e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				return true
 			}
@@ -507,15 +515,14 @@ func watchManifestwork(c controller.Controller, mapFn handler.ToRequestsFunc) er
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.MetaNew.GetName() == workName &&
-				e.MetaNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
+			if e.MetaNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
 				e.MetaNew.GetResourceVersion() != e.MetaOld.GetResourceVersion() {
 				return true
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == workName && e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
+			if e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				return true
 			}
 			return false
