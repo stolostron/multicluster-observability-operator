@@ -23,7 +23,7 @@ import (
 
 const (
 	pullSecretName   = "test-pull-secret"
-	operatorWorkSize = 5
+	operatorWorkSize = 6
 	resourceWorkSize = 6
 )
 
