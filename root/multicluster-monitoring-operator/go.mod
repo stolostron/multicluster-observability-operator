@@ -14,12 +14,13 @@ require (
 	github.com/open-cluster-management/observatorium-operator v0.0.0-20210208020738-a753d89f15df
 	github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible
 	github.com/openshift/client-go v0.0.0-20201020082437-7737f16e53fc
+	golang.org/x/tools v0.0.0-20201014231627-1610a49f37af // indirect
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.20.4
 	k8s.io/apimachinery v0.20.4
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/kubectl v0.20.4
-	sigs.k8s.io/controller-runtime v0.7.0
+	sigs.k8s.io/controller-runtime v0.8.0
 	sigs.k8s.io/kustomize/v3 v3.3.1
 	sigs.k8s.io/yaml v1.2.0
 )
