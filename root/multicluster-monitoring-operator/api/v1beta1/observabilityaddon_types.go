@@ -23,16 +23,28 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// StatusCondition contains condition information for an observability addon
+type StatusCondition struct {
+	Type               string                 `json:"type"`
+	Status             metav1.ConditionStatus `json:"status"`
+	LastTransitionTime metav1.Time            `json:"lastTransitionTime"`
+	Reason             string                 `json:"reason"`
+	Message            string                 `json:"message"`
+}
+
 // ObservabilityAddonStatus defines the observed state of ObservabilityAddon
 type ObservabilityAddonStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	Conditions []StatusCondition `json:"conditions"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
-// ObservabilityAddon is the Schema for the observabilityaddons API
+// ObservabilityAddon is the Schema for the observabilityaddon API
+// +kubebuilder:resource:path=observabilityaddons,scope=Namespaced,shortName=oba
 type ObservabilityAddon struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
