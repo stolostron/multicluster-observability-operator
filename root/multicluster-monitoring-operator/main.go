@@ -33,6 +33,7 @@ import (
 
 	observabilityv1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/controllers"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -78,10 +79,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	ocpClient, err := util.CreateOCPClient()
+	if err != nil {
+		setupLog.Error(err, "Failed to create the OpenShift client")
+		os.Exit(1)
+	}
 	if err = (&controllers.MultiClusterObservabilityReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("MultiClusterObservability"),
-		Scheme: mgr.GetScheme(),
+		Client:    mgr.GetClient(),
+		Log:       ctrl.Log.WithName("controllers").WithName("MultiClusterObservability"),
+		Scheme:    mgr.GetScheme(),
+		OcpClient: ocpClient,
+		APIReader: mgr.GetAPIReader(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MultiClusterObservability")
 		os.Exit(1)

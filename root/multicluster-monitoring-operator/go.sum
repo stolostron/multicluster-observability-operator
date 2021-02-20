@@ -894,7 +894,9 @@ github.com/onsi/gomega v1.10.2/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1y
 github.com/op/go-logging v0.0.0-20160315200505-970db520ece7/go.mod h1:HzydrMdWErDVzsI23lYNej1Htcns9BCg93Dk0bBINWk=
 github.com/open-cluster-management/api v0.0.0-20201007180356-41d07eee4294 h1:Ek/KLp95G0ThcfUQ5vFj7VAySJvOXbXBD4vJzHrkgJg=
 github.com/open-cluster-management/api v0.0.0-20201007180356-41d07eee4294/go.mod h1:F1hDJHtWuV7BAUtfL4XRS9GZjUpksleLgEcisNXvQEw=
+github.com/open-cluster-management/cert-manager v0.0.0-20200821135248-2fd523b053f5 h1:tn9/99huKRhQtytoBaJKiCdJsVc8Vz6BRgtSmrCu2ts=
 github.com/open-cluster-management/cert-manager v0.0.0-20200821135248-2fd523b053f5/go.mod h1:hnMl9tQOA0wxgPAlZYYKvcuxbzQgP0GFQp9u9XFJpGs=
+github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20201013190828-d760a392d21d h1:qEYJ84LttTOEq8/YPNiQy7Mw+IWadKVf8AaoHXpJEJ8=
 github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20201013190828-d760a392d21d/go.mod h1:A3sMwp+AWM4QQg/ka8gIQ+SpLG2LZXtTZA/MYdrpWVI=
 github.com/open-cluster-management/observatorium-operator v0.0.0-20210208020738-a753d89f15df h1:MYwN1+W5lgVkKiKEsqQyWLwa8/seuzjCI/Z1neA4YIc=
 github.com/open-cluster-management/observatorium-operator v0.0.0-20210208020738-a753d89f15df/go.mod h1:8QU64oDTkDAjPgcjndWD+M39tLwDSeeQX5OhOWleAtU=
