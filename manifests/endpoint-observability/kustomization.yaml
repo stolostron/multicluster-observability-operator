@@ -1,4 +1,5 @@
 resources:
+- aggregate_role.yaml
 - role.yaml
 - role_binding.yaml
 - operator.yaml

@@ -5,7 +5,6 @@ package placementrule
 import (
 	"context"
 	"errors"
-	"time"
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -140,14 +139,11 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 		log.Error(err, "Failed to load templates")
 		return err
 	}
-	includeCRD := false
 	for _, raw := range templates {
 		if clusterName == localClusterName &&
 			raw.Object == nil {
 			//raw.Object.GetObjectKind().GroupVersionKind().Kind == "CustomResourceDefinition" {
 			continue
-		} else {
-			includeCRD = true
 		}
 		operatorWork.Spec.Workload.Manifests = append(operatorWork.Spec.Workload.Manifests, workv1.Manifest{raw})
 	}
@@ -155,9 +151,6 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	err = createManifestwork(c, operatorWork)
 	if err != nil {
 		return err
-	}
-	if includeCRD {
-		time.Sleep(15 * time.Second)
 	}
 
 	resourceWork := newManifestwork(clusterNamespace+resWorkNameSuffix, clusterNamespace)
