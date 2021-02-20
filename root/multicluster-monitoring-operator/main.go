@@ -94,10 +94,18 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "MultiClusterObservability")
 		os.Exit(1)
 	}
+
+	enableManagedCluster, found := os.LookupEnv("ENABLE_MANAGED_CLUSTER")
+	if found && enableManagedCluster == "false" {
+		return
+	}
+
 	if err = (&controllers.PlacementRuleReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("PlacementRule"),
-		Scheme: mgr.GetScheme(),
+		Client:     mgr.GetClient(),
+		Log:        ctrl.Log.WithName("controllers").WithName("PlacementRule"),
+		Scheme:     mgr.GetScheme(),
+		APIReader:  mgr.GetAPIReader(),
+		RESTMapper: mgr.GetRESTMapper(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PlacementRule")
 		os.Exit(1)

@@ -25,6 +25,8 @@ require (
 )
 
 replace (
+	github.com/go-logr/logr => github.com/go-logr/logr v0.3.0
+	github.com/go-logr/zapr => github.com/go-logr/zapr v0.2.0
 	github.com/jetstack/cert-manager => github.com/open-cluster-management/cert-manager v0.0.0-20200821135248-2fd523b053f5
 	github.com/open-cluster-management/api => github.com/open-cluster-management/api v0.0.0-20201007180356-41d07eee4294
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad
