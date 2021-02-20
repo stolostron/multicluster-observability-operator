@@ -134,3 +134,6 @@ bundle: manifests kustomize
 .PHONY: bundle-build
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+
+docker-binary:
+	CGO_ENABLED=0 go build -a -installsuffix cgo -v -i -o bin/manager main.go
