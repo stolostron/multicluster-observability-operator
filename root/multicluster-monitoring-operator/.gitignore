@@ -23,3 +23,5 @@ testbin/*
 *.swp
 *.swo
 *~
+main
+multicluster-monitoring-operator
