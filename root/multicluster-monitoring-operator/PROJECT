@@ -7,6 +7,10 @@ resources:
   group: observability
   kind: MultiClusterObservability
   version: v1beta1
+- crdVersion: v1
+  group: observability
+  kind: ObservabilityAddon
+  version: v1beta1
 version: 3-alpha
 plugins:
   manifests.sdk.operatorframework.io/v2: {}

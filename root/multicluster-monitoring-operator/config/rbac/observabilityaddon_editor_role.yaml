@@ -1,0 +1,24 @@
+# permissions for end users to edit observabilityaddons.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: observabilityaddon-editor-role
+rules:
+- apiGroups:
+  - observability.open-cluster-management.io
+  resources:
+  - observabilityaddons
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - observability.open-cluster-management.io
+  resources:
+  - observabilityaddons/status
+  verbs:
+  - get
