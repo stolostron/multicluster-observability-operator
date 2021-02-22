@@ -79,22 +79,6 @@ spec:
                     minimum: 15
                     type: integer
                 type: object
-              retentionResolution1h:
-                default: 30d
-                description: How long to retain samples of resolution 2 (1 hour) in
-                  bucket.
-                type: string
-              retentionResolution5m:
-                default: 14d
-                description: How long to retain samples of resolution 1 (5 minutes)
-                  in bucket.
-                type: string
-              retentionResolutionRaw:
-                default: 5d
-                description: How long to retain raw samples in a bucket.
-                type: string
-              storageConfigObject:
-                description: Specifies the storage to be used by Observability
                 properties:
                   metricObjectStorage:
                     description: Object store config secret for metrics
