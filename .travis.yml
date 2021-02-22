@@ -51,6 +51,8 @@ jobs:
     - stage: build
       name: "Build the test image and push it"
       script:
+        - echo "start to print out env"
+        - env
         - if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then export COMPONENT_TAG_EXTENSION="-PR${TRAVIS_PULL_REQUEST}-${TRAVIS_COMMIT}"; fi;
         - |
           make && make update-csv && make component/build && make component/push && make imagescan/status && make security/scans
