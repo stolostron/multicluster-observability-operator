@@ -129,7 +129,7 @@ const (
 	ThanosQueryFrontendCPURequets    = "100m"
 	ThanosQueryFrontendMemoryRequets = "256Mi"
 
-	ThanosQueryCPURequets    = "500m"
+	ThanosQueryCPURequets    = "300m"
 	ThanosQueryMemoryRequets = "1Gi"
 
 	ThanosCompactCPURequets    = "100m"
@@ -138,7 +138,7 @@ const (
 	ObservatoriumReceiveControllerCPURequets    = "4m"
 	ObservatoriumReceiveControllerMemoryRequets = "32Mi"
 
-	ThanosReceiveCPURequets    = "500m"
+	ThanosReceiveCPURequets    = "300m"
 	ThanosReceiveMemoryRequets = "512Mi"
 
 	ThanosRuleCPURequets            = "50m"
@@ -151,7 +151,7 @@ const (
 	ThanosCahcedExporterCPURequets    = "5m"
 	ThanosCahcedExporterMemoryRequets = "50Mi"
 
-	ThanosStoreCPURequets    = "200m"
+	ThanosStoreCPURequets    = "100m"
 	ThanosStoreMemoryRequets = "1Gi"
 )
 
