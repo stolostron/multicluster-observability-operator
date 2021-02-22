@@ -22,7 +22,7 @@ EOF
 }
 
 deploy() {
-  kubectl get secret grafana-config -o 'go-template={{index .data "grafana.ini"}}' | base64 --decode > grafana-dev-config.ini
+  kubectl get secret -n open-cluster-management-observability grafana-config -o 'go-template={{index .data "grafana.ini"}}' | base64 --decode > grafana-dev-config.ini
   if [ $? -ne 0 ]; then
       echo "Failed to get grafana config secret"
       exit 1
@@ -40,6 +40,7 @@ deploy() {
   $sed_command "s~grafana-config$~grafana-dev-config~g" grafana-dev-deploy.yaml
   $sed_command "s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-dev~g" grafana-dev-deploy.yaml
   $sed_command "s~grafana-config$~grafana-dev-config~g" grafana-dev-deploy.yaml
+  $sed_command "s~  securityContext:.*$~  securityContext: {runAsUser: 0}~g" grafana-dev-deploy.yaml
   sed "s~- emptyDir: {}$~- persistentVolumeClaim:$            claimName: grafana-dev~g" grafana-dev-deploy.yaml > grafana-dev-deploy.yaml.bak
   tr $ '\n' < grafana-dev-deploy.yaml.bak > grafana-dev-deploy.yaml
   kubectl apply -f grafana-dev-deploy.yaml
