@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: alertmanager
+  namespace: open-cluster-management
+  labels:
+    app: multicluster-observability-alertmanager
+    alertmanager: observability
+spec:
+  selector:
+    matchLabels:
+      app: multicluster-observability-alertmanager
+      alertmanager: observability
+  serviceName: alertmanager-operated
+  template:
+    metadata:
+      labels:
+        app: multicluster-observability-alertmanager
+        alertmanager: observability
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 70
+            podAffinityTerm:
+              topologyKey: topology.kubernetes.io/zone
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - multicluster-observability-alertmanager
+          - weight: 30
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - multicluster-observability-alertmanager
+      containers:
+      - args:
+        - --config.file=/etc/alertmanager/config/alertmanager.yaml
+        - --cluster.listen-address=[$(POD_IP)]:9094
+        - --storage.path=/alertmanager
+        - --data.retention=120h
+        - --web.listen-address=0.0.0.0:9093
+        - --web.route-prefix=/
+        - --cluster.peer=alertmanager-0.alertmanager-operated.{{MCO_NAMESPACE}}.svc:9094
+        - --cluster.peer=alertmanager-1.alertmanager-operated.{{MCO_NAMESPACE}}.svc:9094
+        - --cluster.peer=alertmanager-2.alertmanager-operated.{{MCO_NAMESPACE}}.svc:9094
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        image: quay.io/openshift/origin-prometheus-alertmanager:4.5.0
+        imagePullPolicy: IfNotPresent
+        name: alertmanager
+        ports:
+        - containerPort: 9094
+          name: mesh-tcp
+          protocol: TCP
+        - containerPort: 9093
+          name: web
+          protocol: TCP
+        - containerPort: 9094
+          name: mesh-udp
+          protocol: UDP
+        resources:
+          requests:
+            cpu: 4m
+            memory: 200Mi
+        volumeMounts:
+        - mountPath: /etc/alertmanager/config
+          name: config-volume
+        - mountPath: /alertmanager
+          name: alertmanager-db
+      - args:
+        - -webhook-url=http://localhost:9093/-/reload
+        - -volume-dir=/etc/alertmanager/config
+        image: quay.io/openshift/origin-configmap-reloader:4.5.0
+        imagePullPolicy: IfNotPresent
+        name: config-reloader
+        resources:
+          requests:
+            cpu: 4m
+            memory: 25Mi
+        volumeMounts:
+        - mountPath: /etc/alertmanager/config
+          name: config-volume
+          readOnly: true
+      serviceAccount: alertmanager
+      serviceAccountName: alertmanager
+      volumes:
+      - name: config-volume
+        secret:
+          defaultMode: 420
+          secretName: alertmanager-config
+  volumeClaimTemplates:
+  - metadata:
+      name: alertmanager-db 
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+      storageClassName: "gp2"
