@@ -24,21 +24,29 @@ import (
 
 	"github.com/go-logr/logr"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	storv1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/deploying"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
+	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 )
 
 const (
@@ -286,7 +294,138 @@ func getStorageClass(mco *mcov1beta1.MultiClusterObservability, cl client.Client
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Create a new controller
+	c, err := controller.New("multiclustermonitoring-controller", mgr, controller.Options{Reconciler: r})
+	if err != nil {
+		return err
+	}
 
+	pred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			//set request name to be used in placementrule controller
+			config.SetMonitoringCRName(e.Object.GetName())
+			return true
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return !e.DeleteStateUnknown
+		},
+	}
+	// Watch for changes to primary resource MultiClusterObservability
+	err = c.Watch(&source.Kind{Type: &mcov1beta1.MultiClusterObservability{}}, &handler.EnqueueRequestForObject{}, pred)
+	if err != nil {
+		return err
+	}
+
+	// Watch for changes to secondary resource Deployment and requeue the owner MultiClusterObservability
+	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &mcov1beta1.MultiClusterObservability{},
+	})
+	if err != nil {
+		return err
+	}
+
+	// Watch for changes to secondary resource statefulSet and requeue the owner MultiClusterObservability
+	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &mcov1beta1.MultiClusterObservability{},
+	})
+	if err != nil {
+		return err
+	}
+
+	// Watch for changes to secondary resource ConfigMap and requeue the owner MultiClusterObservability
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &mcov1beta1.MultiClusterObservability{},
+	})
+	if err != nil {
+		return err
+	}
+
+	// Watch for changes to secondary resource Secret and requeue the owner MultiClusterObservability
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &mcov1beta1.MultiClusterObservability{},
+	})
+	if err != nil {
+		return err
+	}
+
+	// Watch for changes to secondary resource Service and requeue the owner MultiClusterObservability
+	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &mcov1beta1.MultiClusterObservability{},
+	})
+	if err != nil {
+		return err
+	}
+
+	// Watch for changes to secondary Observatorium CR and requeue the owner MultiClusterObservability
+	err = c.Watch(&source.Kind{Type: &observatoriumv1alpha1.Observatorium{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &mcov1beta1.MultiClusterObservability{},
+	})
+	if err != nil {
+		return err
+	}
+
+	pred = predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Object.GetName() == config.AlertRuleCustomConfigMapName &&
+				e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				config.SetCustomRuleConfigMap(true)
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			// Find a way to restart the alertmanager to take the update
+			// if e.ObjectNew.GetName() == config.AlertRuleCustomConfigMapName &&
+			// 	e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
+			// 	config.SetCustomRuleConfigMap(true)
+			// 	return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
+			// }
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Object.GetName() == config.AlertRuleCustomConfigMapName &&
+				e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				config.SetCustomRuleConfigMap(false)
+				return true
+			}
+			return false
+		},
+	}
+	// Watch the configmap
+	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, pred)
+	if err != nil {
+		return err
+	}
+
+	pred = predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Object.GetName() == config.AlertmanagerConfigName &&
+				e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				return true
+			}
+			return false
+		},
+	}
+	// Watch the Secret
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, pred)
+	if err != nil {
+		return err
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mcov1beta1.MultiClusterObservability{}).
 		Complete(r)

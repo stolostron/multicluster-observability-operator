@@ -8,5 +8,4 @@ webhook:
   port: 9443
 leaderElection:
   leaderElect: true
-  # resourceName: b9d51391.open-cluster-management.io
-  resourceName: multicluster-observability-operator-lock
+  resourceName: b9d51391.open-cluster-management.io
