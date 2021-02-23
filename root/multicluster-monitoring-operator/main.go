@@ -87,7 +87,8 @@ func main() {
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "b9d51391.open-cluster-management.io",
+		// LeaderElectionID:       "b9d51391.open-cluster-management.io",
+		LeaderElectionID: "multicluster-observability-operator-lock",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
