@@ -1,7 +1,10 @@
 apiVersion: observability.open-cluster-management.io/v1beta1
 kind: MultiClusterObservability
 metadata:
-  name: multiclusterobservability-sample
+  name: observability
 spec:
-  # Add fields here
-  foo: bar
+  observabilityAddonSpec: {}
+  storageConfigObject:
+    metricObjectStorage:
+      name: thanos-object-storage
+      key: thanos.yaml
