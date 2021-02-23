@@ -61,6 +61,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(observabilityv1beta1.AddToScheme(scheme))
+	utilruntime.Must(placementv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -110,21 +111,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	// enableManagedCluster, found := os.LookupEnv("ENABLE_MANAGED_CLUSTER")
-	// if found && enableManagedCluster == "false" {
-	// 	return
-	// }
+	enableManagedCluster, found := os.LookupEnv("ENABLE_MANAGED_CLUSTER")
+	if found && enableManagedCluster == "false" {
+		return
+	}
 
-	// if err = (&controllers.PlacementRuleReconciler{
-	// 	Client:     mgr.GetClient(),
-	// 	Log:        ctrl.Log.WithName("controllers").WithName("PlacementRule"),
-	// 	Scheme:     mgr.GetScheme(),
-	// 	APIReader:  mgr.GetAPIReader(),
-	// 	RESTMapper: mgr.GetRESTMapper(),
-	// }).SetupWithManager(mgr); err != nil {
-	// 	setupLog.Error(err, "unable to create controller", "controller", "PlacementRule")
-	// 	os.Exit(1)
-	// }
+	if err = (&controllers.PlacementRuleReconciler{
+		Client:     mgr.GetClient(),
+		Log:        ctrl.Log.WithName("controllers").WithName("PlacementRule"),
+		Scheme:     mgr.GetScheme(),
+		APIReader:  mgr.GetAPIReader(),
+		RESTMapper: mgr.GetRESTMapper(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "PlacementRule")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
