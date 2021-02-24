@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Red Hat, Inc.
 
-package controllers
+package multiclusterobservability
 
 import (
 	"context"

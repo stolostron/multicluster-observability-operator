@@ -43,7 +43,8 @@ import (
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	observabilityv1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/controllers"
+	mcocontroller "github.com/open-cluster-management/multicluster-monitoring-operator/controllers/multiclusterobservability"
+	placementrulecontroller "github.com/open-cluster-management/multicluster-monitoring-operator/controllers/placementrule"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 	// +kubebuilder:scaffold:imports
 )
@@ -100,7 +101,7 @@ func main() {
 		setupLog.Error(err, "Failed to create the OpenShift client")
 		os.Exit(1)
 	}
-	if err = (&controllers.MultiClusterObservabilityReconciler{
+	if err = (&mcocontroller.MultiClusterObservabilityReconciler{
 		Client:    mgr.GetClient(),
 		Log:       ctrl.Log.WithName("controllers").WithName("MultiClusterObservability"),
 		Scheme:    mgr.GetScheme(),
@@ -116,7 +117,7 @@ func main() {
 		return
 	}
 
-	if err = (&controllers.PlacementRuleReconciler{
+	if err = (&placementrulecontroller.PlacementRuleReconciler{
 		Client:     mgr.GetClient(),
 		Log:        ctrl.Log.WithName("controllers").WithName("PlacementRule"),
 		Scheme:     mgr.GetScheme(),

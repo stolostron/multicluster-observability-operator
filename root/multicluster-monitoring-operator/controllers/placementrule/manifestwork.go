@@ -1,6 +1,6 @@
 // Copyright (c) 2021 Red Hat, Inc.
 
-package controllers
+package placementrule
 
 import (
 	"context"
@@ -17,6 +17,7 @@ import (
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
+	mcocontroller "github.com/open-cluster-management/multicluster-monitoring-operator/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
@@ -197,7 +198,7 @@ func getPullSecret(imagePullSecret *corev1.Secret) *corev1.Secret {
 func getCerts(client client.Client, namespace string) (*corev1.Secret, error) {
 
 	ca := &corev1.Secret{}
-	caName := GetServerCerts()
+	caName := mcocontroller.GetServerCerts()
 	err := client.Get(context.TODO(), types.NamespacedName{Name: caName,
 		Namespace: config.GetDefaultNamespace()}, ca)
 	if err != nil {

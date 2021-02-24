@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package controllers
+package placementrule
 
 import (
 	"context"
@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	testSecretName = "test-secret"
-	testToken      = "test-token"
-	testCA         = "test-ca"
+	secretName = "test-secret"
+	token      = "test-token"
+	ca         = "test-ca"
 )
 
 func newTestSA(namespaces ...string) *corev1.ServiceAccount {
@@ -37,7 +37,7 @@ func newTestSA(namespaces ...string) *corev1.ServiceAccount {
 			{
 				Kind:      "Secret",
 				Namespace: ns,
-				Name:      testSecretName,
+				Name:      secretName,
 			},
 		},
 	}
@@ -50,13 +50,13 @@ func newSATokenSecret(namespaces ...string) *corev1.Secret {
 	}
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      testSecretName,
+			Name:      secretName,
 			Namespace: ns,
 		},
 		Type: corev1.SecretTypeServiceAccountToken,
 		Data: map[string][]byte{
-			"token":  []byte(testToken),
-			"ca.crt": []byte(testCA),
+			"token":  []byte(token),
+			"ca.crt": []byte(ca),
 		},
 	}
 }
@@ -280,7 +280,7 @@ func TestGetSAToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get ServiceAccount Token: (%v)", err)
 	}
-	if string(saCA) != testCA || string(saToken) != testToken {
+	if string(saCA) != ca || string(saToken) != token {
 		t.Fatal("Got wrong ca/token")
 	}
 

@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package controllers
+package placementrule
 
 import (
 	v1 "k8s.io/api/apps/v1"

@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Red Hat, Inc.
 
-package controllers
+package placementrule
 
 import (
 	"context"
@@ -17,6 +17,7 @@ import (
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
+	mcocontroller "github.com/open-cluster-management/multicluster-monitoring-operator/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
@@ -55,7 +56,7 @@ func newTestPullSecret() *corev1.Secret {
 func newCASecret() *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      GetServerCerts(),
+			Name:      mcocontroller.GetServerCerts(),
 			Namespace: mcoNamespace,
 		},
 		Data: map[string][]byte{

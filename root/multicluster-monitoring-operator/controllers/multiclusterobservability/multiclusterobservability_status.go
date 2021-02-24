@@ -1,19 +1,20 @@
 // Copyright (c) 2021 Red Hat, Inc.
 
-package controllers
+package multiclusterobservability
 
 import (
 	"context"
 	"fmt"
 	"time"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 )
 
 // fillup the status if there is no status and lastTransitionTime in upgrade case

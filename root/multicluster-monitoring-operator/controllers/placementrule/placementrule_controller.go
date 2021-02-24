@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package placementrule
 
 import (
 	"context"
@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -44,6 +45,7 @@ import (
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
+	mcocontroller "github.com/open-cluster-management/multicluster-monitoring-operator/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
@@ -57,6 +59,7 @@ const (
 )
 
 var (
+	log                             = logf.Log.WithName("controller_placementrule")
 	watchNamespace                  = config.GetDefaultNamespace()
 	isCRoleCreated                  = false
 	isClusterManagementAddonCreated = false
@@ -278,11 +281,11 @@ func deleteAllRelatedRes(
 func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 	mco *mcov1beta1.MultiClusterObservability, imagePullSecret *corev1.Secret,
 	name string, namespace string) error {
-	org := GetManagedClusterOrg()
-	spec := CreateCertificateSpec(certsName, true,
-		GetClientCAIssuer(), false,
+	org := mcocontroller.GetManagedClusterOrg()
+	spec := mcocontroller.CreateCertificateSpec(certsName, true,
+		mcocontroller.GetClientCAIssuer(), false,
 		"mc-"+name, []string{org}, []string{})
-	err := CreateCertificate(client, nil, nil,
+	err := mcocontroller.CreateCertificate(client, nil, nil,
 		certificateName, namespace, spec)
 	if err != nil {
 		return err
