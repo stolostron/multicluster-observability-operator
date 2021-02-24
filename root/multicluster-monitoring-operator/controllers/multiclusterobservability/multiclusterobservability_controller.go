@@ -38,7 +38,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
@@ -191,7 +190,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 // UpdateStatus override UpdateStatus interface
 func (r *MultiClusterObservabilityReconciler) UpdateStatus(
-	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
+	mco *mcov1beta1.MultiClusterObservability) (*ctrl.Result, error) {
 	log.Info("Update MCO status")
 	oldStatus := &mco.Status
 	newStatus := oldStatus.DeepCopy()
@@ -211,23 +210,23 @@ func (r *MultiClusterObservabilityReconciler) UpdateStatus(
 			}, found)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Failed to get existing mco %s", mco.Name))
-				return &reconcile.Result{}, err
+				return &ctrl.Result{}, err
 			}
 			mco.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 			err = r.Client.Status().Update(context.TODO(), mco)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Failed to update %s status ", mco.Name))
-				return &reconcile.Result{}, err
+				return &ctrl.Result{}, err
 			}
-			return &reconcile.Result{Requeue: true, RequeueAfter: time.Second}, nil
+			return &ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil
 		}
 
 		log.Error(err, fmt.Sprintf("Failed to update %s status ", mco.Name))
-		return &reconcile.Result{}, err
+		return &ctrl.Result{}, err
 	}
 
 	if findStatusCondition(newStatus.Conditions, "Ready") == nil {
-		return &reconcile.Result{Requeue: true, RequeueAfter: time.Second * 2}, nil
+		return &ctrl.Result{Requeue: true, RequeueAfter: time.Second * 2}, nil
 	}
 
 	return nil, nil
