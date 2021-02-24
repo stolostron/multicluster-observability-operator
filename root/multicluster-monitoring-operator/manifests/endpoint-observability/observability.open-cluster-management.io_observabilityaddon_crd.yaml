@@ -1,0 +1,84 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: observabilityaddons.observability.open-cluster-management.io
+spec:
+  group: observability.open-cluster-management.io
+  names:
+    kind: ObservabilityAddon
+    listKind: ObservabilityAddonList
+    plural: observabilityaddons
+    shortNames:
+    - oba
+    singular: observabilityaddon
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: ObservabilityAddon is the Schema for the observabilityaddon API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: ObservabilityAddonSpec is the spec of observability addon
+          properties:
+            enableMetrics:
+              description: EnableMetrics indicates the observability addon push metrics
+                to hub server. The default is true
+              type: boolean
+            interval:
+              description: Interval for the observability addon push metrics to hub
+                server. The default is 60 seconds
+              format: int32
+              type: integer
+              minimum: 15
+              maximum: 3600
+          type: object
+        status:
+          description: ObservabilityAddonStatus defines the observed state of ObservabilityAddon
+          properties:
+            conditions:
+              items:
+                description: StatusCondition contains condition information for an
+                  observability addon
+                properties:
+                  lastTransitionTime:
+                    format: date-time
+                    type: string
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                  status:
+                    type: string
+                  type:
+                    type: string
+                required:
+                - lastTransitionTime
+                - message
+                - reason
+                - status
+                - type
+                type: object
+              type: array
+          required:
+          - conditions
+          type: object
+      type: object
+  version: v1beta1
+  versions:
+  - name: v1beta1
+    served: true
+    storage: true
+  preserveUnknownFields: false
