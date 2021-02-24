@@ -1,7 +1,0 @@
-resources:
-- service-account.yaml
-- alertmanager-config.yaml
-- alertmanager-statefulset.yaml
-- alertmanager-operated.yaml
-- alertmanager-service.yaml
-- alert_rules.yaml

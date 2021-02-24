@@ -39,7 +39,7 @@ spec:
               type: boolean
             interval:
               description: Interval for the observability addon push metrics to hub
-                server. The default is 30 seconds
+                server. The default is 60 seconds
               format: int32
               type: integer
               minimum: 15

@@ -9,7 +9,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
 )
 
 func TestGetCoreTemplates(t *testing.T) {

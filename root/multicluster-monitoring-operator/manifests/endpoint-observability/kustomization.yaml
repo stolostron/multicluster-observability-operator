@@ -1,7 +1,0 @@
-resources:
-- aggregate_role.yaml
-- role.yaml
-- role_binding.yaml
-- operator.yaml
-- service_account.yaml
-- observability.open-cluster-management.io_observabilityaddon_crd.yaml

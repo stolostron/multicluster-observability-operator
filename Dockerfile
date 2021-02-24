@@ -1,4 +1,5 @@
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+WORKDIR /
 
 ARG VCS_REF
 ARG VCS_URL
@@ -39,11 +40,7 @@ ENV OPERATOR=/usr/local/bin/mco-operator \
 COPY manifests /usr/local/manifests
 
 # install operator binary
-COPY build/_output/bin/multicluster-monitoring-operator ${OPERATOR}
-
-COPY build/bin /usr/local/bin
-RUN  /usr/local/bin/user_setup
-
-ENTRYPOINT ["/usr/local/bin/entrypoint"]
-
+COPY bin/manager ${OPERATOR}
 USER ${USER_UID}
+
+ENTRYPOINT ["/mco-operator"]

@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
 )
 
 var (
@@ -321,7 +321,7 @@ func TestIsPaused(t *testing.T) {
 func NewFakeClient(mco *mcov1beta1.MultiClusterObservability,
 	obs *observatoriumv1alpha1.Observatorium) client.Client {
 	s := scheme.Scheme
-	s.AddKnownTypes(mcov1beta1.SchemeGroupVersion, mco)
+	s.AddKnownTypes(mcov1beta1.GroupVersion, mco)
 	s.AddKnownTypes(observatoriumv1alpha1.GroupVersion, obs)
 	objs := []runtime.Object{mco, obs}
 	return fake.NewFakeClientWithScheme(s, objs...)

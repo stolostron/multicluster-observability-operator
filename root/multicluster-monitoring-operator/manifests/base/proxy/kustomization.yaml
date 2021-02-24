@@ -1,7 +1,0 @@
-resources:
-- cluster-role-binding.yaml
-- cluster-role.yaml
-- deployment.yaml
-- prob-cmd-configmap.yaml
-- service-account.yaml
-- service.yaml
