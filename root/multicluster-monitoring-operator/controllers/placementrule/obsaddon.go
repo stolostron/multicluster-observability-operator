@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package placementrule
 
@@ -14,12 +14,12 @@ import (
 )
 
 const (
-	epConfigName = "observability-addon"
+	obsAddonName = "observability-addon"
 )
 
 func deleteObsAddon(client client.Client, namespace string) error {
 	found := &obv1beta1.ObservabilityAddon{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: epConfigName, Namespace: namespace}, found)
+	err := client.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil
@@ -32,7 +32,7 @@ func deleteObsAddon(client client.Client, namespace string) error {
 		log.Error(err, "Failed to delete observabilityaddon", "namespace", namespace)
 	}
 
-	err = updateDeleteFlag(client, namespace)
+	err = removeObservabilityAddon(client, namespace)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func deleteObsAddon(client client.Client, namespace string) error {
 func createObsAddon(client client.Client, namespace string) error {
 	ec := &obv1beta1.ObservabilityAddon{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      epConfigName,
+			Name:      obsAddonName,
 			Namespace: namespace,
 			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
@@ -52,7 +52,7 @@ func createObsAddon(client client.Client, namespace string) error {
 		},
 	}
 	found := &obv1beta1.ObservabilityAddon{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: epConfigName, Namespace: namespace}, found)
+	err := client.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating endpoint config cr", "namespace", namespace)
 		err = client.Create(context.TODO(), ec)

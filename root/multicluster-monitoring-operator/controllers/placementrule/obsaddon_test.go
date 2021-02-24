@@ -24,7 +24,7 @@ func TestEndpointConfigCR(t *testing.T) {
 		t.Fatalf("Failed to create observabilityaddon: (%v)", err)
 	}
 	found := &mcov1beta1.ObservabilityAddon{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: epConfigName, Namespace: namespace}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to get observabilityaddon: (%v)", err)
 	}
@@ -38,7 +38,7 @@ func TestEndpointConfigCR(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: epConfigName, Namespace: namespace}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	if err == nil || !errors.IsNotFound(err) {
 		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
 	}

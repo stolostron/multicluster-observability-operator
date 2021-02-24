@@ -23,7 +23,9 @@ import (
 )
 
 const (
-	workName = "endpoint-observability-work"
+	operatorWorkNameSuffix = "-observability-operator"
+	resWorkNameSuffix      = "-observability-operator-res"
+	localClusterName       = "local-cluster"
 )
 
 type MetricsWhitelist struct {
@@ -31,43 +33,35 @@ type MetricsWhitelist struct {
 	MatchList []string `yaml:"matches"`
 }
 
-func deleteManifestWork(client client.Client, namespace string) error {
-	err := deleteRes(client, namespace)
+func deleteManifestWorks(c client.Client, namespace string) error {
+	err := deleteRes(c, namespace)
 	if err != nil {
 		return err
 	}
 
-	found := &workv1.ManifestWork{}
-	err = client.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	err = c.DeleteAllOf(context.TODO(), &workv1.ManifestWork{},
+		client.InNamespace(namespace), client.MatchingLabels{ownerLabelKey: ownerLabelValue})
 	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			return nil
-		}
-		log.Error(err, "Failed to check monitoring-endpoint-monitoring-work work", "namespace", namespace)
-		return err
+		log.Error(err, "Failed to delete observability manifestworks", "namespace", namespace)
 	}
-	err = client.Delete(context.TODO(), found)
-	if err != nil {
-		log.Error(err, "Failed to delete monitoring-endpoint-monitoring-work work", "namespace", namespace)
-	}
-	log.Info("manifestwork is deleted", "namespace", namespace)
 	return err
 }
 
 func injectIntoWork(works []workv1.Manifest, obj runtime.Object) []workv1.Manifest {
-	works = append(works, workv1.Manifest{RawExtension: runtime.RawExtension{Object: obj}})
+	works = append(works,
+		workv1.Manifest{
+			RawExtension: runtime.RawExtension{
+				Object: obj,
+			},
+		})
 	return works
 }
 
-func createManifestWork(client client.Client, restMapper meta.RESTMapper,
-	clusterNamespace string, clusterName string,
-	mco *mcov1beta1.MultiClusterObservability,
-	imagePullSecret *corev1.Secret) error {
-
-	work := &workv1.ManifestWork{
+func newManifestwork(name string, namespace string) *workv1.ManifestWork {
+	return &workv1.ManifestWork{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      workName,
-			Namespace: clusterNamespace,
+			Name:      name,
+			Namespace: namespace,
 			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
@@ -78,71 +72,24 @@ func createManifestWork(client client.Client, restMapper meta.RESTMapper,
 			},
 		},
 	}
+}
 
-	manifests := work.Spec.Workload.Manifests
-
-	// inject the hub info secret
-	hubInfo, err := newHubInfoSecret(client, config.GetDefaultNamespace(), spokeNameSpace, clusterName, mco)
-	if err != nil {
-		return err
-	}
-	manifests = injectIntoWork(manifests, hubInfo)
-
-	// inject resouces in templates
-	templates, err := loadTemplates(clusterNamespace, mco)
-	if err != nil {
-		log.Error(err, "Failed to load templates")
-		return err
-	}
-	for _, raw := range templates {
-		manifests = append(manifests, workv1.Manifest{RawExtension: raw})
-	}
-
-	// inject namespace
-	manifests = injectIntoWork(manifests, createNameSpace())
-
-	// inject kube secret
-	secret, err := createKubeSecret(client, restMapper, clusterNamespace)
-	if err != nil {
-		return err
-	}
-	manifests = injectIntoWork(manifests, secret)
-
-	//create image pull secret
-	if imagePullSecret != nil {
-		pull := getPullSecret(imagePullSecret)
-		manifests = injectIntoWork(manifests, pull)
-	}
-
-	// inject the certificates
-	certs, err := getCerts(client, clusterNamespace)
-	if err != nil {
-		return err
-	}
-	manifests = injectIntoWork(manifests, certs)
-
-	// inject the metrics whitelist configmap
-	mList, err := getMetricsListCM(client)
-	if err != nil {
-		return err
-	}
-	manifests = injectIntoWork(manifests, mList)
-
-	work.Spec.Workload.Manifests = manifests
-
+func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
+	name := work.ObjectMeta.Name
+	namespace := work.ObjectMeta.Namespace
 	found := &workv1.ManifestWork{}
-	err = client.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: clusterNamespace}, found)
+	err := c.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
 	if err != nil && k8serrors.IsNotFound(err) {
-		log.Info("Creating monitoring-endpoint-monitoring-work work", "namespace", clusterNamespace)
+		log.Info("Creating manifestwork", "namespace", namespace, "name", name)
 
-		err = client.Create(context.TODO(), work)
+		err = c.Create(context.TODO(), work)
 		if err != nil {
-			log.Error(err, "Failed to create monitoring-endpoint-monitoring-work work")
+			log.Error(err, "Failed to create manifestwork", "namespace", namespace, "name", name)
 			return err
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check monitoring-endpoint-monitoring-work work")
+		log.Error(err, "Failed to check manifestwork", namespace, "name", name)
 		return err
 	}
 
@@ -151,6 +98,7 @@ func createManifestWork(client client.Client, restMapper meta.RESTMapper,
 		return errors.New("Existing manifestwork is terminating, skip and reconcile later")
 	}
 
+	manifests := work.Spec.Workload.Manifests
 	updated := false
 	if len(found.Spec.Workload.Manifests) == len(manifests) {
 		for i, m := range found.Spec.Workload.Manifests {
@@ -164,9 +112,9 @@ func createManifestWork(client client.Client, restMapper meta.RESTMapper,
 	}
 
 	if updated {
-		log.Info("Reverting monitoring-endpoint-monitoring-work work", "namespace", clusterNamespace)
+		log.Info("Updating manifestwork", namespace, namespace, "name", name)
 		work.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-		err = client.Update(context.TODO(), work)
+		err = c.Update(context.TODO(), work)
 		if err != nil {
 			log.Error(err, "Failed to update monitoring-endpoint-monitoring-work work")
 			return err
@@ -174,8 +122,89 @@ func createManifestWork(client client.Client, restMapper meta.RESTMapper,
 		return nil
 	}
 
-	log.Info("manifestwork already existed/unchanged", "namespace", clusterNamespace)
+	log.Info("manifestwork already existed/unchanged", "namespace", namespace)
 	return nil
+}
+
+func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
+	clusterNamespace string, clusterName string,
+	mco *mcov1beta1.MultiClusterObservability,
+	imagePullSecret *corev1.Secret) error {
+
+	operatorWork := newManifestwork(clusterNamespace+operatorWorkNameSuffix, clusterNamespace)
+
+	// inject resouces in templates
+	templates, err := loadTemplates(clusterNamespace, mco)
+	if err != nil {
+		log.Error(err, "Failed to load templates")
+		return err
+	}
+	for _, raw := range templates {
+		if clusterName == localClusterName &&
+			raw.Object == nil {
+			//raw.Object.GetObjectKind().GroupVersionKind().Kind == "CustomResourceDefinition" {
+			continue
+		}
+		operatorWork.Spec.Workload.Manifests = append(operatorWork.Spec.Workload.Manifests, workv1.Manifest{RawExtension: raw})
+	}
+
+	err = createManifestwork(c, operatorWork)
+	if err != nil {
+		return err
+	}
+
+	resourceWork := newManifestwork(clusterNamespace+resWorkNameSuffix, clusterNamespace)
+	manifests := resourceWork.Spec.Workload.Manifests
+	// inject observabilityAddon
+	obaddon, err := getObservabilityAddon(c, clusterNamespace, mco)
+	if err != nil {
+		return err
+	}
+	if obaddon != nil {
+		manifests = injectIntoWork(manifests, obaddon)
+	}
+
+	// inject the hub info secret
+	hubInfo, err := newHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, clusterName, mco)
+	if err != nil {
+		return err
+	}
+	manifests = injectIntoWork(manifests, hubInfo)
+
+	// inject namespace
+	manifests = injectIntoWork(manifests, createNameSpace())
+
+	// inject kube secret
+	secret, err := createKubeSecret(c, restMapper, clusterNamespace)
+	if err != nil {
+		return err
+	}
+	manifests = injectIntoWork(manifests, secret)
+
+	//create image pull secret
+	if imagePullSecret != nil {
+		pull := getPullSecret(imagePullSecret)
+		manifests = injectIntoWork(manifests, pull)
+	}
+
+	// inject the certificates
+	certs, err := getCerts(c, clusterNamespace)
+	if err != nil {
+		return err
+	}
+	manifests = injectIntoWork(manifests, certs)
+
+	// inject the metrics whitelist configmap
+	mList, err := getMetricsListCM(c)
+	if err != nil {
+		return err
+	}
+	manifests = injectIntoWork(manifests, mList)
+
+	resourceWork.Spec.Workload.Manifests = manifests
+
+	err = createManifestwork(c, resourceWork)
+	return err
 }
 
 func getPullSecret(imagePullSecret *corev1.Secret) *corev1.Secret {
@@ -283,4 +312,61 @@ func getWhiteList(client client.Client, name string) (*MetricsWhitelist, error) 
 		return nil, err
 	}
 	return whitelist, nil
+}
+
+func getObservabilityAddon(c client.Client, namespace string,
+	mco *mcov1beta1.MultiClusterObservability) (*mcov1beta1.ObservabilityAddon, error) {
+	found := &mcov1beta1.ObservabilityAddon{}
+	namespacedName := types.NamespacedName{
+		Name:      obsAddonName,
+		Namespace: namespace,
+	}
+	err := c.Get(context.TODO(), namespacedName, found)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil, nil
+		}
+		log.Error(err, "Failed to check observabilityAddon")
+		return nil, err
+	}
+	if found.ObjectMeta.DeletionTimestamp != nil {
+		return nil, nil
+	}
+	return &mcov1beta1.ObservabilityAddon{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "observability.open-cluster-management.io/v1beta1",
+			Kind:       "ObservabilityAddon",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      obsAddonName,
+			Namespace: spokeNameSpace,
+		},
+		Spec: mcov1beta1.ObservabilityAddonSpec{
+			EnableMetrics: mco.Spec.ObservabilityAddonSpec.EnableMetrics,
+			Interval:      mco.Spec.ObservabilityAddonSpec.Interval,
+		},
+	}, nil
+}
+
+func removeObservabilityAddon(client client.Client, namespace string) error {
+	name := namespace + resWorkNameSuffix
+	found := &workv1.ManifestWork{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
+		log.Error(err, "Failed to check manifestwork", "namespace", namespace, "name", name)
+		return err
+	}
+
+	updateManifests := found.Spec.Workload.Manifests[1:]
+	found.Spec.Workload.Manifests = updateManifests
+
+	err = client.Update(context.TODO(), found)
+	if err != nil {
+		log.Error(err, "Failed to update manifestwork", "namespace", namespace, "name", name)
+		return err
+	}
+	return nil
 }

@@ -38,7 +38,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
@@ -158,8 +157,8 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 	latestClusters := []string{}
-	for _, ep := range obsAddonList.Items {
-		latestClusters = append(latestClusters, ep.Namespace)
+	for _, addon := range obsAddonList.Items {
+		latestClusters = append(latestClusters, addon.Namespace)
 	}
 	for _, work := range workList.Items {
 		if !util.Contains(latestClusters, work.Namespace) {
@@ -171,22 +170,27 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
+	err = updateAddonStatus(r.Client, *obsAddonList)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
 }
 
 func createAllRelatedRes(
 	client client.Client,
 	restMapper meta.RESTMapper,
-	request reconcile.Request,
+	request ctrl.Request,
 	mco *mcov1beta1.MultiClusterObservability,
-	obsAddonList *mcov1beta1.ObservabilityAddonList) (reconcile.Result, error) {
+	obsAddonList *mcov1beta1.ObservabilityAddonList) (ctrl.Result, error) {
 
 	// create the clusterrole if not there
 	if !isCRoleCreated {
 		err := createClusterRole(client)
 
 		if err != nil {
-			return reconcile.Result{}, err
+			return ctrl.Result{}, err
 		}
 		isCRoleCreated = true
 	}
@@ -194,7 +198,7 @@ func createAllRelatedRes(
 	if !isClusterManagementAddonCreated {
 		err := util.CreateClusterManagementAddon(client)
 		if err != nil {
-			return reconcile.Result{}, err
+			return ctrl.Result{}, err
 		}
 		isClusterManagementAddonCreated = true
 	}
@@ -210,7 +214,7 @@ func createAllRelatedRes(
 			imagePullSecret = nil
 		} else {
 			// Error reading the object - requeue the request.
-			return reconcile.Result{}, err
+			return ctrl.Result{}, err
 		}
 	}
 	mco.Namespace = watchNamespace
@@ -222,10 +226,10 @@ func createAllRelatedRes(
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			return reconcile.Result{}, nil
+			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
+		return ctrl.Result{}, err
 	}
 
 	currentClusters := []string{}
@@ -239,7 +243,7 @@ func createAllRelatedRes(
 		err = createManagedClusterRes(client, restMapper, mco, imagePullSecret,
 			decision.ClusterName, decision.ClusterNamespace)
 		if err != nil {
-			return reconcile.Result{}, err
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -248,34 +252,34 @@ func createAllRelatedRes(
 		err = deleteObsAddon(client, cluster)
 		if err != nil {
 			log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
-			return reconcile.Result{}, err
+			return ctrl.Result{}, err
 		}
 	}
-	return reconcile.Result{}, nil
+	return ctrl.Result{}, nil
 }
 
 func deleteAllRelatedRes(
 	client client.Client,
-	obsAddonList *mcov1beta1.ObservabilityAddonList) (reconcile.Result, error) {
+	obsAddonList *mcov1beta1.ObservabilityAddonList) (ctrl.Result, error) {
 	for _, ep := range obsAddonList.Items {
 		err := deleteObsAddon(client, ep.Namespace)
 		if err != nil {
 			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
-			return reconcile.Result{}, err
+			return ctrl.Result{}, err
 		}
 	}
 	err := deleteClusterRole(client)
 	if err != nil {
-		return reconcile.Result{}, err
+		return ctrl.Result{}, err
 	}
 	isCRoleCreated = false
 	//delete ClusterManagementAddon
 	err = util.DeleteClusterManagementAddon(client)
 	if err != nil {
-		return reconcile.Result{}, err
+		return ctrl.Result{}, err
 	}
 	isClusterManagementAddonCreated = false
-	return reconcile.Result{}, nil
+	return ctrl.Result{}, nil
 }
 
 func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
@@ -303,7 +307,7 @@ func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 		return err
 	}
 
-	err = createManifestWork(client, restMapper, namespace, name, mco, imagePullSecret)
+	err = createManifestWorks(client, restMapper, namespace, name, mco, imagePullSecret)
 	if err != nil {
 		log.Error(err, "Failed to create manifestwork")
 		return err
@@ -346,7 +350,7 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 		return err
 	}
 
-	err = deleteManifestWork(client, namespace)
+	err = deleteManifestWorks(client, namespace)
 	if err != nil {
 		log.Error(err, "Failed to delete manifestwork")
 		return err
@@ -355,16 +359,19 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 }
 
 func watchObservabilityaddon(c controller.Controller, mapFn handler.MapFunc) error {
-	// Only handle delete event for observabilityaddon
 	epPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.ObjectNew.GetName() == obsAddonName &&
+				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue {
+				return true
+			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetName() == epConfigName &&
+			if e.Object.GetName() == obsAddonName &&
 				e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				return true
 			}
@@ -387,15 +394,14 @@ func watchManifestwork(c controller.Controller, mapFn handler.MapFunc) error {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == workName &&
-				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
+			if e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				return true
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetName() == workName && e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue {
+			if e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				return true
 			}
 			return false
@@ -544,8 +550,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	mapFn := handler.MapFunc(
-		func(a client.Object) []reconcile.Request {
-			return []reconcile.Request{
+		func(a client.Object) []ctrl.Request {
+			return []ctrl.Request{
 				{NamespacedName: types.NamespacedName{
 					Name:      name,
 					Namespace: watchNamespace,

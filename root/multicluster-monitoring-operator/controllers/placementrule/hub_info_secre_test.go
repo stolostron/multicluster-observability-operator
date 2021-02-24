@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package placementrule
 
@@ -44,8 +44,7 @@ func TestNewSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
 	}
-	if hub.ClusterName != clusterName || !strings.HasPrefix(hub.Endpoint, "https://test-host") ||
-		!hub.EnableMetrics || hub.Interval != 1 {
+	if hub.ClusterName != clusterName || !strings.HasPrefix(hub.Endpoint, "https://test-host") {
 		t.Fatalf("Wrong content in hub info secret: (%s)", hub.ClusterName+" "+hub.Endpoint)
 	}
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package placementrule
 
@@ -23,7 +23,8 @@ import (
 
 const (
 	pullSecretName   = "test-pull-secret"
-	mainfestworkSize = 10
+	operatorWorkSize = 6
+	resourceWorkSize = 6
 )
 
 func newTestMCO() *mcov1beta1.MultiClusterObservability {
@@ -123,43 +124,56 @@ func TestManifestWork(t *testing.T) {
 	}
 	templatePath = path.Join(wd, "../../../manifests/endpoint-observability")
 
-	err = createManifestWork(c, nil, namespace, clusterName, newTestMCO(), newTestPullSecret())
+	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), newTestPullSecret())
 	if err != nil {
-		t.Fatalf("Failed to create manifestwork: (%v)", err)
+		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
 	found := &workv1.ManifestWork{}
+	workName := namespace + operatorWorkNameSuffix
 	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err != nil {
-		t.Fatalf("Failed to get manifestwork: (%v)", err)
+		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
 	}
-	if len(found.Spec.Workload.Manifests) != mainfestworkSize {
-		t.Fatal("Wrong size of manifests in the mainfestwork")
+	if len(found.Spec.Workload.Manifests) != operatorWorkSize {
+		t.Fatalf("Wrong size of manifests in the mainfestwork %s", workName)
+	}
+	workName = namespace + resWorkNameSuffix
+	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	if err != nil {
+		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
+	}
+	if len(found.Spec.Workload.Manifests) != resourceWorkSize {
+		t.Fatalf("Wrong size of manifests in the mainfestwork %s", workName)
 	}
 
-	err = createManifestWork(c, nil, namespace, clusterName, newTestMCO(), nil)
+	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), nil)
 	if err != nil {
-		t.Fatalf("Failed to create manifestwork: (%v)", err)
+		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err != nil {
-		t.Fatalf("Failed to get manifestwork: (%v)", err)
+		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
 	}
-	if len(found.Spec.Workload.Manifests) != mainfestworkSize-1 {
-		t.Fatal("Wrong size of manifests in the mainfestwork")
+	if len(found.Spec.Workload.Manifests) != resourceWorkSize-1 {
+		t.Fatalf("Wrong size of manifests in the mainfestwork %s", workName)
 	}
 
 	spokeNameSpace = "spoke-ns"
-	err = createManifestWork(c, nil, namespace, clusterName, newTestMCO(), newTestPullSecret())
+	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), newTestPullSecret())
 	if err != nil {
-		t.Fatalf("Failed to create manifestwork with updated namespace: (%v)", err)
+		t.Fatalf("Failed to create manifestworks with updated namespace: (%v)", err)
 	}
 
-	err = deleteManifestWork(c, namespace)
+	err = deleteManifestWorks(c, namespace)
 	if err != nil {
-		t.Fatalf("Failed to delete manifestwork: (%v)", err)
+		t.Fatalf("Failed to delete manifestworks: (%v)", err)
 	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + operatorWorkNameSuffix, Namespace: namespace}, found)
 	if err == nil || !errors.IsNotFound(err) {
-		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
+		t.Fatalf("Manifestwork not deleted: (%v)", err)
+	}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + resWorkNameSuffix, Namespace: namespace}, found)
+	if err == nil || !errors.IsNotFound(err) {
+		t.Fatalf("Manifestwork not deleted: (%v)", err)
 	}
 }
