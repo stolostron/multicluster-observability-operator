@@ -15,8 +15,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	workv1 "github.com/open-cluster-management/api/work/v1"
@@ -91,7 +91,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	c := fake.NewFakeClient(objs...)
 
 	r := &PlacementRuleReconciler{Client: c, Scheme: s}
-	req := reconcile.Request{
+	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      placementRuleName,
 			Namespace: mcoNamespace,

@@ -11,9 +11,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
@@ -60,7 +60,7 @@ type SecureJsonData struct {
 func GenerateGrafanaDataSource(
 	client client.Client,
 	scheme *runtime.Scheme,
-	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
+	mco *mcov1beta1.MultiClusterObservability) (*ctrl.Result, error) {
 
 	grafanaDatasources, err := yaml.Marshal(GrafanaDatasources{
 		APIVersion: 1,
@@ -75,7 +75,7 @@ func GenerateGrafanaDataSource(
 		},
 	})
 	if err != nil {
-		return &reconcile.Result{}, err
+		return &ctrl.Result{}, err
 	}
 
 	dsSecret := &corev1.Secret{
@@ -91,7 +91,7 @@ func GenerateGrafanaDataSource(
 
 	// Set MultiClusterObservability instance as the owner and controller
 	if err = controllerutil.SetControllerReference(mco, dsSecret, scheme); err != nil {
-		return &reconcile.Result{}, err
+		return &ctrl.Result{}, err
 	}
 
 	// Check if this already exists
@@ -113,13 +113,13 @@ func GenerateGrafanaDataSource(
 
 		err = client.Create(context.TODO(), dsSecret)
 		if err != nil {
-			return &reconcile.Result{}, err
+			return &ctrl.Result{}, err
 		}
 
 		// Pod created successfully - don't requeue
 		return nil, nil
 	} else if err != nil {
-		return &reconcile.Result{}, err
+		return &ctrl.Result{}, err
 	}
 
 	return nil, nil

@@ -17,9 +17,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
@@ -38,7 +38,7 @@ const (
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
 func GenerateObservatoriumCR(
 	cl client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
+	mco *mcov1beta1.MultiClusterObservability) (*ctrl.Result, error) {
 
 	labels := map[string]string{
 		"app": mco.Name,
@@ -46,7 +46,7 @@ func GenerateObservatoriumCR(
 
 	storageClassSelected, err := getStorageClass(mco, cl)
 	if err != nil {
-		return &reconcile.Result{}, err
+		return &ctrl.Result{}, err
 	}
 
 	log.Info("storageClassSelected", "storageClassSelected", storageClassSelected)
@@ -62,7 +62,7 @@ func GenerateObservatoriumCR(
 
 	// Set MultiClusterObservability instance as the owner and controller
 	if err := controllerutil.SetControllerReference(mco, observatoriumCR, scheme); err != nil {
-		return &reconcile.Result{}, err
+		return &ctrl.Result{}, err
 	}
 
 	// Check if this Observatorium CR already exists
@@ -82,11 +82,11 @@ func GenerateObservatoriumCR(
 		)
 		err = cl.Create(context.TODO(), observatoriumCR)
 		if err != nil {
-			return &reconcile.Result{}, err
+			return &ctrl.Result{}, err
 		}
 		return nil, nil
 	} else if err != nil {
-		return &reconcile.Result{}, err
+		return &ctrl.Result{}, err
 	}
 
 	oldSpec := observatoriumCRFound.Spec
@@ -110,13 +110,13 @@ func GenerateObservatoriumCR(
 	newObj.Spec = newSpec
 	err = cl.Update(context.TODO(), newObj)
 	if err != nil {
-		return &reconcile.Result{}, err
+		return &ctrl.Result{}, err
 	}
 
 	// delete the store-share statefulset in scalein scenario
 	err = deleteStoreSts(cl, observatoriumCR.Name, *oldSpec.Store.Shards, *newSpec.Store.Shards)
 	if err != nil {
-		return &reconcile.Result{}, err
+		return &ctrl.Result{}, err
 	}
 
 	return nil, nil
@@ -144,7 +144,7 @@ func updateTenantID(
 // GenerateAPIGatewayRoute defines aaa
 func GenerateAPIGatewayRoute(
 	runclient client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
+	mco *mcov1beta1.MultiClusterObservability) (*ctrl.Result, error) {
 
 	apiGateway := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
@@ -168,7 +168,7 @@ func GenerateAPIGatewayRoute(
 
 	// Set MultiClusterObservability instance as the owner and controller
 	if err := controllerutil.SetControllerReference(mco, apiGateway, scheme); err != nil {
-		return &reconcile.Result{}, err
+		return &ctrl.Result{}, err
 	}
 
 	err := runclient.Get(
@@ -182,7 +182,7 @@ func GenerateAPIGatewayRoute(
 		)
 		err = runclient.Create(context.TODO(), apiGateway)
 		if err != nil {
-			return &reconcile.Result{}, err
+			return &ctrl.Result{}, err
 		}
 	}
 
