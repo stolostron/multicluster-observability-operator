@@ -342,6 +342,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Fatalf("Failed to delete mco: (%v)", err)
 	}
 	mco.Spec.ObservabilityAddonSpec.EnableMetrics = true
+	mco.ObjectMeta.ResourceVersion = ""
 	err = cl.Create(context.TODO(), mco)
 	if err != nil {
 		t.Fatalf("Failed to create mco: (%v)", err)
