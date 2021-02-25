@@ -161,7 +161,7 @@ type Condition struct {
 	// The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
 	// +required
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Pattern=`^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$`
+	// +kubebuilder:validation:Pattern=`^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$` //NOSONAR
 	// +kubebuilder:validation:MaxLength=316
 	Type string `json:"type" protobuf:"bytes,1,opt,name=type"`
 	// status of the condition, one of True, False, Unknown.
@@ -170,13 +170,15 @@ type Condition struct {
 	// +kubebuilder:validation:Enum=True;False;Unknown
 	Status metav1.ConditionStatus `json:"status" protobuf:"bytes,2,opt,name=status"`
 	// observedGeneration represents the .metadata.generation that the condition was set based upon.
-	// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+	// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9,
+	// the condition is out of date
 	// with respect to the current state of the instance.
 	// +optional
 	// +kubebuilder:validation:Minimum=0
 	ObservedGeneration int64 `json:"observedGeneration,omitempty" protobuf:"varint,3,opt,name=observedGeneration"`
 	// lastTransitionTime is the last time the condition transitioned from one status to another.
-	// This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+	// This should be when the underlying condition changed.  If that is not known, then using the time when the API 
+	// field changed is acceptable.
 	// +optional
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Type=string

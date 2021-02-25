@@ -17,7 +17,7 @@ import (
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
-	mcocontroller "github.com/open-cluster-management/multicluster-monitoring-operator/controllers/multiclusterobservability"
+	mcoctrl "github.com/open-cluster-management/multicluster-monitoring-operator/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
@@ -145,7 +145,9 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 			//raw.Object.GetObjectKind().GroupVersionKind().Kind == "CustomResourceDefinition" {
 			continue
 		}
-		operatorWork.Spec.Workload.Manifests = append(operatorWork.Spec.Workload.Manifests, workv1.Manifest{RawExtension: raw})
+		operatorWork.Spec.Workload.Manifests = append(
+			operatorWork.Spec.Workload.Manifests, 
+			workv1.Manifest{RawExtension: raw})
 	}
 
 	err = createManifestwork(c, operatorWork)
@@ -227,7 +229,7 @@ func getPullSecret(imagePullSecret *corev1.Secret) *corev1.Secret {
 func getCerts(client client.Client, namespace string) (*corev1.Secret, error) {
 
 	ca := &corev1.Secret{}
-	caName := mcocontroller.GetServerCerts()
+	caName := mcoctrl.GetServerCerts()
 	err := client.Get(context.TODO(), types.NamespacedName{Name: caName,
 		Namespace: config.GetDefaultNamespace()}, ca)
 	if err != nil {

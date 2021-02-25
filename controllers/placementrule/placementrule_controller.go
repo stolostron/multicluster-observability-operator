@@ -44,7 +44,7 @@ import (
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
-	mcocontroller "github.com/open-cluster-management/multicluster-monitoring-operator/controllers/multiclusterobservability"
+	mcoctrl "github.com/open-cluster-management/multicluster-monitoring-operator/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
@@ -79,7 +79,7 @@ type PlacementRuleReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
+// Modify the Reconcile function to compare the state specified by
 // the PlacementRule object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
@@ -285,11 +285,11 @@ func deleteAllRelatedRes(
 func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 	mco *mcov1beta1.MultiClusterObservability, imagePullSecret *corev1.Secret,
 	name string, namespace string) error {
-	org := mcocontroller.GetManagedClusterOrg()
-	spec := mcocontroller.CreateCertificateSpec(certsName, true,
-		mcocontroller.GetClientCAIssuer(), false,
+	org := mcoctrl.GetManagedClusterOrg()
+	spec := mcoctrl.CreateCertificateSpec(certsName, true,
+		mcoctrl.GetClientCAIssuer(), false,
 		"mc-"+name, []string{org}, []string{})
-	err := mcocontroller.CreateCertificate(client, nil, nil,
+	err := mcoctrl.CreateCertificate(client, nil, nil,
 		certificateName, namespace, spec)
 	if err != nil {
 		return err
