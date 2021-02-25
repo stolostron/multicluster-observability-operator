@@ -59,6 +59,9 @@ deploy() {
   $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-svc.yaml
   $sed_command "s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-dev~g" grafana-dev-svc.yaml
   $sed_command "s~clusterIP:.*$~ ~g" grafana-dev-svc.yaml
+  # For OCP 4.7, we should remove clusterIPs filed and IPs
+  $sed_command "s~clusterIPs:.*$~ ~g" grafana-dev-svc.yaml
+  $sed_command 's/\- [0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}//g' grafana-dev-svc.yaml
   kubectl apply -f grafana-dev-svc.yaml
 
   kubectl get ingress -n open-cluster-management-observability grafana -o yaml > grafana-dev-ingress.yaml
