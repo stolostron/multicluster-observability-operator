@@ -40,7 +40,13 @@ deploy() {
   $sed_command "s~grafana-config$~grafana-dev-config~g" grafana-dev-deploy.yaml
   $sed_command "s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-dev~g" grafana-dev-deploy.yaml
   $sed_command "s~grafana-config$~grafana-dev-config~g" grafana-dev-deploy.yaml
-  $sed_command "s~  securityContext:.*$~  securityContext: {runAsUser: 0}~g" grafana-dev-deploy.yaml
+
+  POD_NAME=$(kubectl get pods -n open-cluster-management-observability|grep grafana|awk '{split($0, a, " "); print a[1]}' |head -n 1)
+  GROUP_ID=$(kubectl exec -n open-cluster-management-observability $POD_NAME -c grafana -- bash -c "ls -l /var/lib/grafana/grafana.db"|awk '{split($0, a, " "); print a[4]}')
+  if [[ ${GROUP_ID} == "grafana" ]]; then
+    GROUP_ID=472
+  fi
+  $sed_command "s~  securityContext:.*$~  securityContext: {fsGroup: ${GROUP_ID}}~g" grafana-dev-deploy.yaml
   sed "s~- emptyDir: {}$~- persistentVolumeClaim:$            claimName: grafana-dev~g" grafana-dev-deploy.yaml > grafana-dev-deploy.yaml.bak
   tr $ '\n' < grafana-dev-deploy.yaml.bak > grafana-dev-deploy.yaml
   kubectl apply -f grafana-dev-deploy.yaml
