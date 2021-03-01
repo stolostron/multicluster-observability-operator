@@ -122,7 +122,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get work dir: (%v)", err)
 	}
-	templatePath = path.Join(wd, "../../../manifests/endpoint-observability")
+	templatePath = path.Join(wd, "../../manifests/endpoint-observability")
 
 	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), newTestPullSecret())
 	if err != nil {

@@ -111,21 +111,21 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("Failed to get manifestwork for cluster2: (%v)", err)
 	}
 
-	p = &placementv1.PlacementRule{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      placementRuleName,
-			Namespace: mcoNamespace,
-		},
-		Status: placementv1.PlacementRuleStatus{
-			Decisions: []placementv1.PlacementDecision{
-				{
-					ClusterName:      clusterName,
-					ClusterNamespace: namespace,
-				},
+	newPlacement := &placementv1.PlacementRule{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: placementRuleName, Namespace: mcoNamespace}, newPlacement)
+	if err != nil {
+		t.Fatalf("Failed to get placementrule: (%v)", err)
+	}
+	newPlacement.Status = placementv1.PlacementRuleStatus{
+		Decisions: []placementv1.PlacementDecision{
+			{
+				ClusterName:      clusterName,
+				ClusterNamespace: namespace,
 			},
 		},
 	}
-	err = c.Update(context.TODO(), p)
+
+	err = c.Update(context.TODO(), newPlacement)
 	if err != nil {
 		t.Fatalf("Failed to update placementrule: (%v)", err)
 	}
@@ -168,6 +168,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("Not all manifestwork removed after remove mco resource")
 	}
 
+	mco.ObjectMeta.ResourceVersion = ""
 	err = c.Create(context.TODO(), mco)
 	if err != nil {
 		t.Fatalf("Failed to create mco: (%v)", err)
