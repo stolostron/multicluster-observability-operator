@@ -26,7 +26,7 @@ func deleteObsAddon(client client.Client, namespace string) error {
 		if errors.IsNotFound(err) {
 			return nil
 		}
-		log.Error(err, "Failed to check observabilityaddon cr", "namespace", namespace)
+		log.Error(err, "Failed to check observabilityaddon cr before delete", "namespace", namespace)
 		return err
 	}
 	err = client.Delete(context.TODO(), found)
@@ -64,7 +64,7 @@ func createObsAddon(client client.Client, namespace string) error {
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check observabilityaddon cr")
+		log.Error(err, "Failed to check observabilityaddon cr before create")
 		return err
 	}
 
@@ -79,7 +79,7 @@ func deleteStaleObsAddon(c client.Client, namespace string) error {
 		if errors.IsNotFound(err) {
 			return nil
 		}
-		log.Error(err, "Failed to check observabilityaddon cr", "namespace", namespace)
+		log.Error(err, "Failed to check observabilityaddon cr before delete stale ones", "namespace", namespace)
 		return err
 	}
 	if found.GetDeletionTimestamp() != nil && util.Contains(found.GetFinalizers(), obsAddonFinalizer) {
