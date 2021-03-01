@@ -276,8 +276,10 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 	latestClusters := []string{}
-	for _, ep := range obsAddonList.Items {
-		latestClusters = append(latestClusters, ep.Namespace)
+	staleAddons := []string{}
+	for _, addon := range obsAddonList.Items {
+		latestClusters = append(latestClusters, addon.Namespace)
+		staleAddons = append(staleAddons, addon.Namespace)
 	}
 	for _, work := range workList.Items {
 		if !util.Contains(latestClusters, work.Namespace) {
@@ -286,6 +288,16 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 			if err != nil {
 				return reconcile.Result{}, err
 			}
+		} else {
+			staleAddons = util.Remove(staleAddons, work.Namespace)
+		}
+	}
+
+	// delete stale addons if manifestwork does not exist
+	for _, addon := range staleAddons {
+		err = deleteStaleObsAddon(r.client, addon)
+		if err != nil {
+			return reconcile.Result{}, err
 		}
 	}
 
@@ -482,7 +494,7 @@ func watchObservabilityaddon(c controller.Controller, mapFn handler.ToRequestsFu
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Meta.GetName() == epConfigName &&
+			if e.Meta.GetName() == obsAddonName &&
 				e.Meta.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				return true
 			}
