@@ -295,7 +295,10 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 
 	// delete stale addons if manifestwork does not exist
 	for _, addon := range staleAddons {
-
+		err = deleteStaleObsAddon(r.client, addon)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
 	err = updateAddonStatus(r.client, *obsAddonList)

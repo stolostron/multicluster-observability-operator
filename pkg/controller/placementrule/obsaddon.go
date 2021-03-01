@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	obv1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
@@ -71,9 +72,9 @@ func createObsAddon(client client.Client, namespace string) error {
 	return nil
 }
 
-func deleteStaleObsAddon(client client.Client, namespace string) error {
+func deleteStaleObsAddon(c client.Client, namespace string) error {
 	found := &obv1beta1.ObservabilityAddon{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
+	err := c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil
@@ -81,9 +82,9 @@ func deleteStaleObsAddon(client client.Client, namespace string) error {
 		log.Error(err, "Failed to check observabilityaddon cr", "namespace", namespace)
 		return err
 	}
-	if found.GetDeletionTimestamp() != nil && contains(found.GetFinalizers(), obsAddonFinalizer) {
-		found.SetFinalizers(remove(found.GetFinalizers(), obsAddonFinalizer))
-		err = r.hubClient.Update(context.TODO(), found)
+	if found.GetDeletionTimestamp() != nil && util.Contains(found.GetFinalizers(), obsAddonFinalizer) {
+		found.SetFinalizers(util.Remove(found.GetFinalizers(), obsAddonFinalizer))
+		err = c.Update(context.TODO(), found)
 		if err != nil {
 			log.Error(err, "Failed to delete finalizer in observabilityaddon", "namespace", namespace)
 			return err
