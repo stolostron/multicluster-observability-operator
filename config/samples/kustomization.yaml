@@ -1,0 +1,5 @@
+## Append samples you want in your CSV to this file as resources ##
+resources:
+- observability_v1beta1_multiclusterobservability.yaml
+- observability_v1beta1_observabilityaddon.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

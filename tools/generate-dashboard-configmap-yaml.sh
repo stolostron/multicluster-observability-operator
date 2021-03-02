@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 # Copyright (c) 2021 Red Hat, Inc.
 
+if command -v python &> /dev/null
+then
+    PYTHON_CMD="python"
+elif command -v python2 &> /dev/null
+then
+    PYTHON_CMD="python2"
+elif command -v python3 &> /dev/null
+then
+    PYTHON_CMD="python3"
+else
+    echo "Failed to found python command, please install firstly"
+    exit 1
+fi
+
 usage() {
   cat <<EOF
 Usage: $(basename "${BASH_SOURCE[0]}") [-h] dashboard_name [configmap_path]
@@ -48,13 +62,13 @@ start() {
       echo "Failed to fetch dashboard UID, please check your dashboard name"
       exit 1
   fi
-  dashboardUID=`echo $dashboard | python -c "import sys, json; print(json.load(sys.stdin)['dashboard']['uid'])" 2>/dev/null`
-  dashboardFolderId=`echo $dashboard | python -c "import sys, json; print(json.load(sys.stdin)['meta']['folderId'])" 2>/dev/null`
-  dashboardFolderTitle=`echo $dashboard | python -c "import sys, json; print(json.load(sys.stdin)['meta']['folderTitle'])" 2>/dev/null`
+  dashboardUID=`echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['dashboard']['uid'])" 2>/dev/null`
+  dashboardFolderId=`echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['meta']['folderId'])" 2>/dev/null`
+  dashboardFolderTitle=`echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['meta']['folderTitle'])" 2>/dev/null`
   
-  dashboardJson=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User:$XForwardedUser" 127.0.0.1:3001/api/dashboards/uid/$dashboardUID | python -c "import sys, json; print(json.dumps(json.load(sys.stdin)['dashboard']))"`
+  dashboardJson=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User:$XForwardedUser" 127.0.0.1:3001/api/dashboards/uid/$dashboardUID | $PYTHON_CMD -c "import sys, json; print(json.dumps(json.load(sys.stdin)['dashboard']))" 2>/dev/null`
   if [ $? -ne 0 ]; then
-      echo "Failed to fetch dashboard json data <$1>"
+      echo "Failed to fetch dashboard json data, please check your dashboard name <$1>"
       exit 1
   fi
 

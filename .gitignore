@@ -59,6 +59,8 @@ anaconda-mode/
 *.dll
 *.so
 *.dylib
+bin
+testbin/*
 # Test binary, build with 'go test -c'
 *.test
 # Output of the go coverage tool, specifically when used with LiteIDE
@@ -78,3 +80,15 @@ tags
 .history
 # End of https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 .build-harness-bootstrap
+
+# Kubernetes Generated files - skip generated files, except for vendored files
+
+!vendor/**/zz_generated.*
+
+# editor and IDE paraphernalia
+.idea
+*.swp
+*.swo
+*~
+main
+multicluster-monitoring-operator

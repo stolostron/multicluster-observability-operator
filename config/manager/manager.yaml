@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: multicluster-observability-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: multicluster-observability-operator
+  template:
+    metadata:
+      labels:
+        name: multicluster-observability-operator
+    spec:
+      serviceAccountName: multicluster-observability-operator
+      containers:
+      - command:
+        - /mco-operator
+        args:
+        - --leader-elect
+        image: quay.io/open-cluster-management/multicluster-observability-operator:2.3.0-SNAPSHOT-2021-02-20-04-07-51
+        name: multicluster-observability-operator
+        securityContext:
+          allowPrivilegeEscalation: false
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        imagePullPolicy: Always
+        resources:
+          limits:
+            cpu: 300m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        env:
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: COMPONENT_VERSION
+            value: "2.3.0"
+          - name: TEMPLATES_PATH
+            value: /usr/local/manifests
+          - name: SPOKE_NAMESPACE
+            value: open-cluster-management-addon-observability

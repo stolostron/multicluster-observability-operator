@@ -167,7 +167,7 @@ spec:
 - Install [Docker](https://docs.docker.com/install/) version 19.03+.
 - Install [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) version v1.14+.
 - Access to a Kubernetes v1.11.3+ cluster.
-- Install [Operator_SDK CLI_tool v0.17.0](https://github.com/operator-framework/operator-sdk/releases/tag/v0.17.0).
+- Install [Operator_SDK CLI_tool v1.4.2](https://github.com/operator-framework/operator-sdk/releases/tag/v1.4.2).
 - Install [Prometheus relabel configuration](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config).
 
 ### Install the Operator SDK CLI
@@ -175,7 +175,7 @@ spec:
 Run the following command to install the Operator SDK CLI tool:
 
 ```
-curl -L https://github.com/operator-framework/operator-sdk/releases/download/v0.17.0/operator-sdk-v0.17.0-x86_64-apple-darwin -o operator-sdk
+curl -L https://github.com/operator-framework/operator-sdk/releases/download/v1.4.2/operator-sdk_darwin_amd64 -o operator-sdk
 ```
 
 ### Build the observability operator
