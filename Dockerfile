@@ -1,5 +1,4 @@
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
-WORKDIR /
 
 ARG VCS_REF
 ARG VCS_URL
@@ -43,4 +42,4 @@ COPY manifests /usr/local/manifests
 COPY bin/manager ${OPERATOR}
 USER ${USER_UID}
 
-ENTRYPOINT ["/mco-operator"]
+ENTRYPOINT ["/usr/local/bin/mco-operator"]
