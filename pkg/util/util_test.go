@@ -1,11 +1,11 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package util
 
 import (
 	"testing"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
 )
 
 func TestRemove(t *testing.T) {
