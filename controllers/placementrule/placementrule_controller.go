@@ -144,8 +144,10 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 	latestClusters := []string{}
+	staleAddons := []string{}
 	for _, addon := range obsAddonList.Items {
 		latestClusters = append(latestClusters, addon.Namespace)
+		staleAddons = append(staleAddons, addon.Namespace)
 	}
 	for _, work := range workList.Items {
 		if !util.Contains(latestClusters, work.Namespace) {
@@ -154,6 +156,16 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			if err != nil {
 				return ctrl.Result{}, err
 			}
+		} else {
+			staleAddons = util.Remove(staleAddons, work.Namespace)
+		}
+	}
+
+	// delete stale addons if manifestwork does not exist
+	for _, addon := range staleAddons {
+		err = deleteStaleObsAddon(r.Client, addon)
+		if err != nil {
+			return ctrl.Result{}, err
 		}
 	}
 
