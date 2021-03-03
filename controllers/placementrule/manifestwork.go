@@ -28,7 +28,7 @@ const (
 	localClusterName       = "local-cluster"
 )
 
-type MetricsWhitelist struct {
+type MetricsAllowlist struct {
 	NameList  []string `yaml:"names"`
 	MatchList []string `yaml:"matches"`
 }
@@ -146,7 +146,7 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 			continue
 		}
 		operatorWork.Spec.Workload.Manifests = append(
-			operatorWork.Spec.Workload.Manifests, 
+			operatorWork.Spec.Workload.Manifests,
 			workv1.Manifest{RawExtension: raw})
 	}
 
@@ -196,7 +196,7 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	}
 	manifests = injectIntoWork(manifests, certs)
 
-	// inject the metrics whitelist configmap
+	// inject the metrics allowlist configmap
 	mList, err := getMetricsListCM(c)
 	if err != nil {
 		return err
@@ -262,42 +262,42 @@ func getCerts(client client.Client, namespace string) (*corev1.Secret, error) {
 }
 
 func getMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
-	metricsWhitelist := &corev1.ConfigMap{
+	metricsAllowlist := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
 			Kind:       "ConfigMap",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.WhitelistConfigMapName,
+			Name:      config.AllowlistConfigMapName,
 			Namespace: spokeNameSpace,
 		},
 		Data: map[string]string{},
 	}
 
-	whitelist, err := getWhiteList(client, config.WhitelistConfigMapName)
+	allowlist, err := getAllowList(client, config.AllowlistConfigMapName)
 	if err != nil {
-		log.Error(err, "Failed to get metrics whitelist configmap "+config.WhitelistConfigMapName)
+		log.Error(err, "Failed to get metrics allowlist configmap "+config.AllowlistConfigMapName)
 		return nil, err
 	}
 
-	customWhitelist, err := getWhiteList(client, config.WhitelistCustomConfigMapName)
+	customAllowlist, err := getAllowList(client, config.AllowlistCustomConfigMapName)
 	if err == nil {
-		whitelist.NameList = append(whitelist.NameList, customWhitelist.NameList...)
-		whitelist.MatchList = append(whitelist.MatchList, customWhitelist.MatchList...)
+		allowlist.NameList = append(allowlist.NameList, customAllowlist.NameList...)
+		allowlist.MatchList = append(allowlist.MatchList, customAllowlist.MatchList...)
 	} else {
-		log.Info("There is no custom metrics whitelist configmap in the cluster")
+		log.Info("There is no custom metrics allowlist configmap in the cluster")
 	}
 
-	data, err := yaml.Marshal(whitelist)
+	data, err := yaml.Marshal(allowlist)
 	if err != nil {
-		log.Error(err, "Failed to marshal whitelist data")
+		log.Error(err, "Failed to marshal allowlist data")
 		return nil, err
 	}
-	metricsWhitelist.Data["metrics_list.yaml"] = string(data)
-	return metricsWhitelist, nil
+	metricsAllowlist.Data["metrics_list.yaml"] = string(data)
+	return metricsAllowlist, nil
 }
 
-func getWhiteList(client client.Client, name string) (*MetricsWhitelist, error) {
+func getAllowList(client client.Client, name string) (*MetricsAllowlist, error) {
 	found := &corev1.ConfigMap{}
 	namespacedName := types.NamespacedName{
 		Name:      name,
@@ -307,13 +307,13 @@ func getWhiteList(client client.Client, name string) (*MetricsWhitelist, error) 
 	if err != nil {
 		return nil, err
 	}
-	whitelist := &MetricsWhitelist{}
-	err = yaml.Unmarshal([]byte(found.Data["metrics_list.yaml"]), whitelist)
+	allowlist := &MetricsAllowlist{}
+	err = yaml.Unmarshal([]byte(found.Data["metrics_list.yaml"]), allowlist)
 	if err != nil {
 		log.Error(err, "Failed to unmarshal data in configmap "+name)
 		return nil, err
 	}
-	return whitelist, nil
+	return allowlist, nil
 }
 
 func getObservabilityAddon(c client.Client, namespace string,
