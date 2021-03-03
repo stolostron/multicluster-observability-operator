@@ -1,4 +1,5 @@
 // Copyright (c) 2021 Red Hat, Inc.
+// Copyright Contributors to the Open Cluster Management project
 
 package placementrule
 
@@ -146,7 +147,7 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 			continue
 		}
 		operatorWork.Spec.Workload.Manifests = append(
-			operatorWork.Spec.Workload.Manifests, 
+			operatorWork.Spec.Workload.Manifests,
 			workv1.Manifest{RawExtension: raw})
 	}
 

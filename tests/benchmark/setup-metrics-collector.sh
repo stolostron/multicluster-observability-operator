@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright (c) 2021 Red Hat, Inc.
+# Copyright Contributors to the Open Cluster Management project
 
 export IMAGE=quay.io/open-cluster-management/metrics-collector:2.2.0-SNAPSHOT-2021-01-17-18-45-18
 export FROM=https://prometheus-k8s.openshift-monitoring.svc:9091

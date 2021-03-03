@@ -1,5 +1,3 @@
-// Copyright (c) 2021 Red Hat, Inc.
-
 /*
 Copyright 2021.
 
@@ -15,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+// Copyright (c) 2021 Red Hat, Inc.
+// Copyright Contributors to the Open Cluster Management project
 
 package main
 

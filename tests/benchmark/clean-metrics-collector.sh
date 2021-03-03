@@ -1,5 +1,6 @@
 #!/bin/bash
-# Copyright (c) 2020 Red Hat, Inc.
+# Copyright (c) 2021 Red Hat, Inc.
+# Copyright Contributors to the Open Cluster Management project
 
 if [ $# -ne 1 ]; then
 	echo "this script must be run with the number of clusters:"
