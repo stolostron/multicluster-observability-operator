@@ -1,2 +1,2 @@
 resources:
-- metrics_whitelist.yaml
+- metrics_allowlist.yaml

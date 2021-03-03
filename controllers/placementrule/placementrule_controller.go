@@ -426,17 +426,17 @@ func watchManifestwork(c controller.Controller, mapFn handler.MapFunc) error {
 	return nil
 }
 
-func watchWhitelistCM(c controller.Controller, mapFn handler.MapFunc) error {
-	customWhitelistPred := predicate.Funcs{
+func watchAllowlistCM(c controller.Controller, mapFn handler.MapFunc) error {
+	customAllowlistPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == config.WhitelistCustomConfigMapName &&
+			if e.Object.GetName() == config.AllowlistCustomConfigMapName &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == config.WhitelistCustomConfigMapName &&
+			if e.ObjectNew.GetName() == config.AllowlistCustomConfigMapName &&
 				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				return true
@@ -444,7 +444,7 @@ func watchWhitelistCM(c controller.Controller, mapFn handler.MapFunc) error {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetName() == config.WhitelistCustomConfigMapName &&
+			if e.Object.GetName() == config.AllowlistCustomConfigMapName &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				return true
 			}
@@ -454,7 +454,7 @@ func watchWhitelistCM(c controller.Controller, mapFn handler.MapFunc) error {
 
 	err := c.Watch(&source.Kind{Type: &corev1.ConfigMap{}},
 		handler.EnqueueRequestsFromMapFunc(mapFn),
-		customWhitelistPred)
+		customAllowlistPred)
 	if err != nil {
 		return err
 	}
@@ -487,7 +487,7 @@ func watchMCO(c controller.Controller, mapFn handler.MapFunc) error {
 }
 
 func watchCertficate(c controller.Controller, mapFn handler.MapFunc) error {
-	customWhitelistPred := predicate.Funcs{
+	customAllowlistPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == certsName ||
 				e.Object.GetName() == config.ServerCerts &&
@@ -512,7 +512,7 @@ func watchCertficate(c controller.Controller, mapFn handler.MapFunc) error {
 
 	err := c.Watch(&source.Kind{Type: &corev1.Secret{}},
 		handler.EnqueueRequestsFromMapFunc(mapFn),
-		customWhitelistPred)
+		customAllowlistPred)
 	if err != nil {
 		return err
 	}
@@ -590,8 +590,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
-	// secondary watch for custom whitelist configmap
-	err = watchWhitelistCM(c, mapFn)
+	// secondary watch for custom allowlist configmap
+	err = watchAllowlistCM(c, mapFn)
 	if err != nil {
 		return err
 	}

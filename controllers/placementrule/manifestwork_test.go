@@ -84,10 +84,10 @@ func newCertSecret(namespaces ...string) *corev1.Secret {
 	}
 }
 
-func NewMetricsWhiteListCM() *corev1.ConfigMap {
+func NewMetricsAllowListCM() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.WhitelistConfigMapName,
+			Name:      config.AllowlistConfigMapName,
 			Namespace: mcoNamespace,
 		},
 		Data: map[string]string{"metrics_list.yaml": `
@@ -98,10 +98,10 @@ func NewMetricsWhiteListCM() *corev1.ConfigMap {
 	}
 }
 
-func NewMetricsCustomWhiteListCM() *corev1.ConfigMap {
+func NewMetricsCustomAllowListCM() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.WhitelistCustomConfigMapName,
+			Name:      config.AllowlistCustomConfigMapName,
 			Namespace: mcoNamespace,
 		},
 		Data: map[string]string{"metrics_list.yaml": `
@@ -116,7 +116,7 @@ func TestManifestWork(t *testing.T) {
 	initSchema(t)
 
 	objs := []runtime.Object{newSATokenSecret(), newTestSA(), newTestInfra(),
-		newTestRoute(), newCASecret(), newCertSecret(), NewMetricsWhiteListCM(), NewMetricsCustomWhiteListCM()}
+		newTestRoute(), newCASecret(), newCertSecret(), NewMetricsAllowListCM(), NewMetricsCustomAllowListCM()}
 	c := fake.NewFakeClient(objs...)
 
 	wd, err := os.Getwd()
