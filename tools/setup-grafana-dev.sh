@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Copyright (c) 2021 Red Hat, Inc.
+# Copyright Contributors to the Open Cluster Management project
 
 sed_command='sed -i-e -e'
 if [[ "$(uname)" == "Darwin" ]]; then
