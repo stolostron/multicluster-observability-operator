@@ -1,30 +1,17 @@
-/*
-Copyright 2021.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+// Copyright (c) 2021 Red Hat, Inc.
 
 package placementrule
 
 import (
 	"context"
+	"errors"
 
 	"github.com/go-logr/logr"
 	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -103,7 +90,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			Name: config.GetMonitoringCRName(),
 		}, mco)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			deleteAll = true
 		} else {
 			// Error reading the object - requeue the request.
@@ -210,7 +197,7 @@ func createAllRelatedRes(
 			Namespace: request.Namespace,
 		}, imagePullSecret)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			imagePullSecret = nil
 		} else {
 			// Error reading the object - requeue the request.
@@ -222,7 +209,7 @@ func createAllRelatedRes(
 	instance := &placementv1.PlacementRule{}
 	err = client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
@@ -237,24 +224,33 @@ func createAllRelatedRes(
 		currentClusters = append(currentClusters, ep.Namespace)
 	}
 
+	failedCreateManagedClusterRes := false
 	for _, decision := range instance.Status.Decisions {
 		log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
 		currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
 		err = createManagedClusterRes(client, restMapper, mco, imagePullSecret,
 			decision.ClusterName, decision.ClusterNamespace)
 		if err != nil {
-			return ctrl.Result{}, err
+			failedCreateManagedClusterRes = true
+			log.Error(err, "Failed to create managedcluster resources", "namespace", decision.ClusterNamespace)
 		}
 	}
 
+	failedDeleteOba := false
 	for _, cluster := range currentClusters {
 		log.Info("To delete observabilityAddon", "namespace", cluster)
 		err = deleteObsAddon(client, cluster)
 		if err != nil {
+			failedDeleteOba = true
 			log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
-			return ctrl.Result{}, err
 		}
 	}
+
+	if failedCreateManagedClusterRes || failedDeleteOba {
+		return ctrl.Result{}, errors.New("Failed to create managedcluster resources or" +
+			" failed to delete observabilityaddon, skip and reconcile later")
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -324,7 +320,7 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 		},
 	}
 	err := client.Delete(context.TODO(), managedclusteraddon)
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
 
@@ -335,7 +331,7 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 		},
 	}
 	err = client.Delete(context.TODO(), certificate)
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
 
@@ -346,7 +342,7 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 		},
 	}
 	err = client.Delete(context.TODO(), lease)
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
 
