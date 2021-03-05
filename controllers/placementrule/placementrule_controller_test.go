@@ -187,6 +187,29 @@ func TestObservabilityAddonController(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork for cluster1: (%v)", err)
 	}
+
+	invalidName := "invalid-work"
+	invalidWork := &workv1.ManifestWork{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      invalidName,
+			Namespace: namespace,
+			Labels: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
+		},
+	}
+	err = c.Create(context.TODO(), invalidWork)
+	if err != nil {
+		t.Fatalf("Failed to create manifestwork: (%v)", err)
+	}
+	_, err = r.Reconcile(context.TODO(), req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: invalidName, Namespace: namespace}, found)
+	if err == nil {
+		t.Fatalf("Invalid manifestwork not removed")
+	}
 }
 func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
 	return &addonv1alpha1.ManagedClusterAddOn{

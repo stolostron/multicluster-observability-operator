@@ -34,6 +34,22 @@ type MetricsAllowlist struct {
 	MatchList []string `yaml:"matches"`
 }
 
+func deleteManifestWork(c client.Client, name string, namespace string) error {
+
+	addon := &workv1.ManifestWork{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+	}
+	err := c.Delete(context.TODO(), addon)
+	if err != nil && !k8serrors.IsNotFound(err) {
+		log.Error(err, "Failed to delete manifestworks", "name", name, "namespace", namespace)
+		return err
+	}
+	return nil
+}
+
 func deleteManifestWorks(c client.Client, namespace string) error {
 	err := deleteRes(c, namespace)
 	if err != nil {
