@@ -4,7 +4,7 @@
 
 .PHONY: build
 build:
-	go build -o manager ./cmd/manager
+	go build -o bin/manager main.go
 
 unit-tests:
 	go test `go list ./... | grep -v test`
