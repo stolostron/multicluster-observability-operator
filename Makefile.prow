@@ -7,4 +7,5 @@ build:
 	go build -o bin/manager main.go
 
 unit-tests:
+	go mod vendor
 	go test `go list ./... | grep -v test`
