@@ -79,14 +79,24 @@ spec:
                   - type
                   type: object
                 type: array
+              phase:
+                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                  of cluster Important: Run "make" to regenerate code after modifying
+                  this file'
+                type: string
             required:
             - conditions
+            - phase
             type: object
         type: object
     served: true
     storage: true
     subresources:
       status: {}
+    additionalPrinterColumns:
+    - name: Status
+      type: string
+      jsonPath: .status.phase
 status:
   acceptedNames:
     kind: ""
