@@ -65,7 +65,7 @@ func newSATokenSecret(namespaces ...string) *corev1.Secret {
 func TestCreateClusterRole(t *testing.T) {
 	role := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: clusterRoleName,
+			Name: mcoRoleName,
 			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
@@ -104,9 +104,9 @@ func TestCreateClusterRole(t *testing.T) {
 		t.Fatalf("createRole: (%v)", err)
 	}
 	found := &rbacv1.ClusterRole{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: clusterRoleName}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: mcoRoleName}, found)
 	if err != nil {
-		t.Fatalf("Failed to update ClusterRole: (%v)", err)
+		t.Fatalf("Failed to update mcoClusterRole: (%v)", err)
 	}
 	if len(found.Rules) != 1 {
 		t.Fatalf("role is no updated correctly")
@@ -116,14 +116,14 @@ func TestCreateClusterRole(t *testing.T) {
 func TestCreateClusterRoleBinding(t *testing.T) {
 	rb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: namespace + "-" + roleBindingName,
+			Name: namespace + "-" + mcoRoleBindingName,
 			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
 		},
 		RoleRef: rbacv1.RoleRef{
 			Kind:     "ClusterRole",
-			Name:     clusterRoleName + "-test",
+			Name:     mcoRoleName + "-test",
 			APIGroup: "rbac.authorization.k8s.io",
 		},
 		Subjects: []rbacv1.Subject{
@@ -141,23 +141,23 @@ func TestCreateClusterRoleBinding(t *testing.T) {
 		t.Fatalf("createRoleBinding: (%v)", err)
 	}
 	found := &rbacv1.ClusterRoleBinding{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + "-" + roleBindingName}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + "-" + mcoRoleBindingName}, found)
 	if err != nil {
 		t.Fatalf("Failed to update ClusterRoleBinding: (%v)", err)
 	}
-	if found.RoleRef.Name != clusterRoleName || found.Subjects[0].Name != serviceAccountName {
+	if found.RoleRef.Name != mcoRoleName || found.Subjects[0].Name != serviceAccountName {
 		t.Fatalf("clusterrolebinding is no updated correctly")
 	}
 }
 
 func TestCreateRole(t *testing.T) {
 	c := fake.NewFakeClient()
-	err := createRole(c, namespace)
+	err := createResourceRole(c)
 	if err != nil {
 		t.Fatalf("createRole: (%v)", err)
 	}
-	found := &rbacv1.Role{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: namespace}, found)
+	found := &rbacv1.ClusterRole{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: resRoleName, Namespace: ""}, found)
 	if err != nil {
 		t.Fatalf("Failed to create Role: (%v)", err)
 	}
@@ -167,7 +167,7 @@ func TestCreateRole(t *testing.T) {
 
 	role := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      roleName,
+			Name:      resRoleName,
 			Namespace: namespace,
 			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
@@ -192,12 +192,12 @@ func TestCreateRole(t *testing.T) {
 	}
 	objs := []runtime.Object{role}
 	c = fake.NewFakeClient(objs...)
-	err = createRole(c, namespace)
+	err = createResourceRole(c)
 	if err != nil {
 		t.Fatalf("createRole: (%v)", err)
 	}
-	found = &rbacv1.Role{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: roleName, Namespace: namespace}, found)
+	found = &rbacv1.ClusterRole{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: resRoleName, Namespace: ""}, found)
 	if err != nil {
 		t.Fatalf("Failed to update Role: (%v)", err)
 	}
@@ -208,22 +208,22 @@ func TestCreateRole(t *testing.T) {
 
 func TestCreateRoleBinding(t *testing.T) {
 	c := fake.NewFakeClient()
-	err := createRoleBinding(c, namespace)
+	err := createResourceRoleBinding(c, namespace)
 	if err != nil {
 		t.Fatalf("createRole: (%v)", err)
 	}
 	found := &rbacv1.RoleBinding{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: namespace}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: resRoleBindingName, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to create RoleBinding: (%v)", err)
 	}
-	if found.RoleRef.Name != roleName || found.Subjects[0].Name != serviceAccountName {
+	if found.RoleRef.Name != resRoleName || found.Subjects[0].Name != serviceAccountName {
 		t.Fatalf("rolebinding is no created correctly")
 	}
 
 	rb := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      roleBindingName,
+			Name:      resRoleBindingName,
 			Namespace: namespace,
 			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
@@ -231,7 +231,7 @@ func TestCreateRoleBinding(t *testing.T) {
 		},
 		RoleRef: rbacv1.RoleRef{
 			Kind:     "Role",
-			Name:     roleName + "-test",
+			Name:     resRoleName + "-test",
 			APIGroup: "rbac.authorization.k8s.io",
 		},
 		Subjects: []rbacv1.Subject{
@@ -244,16 +244,16 @@ func TestCreateRoleBinding(t *testing.T) {
 	}
 	objs := []runtime.Object{rb}
 	c = fake.NewFakeClient(objs...)
-	err = createRoleBinding(c, namespace)
+	err = createResourceRoleBinding(c, namespace)
 	if err != nil {
 		t.Fatalf("createRoleBinding: (%v)", err)
 	}
 	found = &rbacv1.RoleBinding{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: roleBindingName, Namespace: namespace}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: resRoleBindingName, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to update RoleBinding: (%v)", err)
 	}
-	if found.RoleRef.Name != roleName || found.Subjects[0].Name != serviceAccountName {
+	if found.RoleRef.Name != resRoleName || found.Subjects[0].Name != serviceAccountName {
 		t.Fatalf("rolebinding is no updated correctly")
 	}
 }
