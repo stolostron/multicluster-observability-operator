@@ -56,30 +56,30 @@ func createClusterRole(client client.Client) error {
 	found := &rbacv1.ClusterRole{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: mcoRoleName, Namespace: ""}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating endpoint-observability-controller clusterRole")
+		log.Info("Creating mco clusterRole")
 		err = client.Create(context.TODO(), role)
 		if err != nil {
-			log.Error(err, "Failed to create endpoint-observability-controller clusterRole")
+			log.Error(err, "Failed to create endpoint-observability-mco-role clusterRole")
 			return err
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check endpoint-observability-controller clusterRole")
+		log.Error(err, "Failed to check endpoint-observability-mco-role clusterRole")
 		return err
 	}
 
 	if !reflect.DeepEqual(found.Rules, role.Rules) {
-		log.Info("Updating endpoint-observability-controller clusterRole")
+		log.Info("Updating endpoint-observability-mco-role clusterRole")
 		role.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 		err = client.Update(context.TODO(), role)
 		if err != nil {
-			log.Error(err, "Failed to update endpoint-observability-controller clusterRole")
+			log.Error(err, "Failed to update endpoint-observability-mco-role clusterRole")
 			return err
 		}
 		return nil
 	}
 
-	log.Info("clusterrole already existed/unchanged")
+	log.Info("clusterrole endpoint-observability-mco-role already existed/unchanged")
 	return nil
 }
 
@@ -105,32 +105,33 @@ func createClusterRoleBinding(client client.Client, namespace string) error {
 		},
 	}
 	found := &rbacv1.ClusterRoleBinding{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: namespace + "-" + mcoRoleBindingName, Namespace: ""}, found)
+	err := client.Get(context.TODO(), types.NamespacedName{Name: namespace + "-" +
+		mcoRoleBindingName, Namespace: ""}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating endpoint-observability-controller clusterrolebinding")
+		log.Info("Creating endpoint-observability-mco-rolebinding clusterrolebinding")
 		err = client.Create(context.TODO(), rb)
 		if err != nil {
-			log.Error(err, "Failed to create endpoint-observability-controller clusterrolebinding")
+			log.Error(err, "Failed to create endpoint-observability-mco-rolebinding clusterrolebinding")
 			return err
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check endpoint-observability-controller clusterrolebinding")
+		log.Error(err, "Failed to check endpoint-observability-mco-rolebinding clusterrolebinding")
 		return err
 	}
 
 	if !reflect.DeepEqual(found.Subjects, rb.Subjects) && !reflect.DeepEqual(found.RoleRef, rb.RoleRef) {
-		log.Info("Updating endpoint-observability-controller clusterrolebinding")
+		log.Info("Updating endpoint-observability-mco-rolebinding clusterrolebinding")
 		rb.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 		err = client.Update(context.TODO(), rb)
 		if err != nil {
-			log.Error(err, "Failed to update endpoint-observability-controller clusterrolebinding")
+			log.Error(err, "Failed to update endpoint-observability-mco-rolebinding clusterrolebinding")
 			return err
 		}
 		return nil
 	}
 
-	log.Info("clusterrolebinding already existed/unchanged", "namespace", namespace)
+	log.Info("clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged", "namespace", namespace)
 	return nil
 }
 
@@ -208,30 +209,30 @@ func createResourceRole(client client.Client) error {
 	found := &rbacv1.ClusterRole{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: resRoleName, Namespace: ""}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating endpoint-observability-controller role")
+		log.Info("Creating endpoint-observability-res-role clusterrole")
 		err = client.Create(context.TODO(), role)
 		if err != nil {
-			log.Error(err, "Failed to create endpoint-observability-controller role")
+			log.Error(err, "Failed to create endpoint-observability-res-role clusterrole")
 			return err
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check endpoint-observability-controller role")
+		log.Error(err, "Failed to check endpoint-observability-res-role clusterrole")
 		return err
 	}
 
 	if !reflect.DeepEqual(found.Rules, role.Rules) {
-		log.Info("Updating endpoint-observability-controller role")
+		log.Info("Updating endpoint-observability-res-role clusterrole")
 		role.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 		err = client.Update(context.TODO(), role)
 		if err != nil {
-			log.Error(err, "Failed to update endpoint-observability-controller role")
+			log.Error(err, "Failed to update endpoint-observability-res-role clusterrole")
 			return err
 		}
 		return nil
 	}
 
-	log.Info("role already existed/unchanged")
+	log.Info("clusterrole endpoint-observability-res-role already existed/unchanged")
 	return nil
 }
 
@@ -260,30 +261,30 @@ func createResourceRoleBinding(client client.Client, namespace string) error {
 	found := &rbacv1.RoleBinding{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: resRoleBindingName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating endpoint-observability-controller rolebinding", "namespace", namespace)
+		log.Info("Creating endpoint-observability-res-rolebinding rolebinding", "namespace", namespace)
 		err = client.Create(context.TODO(), rb)
 		if err != nil {
-			log.Error(err, "Failed to create endpoint-observability-controller rolebinding")
+			log.Error(err, "Failed to create endpoint-observability-res-rolebinding rolebinding", "namespace", namespace)
 			return err
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check endpoint-observability-controller rolebinding")
+		log.Error(err, "Failed to check endpoint-observability-res-rolebinding rolebinding", "namespace", namespace)
 		return err
 	}
 
 	if !reflect.DeepEqual(found.Subjects, rb.Subjects) && !reflect.DeepEqual(found.RoleRef, rb.RoleRef) {
-		log.Info("Updating endpoint-observability-controller rolebinding", "namespace", namespace)
+		log.Info("Updating endpoint-observability-res-rolebinding rolebinding", "namespace", namespace)
 		rb.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 		err = client.Update(context.TODO(), rb)
 		if err != nil {
-			log.Error(err, "Failed to update endpoint-observability-controller rolebinding")
+			log.Error(err, "Failed to update endpoint-observability-res-rolebinding rolebinding", "namespace", namespace)
 			return err
 		}
 		return nil
 	}
 
-	log.Info("rolebinding already existed/unchanged", "namespace", namespace)
+	log.Info("rolebinding endpoint-observability-res-rolebinding already existed/unchanged", "namespace", namespace)
 	return nil
 }
 
