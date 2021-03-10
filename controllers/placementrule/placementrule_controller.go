@@ -188,7 +188,10 @@ func createAllRelatedRes(
 	// create the clusterrole if not there
 	if !isCRoleCreated {
 		err := createClusterRole(client)
-
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		err = createResourceRole(client)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -278,6 +281,10 @@ func deleteAllRelatedRes(
 		}
 	}
 	err := deleteClusterRole(client)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	err = deleteResourceRole(client)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
