@@ -6,7 +6,7 @@ package util
 import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 )
 
 var log = logf.Log.WithName("util")

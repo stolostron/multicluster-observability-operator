@@ -1,4 +1,4 @@
-module github.com/open-cluster-management/multicluster-monitoring-operator
+module github.com/open-cluster-management/multicluster-observability-operator
 
 go 1.15
 
@@ -7,8 +7,6 @@ require (
 	github.com/go-logr/logr v0.3.0
 	github.com/jetstack/cert-manager v0.0.0-00010101000000-000000000000
 	github.com/kr/pretty v0.2.1 // indirect
-	github.com/onsi/ginkgo v1.14.1
-	github.com/onsi/gomega v1.10.2
 	github.com/open-cluster-management/api v0.0.0-20201007180356-41d07eee4294
 	github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20201013190828-d760a392d21d
 	github.com/open-cluster-management/observatorium-operator v0.0.0-20210208020738-a753d89f15df

@@ -12,8 +12,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
-	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
 
 func updateAddonStatus(c client.Client, addonList mcov1beta1.ObservabilityAddonList) error {

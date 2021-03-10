@@ -29,9 +29,9 @@ import (
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
-	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
+	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 
 func init() {

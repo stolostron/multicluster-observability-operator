@@ -17,9 +17,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
-	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
-	mcocontroller "github.com/open-cluster-management/multicluster-monitoring-operator/controllers/multiclusterobservability"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcocontroller "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 
 const (
