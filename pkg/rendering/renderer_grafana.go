@@ -7,7 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
 
 func (r *Renderer) newGranfanaRenderer() {

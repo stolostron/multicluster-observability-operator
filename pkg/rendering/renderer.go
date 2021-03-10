@@ -16,11 +16,11 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
-	monitoringv1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
-	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering/patching"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering/templates"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
+	monitoringv1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/rendering/patching"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/rendering/templates"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
 
 const (

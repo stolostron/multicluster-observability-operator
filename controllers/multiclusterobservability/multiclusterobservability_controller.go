@@ -27,11 +27,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/deploying"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/rendering"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/deploying"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/rendering"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 )
 

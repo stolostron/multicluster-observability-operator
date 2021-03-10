@@ -22,8 +22,8 @@ import (
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/api/v1beta1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 
 const (

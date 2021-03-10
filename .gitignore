@@ -91,4 +91,4 @@ tags
 *.swo
 *~
 main
-multicluster-monitoring-operator
+multicluster-observability-operator
