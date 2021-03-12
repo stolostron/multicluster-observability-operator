@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Red Hat, Inc.
+// Copyright (c) 2021 Red Hat, Inc.
 
 package placementrule
 
@@ -11,20 +11,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	obv1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
-	epConfigName = "observability-addon"
+	obsAddonName      = "observability-addon"
+	obsAddonFinalizer = "observability.open-cluster-management.io/addon-cleanup"
 )
 
 func deleteObsAddon(client client.Client, namespace string) error {
 	found := &obv1beta1.ObservabilityAddon{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: epConfigName, Namespace: namespace}, found)
+	err := client.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil
 		}
-		log.Error(err, "Failed to check endpoint config cr", "namespace", namespace)
+		log.Error(err, "Failed to check observabilityaddon cr before delete", "namespace", namespace)
 		return err
 	}
 	err = client.Delete(context.TODO(), found)
@@ -44,7 +46,7 @@ func deleteObsAddon(client client.Client, namespace string) error {
 func createObsAddon(client client.Client, namespace string) error {
 	ec := &obv1beta1.ObservabilityAddon{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      epConfigName,
+			Name:      obsAddonName,
 			Namespace: namespace,
 			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
@@ -52,20 +54,44 @@ func createObsAddon(client client.Client, namespace string) error {
 		},
 	}
 	found := &obv1beta1.ObservabilityAddon{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: epConfigName, Namespace: namespace}, found)
+	err := client.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating endpoint config cr", "namespace", namespace)
+		log.Info("Creating observabilityaddon cr", "namespace", namespace)
 		err = client.Create(context.TODO(), ec)
 		if err != nil {
-			log.Error(err, "Failed to create endpoint config cr")
+			log.Error(err, "Failed to create observabilityaddon cr")
 			return err
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check endpoint config cr")
+		log.Error(err, "Failed to check observabilityaddon cr before create")
 		return err
 	}
 
 	log.Info("endponitmetrics already existed/unchanged", "namespace", namespace)
+	return nil
+}
+
+func deleteStaleObsAddon(c client.Client, namespace string) error {
+	found := &obv1beta1.ObservabilityAddon{}
+	err := c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		log.Error(err, "Failed to check observabilityaddon cr before delete stale ones", "namespace", namespace)
+		return err
+	}
+	if found.GetDeletionTimestamp() != nil && util.Contains(found.GetFinalizers(), obsAddonFinalizer) {
+		found.SetFinalizers(util.Remove(found.GetFinalizers(), obsAddonFinalizer))
+		err = c.Update(context.TODO(), found)
+		if err != nil {
+			log.Error(err, "Failed to delete finalizer in observabilityaddon", "namespace", namespace)
+			return err
+		}
+		log.Info("observabilityaddon's finalizer is deleted", "namespace", namespace)
+	}
+
+	log.Info("observabilityaddon's finalizer is deleted", "namespace", namespace)
 	return nil
 }
