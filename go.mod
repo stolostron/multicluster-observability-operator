@@ -69,4 +69,5 @@ replace (
 	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc7
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad
 	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.0.0-20190424153033-d3245f150225
+        golang.org/x/text => golang.org/x/text v0.3.5
 )
