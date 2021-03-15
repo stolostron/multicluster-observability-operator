@@ -30,6 +30,7 @@ replace (
 	github.com/jetstack/cert-manager => github.com/open-cluster-management/cert-manager v0.0.0-20200821135248-2fd523b053f5
 	github.com/open-cluster-management/api => github.com/open-cluster-management/api v0.0.0-20201007180356-41d07eee4294
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad
+	golang.org/x/text => golang.org/x/text v0.3.5
 	k8s.io/api => k8s.io/api v0.19.2
 	k8s.io/apimachinery => k8s.io/apimachinery v0.19.2
 	k8s.io/client-go => k8s.io/client-go v0.19.2
