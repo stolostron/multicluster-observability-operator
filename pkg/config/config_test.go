@@ -47,7 +47,7 @@ func TestReplaceImage(t *testing.T) {
 		{
 			annotations: map[string]string{
 				AnnotationKeyImageRepository: DefaultImgRepository,
-				"mco-test-tag":               "test",
+				"mco-test-image":             "test.org/test:latest",
 			},
 			name:      "Replace image for test purpose",
 			imageRepo: "test.org",
