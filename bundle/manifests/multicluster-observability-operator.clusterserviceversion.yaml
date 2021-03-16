@@ -59,7 +59,7 @@ spec:
   install:
     spec:
       deployments:
-      - name: multicluster-observability-operator-multicluster-observability-operator
+      - name: multicluster-observability-operator
         spec:
           replicas: 1
           selector:

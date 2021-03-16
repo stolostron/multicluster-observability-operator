@@ -14,4 +14,4 @@ data:
       resourceName: b9d51391.open-cluster-management.io
 kind: ConfigMap
 metadata:
-  name: multicluster-observability-operator-manager-config
+  name: manager-config
