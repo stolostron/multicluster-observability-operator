@@ -218,16 +218,13 @@ func ReplaceImage(annotations map[string]string, imageRepo, componentName string
 			annotationImageRepo = DefaultImgRepository
 		}
 		// This is for test only. e.g.:
-		// if there is "mco-metrics_collector-tag" defined in annotation, use it for testing
-		componentTagSuffix, hasComponentTagSuffix := annotations["mco-"+componentName+"-tag"]
+		// if there is "mco-metrics_collector-image" defined in annotation, use it for testing
+		componentImageSuffix, hasComponentImageSuffix := annotations["mco-"+componentName+"-image"]
 		tagSuffix, hasTagSuffix := annotations[AnnotationKeyImageTagSuffix]
 		sameOrg := strings.Contains(imageRepo, DefaultImgRepository)
 
-		if hasComponentTagSuffix {
-			repoSlice := strings.Split(imageRepo, "/")
-			imageName := strings.Split(repoSlice[len(repoSlice)-1], ":")[0]
-			image := annotationImageRepo + "/" + imageName + ":" + componentTagSuffix
-			return true, image
+		if hasComponentImageSuffix {
+			return true, componentImageSuffix
 		} else if hasTagSuffix && sameOrg {
 			repoSlice := strings.Split(imageRepo, "/")
 			imageName := strings.Split(repoSlice[len(repoSlice)-1], ":")[0]
