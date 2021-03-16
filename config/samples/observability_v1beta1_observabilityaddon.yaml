@@ -1,7 +1,7 @@
 apiVersion: observability.open-cluster-management.io/v1beta1
 kind: ObservabilityAddon
 metadata:
-  name: observabilityaddon-sample
+  name: observability-addon
 spec:
-  # Add fields here
-  foo: bar
+  enableMetrics: true
+  interval: 30
