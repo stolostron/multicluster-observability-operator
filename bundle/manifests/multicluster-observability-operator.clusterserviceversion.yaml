@@ -51,6 +51,9 @@ spec:
       kind: ObservabilityAddon
       name: observabilityaddons.observability.open-cluster-management.io
       version: v1beta1
+    - kind: Observatorium
+      name: observatoria.core.observatorium.io
+      version: v1alpha1
   description: The multicluster-observability-operator is a component of ACM observability feature. It is designed to install into Hub Cluster.
   displayName: Multicluster Observability Operator
   icon:
