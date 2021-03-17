@@ -4,6 +4,7 @@
 resources:
 - bases/observability.open-cluster-management.io_multiclusterobservabilities.yaml
 - bases/observability.open-cluster-management.io_observabilityaddons.yaml
+- bases/core.observatorium.io_observatoria.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

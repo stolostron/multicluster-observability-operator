@@ -1,0 +1,135 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "observability.open-cluster-management.io/v1beta1",
+          "kind": "MultiClusterObservability",
+          "metadata": {
+            "name": "observability"
+          },
+          "spec": {
+            "observabilityAddonSpec": {},
+            "storageConfigObject": {
+              "metricObjectStorage": {
+                "key": "thanos.yaml",
+                "name": "thanos-object-storage"
+              }
+            }
+          }
+        },
+        {
+          "apiVersion": "observability.open-cluster-management.io/v1beta1",
+          "kind": "ObservabilityAddon",
+          "metadata": {
+            "name": "observability-addon"
+          },
+          "spec": {
+            "enableMetrics": true,
+            "interval": 30
+          }
+        }
+      ]
+    capabilities: Basic Install
+    operators.operatorframework.io/builder: operator-sdk-v1.4.2
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    operators.operatorframework.io/internal-objects: '["observatoria.core.observatorium.io","observabilityaddons.observability.open-cluster-management.io"]'
+  name: multicluster-observability-operator.v0.1.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: MultiClusterObservability defines the configuration for the Observability installation on Hub and Managed Clusters all through this one custom resource.
+      displayName: Multi Cluster Observability
+      kind: MultiClusterObservability
+      name: multiclusterobservabilities.observability.open-cluster-management.io
+      version: v1beta1
+    - description: ObservabilityAddon is the Schema for the observabilityaddon API
+      displayName: Observability Addon
+      kind: ObservabilityAddon
+      name: observabilityaddons.observability.open-cluster-management.io
+      version: v1beta1
+    - kind: Observatorium
+      name: observatoria.core.observatorium.io
+      version: v1alpha1
+  description: The multicluster-observability-operator is a component of ACM observability feature. It is designed to install into Hub Cluster.
+  displayName: Multicluster Observability Operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments:
+      - name: multicluster-observability-operator
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              name: multicluster-observability-operator
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                name: multicluster-observability-operator
+            spec:
+              containers:
+              - command:
+                - mco-operator
+                env:
+                - name: WATCH_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['olm.targetNamespaces']
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: POD_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: COMPONENT_VERSION
+                  value: 2.3.0
+                - name: OPERATOR_NAME
+                  value: multicluster-observability-operator
+                - name: TEMPLATES_PATH
+                  value: /usr/local/manifests
+                - name: SPOKE_NAMESPACE
+                  value: open-cluster-management-addon-observability
+                image: quay.io/open-cluster-management/multicluster-observability-operator:2.3.0-SNAPSHOT-2021-03-16-13-59-25
+                imagePullPolicy: Always
+                name: multicluster-observability-operator
+                resources:
+                  limits:
+                    cpu: 300m
+                    memory: 512Mi
+                  requests:
+                    cpu: 100m
+                    memory: 128Mi
+              serviceAccountName: multicluster-observability-operator
+    strategy: deployment
+  installModes:
+  - supported: true
+    type: OwnNamespace
+  - supported: true
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - MultiClusterObservability
+  links:
+  - name: Multicluster Observability Operator
+    url: https://multicluster-observability-operator.domain
+  maintainers:
+  - email: acm-contact@redhat.com
+    name: acm-contact
+  maturity: alpha
+  provider:
+    name: Red Hat, Inc
+    url: https://github.com/open-cluster-management/multicluster-observability-operator
+  version: 0.1.0
