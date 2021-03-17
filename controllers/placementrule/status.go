@@ -7,6 +7,7 @@ import (
 	"context"
 	"reflect"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -38,6 +39,10 @@ func updateAddonStatus(c client.Client, addonList mcov1beta1.ObservabilityAddonL
 			Namespace: addon.ObjectMeta.Namespace,
 		}, managedclusteraddon)
 		if err != nil {
+			if errors.IsNotFound(err) {
+				log.Info("managedclusteraddon does not exist", "namespace", addon.ObjectMeta.Namespace)
+				continue
+			}
 			log.Error(err, "Failed to get managedclusteraddon", "namespace", addon.ObjectMeta.Namespace)
 			return err
 		}

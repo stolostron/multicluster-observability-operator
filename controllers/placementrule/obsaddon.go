@@ -5,6 +5,7 @@ package placementrule
 
 import (
 	"context"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,9 +21,9 @@ const (
 	obsAddonFinalizer = "observability.open-cluster-management.io/addon-cleanup"
 )
 
-func deleteObsAddon(client client.Client, namespace string) error {
+func deleteObsAddon(c client.Client, namespace string) error {
 	found := &obv1beta1.ObservabilityAddon{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
+	err := c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil
@@ -30,12 +31,20 @@ func deleteObsAddon(client client.Client, namespace string) error {
 		log.Error(err, "Failed to check observabilityaddon cr before delete", "namespace", namespace)
 		return err
 	}
-	err = client.Delete(context.TODO(), found)
+	// forcely remove observabilityaddon if it's already stuck in Terminating more than 5 minutes
+	if found.GetDeletionTimestamp() != nil &&
+		time.Since(found.GetDeletionTimestamp().Time).Minutes() > 5 {
+		err = deleteFinalizer(c, found)
+		if err != nil {
+			return err
+		}
+	}
+	err = c.Delete(context.TODO(), found)
 	if err != nil {
 		log.Error(err, "Failed to delete observabilityaddon", "namespace", namespace)
 	}
 
-	err = removeObservabilityAddon(client, namespace)
+	err = removeObservabilityAddon(c, namespace)
 	if err != nil {
 		return err
 	}
@@ -44,7 +53,7 @@ func deleteObsAddon(client client.Client, namespace string) error {
 	return nil
 }
 
-func createObsAddon(client client.Client, namespace string) error {
+func createObsAddon(c client.Client, namespace string) error {
 	ec := &obv1beta1.ObservabilityAddon{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obsAddonName,
@@ -55,10 +64,16 @@ func createObsAddon(client client.Client, namespace string) error {
 		},
 	}
 	found := &obv1beta1.ObservabilityAddon{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
+	err := c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
+	if err != nil && errors.IsNotFound(err) || err == nil && found.GetDeletionTimestamp() != nil {
+		if err == nil {
+			err = deleteFinalizer(c, found)
+			if err != nil {
+				return err
+			}
+		}
 		log.Info("Creating observabilityaddon cr", "namespace", namespace)
-		err = client.Create(context.TODO(), ec)
+		err = c.Create(context.TODO(), ec)
 		if err != nil {
 			log.Error(err, "Failed to create observabilityaddon cr")
 			return err
@@ -69,7 +84,7 @@ func createObsAddon(client client.Client, namespace string) error {
 		return err
 	}
 
-	log.Info("endponitmetrics already existed/unchanged", "namespace", namespace)
+	log.Info("observabilityaddon already existed/unchanged", "namespace", namespace)
 	return nil
 }
 
@@ -83,16 +98,34 @@ func deleteStaleObsAddon(c client.Client, namespace string) error {
 		log.Error(err, "Failed to check observabilityaddon cr before delete stale ones", "namespace", namespace)
 		return err
 	}
-	if found.GetDeletionTimestamp() != nil && util.Contains(found.GetFinalizers(), obsAddonFinalizer) {
-		found.SetFinalizers(util.Remove(found.GetFinalizers(), obsAddonFinalizer))
-		err = c.Update(context.TODO(), found)
+	err = deleteFinalizer(c, found)
+	if err != nil {
+		return err
+	}
+	obsaddon := &obv1beta1.ObservabilityAddon{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      obsAddonName,
+			Namespace: namespace,
+		},
+	}
+	err = c.Delete(context.TODO(), obsaddon)
+	if err != nil && !errors.IsNotFound(err) {
+		log.Error(err, "Failed to delete observabilityaddon", "namespace", namespace)
+		return err
+	}
+	log.Info("observabilityaddon is deleted thoroughly", "namespace", namespace)
+	return nil
+}
+
+func deleteFinalizer(c client.Client, obsaddon *obv1beta1.ObservabilityAddon) error {
+	if util.Contains(obsaddon.GetFinalizers(), obsAddonFinalizer) {
+		obsaddon.SetFinalizers(util.Remove(obsaddon.GetFinalizers(), obsAddonFinalizer))
+		err := c.Update(context.TODO(), obsaddon)
 		if err != nil {
-			log.Error(err, "Failed to delete finalizer in observabilityaddon", "namespace", namespace)
+			log.Error(err, "Failed to delete finalizer in observabilityaddon", "namespace", obsaddon.Namespace)
 			return err
 		}
-		log.Info("observabilityaddon's finalizer is deleted", "namespace", namespace)
+		log.Info("observabilityaddon's finalizer is deleted", "namespace", obsaddon.Namespace)
 	}
-
-	log.Info("observabilityaddon's finalizer is deleted", "namespace", namespace)
 	return nil
 }
