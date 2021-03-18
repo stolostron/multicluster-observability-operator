@@ -172,8 +172,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return *result, err
 	}
 
-	enableManagedCluster, found := os.LookupEnv("ENABLE_MANAGED_CLUSTER")
-	if !found || enableManagedCluster != "false" {
+	crdExists, err := util.CheckCRDExist("placementrules.apps.open-cluster-management.io")
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if crdExists {
 		// create the placementrule
 		err = createPlacementRule(r.Client, r.Scheme, instance)
 		if err != nil {
