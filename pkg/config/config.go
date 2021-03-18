@@ -70,7 +70,7 @@ const (
 
 	ThanosImgRepo = "quay.io/thanos"
 	ThanosImgName = "thanos"
-	ThanosImgTag  = "master-2020-08-12-70f89d83"
+	ThanosImgTag  = "v0.18.0"
 
 	MemcachedImgRepo = "docker.io"
 	MemcachedImgName = "memcached"
