@@ -77,12 +77,14 @@ func CheckCRDExist(crdName string) (bool, error) {
 					return false, nil
 				}
 				log.Error(err, "failed to get PlacementRule CRD with ApiextensionsV1 Client")
-				return false, err
+				// ignore the error since only care if the CRD exists or not
+				return false, nil
 			}
 			return true, nil
 		} else {
 			log.Error(err, "failed to get PlacementRule CRD with ApiextensionsV1beta1 Client")
-			return false, err
+			// ignore the error since only care if the CRD exists or not
+			return false, nil
 		}
 	}
 	return true, nil
