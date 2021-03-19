@@ -10,6 +10,7 @@ import (
 	cert "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -87,8 +88,18 @@ func TestObservabilityAddonController(t *testing.T) {
 	}
 	mco := newTestMCO()
 	pull := newTestPullSecret()
+	deprecatedRole := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "endpoint-observability-role",
+			Namespace: namespace,
+			Labels: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
+		},
+	}
 	objs := []runtime.Object{p, mco, pull, newTestRoute(), newTestInfra(), newCASecret(), newCertSecret(), NewMetricsAllowListCM(),
-		newSATokenSecret(), newTestSA(), newSATokenSecret(namespace2), newTestSA(namespace2), newCertSecret(namespace2), newManagedClusterAddon()}
+		newSATokenSecret(), newTestSA(), newSATokenSecret(namespace2), newTestSA(namespace2), newCertSecret(namespace2), newManagedClusterAddon(),
+		deprecatedRole}
 	c := fake.NewFakeClient(objs...)
 
 	r := &PlacementRuleReconciler{Client: c, Scheme: s}
@@ -110,6 +121,11 @@ func TestObservabilityAddonController(t *testing.T) {
 	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace2 + resWorkNameSuffix, Namespace: namespace2}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork for cluster2: (%v)", err)
+	}
+	foundRole := &rbacv1.Role{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: "endpoint-observability-role", Namespace: namespace}, foundRole)
+	if err == nil || !errors.IsNotFound(err) {
+		t.Fatalf("Deprecated role not removed")
 	}
 
 	newPlacement := &placementv1.PlacementRule{}
@@ -186,6 +202,30 @@ func TestObservabilityAddonController(t *testing.T) {
 	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + resWorkNameSuffix, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork for cluster1: (%v)", err)
+	}
+
+	invalidName := "invalid-work"
+	invalidWork := &workv1.ManifestWork{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      invalidName,
+			Namespace: namespace,
+			Labels: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
+		},
+	}
+	err = c.Create(context.TODO(), invalidWork)
+	if err != nil {
+		t.Fatalf("Failed to create manifestwork: (%v)", err)
+	}
+
+	_, err = r.Reconcile(context.TODO(), req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: invalidName, Namespace: namespace}, found)
+	if err == nil {
+		t.Fatalf("Invalid manifestwork not removed")
 	}
 }
 func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
