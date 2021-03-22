@@ -138,10 +138,10 @@ func updateAddonSpecStatus(
 func getExpectedDeploymentNames(mcoCRName string) []string {
 	return []string{
 		"grafana",
-		mcoCRName + "-observatorium-observatorium-api",
-		mcoCRName + "-observatorium-thanos-query",
-		mcoCRName + "-observatorium-thanos-query-frontend",
-		mcoCRName + "-observatorium-thanos-receive-controller",
+		mcoCRName + "-observatorium-api",
+		mcoCRName + "-thanos-query",
+		mcoCRName + "-thanos-query-frontend",
+		mcoCRName + "-thanos-receive-controller",
 		"observatorium-operator",
 		"rbac-query-proxy",
 	}
@@ -176,11 +176,11 @@ func checkDeployStatus(
 func getExpectedStatefulSetNames(mcoCRName string) []string {
 	return []string{
 		"alertmanager",
-		mcoCRName + "-observatorium-thanos-compact",
-		mcoCRName + "-observatorium-thanos-receive-default",
-		mcoCRName + "-observatorium-thanos-rule",
-		mcoCRName + "-observatorium-thanos-store-memcached",
-		mcoCRName + "-observatorium-thanos-store-shard-0",
+		mcoCRName + "-thanos-compact",
+		mcoCRName + "-thanos-receive-default",
+		mcoCRName + "-thanos-rule",
+		mcoCRName + "-thanos-store-memcached",
+		mcoCRName + "-thanos-store-shard-0",
 	}
 }
 

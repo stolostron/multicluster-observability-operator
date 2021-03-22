@@ -445,7 +445,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 	thanosPVCListOpts := []client.ListOption{
 		client.InNamespace(config.GetDefaultNamespace()),
 		client.MatchingLabels(map[string]string{
-			"app.kubernetes.io/instance": config.GetMonitoringCRName() + "-observatorium",
+			"app.kubernetes.io/instance": config.GetMonitoringCRName(),
 		}),
 	}
 
@@ -484,7 +484,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 	thanosSTSListOpts := []client.ListOption{
 		client.InNamespace(config.GetDefaultNamespace()),
 		client.MatchingLabels(map[string]string{
-			"app.kubernetes.io/instance": config.GetMonitoringCRName() + "-observatorium",
+			"app.kubernetes.io/instance": config.GetMonitoringCRName(),
 		}),
 	}
 

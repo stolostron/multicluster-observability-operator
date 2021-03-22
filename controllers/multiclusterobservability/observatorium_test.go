@@ -129,7 +129,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	cl.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      name + obsPartoOfName,
+			Name:      name,
 			Namespace: namespace,
 		},
 		observatoriumCRFound,
