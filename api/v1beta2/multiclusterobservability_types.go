@@ -1,7 +1,7 @@
 // Copyright (c) 2021 Red Hat, Inc.
 // Copyright Contributors to the Open Cluster Management project
 
-package v1beta1
+package v1beta2
 
 import (
 	corev1 "k8s.io/api/core/v1"
@@ -34,7 +34,7 @@ type MultiClusterObservabilitySpec struct {
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 	// The spec of the data retention configurations
-	// +optional
+	// +required
 	RetentionConfig *RetentionConfig `json:"retentionConfig,omitempty"`
 	// Specifies the storage to be used by Observability
 	// +required
@@ -62,6 +62,7 @@ type ObservabilityAddonSpec struct {
 // RetentionConfig is the spec of retention configurations.
 type RetentionConfig struct {
 	// How long to retain raw samples in a bucket.
+	// It applies to --retention.resolution-raw in compact.
 	// +optional
 	// +kubebuilder:default:="5d"
 	RetentionResolutionRaw string `json:"retentionResolutionRaw,omitempty"`
@@ -76,8 +77,25 @@ type RetentionConfig struct {
 	// How long to retain raw samples in a local disk. It applies to rule/receive:
 	// --tsdb.retention in receive
 	// --tsdb.retention in rule
+	// +optional
 	// +kubebuilder:default:="4d"
 	RetentionInLocal string `json:"retentionInLocal,omitempty"`
+	// Configure --compact.cleanup-interval in compact.
+	// How often we should clean up partially uploaded blocks and
+	// blocks with deletion mark in the background when --wait has been enabled.
+	// Setting it to "0s" disables it
+	// +optional
+	// +kubebuilder:default:="5m"
+	CleanupInterval string `json:"cleanupInterval,omitempty"`
+	// configure --delete-delay in compact
+	// Time before a block marked for deletion is deleted from bucket.
+	// +optional
+	// +kubebuilder:default:="48h"
+	DeleteDelay string `json:"deleteDelay,omitempty"`
+	// configure --tsdb.block-duration in rule (Block duration for TSDB block)
+	// +optional
+	// +kubebuilder:default:="2h"
+	BlockDuration string `json:"blockDuration,omitempty"`
 }
 
 // StorageConfigObject is the spec of object storage.
@@ -188,6 +206,7 @@ type Condition struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:storageversion
 
 // MultiClusterObservability defines the configuration for the Observability installation on
 // Hub and Managed Clusters all through this one custom resource.
@@ -202,7 +221,6 @@ type MultiClusterObservability struct {
 }
 
 // +kubebuilder:object:root=true
-
 // MultiClusterObservabilityList contains a list of MultiClusterObservability
 type MultiClusterObservabilityList struct {
 	metav1.TypeMeta `json:",inline"`

@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/rendering/templates"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
@@ -27,7 +27,7 @@ var (
 )
 
 func loadTemplates(namespace string,
-	mco *mcov1beta1.MultiClusterObservability) ([]runtime.RawExtension, error) {
+	mco *mcov1beta2.MultiClusterObservability) ([]runtime.RawExtension, error) {
 	templateRenderer := templates.NewTemplateRenderer(templatePath)
 	resourceList := []*resource.Resource{}
 	err := templateRenderer.AddTemplateFromPath(templatePath, &resourceList)
@@ -55,7 +55,7 @@ func loadTemplates(namespace string,
 }
 
 func updateRes(r *resource.Resource, namespace string,
-	mco *mcov1beta1.MultiClusterObservability) (runtime.Object, error) {
+	mco *mcov1beta2.MultiClusterObservability) (runtime.Object, error) {
 
 	kind := r.GetKind()
 	if kind != "ClusterRole" && kind != "ClusterRoleBinding" {
@@ -98,7 +98,7 @@ func updateRes(r *resource.Resource, namespace string,
 	return obj, nil
 }
 
-func updateEndpointOperator(mco *mcov1beta1.MultiClusterObservability,
+func updateEndpointOperator(mco *mcov1beta2.MultiClusterObservability,
 	namespace string, container corev1.Container) corev1.Container {
 	container.Image = getImage(mco, mcoconfig.EndpointControllerImgName,
 		mcoconfig.EndpointControllerImgTagSuffix, mcoconfig.EndpointControllerKey)
@@ -115,7 +115,7 @@ func updateEndpointOperator(mco *mcov1beta1.MultiClusterObservability,
 	return container
 }
 
-func updateLeaseController(mco *mcov1beta1.MultiClusterObservability,
+func updateLeaseController(mco *mcov1beta2.MultiClusterObservability,
 	namespace string, container corev1.Container) corev1.Container {
 	container.Image = getImage(mco, mcoconfig.LeaseControllerImageName,
 		mcoconfig.LeaseControllerImageTagSuffix, mcoconfig.LeaseControllerKey)
@@ -131,7 +131,7 @@ func updateLeaseController(mco *mcov1beta1.MultiClusterObservability,
 	return container
 }
 
-func getImage(mco *mcov1beta1.MultiClusterObservability,
+func getImage(mco *mcov1beta2.MultiClusterObservability,
 	name, tag, key string) string {
 	image := mcoconfig.DefaultImgRepository +
 		"/" + name + ":" + tag

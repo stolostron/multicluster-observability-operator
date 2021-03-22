@@ -6,7 +6,7 @@ resources:
 - crdVersion: v1
   group: observability
   kind: MultiClusterObservability
-  version: v1beta1
+  version: v1beta2
 - crdVersion: v1
   group: observability
   kind: ObservabilityAddon

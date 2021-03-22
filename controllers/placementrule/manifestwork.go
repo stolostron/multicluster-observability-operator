@@ -18,6 +18,7 @@ import (
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
@@ -129,7 +130,7 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 
 func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	clusterNamespace string, clusterName string,
-	mco *mcov1beta1.MultiClusterObservability,
+	mco *mcov1beta2.MultiClusterObservability,
 	imagePullSecret *corev1.Secret) error {
 
 	operatorWork := newManifestwork(clusterNamespace+operatorWorkNameSuffix, clusterNamespace)
@@ -318,7 +319,7 @@ func getAllowList(client client.Client, name string) (*MetricsAllowlist, error) 
 }
 
 func getObservabilityAddon(c client.Client, namespace string,
-	mco *mcov1beta1.MultiClusterObservability) (*mcov1beta1.ObservabilityAddon, error) {
+	mco *mcov1beta2.MultiClusterObservability) (*mcov1beta1.ObservabilityAddon, error) {
 	found := &mcov1beta1.ObservabilityAddon{}
 	namespacedName := types.NamespacedName{
 		Name:      obsAddonName,

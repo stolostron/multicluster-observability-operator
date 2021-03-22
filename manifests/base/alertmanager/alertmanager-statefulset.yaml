@@ -7,6 +7,7 @@ metadata:
     app: multicluster-observability-alertmanager
     alertmanager: observability
 spec:
+  replicas: 3
   selector:
     matchLabels:
       app: multicluster-observability-alertmanager

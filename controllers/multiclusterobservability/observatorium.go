@@ -23,7 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/yaml"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
@@ -38,7 +38,7 @@ const (
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
 func GenerateObservatoriumCR(
 	cl client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta1.MultiClusterObservability) (*ctrl.Result, error) {
+	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
 
 	labels := map[string]string{
 		"app": mco.Name,
@@ -144,7 +144,7 @@ func updateTenantID(
 // GenerateAPIGatewayRoute defines aaa
 func GenerateAPIGatewayRoute(
 	runclient client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta1.MultiClusterObservability) (*ctrl.Result, error) {
+	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
 
 	apiGateway := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
@@ -189,7 +189,7 @@ func GenerateAPIGatewayRoute(
 	return nil, nil
 }
 
-func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability,
+func newDefaultObservatoriumSpec(mco *mcov1beta2.MultiClusterObservability,
 	scSelected string) *observatoriumv1alpha1.ObservatoriumSpec {
 
 	obs := &observatoriumv1alpha1.ObservatoriumSpec{}
@@ -199,7 +199,7 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability,
 	obs.API.RBAC = newAPIRBAC()
 	obs.API.Tenants = newAPITenants()
 	obs.API.TLS = newAPITLS()
-	obs.API.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "Deployments")
+	obs.API.Replicas = util.GetReplicaCount("Deployments")
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		obs.API.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
@@ -245,7 +245,7 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability,
 
 	obs.Query.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
 	obs.Query.Version = mcoconfig.ThanosImgTag
-	obs.Query.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "Deployments")
+	obs.Query.Replicas = util.GetReplicaCount("Deployments")
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		obs.Query.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
@@ -257,7 +257,7 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability,
 
 	obs.QueryFrontend.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
 	obs.QueryFrontend.Version = mcoconfig.ThanosImgTag
-	obs.QueryFrontend.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "Deployments")
+	obs.QueryFrontend.Replicas = util.GetReplicaCount("Deployments")
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		obs.QueryFrontend.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
@@ -369,11 +369,11 @@ func newAPITLS() observatoriumv1alpha1.TLS {
 }
 
 func newReceiversSpec(
-	mco *mcov1beta1.MultiClusterObservability,
+	mco *mcov1beta2.MultiClusterObservability,
 	scSelected string) observatoriumv1alpha1.ReceiversSpec {
 	receSpec := observatoriumv1alpha1.ReceiversSpec{}
 	receSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
-	receSpec.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
+	receSpec.Replicas = util.GetReplicaCount("StatefulSet")
 	receSpec.ReplicationFactor = receSpec.Replicas
 	receSpec.Version = mcoconfig.ThanosImgTag
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
@@ -389,16 +389,16 @@ func newReceiversSpec(
 		receSpec.Image = image
 	}
 	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
-		mco.Spec.StorageConfig.StatefulSetSize,
+		mco.Spec.StorageConfig.ReceiveStorageSize,
 		scSelected)
 
 	return receSpec
 }
 
-func newRuleSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) observatoriumv1alpha1.RuleSpec {
+func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) observatoriumv1alpha1.RuleSpec {
 	ruleSpec := observatoriumv1alpha1.RuleSpec{}
 	ruleSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
-	ruleSpec.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
+	ruleSpec.Replicas = util.GetReplicaCount("StatefulSet")
 	ruleSpec.Version = mcoconfig.ThanosImgTag
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		ruleSpec.Resources = v1.ResourceRequirements{
@@ -428,7 +428,7 @@ func newRuleSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) o
 	}
 
 	ruleSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
-		mco.Spec.StorageConfig.StatefulSetSize,
+		mco.Spec.StorageConfig.RuleStorageSize,
 		scSelected)
 
 	//configure alertmanager in ruler
@@ -460,7 +460,7 @@ func newRuleSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) o
 	return ruleSpec
 }
 
-func newStoreSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) observatoriumv1alpha1.StoreSpec {
+func newStoreSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) observatoriumv1alpha1.StoreSpec {
 	storeSpec := observatoriumv1alpha1.StoreSpec{}
 	storeSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
 	storeSpec.Version = mcoconfig.ThanosImgTag
@@ -477,20 +477,20 @@ func newStoreSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) 
 		storeSpec.Image = image
 	}
 	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
-		mco.Spec.StorageConfig.StatefulSetSize,
+		mco.Spec.StorageConfig.StoreStorageSize,
 		scSelected)
-	storeSpec.Shards = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
+	storeSpec.Shards = util.GetReplicaCount("StatefulSet")
 	storeSpec.Cache = newStoreCacheSpec(mco)
 
 	return storeSpec
 }
 
-func newStoreCacheSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv1alpha1.StoreCacheSpec {
+func newStoreCacheSpec(mco *mcov1beta2.MultiClusterObservability) observatoriumv1alpha1.StoreCacheSpec {
 	storeCacheSpec := observatoriumv1alpha1.StoreCacheSpec{}
 	storeCacheSpec.Image = mcoconfig.MemcachedImgRepo + "/" +
 		mcoconfig.MemcachedImgName + ":" + mcoconfig.MemcachedImgTag
 	storeCacheSpec.Version = mcoconfig.MemcachedImgTag
-	storeCacheSpec.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
+	storeCacheSpec.Replicas = util.GetReplicaCount("StatefulSet")
 	storeCacheSpec.ExporterImage = mcoconfig.MemcachedExporterImgRepo + "/" +
 		mcoconfig.MemcachedExporterImgName + ":" + mcoconfig.MemcachedExporterImgTag
 	storeCacheSpec.ExporterVersion = mcoconfig.MemcachedExporterImgTag
@@ -525,7 +525,7 @@ func newStoreCacheSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv
 	return storeCacheSpec
 }
 
-func newCompactSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) observatoriumv1alpha1.CompactSpec {
+func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) observatoriumv1alpha1.CompactSpec {
 	var replicas1 int32 = 1
 	compactSpec := observatoriumv1alpha1.CompactSpec{}
 	compactSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
@@ -545,12 +545,12 @@ func newCompactSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string
 	if found {
 		compactSpec.Image = image
 	}
-	compactSpec.EnableDownsampling = mco.Spec.EnableDownSampling
-	compactSpec.RetentionResolutionRaw = mco.Spec.RetentionResolutionRaw
-	compactSpec.RetentionResolution5m = mco.Spec.RetentionResolution5m
-	compactSpec.RetentionResolution1h = mco.Spec.RetentionResolution1h
+	compactSpec.EnableDownsampling = mco.Spec.EnableDownsampling
+	compactSpec.RetentionResolutionRaw = mco.Spec.RetentionConfig.RetentionResolutionRaw
+	compactSpec.RetentionResolution5m = mco.Spec.RetentionConfig.RetentionResolution5m
+	compactSpec.RetentionResolution1h = mco.Spec.RetentionConfig.RetentionResolution1h
 	compactSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
-		mco.Spec.StorageConfig.StatefulSetSize,
+		mco.Spec.StorageConfig.CompactStorageSize,
 		scSelected)
 
 	return compactSpec
