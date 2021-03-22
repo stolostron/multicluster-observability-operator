@@ -70,7 +70,7 @@ const (
 
 	ThanosImgRepo = "quay.io/thanos"
 	ThanosImgName = "thanos"
-	ThanosImgTag  = "master-2020-08-12-70f89d83"
+	ThanosImgTag  = "v0.18.0"
 
 	MemcachedImgRepo = "docker.io"
 	MemcachedImgName = "memcached"
@@ -350,7 +350,7 @@ func GetTenantUID() string {
 
 // GetObsAPISvc returns observatorium api service
 func GetObsAPISvc(instanceName string) string {
-	return instanceName + "-observatorium" + "-observatorium-api." + defaultNamespace + ".svc.cluster.local"
+	return instanceName + "-observatorium-api." + defaultNamespace + ".svc.cluster.local"
 }
 
 func availabilityConfigIsValid(config mcov1beta1.AvailabilityType) bool {

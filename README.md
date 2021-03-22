@@ -104,15 +104,15 @@ NAME                                                              READY   STATUS
 alertmanager-0                                                    2/2     Running   0          5m
 grafana-6878c8b44-kxx6k                                           2/2     Running   0          5m
 minio-79c7ff488d-rqmfg                                            1/1     Running   0          5m
-observability-observatorium-observatorium-api-8646457ff9-6kw5v    1/1     Running   0          5m
-observability-observatorium-thanos-compact-0                      1/1     Running   0          5m
-observability-observatorium-thanos-query-fdc9b77b-7hxgc           1/1     Running   0          5m
-observability-observatorium-thanos-query-frontend-8764896b99597   1/1     Running   0          5m
-observability-observatorium-thanos-receive-controller-86982stcb   1/1     Running   0          5m
-observability-observatorium-thanos-receive-default-0              1/1     Running   0          5m
-observability-observatorium-thanos-rule-0                         2/2     Running   0          5m
-observability-observatorium-thanos-store-memcached-0              2/2     Running   0          5m
-observability-observatorium-thanos-store-shard-0-0                1/1     Running   0          5m
+observability-observatorium-api-8646457ff9-6kw5v    1/1     Running   0          5m
+observability-thanos-compact-0                      1/1     Running   0          5m
+observability-thanos-query-fdc9b77b-7hxgc           1/1     Running   0          5m
+observability-thanos-query-frontend-8764896b99597   1/1     Running   0          5m
+observability-thanos-receive-controller-86982stcb   1/1     Running   0          5m
+observability-thanos-receive-default-0              1/1     Running   0          5m
+observability-thanos-rule-0                         2/2     Running   0          5m
+observability-thanos-store-memcached-0              2/2     Running   0          5m
+observability-thanos-store-shard-0-0                1/1     Running   0          5m
 observatorium-operator-845dc69ccf-gdzn2                           1/1     Running   0          5m
 rbac-query-proxy-559b788777-ssmls                                 1/1     Running   0          5m
 ```
