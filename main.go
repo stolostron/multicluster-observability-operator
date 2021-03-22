@@ -45,6 +45,7 @@ import (
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	observabilityv1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	observabilityv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
 	prctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/placementrule"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
@@ -64,6 +65,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(observabilityv1beta1.AddToScheme(scheme))
+	utilruntime.Must(observabilityv1beta2.AddToScheme(scheme))
 	utilruntime.Must(placementv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
