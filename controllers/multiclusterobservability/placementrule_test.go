@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 
@@ -24,14 +24,14 @@ func TestCreatePlacementRule(t *testing.T) {
 		pName      = mcoconfig.GetPlacementRuleName()
 		testSuffix = "-test"
 	)
-	mco := &mcov1beta1.MultiClusterObservability{
+	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Spec:       mcov1beta1.MultiClusterObservabilitySpec{},
+		Spec:       mcov1beta2.MultiClusterObservabilitySpec{},
 	}
 
 	s := scheme.Scheme
-	mcov1beta1.SchemeBuilder.AddToScheme(s)
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	appsv1.SchemeBuilder.AddToScheme(s)
 
 	c := fake.NewFakeClient()

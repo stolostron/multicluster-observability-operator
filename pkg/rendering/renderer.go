@@ -16,7 +16,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
-	monitoringv1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	obv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/rendering/patching"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/rendering/templates"
@@ -35,13 +35,13 @@ var log = logf.Log.WithName("renderer")
 type renderFn func(*resource.Resource) (*unstructured.Unstructured, error)
 
 type Renderer struct {
-	cr                    *monitoringv1.MultiClusterObservability
+	cr                    *obv1beta2.MultiClusterObservability
 	renderFns             map[string]renderFn
 	renderGrafanaFns      map[string]renderFn
 	renderAlertManagerFns map[string]renderFn
 }
 
-func NewRenderer(multipleClusterMonitoring *monitoringv1.MultiClusterObservability) *Renderer {
+func NewRenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability) *Renderer {
 	renderer := &Renderer{cr: multipleClusterMonitoring}
 	renderer.renderFns = map[string]renderFn{
 		"Deployment":            renderer.renderDeployments,
@@ -134,7 +134,7 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 				}
 
 			case "rbac-query-proxy":
-				dep.Spec.Replicas = util.GetReplicaCount(r.cr.Spec.AvailabilityConfig, "Deployment")
+				dep.Spec.Replicas = util.GetReplicaCount("Deployment")
 				updateProxySpec(spec, r.cr)
 			}
 
@@ -150,7 +150,7 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 	return resources, nil
 }
 
-func updateProxySpec(spec *corev1.PodSpec, mco *monitoringv1.MultiClusterObservability) {
+func updateProxySpec(spec *corev1.PodSpec, mco *obv1beta2.MultiClusterObservability) {
 	found, image := mcoconfig.ReplaceImage(mco.Annotations, spec.Containers[0].Image,
 		mcoconfig.RbacQueryProxyKey)
 	if found {

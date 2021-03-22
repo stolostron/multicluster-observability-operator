@@ -18,8 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 )
 
 const (
@@ -350,15 +348,6 @@ func GetTenantUID() string {
 // GetObsAPISvc returns observatorium api service
 func GetObsAPISvc(instanceName string) string {
 	return instanceName + "-observatorium-api." + defaultNamespace + ".svc.cluster.local"
-}
-
-func availabilityConfigIsValid(config mcov1beta1.AvailabilityType) bool {
-	switch config {
-	case mcov1beta1.HAHigh, mcov1beta1.HABasic:
-		return true
-	default:
-		return false
-	}
 }
 
 // SetCustomRuleConfigMap set true if there is custom rule configmap

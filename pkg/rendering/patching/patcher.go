@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 	"sigs.k8s.io/yaml"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
@@ -26,9 +26,9 @@ const (
 
 type patchGenerateFn func(
 	res *resource.Resource,
-	mco *mcov1beta1.MultiClusterObservability) (ifc.Kunstructured, error)
+	mco *mcov1beta2.MultiClusterObservability) (ifc.Kunstructured, error)
 
-func ApplyGlobalPatches(res *resource.Resource, mco *mcov1beta1.MultiClusterObservability) error {
+func ApplyGlobalPatches(res *resource.Resource, mco *mcov1beta2.MultiClusterObservability) error {
 
 	// for _, generate := range []patchGenerateFn{
 	// 	//generateImagePatch,
@@ -51,7 +51,7 @@ func ApplyGlobalPatches(res *resource.Resource, mco *mcov1beta1.MultiClusterObse
 
 func generateImagePatch(
 	res *resource.Resource,
-	mco *mcov1beta1.MultiClusterObservability) (ifc.Kunstructured, error) {
+	mco *mcov1beta2.MultiClusterObservability) (ifc.Kunstructured, error) {
 	imageFromTemplate, err := res.GetString(specFirstContainer + ".image") // need to loop through all images
 	if err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ spec:
 
 func generateImagePullSecretsPatch(
 	res *resource.Resource,
-	mco *mcov1beta1.MultiClusterObservability) (ifc.Kunstructured, error) {
+	mco *mcov1beta2.MultiClusterObservability) (ifc.Kunstructured, error) {
 
 	pullSecret := mco.Spec.ImagePullSecret
 	if pullSecret == "" {
@@ -110,7 +110,7 @@ func generateImagePullSecretsPatch(
 
 // func generateNodeSelectorPatch(
 // 	res *resource.Resource,
-// 	mco *mcov1beta1.MultiClusterObservability) (ifc.Kunstructured, error) {
+// 	mco *mcov1beta2.MultiClusterObservability) (ifc.Kunstructured, error) {
 
 // 	nodeSelectorOptions := mco.Spec.NodeSelector
 // 	if nodeSelectorOptions == nil {

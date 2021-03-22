@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
@@ -47,7 +46,7 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 	dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
 	dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
-	dep.Spec.Replicas = util.GetReplicaCount(r.cr.Spec.AvailabilityConfig, "StatefulSet")
+	dep.Spec.Replicas = util.GetReplicaCount("StatefulSet")
 
 	spec := &dep.Spec.Template.Spec
 	spec.Containers[0].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
@@ -56,17 +55,18 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 		args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", mcoconfig.GetDefaultNamespace(), 1)
 	}
 
-	if r.cr.Spec.AvailabilityConfig == mcov1beta1.HABasic {
-		// it is not for HA, so remove the cluster.peer
-		for idx := 0; idx < len(args); {
-			if strings.Contains(args[idx], "cluster.peer=") {
-				args = util.Remove(args, args[idx])
-				idx--
-				continue
-			}
-			idx++
-		}
-	}
+	//TODO: need to update cluster.peer
+	// if r.cr.Spec.AvailabilityConfig == mcov1beta2.HABasic {
+	// 	// it is not for HA, so remove the cluster.peer
+	// 	for idx := 0; idx < len(args); {
+	// 		if strings.Contains(args[idx], "cluster.peer=") {
+	// 			args = util.Remove(args, args[idx])
+	// 			idx--
+	// 			continue
+	// 		}
+	// 		idx++
+	// 	}
+	// }
 	spec.Containers[0].Args = args
 
 	spec.Containers[1].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
@@ -89,9 +89,9 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 		spec.Containers[1].Image = image
 	}
 	//replace the volumeClaimTemplate
-	dep.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = &r.cr.Spec.StorageConfig.StatefulSetStorageClass
+	dep.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = &r.cr.Spec.StorageConfig.StorageClass
 	dep.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] =
-		apiresource.MustParse(r.cr.Spec.StorageConfig.StatefulSetSize)
+		apiresource.MustParse(r.cr.Spec.StorageConfig.AlertmanagerStorageSize)
 
 	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 	if err != nil {

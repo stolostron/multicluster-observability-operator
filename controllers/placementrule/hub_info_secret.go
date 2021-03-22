@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 
@@ -29,7 +29,7 @@ type HubInfo struct {
 }
 
 func newHubInfoSecret(client client.Client, obsNamespace string,
-	namespace string, clusterName string, mco *mcov1beta1.MultiClusterObservability) (*corev1.Secret, error) {
+	namespace string, clusterName string, mco *mcov1beta2.MultiClusterObservability) (*corev1.Secret, error) {
 	url, err := config.GetObsAPIUrl(client, obsNamespace)
 	if err != nil {
 		log.Error(err, "Failed to get api gateway")

@@ -33,7 +33,7 @@ func (r *Renderer) renderGrafanaDeployments(res *resource.Resource) (*unstructur
 
 	spec, ok := u.Object["spec"].(map[string]interface{})
 	if ok {
-		spec["replicas"] = util.GetReplicaCount(r.cr.Spec.AvailabilityConfig, "Deployment")
+		spec["replicas"] = util.GetReplicaCount("Deployment")
 	}
 	return u, nil
 }

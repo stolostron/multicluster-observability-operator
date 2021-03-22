@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -24,7 +24,7 @@ conditions:
   reason: Ready
   type: Ready
 `
-	status := mcov1beta1.MultiClusterObservabilityStatus{}
+	status := mcov1beta2.MultiClusterObservabilityStatus{}
 	err := yaml.Unmarshal([]byte(raw), &status)
 	if err != nil {
 		t.Errorf("Failed to unmarshall MultiClusterObservabilityStatus %v", err)
@@ -47,18 +47,18 @@ func TestSetStatusCondition(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		conditions []mcov1beta1.Condition
-		toAdd      mcov1beta1.Condition
-		expected   []mcov1beta1.Condition
+		conditions []mcov1beta2.Condition
+		toAdd      mcov1beta2.Condition
+		expected   []mcov1beta2.Condition
 	}{
 		{
 			name: "should-add",
-			conditions: []mcov1beta1.Condition{
+			conditions: []mcov1beta2.Condition{
 				{Type: "first"},
 				{Type: "third"},
 			},
-			toAdd: mcov1beta1.Condition{Type: "second", Status: metav1.ConditionTrue, LastTransitionTime: metav1.Time{Time: oneHourBefore}, Reason: "reason", Message: "message"},
-			expected: []mcov1beta1.Condition{
+			toAdd: mcov1beta2.Condition{Type: "second", Status: metav1.ConditionTrue, LastTransitionTime: metav1.Time{Time: oneHourBefore}, Reason: "reason", Message: "message"},
+			expected: []mcov1beta2.Condition{
 				{Type: "first"},
 				{Type: "third"},
 				{Type: "second", Status: metav1.ConditionTrue, LastTransitionTime: metav1.Time{Time: oneHourBefore}, Reason: "reason", Message: "message"},
@@ -66,13 +66,13 @@ func TestSetStatusCondition(t *testing.T) {
 		},
 		{
 			name: "use-supplied-time",
-			conditions: []mcov1beta1.Condition{
+			conditions: []mcov1beta2.Condition{
 				{Type: "first"},
 				{Type: "second", Status: metav1.ConditionFalse},
 				{Type: "third"},
 			},
-			toAdd: mcov1beta1.Condition{Type: "second", Status: metav1.ConditionTrue, LastTransitionTime: metav1.Time{Time: oneHourBefore}, Reason: "reason", Message: "message"},
-			expected: []mcov1beta1.Condition{
+			toAdd: mcov1beta2.Condition{Type: "second", Status: metav1.ConditionTrue, LastTransitionTime: metav1.Time{Time: oneHourBefore}, Reason: "reason", Message: "message"},
+			expected: []mcov1beta2.Condition{
 				{Type: "first"},
 				{Type: "second", Status: metav1.ConditionTrue, LastTransitionTime: metav1.Time{Time: oneHourBefore}, Reason: "reason", Message: "message"},
 				{Type: "third"},
@@ -80,13 +80,13 @@ func TestSetStatusCondition(t *testing.T) {
 		},
 		{
 			name: "update-fields",
-			conditions: []mcov1beta1.Condition{
+			conditions: []mcov1beta2.Condition{
 				{Type: "first"},
 				{Type: "second", Status: metav1.ConditionTrue, LastTransitionTime: metav1.Time{Time: oneHourBefore}},
 				{Type: "third"},
 			},
-			toAdd: mcov1beta1.Condition{Type: "second", Status: metav1.ConditionTrue, LastTransitionTime: metav1.Time{Time: oneHourAfter}, Reason: "reason", Message: "message"},
-			expected: []mcov1beta1.Condition{
+			toAdd: mcov1beta2.Condition{Type: "second", Status: metav1.ConditionTrue, LastTransitionTime: metav1.Time{Time: oneHourAfter}, Reason: "reason", Message: "message"},
+			expected: []mcov1beta2.Condition{
 				{Type: "first"},
 				{Type: "second", Status: metav1.ConditionTrue, LastTransitionTime: metav1.Time{Time: oneHourBefore}, Reason: "reason", Message: "message"},
 				{Type: "third"},
@@ -107,32 +107,32 @@ func TestSetStatusCondition(t *testing.T) {
 func TestRemoveStatusCondition(t *testing.T) {
 	tests := []struct {
 		name          string
-		conditions    []mcov1beta1.Condition
+		conditions    []mcov1beta2.Condition
 		conditionType string
-		expected      []mcov1beta1.Condition
+		expected      []mcov1beta2.Condition
 	}{
 		{
 			name: "present",
-			conditions: []mcov1beta1.Condition{
+			conditions: []mcov1beta2.Condition{
 				{Type: "first"},
 				{Type: "second"},
 				{Type: "third"},
 			},
 			conditionType: "second",
-			expected: []mcov1beta1.Condition{
+			expected: []mcov1beta2.Condition{
 				{Type: "first"},
 				{Type: "third"},
 			},
 		},
 		{
 			name: "not-present",
-			conditions: []mcov1beta1.Condition{
+			conditions: []mcov1beta2.Condition{
 				{Type: "first"},
 				{Type: "second"},
 				{Type: "third"},
 			},
 			conditionType: "fourth",
-			expected: []mcov1beta1.Condition{
+			expected: []mcov1beta2.Condition{
 				{Type: "first"},
 				{Type: "second"},
 				{Type: "third"},
@@ -153,13 +153,13 @@ func TestRemoveStatusCondition(t *testing.T) {
 func TestFindStatusCondition(t *testing.T) {
 	tests := []struct {
 		name          string
-		conditions    []mcov1beta1.Condition
+		conditions    []mcov1beta2.Condition
 		conditionType string
-		expected      *mcov1beta1.Condition
+		expected      *mcov1beta2.Condition
 	}{
 		{
 			name: "not-present",
-			conditions: []mcov1beta1.Condition{
+			conditions: []mcov1beta2.Condition{
 				{Type: "first"},
 			},
 			conditionType: "second",
@@ -167,12 +167,12 @@ func TestFindStatusCondition(t *testing.T) {
 		},
 		{
 			name: "present",
-			conditions: []mcov1beta1.Condition{
+			conditions: []mcov1beta2.Condition{
 				{Type: "first"},
 				{Type: "second"},
 			},
 			conditionType: "second",
-			expected:      &mcov1beta1.Condition{Type: "second"},
+			expected:      &mcov1beta2.Condition{Type: "second"},
 		},
 	}
 

@@ -16,10 +16,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package v1beta1 contains API Schema definitions for the observability v1beta1 API group
+// Package v1beta2 contains API Schema definitions for the observability v1beta2 API group
 // +kubebuilder:object:generate=true
 // +groupName=observability.open-cluster-management.io
-package v1beta1
+package v1beta2
 
 import (
 	"k8s.io/apimachinery/pkg/runtime/schema"

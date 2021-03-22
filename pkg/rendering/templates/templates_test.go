@@ -10,7 +10,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 )
 
 func TestGetCoreTemplates(t *testing.T) {
@@ -22,14 +22,14 @@ func TestGetCoreTemplates(t *testing.T) {
 	os.Setenv(TemplatesPathEnvVar, templatesPath)
 	defer os.Unsetenv(TemplatesPathEnvVar)
 
-	mchcr := &mcov1beta1.MultiClusterObservability{
+	mchcr := &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
-		Spec: mcov1beta1.MultiClusterObservabilitySpec{
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			ImagePullPolicy: "Always",
 			ImagePullSecret: "test",
-			StorageConfig: &mcov1beta1.StorageConfigObject{
-				StatefulSetStorageClass: "gp2",
+			StorageConfig: &mcov1beta2.StorageConfigObject{
+				StorageClass: "gp2",
 			},
 		},
 	}

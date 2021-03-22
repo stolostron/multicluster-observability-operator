@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/yaml"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 )
@@ -36,7 +36,7 @@ func TestNewVolumeClaimTemplate(t *testing.T) {
 
 func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	statefulSetSize := "1Gi"
-	mco := &mcov1beta1.MultiClusterObservability{
+	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test",
@@ -45,14 +45,23 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 				mcoconfig.AnnotationKeyImageTagSuffix:  "tag",
 			},
 		},
-		Spec: mcov1beta1.MultiClusterObservabilitySpec{
-			StorageConfig: &mcov1beta1.StorageConfigObject{
-				MetricObjectStorage: &mcov1beta1.PreConfiguredStorage{
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta2.StorageConfigObject{
+				MetricObjectStorage: &mcov1beta2.PreConfiguredStorage{
 					Key:  "key",
 					Name: "name",
 				},
-				StatefulSetSize:         statefulSetSize,
-				StatefulSetStorageClass: storageClassName,
+				StorageClass:            storageClassName,
+				AlertmanagerStorageSize: "1Gi",
+				CompactStorageSize:      "1Gi",
+				RuleStorageSize:         "1Gi",
+				ReceiveStorageSize:      "1Gi",
+				StoreStorageSize:        "1Gi",
+			},
+			RetentionConfig: &mcov1beta2.RetentionConfig{
+				RetentionResolutionRaw: "1h",
+				RetentionResolution5m:  "1h",
+				RetentionResolution1h:  "1h",
 			},
 		},
 	}
@@ -94,7 +103,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	)
 
 	// A MultiClusterObservability object with metadata and spec.
-	mco := &mcov1beta1.MultiClusterObservability{
+	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -102,20 +111,29 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 				mcoconfig.AnnotationKeyImageTagSuffix: "tag",
 			},
 		},
-		Spec: mcov1beta1.MultiClusterObservabilitySpec{
-			StorageConfig: &mcov1beta1.StorageConfigObject{
-				MetricObjectStorage: &mcov1beta1.PreConfiguredStorage{
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta2.StorageConfigObject{
+				MetricObjectStorage: &mcov1beta2.PreConfiguredStorage{
 					Key:  "test",
 					Name: "test",
 				},
-				StatefulSetSize:         "1Gi",
-				StatefulSetStorageClass: "gp2",
+				StorageClass:            storageClassName,
+				AlertmanagerStorageSize: "1Gi",
+				CompactStorageSize:      "1Gi",
+				RuleStorageSize:         "1Gi",
+				ReceiveStorageSize:      "1Gi",
+				StoreStorageSize:        "1Gi",
+			},
+			RetentionConfig: &mcov1beta2.RetentionConfig{
+				RetentionResolutionRaw: "1h",
+				RetentionResolution5m:  "1h",
+				RetentionResolution1h:  "1h",
 			},
 		},
 	}
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
-	mcov1beta1.SchemeBuilder.AddToScheme(s)
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
 
 	objs := []runtime.Object{mco}
@@ -144,7 +162,6 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 		t.Errorf("%v should be equal to %v", string(oldSpecBytes), string(newSpecBytes))
 	}
 
-	mco.Spec.AvailabilityConfig = mcov1beta1.HABasic
 	_, err := GenerateObservatoriumCR(cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to update observatorium due to %v", err)

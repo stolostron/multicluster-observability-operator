@@ -8,9 +8,9 @@ import (
 )
 
 func TestUpdateGrafanaSpec(t *testing.T) {
-	// mco := &mcov1beta1.MultiClusterObservability{
-	// 	Spec: mcov1beta1.MultiClusterObservabilitySpec{
-	// 		Grafana: &mcov1beta1.GrafanaSpec{
+	// mco := &mcov1beta2.MultiClusterObservability{
+	// 	Spec: mcov1beta2.MultiClusterObservabilitySpec{
+	// 		Grafana: &mcov1beta2.GrafanaSpec{
 	// 			Hostport: defaultHostport,
 	// 		},
 	// 	},
