@@ -83,8 +83,8 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
-	// Fetch the MultiClusterObservability instance
 	deleteAll := false
+	// Fetch the MultiClusterObservability instance
 	mco := &mcov1beta1.MultiClusterObservability{}
 	err := r.Client.Get(context.TODO(),
 		types.NamespacedName{
@@ -96,6 +96,19 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		} else {
 			// Error reading the object - requeue the request.
 			return ctrl.Result{}, err
+		}
+	}
+	placement := &placementv1.PlacementRule{}
+	if !deleteAll {
+		// Fetch the PlacementRule instance
+		err = r.Client.Get(context.TODO(), req.NamespacedName, placement)
+		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				deleteAll = true
+			} else {
+				// Error reading the object - requeue the request.
+				return ctrl.Result{}, err
+			}
 		}
 	}
 
@@ -121,12 +134,12 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	if !deleteAll {
-		res, err := createAllRelatedRes(r.Client, r.RESTMapper, req, mco, obsAddonList)
+		res, err := createAllRelatedRes(r.Client, r.RESTMapper, req, mco, placement, obsAddonList)
 		if err != nil {
 			return res, err
 		}
 	} else {
-		res, err := deleteAllRelatedRes(r.Client, obsAddonList)
+		res, err := deleteAllObsAddons(r.Client, obsAddonList)
 		if err != nil {
 			return res, err
 		}
@@ -175,7 +188,16 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{}, nil
+	err = r.Client.List(context.TODO(), workList, opts)
+	if err != nil {
+		reqLogger.Error(err, "Failed to list manifestwork resource")
+		return ctrl.Result{}, err
+	}
+	if len(workList.Items) == 0 && deleteAll {
+		err = deleteGlobalResource(r.Client)
+	}
+
+	return ctrl.Result{}, err
 }
 
 func createAllRelatedRes(
@@ -183,6 +205,7 @@ func createAllRelatedRes(
 	restMapper meta.RESTMapper,
 	request ctrl.Request,
 	mco *mcov1beta1.MultiClusterObservability,
+	placement *placementv1.PlacementRule,
 	obsAddonList *mcov1beta1.ObservabilityAddonList) (ctrl.Result, error) {
 
 	// create the clusterrole if not there
@@ -221,19 +244,6 @@ func createAllRelatedRes(
 		}
 	}
 	mco.Namespace = watchNamespace
-	// Fetch the PlacementRule instance
-	instance := &placementv1.PlacementRule{}
-	err = client.Get(context.TODO(), request.NamespacedName, instance)
-	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			return ctrl.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
-		return ctrl.Result{}, err
-	}
 
 	currentClusters := []string{}
 	for _, ep := range obsAddonList.Items {
@@ -241,7 +251,7 @@ func createAllRelatedRes(
 	}
 
 	failedCreateManagedClusterRes := false
-	for _, decision := range instance.Status.Decisions {
+	for _, decision := range placement.Status.Decisions {
 		log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
 		currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
 		err = createManagedClusterRes(client, restMapper, mco, imagePullSecret,
@@ -270,7 +280,7 @@ func createAllRelatedRes(
 	return ctrl.Result{}, nil
 }
 
-func deleteAllRelatedRes(
+func deleteAllObsAddons(
 	client client.Client,
 	obsAddonList *mcov1beta1.ObservabilityAddonList) (ctrl.Result, error) {
 	for _, ep := range obsAddonList.Items {
@@ -280,22 +290,26 @@ func deleteAllRelatedRes(
 			return ctrl.Result{}, err
 		}
 	}
-	err := deleteClusterRole(client)
+	return ctrl.Result{}, nil
+}
+
+func deleteGlobalResource(c client.Client) error {
+	err := deleteClusterRole(c)
 	if err != nil {
-		return ctrl.Result{}, err
+		return err
 	}
-	err = deleteResourceRole(client)
+	err = deleteResourceRole(c)
 	if err != nil {
-		return ctrl.Result{}, err
+		return err
 	}
 	isCRoleCreated = false
 	//delete ClusterManagementAddon
-	err = util.DeleteClusterManagementAddon(client)
+	err = util.DeleteClusterManagementAddon(c)
 	if err != nil {
-		return ctrl.Result{}, err
+		return err
 	}
 	isClusterManagementAddonCreated = false
-	return ctrl.Result{}, nil
+	return nil
 }
 
 func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,

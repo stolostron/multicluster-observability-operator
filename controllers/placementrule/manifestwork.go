@@ -363,13 +363,19 @@ func removeObservabilityAddon(client client.Client, namespace string) error {
 		return err
 	}
 
-	updateManifests := found.Spec.Workload.Manifests[1:]
-	found.Spec.Workload.Manifests = updateManifests
-
-	err = client.Update(context.TODO(), found)
+	obj, err := util.GetObject(found.Spec.Workload.Manifests[0].RawExtension)
 	if err != nil {
-		log.Error(err, "Failed to update manifestwork", "namespace", namespace, "name", name)
 		return err
+	}
+	if obj.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
+		updateManifests := found.Spec.Workload.Manifests[1:]
+		found.Spec.Workload.Manifests = updateManifests
+
+		err = client.Update(context.TODO(), found)
+		if err != nil {
+			log.Error(err, "Failed to update manifestwork", "namespace", namespace, "name", name)
+			return err
+		}
 	}
 	return nil
 }
