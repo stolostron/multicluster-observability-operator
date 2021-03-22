@@ -68,7 +68,7 @@ func TestStaleObsAddonCR(t *testing.T) {
 		t.Fatalf("Failed to get observabilityaddon: (%v)", err)
 	}
 
-	found.ObjectMeta.DeletionTimestamp = &v1.Time{time.Now()}
+	found.ObjectMeta.DeletionTimestamp = &v1.Time{Time: time.Now()}
 	found.SetFinalizers([]string{obsAddonFinalizer})
 	err = c.Update(context.TODO(), found)
 	if err != nil {
