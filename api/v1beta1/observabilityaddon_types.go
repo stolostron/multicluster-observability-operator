@@ -5,6 +5,8 @@ package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -36,8 +38,8 @@ type ObservabilityAddon struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ObservabilityAddonSpec   `json:"spec,omitempty"`
-	Status ObservabilityAddonStatus `json:"status,omitempty"`
+	Spec   mcov1beta2.ObservabilityAddonSpec `json:"spec,omitempty"`
+	Status ObservabilityAddonStatus          `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true

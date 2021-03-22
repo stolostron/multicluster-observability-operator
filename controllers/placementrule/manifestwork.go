@@ -367,7 +367,7 @@ func getObservabilityAddon(c client.Client, namespace string,
 			Name:      obsAddonName,
 			Namespace: spokeNameSpace,
 		},
-		Spec: mcov1beta1.ObservabilityAddonSpec{
+		Spec: mcov1beta2.ObservabilityAddonSpec{
 			EnableMetrics: mco.Spec.ObservabilityAddonSpec.EnableMetrics,
 			Interval:      mco.Spec.ObservabilityAddonSpec.Interval,
 		},

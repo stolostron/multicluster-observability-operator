@@ -46,7 +46,7 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 			},
 		},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
-			StorageConfig: &mcov1beta2.StorageConfigObject{
+			StorageConfig: &mcov1beta2.StorageConfig{
 				MetricObjectStorage: &mcov1beta2.PreConfiguredStorage{
 					Key:  "key",
 					Name: "name",
@@ -112,7 +112,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 			},
 		},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
-			StorageConfig: &mcov1beta2.StorageConfigObject{
+			StorageConfig: &mcov1beta2.StorageConfig{
 				MetricObjectStorage: &mcov1beta2.PreConfiguredStorage{
 					Key:  "test",
 					Name: "test",

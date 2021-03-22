@@ -38,10 +38,10 @@ type MultiClusterObservabilitySpec struct {
 	RetentionConfig *RetentionConfig `json:"retentionConfig,omitempty"`
 	// Specifies the storage to be used by Observability
 	// +required
-	StorageConfig *StorageConfigObject `json:"storageConfigObject,omitempty"`
+	StorageConfig *StorageConfig `json:"storageConfig,omitempty"`
 	// The ObservabilityAddonSpec defines the global settings for all managed
 	// clusters which have observability add-on enabled.
-	// +optional
+	// +required
 	ObservabilityAddonSpec *ObservabilityAddonSpec `json:"observabilityAddonSpec,omitempty"`
 }
 
@@ -98,8 +98,8 @@ type RetentionConfig struct {
 	BlockDuration string `json:"blockDuration,omitempty"`
 }
 
-// StorageConfigObject is the spec of object storage.
-type StorageConfigObject struct {
+// StorageConfig is the spec of object storage.
+type StorageConfig struct {
 	// Object store config secret for metrics
 	// +required
 	MetricObjectStorage *PreConfiguredStorage `json:"metricObjectStorage,omitempty"`

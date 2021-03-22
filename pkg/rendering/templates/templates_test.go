@@ -28,7 +28,7 @@ func TestGetCoreTemplates(t *testing.T) {
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			ImagePullPolicy: "Always",
 			ImagePullSecret: "test",
-			StorageConfig: &mcov1beta2.StorageConfigObject{
+			StorageConfig: &mcov1beta2.StorageConfig{
 				StorageClass: "gp2",
 			},
 		},

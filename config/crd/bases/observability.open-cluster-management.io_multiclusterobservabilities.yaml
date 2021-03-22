@@ -339,7 +339,7 @@ spec:
                       to --retention.resolution-raw in compact.
                     type: string
                 type: object
-              storageConfigObject:
+              storageConfig:
                 description: Specifies the storage to be used by Observability
                 properties:
                   alertmanagerStorageSize:
