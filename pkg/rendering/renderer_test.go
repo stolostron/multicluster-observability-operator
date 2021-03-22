@@ -30,8 +30,23 @@ func TestRender(t *testing.T) {
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			ImagePullPolicy: "Always",
 			ImagePullSecret: "test",
-			StorageConfig:   &mcov1beta2.StorageConfigObject{},
-			RetentionConfig: &mcov1beta2.RetentionConfig{},
+			StorageConfig: &mcov1beta2.StorageConfigObject{
+				MetricObjectStorage: &mcov1beta2.PreConfiguredStorage{
+					Key:  "test",
+					Name: "test",
+				},
+				StorageClass:            "gp2",
+				AlertmanagerStorageSize: "1Gi",
+				CompactStorageSize:      "1Gi",
+				RuleStorageSize:         "1Gi",
+				ReceiveStorageSize:      "1Gi",
+				StoreStorageSize:        "1Gi",
+			},
+			RetentionConfig: &mcov1beta2.RetentionConfig{
+				RetentionResolutionRaw: "1h",
+				RetentionResolution5m:  "1h",
+				RetentionResolution1h:  "1h",
+			},
 		},
 	}
 
