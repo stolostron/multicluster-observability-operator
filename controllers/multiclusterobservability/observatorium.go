@@ -243,7 +243,7 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability,
 		}
 	}
 
-	obs.Query.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
+	obs.Query.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
 	obs.Query.Version = mcoconfig.ThanosImgTag
 	obs.Query.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "Deployments")
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
@@ -255,7 +255,7 @@ func newDefaultObservatoriumSpec(mco *mcov1beta1.MultiClusterObservability,
 		}
 	}
 
-	obs.QueryFrontend.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
+	obs.QueryFrontend.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
 	obs.QueryFrontend.Version = mcoconfig.ThanosImgTag
 	obs.QueryFrontend.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "Deployments")
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
@@ -372,7 +372,7 @@ func newReceiversSpec(
 	mco *mcov1beta1.MultiClusterObservability,
 	scSelected string) observatoriumv1alpha1.ReceiversSpec {
 	receSpec := observatoriumv1alpha1.ReceiversSpec{}
-	receSpec.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
+	receSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
 	receSpec.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
 	receSpec.ReplicationFactor = receSpec.Replicas
 	receSpec.Version = mcoconfig.ThanosImgTag
@@ -397,7 +397,7 @@ func newReceiversSpec(
 
 func newRuleSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) observatoriumv1alpha1.RuleSpec {
 	ruleSpec := observatoriumv1alpha1.RuleSpec{}
-	ruleSpec.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
+	ruleSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
 	ruleSpec.Replicas = util.GetReplicaCount(mco.Spec.AvailabilityConfig, "StatefulSet")
 	ruleSpec.Version = mcoconfig.ThanosImgTag
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
@@ -462,7 +462,7 @@ func newRuleSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) o
 
 func newStoreSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) observatoriumv1alpha1.StoreSpec {
 	storeSpec := observatoriumv1alpha1.StoreSpec{}
-	storeSpec.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
+	storeSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
 	storeSpec.Version = mcoconfig.ThanosImgTag
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		storeSpec.Resources = v1.ResourceRequirements{
@@ -528,7 +528,7 @@ func newStoreCacheSpec(mco *mcov1beta1.MultiClusterObservability) observatoriumv
 func newCompactSpec(mco *mcov1beta1.MultiClusterObservability, scSelected string) observatoriumv1alpha1.CompactSpec {
 	var replicas1 int32 = 1
 	compactSpec := observatoriumv1alpha1.CompactSpec{}
-	compactSpec.Image = mcoconfig.ThanosImgRepo + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
+	compactSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
 	//Compactor, generally, does not need to be highly available.
 	//Compactions are needed from time to time, only when new blocks appear.
 	compactSpec.Replicas = &replicas1
