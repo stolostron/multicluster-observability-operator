@@ -122,7 +122,7 @@ rbac-query-proxy-559b788777-ssmls                                 1/1     Runnin
 1. Delete the Multicluster Observability Operator CR:
 
 ```
-$ kubectl apply -f deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
+$ kubectl delete -f deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
 ```
 
 2. Delete the Multicluster Observability Operator:
