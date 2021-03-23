@@ -83,7 +83,7 @@ const (
 
 	GrafanaImgRepo            = "grafana"
 	GrafanaImgName            = "grafana"
-	GrafanaImgTagSuffix       = "6.5.3"
+	GrafanaImgTagSuffix       = "7.4.2"
 	GrafanaDashboardLoaderKey = "grafana_dashboard_loader"
 
 	AlertManagerImgRepo           = "quay.io/openshift"
