@@ -79,6 +79,7 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.IntVar(&webhookPort, "webhook-server-port", 9443, "The listening port of the webhook server.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -88,6 +89,7 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Port:					webhookPort,
 		Scheme:                 scheme,
 		MetricsBindAddress:     fmt.Sprintf("%s:%d", metricsHost, metricsPort),
 		Port:                   9443,
@@ -197,6 +199,11 @@ func main() {
 	schemeBuilder.Register(&observatoriumAPIs.Observatorium{}, &observatoriumAPIs.ObservatoriumList{})
 	if err := schemeBuilder.AddToScheme(mgr.GetScheme()); err != nil {
 		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
+	if err = (&observabilityv1beta2.MultiClusterObservability{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "Captain")
 		os.Exit(1)
 	}
 
