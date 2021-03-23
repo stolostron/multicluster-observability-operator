@@ -165,7 +165,7 @@ func TestCreateRole(t *testing.T) {
 		t.Fatalf("role is no created correctly")
 	}
 
-	role := &rbacv1.Role{
+	role := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      resRoleName,
 			Namespace: namespace,
