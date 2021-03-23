@@ -114,9 +114,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	enableManagedCluster, found := os.LookupEnv("ENABLE_MANAGED_CLUSTER")
-	if found && enableManagedCluster == "false" {
-		return
+	crdExists, err := util.CheckCRDExist("placementrules.apps.open-cluster-management.io")
+	if err != nil {
+		setupLog.Error(err, "Failed to check if the CRD exists")
+		os.Exit(1)
+	}
+
+	if crdExists {
+		if err = (&prctrl.PlacementRuleReconciler{
+			Client:     mgr.GetClient(),
+			Log:        ctrl.Log.WithName("controllers").WithName("PlacementRule"),
+			Scheme:     mgr.GetScheme(),
+			APIReader:  mgr.GetAPIReader(),
+			RESTMapper: mgr.GetRESTMapper(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "PlacementRule")
+			os.Exit(1)
+		}
 	}
 
 	if err = (&prctrl.PlacementRuleReconciler{
