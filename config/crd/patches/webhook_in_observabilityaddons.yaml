@@ -9,6 +9,6 @@ spec:
     webhook:
       clientConfig:
         service:
-          namespace: system
+          namespace: open-cluster-management
           name: webhook-service
           path: /convert

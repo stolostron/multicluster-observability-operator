@@ -3,8 +3,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: controller-manager
-  namespace: system
+  name: multicluster-observability-operator
+  namespace: open-cluster-management
 spec:
   template:
     spec:
@@ -19,8 +19,7 @@ spec:
         ports:
         - containerPort: 8443
           name: https
-      - name: manager
+      - name: multicluster-observability-operator
         args:
-        - "--health-probe-bind-address=:8081"
-        - "--metrics-bind-address=127.0.0.1:8080"
-        - "--leader-elect"
+        - "-health-probe-bind-address=:8081"
+        - "-leader-elect"

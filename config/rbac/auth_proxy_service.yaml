@@ -2,13 +2,13 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    control-plane: controller-manager
-  name: controller-manager-metrics-service
-  namespace: system
+    name: multicluster-observability-operator
+  name: metrics-service
+  namespace: open-cluster-management
 spec:
   ports:
   - name: https
     port: 8443
     targetPort: https
   selector:
-    control-plane: controller-manager
+    name: multicluster-observability-operator

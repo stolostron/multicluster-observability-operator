@@ -1,11 +1,11 @@
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: manager-rolebinding
+  name: open-cluster-management:multicluster-observability-operator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: manager-role
+  name: open-cluster-management:multicluster-observability-operator
 subjects:
 - kind: ServiceAccount
   name: multicluster-observability-operator

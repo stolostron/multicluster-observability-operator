@@ -25,10 +25,12 @@ Thanos Ecosystem | [kube-thanos](https://github.com/open-cluster-management/kube
 
 ### Prerequisites
 
-- go version v1.15+.
-- docker version 17.03+.
-- kubectl version v1.16.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
+- git
+- go version v1.15+
+- docker version 17.03+
+- kubectl version v1.16.3+
+- kustomize version v3.8.5+
+- Access to a Kubernetes v1.16.3+ cluster
 
 Use the following quick start commands for building and testing the Multicluster Observability Operator:
 
@@ -43,61 +45,38 @@ $ cd multicluster-observability-operator
 
 ### Build the Operator
 
-Build the multicluster-observability-operator image and push it to a public registry, such as Quay.io.
+Build the multicluster-observability-operator image and push it to a public registry, such as quay.io:
 
 ```
-$ make -f Makefile.prow build
-$ docker build -f Dockerfile -t quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-observability-operator:latest .
-$ docker push quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-observability-operator:latest
+$ make -f Makefile.prow docker-build docker-push IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-observability-operator:latest
 ```
 
 ### Run the Operator in the Cluster
 
-1. Before you deploy the Multicluster Observability Operator in the cluster, you need to installed the following dependencies:
+1. Before you deploy the Multicluster Observability Operator in the cluster, you need make sure the [cert-manager](https://github.com/open-cluster-management/cert-manager) is installed.
 
-- The [cert-manager](https://github.com/open-cluster-management/cert-manager) is deployed into the cluster
-- The following required CRDs are installed in the cluster:
-  * [clustermanagementaddons.addon.open-cluster-management.io](https://github.com/open-cluster-management/api/blob/main/addon/v1alpha1/0000_00_addon.open-cluster-management.io_clustermanagementaddons.crd.yaml)
-  * [managedclusteraddons.addon.open-cluster-management.io](https://github.com/open-cluster-management/api/blob/main/addon/v1alpha1/0000_01_addon.open-cluster-management.io_managedclusteraddons.crd.yaml)
-  * [placementrules.apps.open-cluster-management.io](https://github.com/open-cluster-management/multicloud-operators-placementrule/blob/main/deploy/crds/apps.open-cluster-management.io_placementrules_crd.yaml)
-
-2. Then deploy the CRDs of the Multicluster Observability Operator:
-
+2. Create the `open-cluster-management-observability` namespace if it doesn't exist:
 ```
-$ kubectl apply -f deploy/crds/observability.open-cluster-management.io_multiclusterobservabilities_crd.yaml
-$ kubectl apply -f deploy/req_crds
-```
-
-3. Create the `open-cluster-management` and `open-cluster-management-observability` namespaces if they doesn't exist:
-
-```
-$ kubectl create ns open-cluster-management
 $ kubectl create ns open-cluster-management-observability
 ```
 
-4. Deploy the minio service which acts as storage service of the multicluster observability:
-
+3. Deploy the minio service which acts as storage service of the multicluster observability:
 ```
 $ git clone --depth 1 git@github.com:open-cluster-management/observability-e2e-test.git
-$ kubectl apply -f observability-e2e-test/cicd-scripts/e2e-setup-manifests/minio
+$ kubectl -n open-cluster-management-observability apply -f observability-e2e-test/cicd-scripts/e2e-setup-manifests/minio
 ```
 
-5. Replace the operator image and deploy the Multicluster Observability Operator:
-
+4. Replace the operator image and deploy the Multicluster Observability Operator:
 ```
-$ operator_image=quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-observability-operator:latest
-$ sed -i "s~image:.*$~image: ${operator_image}~g" deploy/operator.yaml
-$ kubectl apply -f deploy
+$ make -f Makefile.prow deploy IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-observability-operator:latest
 ```
 
-6. Deploy the Multicluster Observability Operator CR:
-
+5. Deploy the Multicluster Observability Operator CR:
 ```
-$ kubectl apply -f deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
+$ kubectl -n open-cluster-management-observability apply -f config/samples/observability_v1beta1_multiclusterobservability.yaml
 ```
 
-7. Verify all the components for the Multicluster Observability are starting up and runing:
-
+6. Verify all the components for the Multicluster Observability are starting up and runing:
 ```
 $ kubectl -n open-cluster-management-observability get pod
 NAME                                                              READY   STATUS    RESTARTS   AGE
@@ -122,32 +101,25 @@ rbac-query-proxy-559b788777-ssmls                                 1/1     Runnin
 1. Delete the Multicluster Observability Operator CR:
 
 ```
-$ kubectl delete -f deploy/crds/observability.open-cluster-management.io_v1beta1_multiclusterobservability_cr.yaml
+$ kubectl -n open-cluster-management-observability delete -f config/samples/observability_v1beta1_multiclusterobservability.yaml
 ```
 
 2. Delete the Multicluster Observability Operator:
 
 ```
-$ kubectl delete -f deploy
+$ make -f Makefile.prow undeploy
 ```
 
 3. Delete the minio service:
 
 ```
-$ kubectl delete -f observability-e2e-test/cicd-scripts/e2e-setup-manifests/minio
+$ kubectl -n open-cluster-management-observability delete -f observability-e2e-test/cicd-scripts/e2e-setup-manifests/minio
 ```
 
-4. Delete the `open-cluster-management` and `open-cluster-management-observability` namespaces:
+4. Delete the `open-cluster-management-observability` namespace:
 
 ```
-$ kubectl delete ns open-cluster-management open-cluster-management-observability
+$ kubectl delete ns open-cluster-management-observability
 ```
 
-5. Then delete the CRDs of the Multicluster Observability Operator:
-
-```
-$ kubectl delete -f deploy/crds/observability.open-cluster-management.io_multiclusterobservabilities_crd.yaml
-$ kubectl delete -f deploy/req_crds
-```
-
-6. Delete the dependencies
+5. Delete the cert-manager.
