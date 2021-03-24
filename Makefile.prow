@@ -34,7 +34,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= quay.io/open-cluster-management/multicluster-observability-operator:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 
@@ -93,7 +93,7 @@ vet:
 
 # Generate code
 generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	$(CONTROLLER_GEN) object:headerFile="./hack/boilerplate.go.txt" paths="./..."
 
 # Build the docker image
 docker-build: manager
@@ -127,9 +127,20 @@ rm -rf $$TMP_DIR ;\
 }
 endef
 
+.PHONY: build
+build: manager
+
+.PHONY: unit-tests
+unit-tests:
+	go test `go list ./... | grep -v test`
+
+.PHONY: e2e-tests
+e2e-tests:
+	@./cicd-scripts/run-e2e-tests.sh
+
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
-bundle: manifests kustomize
+bundle: manifests kustomize operator-sdk
 	operator-sdk generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
@@ -139,14 +150,3 @@ bundle: manifests kustomize
 .PHONY: bundle-build
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
-
-.PHONY: build
-build:
-	go build -o bin/manager main.go
-
-unit-tests:
-	go mod vendor
-	go test `go list ./... | grep -v test`
-
-e2e-tests:
-	@./cicd-scripts/run-e2e-tests.sh

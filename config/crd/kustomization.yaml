@@ -14,9 +14,9 @@ patchesStrategicMerge:
 #- patches/webhook_in_observabilityaddons.yaml
 # +kubebuilder:scaffold:crdkustomizewebhookpatch
 
-# [OCP-SERVICE-SERVING-CERTIFICATE] To enable webhook with ocp service serving certificate, uncomment all the sections with [OCP-SERVICE-SERVING-CERTIFICATE] prefix.
+# [OCP-SSC] To enable webhook with ocp service serving certificate for the CRD, uncomment all the sections with [OCP-SSC] prefix.
 # patches here are for enabling webhook with ocp service serving certificate.
-- patches/ocp_service_serving_certificate_webhook_cronjobs.yaml
+- patches/ocp_ssc_webhook_cronjobs.yaml
 # +kubebuilder:scaffold:kustomizepatch
 
 # [CERTMANAGER] To enable webhook, uncomment all the sections with [CERTMANAGER] prefix.

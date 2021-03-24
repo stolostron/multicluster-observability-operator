@@ -2,7 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   creationTimestamp: null
-  name: open-cluster-management:multicluster-observability-operator
+  name: multicluster-observability-operator
 rules:
 - apiGroups:
   - ""
