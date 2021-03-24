@@ -11,7 +11,6 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -433,7 +432,6 @@ func deleteRes(c client.Client, namespace string) error {
 func deleteDeprecatedRoles(c client.Client) {
 	opts := &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
-		FieldSelector: fields.SelectorFromSet(map[string]string{"metadata.name": "endpoint-observability-role"}),
 	}
 	roleList := &rbacv1.RoleList{}
 	err := c.List(context.TODO(), roleList, opts)
@@ -442,9 +440,13 @@ func deleteDeprecatedRoles(c client.Client) {
 		return
 	}
 	for _, role := range roleList.Items {
-		err = c.Delete(context.TODO(), &role)
-		if err != nil {
-			log.Error(err, "Failed to delete deprecated roles", "name", role.Name, "namespace", role.Namespace)
+		if role.Name == "endpoint-observability-role" {
+			err = c.Delete(context.TODO(), &role)
+			if err != nil && !errors.IsNotFound(err) {
+				log.Error(err, "Failed to delete deprecated roles", "name", role.Name, "namespace", role.Namespace)
+			} else {
+				log.Info("Deprecated role deleted", "name", role.Name, "namespace", role.Namespace)
+			}
 		}
 	}
 }

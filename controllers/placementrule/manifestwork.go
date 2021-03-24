@@ -351,6 +351,12 @@ func getObservabilityAddon(c client.Client, namespace string,
 	if found.ObjectMeta.DeletionTimestamp != nil {
 		return nil, nil
 	}
+	if mco.Spec.ObservabilityAddonSpec == nil {
+		mco.Spec.ObservabilityAddonSpec = &mcov1beta1.ObservabilityAddonSpec{
+			EnableMetrics: true,
+			Interval:      30,
+		}
+	}
 	return &mcov1beta1.ObservabilityAddon{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "observability.open-cluster-management.io/v1beta1",
