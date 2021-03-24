@@ -11,4 +11,5 @@ spec:
         service:
           namespace: open-cluster-management
           name: webhook-service
+          port: 443
           path: /convert
