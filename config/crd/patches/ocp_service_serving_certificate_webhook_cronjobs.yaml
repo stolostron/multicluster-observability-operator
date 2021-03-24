@@ -3,8 +3,9 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    service.beta.openshift.io/inject-cabundle: true
+    service.beta.openshift.io/inject-cabundle: "true"
   name: multiclusterobservabilities.observability.open-cluster-management.io
+spec:
   conversion:
     strategy: Webhook
     webhook:
@@ -12,6 +13,6 @@ metadata:
       clientConfig:
         service:
           namespace: $(SERVICE_NAMESPACE)
-          name: webhook-service
+          name: multicluster-observability-webhook-service
           path: /convert
         caBundle: XG4=

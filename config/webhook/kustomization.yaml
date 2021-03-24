@@ -1,9 +1,6 @@
 resources:
 - service.yaml
 
-configurations:
-- kustomizeconfig.yaml
-
 patchesStrategicMerge:
 # [OCP-SERVICE-SERVING-CERTIFICATE] To enable ocp service serving certificate, uncomment all the sections with [OCP-SERVICE-SERVING-CERTIFICATE] prefix.
 # patches here are for enabling the ocp service serving certificate for webhook service.

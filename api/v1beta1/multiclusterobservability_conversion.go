@@ -35,19 +35,22 @@ func (src *MultiClusterObservability) ConvertTo(dstRaw conversion.Hub) error {
 	// TODO(morvencao)?: convert the AvailabilityConfig field
 	// availabilityConfig := src.Spec.AvailabilityConfig
 
-	dst.Spec.StorageConfig.MetricObjectStorage = src.Spec.StorageConfig.MetricObjectStorage
-	dst.Spec.StorageConfig.StorageClass = src.Spec.StorageConfig.StatefulSetStorageClass
+	dst.Spec.StorageConfig = &observabilityv1beta2.StorageConfigObject{
+		MetricObjectStorage: src.Spec.StorageConfig.MetricObjectStorage,
+		StorageClass:        src.Spec.StorageConfig.StatefulSetStorageClass,
+		// How to convert the current storage size to new one?
+		AlertmanagerStorageSize: src.Spec.StorageConfig.StatefulSetSize,
+		RuleStorageSize:         src.Spec.StorageConfig.StatefulSetSize,
+		StoreStorageSize:        src.Spec.StorageConfig.StatefulSetSize,
+		CompactStorageSize:      src.Spec.StorageConfig.StatefulSetSize,
+		ReceiveStorageSize:      src.Spec.StorageConfig.StatefulSetSize,
+	}
 
-	// How to convert the current storage size to new one?
-	dst.Spec.StorageConfig.AlertmanagerStorageSize = src.Spec.StorageConfig.StatefulSetSize
-	dst.Spec.StorageConfig.RuleStorageSize = src.Spec.StorageConfig.StatefulSetSize
-	dst.Spec.StorageConfig.StoreStorageSize = src.Spec.StorageConfig.StatefulSetSize
-	dst.Spec.StorageConfig.CompactStorageSize = src.Spec.StorageConfig.StatefulSetSize
-	dst.Spec.StorageConfig.ReceiveStorageSize = src.Spec.StorageConfig.StatefulSetSize
-
-	dst.Spec.RetentionConfig.RetentionResolutionRaw = src.Spec.RetentionResolutionRaw
-	dst.Spec.RetentionConfig.RetentionResolution5m = src.Spec.RetentionResolution5m
-	dst.Spec.RetentionConfig.RetentionResolution1h = src.Spec.RetentionResolution1h
+	dst.Spec.RetentionConfig = &observabilityv1beta2.RetentionConfig{
+		RetentionResolutionRaw: src.Spec.RetentionResolutionRaw,
+		RetentionResolution5m:  src.Spec.RetentionResolution5m,
+		RetentionResolution1h:  src.Spec.RetentionResolution1h,
+	}
 
 	/*
 		The rest of the conversion is pretty rote.
@@ -82,19 +85,17 @@ func (dst *MultiClusterObservability) ConvertFrom(srcRaw conversion.Hub) error {
 	// TODO(morvencao): convert the AvailabilityConfig field
 	// dst.Spec.AvailabilityConfig =
 
-	// TODO(morvencao): convert the StorageConfig field
-	// dst.Spec.StorageConfig =
-
 	dst.Spec.RetentionResolutionRaw = src.Spec.RetentionConfig.RetentionResolutionRaw
 	dst.Spec.RetentionResolution5m = src.Spec.RetentionConfig.RetentionResolution5m
 	dst.Spec.RetentionResolution1h = src.Spec.RetentionConfig.RetentionResolution1h
 
-	dst.Spec.StorageConfig.MetricObjectStorage = src.Spec.StorageConfig.MetricObjectStorage
-	dst.Spec.StorageConfig.StatefulSetStorageClass = src.Spec.StorageConfig.StorageClass
-	dst.Spec.RetentionResolution1h = src.Spec.RetentionConfig.RetentionResolution1h
+	dst.Spec.StorageConfig = &StorageConfigObject{
+		MetricObjectStorage:     src.Spec.StorageConfig.MetricObjectStorage,
+		StatefulSetStorageClass: src.Spec.StorageConfig.StorageClass,
+		// How to convert the new storage size to old one?
+		// StatefulSetSize =
 
-	// How to convert the new storage size to old one?
-	// dst.Spec.StorageConfig.StatefulSetSize =
+	}
 
 	/*
 		The rest of the conversion is pretty rote.
