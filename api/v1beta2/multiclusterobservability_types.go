@@ -6,6 +6,8 @@ package v1beta2
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 )
 
 // MultiClusterObservabilitySpec defines the desired state of MultiClusterObservability
@@ -42,21 +44,7 @@ type MultiClusterObservabilitySpec struct {
 	// The ObservabilityAddonSpec defines the global settings for all managed
 	// clusters which have observability add-on enabled.
 	// +required
-	ObservabilityAddonSpec *ObservabilityAddonSpec `json:"observabilityAddonSpec,omitempty"`
-}
-
-// ObservabilityAddonSpec is the spec of observability addon
-type ObservabilityAddonSpec struct {
-	// EnableMetrics indicates the observability addon push metrics to hub server.
-	// +optional
-	// +kubebuilder:default:=true
-	EnableMetrics bool `json:"enableMetrics,omitempty"`
-	// Interval for the observability addon push metrics to hub server.
-	// +optional
-	// +kubebuilder:default:=30
-	// +kubebuilder:validation:Minimum=15
-	// +kubebuilder:validation:Maximum=3600
-	Interval int32 `json:"interval,omitempty"`
+	ObservabilityAddonSpec *mcov1beta1.ObservabilityAddonSpec `json:"observabilityAddonSpec,omitempty"`
 }
 
 // RetentionConfig is the spec of retention configurations.

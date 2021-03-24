@@ -83,21 +83,6 @@ type MultiClusterObservabilitySpec struct {
 	ObservabilityAddonSpec *ObservabilityAddonSpec `json:"observabilityAddonSpec,omitempty"`
 }
 
-// ObservabilityAddonSpec is the spec of observability addon
-type ObservabilityAddonSpec struct {
-	// EnableMetrics indicates the observability addon push metrics to hub server.
-	// +optional
-	// +kubebuilder:default:=true
-	EnableMetrics bool `json:"enableMetrics,omitempty"`
-
-	// Interval for the observability addon push metrics to hub server.
-	// +optional
-	// +kubebuilder:default:=30
-	// +kubebuilder:validation:Minimum=15
-	// +kubebuilder:validation:Maximum=3600
-	Interval int32 `json:"interval,omitempty"`
-}
-
 // StorageConfigObject is the spec of object storage.
 type StorageConfigObject struct {
 	// Object store config secret for metrics

@@ -5,12 +5,25 @@ package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+
+// ObservabilityAddonSpec is the spec of observability addon
+type ObservabilityAddonSpec struct {
+	// EnableMetrics indicates the observability addon push metrics to hub server.
+	// +optional
+	// +kubebuilder:default:=true
+	EnableMetrics bool `json:"enableMetrics,omitempty"`
+
+	// Interval for the observability addon push metrics to hub server.
+	// +optional
+	// +kubebuilder:default:=30
+	// +kubebuilder:validation:Minimum=15
+	// +kubebuilder:validation:Maximum=3600
+	Interval int32 `json:"interval,omitempty"`
+}
 
 // StatusCondition contains condition information for an observability addon
 type StatusCondition struct {
@@ -38,8 +51,8 @@ type ObservabilityAddon struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   mcov1beta2.ObservabilityAddonSpec `json:"spec,omitempty"`
-	Status ObservabilityAddonStatus          `json:"status,omitempty"`
+	Spec   ObservabilityAddonSpec   `json:"spec,omitempty"`
+	Status ObservabilityAddonStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true

@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcocontroller "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
@@ -35,7 +36,7 @@ func newTestMCO() *mcov1beta2.MultiClusterObservability {
 		},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			ImagePullSecret: pullSecretName,
-			ObservabilityAddonSpec: &mcov1beta2.ObservabilityAddonSpec{
+			ObservabilityAddonSpec: &mcov1beta1.ObservabilityAddonSpec{
 				EnableMetrics: true,
 				Interval:      1,
 			},
