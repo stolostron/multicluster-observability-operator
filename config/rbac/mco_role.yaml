@@ -197,6 +197,12 @@ rules:
   resources:
   - leases
   verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
   - delete
 - apiGroups:
   - addon.open-cluster-management.io
