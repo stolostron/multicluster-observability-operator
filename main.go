@@ -98,23 +98,31 @@ func main() {
 		os.Exit(1)
 	}
 
-	ocpClient, err := util.CreateOCPClient()
+	ocpClient, err := util.GetOrCreateOCPClient()
 	if err != nil {
 		setupLog.Error(err, "Failed to create the OpenShift client")
 		os.Exit(1)
 	}
+
+	crdClient, err := util.GetOrCreateCRDClient()
+	if err != nil {
+		setupLog.Error(err, "Failed to create the CRD client")
+		os.Exit(1)
+	}
+
 	if err = (&mcoctrl.MultiClusterObservabilityReconciler{
 		Client:    mgr.GetClient(),
 		Log:       ctrl.Log.WithName("controllers").WithName("MultiClusterObservability"),
 		Scheme:    mgr.GetScheme(),
 		OcpClient: ocpClient,
+		CrdClient: crdClient,
 		APIReader: mgr.GetAPIReader(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MultiClusterObservability")
 		os.Exit(1)
 	}
 
-	crdExists, err := util.CheckCRDExist("placementrules.apps.open-cluster-management.io")
+	crdExists, err := util.CheckCRDExist(crdClient, "placementrules.apps.open-cluster-management.io")
 	if err != nil {
 		setupLog.Error(err, "Failed to check if the CRD exists")
 		os.Exit(1)
