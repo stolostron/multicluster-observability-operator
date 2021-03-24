@@ -14,6 +14,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storev1 "k8s.io/api/storage/v1"
+	crdClientSet "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -54,6 +55,7 @@ type MultiClusterObservabilityReconciler struct {
 	Log       logr.Logger
 	Scheme    *runtime.Scheme
 	OcpClient ocpClientSet.Interface
+	CrdClient crdClientSet.Interface
 	APIReader client.Reader
 }
 
@@ -172,7 +174,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return *result, err
 	}
 
-	crdExists, err := util.CheckCRDExist("placementrules.apps.open-cluster-management.io")
+	crdExists, err := util.CheckCRDExist(r.CrdClient, "placementrules.apps.open-cluster-management.io")
 	if err != nil {
 		return ctrl.Result{}, err
 	}

@@ -16,10 +16,14 @@ import (
 
 var (
 	crdClient crdClientSet.Interface
+	ocpClient ocpClientSet.Interface
 )
 
-// CreateOCPClient creates ocp client
-func CreateOCPClient() (ocpClientSet.Interface, error) {
+// GetOrCreateOCPClient creates ocp client
+func GetOrCreateOCPClient() (ocpClientSet.Interface, error) {
+	if crdClient != nil {
+		return ocpClient, nil
+	}
 	// create the config from the path
 	config, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
@@ -28,7 +32,7 @@ func CreateOCPClient() (ocpClientSet.Interface, error) {
 	}
 
 	// generate the client based off of the config
-	ocpClient, err := ocpClientSet.NewForConfig(config)
+	ocpClient, err = ocpClientSet.NewForConfig(config)
 	if err != nil {
 		log.Error(err, "Failed to create ocp config client")
 		return nil, err
@@ -37,8 +41,8 @@ func CreateOCPClient() (ocpClientSet.Interface, error) {
 	return ocpClient, err
 }
 
-// createCRDClient creates CRD client
-func getOrCreateCRDClient() (crdClientSet.Interface, error) {
+// GetOrCreateCRDClient gets an existing or creates a new CRD client
+func GetOrCreateCRDClient() (crdClientSet.Interface, error) {
 	if crdClient != nil {
 		return crdClient, nil
 	}
@@ -59,14 +63,8 @@ func getOrCreateCRDClient() (crdClientSet.Interface, error) {
 	return crdClient, err
 }
 
-func CheckCRDExist(crdName string) (bool, error) {
-	crdClient, err := getOrCreateCRDClient()
-	if err != nil {
-		log.Error(err, "Failed to get or create CRD config client")
-		return false, err
-	}
-
-	_, err = crdClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(context.TODO(), crdName, metav1.GetOptions{})
+func CheckCRDExist(crdClient crdClientSet.Interface, crdName string) (bool, error) {
+	_, err := crdClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(context.TODO(), crdName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			log.Info("unable to get CRD with ApiextensionsV1beta1 Client, not found, will try to get it with ApiextensionsV1 Client.")
