@@ -52,6 +52,8 @@ func (src *MultiClusterObservability) ConvertTo(dstRaw conversion.Hub) error {
 		RetentionResolution1h:  src.Spec.RetentionResolution1h,
 	}
 
+	dst.Spec.EnableDownsampling = src.Spec.EnableDownSampling
+
 	/*
 		The rest of the conversion is pretty rote.
 	*/
@@ -59,7 +61,6 @@ func (src *MultiClusterObservability) ConvertTo(dstRaw conversion.Hub) error {
 	dst.ObjectMeta = src.ObjectMeta
 
 	// Spec
-	dst.Spec.EnableDownsampling = src.Spec.EnableDownSampling
 	dst.Spec.ImagePullPolicy = src.Spec.ImagePullPolicy
 	dst.Spec.ImagePullSecret = src.Spec.ImagePullSecret
 	dst.Spec.NodeSelector = src.Spec.NodeSelector
@@ -94,8 +95,9 @@ func (dst *MultiClusterObservability) ConvertFrom(srcRaw conversion.Hub) error {
 		StatefulSetStorageClass: src.Spec.StorageConfig.StorageClass,
 		// How to convert the new storage size to old one?
 		// StatefulSetSize =
-
 	}
+
+	dst.Spec.EnableDownSampling = src.Spec.EnableDownsampling
 
 	/*
 		The rest of the conversion is pretty rote.
@@ -104,7 +106,6 @@ func (dst *MultiClusterObservability) ConvertFrom(srcRaw conversion.Hub) error {
 	dst.ObjectMeta = src.ObjectMeta
 
 	// Spec
-	dst.Spec.EnableDownSampling = src.Spec.EnableDownsampling
 	dst.Spec.ImagePullPolicy = src.Spec.ImagePullPolicy
 	dst.Spec.ImagePullSecret = src.Spec.ImagePullSecret
 	dst.Spec.NodeSelector = src.Spec.NodeSelector

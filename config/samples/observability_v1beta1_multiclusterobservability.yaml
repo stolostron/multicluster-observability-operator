@@ -13,6 +13,8 @@ spec:
       name: thanos-object-storage
       key: thanos.yaml
     statefulSetSize: 10Gi
-    storageClass: gp2
-  observabilityAddonSpec: {}
+    statefulSetStorageClass: gp2
+  observabilityAddonSpec:
+    enableMetrics: true
+    interval: 30
 

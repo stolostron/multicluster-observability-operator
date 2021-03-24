@@ -3,7 +3,7 @@ kind: MultiClusterObservability
 metadata:
   name: observability
 spec:
-  enableDownSampling: false
+  enableDownsampling: true
   retentionConfig:
     retentionResolutionRaw: 5d
     retentionResolution5m: 14d
@@ -21,6 +21,8 @@ spec:
     compactStorageSize: 100Gi
     receiveStorageSize: 100Gi
     storeStorageSize: 10Gi
-    statefulSetStorageClass: gp2
-  observabilityAddonSpec: {}
+    storageClass: gp2
+  observabilityAddonSpec:
+    enableMetrics: true
+    interval: 30
 
