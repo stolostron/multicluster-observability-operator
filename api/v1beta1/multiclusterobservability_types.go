@@ -39,8 +39,9 @@ type MultiClusterObservabilitySpec struct {
 	// The default value is false.
 	// This is not recommended as querying long time ranges
 	// without non-downsampled data is not efficient and useful.
+	// +optional
 	// +kubebuilder:default:=false
-	EnableDownSampling bool `json:"enableDownSampling,omitempty"`
+	EnableDownSampling bool `json:"enableDownSampling"`
 
 	// Pull policy of the MultiClusterObservability images
 	// +optional

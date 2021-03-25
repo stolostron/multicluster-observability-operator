@@ -16,7 +16,7 @@ type ObservabilityAddonSpec struct {
 	// EnableMetrics indicates the observability addon push metrics to hub server.
 	// +optional
 	// +kubebuilder:default:=true
-	EnableMetrics bool `json:"enableMetrics,omitempty"`
+	EnableMetrics bool `json:"enableMetrics"`
 
 	// Interval for the observability addon push metrics to hub server.
 	// +optional
