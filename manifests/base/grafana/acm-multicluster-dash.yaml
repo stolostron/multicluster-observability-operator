@@ -141,7 +141,7 @@ data:
           ],
           "targets": [
             {
-              "expr": "max(histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le,cluster))) by (cluster)",
+              "expr": "max(histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (verb,le,cluster))) by (cluster)",
               "format": "table",
               "instant": true,
               "refId": "A"
