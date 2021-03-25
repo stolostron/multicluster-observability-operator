@@ -18,8 +18,8 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": 1,
-      "iteration": 1616216576771,
+      "id": 6,
+      "iteration": 1602715833782,
       "links": [],
       "panels": [
         {
@@ -37,200 +37,9 @@ data:
           "type": "row"
         },
         {
+          "columns": [],
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {
-                "align": null,
-                "filterable": false
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #A"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Max latency (99th percentile)"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "s"
-                  },
-                  {
-                    "id": "custom.displayMode",
-                    "value": "color-background"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "rgba(50, 172, 45, 0.97)",
-                          "value": null
-                        },
-                        {
-                          "color": "rgba(237, 129, 40, 0.89)",
-                          "value": 1
-                        },
-                        {
-                          "color": "rgba(245, 54, 54, 0.9)",
-                          "value": 2
-                        }
-                      ]
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #B"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "API Errors [1h]"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "custom.displayMode",
-                    "value": "color-text"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "rgba(50, 172, 45, 0.97)",
-                          "value": null
-                        },
-                        {
-                          "color": "rgba(237, 129, 40, 0.89)",
-                          "value": 1
-                        },
-                        {
-                          "color": "rgba(245, 54, 54, 0.9)",
-                          "value": 2
-                        }
-                      ]
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #C"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "API servers up"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "custom.displayMode",
-                    "value": "color-text"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "rgba(245, 54, 54, 0.9)",
-                          "value": null
-                        },
-                        {
-                          "color": "rgba(237, 129, 40, 0.89)",
-                          "value": 0
-                        },
-                        {
-                          "color": "rgba(50, 172, 45, 0.97)",
-                          "value": 1
-                        }
-                      ]
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "cluster"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Cluster"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "links",
-                    "value": [
-                      {
-                        "targetBlank": false,
-                        "title": "Drill down to cluster",
-                        "url": "./d/09ec8aa1e996d6ffcd6817bbaff4db1b/kubernetes-api-server?var-cluster=$__cell_1&var-instance=All"
-                      }
-                    ]
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              }
-            ]
-          },
+          "fontSize": "100%",
           "gridPos": {
             "h": 6,
             "w": 12,
@@ -239,13 +48,100 @@ data:
           },
           "id": 146,
           "interval": "4m",
-          "options": {
-            "showHeader": true
+          "options": {},
+          "pageSize": null,
+          "showHeader": true,
+          "sort": {
+            "col": 1,
+            "desc": false
           },
-          "pluginVersion": "7.4.2",
+          "styles": [
+            {
+              "alias": "Time",
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "pattern": "Time",
+              "type": "hidden"
+            },
+            {
+              "alias": "Max latency (99th percentile)",
+              "colorMode": "cell",
+              "colors": [
+                "rgba(50, 172, 45, 0.97)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(245, 54, 54, 0.9)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": null,
+              "mappingType": 1,
+              "pattern": "Value #A",
+              "thresholds": [
+                "1",
+                "2"
+              ],
+              "type": "number",
+              "unit": "s"
+            },
+            {
+              "alias": "API Errors [1h]",
+              "colorMode": "value",
+              "colors": [
+                "rgba(50, 172, 45, 0.97)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(245, 54, 54, 0.9)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": null,
+              "mappingType": 1,
+              "pattern": "Value #B",
+              "thresholds": [
+                "1",
+                "2"
+              ],
+              "type": "number",
+              "unit": "short"
+            },
+            {
+              "alias": "API servers up",
+              "colorMode": "value",
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": null,
+              "mappingType": 1,
+              "pattern": "Value #C",
+              "thresholds": [
+                "0",
+                "1"
+              ],
+              "type": "number",
+              "unit": "percentunit"
+            },
+            {
+              "alias": "Cluster",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": true,
+              "linkTooltip": "Drill down to cluster",
+              "linkUrl": "./d/09ec8aa1e996d6ffcd6817bbaff4db1b/kubernetes-api-server?var-cluster=$__cell_1&var-instance=All",
+              "mappingType": 1,
+              "pattern": "cluster",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            }
+          ],
           "targets": [
             {
-              "expr": "max(histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le,cluster))) by (cluster)",
+              "expr": "max(histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (verb,le,cluster))) by (cluster)",
               "format": "table",
               "instant": true,
               "refId": "A"
@@ -266,22 +162,7 @@ data:
           "timeFrom": null,
           "timeShift": null,
           "title": "API Server",
-          "transformations": [
-            {
-              "id": "merge",
-              "options": {
-                "reducers": []
-              }
-            },
-            {
-              "id": "filterFieldsByName",
-              "options": {
-                "include": {
-                  "names": ["cluster", "Value #A", "Value #C", "Value #B"]
-                }
-              }
-            }
-          ],
+          "transform": "table",
           "type": "table"
         },
         {
@@ -299,189 +180,10 @@ data:
           "type": "row"
         },
         {
+          "columns": [],
           "datasource": "$datasource",
           "description": "Highlights % differences between CPU requests commitments vs utilization.  When this difference is large ( >20%), it means that resources are reserved but unused.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {
-                "align": null,
-                "filterable": false
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Time"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Time"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": null
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #A"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Requested"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #B"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Utilized"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "rgba(50, 172, 45, 0.97)",
-                          "value": null
-                        },
-                        {
-                          "color": "rgba(237, 129, 40, 0.89)",
-                          "value": null
-                        }
-                      ]
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #C"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Overestimation"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.displayMode",
-                    "value": "color-background"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "green",
-                          "value": null
-                        },
-                        {
-                          "color": "red",
-                          "value": 0.2
-                        }
-                      ]
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "cluster"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "links",
-                    "value": [
-                      {
-                        "targetBlank": false,
-                        "title": "Drill down to cluster",
-                        "url": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1"
-                      }
-                    ]
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              }
-            ]
-          },
+          "fontSize": "100%",
           "gridPos": {
             "h": 8,
             "w": 12,
@@ -490,10 +192,92 @@ data:
           },
           "id": 143,
           "interval": "4m",
-          "options": {
-            "showHeader": true
+          "options": {},
+          "pageSize": null,
+          "showHeader": true,
+          "sort": {
+            "col": 1,
+            "desc": false
           },
-          "pluginVersion": "7.4.2",
+          "styles": [
+            {
+              "alias": "Time",
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "link": false,
+              "pattern": "Time",
+              "type": "hidden"
+            },
+            {
+              "alias": "Requested",
+              "colorMode": null,
+              "colors": [
+                "rgba(50, 172, 45, 0.97)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(245, 54, 54, 0.9)"
+              ],
+              "decimals": 2,
+              "pattern": "Value #A",
+              "thresholds": [],
+              "type": "number",
+              "unit": "percentunit"
+            },
+            {
+              "alias": "Utilized",
+              "colorMode": null,
+              "colors": [
+                "rgba(50, 172, 45, 0.97)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(245, 54, 54, 0.9)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #B",
+              "thresholds": [
+                ""
+              ],
+              "type": "number",
+              "unit": "percentunit"
+            },
+            {
+              "alias": "Overestimation",
+              "colorMode": "cell",
+              "colors": [
+                "rgba(50, 172, 45, 0.97)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(245, 54, 54, 0.9)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #C",
+              "thresholds": [
+                ".2",
+                ".2"
+              ],
+              "type": "number",
+              "unit": "percentunit"
+            },
+            {
+              "alias": "",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": true,
+              "linkTooltip": "Drill down to cluster",
+              "linkUrl": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1",
+              "mappingType": 1,
+              "pattern": "cluster",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            }
+          ],
           "targets": [
             {
               "expr": "(sum(kube_pod_container_resource_requests_cpu_cores) by (cluster) / sum(kube_node_status_allocatable_cpu_cores) by (cluster)) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__interval])) by (cluster))",
@@ -522,212 +306,14 @@ data:
           "timeFrom": null,
           "timeShift": null,
           "title": "CPU",
-          "transformations": [
-            {
-              "id": "merge",
-              "options": {
-                "reducers": []
-              }
-            },
-            {
-              "id": "filterFieldsByName",
-              "options": {
-                "include": {
-                  "names": ["cluster", "Value #C", "Value #A", "Value #B"]
-                }
-              }
-            }
-          ],
+          "transform": "table",
           "type": "table"
         },
         {
+          "columns": [],
           "datasource": "$datasource",
           "description": "Highlights % differences between Memory requests commitments vs utilization.  When this difference is large ( >20%), it means that resources are reserved but unused.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {
-                "align": null,
-                "filterable": false
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Time"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Time"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": null
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #A"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Requested"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #B"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Utilized"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "rgba(50, 172, 45, 0.97)",
-                          "value": null
-                        },
-                        {
-                          "color": "rgba(237, 129, 40, 0.89)",
-                          "value": null
-                        }
-                      ]
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #C"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Overestimation"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.displayMode",
-                    "value": "color-background"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "green",
-                          "value": null
-                        },
-                        {
-                          "color": "red",
-                          "value": 0.2
-                        }
-                      ]
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "cluster"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Cluster"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "links",
-                    "value": [
-                      {
-                        "targetBlank": false,
-                        "title": "Drill down to cluster",
-                        "url": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1"
-                      }
-                    ]
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              }
-            ]
-          },
+          "fontSize": "100%",
           "gridPos": {
             "h": 8,
             "w": 12,
@@ -736,10 +322,92 @@ data:
           },
           "id": 144,
           "interval": "4m",
-          "options": {
-            "showHeader": true
+          "options": {},
+          "pageSize": null,
+          "showHeader": true,
+          "sort": {
+            "col": 1,
+            "desc": false
           },
-          "pluginVersion": "7.4.2",
+          "styles": [
+            {
+              "alias": "Time",
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "link": false,
+              "pattern": "Time",
+              "type": "hidden"
+            },
+            {
+              "alias": "Requested",
+              "colorMode": null,
+              "colors": [
+                "rgba(50, 172, 45, 0.97)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(245, 54, 54, 0.9)"
+              ],
+              "decimals": 2,
+              "pattern": "Value #A",
+              "thresholds": [],
+              "type": "number",
+              "unit": "percentunit"
+            },
+            {
+              "alias": "Utilized",
+              "colorMode": null,
+              "colors": [
+                "rgba(50, 172, 45, 0.97)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(245, 54, 54, 0.9)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #B",
+              "thresholds": [
+                ""
+              ],
+              "type": "number",
+              "unit": "percentunit"
+            },
+            {
+              "alias": "Overestimation",
+              "colorMode": "cell",
+              "colors": [
+                "rgba(50, 172, 45, 0.97)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(245, 54, 54, 0.9)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #C",
+              "thresholds": [
+                ".2",
+                ".2"
+              ],
+              "type": "number",
+              "unit": "percentunit"
+            },
+            {
+              "alias": "Cluster",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": true,
+              "linkTooltip": "Drill down to cluster",
+              "linkUrl": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1",
+              "mappingType": 1,
+              "pattern": "cluster",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            }
+          ],
           "targets": [
             {
               "expr": "(sum(kube_pod_container_resource_requests_memory_bytes) by (cluster) / sum(kube_node_status_allocatable_memory_bytes) by (cluster))\n-\n(1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable_memory_bytes) by (cluster))",
@@ -768,22 +436,7 @@ data:
           "timeFrom": null,
           "timeShift": null,
           "title": "Memory",
-          "transformations": [
-            {
-              "id": "merge",
-              "options": {
-                "reducers": []
-              }
-            },
-            {
-              "id": "filterFieldsByName",
-              "options": {
-                "include": {
-                  "names": ["cluster", "Value #C", "Value #A", "Value #B"]
-                }
-              }
-            }
-          ],
+          "transform": "table",
           "type": "table"
         },
         {
@@ -802,15 +455,12 @@ data:
           "type": "row"
         },
         {
+          "columns": [],
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
               "custom": {
-                "align": null,
-                "filterable": false
+                "align": "center"
               },
               "mappings": [],
               "thresholds": {
@@ -831,139 +481,76 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Time"
+                  "options": "Memory"
                 },
                 "properties": [
                   {
-                    "id": "displayName",
-                    "value": "Time"
+                    "id": "unit",
+                    "value": "percentunit"
                   },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Usage %"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Cluster"
+                },
+                "properties": [
                   {
                     "id": "custom.align",
                     "value": null
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #F"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Total Cores"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #B"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Allocatable Cores"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #A"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Requested"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #G"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Utilized"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "cluster"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
                   },
                   {
                     "id": "links",
                     "value": [
                       {
-                        "targetBlank": false,
-                        "title": "Drill down to cluster",
-                        "url": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1"
+                        "targetBlank": true,
+                        "title": "Drill down to pods",
+                        "url": "d/5d1jNlvGz/kubernetes-compute-resources-cluster?var-cluster=${__data.fields[cluster]}"
                       }
                     ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Requests %"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
                   },
                   {
-                    "id": "custom.align",
-                    "value": "left"
+                    "id": "decimals",
+                    "value": 2
                   }
                 ]
               }
             ]
           },
+          "fontSize": "100%",
           "gridPos": {
             "h": 7,
             "w": 12,
@@ -973,9 +560,112 @@ data:
           "id": 47,
           "interval": "4m",
           "options": {
-            "showHeader": true
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Cluster"
+              }
+            ]
           },
-          "pluginVersion": "7.4.2",
+          "pageSize": null,
+          "pluginVersion": "7.1.3",
+          "showHeader": true,
+          "sort": {
+            "col": 1,
+            "desc": false
+          },
+          "styles": [
+            {
+              "alias": "Time",
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "pattern": "Time",
+              "type": "hidden"
+            },
+            {
+              "alias": "Total Cores",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": null,
+              "mappingType": 1,
+              "pattern": "Value #F",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            },
+            {
+              "alias": "Allocatable Cores",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": null,
+              "mappingType": 1,
+              "pattern": "Value #B",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            },
+            {
+              "alias": "Requested",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #A",
+              "thresholds": [],
+              "type": "number",
+              "unit": "percentunit"
+            },
+            {
+              "alias": "Utilized",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #G",
+              "thresholds": [],
+              "type": "number",
+              "unit": "percentunit"
+            },
+            {
+              "alias": "",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": true,
+              "linkTooltip": "Drill down to cluster",
+              "linkUrl": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1",
+              "mappingType": 1,
+              "pattern": "cluster",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            }
+          ],
           "targets": [
             {
               "expr": "sum(cluster:capacity_cpu_cores:sum) by (cluster)",
@@ -1013,6 +703,7 @@ data:
           "timeFrom": null,
           "timeShift": null,
           "title": "CPU",
+          "transform": "table",
           "transformations": [
             {
               "id": "seriesToColumns",
@@ -1024,8 +715,7 @@ data:
               "id": "organize",
               "options": {
                 "excludeByName": {
-                  "Time": true,
-                  "Time 1": false
+                  "Time": true
                 },
                 "indexByName": {},
                 "renameByName": {
@@ -1036,20 +726,6 @@ data:
                   "Value #F": "Total Cores",
                   "Value #G": "Requests %",
                   "cluster": "Cluster"
-                }
-              }
-            },
-            {
-              "id": "merge",
-              "options": {
-                "reducers": []
-              }
-            },
-            {
-              "id": "filterFieldsByName",
-              "options": {
-                "include": {
-                  "names": ["cluster", "Value #F", "Value #B", "Value #A", "Value #G"]
                 }
               }
             }
@@ -1064,8 +740,7 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
-              "links": []
+              "custom": {}
             },
             "overrides": []
           },
@@ -1093,10 +768,10 @@ data:
           "linewidth": 1,
           "nullPointMode": "null",
           "options": {
-            "alertThreshold": true
+            "dataLinks": []
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "7.1.3",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -1153,15 +828,12 @@ data:
           }
         },
         {
+          "columns": [],
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
               "custom": {
-                "align": null,
-                "filterable": false
+                "align": "center"
               },
               "mappings": [],
               "thresholds": {
@@ -1182,53 +854,25 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Time"
+                  "options": "Total Memory"
                 },
                 "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Time"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #F"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Available Memory"
-                  },
                   {
                     "id": "unit",
-                    "value": "bytes"
+                    "value": "decgbytes"
                   },
                   {
                     "id": "decimals",
                     "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
                   }
                 ]
               },
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #A"
+                  "options": "Usage %"
                 },
                 "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Requested"
-                  },
                   {
                     "id": "unit",
                     "value": "percentunit"
@@ -1236,69 +880,50 @@ data:
                   {
                     "id": "decimals",
                     "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
                   }
                 ]
               },
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #G"
+                  "options": "Cluster"
                 },
                 "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Utilized"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
                   {
                     "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "cluster"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
+                    "value": null
                   },
                   {
                     "id": "links",
                     "value": [
                       {
-                        "targetBlank": false,
-                        "title": "Drill down to cluster",
-                        "url": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1"
+                        "targetBlank": true,
+                        "title": "Drill down to pods",
+                        "url": "d/5d1jNlvGz/kubernetes-compute-resources-cluster?var-cluster=${__data.fields[cluster]}"
                       }
                     ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Requests %"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
                   },
                   {
-                    "id": "custom.align",
-                    "value": "left"
+                    "id": "decimals",
+                    "value": 2
                   }
                 ]
               }
             ]
           },
+          "fontSize": "100%",
           "gridPos": {
             "h": 7,
             "w": 12,
@@ -1307,9 +932,96 @@ data:
           },
           "id": 60,
           "options": {
-            "showHeader": true
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Cluster"
+              }
+            ]
           },
-          "pluginVersion": "7.4.2",
+          "pageSize": null,
+          "pluginVersion": "7.1.3",
+          "showHeader": true,
+          "sort": {
+            "col": 1,
+            "desc": false
+          },
+          "styles": [
+            {
+              "alias": "Time",
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "pattern": "Time",
+              "type": "hidden"
+            },
+            {
+              "alias": "Available Memory",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #F",
+              "thresholds": [],
+              "type": "number",
+              "unit": "bytes"
+            },
+            {
+              "alias": "Requested",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #A",
+              "thresholds": [],
+              "type": "number",
+              "unit": "percentunit"
+            },
+            {
+              "alias": "Utilized",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #G",
+              "thresholds": [],
+              "type": "number",
+              "unit": "percentunit"
+            },
+            {
+              "alias": "",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": true,
+              "linkTooltip": "Drill down to cluster",
+              "linkUrl": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1",
+              "mappingType": 1,
+              "pattern": "cluster",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            }
+          ],
           "targets": [
             {
               "expr": "sum(cluster:capacity_memory_bytes:sum) by (cluster)",
@@ -1344,6 +1056,7 @@ data:
           "timeFrom": null,
           "timeShift": null,
           "title": "Memory",
+          "transform": "table",
           "transformations": [
             {
               "id": "seriesToColumns",
@@ -1368,20 +1081,6 @@ data:
                   "cluster": "Cluster"
                 }
               }
-            },
-            {
-              "id": "merge",
-              "options": {
-                "reducers": []
-              }
-            },
-            {
-              "id": "filterFieldsByName",
-              "options": {
-                "include": {
-                  "names": ["cluster", "Value #F", "Value #A", "Value #G"]
-                }
-              }
             }
           ],
           "type": "table"
@@ -1394,8 +1093,7 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
-              "links": []
+              "custom": {}
             },
             "overrides": []
           },
@@ -1422,10 +1120,10 @@ data:
           "linewidth": 1,
           "nullPointMode": "null",
           "options": {
-            "alertThreshold": true
+            "dataLinks": []
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "7.1.3",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -1485,15 +1183,12 @@ data:
           }
         },
         {
+          "columns": [],
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
               "custom": {
-                "align": null,
-                "filterable": false
+                "align": "center"
               },
               "mappings": [],
               "thresholds": {
@@ -1514,13 +1209,9 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #F"
+                  "options": "Total Disk"
                 },
                 "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Total Disk"
-                  },
                   {
                     "id": "unit",
                     "value": "bytes"
@@ -1528,47 +1219,15 @@ data:
                   {
                     "id": "decimals",
                     "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
                   }
                 ]
               },
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #B"
+                  "options": "Usage %"
                 },
                 "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Available Disk"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "bytes"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #A"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Usage %"
-                  },
                   {
                     "id": "unit",
                     "value": "percentunit"
@@ -1576,15 +1235,50 @@ data:
                   {
                     "id": "decimals",
                     "value": 2
-                  },
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Cluster"
+                },
+                "properties": [
                   {
                     "id": "custom.align",
-                    "value": "left"
+                    "value": null
+                  },
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "Drill down to pods",
+                        "url": "d/5d1jNlvGz/kubernetes-compute-resources-cluster?var-cluster=${__data.fields[cluster]}"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Available"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "bytes"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
                   }
                 ]
               }
             ]
           },
+          "fontSize": "100%",
           "gridPos": {
             "h": 8,
             "w": 12,
@@ -1593,9 +1287,77 @@ data:
           },
           "id": 61,
           "options": {
-            "showHeader": true
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Cluster"
+              }
+            ]
           },
-          "pluginVersion": "7.4.2",
+          "pageSize": null,
+          "pluginVersion": "7.1.3",
+          "showHeader": true,
+          "sort": {
+            "col": 1,
+            "desc": false
+          },
+          "styles": [
+            {
+              "alias": "Time",
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "pattern": "Time",
+              "type": "hidden"
+            },
+            {
+              "alias": "Total Disk",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #F",
+              "thresholds": [],
+              "type": "number",
+              "unit": "bytes"
+            },
+            {
+              "alias": "Available Disk",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #B",
+              "thresholds": [],
+              "type": "number",
+              "unit": "bytes"
+            },
+            {
+              "alias": "Usage %",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #A",
+              "thresholds": [],
+              "type": "number",
+              "unit": "percentunit"
+            }
+          ],
           "targets": [
             {
               "expr": "sum(node_filesystem_size_bytes) by (cluster)",
@@ -1627,6 +1389,7 @@ data:
           "timeFrom": null,
           "timeShift": null,
           "title": "Filesystem",
+          "transform": "table",
           "transformations": [
             {
               "id": "seriesToColumns",
@@ -1652,20 +1415,6 @@ data:
                   "cluster": "Cluster"
                 }
               }
-            },
-            {
-              "id": "merge",
-              "options": {
-                "reducers": []
-              }
-            },
-            {
-              "id": "filterFieldsByName",
-              "options": {
-                "include": {
-                  "names": ["cluster", "Value #F", "Value #B", "Value #A"]
-                }
-              }
             }
           ],
           "type": "table"
@@ -1678,11 +1427,22 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
-              "links": [],
+              "custom": {
+                "align": null
+              },
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
-                "steps": []
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
               }
             },
             "overrides": []
@@ -1710,10 +1470,10 @@ data:
           "linewidth": 1,
           "nullPointMode": "null",
           "options": {
-            "alertThreshold": true
+            "dataLinks": []
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "7.1.3",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -1776,19 +1536,18 @@ data:
         }
       ],
       "refresh": "1m",
-      "schemaVersion": 27,
+      "schemaVersion": 21,
       "style": "light",
-      "tags": ["ACM"],
+      "tags": [
+        "ACM"
+      ],
       "templating": {
         "list": [
           {
             "current": {
-              "selected": false,
               "text": "Observatorium",
               "value": "Observatorium"
             },
-            "description": null,
-            "error": null,
             "hide": 2,
             "includeAll": false,
             "label": null,
@@ -1804,24 +1563,20 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": true,
-              "text": ["All"],
-              "value": ["$__all"]
+              "text": "All",
+              "value": [
+                "$__all"
+              ]
             },
             "datasource": "$datasource",
             "definition": "label_values(node_cpu_seconds_total, cluster)",
-            "description": null,
-            "error": null,
             "hide": 2,
             "includeAll": true,
             "label": "cluster",
             "multi": true,
             "name": "cluster",
             "options": [],
-            "query": {
-              "query": "label_values(node_cpu_seconds_total, cluster)",
-              "refId": "Observatorium-cluster-Variable-Query"
-            },
+            "query": "label_values(node_cpu_seconds_total, cluster)",
             "refresh": 1,
             "regex": "",
             "skipUrlSync": false,
@@ -1839,12 +1594,20 @@ data:
         "to": "now"
       },
       "timepicker": {
-        "refresh_intervals": ["1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+        "refresh_intervals": [
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ]
       },
       "timezone": "browser",
       "title": "ACM - Clusters Overview",
       "uid": "2b679d600f3b9e7676a7c5ac3643d448",
-      "version": 17
+      "version": 3
     }
 kind: ConfigMap
 metadata:
@@ -1874,7 +1637,7 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 1,
-      "iteration": 1616613688231,
+      "iteration": 1602535997331,
       "links": [],
       "panels": [
         {
@@ -1893,41 +1656,21 @@ data:
         },
         {
           "cacheTimeout": null,
+          "colorBackground": false,
+          "colorValue": true,
+          "colors": [
+            "#299c46",
+            "#F2495C",
+            "#F2495C"
+          ],
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {},
-              "mappings": [
-                {
-                  "id": 0,
-                  "op": "=",
-                  "text": "N/A",
-                  "type": 1,
-                  "value": "null"
-                }
-              ],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "#299c46",
-                    "value": null
-                  },
-                  {
-                    "color": "#F2495C",
-                    "value": 0.2
-                  },
-                  {
-                    "color": "#F2495C"
-                  }
-                ]
-              },
-              "unit": "percentunit"
-            },
-            "overrides": []
+          "format": "percentunit",
+          "gauge": {
+            "maxValue": 100,
+            "minValue": 0,
+            "show": false,
+            "thresholdLabels": false,
+            "thresholdMarkers": true
           },
           "gridPos": {
             "h": 4,
@@ -1938,23 +1681,42 @@ data:
           "id": 8,
           "interval": "4m",
           "links": [],
-          "maxDataPoints": 100,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "mean"
-              ],
-              "fields": "",
-              "values": false
+          "mappingType": 1,
+          "mappingTypes": [
+            {
+              "name": "value to text",
+              "value": 1
             },
-            "text": {},
-            "textMode": "auto"
+            {
+              "name": "range to text",
+              "value": 2
+            }
+          ],
+          "maxDataPoints": 100,
+          "nullPointMode": "connected",
+          "nullText": null,
+          "options": {},
+          "pluginVersion": "7.1.3",
+          "postfix": "",
+          "postfixFontSize": "50%",
+          "prefix": "",
+          "prefixFontSize": "50%",
+          "rangeMaps": [
+            {
+              "from": "null",
+              "text": "N/A",
+              "to": "null"
+            }
+          ],
+          "sparkline": {
+            "fillColor": "rgba(31, 118, 189, 0.18)",
+            "full": false,
+            "lineColor": "rgb(31, 120, 193)",
+            "show": false,
+            "ymax": null,
+            "ymin": null
           },
-          "pluginVersion": "7.4.2",
+          "tableColumn": "",
           "targets": [
             {
               "expr": "(sum(kube_pod_container_resource_requests_cpu_cores{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable_cpu_cores{cluster=\"$cluster\"})) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\",cluster=\"$cluster\"}[$__interval])))",
@@ -1964,10 +1726,20 @@ data:
               "refId": "A"
             }
           ],
+          "thresholds": ".2",
           "timeFrom": null,
           "timeShift": null,
           "title": "Overestimation",
-          "type": "stat"
+          "type": "singlestat",
+          "valueFontSize": "150%",
+          "valueMaps": [
+            {
+              "op": "=",
+              "text": "N/A",
+              "value": "null"
+            }
+          ],
+          "valueName": "avg"
         },
         {
           "aliasColors": {},
@@ -1977,8 +1749,7 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
-              "links": []
+              "custom": {}
             },
             "overrides": []
           },
@@ -2006,10 +1777,10 @@ data:
           "linewidth": 0,
           "nullPointMode": "null as zero",
           "options": {
-            "alertThreshold": true
+            "dataLinks": []
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "7.1.3",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -2068,39 +1839,21 @@ data:
         },
         {
           "cacheTimeout": null,
+          "colorBackground": false,
+          "colorValue": false,
+          "colors": [
+            "#299c46",
+            "rgba(237, 129, 40, 0.89)",
+            "#d44a3a"
+          ],
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "fixedColor": "rgb(255, 255, 255)",
-                "mode": "fixed"
-              },
-              "custom": {},
-              "mappings": [
-                {
-                  "id": 0,
-                  "op": "=",
-                  "text": "N/A",
-                  "type": 1,
-                  "value": "null"
-                }
-              ],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "percentunit"
-            },
-            "overrides": []
+          "format": "percentunit",
+          "gauge": {
+            "maxValue": 100,
+            "minValue": 0,
+            "show": false,
+            "thresholdLabels": false,
+            "thresholdMarkers": true
           },
           "gridPos": {
             "h": 4,
@@ -2111,23 +1864,42 @@ data:
           "id": 6,
           "interval": null,
           "links": [],
-          "maxDataPoints": 100,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "mean"
-              ],
-              "fields": "",
-              "values": false
+          "mappingType": 1,
+          "mappingTypes": [
+            {
+              "name": "value to text",
+              "value": 1
             },
-            "text": {},
-            "textMode": "auto"
+            {
+              "name": "range to text",
+              "value": 2
+            }
+          ],
+          "maxDataPoints": 100,
+          "nullPointMode": "connected",
+          "nullText": null,
+          "options": {},
+          "pluginVersion": "7.1.3",
+          "postfix": "",
+          "postfixFontSize": "50%",
+          "prefix": "",
+          "prefixFontSize": "50%",
+          "rangeMaps": [
+            {
+              "from": "null",
+              "text": "N/A",
+              "to": "null"
+            }
+          ],
+          "sparkline": {
+            "fillColor": "rgba(31, 118, 189, 0.18)",
+            "full": false,
+            "lineColor": "rgb(31, 120, 193)",
+            "show": false,
+            "ymax": null,
+            "ymin": null
           },
-          "pluginVersion": "7.4.2",
+          "tableColumn": "",
           "targets": [
             {
               "expr": "sum(kube_pod_container_resource_requests_cpu_cores{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable_cpu_cores{cluster=\"$cluster\"})",
@@ -2137,46 +1909,38 @@ data:
               "refId": "A"
             }
           ],
+          "thresholds": "",
           "timeFrom": null,
           "timeShift": null,
           "title": "CPU Requests Commitment",
-          "type": "stat"
+          "type": "singlestat",
+          "valueFontSize": "150%",
+          "valueMaps": [
+            {
+              "op": "=",
+              "text": "N/A",
+              "value": "null"
+            }
+          ],
+          "valueName": "avg"
         },
         {
           "cacheTimeout": null,
+          "colorBackground": false,
+          "colorValue": false,
+          "colors": [
+            "#299c46",
+            "rgba(237, 129, 40, 0.89)",
+            "#d44a3a"
+          ],
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "fixedColor": "rgb(255, 255, 255)",
-                "mode": "fixed"
-              },
-              "custom": {},
-              "mappings": [
-                {
-                  "id": 0,
-                  "op": "=",
-                  "text": "N/A",
-                  "type": 1,
-                  "value": "null"
-                }
-              ],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "percentunit"
-            },
-            "overrides": []
+          "format": "percentunit",
+          "gauge": {
+            "maxValue": 100,
+            "minValue": 0,
+            "show": false,
+            "thresholdLabels": false,
+            "thresholdMarkers": true
           },
           "gridPos": {
             "h": 4,
@@ -2187,23 +1951,42 @@ data:
           "id": 4,
           "interval": "4m",
           "links": [],
-          "maxDataPoints": 100,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "mean"
-              ],
-              "fields": "",
-              "values": false
+          "mappingType": 1,
+          "mappingTypes": [
+            {
+              "name": "value to text",
+              "value": 1
             },
-            "text": {},
-            "textMode": "auto"
+            {
+              "name": "range to text",
+              "value": 2
+            }
+          ],
+          "maxDataPoints": 100,
+          "nullPointMode": "connected",
+          "nullText": null,
+          "options": {},
+          "pluginVersion": "7.1.3",
+          "postfix": "",
+          "postfixFontSize": "50%",
+          "prefix": "",
+          "prefixFontSize": "50%",
+          "rangeMaps": [
+            {
+              "from": "null",
+              "text": "N/A",
+              "to": "null"
+            }
+          ],
+          "sparkline": {
+            "fillColor": "rgba(31, 118, 189, 0.18)",
+            "full": false,
+            "lineColor": "rgb(31, 120, 193)",
+            "show": false,
+            "ymax": null,
+            "ymin": null
           },
-          "pluginVersion": "7.4.2",
+          "tableColumn": "",
           "targets": [
             {
               "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\", cluster=\"$cluster\"}[$__interval]))",
@@ -2213,22 +1996,31 @@ data:
               "refId": "A"
             }
           ],
+          "thresholds": "",
           "timeFrom": null,
           "timeShift": null,
           "title": "CPU Utilisation",
-          "type": "stat"
+          "type": "singlestat",
+          "valueFontSize": "150%",
+          "valueMaps": [
+            {
+              "op": "=",
+              "text": "N/A",
+              "value": "null"
+            }
+          ],
+          "valueName": "avg"
         },
         {
+          "columns": [],
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
               "custom": {
-                "filterable": false
+                "align": "center"
               },
               "mappings": [],
+              "noValue": "-",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -2247,125 +2039,95 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #A"
+                  "options": "Namespace"
                 },
                 "properties": [
                   {
-                    "id": "displayName",
-                    "value": "Pods"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "links",
-                    "value": [
-                      {
-                        "targetBlank": false,
-                        "title": "Drill down to pods",
-                        "url": "./d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$__cell_1"
-                      }
-                    ]
+                    "id": "custom.width",
+                    "value": 330
                   },
                   {
                     "id": "custom.align",
                     "value": null
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "namespace"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
                   },
                   {
                     "id": "links",
                     "value": [
                       {
-                        "targetBlank": false,
+                        "targetBlank": true,
                         "title": "Drill down to pods",
-                        "url": "./d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$__cell_1"
+                        "url": "/d/Bfk6ByvMk/kubernetes-compute-resources-namespace-pods-v7?var-cluster=$cluster&var-namespace=${__data.fields[namespace]}"
                       }
                     ]
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  },
-                  {
-                    "id": "displayName",
-                    "value": "Namespace"
                   }
                 ]
               },
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #C"
+                  "options": "Pods"
                 },
                 "properties": [
                   {
-                    "id": "displayName",
-                    "value": "CPU Usage"
-                  },
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "Drill down to pods",
+                        "url": "/d/Bfk6ByvMk/kubernetes-compute-resources-namespace-pods-v7?var-cluster=$cluster&var-namespace=${__data.fields[namespace]}"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Workloads"
+                },
+                "properties": [
                   {
-                    "id": "unit",
-                    "value": "short"
-                  },
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "Drill down to workloads",
+                        "url": "d/a87fb0d919ec0ea5f6543124e16c42a5/kubernetes-compute-resources-namespace-workloads?orgId=1&refresh=1m&var-datasource=$datasource&var-type=deployment&var-cluster=$cluster&var-namespace=${__data.fields[namespace]}&var-interval=5m"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU Usage"
+                },
+                "properties": [
                   {
                     "id": "decimals",
                     "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
                   }
                 ]
               },
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #D"
+                  "options": "CPU Requests"
                 },
                 "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "CPU Requests"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  },
                   {
                     "id": "decimals",
                     "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
                   }
                 ]
               },
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #E"
+                  "options": "CPU Requests %"
                 },
                 "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "CPU Requests %"
-                  },
                   {
                     "id": "unit",
                     "value": "percentunit"
@@ -2373,15 +2135,40 @@ data:
                   {
                     "id": "decimals",
                     "value": 2
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU Limits"
+                },
+                "properties": [
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU Limits %"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
                   },
                   {
-                    "id": "custom.align",
-                    "value": "left"
+                    "id": "decimals",
+                    "value": 2
                   }
                 ]
               }
             ]
           },
+          "fontSize": "100%",
           "gridPos": {
             "h": 9,
             "w": 24,
@@ -2392,9 +2179,115 @@ data:
           "interval": "4m",
           "links": [],
           "options": {
-            "showHeader": true
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": false,
+                "displayName": "Namespace"
+              }
+            ]
           },
-          "pluginVersion": "7.4.2",
+          "pageSize": null,
+          "pluginVersion": "7.1.3",
+          "showHeader": true,
+          "sort": {
+            "col": 2,
+            "desc": false
+          },
+          "styles": [
+            {
+              "alias": "Time",
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "pattern": "Time",
+              "type": "hidden"
+            },
+            {
+              "alias": "Pods",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": null,
+              "link": true,
+              "linkTooltip": "Drill down to pods",
+              "linkUrl": "./d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$__cell_1",
+              "mappingType": 1,
+              "pattern": "Value #A",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            },
+            {
+              "alias": "",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": true,
+              "linkTooltip": "Drill down to pods",
+              "linkUrl": "./d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$__cell_1",
+              "mappingType": 1,
+              "pattern": "namespace",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            },
+            {
+              "alias": "CPU Usage",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #C",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            },
+            {
+              "alias": "CPU Requests",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #D",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            },
+            {
+              "alias": "CPU Requests %",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #E",
+              "thresholds": [],
+              "type": "number",
+              "unit": "percentunit"
+            }
+          ],
           "targets": [
             {
               "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\"}) by (namespace) / sum(kube_pod_container_resource_requests_cpu_cores{cluster=\"$cluster\"}) by (namespace)",
@@ -2438,6 +2331,7 @@ data:
           "timeFrom": null,
           "timeShift": null,
           "title": "CPU Quota",
+          "transform": "table",
           "transformations": [
             {
               "id": "seriesToColumns",
@@ -2463,25 +2357,6 @@ data:
                   "namespace": "Namespace"
                 }
               }
-            },
-            {
-              "id": "merge",
-              "options": {
-                "reducers": []
-              }
-            },
-            {
-              "id": "filterFieldsByName",
-              "options": {
-                "include": {
-                  "names": [
-                    "namespace",
-                    "Value #E",
-                    "Value #C",
-                    "Value #D"
-                  ]
-                }
-              }
             }
           ],
           "type": "table"
@@ -2502,41 +2377,21 @@ data:
         },
         {
           "cacheTimeout": null,
+          "colorBackground": false,
+          "colorValue": true,
+          "colors": [
+            "#299c46",
+            "#F2495C",
+            "#F2495C"
+          ],
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {},
-              "mappings": [
-                {
-                  "id": 0,
-                  "op": "=",
-                  "text": "N/A",
-                  "type": 1,
-                  "value": "null"
-                }
-              ],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "#299c46",
-                    "value": null
-                  },
-                  {
-                    "color": "#F2495C",
-                    "value": 0.2
-                  },
-                  {
-                    "color": "#F2495C"
-                  }
-                ]
-              },
-              "unit": "percentunit"
-            },
-            "overrides": []
+          "format": "percentunit",
+          "gauge": {
+            "maxValue": 100,
+            "minValue": 0,
+            "show": false,
+            "thresholdLabels": false,
+            "thresholdMarkers": true
           },
           "gridPos": {
             "h": 4,
@@ -2547,23 +2402,42 @@ data:
           "id": 14,
           "interval": "4m",
           "links": [],
-          "maxDataPoints": 100,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "mean"
-              ],
-              "fields": "",
-              "values": false
+          "mappingType": 1,
+          "mappingTypes": [
+            {
+              "name": "value to text",
+              "value": 1
             },
-            "text": {},
-            "textMode": "auto"
+            {
+              "name": "range to text",
+              "value": 2
+            }
+          ],
+          "maxDataPoints": 100,
+          "nullPointMode": "connected",
+          "nullText": null,
+          "options": {},
+          "pluginVersion": "7.1.3",
+          "postfix": "",
+          "postfixFontSize": "50%",
+          "prefix": "",
+          "prefixFontSize": "50%",
+          "rangeMaps": [
+            {
+              "from": "null",
+              "text": "N/A",
+              "to": "null"
+            }
+          ],
+          "sparkline": {
+            "fillColor": "rgba(31, 118, 189, 0.18)",
+            "full": false,
+            "lineColor": "rgb(31, 120, 193)",
+            "show": false,
+            "ymax": null,
+            "ymin": null
           },
-          "pluginVersion": "7.4.2",
+          "tableColumn": "",
           "targets": [
             {
               "expr": "(sum(kube_pod_container_resource_requests_memory_bytes{cluster=\"$cluster\"})/ sum(kube_node_status_allocatable_memory_bytes{cluster=\"$cluster\"}))\n-\n(1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=\"$cluster\"})/ sum(kube_node_status_allocatable_memory_bytes{cluster=\"$cluster\"}))",
@@ -2573,10 +2447,20 @@ data:
               "refId": "A"
             }
           ],
+          "thresholds": ".2",
           "timeFrom": null,
           "timeShift": null,
           "title": "Overestimation",
-          "type": "stat"
+          "type": "singlestat",
+          "valueFontSize": "150%",
+          "valueMaps": [
+            {
+              "op": "=",
+              "text": "N/A",
+              "value": "null"
+            }
+          ],
+          "valueName": "avg"
         },
         {
           "aliasColors": {},
@@ -2616,10 +2500,10 @@ data:
           "links": [],
           "nullPointMode": "null as zero",
           "options": {
-            "alertThreshold": true
+            "dataLinks": []
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "7.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -2682,39 +2566,21 @@ data:
         },
         {
           "cacheTimeout": null,
+          "colorBackground": false,
+          "colorValue": false,
+          "colors": [
+            "#299c46",
+            "rgba(237, 129, 40, 0.89)",
+            "#d44a3a"
+          ],
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "fixedColor": "rgb(255, 255, 255)",
-                "mode": "fixed"
-              },
-              "custom": {},
-              "mappings": [
-                {
-                  "id": 0,
-                  "op": "=",
-                  "text": "N/A",
-                  "type": 1,
-                  "value": "null"
-                }
-              ],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "percentunit"
-            },
-            "overrides": []
+          "format": "percentunit",
+          "gauge": {
+            "maxValue": 100,
+            "minValue": 0,
+            "show": false,
+            "thresholdLabels": false,
+            "thresholdMarkers": true
           },
           "gridPos": {
             "h": 4,
@@ -2725,23 +2591,42 @@ data:
           "id": 12,
           "interval": null,
           "links": [],
-          "maxDataPoints": 100,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "mean"
-              ],
-              "fields": "",
-              "values": false
+          "mappingType": 1,
+          "mappingTypes": [
+            {
+              "name": "value to text",
+              "value": 1
             },
-            "text": {},
-            "textMode": "auto"
+            {
+              "name": "range to text",
+              "value": 2
+            }
+          ],
+          "maxDataPoints": 100,
+          "nullPointMode": "connected",
+          "nullText": null,
+          "options": {},
+          "pluginVersion": "7.1.3",
+          "postfix": "",
+          "postfixFontSize": "50%",
+          "prefix": "",
+          "prefixFontSize": "50%",
+          "rangeMaps": [
+            {
+              "from": "null",
+              "text": "N/A",
+              "to": "null"
+            }
+          ],
+          "sparkline": {
+            "fillColor": "rgba(31, 118, 189, 0.18)",
+            "full": false,
+            "lineColor": "rgb(31, 120, 193)",
+            "show": false,
+            "ymax": null,
+            "ymin": null
           },
-          "pluginVersion": "7.4.2",
+          "tableColumn": "",
           "targets": [
             {
               "expr": "sum(kube_pod_container_resource_requests_memory_bytes{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable_memory_bytes{cluster=\"$cluster\"})",
@@ -2753,46 +2638,38 @@ data:
               "refId": "A"
             }
           ],
+          "thresholds": "",
           "timeFrom": null,
           "timeShift": null,
           "title": "Memory Requests Commitment",
-          "type": "stat"
+          "type": "singlestat",
+          "valueFontSize": "150%",
+          "valueMaps": [
+            {
+              "op": "=",
+              "text": "N/A",
+              "value": "null"
+            }
+          ],
+          "valueName": "avg"
         },
         {
           "cacheTimeout": null,
+          "colorBackground": false,
+          "colorValue": false,
+          "colors": [
+            "#299c46",
+            "rgba(237, 129, 40, 0.89)",
+            "#d44a3a"
+          ],
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "fixedColor": "rgb(255, 255, 255)",
-                "mode": "fixed"
-              },
-              "custom": {},
-              "mappings": [
-                {
-                  "id": 0,
-                  "op": "=",
-                  "text": "N/A",
-                  "type": 1,
-                  "value": "null"
-                }
-              ],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "percentunit"
-            },
-            "overrides": []
+          "format": "percentunit",
+          "gauge": {
+            "maxValue": 100,
+            "minValue": 0,
+            "show": false,
+            "thresholdLabels": false,
+            "thresholdMarkers": true
           },
           "gridPos": {
             "h": 4,
@@ -2803,23 +2680,42 @@ data:
           "id": 10,
           "interval": "4m",
           "links": [],
-          "maxDataPoints": 100,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "horizontal",
-            "reduceOptions": {
-              "calcs": [
-                "mean"
-              ],
-              "fields": "",
-              "values": false
+          "mappingType": 1,
+          "mappingTypes": [
+            {
+              "name": "value to text",
+              "value": 1
             },
-            "text": {},
-            "textMode": "auto"
+            {
+              "name": "range to text",
+              "value": 2
+            }
+          ],
+          "maxDataPoints": 100,
+          "nullPointMode": "connected",
+          "nullText": null,
+          "options": {},
+          "pluginVersion": "7.1.3",
+          "postfix": "",
+          "postfixFontSize": "50%",
+          "prefix": "",
+          "prefixFontSize": "50%",
+          "rangeMaps": [
+            {
+              "from": "null",
+              "text": "N/A",
+              "to": "null"
+            }
+          ],
+          "sparkline": {
+            "fillColor": "rgba(31, 118, 189, 0.18)",
+            "full": false,
+            "lineColor": "rgb(31, 120, 193)",
+            "show": false,
+            "ymax": null,
+            "ymin": null
           },
-          "pluginVersion": "7.4.2",
+          "tableColumn": "",
           "targets": [
             {
               "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable_memory_bytes{cluster=\"$cluster\"})",
@@ -2832,23 +2728,31 @@ data:
               "refId": "A"
             }
           ],
+          "thresholds": "",
           "timeFrom": null,
           "timeShift": null,
           "title": "Memory Utilisation",
-          "type": "stat"
+          "type": "singlestat",
+          "valueFontSize": "150%",
+          "valueMaps": [
+            {
+              "op": "=",
+              "text": "N/A",
+              "value": "null"
+            }
+          ],
+          "valueName": "avg"
         },
         {
+          "columns": [],
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
               "custom": {
-                "align": null,
-                "filterable": false
+                "align": "center"
               },
               "mappings": [],
+              "noValue": "-",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -2867,13 +2771,71 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #C"
+                  "options": "Namespace"
                 },
                 "properties": [
                   {
-                    "id": "displayName",
-                    "value": "Memory Usage"
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "Drill down to pods",
+                        "url": "/d/Bfk6ByvMk/kubernetes-compute-resources-namespace-pods-v7?var-cluster=$cluster&var-namespace=${__data.fields[namespace]}"
+                      }
+                    ]
                   },
+                  {
+                    "id": "custom.width",
+                    "value": 330
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Pods"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "Drill down to pods",
+                        "url": "/d/Bfk6ByvMk/kubernetes-compute-resources-namespace-pods-v7?var-cluster=$cluster&var-namespace=${__data.fields[namespace]}"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Workloads"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "Drill down to workloads",
+                        "url": "d/a87fb0d919ec0ea5f6543124e16c42a5/kubernetes-compute-resources-namespace-workloads?orgId=1&refresh=1m&var-datasource=$datasource&var-type=deployment&var-cluster=$cluster&var-namespace=${__data.fields[namespace]}&var-interval=5m"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Memory Usage"
+                },
+                "properties": [
                   {
                     "id": "unit",
                     "value": "bytes"
@@ -2881,23 +2843,15 @@ data:
                   {
                     "id": "decimals",
                     "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
                   }
                 ]
               },
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #D"
+                  "options": "Memory Requests"
                 },
                 "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Memory Requests"
-                  },
                   {
                     "id": "unit",
                     "value": "bytes"
@@ -2905,23 +2859,15 @@ data:
                   {
                     "id": "decimals",
                     "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
                   }
                 ]
               },
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #E"
+                  "options": "Memory Requests %"
                 },
                 "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Memory Requests %"
-                  },
                   {
                     "id": "unit",
                     "value": "percentunit"
@@ -2929,79 +2875,44 @@ data:
                   {
                     "id": "decimals",
                     "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
                   }
                 ]
               },
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #A"
+                  "options": "Memory Limits"
                 },
                 "properties": [
                   {
-                    "id": "displayName",
-                    "value": "Pods"
-                  },
-                  {
                     "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "links",
-                    "value": [
-                      {
-                        "targetBlank": false,
-                        "title": "Drill down to pods",
-                        "url": "./d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$__cell_1"
-                      }
-                    ]
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "namespace"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Namespace"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "short"
+                    "value": "bytes"
                   },
                   {
                     "id": "decimals",
                     "value": 2
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Memory Limits %"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
                   },
                   {
-                    "id": "links",
-                    "value": [
-                      {
-                        "targetBlank": false,
-                        "title": "Drill down to pods",
-                        "url": "./d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$__cell"
-                      }
-                    ]
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
+                    "id": "decimals",
+                    "value": 2
                   }
                 ]
               }
             ]
           },
+          "fontSize": "100%",
           "gridPos": {
             "h": 11,
             "w": 24,
@@ -3014,7 +2925,107 @@ data:
           "options": {
             "showHeader": true
           },
-          "pluginVersion": "7.4.2",
+          "pageSize": null,
+          "pluginVersion": "7.1.3",
+          "showHeader": true,
+          "sort": {
+            "col": 2,
+            "desc": true
+          },
+          "styles": [
+            {
+              "alias": "Time",
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "pattern": "Time",
+              "type": "hidden"
+            },
+            {
+              "alias": "Memory Usage",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #C",
+              "thresholds": [],
+              "type": "number",
+              "unit": "bytes"
+            },
+            {
+              "alias": "Memory Requests",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #D",
+              "thresholds": [],
+              "type": "number",
+              "unit": "bytes"
+            },
+            {
+              "alias": "Memory Requests %",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "mappingType": 1,
+              "pattern": "Value #E",
+              "thresholds": [],
+              "type": "number",
+              "unit": "percentunit"
+            },
+            {
+              "alias": "Pods",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": null,
+              "link": true,
+              "linkTooltip": "Drill down to pods",
+              "linkUrl": "./d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$__cell_1",
+              "mappingType": 1,
+              "pattern": "Value #A",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            },
+            {
+              "alias": "Namespace",
+              "colorMode": null,
+              "colors": [
+                "rgba(245, 54, 54, 0.9)",
+                "rgba(237, 129, 40, 0.89)",
+                "rgba(50, 172, 45, 0.97)"
+              ],
+              "dateFormat": "YYYY-MM-DD HH:mm:ss",
+              "decimals": 2,
+              "link": true,
+              "linkTooltip": "Drill down to pods",
+              "linkUrl": "./d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$__cell",
+              "mappingType": 1,
+              "pattern": "namespace",
+              "thresholds": [],
+              "type": "number",
+              "unit": "short"
+            }
+          ],
           "targets": [
             {
               "expr": "sum(container_memory_rss{cluster=\"$cluster\", container!=\"\"}) by (namespace) / sum(kube_pod_container_resource_requests_memory_bytes{cluster=\"$cluster\"}) by (namespace)",
@@ -3056,6 +3067,7 @@ data:
           "timeFrom": null,
           "timeShift": null,
           "title": "Requests by Namespace",
+          "transform": "table",
           "transformations": [
             {
               "id": "seriesToColumns",
@@ -3081,32 +3093,13 @@ data:
                   "namespace": "Namespace"
                 }
               }
-            },
-            {
-              "id": "merge",
-              "options": {
-                "reducers": []
-              }
-            },
-            {
-              "id": "filterFieldsByName",
-              "options": {
-                "include": {
-                  "names": [
-                    "namespace",
-                    "Value #E",
-                    "Value #C",
-                    "Value #D"
-                  ]
-                }
-              }
             }
           ],
           "type": "table"
         }
       ],
-      "refresh": "",
-      "schemaVersion": 27,
+      "refresh": "1m",
+      "schemaVersion": 21,
       "style": "dark",
       "tags": [
         "ACM"
@@ -3115,12 +3108,9 @@ data:
         "list": [
           {
             "current": {
-              "selected": false,
-              "text": "Prometheus",
-              "value": "Prometheus"
+              "text": "Observatorium",
+              "value": "Observatorium"
             },
-            "description": null,
-            "error": null,
             "hide": 2,
             "includeAll": false,
             "label": null,
@@ -3137,24 +3127,18 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
-              "text": "local-cluster",
-              "value": "local-cluster"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "label_values(node_cpu_seconds_total,cluster)",
-            "description": null,
-            "error": null,
             "hide": 0,
             "includeAll": false,
             "label": "Cluster",
             "multi": false,
             "name": "cluster",
             "options": [],
-            "query": {
-              "query": "label_values(node_cpu_seconds_total,cluster)",
-              "refId": "Prometheus-cluster-Variable-Query"
-            },
+            "query": "label_values(node_cpu_seconds_total,cluster)",
             "refresh": 1,
             "regex": "",
             "skipUrlSync": false,
@@ -3185,7 +3169,7 @@ data:
       "timezone": "browser",
       "title": "ACM - Resource Optimization / Cluster",
       "uid": "8Qvi3edMz",
-      "version": 1
+      "version": 2
     }
 kind: ConfigMap
 metadata:
