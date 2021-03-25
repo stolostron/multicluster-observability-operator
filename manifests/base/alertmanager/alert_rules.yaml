@@ -5,19 +5,6 @@ metadata:
 data:
   default_rules.yaml: |
     groups:
-      - name: control-plane-health
-        rules:
-        - alert: KubeAPIServerLatency
-          annotations:
-            summary: Fires when Kube API Server 99th percentile latency exceeds the threshold.
-            description: "The Kube API Server has a high 99th percentile Latency: {{ $value }} seconds for cluster: {{ $labels.cluster }} clusterid: {{ $labels.clusterID }}."  
-          expr: |
-            max(histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job="apiserver", verb!="WATCH"}[5m])) by (verb,le,cluster,clusterID))) by (cluster,clusterID) >1
-          for: 3m
-          labels:
-            cluster: "{{ $labels.cluster }}"
-            clusterID: "{{ $labels.clusterID }}"
-            severity: critical
       - name: kubernetes-storage
         rules:
         - alert: KubePersistentVolumeFillingUp
