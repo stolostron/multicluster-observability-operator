@@ -18,6 +18,7 @@ import (
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcocontroller "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
@@ -28,12 +29,12 @@ const (
 	resourceWorkSize = 6
 )
 
-func newTestMCO() *mcov1beta1.MultiClusterObservability {
-	return &mcov1beta1.MultiClusterObservability{
+func newTestMCO() *mcov1beta2.MultiClusterObservability {
+	return &mcov1beta2.MultiClusterObservability{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: mcoName,
 		},
-		Spec: mcov1beta1.MultiClusterObservabilitySpec{
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			ImagePullSecret: pullSecretName,
 			ObservabilityAddonSpec: &mcov1beta1.ObservabilityAddonSpec{
 				EnableMetrics: true,

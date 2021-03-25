@@ -15,7 +15,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 
@@ -45,10 +45,10 @@ func TestCreateCertificates(t *testing.T) {
 		namespace  = mcoconfig.GetDefaultNamespace()
 		testSuffix = "-test"
 	)
-	mco := &mcov1beta1.MultiClusterObservability{
+	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
-		Spec:       mcov1beta1.MultiClusterObservabilitySpec{},
+		Spec:       mcov1beta2.MultiClusterObservabilitySpec{},
 	}
 	route := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
@@ -60,7 +60,7 @@ func TestCreateCertificates(t *testing.T) {
 		},
 	}
 	s := scheme.Scheme
-	mcov1beta1.SchemeBuilder.AddToScheme(s)
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	certv1alpha1.SchemeBuilder.AddToScheme(s)
 	routev1.AddToScheme(s)
 

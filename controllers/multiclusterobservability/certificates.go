@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 
@@ -129,7 +129,7 @@ func CreateCertificateSpec(secret string,
 
 // CreateCertificate is used to create Certificate resource
 func CreateCertificate(client client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta1.MultiClusterObservability,
+	mco *mcov1beta2.MultiClusterObservability,
 	name string, namespace string,
 	spec cert.CertificateSpec) error {
 
@@ -223,7 +223,7 @@ func createClusterIssuer(client client.Client, name string, ca string) error {
 }
 
 func createIssuer(client client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta1.MultiClusterObservability,
+	mco *mcov1beta2.MultiClusterObservability,
 	name string, namespace string, ca string) error {
 	isserConfig := cert.IssuerConfig{}
 	if ca != "" {
@@ -313,7 +313,7 @@ func createNamespace(client client.Client) error {
 }
 
 func createObservabilityCertificate(client client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta1.MultiClusterObservability) error {
+	mco *mcov1beta2.MultiClusterObservability) error {
 
 	log.Info("Creating server side certificates")
 	ns := config.GetDefaultNamespace()

@@ -32,6 +32,7 @@ import (
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
@@ -85,7 +86,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	deleteAll := false
 	// Fetch the MultiClusterObservability instance
-	mco := &mcov1beta1.MultiClusterObservability{}
+	mco := &mcov1beta2.MultiClusterObservability{}
 	err := r.Client.Get(context.TODO(),
 		types.NamespacedName{
 			Name: config.GetMonitoringCRName(),
@@ -212,7 +213,7 @@ func createAllRelatedRes(
 	client client.Client,
 	restMapper meta.RESTMapper,
 	request ctrl.Request,
-	mco *mcov1beta1.MultiClusterObservability,
+	mco *mcov1beta2.MultiClusterObservability,
 	placement *placementv1.PlacementRule,
 	obsAddonList *mcov1beta1.ObservabilityAddonList) (ctrl.Result, error) {
 
@@ -321,7 +322,7 @@ func deleteGlobalResource(c client.Client) error {
 }
 
 func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
-	mco *mcov1beta1.MultiClusterObservability, imagePullSecret *corev1.Secret,
+	mco *mcov1beta2.MultiClusterObservability, imagePullSecret *corev1.Secret,
 	name string, namespace string) error {
 	org := mcoctrl.GetManagedClusterOrg()
 	spec := mcoctrl.CreateCertificateSpec(certsName, true,
@@ -506,7 +507,7 @@ func watchMCO(c controller.Controller, mapFn handler.MapFunc) error {
 		},
 	}
 
-	err := c.Watch(&source.Kind{Type: &mcov1beta1.MultiClusterObservability{}},
+	err := c.Watch(&source.Kind{Type: &mcov1beta2.MultiClusterObservability{}},
 		handler.EnqueueRequestsFromMapFunc(mapFn),
 		mcoPred)
 	if err != nil {
