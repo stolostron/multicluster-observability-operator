@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
+	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/rendering/templates"
 )
@@ -31,7 +32,7 @@ func TestRender(t *testing.T) {
 			ImagePullPolicy: "Always",
 			ImagePullSecret: "test",
 			StorageConfig: &mcov1beta2.StorageConfig{
-				MetricObjectStorage: &mcov1beta2.PreConfiguredStorage{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
 					Key:  "test",
 					Name: "test",
 				},
