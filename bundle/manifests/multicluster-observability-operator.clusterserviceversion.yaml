@@ -6,22 +6,6 @@ metadata:
       [
         {
           "apiVersion": "observability.open-cluster-management.io/v1beta1",
-          "kind": "MultiClusterObservability",
-          "metadata": {
-            "name": "observability"
-          },
-          "spec": {
-            "observabilityAddonSpec": {},
-            "storageConfigObject": {
-              "metricObjectStorage": {
-                "key": "thanos.yaml",
-                "name": "thanos-object-storage"
-              }
-            }
-          }
-        },
-        {
-          "apiVersion": "observability.open-cluster-management.io/v1beta1",
           "kind": "ObservabilityAddon",
           "metadata": {
             "name": "observability-addon"
@@ -30,12 +14,28 @@ metadata:
             "enableMetrics": true,
             "interval": 30
           }
+        },
+        {
+          "apiVersion": "observability.open-cluster-management.io/v1beta2",
+          "kind": "MultiClusterObservability",
+          "metadata": {
+            "name": "observability"
+          },
+          "spec": {
+            "observabilityAddonSpec": {},
+            "retentionConfig": {},
+            "storageConfig": {
+              "metricObjectStorage": {
+                "key": "thanos.yaml",
+                "name": "thanos-object-storage"
+              }
+            }
+          }
         }
       ]
     capabilities: Basic Install
     operators.operatorframework.io/builder: operator-sdk-v1.4.2
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
-    operators.operatorframework.io/internal-objects: '["observatoria.core.observatorium.io","observabilityaddons.observability.open-cluster-management.io"]'
   name: multicluster-observability-operator.v0.1.0
   namespace: placeholder
 spec:
@@ -47,6 +47,11 @@ spec:
       kind: MultiClusterObservability
       name: multiclusterobservabilities.observability.open-cluster-management.io
       version: v1beta1
+    - description: MultiClusterObservability defines the configuration for the Observability installation on Hub and Managed Clusters all through this one custom resource.
+      displayName: Multi Cluster Observability
+      kind: MultiClusterObservability
+      name: multiclusterobservabilities.observability.open-cluster-management.io
+      version: v1beta2
     - description: ObservabilityAddon is the Schema for the observabilityaddon API
       displayName: Observability Addon
       kind: ObservabilityAddon
@@ -371,9 +376,9 @@ spec:
         serviceAccountName: multicluster-observability-operator
     strategy: deployment
   installModes:
-  - supported: true
+  - supported: false
     type: OwnNamespace
-  - supported: true
+  - supported: false
     type: SingleNamespace
   - supported: false
     type: MultiNamespace

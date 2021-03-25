@@ -1,24 +1,13 @@
 // Copyright (c) 2021 Red Hat, Inc.
 // Copyright Contributors to the Open Cluster Management project
 
-package v1beta1
+package v1beta2
 
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
-// AvailabilityType ...
-type AvailabilityType string
-
-const (
-	// HABasic stands up most app subscriptions with a replicaCount of 1
-	HABasic AvailabilityType = "Basic"
-	// HAHigh stands up most app subscriptions with a replicaCount of 2
-	HAHigh AvailabilityType = "High"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 )
 
 // MultiClusterObservabilitySpec defines the desired state of MultiClusterObservability
@@ -26,80 +15,108 @@ type MultiClusterObservabilitySpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// ReplicaCount for HA support. Does not affect data stores.
-	// Enabled will toggle HA support. This will provide better support in cases of failover
-	// but consumes more resources. Options are: Basic and High (default).
-	// +optional
-	// +kubebuilder:default:=High
-	AvailabilityConfig AvailabilityType `json:"availabilityConfig,omitempty"`
-
 	// Enable or disable the downsample.
-	// The default value is false.
+	// The default value is true.
 	// This is not recommended as querying long time ranges
 	// without non-downsampled data is not efficient and useful.
-	// +kubebuilder:default:=false
-	EnableDownSampling bool `json:"enableDownSampling,omitempty"`
-
+	// +kubebuilder:default:=true
+	EnableDownsampling bool `json:"enableDownsampling,omitempty"`
 	// Pull policy of the MultiClusterObservability images
 	// +optional
 	// +kubebuilder:default:=Always
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
-
 	// Pull secret of the MultiClusterObservability images
 	// +optional
 	// +kubebuilder:default:=multiclusterhub-operator-pull-secret
 	ImagePullSecret string `json:"imagePullSecret,omitempty"`
-
 	// Spec of NodeSelector
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-
 	// Tolerations causes all components to tolerate any taints.
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+	// The spec of the data retention configurations
+	// +required
+	RetentionConfig *RetentionConfig `json:"retentionConfig,omitempty"`
+	// Specifies the storage to be used by Observability
+	// +required
+	StorageConfig *StorageConfig `json:"storageConfig,omitempty"`
+	// The ObservabilityAddonSpec defines the global settings for all managed
+	// clusters which have observability add-on enabled.
+	// +required
+	ObservabilityAddonSpec *mcov1beta1.ObservabilityAddonSpec `json:"observabilityAddonSpec,omitempty"`
+}
 
+// RetentionConfig is the spec of retention configurations.
+type RetentionConfig struct {
 	// How long to retain raw samples in a bucket.
+	// It applies to --retention.resolution-raw in compact.
 	// +optional
 	// +kubebuilder:default:="5d"
 	RetentionResolutionRaw string `json:"retentionResolutionRaw,omitempty"`
-
 	// How long to retain samples of resolution 1 (5 minutes) in bucket.
 	// +optional
 	// +kubebuilder:default:="14d"
 	RetentionResolution5m string `json:"retentionResolution5m,omitempty"`
-
 	// How long to retain samples of resolution 2 (1 hour) in bucket.
 	// +optional
 	// +kubebuilder:default:="30d"
 	RetentionResolution1h string `json:"retentionResolution1h,omitempty"`
-
-	// Specifies the storage to be used by Observability
-	// +required
-	StorageConfig *StorageConfigObject `json:"storageConfigObject,omitempty"`
-
-	// The ObservabilityAddonSpec defines the global settings for all managed
-	// clusters which have observability add-on enabled.
+	// How long to retain raw samples in a local disk. It applies to rule/receive:
+	// --tsdb.retention in receive
+	// --tsdb.retention in rule
 	// +optional
-	ObservabilityAddonSpec *ObservabilityAddonSpec `json:"observabilityAddonSpec,omitempty"`
+	// +kubebuilder:default:="4d"
+	RetentionInLocal string `json:"retentionInLocal,omitempty"`
+	// Configure --compact.cleanup-interval in compact.
+	// How often we should clean up partially uploaded blocks and
+	// blocks with deletion mark in the background when --wait has been enabled.
+	// Setting it to "0s" disables it
+	// +optional
+	// +kubebuilder:default:="5m"
+	CleanupInterval string `json:"cleanupInterval,omitempty"`
+	// configure --delete-delay in compact
+	// Time before a block marked for deletion is deleted from bucket.
+	// +optional
+	// +kubebuilder:default:="48h"
+	DeleteDelay string `json:"deleteDelay,omitempty"`
+	// configure --tsdb.block-duration in rule (Block duration for TSDB block)
+	// +optional
+	// +kubebuilder:default:="2h"
+	BlockDuration string `json:"blockDuration,omitempty"`
 }
 
-// StorageConfigObject is the spec of object storage.
-type StorageConfigObject struct {
+// StorageConfig is the spec of object storage.
+type StorageConfig struct {
 	// Object store config secret for metrics
 	// +required
 	MetricObjectStorage *PreConfiguredStorage `json:"metricObjectStorage,omitempty"`
-	// The amount of storage applied to the Observability stateful sets, i.e.
-	// Thanos store, Rule, compact and receiver.
-	// +optional
-	// +kubebuilder:default:="10Gi"
-	StatefulSetSize string `json:"statefulSetSize,omitempty"`
-
-	// 	Specify the storageClass Stateful Sets. This storage class will also
+	// Specify the storageClass Stateful Sets. This storage class will also
 	// be used for Object Storage if MetricObjectStorage was configured for
 	// the system to create the storage.
 	// +optional
 	// +kubebuilder:default:=gp2
-	StatefulSetStorageClass string `json:"statefulSetStorageClass,omitempty"`
+	StorageClass string `json:"storageClass,omitempty"`
+	// The amount of storage applied to alertmanager stateful sets,
+	// +optional
+	// +kubebuilder:default:="1Gi"
+	AlertmanagerStorageSize string `json:"alertmanagerStorageSize,omitempty"`
+	// The amount of storage applied to thanos rule stateful sets,
+	// +optional
+	// +kubebuilder:default:="1Gi"
+	RuleStorageSize string `json:"ruleStorageSize,omitempty"`
+	// The amount of storage applied to thanos compact stateful sets,
+	// +optional
+	// +kubebuilder:default:="100Gi"
+	CompactStorageSize string `json:"compactStorageSize,omitempty"`
+	// The amount of storage applied to thanos receive stateful sets,
+	// +optional
+	// +kubebuilder:default:="100Gi"
+	ReceiveStorageSize string `json:"receiveStorageSize,omitempty"`
+	// The amount of storage applied to thanos store stateful sets,
+	// +optional
+	// +kubebuilder:default:="10Gi"
+	StoreStorageSize string `json:"storeStorageSize,omitempty"`
 }
 
 type PreConfiguredStorage struct {
@@ -177,6 +194,7 @@ type Condition struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:storageversion
 
 // MultiClusterObservability defines the configuration for the Observability installation on
 // Hub and Managed Clusters all through this one custom resource.
@@ -191,7 +209,6 @@ type MultiClusterObservability struct {
 }
 
 // +kubebuilder:object:root=true
-
 // MultiClusterObservabilityList contains a list of MultiClusterObservability
 type MultiClusterObservabilityList struct {
 	metav1.TypeMeta `json:",inline"`

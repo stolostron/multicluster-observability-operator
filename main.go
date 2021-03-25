@@ -45,6 +45,7 @@ import (
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	observabilityv1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	observabilityv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
 	prctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/placementrule"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
@@ -64,6 +65,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(observabilityv1beta1.AddToScheme(scheme))
+	utilruntime.Must(observabilityv1beta2.AddToScheme(scheme))
 	utilruntime.Must(placementv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
@@ -98,23 +100,31 @@ func main() {
 		os.Exit(1)
 	}
 
-	ocpClient, err := util.CreateOCPClient()
+	ocpClient, err := util.GetOrCreateOCPClient()
 	if err != nil {
 		setupLog.Error(err, "Failed to create the OpenShift client")
 		os.Exit(1)
 	}
+
+	crdClient, err := util.GetOrCreateCRDClient()
+	if err != nil {
+		setupLog.Error(err, "Failed to create the CRD client")
+		os.Exit(1)
+	}
+
 	if err = (&mcoctrl.MultiClusterObservabilityReconciler{
 		Client:    mgr.GetClient(),
 		Log:       ctrl.Log.WithName("controllers").WithName("MultiClusterObservability"),
 		Scheme:    mgr.GetScheme(),
 		OcpClient: ocpClient,
+		CrdClient: crdClient,
 		APIReader: mgr.GetAPIReader(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MultiClusterObservability")
 		os.Exit(1)
 	}
 
-	crdExists, err := util.CheckCRDExist("placementrules.apps.open-cluster-management.io")
+	crdExists, err := util.CheckCRDExist(crdClient, "placementrules.apps.open-cluster-management.io")
 	if err != nil {
 		setupLog.Error(err, "Failed to check if the CRD exists")
 		os.Exit(1)
@@ -131,17 +141,6 @@ func main() {
 			setupLog.Error(err, "unable to create controller", "controller", "PlacementRule")
 			os.Exit(1)
 		}
-	}
-
-	if err = (&prctrl.PlacementRuleReconciler{
-		Client:     mgr.GetClient(),
-		Log:        ctrl.Log.WithName("controllers").WithName("PlacementRule"),
-		Scheme:     mgr.GetScheme(),
-		APIReader:  mgr.GetAPIReader(),
-		RESTMapper: mgr.GetRESTMapper(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "PlacementRule")
-		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
 

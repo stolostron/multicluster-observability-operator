@@ -7,7 +7,7 @@ metadata:
   name: rbac-query-proxy
   namespace: open-cluster-management-observability
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: rbac-query-proxy

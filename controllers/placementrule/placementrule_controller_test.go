@@ -24,6 +24,7 @@ import (
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 
@@ -43,6 +44,9 @@ func initSchema(t *testing.T) {
 	s := scheme.Scheme
 	if err := placementv1.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add placementrule scheme: (%v)", err)
+	}
+	if err := mcov1beta2.AddToScheme(s); err != nil {
+		t.Fatalf("Unable to add mcov1beta2 scheme: (%v)", err)
 	}
 	if err := mcov1beta1.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add mcov1beta1 scheme: (%v)", err)
