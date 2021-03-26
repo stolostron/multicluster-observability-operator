@@ -6,10 +6,6 @@ resources:
 - deployment.yaml
 - ingress.yaml
 - service.yaml
-<<<<<<< Updated upstream
-- acm-multicluster-dash.yaml
-- k8s-mixin-dashboards.yaml
-=======
 - dash-acm-optimization-overview.yaml
 - dash-acm-clusters-overview.yaml
 - dash-k8s-apiserver.yaml
@@ -22,4 +18,3 @@ resources:
 - dash-k8s-compute-resources-pod.yaml
 - dash-cluster-rsrc-use.yaml
 - dash-node-rsrc-use.yaml
->>>>>>> Stashed changes
