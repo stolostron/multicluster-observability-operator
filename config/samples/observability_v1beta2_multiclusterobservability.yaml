@@ -3,9 +3,25 @@ kind: MultiClusterObservability
 metadata:
   name: observability
 spec:
-  observabilityAddonSpec: {}
-  retentionConfig: {}
+  enableDownsampling: true
+  observabilityAddonSpec:
+    enableMetrics: true
+    interval: 30
+  retentionConfig:
+    retentionResolutionRaw: 5d
+    retentionResolution5m: 14d
+    retentionResolution1h: 30d
+    retentionInLocal: 4d
+    cleanupInterval: 5m
+    deleteDelay: 48h
+    blockDuration: 2h
   storageConfig:
     metricObjectStorage:
       name: thanos-object-storage
       key: thanos.yaml
+    storageClass: gp2
+    alertmanagerStorageSize: 1Gi
+    ruleStorageSize: 1Gi
+    compactStorageSize: 100Gi
+    receiveStorageSize: 100Gi
+    storeStorageSize: 10Gi

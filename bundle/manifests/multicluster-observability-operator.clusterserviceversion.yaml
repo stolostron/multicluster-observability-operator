@@ -6,6 +6,32 @@ metadata:
       [
         {
           "apiVersion": "observability.open-cluster-management.io/v1beta1",
+          "kind": "MultiClusterObservability",
+          "metadata": {
+            "name": "observability"
+          },
+          "spec": {
+            "availabilityConfig": "High",
+            "enableDownSampling": true,
+            "observabilityAddonSpec": {
+              "enableMetrics": true,
+              "interval": 30
+            },
+            "retentionResolution1h": "30d",
+            "retentionResolution5m": "14d",
+            "retentionResolutionRaw": "5d",
+            "storageConfigObject": {
+              "metricObjectStorage": {
+                "key": "thanos.yaml",
+                "name": "thanos-object-storage"
+              },
+              "statefulSetSize": "10Gi",
+              "statefulSetStorageClass": "gp2"
+            }
+          }
+        },
+        {
+          "apiVersion": "observability.open-cluster-management.io/v1beta1",
           "kind": "ObservabilityAddon",
           "metadata": {
             "name": "observability-addon"
@@ -22,13 +48,31 @@ metadata:
             "name": "observability"
           },
           "spec": {
-            "observabilityAddonSpec": {},
-            "retentionConfig": {},
+            "enableDownsampling": true,
+            "observabilityAddonSpec": {
+              "enableMetrics": true,
+              "interval": 30
+            },
+            "retentionConfig": {
+              "blockDuration": "2h",
+              "cleanupInterval": "5m",
+              "deleteDelay": "48h",
+              "retentionInLocal": "4d",
+              "retentionResolution1h": "30d",
+              "retentionResolution5m": "14d",
+              "retentionResolutionRaw": "5d"
+            },
             "storageConfig": {
+              "alertmanagerStorageSize": "1Gi",
+              "compactStorageSize": "100Gi",
               "metricObjectStorage": {
                 "key": "thanos.yaml",
                 "name": "thanos-object-storage"
-              }
+              },
+              "receiveStorageSize": "100Gi",
+              "ruleStorageSize": "1Gi",
+              "storageClass": "gp2",
+              "storeStorageSize": "10Gi"
             }
           }
         }
