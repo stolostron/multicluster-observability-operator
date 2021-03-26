@@ -570,6 +570,7 @@ func TestHandleStorageSizeChange(t *testing.T) {
 	}
 	c := fake.NewFakeClient(objs...)
 	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
+	isAlertmanagerStorageSizeChanged = true
 	r.HandleStorageSizeChange(mco)
 
 	pvc := &corev1.PersistentVolumeClaim{}
@@ -599,6 +600,7 @@ func createStatefulSet(name, namespace, statefulSetName string) *appsv1.Stateful
 			Namespace: namespace,
 			Labels: map[string]string{
 				"observability.open-cluster-management.io/name": name,
+				"alertmanager": "observability",
 			},
 		},
 	}
@@ -612,6 +614,7 @@ func createPersistentVolumeClaim(name, namespace, pvcName string) *corev1.Persis
 			Namespace: namespace,
 			Labels: map[string]string{
 				"observability.open-cluster-management.io/name": name,
+				"alertmanager": "observability",
 			},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
