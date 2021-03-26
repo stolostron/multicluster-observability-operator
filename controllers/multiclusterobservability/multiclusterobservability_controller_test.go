@@ -33,7 +33,7 @@ import (
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
@@ -228,7 +228,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			StorageConfig: &mcov1beta2.StorageConfig{
-				MetricObjectStorage: &mcov1beta2.PreConfiguredStorage{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
 					Key:  "test",
 					Name: "test",
 				},
@@ -244,7 +244,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 				RetentionResolution5m:  "1h",
 				RetentionResolution1h:  "1h",
 			},
-			ObservabilityAddonSpec: &mcov1beta1.ObservabilityAddonSpec{
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
 				EnableMetrics: false,
 			},
 		},
@@ -506,7 +506,7 @@ func TestCheckObjStorageStatus(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "test"},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			StorageConfig: &mcov1beta2.StorageConfig{
-				MetricObjectStorage: &mcov1beta2.PreConfiguredStorage{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
 					Key:  "test",
 					Name: "test",
 				},
@@ -552,7 +552,7 @@ func TestHandleStorageSizeChange(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "test"},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			StorageConfig: &mcov1beta2.StorageConfig{
-				MetricObjectStorage: &mcov1beta2.PreConfiguredStorage{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
 					Key:  "test",
 					Name: "test",
 				},

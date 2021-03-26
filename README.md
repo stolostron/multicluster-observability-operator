@@ -30,9 +30,12 @@ Thanos Ecosystem | [kube-thanos](https://github.com/open-cluster-management/kube
 - docker version 17.03+
 - kubectl version v1.16.3+
 - kustomize version v3.8.5+
-- Access to a Kubernetes v1.16.3+ cluster
+- operator-sdk version v1.4.2+
+- access to an OCP v4.6+ cluster
 
-Use the following quick start commands for building and testing the Multicluster Observability Operator:
+> Note: By default, the API conversion webhook use on the Openshift service serving certificate feature to manage the certificate, you can replace it with cert-manager if you want to run the multicluster-observability-operator in a kubernetes cluster.
+
+Use the following quick start commands for building and testing the multicluster-observability-operator:
 
 ### Clone the Repository
 
@@ -53,7 +56,11 @@ $ make -f Makefile.prow docker-build docker-push IMG=quay.io/<YOUR_USERNAME_IN_Q
 
 ### Run the Operator in the Cluster
 
-1. Before you deploy the Multicluster Observability Operator in the cluster, you need make sure the [cert-manager](https://github.com/open-cluster-management/cert-manager) is installed.
+1. Before you deploy the multicluster-observability-operator in the cluster, you need make sure the [cert-manager](https://github.com/open-cluster-management/cert-manager) is installed, you can use the following all-in-one manifest to deploy cert-manager:
+
+```
+$ kubectl apply -f https://raw.githubusercontent.com/open-cluster-management/observability-e2e-test/main/cicd-scripts/e2e-setup-manifests/cert-manager/cert-manager-openshift.yaml
+```
 
 2. Create the `open-cluster-management-observability` namespace if it doesn't exist:
 ```
@@ -66,23 +73,23 @@ $ git clone --depth 1 git@github.com:open-cluster-management/observability-e2e-t
 $ kubectl -n open-cluster-management-observability apply -f observability-e2e-test/cicd-scripts/e2e-setup-manifests/minio
 ```
 
-4. Replace the operator image and deploy the Multicluster Observability Operator:
+4. Replace the operator image and deploy the multicluster-observability-operator:
 ```
 $ make -f Makefile.prow deploy IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-observability-operator:latest
 ```
 
-5. Deploy the Multicluster Observability Operator CR:
+5. Deploy the multicluster-observability-operator CR:
 ```
-$ kubectl -n open-cluster-management-observability apply -f config/samples/observability_v1beta1_multiclusterobservability.yaml
+$ kubectl -n open-cluster-management-observability apply -f config/samples/observability_v1beta2_multiclusterobservability.yaml
 ```
 
 6. Verify all the components for the Multicluster Observability are starting up and runing:
 ```
 $ kubectl -n open-cluster-management-observability get pod
 NAME                                                              READY   STATUS    RESTARTS   AGE
-alertmanager-0                                                    2/2     Running   0          5m
-grafana-6878c8b44-kxx6k                                           2/2     Running   0          5m
-minio-79c7ff488d-rqmfg                                            1/1     Running   0          5m
+alertmanager-0                                      2/2     Running   0          5m
+grafana-6878c8b44-kxx6k                             2/2     Running   0          5m
+minio-79c7ff488d-rqmfg                              1/1     Running   0          5m
 observability-observatorium-api-8646457ff9-6kw5v    1/1     Running   0          5m
 observability-thanos-compact-0                      1/1     Running   0          5m
 observability-thanos-query-fdc9b77b-7hxgc           1/1     Running   0          5m
@@ -92,19 +99,19 @@ observability-thanos-receive-default-0              1/1     Running   0         
 observability-thanos-rule-0                         2/2     Running   0          5m
 observability-thanos-store-memcached-0              2/2     Running   0          5m
 observability-thanos-store-shard-0-0                1/1     Running   0          5m
-observatorium-operator-845dc69ccf-gdzn2                           1/1     Running   0          5m
-rbac-query-proxy-559b788777-ssmls                                 1/1     Running   0          5m
+observatorium-operator-845dc69ccf-gdzn2             1/1     Running   0          5m
+rbac-query-proxy-559b788777-ssmls                   1/1     Running   0          5m
 ```
 
 ### Uninstall the Operator in the Cluster
 
-1. Delete the Multicluster Observability Operator CR:
+1. Delete the multicluster-observability-operator CR:
 
 ```
-$ kubectl -n open-cluster-management-observability delete -f config/samples/observability_v1beta1_multiclusterobservability.yaml
+$ kubectl -n open-cluster-management-observability delete -f config/samples/observability_v1beta2_multiclusterobservability.yaml
 ```
 
-2. Delete the Multicluster Observability Operator:
+2. Delete the multicluster-observability-operator:
 
 ```
 $ make -f Makefile.prow undeploy
@@ -123,3 +130,7 @@ $ kubectl delete ns open-cluster-management-observability
 ```
 
 5. Delete the cert-manager.
+
+```
+$ kubectl delete -f https://raw.githubusercontent.com/open-cluster-management/observability-e2e-test/main/cicd-scripts/e2e-setup-manifests/cert-manager/cert-manager-openshift.yaml
+```

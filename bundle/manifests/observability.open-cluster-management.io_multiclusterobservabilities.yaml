@@ -3,9 +3,23 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
+    service.beta.openshift.io/inject-cabundle: "true"
   creationTimestamp: null
   name: multiclusterobservabilities.observability.open-cluster-management.io
 spec:
+  conversion:
+    strategy: Webhook
+    webhook:
+      clientConfig:
+        caBundle: XG4=
+        service:
+          name: multicluster-observability-webhook-service
+          namespace: open-cluster-management
+          path: /convert
+          port: 443
+      conversionReviewVersions:
+      - v1
+      - v1beta1
   group: observability.open-cluster-management.io
   names:
     kind: MultiClusterObservability
