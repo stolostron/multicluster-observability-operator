@@ -483,7 +483,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-receive",
-			}, mco.GetName(), mco.Spec.StorageConfig.AlertmanagerStorageSize)
+			}, mco.GetName(), mco.Spec.StorageConfig.ReceiveStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -495,7 +495,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-compact",
-			}, mco.GetName(), mco.Spec.StorageConfig.AlertmanagerStorageSize)
+			}, mco.GetName(), mco.Spec.StorageConfig.CompactStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -507,7 +507,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-rule",
-			}, mco.GetName(), mco.Spec.StorageConfig.AlertmanagerStorageSize)
+			}, mco.GetName(), mco.Spec.StorageConfig.RuleStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -519,7 +519,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-store",
-			}, mco.GetName(), mco.Spec.StorageConfig.AlertmanagerStorageSize)
+			}, mco.GetName(), mco.Spec.StorageConfig.StoreStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
