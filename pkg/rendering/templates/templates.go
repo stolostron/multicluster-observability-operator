@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 	"sigs.k8s.io/kustomize/v3/pkg/target"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 )
 
 const TemplatesPathEnvVar = "TEMPLATES_PATH"
@@ -55,7 +55,7 @@ func GetTemplateRenderer() *TemplateRenderer {
 
 // GetGrafanaTemplates reads the grafana manifests
 func (r *TemplateRenderer) GetGrafanaTemplates(
-	mco *mcov1beta1.MultiClusterObservability) ([]*resource.Resource, error) {
+	mco *mcov1beta2.MultiClusterObservability) ([]*resource.Resource, error) {
 	basePath := path.Join(r.templatesPath, "base")
 	// resourceList contains all kustomize resources
 	resourceList := []*resource.Resource{}
@@ -69,7 +69,7 @@ func (r *TemplateRenderer) GetGrafanaTemplates(
 
 // GetAlertManagerTemplates reads the alertmanager manifests
 func (r *TemplateRenderer) GetAlertManagerTemplates(
-	mco *mcov1beta1.MultiClusterObservability) ([]*resource.Resource, error) {
+	mco *mcov1beta2.MultiClusterObservability) ([]*resource.Resource, error) {
 	basePath := path.Join(r.templatesPath, "base")
 	// resourceList contains all kustomize resources
 	resourceList := []*resource.Resource{}
@@ -83,7 +83,7 @@ func (r *TemplateRenderer) GetAlertManagerTemplates(
 
 // GetTemplates reads base manifest
 func (r *TemplateRenderer) GetTemplates(
-	mco *mcov1beta1.MultiClusterObservability) ([]*resource.Resource, error) {
+	mco *mcov1beta2.MultiClusterObservability) ([]*resource.Resource, error) {
 	basePath := path.Join(r.templatesPath, "base")
 	// resourceList contains all kustomize resources
 	resourceList := []*resource.Resource{}

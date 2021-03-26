@@ -94,6 +94,7 @@ data:
       - kube_pod_container_resource_requests_cpu_cores
       - kube_pod_container_resource_requests_memory_bytes
       - kube_pod_info
+      - kube_pod_owner
       - kube_resourcequota
       - kubelet_running_container_count
       - kubelet_runtime_operations
@@ -107,6 +108,7 @@ data:
       - namespace:kube_pod_container_resource_requests_cpu_cores:sum
       - namespace:kube_pod_container_resource_requests_memory_bytes:sum
       - namespace:container_memory_usage_bytes:sum
+      - namespace_workload_pod:kube_pod_owner:relabel
       - node_cpu_seconds_total
       - node_filesystem_avail_bytes
       - node_filesystem_free_bytes

@@ -17,7 +17,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
+	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
@@ -145,7 +147,7 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 
 func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	clusterNamespace string, clusterName string,
-	mco *mcov1beta1.MultiClusterObservability,
+	mco *mcov1beta2.MultiClusterObservability,
 	imagePullSecret *corev1.Secret) error {
 
 	operatorWork := newManifestwork(clusterNamespace+operatorWorkNameSuffix, clusterNamespace)
@@ -334,7 +336,7 @@ func getAllowList(client client.Client, name string) (*MetricsAllowlist, error) 
 }
 
 func getObservabilityAddon(c client.Client, namespace string,
-	mco *mcov1beta1.MultiClusterObservability) (*mcov1beta1.ObservabilityAddon, error) {
+	mco *mcov1beta2.MultiClusterObservability) (*mcov1beta1.ObservabilityAddon, error) {
 	found := &mcov1beta1.ObservabilityAddon{}
 	namespacedName := types.NamespacedName{
 		Name:      obsAddonName,
@@ -352,7 +354,7 @@ func getObservabilityAddon(c client.Client, namespace string,
 		return nil, nil
 	}
 	if mco.Spec.ObservabilityAddonSpec == nil {
-		mco.Spec.ObservabilityAddonSpec = &mcov1beta1.ObservabilityAddonSpec{
+		mco.Spec.ObservabilityAddonSpec = &mcoshared.ObservabilityAddonSpec{
 			EnableMetrics: true,
 			Interval:      30,
 		}
@@ -366,7 +368,7 @@ func getObservabilityAddon(c client.Client, namespace string,
 			Name:      obsAddonName,
 			Namespace: spokeNameSpace,
 		},
-		Spec: mcov1beta1.ObservabilityAddonSpec{
+		Spec: mcoshared.ObservabilityAddonSpec{
 			EnableMetrics: mco.Spec.ObservabilityAddonSpec.EnableMetrics,
 			Interval:      mco.Spec.ObservabilityAddonSpec.Interval,
 		},

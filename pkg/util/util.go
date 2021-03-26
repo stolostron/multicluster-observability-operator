@@ -4,9 +4,13 @@
 package util
 
 import (
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"context"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var log = logf.Log.WithName("util")
@@ -41,20 +45,44 @@ func GetAnnotation(annotations map[string]string, key string) string {
 }
 
 // GetReplicaCount returns replicas value.
-// if it is HABasic, return 1
-// if it is HAHigh, return 2 for deployment and 3 for statefulset
-func GetReplicaCount(availabilityType mcov1beta1.AvailabilityType, resourceType string) *int32 {
-	var replicas1 int32 = 1
+// return 2 for deployment and 3 for statefulset
+func GetReplicaCount(resourceType string) *int32 {
 	var replicas2 int32 = 2
 	var replicas3 int32 = 3
-	if availabilityType == mcov1beta1.HABasic {
-		return &replicas1
-	} else {
-		if resourceType == "Deployment" {
-			return &replicas2
-		} else if resourceType == "StatefulSet" {
-			return &replicas3
-		}
+	if resourceType == "Deployment" {
 		return &replicas2
+	} else if resourceType == "StatefulSet" {
+		return &replicas3
 	}
+	return &replicas2
+}
+
+// GetPVCList get pvc with matched labels
+func GetPVCList(c client.Client, matchLabels map[string]string) ([]corev1.PersistentVolumeClaim, error) {
+	pvcList := &corev1.PersistentVolumeClaimList{}
+	pvcListOpts := []client.ListOption{
+		client.InNamespace(config.GetDefaultNamespace()),
+		client.MatchingLabels(matchLabels),
+	}
+
+	err := c.List(context.TODO(), pvcList, pvcListOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return pvcList.Items, nil
+}
+
+// GetStatefulSetList get sts with matched labels
+func GetStatefulSetList(c client.Client, matchLabels map[string]string) ([]appsv1.StatefulSet, error) {
+	stsList := &appsv1.StatefulSetList{}
+	stsListOpts := []client.ListOption{
+		client.InNamespace(config.GetDefaultNamespace()),
+		client.MatchingLabels(matchLabels),
+	}
+
+	err := c.List(context.TODO(), stsList, stsListOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return stsList.Items, nil
 }

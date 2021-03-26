@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	obv1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	obsv1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
 
@@ -22,7 +22,7 @@ const (
 )
 
 func deleteObsAddon(c client.Client, namespace string) error {
-	found := &obv1beta1.ObservabilityAddon{}
+	found := &obsv1beta1.ObservabilityAddon{}
 	err := c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -54,7 +54,7 @@ func deleteObsAddon(c client.Client, namespace string) error {
 }
 
 func createObsAddon(c client.Client, namespace string) error {
-	ec := &obv1beta1.ObservabilityAddon{
+	ec := &obsv1beta1.ObservabilityAddon{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obsAddonName,
 			Namespace: namespace,
@@ -63,7 +63,7 @@ func createObsAddon(c client.Client, namespace string) error {
 			},
 		},
 	}
-	found := &obv1beta1.ObservabilityAddon{}
+	found := &obsv1beta1.ObservabilityAddon{}
 	err := c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) || err == nil && found.GetDeletionTimestamp() != nil {
 		if err == nil {
@@ -89,7 +89,7 @@ func createObsAddon(c client.Client, namespace string) error {
 }
 
 func deleteStaleObsAddon(c client.Client, namespace string) error {
-	found := &obv1beta1.ObservabilityAddon{}
+	found := &obsv1beta1.ObservabilityAddon{}
 	err := c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -102,7 +102,7 @@ func deleteStaleObsAddon(c client.Client, namespace string) error {
 	if err != nil {
 		return err
 	}
-	obsaddon := &obv1beta1.ObservabilityAddon{
+	obsaddon := &obsv1beta1.ObservabilityAddon{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obsAddonName,
 			Namespace: namespace,
@@ -117,7 +117,7 @@ func deleteStaleObsAddon(c client.Client, namespace string) error {
 	return nil
 }
 
-func deleteFinalizer(c client.Client, obsaddon *obv1beta1.ObservabilityAddon) error {
+func deleteFinalizer(c client.Client, obsaddon *obsv1beta1.ObservabilityAddon) error {
 	if util.Contains(obsaddon.GetFinalizers(), obsAddonFinalizer) {
 		obsaddon.SetFinalizers(util.Remove(obsaddon.GetFinalizers(), obsAddonFinalizer))
 		err := c.Update(context.TODO(), obsaddon)

@@ -15,12 +15,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 
 func createPlacementRule(client client.Client, scheme *runtime.Scheme,
-	mco *mcov1beta1.MultiClusterObservability) error {
+	mco *mcov1beta2.MultiClusterObservability) error {
 	name := config.GetPlacementRuleName()
 	namespace := config.GetDefaultNamespace()
 	p := &appsv1.PlacementRule{

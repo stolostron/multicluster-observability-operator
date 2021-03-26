@@ -45,6 +45,7 @@ import (
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	observabilityv1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	observabilityv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
 	prctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/placementrule"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
@@ -64,6 +65,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(observabilityv1beta1.AddToScheme(scheme))
+	utilruntime.Must(observabilityv1beta2.AddToScheme(scheme))
 	utilruntime.Must(placementv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
@@ -72,11 +74,13 @@ func main() {
 	// var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var webhookPort int
 	// flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.IntVar(&webhookPort, "webhook-server-port", 9443, "The listening port of the webhook server.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -86,9 +90,9 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Port:                   webhookPort,
 		Scheme:                 scheme,
 		MetricsBindAddress:     fmt.Sprintf("%s:%d", metricsHost, metricsPort),
-		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b9d51391.open-cluster-management.io",
@@ -192,6 +196,11 @@ func main() {
 	schemeBuilder.Register(&observatoriumAPIs.Observatorium{}, &observatoriumAPIs.ObservatoriumList{})
 	if err := schemeBuilder.AddToScheme(mgr.GetScheme()); err != nil {
 		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
+	if err = (&observabilityv1beta2.MultiClusterObservability{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "Captain")
 		os.Exit(1)
 	}
 

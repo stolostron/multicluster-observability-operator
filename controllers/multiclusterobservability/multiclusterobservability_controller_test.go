@@ -33,7 +33,8 @@ import (
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
@@ -217,7 +218,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	os.Setenv("TEMPLATES_PATH", path.Join(wd, "../../../tests/manifests"))
 
 	// A MultiClusterObservability object with metadata and spec.
-	mco := &mcov1beta1.MultiClusterObservability{
+	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -225,16 +226,25 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 				mcoconfig.AnnotationKeyImageTagSuffix: "tag",
 			},
 		},
-		Spec: mcov1beta1.MultiClusterObservabilitySpec{
-			StorageConfig: &mcov1beta1.StorageConfigObject{
-				MetricObjectStorage: &mcov1beta1.PreConfiguredStorage{
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
 					Key:  "test",
 					Name: "test",
 				},
-				StatefulSetSize:         "1Gi",
-				StatefulSetStorageClass: "gp2",
+				StorageClass:            "gp2",
+				AlertmanagerStorageSize: "1Gi",
+				CompactStorageSize:      "1Gi",
+				RuleStorageSize:         "1Gi",
+				ReceiveStorageSize:      "1Gi",
+				StoreStorageSize:        "1Gi",
 			},
-			ObservabilityAddonSpec: &mcov1beta1.ObservabilityAddonSpec{
+			RetentionConfig: &mcov1beta2.RetentionConfig{
+				RetentionResolutionRaw: "1h",
+				RetentionResolution5m:  "1h",
+				RetentionResolution1h:  "1h",
+			},
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
 				EnableMetrics: false,
 			},
 		},
@@ -242,7 +252,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
-	mcov1beta1.SchemeBuilder.AddToScheme(s)
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
 	routev1.AddToScheme(s)
 	placementv1.AddToScheme(s)
@@ -276,7 +286,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	updatedMCO := &mcov1beta1.MultiClusterObservability{}
+	updatedMCO := &mcov1beta2.MultiClusterObservability{}
 	err = cl.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
@@ -295,7 +305,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	updatedMCO = &mcov1beta1.MultiClusterObservability{}
+	updatedMCO = &mcov1beta2.MultiClusterObservability{}
 	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
@@ -317,7 +327,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	updatedMCO = &mcov1beta1.MultiClusterObservability{}
+	updatedMCO = &mcov1beta2.MultiClusterObservability{}
 	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
@@ -348,7 +358,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		}
 	}
 
-	updatedMCO = &mcov1beta1.MultiClusterObservability{}
+	updatedMCO = &mcov1beta2.MultiClusterObservability{}
 	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
@@ -379,7 +389,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	updatedMCO = &mcov1beta1.MultiClusterObservability{}
+	updatedMCO = &mcov1beta2.MultiClusterObservability{}
 	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
@@ -404,7 +414,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	updatedMCO = &mcov1beta1.MultiClusterObservability{}
+	updatedMCO = &mcov1beta2.MultiClusterObservability{}
 	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
@@ -438,7 +448,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	updatedMCO = &mcov1beta1.MultiClusterObservability{}
+	updatedMCO = &mcov1beta2.MultiClusterObservability{}
 	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
@@ -491,12 +501,12 @@ func createSecret(key, name, namespace string) *corev1.Secret {
 }
 
 func TestCheckObjStorageStatus(t *testing.T) {
-	mco := &mcov1beta1.MultiClusterObservability{
+	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Name: "test"},
-		Spec: mcov1beta1.MultiClusterObservabilitySpec{
-			StorageConfig: &mcov1beta1.StorageConfigObject{
-				MetricObjectStorage: &mcov1beta1.PreConfiguredStorage{
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
 					Key:  "test",
 					Name: "test",
 				},
@@ -505,7 +515,7 @@ func TestCheckObjStorageStatus(t *testing.T) {
 	}
 
 	s := scheme.Scheme
-	mcov1beta1.SchemeBuilder.AddToScheme(s)
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	objs := []runtime.Object{mco}
 	c := fake.NewFakeClient(objs...)
 	mcoCondition := checkObjStorageStatus(c, mco)
@@ -537,22 +547,22 @@ func TestCheckObjStorageStatus(t *testing.T) {
 }
 
 func TestHandleStorageSizeChange(t *testing.T) {
-	mco := &mcov1beta1.MultiClusterObservability{
+	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Name: "test"},
-		Spec: mcov1beta1.MultiClusterObservabilitySpec{
-			StorageConfig: &mcov1beta1.StorageConfigObject{
-				MetricObjectStorage: &mcov1beta1.PreConfiguredStorage{
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
 					Key:  "test",
 					Name: "test",
 				},
-				StatefulSetSize: "2Gi",
+				AlertmanagerStorageSize: "2Gi",
 			},
 		},
 	}
 
 	s := scheme.Scheme
-	mcov1beta1.SchemeBuilder.AddToScheme(s)
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	objs := []runtime.Object{
 		mco,
 		createStatefulSet(mco.Name, config.GetDefaultNamespace(), "test"),
@@ -560,6 +570,7 @@ func TestHandleStorageSizeChange(t *testing.T) {
 	}
 	c := fake.NewFakeClient(objs...)
 	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
+	isAlertmanagerStorageSizeChanged = true
 	r.HandleStorageSizeChange(mco)
 
 	pvc := &corev1.PersistentVolumeClaim{}
@@ -589,6 +600,7 @@ func createStatefulSet(name, namespace, statefulSetName string) *appsv1.Stateful
 			Namespace: namespace,
 			Labels: map[string]string{
 				"observability.open-cluster-management.io/name": name,
+				"alertmanager": "observability",
 			},
 		},
 	}
@@ -602,6 +614,7 @@ func createPersistentVolumeClaim(name, namespace, pvcName string) *corev1.Persis
 			Namespace: namespace,
 			Labels: map[string]string{
 				"observability.open-cluster-management.io/name": name,
+				"alertmanager": "observability",
 			},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{

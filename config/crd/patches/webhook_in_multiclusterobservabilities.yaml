@@ -10,5 +10,6 @@ spec:
       clientConfig:
         service:
           namespace: open-cluster-management
-          name: webhook-service
+          name: multicluster-observability-webhook-service
+          port: 443
           path: /convert

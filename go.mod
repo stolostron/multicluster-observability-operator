@@ -8,9 +8,9 @@ require (
 	github.com/jetstack/cert-manager v0.0.0-00010101000000-000000000000
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/open-cluster-management/api v0.0.0-20201007180356-41d07eee4294
-	github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20201013190828-d760a392d21d
+	github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20210325184301-dd3e27fc2978
 	github.com/open-cluster-management/observatorium-operator v0.0.0-20210318065130-bb5c29db6a2c
-	github.com/openshift/api v3.9.1-0.20190424152011-77b8897ec79a+incompatible
+	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/client-go v0.0.0-20201020082437-7737f16e53fc
 	golang.org/x/tools v0.0.0-20201014231627-1610a49f37af // indirect
 	gopkg.in/yaml.v2 v2.3.0
