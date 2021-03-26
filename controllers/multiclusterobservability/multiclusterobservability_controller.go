@@ -44,9 +44,13 @@ const (
 )
 
 var (
-	log                  = logf.Log.WithName("controller_multiclustermonitoring")
-	enableHubRemoteWrite = os.Getenv("ENABLE_HUB_REMOTEWRITE")
-	storageSizeChanged   = false
+	log                              = logf.Log.WithName("controller_multiclustermonitoring")
+	enableHubRemoteWrite             = os.Getenv("ENABLE_HUB_REMOTEWRITE")
+	isAlertmanagerStorageSizeChanged = false
+	isCompactStorageSizeChanged      = false
+	isRuleStorageSizeChanged         = false
+	isReceiveStorageSizeChanged      = false
+	isStoreStorageSizeChanged        = false
 )
 
 // MultiClusterObservabilityReconciler reconciles a MultiClusterObservability object
@@ -117,13 +121,9 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// handle storagesize changes
-	if storageSizeChanged {
-		result, err := r.HandleStorageSizeChange(instance)
-		if result != nil {
-			return *result, err
-		} else {
-			storageSizeChanged = false
-		}
+	result, err := r.HandleStorageSizeChange(instance)
+	if result != nil {
+		return *result, err
 	}
 
 	//instance.Namespace = config.GetDefaultNamespace()
@@ -151,7 +151,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// expose observatorium api gateway
-	result, err := GenerateAPIGatewayRoute(r.Client, r.Scheme, instance)
+	result, err = GenerateAPIGatewayRoute(r.Client, r.Scheme, instance)
 	if result != nil {
 		return *result, err
 	}
@@ -313,18 +313,8 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig.AlertmanagerStorageSize !=
-				e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig.AlertmanagerStorageSize ||
-				e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig.CompactStorageSize !=
-					e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig.CompactStorageSize ||
-				e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig.RuleStorageSize !=
-					e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig.RuleStorageSize ||
-				e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig.ReceiveStorageSize !=
-					e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig.ReceiveStorageSize ||
-				e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig.StoreStorageSize !=
-					e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig.StoreStorageSize {
-				storageSizeChanged = true
-			}
+			checkStorageChanged(e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig,
+				e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig)
 			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
@@ -449,82 +439,129 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		Complete(r)
 }
 
+func checkStorageChanged(mcoOldConfig, mcoNewConfig *mcov1beta2.StorageConfig) {
+
+	if mcoOldConfig.AlertmanagerStorageSize != mcoNewConfig.AlertmanagerStorageSize {
+		isAlertmanagerStorageSizeChanged = true
+	}
+	if mcoOldConfig.CompactStorageSize != mcoNewConfig.CompactStorageSize {
+		isCompactStorageSizeChanged = true
+	}
+	if mcoOldConfig.RuleStorageSize != mcoNewConfig.RuleStorageSize {
+		isRuleStorageSizeChanged = true
+	}
+	if mcoOldConfig.ReceiveStorageSize != mcoNewConfig.ReceiveStorageSize {
+		isReceiveStorageSizeChanged = true
+	}
+	if mcoOldConfig.StoreStorageSize != mcoNewConfig.StoreStorageSize {
+		isStoreStorageSizeChanged = true
+	}
+}
+
 // HandleStorageSizeChange is used to deal with the storagesize change in CR
 // 1. Directly changed the StatefulSet pvc's size on the pvc itself for
 // 2. Removed StatefulSet and
 // wait for operator to re-create the StatefulSet with the correct size on the claim
 func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 	mco *mcov1beta2.MultiClusterObservability) (*reconcile.Result, error) {
-	thanosPVCList := &corev1.PersistentVolumeClaimList{}
-	thanosPVCListOpts := []client.ListOption{
-		client.InNamespace(config.GetDefaultNamespace()),
-		client.MatchingLabels(map[string]string{
-			"app.kubernetes.io/instance": config.GetMonitoringCRName(),
-		}),
-	}
 
-	err := r.Client.List(context.TODO(), thanosPVCList, thanosPVCListOpts...)
-	if err != nil {
-		return &reconcile.Result{}, err
-	}
-
-	obsPVCList := &corev1.PersistentVolumeClaimList{}
-	obsPVCListOpts := []client.ListOption{
-		client.InNamespace(config.GetDefaultNamespace()),
-		client.MatchingLabels(labelsForMultiClusterMonitoring(mco.Name)),
-	}
-
-	err = r.Client.List(context.TODO(), obsPVCList, obsPVCListOpts...)
-	if err != nil {
-		return &reconcile.Result{}, err
-	}
-
-	obsPVCItems := append(obsPVCList.Items, thanosPVCList.Items...)
-	// updates pvc directly
-	for index, pvc := range obsPVCItems {
-		if !pvc.Spec.Resources.Requests.Storage().Equal(resource.MustParse(mco.Spec.StorageConfig.AlertmanagerStorageSize)) {
-			obsPVCItems[index].Spec.Resources.Requests = corev1.ResourceList{
-				corev1.ResourceName(corev1.ResourceStorage): resource.MustParse(mco.Spec.StorageConfig.AlertmanagerStorageSize),
-			}
-			err = r.Client.Update(context.TODO(), &obsPVCItems[index])
-			log.Info("Update storage size for PVC", "pvc", pvc.Name)
-			if err != nil {
-				return &reconcile.Result{}, err
-			}
+	if isAlertmanagerStorageSizeChanged {
+		isAlertmanagerStorageSizeChanged = false
+		err := updateStorageSizeChange(r.Client,
+			map[string]string{
+				"observability.open-cluster-management.io/name": mco.GetName(),
+				"alertmanager": "observability",
+			}, mco.GetName(), mco.Spec.StorageConfig.AlertmanagerStorageSize)
+		if err != nil {
+			return &reconcile.Result{}, err
 		}
 	}
-	// delete the sts which needs to update the volumeClaimTemplates section
-	thanosSTSList := &appsv1.StatefulSetList{}
-	thanosSTSListOpts := []client.ListOption{
-		client.InNamespace(config.GetDefaultNamespace()),
-		client.MatchingLabels(map[string]string{
-			"app.kubernetes.io/instance": config.GetMonitoringCRName(),
-		}),
+
+	if isReceiveStorageSizeChanged {
+		isReceiveStorageSizeChanged = false
+		err := updateStorageSizeChange(r.Client,
+			map[string]string{
+				"app.kubernetes.io/instance": mco.GetName(),
+				"app.kubernetes.io/name":     "thanos-receive",
+			}, mco.GetName(), mco.Spec.StorageConfig.ReceiveStorageSize)
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
 	}
 
-	err = r.Client.List(context.TODO(), thanosSTSList, thanosSTSListOpts...)
-	if err != nil {
-		return &reconcile.Result{}, err
+	if isCompactStorageSizeChanged {
+		isCompactStorageSizeChanged = false
+		err := updateStorageSizeChange(r.Client,
+			map[string]string{
+				"app.kubernetes.io/instance": mco.GetName(),
+				"app.kubernetes.io/name":     "thanos-compact",
+			}, mco.GetName(), mco.Spec.StorageConfig.CompactStorageSize)
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
 	}
 
-	obsSTSList := &appsv1.StatefulSetList{}
-	obsSTSListOpts := []client.ListOption{
-		client.InNamespace(config.GetDefaultNamespace()),
-		client.MatchingLabels(labelsForMultiClusterMonitoring(mco.Name)),
+	if isRuleStorageSizeChanged {
+		isRuleStorageSizeChanged = false
+		err := updateStorageSizeChange(r.Client,
+			map[string]string{
+				"app.kubernetes.io/instance": mco.GetName(),
+				"app.kubernetes.io/name":     "thanos-rule",
+			}, mco.GetName(), mco.Spec.StorageConfig.RuleStorageSize)
+		if err != nil {
+			return &reconcile.Result{}, err
+		}
 	}
 
-	err = r.Client.List(context.TODO(), obsSTSList, obsSTSListOpts...)
-	if err != nil {
-		return &reconcile.Result{}, err
-	}
-
-	obsSTSItems := append(obsSTSList.Items, thanosSTSList.Items...)
-	for index, sts := range obsSTSItems {
-		err = r.Client.Delete(context.TODO(), &obsSTSItems[index], &client.DeleteOptions{})
-		log.Info("Successfully delete sts due to storage size changed", "sts", sts.Name)
-		if err != nil && !errors.IsNotFound(err) {
+	if isStoreStorageSizeChanged {
+		isStoreStorageSizeChanged = false
+		err := updateStorageSizeChange(r.Client,
+			map[string]string{
+				"app.kubernetes.io/instance": mco.GetName(),
+				"app.kubernetes.io/name":     "thanos-store",
+			}, mco.GetName(), mco.Spec.StorageConfig.StoreStorageSize)
+		if err != nil {
 			return &reconcile.Result{}, err
 		}
 	}
 	return nil, nil
+}
+
+func updateStorageSizeChange(c client.Client, matchLabels map[string]string, mcoName, storageSize string) error {
+
+	pvcList := []corev1.PersistentVolumeClaim{}
+	stsList := []appsv1.StatefulSet{}
+
+	pvcList, err := util.GetPVCList(c, matchLabels)
+	if err != nil {
+		return err
+	}
+
+	stsList, err = util.GetStatefulSetList(c, matchLabels)
+	if err != nil {
+		return err
+	}
+
+	// update pvc directly
+	for index, pvc := range pvcList {
+		if !pvc.Spec.Resources.Requests.Storage().Equal(resource.MustParse(storageSize)) {
+			pvcList[index].Spec.Resources.Requests = corev1.ResourceList{
+				corev1.ResourceName(corev1.ResourceStorage): resource.MustParse(storageSize),
+			}
+			err := c.Update(context.TODO(), &pvcList[index])
+			if err != nil {
+				return err
+			}
+			log.Info("Update storage size for PVC", "pvc", pvc.Name)
+		}
+	}
+	// update sts
+	for index, sts := range stsList {
+		err := c.Delete(context.TODO(), &stsList[index], &client.DeleteOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			return err
+		}
+		log.Info("Successfully delete sts due to storage size changed", "sts", sts.Name)
+	}
+	return nil
 }
