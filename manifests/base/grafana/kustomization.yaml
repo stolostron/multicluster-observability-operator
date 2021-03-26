@@ -6,5 +6,6 @@ resources:
 - deployment.yaml
 - ingress.yaml
 - service.yaml
-- acm-multicluster-dash.yaml
+- acm-optimization-overview-dash.yaml
+- acm-clusters-overview-dash.yaml
 - k8s-mixin-dashboards.yaml
