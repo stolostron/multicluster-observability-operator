@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
+	obsv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -51,7 +51,7 @@ func GenerateObservatoriumCR(
 
 	log.Info("storageClassSelected", "storageClassSelected", storageClassSelected)
 
-	observatoriumCR := &observatoriumv1alpha1.Observatorium{
+	observatoriumCR := &obsv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mco.Name,
 			Namespace: mcoconfig.GetDefaultNamespace(),
@@ -66,7 +66,7 @@ func GenerateObservatoriumCR(
 	}
 
 	// Check if this Observatorium CR already exists
-	observatoriumCRFound := &observatoriumv1alpha1.Observatorium{}
+	observatoriumCRFound := &obsv1alpha1.Observatorium{}
 	err = cl.Get(
 		context.TODO(),
 		types.NamespacedName{
@@ -114,7 +114,8 @@ func GenerateObservatoriumCR(
 	}
 
 	// delete the store-share statefulset in scalein scenario
-	err = deleteStoreSts(cl, observatoriumCR.Name, *oldSpec.Store.Shards, *newSpec.Store.Shards)
+	err = deleteStoreSts(cl, observatoriumCR.Name,
+		*oldSpec.Thanos.Store.Shards, *newSpec.Thanos.Store.Shards)
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
@@ -123,9 +124,9 @@ func GenerateObservatoriumCR(
 }
 
 func updateTenantID(
-	newSpec *observatoriumv1alpha1.ObservatoriumSpec,
-	newTenant observatoriumv1alpha1.APITenant,
-	oldTenant observatoriumv1alpha1.APITenant,
+	newSpec *obsv1alpha1.ObservatoriumSpec,
+	newTenant obsv1alpha1.APITenant,
+	oldTenant obsv1alpha1.APITenant,
 	idx int) {
 
 	if oldTenant.Name == newTenant.Name && newTenant.ID == oldTenant.ID {
@@ -190,114 +191,38 @@ func GenerateAPIGatewayRoute(
 }
 
 func newDefaultObservatoriumSpec(mco *mcov1beta2.MultiClusterObservability,
-	scSelected string) *observatoriumv1alpha1.ObservatoriumSpec {
+	scSelected string) *obsv1alpha1.ObservatoriumSpec {
 
-	obs := &observatoriumv1alpha1.ObservatoriumSpec{}
+	obs := &obsv1alpha1.ObservatoriumSpec{}
 	obs.SecurityContext = &v1.SecurityContext{}
 	obs.NodeSelector = mco.Spec.NodeSelector
 	obs.Tolerations = mco.Spec.Tolerations
-	obs.API.RBAC = newAPIRBAC()
-	obs.API.Tenants = newAPITenants()
-	obs.API.TLS = newAPITLS()
-	obs.API.Replicas = util.GetReplicaCount("Deployments")
-	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		obs.API.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ObservatoriumAPICPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ObservatoriumAPIMemoryRequets),
-			},
-		}
-	}
-	obs.Compact = newCompactSpec(mco, scSelected)
+	obs.API = newAPISpec(mco)
+	obs.Thanos = newThanosSpec(mco, scSelected)
 
-	obs.Hashrings = []*observatoriumv1alpha1.Hashring{
+	obs.Hashrings = []*obsv1alpha1.Hashring{
 		{Hashring: "default", Tenants: []string{mcoconfig.GetTenantUID()}},
 	}
 
-	obs.ObjectStorageConfig.Thanos = &observatoriumv1alpha1.ThanosObjectStorageConfigSpec{}
+	obs.ObjectStorageConfig.Thanos = &obsv1alpha1.ThanosObjectStorageConfigSpec{}
 	if mco.Spec.StorageConfig != nil && mco.Spec.StorageConfig.MetricObjectStorage != nil {
 		objStorageConf := mco.Spec.StorageConfig.MetricObjectStorage
 		obs.ObjectStorageConfig.Thanos.Name = objStorageConf.Name
 		obs.ObjectStorageConfig.Thanos.Key = objStorageConf.Key
 	}
-
-	obs.Receivers = newReceiversSpec(mco, scSelected)
-	obs.Rule = newRuleSpec(mco, scSelected)
-	obs.Store = newStoreSpec(mco, scSelected)
-
-	//set the default observatorium components' image
-	obs.API.Image = mcoconfig.ObservatoriumImgRepo + "/" + mcoconfig.ObservatoriumAPIImgName +
-		":" + mcoconfig.ObservatoriumAPIImgTag
-	obs.API.Version = mcoconfig.ObservatoriumAPIImgTag
-
-	obs.ThanosReceiveController.Image = mcoconfig.ObservatoriumImgRepo + "/" +
-		mcoconfig.ThanosReceiveControllerImgName +
-		":" + mcoconfig.ThanosReceiveControllerImgTag
-	obs.ThanosReceiveController.Version = mcoconfig.ThanosReceiveControllerImgTag
-	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		obs.ThanosReceiveController.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ObservatoriumReceiveControllerCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ObservatoriumReceiveControllerMemoryRequets),
-			},
-		}
-	}
-
-	obs.Query.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
-	obs.Query.Version = mcoconfig.ThanosImgTag
-	obs.Query.Replicas = util.GetReplicaCount("Deployments")
-	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		obs.Query.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosQueryCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosQueryMemoryRequets),
-			},
-		}
-	}
-
-	obs.QueryFrontend.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
-	obs.QueryFrontend.Version = mcoconfig.ThanosImgTag
-	obs.QueryFrontend.Replicas = util.GetReplicaCount("Deployments")
-	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		obs.QueryFrontend.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosQueryFrontendCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosQueryFrontendMemoryRequets),
-			},
-		}
-	}
-
-	replace, image := mcoconfig.ReplaceImage(mco.Annotations, obs.API.Image, mcoconfig.ObservatoriumAPIImgName)
-	if replace {
-		obs.API.Image = image
-	}
-	replace, image = mcoconfig.ReplaceImage(mco.Annotations, obs.QueryFrontend.Image, mcoconfig.ThanosImgName)
-	if replace {
-		obs.QueryFrontend.Image = image
-	}
-	replace, image = mcoconfig.ReplaceImage(mco.Annotations, obs.Query.Image, mcoconfig.ThanosImgName)
-	if replace {
-		obs.Query.Image = image
-	}
-	replace, image = mcoconfig.ReplaceImage(mco.Annotations, obs.ThanosReceiveController.Image,
-		mcoconfig.ThanosReceiveControllerKey)
-	if replace {
-		obs.ThanosReceiveController.Image = image
-	}
-
 	return obs
 }
 
-func newAPIRBAC() observatoriumv1alpha1.APIRBAC {
-	return observatoriumv1alpha1.APIRBAC{
-		Roles: []observatoriumv1alpha1.RBACRole{
+func newAPIRBAC() obsv1alpha1.APIRBAC {
+	return obsv1alpha1.APIRBAC{
+		Roles: []obsv1alpha1.RBACRole{
 			{
 				Name: readOnlyRoleName,
 				Resources: []string{
 					"metrics",
 				},
-				Permissions: []observatoriumv1alpha1.Permission{
-					observatoriumv1alpha1.Read,
+				Permissions: []obsv1alpha1.Permission{
+					obsv1alpha1.Read,
 				},
 				Tenants: []string{
 					mcoconfig.GetDefaultTenantName(),
@@ -308,24 +233,24 @@ func newAPIRBAC() observatoriumv1alpha1.APIRBAC {
 				Resources: []string{
 					"metrics",
 				},
-				Permissions: []observatoriumv1alpha1.Permission{
-					observatoriumv1alpha1.Write,
+				Permissions: []obsv1alpha1.Permission{
+					obsv1alpha1.Write,
 				},
 				Tenants: []string{
 					mcoconfig.GetDefaultTenantName(),
 				},
 			},
 		},
-		RoleBindings: []observatoriumv1alpha1.RBACRoleBinding{
+		RoleBindings: []obsv1alpha1.RBACRoleBinding{
 			{
 				Name: readOnlyRoleName,
 				Roles: []string{
 					readOnlyRoleName,
 				},
-				Subjects: []observatoriumv1alpha1.Subject{
+				Subjects: []obsv1alpha1.Subject{
 					{
 						Name: GetGrafanaSubject(),
-						Kind: observatoriumv1alpha1.User,
+						Kind: obsv1alpha1.User,
 					},
 				},
 			},
@@ -334,10 +259,10 @@ func newAPIRBAC() observatoriumv1alpha1.APIRBAC {
 				Roles: []string{
 					writeOnlyRoleName,
 				},
-				Subjects: []observatoriumv1alpha1.Subject{
+				Subjects: []obsv1alpha1.Subject{
 					{
 						Name: GetManagedClusterOrg(),
-						Kind: observatoriumv1alpha1.Group,
+						Kind: obsv1alpha1.Group,
 					},
 				},
 			},
@@ -345,12 +270,12 @@ func newAPIRBAC() observatoriumv1alpha1.APIRBAC {
 	}
 }
 
-func newAPITenants() []observatoriumv1alpha1.APITenant {
-	return []observatoriumv1alpha1.APITenant{
+func newAPITenants() []obsv1alpha1.APITenant {
+	return []obsv1alpha1.APITenant{
 		{
 			Name: mcoconfig.GetDefaultTenantName(),
 			ID:   mcoconfig.GetTenantUID(),
-			MTLS: &observatoriumv1alpha1.TenantMTLS{
+			MTLS: &obsv1alpha1.TenantMTLS{
 				SecretName: GetClientCACert(),
 				CAKey:      "ca.crt",
 			},
@@ -358,8 +283,8 @@ func newAPITenants() []observatoriumv1alpha1.APITenant {
 	}
 }
 
-func newAPITLS() observatoriumv1alpha1.TLS {
-	return observatoriumv1alpha1.TLS{
+func newAPITLS() obsv1alpha1.TLS {
+	return obsv1alpha1.TLS{
 		SecretName: GetServerCerts(),
 		CertKey:    "tls.crt",
 		KeyKey:     "tls.key",
@@ -368,14 +293,37 @@ func newAPITLS() observatoriumv1alpha1.TLS {
 	}
 }
 
+func newAPISpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.APISpec {
+	apiSpec := obsv1alpha1.APISpec{}
+	apiSpec.RBAC = newAPIRBAC()
+	apiSpec.Tenants = newAPITenants()
+	apiSpec.TLS = newAPITLS()
+	apiSpec.Replicas = util.GetReplicaCount("Deployments")
+	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
+		apiSpec.Resources = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ObservatoriumAPICPURequets),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ObservatoriumAPIMemoryRequets),
+			},
+		}
+	}
+	//set the default observatorium components' image
+	apiSpec.Image = mcoconfig.ObservatoriumImgRepo + "/" + mcoconfig.ObservatoriumAPIImgName +
+		":" + mcoconfig.ObservatoriumAPIImgTag
+	apiSpec.Version = mcoconfig.ObservatoriumAPIImgTag
+	replace, image := mcoconfig.ReplaceImage(mco.Annotations, apiSpec.Image, mcoconfig.ObservatoriumAPIImgName)
+	if replace {
+		apiSpec.Image = image
+	}
+	return apiSpec
+}
+
 func newReceiversSpec(
 	mco *mcov1beta2.MultiClusterObservability,
-	scSelected string) observatoriumv1alpha1.ReceiversSpec {
-	receSpec := observatoriumv1alpha1.ReceiversSpec{}
-	receSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
+	scSelected string) obsv1alpha1.ReceiversSpec {
+	receSpec := obsv1alpha1.ReceiversSpec{}
 	receSpec.Replicas = util.GetReplicaCount("StatefulSet")
 	receSpec.ReplicationFactor = receSpec.Replicas
-	receSpec.Version = mcoconfig.ThanosImgTag
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		receSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
@@ -384,10 +332,6 @@ func newReceiversSpec(
 			},
 		}
 	}
-	found, image := mcoconfig.ReplaceImage(mco.Annotations, receSpec.Image, mcoconfig.ThanosImgName)
-	if found {
-		receSpec.Image = image
-	}
 	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.ReceiveStorageSize,
 		scSelected)
@@ -395,11 +339,9 @@ func newReceiversSpec(
 	return receSpec
 }
 
-func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) observatoriumv1alpha1.RuleSpec {
-	ruleSpec := observatoriumv1alpha1.RuleSpec{}
-	ruleSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
+func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.RuleSpec {
+	ruleSpec := obsv1alpha1.RuleSpec{}
 	ruleSpec.Replicas = util.GetReplicaCount("StatefulSet")
-	ruleSpec.Version = mcoconfig.ThanosImgTag
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		ruleSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
@@ -415,10 +357,6 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 		}
 	}
 
-	found, image := mcoconfig.ReplaceImage(mco.Annotations, ruleSpec.Image, mcoconfig.ThanosImgName)
-	if found {
-		ruleSpec.Image = image
-	}
 	ruleSpec.ReloaderImage = mcoconfig.ConfigmapReloaderImgRepo + "/" +
 		mcoconfig.ConfigmapReloaderImgName + ":" + mcoconfig.ConfigmapReloaderImgTagSuffix
 	found, reloaderImage := mcoconfig.ReplaceImage(mco.Annotations,
@@ -433,7 +371,7 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 
 	//configure alertmanager in ruler
 	ruleSpec.AlertmanagersURL = []string{mcoconfig.AlertmanagerURL}
-	ruleSpec.RulesConfig = []observatoriumv1alpha1.RuleConfig{
+	ruleSpec.RulesConfig = []obsv1alpha1.RuleConfig{
 		{
 			Name: mcoconfig.AlertRuleDefaultConfigMapName,
 			Key:  mcoconfig.AlertRuleDefaultFileKey,
@@ -441,7 +379,7 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 	}
 
 	if mcoconfig.HasCustomRuleConfigMap() {
-		customRuleConfig := []observatoriumv1alpha1.RuleConfig{
+		customRuleConfig := []obsv1alpha1.RuleConfig{
 			{
 				Name: mcoconfig.AlertRuleCustomConfigMapName,
 				Key:  mcoconfig.AlertRuleCustomFileKey,
@@ -449,7 +387,7 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 		}
 		ruleSpec.RulesConfig = append(ruleSpec.RulesConfig, customRuleConfig...)
 	} else {
-		ruleSpec.RulesConfig = []observatoriumv1alpha1.RuleConfig{
+		ruleSpec.RulesConfig = []obsv1alpha1.RuleConfig{
 			{
 				Name: mcoconfig.AlertRuleDefaultConfigMapName,
 				Key:  mcoconfig.AlertRuleDefaultFileKey,
@@ -460,10 +398,8 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 	return ruleSpec
 }
 
-func newStoreSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) observatoriumv1alpha1.StoreSpec {
-	storeSpec := observatoriumv1alpha1.StoreSpec{}
-	storeSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
-	storeSpec.Version = mcoconfig.ThanosImgTag
+func newStoreSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.StoreSpec {
+	storeSpec := obsv1alpha1.StoreSpec{}
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		storeSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
@@ -472,10 +408,7 @@ func newStoreSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) 
 			},
 		}
 	}
-	found, image := mcoconfig.ReplaceImage(mco.Annotations, storeSpec.Image, mcoconfig.ThanosImgName)
-	if found {
-		storeSpec.Image = image
-	}
+
 	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.StoreStorageSize,
 		scSelected)
@@ -485,8 +418,8 @@ func newStoreSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) 
 	return storeSpec
 }
 
-func newStoreCacheSpec(mco *mcov1beta2.MultiClusterObservability) observatoriumv1alpha1.StoreCacheSpec {
-	storeCacheSpec := observatoriumv1alpha1.StoreCacheSpec{}
+func newStoreCacheSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.StoreCacheSpec {
+	storeCacheSpec := obsv1alpha1.StoreCacheSpec{}
 	storeCacheSpec.Image = mcoconfig.MemcachedImgRepo + "/" +
 		mcoconfig.MemcachedImgName + ":" + mcoconfig.MemcachedImgTag
 	storeCacheSpec.Version = mcoconfig.MemcachedImgTag
@@ -525,14 +458,82 @@ func newStoreCacheSpec(mco *mcov1beta2.MultiClusterObservability) observatoriumv
 	return storeCacheSpec
 }
 
-func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) observatoriumv1alpha1.CompactSpec {
+func newThanosSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.ThanosSpec {
+	thanosSpec := obsv1alpha1.ThanosSpec{}
+	thanosSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
+	thanosSpec.Version = mcoconfig.ThanosImgTag
+
+	thanosSpec.Compact = newCompactSpec(mco, scSelected)
+	thanosSpec.Receivers = newReceiversSpec(mco, scSelected)
+	thanosSpec.Rule = newRuleSpec(mco, scSelected)
+	thanosSpec.Store = newStoreSpec(mco, scSelected)
+	thanosSpec.ReceiveController = newReceiverControllerSpec(mco)
+	thanosSpec.Query = newQuerySpec(mco)
+	thanosSpec.QueryFrontend = newQueryFrontendSpec(mco)
+
+	replace, image := mcoconfig.ReplaceImage(mco.Annotations, thanosSpec.Image, mcoconfig.ThanosImgName)
+	if replace {
+		thanosSpec.Image = image
+	}
+	return thanosSpec
+}
+
+func newQueryFrontendSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QueryFrontendSpec {
+	queryFrontendSpec := obsv1alpha1.QueryFrontendSpec{}
+	queryFrontendSpec.Replicas = util.GetReplicaCount("Deployments")
+	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
+		queryFrontendSpec.Resources = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosQueryFrontendCPURequets),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosQueryFrontendMemoryRequets),
+			},
+		}
+	}
+	return queryFrontendSpec
+}
+
+func newQuerySpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QuerySpec {
+	querySpec := obsv1alpha1.QuerySpec{}
+	querySpec.Replicas = util.GetReplicaCount("Deployments")
+	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
+		querySpec.Resources = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosQueryCPURequets),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosQueryMemoryRequets),
+			},
+		}
+	}
+	return querySpec
+}
+
+func newReceiverControllerSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.ReceiveControllerSpec {
+	receiveControllerSpec := obsv1alpha1.ReceiveControllerSpec{}
+	receiveControllerSpec.Image = mcoconfig.ObservatoriumImgRepo + "/" +
+		mcoconfig.ThanosReceiveControllerImgName +
+		":" + mcoconfig.ThanosReceiveControllerImgTag
+	receiveControllerSpec.Version = mcoconfig.ThanosReceiveControllerImgTag
+	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
+		receiveControllerSpec.Resources = v1.ResourceRequirements{
+			Requests: v1.ResourceList{
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ObservatoriumReceiveControllerCPURequets),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ObservatoriumReceiveControllerMemoryRequets),
+			},
+		}
+	}
+	replace, image := mcoconfig.ReplaceImage(mco.Annotations, receiveControllerSpec.Image,
+		mcoconfig.ThanosReceiveControllerKey)
+	if replace {
+		receiveControllerSpec.Image = image
+	}
+	return receiveControllerSpec
+}
+
+func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.CompactSpec {
 	var replicas1 int32 = 1
-	compactSpec := observatoriumv1alpha1.CompactSpec{}
-	compactSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
+	compactSpec := obsv1alpha1.CompactSpec{}
 	//Compactor, generally, does not need to be highly available.
 	//Compactions are needed from time to time, only when new blocks appear.
 	compactSpec.Replicas = &replicas1
-	compactSpec.Version = mcoconfig.ThanosImgTag
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		compactSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
@@ -540,10 +541,6 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosCompactMemoryRequets),
 			},
 		}
-	}
-	found, image := mcoconfig.ReplaceImage(mco.Annotations, compactSpec.Image, mcoconfig.ThanosImgName)
-	if found {
-		compactSpec.Image = image
 	}
 	compactSpec.EnableDownsampling = mco.Spec.EnableDownsampling
 	compactSpec.RetentionResolutionRaw = mco.Spec.RetentionConfig.RetentionResolutionRaw
@@ -556,8 +553,8 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 	return compactSpec
 }
 
-func newVolumeClaimTemplate(size string, storageClass string) observatoriumv1alpha1.VolumeClaimTemplate {
-	vct := observatoriumv1alpha1.VolumeClaimTemplate{}
+func newVolumeClaimTemplate(size string, storageClass string) obsv1alpha1.VolumeClaimTemplate {
+	vct := obsv1alpha1.VolumeClaimTemplate{}
 	vct.Spec = v1.PersistentVolumeClaimSpec{
 		AccessModes:      []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
 		StorageClassName: &storageClass,
@@ -571,7 +568,7 @@ func newVolumeClaimTemplate(size string, storageClass string) observatoriumv1alp
 }
 
 func mergeVolumeClaimTemplate(oldVolumn,
-	newVolumn observatoriumv1alpha1.VolumeClaimTemplate) observatoriumv1alpha1.VolumeClaimTemplate {
+	newVolumn obsv1alpha1.VolumeClaimTemplate) obsv1alpha1.VolumeClaimTemplate {
 	requestRes := newVolumn.Spec.Resources.Requests
 	limitRes := newVolumn.Spec.Resources.Limits
 	if requestRes != nil {

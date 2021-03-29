@@ -9,14 +9,14 @@ require (
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/open-cluster-management/api v0.0.0-20201007180356-41d07eee4294
 	github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20210325184301-dd3e27fc2978
-	github.com/open-cluster-management/observatorium-operator v0.0.0-20210318065130-bb5c29db6a2c
+	github.com/open-cluster-management/observatorium-operator v0.0.0-20210329030346-6ff35cf8bcd2
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/client-go v0.0.0-20201020082437-7737f16e53fc
 	golang.org/x/tools v0.0.0-20201014231627-1610a49f37af // indirect
 	gopkg.in/yaml.v2 v2.3.0
-	k8s.io/api v0.20.4
+	k8s.io/api v0.20.5
 	k8s.io/apiextensions-apiserver v0.20.1
-	k8s.io/apimachinery v0.20.4
+	k8s.io/apimachinery v0.20.5
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/kubectl v0.20.4
 	k8s.io/utils v0.0.0-20201110183641-67b214c5f920

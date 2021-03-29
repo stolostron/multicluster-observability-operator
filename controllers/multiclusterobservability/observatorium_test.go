@@ -69,15 +69,15 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 
 	obs := newDefaultObservatoriumSpec(mco, storageClassName)
 
-	receiversStorage := obs.Receivers.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
-	ruleStorage := obs.Rule.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
-	storeStorage := obs.Store.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
-	compactStorage := obs.Compact.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
+	receiversStorage := obs.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
+	ruleStorage := obs.Thanos.Rule.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
+	storeStorage := obs.Thanos.Store.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
+	compactStorage := obs.Thanos.Compact.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	obs = newDefaultObservatoriumSpec(mco, storageClassName)
-	if *obs.Receivers.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
-		*obs.Rule.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
-		*obs.Store.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
-		*obs.Compact.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
+	if *obs.Thanos.Receivers.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
+		*obs.Thanos.Rule.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
+		*obs.Thanos.Store.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
+		*obs.Thanos.Compact.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
 		receiversStorage.String() != statefulSetSize ||
 		ruleStorage.String() != statefulSetSize ||
 		storeStorage.String() != statefulSetSize ||
