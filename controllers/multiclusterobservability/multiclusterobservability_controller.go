@@ -345,6 +345,44 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		return err
 	}
 
+	// Watch for changes to secondary resource Deployment and requeue the owner Observatorium
+	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &observatoriumv1alpha1.Observatorium{},
+	}, predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return updateObservatoriumReplicas(e.Object, nil, "Deployment")
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return updateObservatoriumReplicas(e.ObjectNew, e.ObjectOld, "Deployment")
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	// Watch for changes to secondary resource statefulSet and requeue the owner Observatorium
+	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &observatoriumv1alpha1.Observatorium{},
+	}, predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return updateObservatoriumReplicas(e.Object, nil, "StatefulSet")
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return updateObservatoriumReplicas(e.ObjectNew, e.ObjectOld, "StatefulSet")
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+		},
+	})
+	if err != nil {
+		return err
+	}
+
 	// Watch for changes to secondary resource ConfigMap and requeue the owner MultiClusterObservability
 	err = c.Watch(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
@@ -437,6 +475,44 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mcov1beta2.MultiClusterObservability{}).
 		Complete(r)
+}
+
+func updateObservatoriumReplicas(objectNew, objectOld client.Object, watchedType string) bool {
+	if objectNew.GetNamespace() != config.GetDefaultNamespace() {
+		return false
+	}
+	switch watchedType {
+	case "Deployment":
+		newReplicas := objectNew.(*appsv1.Deployment).Spec.Replicas
+		deployName := objectNew.GetName()
+		if objectOld != nil {
+			oldReplicas := objectOld.(*appsv1.Deployment).Spec.Replicas
+			if newReplicas != oldReplicas {
+				if *newReplicas != 0 {
+					SetObservatoriumComponentReplicas(deployName, newReplicas)
+					return true
+				}
+			}
+		} else {
+			SetObservatoriumComponentReplicas(deployName, newReplicas)
+			return false
+		}
+	case "StatefulSet":
+		newReplicas := objectNew.(*appsv1.StatefulSet).Spec.Replicas
+		stsName := objectNew.GetName()
+		if objectOld != nil {
+			oldReplicas := objectOld.(*appsv1.StatefulSet).Spec.Replicas
+			if newReplicas != oldReplicas {
+				if *newReplicas != 0 {
+					SetObservatoriumComponentReplicas(stsName, newReplicas)
+					return true
+				}
+			}
+		} else {
+			SetObservatoriumComponentReplicas(stsName, newReplicas)
+		}
+	}
+	return false
 }
 
 func checkStorageChanged(mcoOldConfig, mcoNewConfig *mcov1beta2.StorageConfig) {
