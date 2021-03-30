@@ -30,7 +30,9 @@ spec:
     singular: multiclusterobservability
   scope: Cluster
   versions:
-  - name: v1beta1
+  - deprecated: true
+    deprecationWarning: observability.open-cluster-management.io/v1beta1 MultiClusterObservability is deprecated in v2.3+, unavailable in v2.6+; use observability.open-cluster-management.io/v1beta2 MultiClusterObservability
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: MultiClusterObservability defines the configuration for the Observability installation on Hub and Managed Clusters all through this one custom resource.

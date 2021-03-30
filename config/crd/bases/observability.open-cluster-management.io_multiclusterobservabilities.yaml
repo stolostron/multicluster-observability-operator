@@ -236,6 +236,8 @@ spec:
         x-kubernetes-preserve-unknown-fields: true
     served: true
     storage: false
+    deprecationWarning: observability.open-cluster-management.io/v1beta1 MultiClusterObservability is deprecated in v2.3+, unavailable in v2.6+; use observability.open-cluster-management.io/v1beta2 MultiClusterObservability
+    deprecated: true
     subresources:
       status: {}
   - name: v1beta2
