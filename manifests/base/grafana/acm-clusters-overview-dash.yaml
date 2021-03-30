@@ -18,8 +18,8 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": 2,
-      "iteration": 1616761839768,
+      "id": 6,
+      "iteration": 1617134375486,
       "links": [],
       "panels": [
         {
@@ -219,7 +219,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to cluster",
-                        "url": "./d/09ec8aa1e996d6ffcd6817bbaff4db1b/kubernetes-api-server?var-cluster=$__cell_1&var-instance=All"
+                        "url": "./d/09ec8aa1e996d6ffcd6817bbaff4db1b/kubernetes-api-server?var-cluster=${__data.fields.cluster}&var-instance=All"
                       }
                     ]
                   },
@@ -470,7 +470,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to cluster",
-                        "url": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1"
+                        "url": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=${__data.fields.cluster}"
                       }
                     ]
                   },
@@ -716,7 +716,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to cluster",
-                        "url": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1"
+                        "url": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=${__data.fields.cluster}"
                       }
                     ]
                   },
@@ -952,7 +952,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to cluster",
-                        "url": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1"
+                        "url": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=${__data.fields.cluster}"
                       }
                     ]
                   },
@@ -1287,7 +1287,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to cluster",
-                        "url": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=$__cell_1"
+                        "url": "./d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=${__data.fields.cluster}"
                       }
                     ]
                   },
