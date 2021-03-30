@@ -16,4 +16,4 @@ images:
   newTag: latest
 - name: quay.io/open-cluster-management/multicluster-observability-operator
   newName: quay.io/open-cluster-management/multicluster-observability-operator
-  newTag: 2.3.0-SNAPSHOT-2021-03-16-13-59-25
+  newTag: latest

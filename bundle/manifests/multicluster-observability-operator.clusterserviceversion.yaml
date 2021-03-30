@@ -347,7 +347,7 @@ spec:
                   value: /usr/local/manifests
                 - name: SPOKE_NAMESPACE
                   value: open-cluster-management-addon-observability
-                image: quay.io/open-cluster-management/multicluster-observability-operator:2.3.0-SNAPSHOT-2021-03-16-13-59-25
+                image: quay.io/open-cluster-management/multicluster-observability-operator:latest
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:
