@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"strings"
 
 	obsv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -25,6 +24,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
@@ -64,12 +64,7 @@ func GetObservatoriumComponentReplicas(componentName string) *int32 {
 
 func SetObservatoriumComponentReplicas(componentName string, replicas *int32) {
 	for k := range thanosReplicas {
-		// observability-thanos-query-frontend contains thanos-query-frontend and thanos-query
-		if strings.Contains(componentName, ThanosQueryFrontend) {
-			thanosReplicas[ThanosQueryFrontend] = replicas
-			return
-		}
-		if strings.Contains(componentName, k) {
+		if componentName == config.GetMonitoringCRName()+"-"+k {
 			thanosReplicas[k] = replicas
 			return
 		}

@@ -170,6 +170,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 }
 
 func TestObservatoriumComponentReplicas(t *testing.T) {
+	mcoconfig.SetMonitoringCRName("observability")
 	SetObservatoriumComponentReplicas("observability-thanos-query-frontend", &replicas3)
 	newReplicas := GetObservatoriumComponentReplicas(ThanosQueryFrontend)
 	if *newReplicas != replicas3 {
