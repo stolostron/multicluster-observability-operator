@@ -6,7 +6,7 @@ MultiClusterObservability API is the interface to manage the MultiClusterObserva
 
 ## API Version
 
-observability.open-cluster-management.io/v1beta1
+observability.open-cluster-management.io/v1beta2
 
 
 ## Specification
@@ -24,35 +24,140 @@ observability.open-cluster-management.io/v1beta1
    </td>
   </tr>
   <tr>
+   <td>EnableDownsampling
+   </td>
+   <td>bool
+   </td>
+   <td>Enable or disable the downsampling.
+<p>
+The default value is <strong>true</strong>.
+<p>
+Note: Disabling downsampling is not recommended as querying long time ranges without non-downsampled data is not efficient and useful.
+   </td>
+   <td>N
+   </td>
+  </tr>
+  <tr>
    <td>ImagePullSecret
    </td>
    <td>string
    </td>
    <td>Pull secret of the MultiCluster Observability images
    </td>
-   <td>n
+   <td>N
    </td>
   </tr>
   <tr>
+   <td>NodeSelector
+   </td>
+   <td>map[string]string
+   </td>
+   <td>Spec of NodeSelector
+   </td>
+   <td>N
+   </td>
+  </tr>  
+  <tr>
+   <td>ObservabilityAddonSpec
+   </td>
+   <td>ObservabilityAddOnSpec
+   </td>
+   <td>The observabilityAddonSpec defines the global settings for all managed clusters which have observability add-on installed.
+   </td>
+   <td>Y
+   </td>
+  </tr>
+  <tr>
+   </td>
+   <td>RetentionConfig
+   </td>
+   <td>RetentionConfig
+   </td>
+   <td>Specifies the data retention configurations to be used by Observability
+   </td>
+   <td>Y
+   </td>
+  </tr>
+  <tr>
+   </td>
    <td>StorageConfig
    </td>
-   <td>StorageConfigObject
+   <td>StorageConfig
    </td>
-   <td>Specifies the storage to be used by Observability
+   <td>Specifies the storage configuration to be used by Observability
    </td>
-   <td>
+   <td>Y
+   </td>
+  </tr>  
+  <tr>
+   <td>Tolerations
+   </td>
+   <td>[]corev1.Toleration
+   </td>
+   <td>Tolerations causes all components to tolerate any taints
+   </td>
+   <td>N
+   </td>
+  </tr> 
+</table>
+
+### RetentionConfig
+
+<table>
+  <tr>
+   <td><strong>Property</strong>
+   </td>
+   <td><strong>Type</strong>
+   </td>
+   <td><strong>Description</strong>
+   </td>
+   <td><strong>Req’d</strong>
    </td>
   </tr>
   <tr>
-   <td>EnableDownsampling
+   <td>BlockDuration
    </td>
-   <td>bool
+   <td>string
    </td>
-   <td>Enable or disable the downsample.
+   <td>configure --tsdb.block-duration in rule (Block duration for TSDB block)
 <p>
-The default value is <strong>true</strong>.
+Default is 2h
+   </td>
+   <td>N
+   </td>
+  </tr>
+  <tr>
+   <td>CleanupInterval
+   </td>
+   <td>string
+   </td>
+   <td>Configure --compact.cleanup-interval in compact. How often we should clean up partially uploaded blocks. Setting it to "0s" disables it.
 <p>
-Note: Disabling downsampling is not recommended as querying long time ranges without non-downsampled data is not efficient and useful.
+Default is 5m
+   </td>
+   <td>N
+   </td>
+  </tr>
+    <tr>
+   <td>DeleteDelay
+   </td>
+   <td>string
+   </td>
+   <td>configure --delete-delay in compact Time before a block marked for deletion is deleted from bucket.
+<p>
+Default is 48h
+   </td>
+   <td>N
+   </td>
+  </tr>
+    <tr>
+   <td>RetentionInLocal
+   </td>
+   <td>string
+   </td>
+   <td>How long to retain raw samples in a local disk. It applies to rule/receive: --tsdb.retention in receive --tsdb.retention in rule.
+<p>
+Default is 4d
    </td>
    <td>N
    </td>
@@ -93,33 +198,9 @@ Default is 30d.
    <td>N
    </td>
   </tr>
-  <tr>
-   <td>AvailabilityConfig
-   </td>
-   <td>AvailabilityType
-   </td>
-   <td>ReplicaCount for HA support. Does not affect data stores. High will enable HA support. This will provide better support in cases of failover but consumes more resources.
-<p>
-Options are: Basic and High (default).
-   </td>
-   <td>N
-   </td>
-  </tr>
-  <tr>
-   <td>ObservabilityAddonSpec
-   </td>
-   <td>ObservabilityAddOnSpec
-   </td>
-   <td>The observabilityAddonSpec defines the global settings for all managed clusters which have observability add-on enabled.
-   </td>
-   <td>n
-   </td>
-  </tr>
 </table>
 
-
-### StorageConfigObject
-
+### StorageConfig
 
 <table>
   <tr>
@@ -133,35 +214,82 @@ Options are: Basic and High (default).
    </td>
   </tr>
   <tr>
+   <td>AlertmanagerStorageSize
+   </td>
+   <td>String
+   </td>
+   <td>The amount of storage applied to alertmanager stateful sets.
+<p>
+The default is 1Gi
+   </td>
+   <td>N
+   </td>
+  </tr>
+  <tr>
+   <td>CompactStorageSize
+   </td>
+   <td>String
+   </td>
+   <td>The amount of storage applied to thanos compact stateful sets.
+<p>
+The default is 100Gi
+   </td>
+   <td>N
+   </td>
+  </tr>  <tr>
    <td>MetricObjectStorage
    </td>
    <td>PreConfiguredStorage
    </td>
    <td>Reference to Preconfigured Storage to be used by Observability.
    </td>
+   <td>Y
+   </td>
+  </tr>
+  <tr>
+   <td>ReceiveStorageSize
+   </td>
+   <td>String
+   </td>
+   <td>The amount of storage applied to thanos receive stateful sets.
+<p>
+The default is 100Gi
+   </td>
    <td>N
    </td>
   </tr>
   <tr>
-   <td>StatefulSetSize
+   <td>RuleStorageSize
    </td>
    <td>String
    </td>
-   <td>The amount of storage applied to the Observability stateful sets, i.e. Thanos store, Rule, compact and receiver.
+   <td>The amount of storage applied to thanos rule stateful sets.
 <p>
-The default is 10Gi
+The default is 1Gi
    </td>
-   <td>
+   <td>N
    </td>
   </tr>
   <tr>
-   <td>StatefulSetStorageClass
+   <td>StorageClass
    </td>
    <td>String
    </td>
    <td>Specify the storageClass Stateful Sets.  This storage class will also be used for Object Storage if MetricObjectStorage was configured for the system to create the storage.
 <p>
 The default  is gp2.
+   </td>
+   <td>N
+   </td>
+  </tr>
+  <tr>
+   <td>StoreStorageSize
+   </td>
+   <td>String
+   </td>
+   <td>The amount of storage applied to thanos store stateful sets.
+<p>
+The default is 10Gi
    </td>
    <td>N
    </td>
@@ -250,15 +378,15 @@ The default is 1m
 
 <table>
   <tr>
-   <td><strong>name</strong>
+   <td><strong>Name</strong>
    </td>
-   <td><strong>description</strong>
+   <td><strong>Description</strong>
    </td>
-   <td><strong>required</strong>
+   <td><strong>Required</strong>
    </td>
-   <td><strong>default</strong>
+   <td><strong>Default</strong>
    </td>
-   <td><strong>schema</strong>
+   <td><strong>Schema</strong>
    </td>
   </tr>
   <tr>
@@ -270,38 +398,7 @@ The default is 1m
    </td>
    <td>[]
    </td>
-   <td>[]Conditions
+   <td>metav1.Condition
    </td>
   </tr>
 </table>
-
-
-### Conditions
-
-<table>
-  <tr>
-   <td><strong>type</strong>
-   </td>
-   <td><strong>reason</strong>
-   </td>
-   <td><strong>message</strong>
-   </td>
-  </tr>
-  <tr>
-   <td>Ready
-   </td>
-   <td>Ready
-   </td>
-   <td>Observability components deployed and running.
-   </td>
-  </tr>
-  <tr>
-   <td>Failed
-   </td>
-   <td>Failed
-   </td>
-   <td>Deployment failed for one or more components.
-   </td>
-  </tr>
-</table>
-
