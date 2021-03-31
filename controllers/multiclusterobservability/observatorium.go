@@ -66,7 +66,7 @@ func SetObservatoriumComponentReplicas(componentName string, replicas *int32) {
 	for k := range thanosReplicas {
 		// observability-thanos-query-frontend contains thanos-query-frontend and thanos-query
 		if strings.Contains(componentName, ThanosQueryFrontend) {
-			thanosReplicas[k] = replicas
+			thanosReplicas[ThanosQueryFrontend] = replicas
 			return
 		}
 		if strings.Contains(componentName, k) {
