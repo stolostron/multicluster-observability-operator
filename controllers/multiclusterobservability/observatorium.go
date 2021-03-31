@@ -570,7 +570,6 @@ func newReceiverControllerSpec(mco *mcov1beta2.MultiClusterObservability) obsv1a
 }
 
 func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.CompactSpec {
-	var replicas1 int32 = 1
 	compactSpec := obsv1alpha1.CompactSpec{}
 	//Compactor, generally, does not need to be highly available.
 	//Compactions are needed from time to time, only when new blocks appear.
