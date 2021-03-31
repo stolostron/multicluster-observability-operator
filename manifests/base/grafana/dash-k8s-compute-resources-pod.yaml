@@ -19,8 +19,8 @@ data:
       "editable": true,
       "gnetId": 12120,
       "graphTooltip": 0,
-      "id": 9,
-      "iteration": 1616764905852,
+      "id": 10,
+      "iteration": 1617157154828,
       "links": [],
       "panels": [
         {
@@ -486,6 +486,10 @@ data:
                   {
                     "id": "custom.align",
                     "value": "left"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 300
                   }
                 ]
               }
@@ -500,7 +504,8 @@ data:
           "id": 3,
           "links": [],
           "options": {
-            "showHeader": true
+            "showHeader": true,
+            "sortBy": []
           },
           "pluginVersion": "7.4.2",
           "targets": [
@@ -534,7 +539,9 @@ data:
             {
               "expr": "sum(kube_pod_container_resource_limits_cpu_cores{cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\"}) by (container)",
               "format": "table",
+              "hide": false,
               "instant": true,
+              "interval": "",
               "intervalFactor": 2,
               "legendFormat": "",
               "refId": "D",
@@ -543,7 +550,9 @@ data:
             {
               "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\"}) by (container) / sum(kube_pod_container_resource_limits_cpu_cores{cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\"}) by (container)",
               "format": "table",
+              "hide": false,
               "instant": true,
+              "interval": "",
               "intervalFactor": 2,
               "legendFormat": "",
               "refId": "E",
@@ -990,6 +999,10 @@ data:
                   {
                     "id": "custom.align",
                     "value": "left"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 300
                   }
                 ]
               }
@@ -1812,16 +1825,14 @@ data:
       "refresh": "1m",
       "schemaVersion": 27,
       "style": "dark",
-      "tags": [
-        "kubernetes-mixin"
-      ],
+      "tags": ["kubernetes-mixin"],
       "templating": {
         "list": [
           {
             "current": {
               "selected": false,
-              "text": "Observatorium",
-              "value": "Observatorium"
+              "text": "Prometheus",
+              "value": "Prometheus"
             },
             "description": null,
             "error": null,
@@ -1871,7 +1882,7 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
+              "selected": true,
               "text": "open-cluster-management",
               "value": "open-cluster-management"
             },
@@ -1903,8 +1914,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "cert-manager-304e9-844f7776df-nht4m",
-              "value": "cert-manager-304e9-844f7776df-nht4m"
+              "text": "cert-manager-webhook-559cdf74cf-2hml5",
+              "value": "cert-manager-webhook-559cdf74cf-2hml5"
             },
             "datasource": "$datasource",
             "definition": "label_values(kube_pod_info{cluster=\"$cluster\", namespace=\"$namespace\"}, pod)",
@@ -1937,31 +1948,13 @@ data:
         "to": "now"
       },
       "timepicker": {
-        "refresh_intervals": [
-          "1m",
-          "5m",
-          "15m",
-          "30m",
-          "1h",
-          "2h",
-          "1d"
-        ],
-        "time_options": [
-          "5m",
-          "15m",
-          "1h",
-          "6h",
-          "12h",
-          "24h",
-          "2d",
-          "7d",
-          "30d"
-        ]
+        "refresh_intervals": ["1m", "5m", "15m", "30m", "1h", "2h", "1d"],
+        "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "2d", "7d", "30d"]
       },
       "timezone": "",
       "title": "Kubernetes / Compute Resources / Pod",
       "uid": "6581e46e4e5c7ba40a07646395ef7b23",
-      "version": 16
+      "version": 1
     }
 kind: ConfigMap
 metadata:
