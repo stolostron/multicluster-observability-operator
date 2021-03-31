@@ -28,7 +28,7 @@ observability.open-cluster-management.io/v1beta2
    </td>
    <td>bool
    </td>
-   <td>Enable or disable the downsample.
+   <td>Enable or disable the downsampling.
 <p>
 The default value is <strong>true</strong>.
 <p>
@@ -62,7 +62,7 @@ Note: Disabling downsampling is not recommended as querying long time ranges wit
    </td>
    <td>ObservabilityAddOnSpec
    </td>
-   <td>The observabilityAddonSpec defines the global settings for all managed clusters which have observability add-on enabled.
+   <td>The observabilityAddonSpec defines the global settings for all managed clusters which have observability add-on installed.
    </td>
    <td>Y
    </td>
@@ -131,7 +131,7 @@ Default is 2h
    </td>
    <td>string
    </td>
-   <td>Configure --compact.cleanup-interval in compact. How often we should clean up partially uploaded blocks and blocks with deletion mark in the background when --wait has been enabled. Setting it to "0s" disables it
+   <td>Configure --compact.cleanup-interval in compact. How often we should clean up partially uploaded blocks. Setting it to "0s" disables it.
 <p>
 Default is 5m
    </td>
