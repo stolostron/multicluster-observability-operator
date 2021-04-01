@@ -169,10 +169,13 @@ var (
 		ObservatoriumAPI:    &Replicas2,
 		ThanosQuery:         &Replicas2,
 		ThanosQueryFrontend: &Replicas2,
+		Grafana:             &Replicas2,
+		RbacQueryProxy:      &Replicas2,
 
 		ThanosRule:           &Replicas3,
 		ThanosReceive:        &Replicas3,
 		ThanosStoreMemcached: &Replicas3,
+		Alertmanager:         &Replicas3,
 	}
 )
 
