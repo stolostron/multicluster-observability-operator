@@ -29,7 +29,6 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
-	observatoriumAPIs "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -49,6 +48,7 @@ import (
 	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
 	prctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/placementrule"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
+	observatoriumAPIs "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -67,6 +67,7 @@ func init() {
 	utilruntime.Must(observabilityv1beta1.AddToScheme(scheme))
 	utilruntime.Must(observabilityv1beta2.AddToScheme(scheme))
 	utilruntime.Must(placementv1.AddToScheme(scheme))
+	utilruntime.Must(observatoriumAPIs.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
