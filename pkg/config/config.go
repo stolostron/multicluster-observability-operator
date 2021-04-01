@@ -187,9 +187,9 @@ func GetObservabilityComponentReplicas(componentName string) *int32 {
 	return thanosReplicas[componentName]
 }
 
-func SetObservabilityComponentReplicas(componentName string, replicas *int32) {
+func SetObservabilityComponentReplicas(name string, replicas *int32) {
 	for k := range thanosReplicas {
-		if componentName == GetMonitoringCRName()+"-"+k {
+		if name == GetMonitoringCRName()+"-"+k {
 			thanosReplicas[k] = replicas
 			return
 		}
