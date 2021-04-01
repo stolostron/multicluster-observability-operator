@@ -137,15 +137,19 @@ const (
 	ThanosStoreCPURequets    = "100m"
 	ThanosStoreMemoryRequets = "1Gi"
 
-	ObservatoriumAPI     = "observatorium-api"
-	ThanosQuery          = "thanos-query"
-	ThanosQueryFrontend  = "thanos-query-frontend"
-	ThanosRule           = "thanos-rule"
-	ThanosReceive        = "thanos-receive-default"
-	ThanosStoreMemcached = "thanos-store-memcached"
-	Grafana              = "grafana"
-	RbacQueryProxy       = "rbac-query-proxy"
-	Alertmanager         = "alertmanager"
+	ObservatoriumAPI        = "observatorium-api"
+	ThanosCompact           = "thanos-compact"
+	ThanosQuery             = "thanos-query"
+	ThanosQueryFrontend     = "thanos-query-frontend"
+	ThanosRule              = "thanos-rule"
+	ThanosReceive           = "thanos-receive-default"
+	ThanosStoreMemcached    = "thanos-store-memcached"
+	ThanosStoreShard        = "thanos-store-shard"
+	Grafana                 = "grafana"
+	RbacQueryProxy          = "rbac-query-proxy"
+	Alertmanager            = "alertmanager"
+	ThanosReceiveController = "thanos-receive-controller"
+	ObservatoriumOperator   = "observatorium-operator"
 )
 
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation
