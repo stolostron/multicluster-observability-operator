@@ -401,7 +401,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	// test StatefulSetNotReady status
-	err = cl.Delete(context.TODO(), createReadyStatefulSet(name, namespace, "alertmanager"))
+	err = cl.Delete(context.TODO(), createReadyStatefulSet(name, namespace, name+"-alertmanager"))
 	if err != nil {
 		t.Fatalf("Failed to delete alertmanager: (%v)", err)
 	}
@@ -426,7 +426,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	// test DeploymentNotReady status
-	err = cl.Delete(context.TODO(), createReadyDeployment("rbac-query-proxy", namespace))
+	err = cl.Delete(context.TODO(), createReadyDeployment(name+"-rbac-query-proxy", namespace))
 	if err != nil {
 		t.Fatalf("Failed to delete rbac-query-proxy: (%v)", err)
 	}

@@ -24,7 +24,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
@@ -34,42 +33,7 @@ const (
 
 	readOnlyRoleName  = "read-only-metrics"
 	writeOnlyRoleName = "write-only-metrics"
-
-	ObservatoriumAPI     = "observatorium-api"
-	ThanosQuery          = "thanos-query"
-	ThanosQueryFrontend  = "thanos-query-frontend"
-	ThanosRule           = "thanos-rule"
-	ThanosReceive        = "thanos-receive-default"
-	ThanosStoreMemcached = "thanos-store-memcached"
 )
-
-var (
-	replicas1      int32 = 1
-	replicas2      int32 = 2
-	replicas3      int32 = 3
-	thanosReplicas       = map[string]*int32{
-		ObservatoriumAPI:    &replicas2,
-		ThanosQuery:         &replicas2,
-		ThanosQueryFrontend: &replicas2,
-
-		ThanosRule:           &replicas3,
-		ThanosReceive:        &replicas3,
-		ThanosStoreMemcached: &replicas3,
-	}
-)
-
-func GetObservatoriumComponentReplicas(componentName string) *int32 {
-	return thanosReplicas[componentName]
-}
-
-func SetObservatoriumComponentReplicas(componentName string, replicas *int32) {
-	for k := range thanosReplicas {
-		if componentName == config.GetMonitoringCRName()+"-"+k {
-			thanosReplicas[k] = replicas
-			return
-		}
-	}
-}
 
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
 func GenerateObservatoriumCR(
@@ -334,7 +298,7 @@ func newAPISpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.APISpec {
 	apiSpec.RBAC = newAPIRBAC()
 	apiSpec.Tenants = newAPITenants()
 	apiSpec.TLS = newAPITLS()
-	apiSpec.Replicas = GetObservatoriumComponentReplicas(ObservatoriumAPI)
+	apiSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ObservatoriumAPI)
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		apiSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
@@ -358,7 +322,7 @@ func newReceiversSpec(
 	mco *mcov1beta2.MultiClusterObservability,
 	scSelected string) obsv1alpha1.ReceiversSpec {
 	receSpec := obsv1alpha1.ReceiversSpec{}
-	receSpec.Replicas = GetObservatoriumComponentReplicas(ThanosReceive)
+	receSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosReceive)
 	receSpec.ReplicationFactor = receSpec.Replicas
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		receSpec.Resources = v1.ResourceRequirements{
@@ -377,7 +341,7 @@ func newReceiversSpec(
 
 func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.RuleSpec {
 	ruleSpec := obsv1alpha1.RuleSpec{}
-	ruleSpec.Replicas = GetObservatoriumComponentReplicas(ThanosRule)
+	ruleSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosRule)
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		ruleSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
@@ -448,7 +412,7 @@ func newStoreSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) 
 	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.StoreStorageSize,
 		scSelected)
-	storeSpec.Shards = &replicas3
+	storeSpec.Shards = &mcoconfig.Replicas3
 	storeSpec.Cache = newStoreCacheSpec(mco)
 
 	return storeSpec
@@ -459,7 +423,7 @@ func newStoreCacheSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.St
 	storeCacheSpec.Image = mcoconfig.MemcachedImgRepo + "/" +
 		mcoconfig.MemcachedImgName + ":" + mcoconfig.MemcachedImgTag
 	storeCacheSpec.Version = mcoconfig.MemcachedImgTag
-	storeCacheSpec.Replicas = GetObservatoriumComponentReplicas(ThanosStoreMemcached)
+	storeCacheSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosStoreMemcached)
 	storeCacheSpec.ExporterImage = mcoconfig.MemcachedExporterImgRepo + "/" +
 		mcoconfig.MemcachedExporterImgName + ":" + mcoconfig.MemcachedExporterImgTag
 	storeCacheSpec.ExporterVersion = mcoconfig.MemcachedExporterImgTag
@@ -516,7 +480,7 @@ func newThanosSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string)
 
 func newQueryFrontendSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QueryFrontendSpec {
 	queryFrontendSpec := obsv1alpha1.QueryFrontendSpec{}
-	queryFrontendSpec.Replicas = GetObservatoriumComponentReplicas(ThanosQueryFrontend)
+	queryFrontendSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosQueryFrontend)
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		queryFrontendSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
@@ -530,7 +494,7 @@ func newQueryFrontendSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1
 
 func newQuerySpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QuerySpec {
 	querySpec := obsv1alpha1.QuerySpec{}
-	querySpec.Replicas = GetObservatoriumComponentReplicas(ThanosQuery)
+	querySpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosQuery)
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		querySpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
@@ -568,7 +532,7 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 	compactSpec := obsv1alpha1.CompactSpec{}
 	//Compactor, generally, does not need to be highly available.
 	//Compactions are needed from time to time, only when new blocks appear.
-	compactSpec.Replicas = &replicas1
+	compactSpec.Replicas = &mcoconfig.Replicas1
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		compactSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{

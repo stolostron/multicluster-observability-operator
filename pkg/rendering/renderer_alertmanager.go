@@ -46,7 +46,8 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 	dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
 	dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
-	dep.Spec.Replicas = util.GetReplicaCount("StatefulSet")
+	dep.Name = r.cr.Name + "-" + dep.Name
+	dep.Spec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.Alertmanager)
 
 	spec := &dep.Spec.Template.Spec
 	spec.Containers[0].ImagePullPolicy = r.cr.Spec.ImagePullPolicy

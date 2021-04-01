@@ -27,37 +27,3 @@ func TestGetAnnotation(t *testing.T) {
 		t.Errorf("failed (%v) is not the expected (%v)", GetAnnotation(tmpAnnotations, "repo"), "")
 	}
 }
-
-func TestGetReplicaCount(t *testing.T) {
-	var replicas2 int32 = 2
-	var replicas3 int32 = 3
-	caseList := []struct {
-		resourceType string
-		name         string
-		expected     *int32
-	}{
-		{
-			name:         "Have 2 instances",
-			resourceType: "Deployments",
-			expected:     &replicas2,
-		},
-		{
-			name:         "Have 3 instances",
-			resourceType: "StatefulSet",
-			expected:     &replicas3,
-		},
-		{
-			name:         "Have 2 instances",
-			resourceType: "",
-			expected:     &replicas2,
-		},
-	}
-	for _, c := range caseList {
-		t.Run(c.name, func(t *testing.T) {
-			output := GetReplicaCount(c.resourceType)
-			if *output != *c.expected {
-				t.Errorf("case (%v) output (%v) is not the expected (%v)", c.name, output, c.expected)
-			}
-		})
-	}
-}

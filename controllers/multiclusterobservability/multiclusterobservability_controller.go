@@ -327,58 +327,52 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		return err
 	}
 
-	// Watch for changes to secondary resource Deployment and requeue the owner MultiClusterObservability
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &mcov1beta2.MultiClusterObservability{},
-	})
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to secondary resource statefulSet and requeue the owner MultiClusterObservability
-	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &mcov1beta2.MultiClusterObservability{},
-	})
-	if err != nil {
-		return err
-	}
-
 	// Watch for changes to secondary resource Deployment and requeue the owner Observatorium
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &observatoriumv1alpha1.Observatorium{},
-	}, predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			return updateObservatoriumReplicas(e.Object, nil, "Deployment")
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			return updateObservatoriumReplicas(e.ObjectNew, e.ObjectOld, "Deployment")
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return false
-		},
-	})
+	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}},
+		handler.EnqueueRequestsFromMapFunc(handler.MapFunc(
+			func(a client.Object) []ctrl.Request {
+				return []ctrl.Request{
+					{NamespacedName: types.NamespacedName{
+						Namespace: config.GetDefaultNamespace(),
+					}},
+				}
+			})),
+		predicate.Funcs{
+			CreateFunc: func(e event.CreateEvent) bool {
+				return updateObservatoriumReplicas(e.Object, nil, "Deployment")
+			},
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				return updateObservatoriumReplicas(e.ObjectNew, e.ObjectOld, "Deployment")
+			},
+			DeleteFunc: func(e event.DeleteEvent) bool {
+				return !e.DeleteStateUnknown
+			},
+		})
 	if err != nil {
 		return err
 	}
 
 	// Watch for changes to secondary resource statefulSet and requeue the owner Observatorium
-	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &observatoriumv1alpha1.Observatorium{},
-	}, predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			return updateObservatoriumReplicas(e.Object, nil, "StatefulSet")
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			return updateObservatoriumReplicas(e.ObjectNew, e.ObjectOld, "StatefulSet")
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return false
-		},
-	})
+	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}},
+		handler.EnqueueRequestsFromMapFunc(handler.MapFunc(
+			func(a client.Object) []ctrl.Request {
+				return []ctrl.Request{
+					{NamespacedName: types.NamespacedName{
+						Namespace: config.GetDefaultNamespace(),
+					}},
+				}
+			})),
+		predicate.Funcs{
+			CreateFunc: func(e event.CreateEvent) bool {
+				return updateObservatoriumReplicas(e.Object, nil, "StatefulSet")
+			},
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				return updateObservatoriumReplicas(e.ObjectNew, e.ObjectOld, "StatefulSet")
+			},
+			DeleteFunc: func(e event.DeleteEvent) bool {
+				return !e.DeleteStateUnknown
+			},
+		})
 	if err != nil {
 		return err
 	}
@@ -489,13 +483,13 @@ func updateObservatoriumReplicas(objectNew, objectOld client.Object, watchedType
 			oldReplicas := objectOld.(*appsv1.Deployment).Spec.Replicas
 			if newReplicas != oldReplicas {
 				if *newReplicas != 0 {
-					SetObservatoriumComponentReplicas(deployName, newReplicas)
-					return true
+					config.SetObservabilityComponentReplicas(deployName, newReplicas)
 				}
 			}
+			return objectNew.GetResourceVersion() != objectOld.GetResourceVersion()
 		} else {
-			SetObservatoriumComponentReplicas(deployName, newReplicas)
-			return false
+			config.SetObservabilityComponentReplicas(deployName, newReplicas)
+			return true
 		}
 	case "StatefulSet":
 		newReplicas := objectNew.(*appsv1.StatefulSet).Spec.Replicas
@@ -504,12 +498,13 @@ func updateObservatoriumReplicas(objectNew, objectOld client.Object, watchedType
 			oldReplicas := objectOld.(*appsv1.StatefulSet).Spec.Replicas
 			if newReplicas != oldReplicas {
 				if *newReplicas != 0 {
-					SetObservatoriumComponentReplicas(stsName, newReplicas)
-					return true
+					config.SetObservabilityComponentReplicas(stsName, newReplicas)
 				}
 			}
+			return objectNew.GetResourceVersion() != objectOld.GetResourceVersion()
 		} else {
-			SetObservatoriumComponentReplicas(stsName, newReplicas)
+			config.SetObservabilityComponentReplicas(stsName, newReplicas)
+			return true
 		}
 	}
 	return false

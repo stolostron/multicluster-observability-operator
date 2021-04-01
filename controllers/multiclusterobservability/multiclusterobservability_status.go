@@ -138,13 +138,13 @@ func updateAddonSpecStatus(
 
 func getExpectedDeploymentNames(mcoCRName string) []string {
 	return []string{
-		"grafana",
-		mcoCRName + "-observatorium-api",
-		mcoCRName + "-thanos-query",
-		mcoCRName + "-thanos-query-frontend",
-		mcoCRName + "-thanos-receive-controller",
-		"observatorium-operator",
-		"rbac-query-proxy",
+		mcoCRName + "-" + config.Grafana,
+		mcoCRName + "-" + config.ObservatoriumAPI,
+		mcoCRName + "-" + config.ThanosQuery,
+		mcoCRName + "-" + config.ThanosQueryFrontend,
+		mcoCRName + "-" + config.ThanosReceiveController,
+		mcoCRName + "-" + config.ObservatoriumOperator,
+		mcoCRName + "-" + config.RbacQueryProxy,
 	}
 }
 
@@ -176,12 +176,12 @@ func checkDeployStatus(
 
 func getExpectedStatefulSetNames(mcoCRName string) []string {
 	return []string{
-		"alertmanager",
-		mcoCRName + "-thanos-compact",
-		mcoCRName + "-thanos-receive-default",
-		mcoCRName + "-thanos-rule",
-		mcoCRName + "-thanos-store-memcached",
-		mcoCRName + "-thanos-store-shard-0",
+		mcoCRName + "-" + config.Alertmanager,
+		mcoCRName + "-" + config.ThanosCompact,
+		mcoCRName + "-" + config.ThanosReceive,
+		mcoCRName + "-" + config.ThanosRule,
+		mcoCRName + "-" + config.ThanosStoreMemcached,
+		mcoCRName + "-" + config.ThanosStoreShard + "-0",
 	}
 }
 

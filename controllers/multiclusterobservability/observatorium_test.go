@@ -168,12 +168,3 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 		t.Errorf("Failed to update observatorium due to %v", err)
 	}
 }
-
-func TestObservatoriumComponentReplicas(t *testing.T) {
-	mcoconfig.SetMonitoringCRName("observability")
-	SetObservatoriumComponentReplicas("observability-thanos-query-frontend", &replicas3)
-	newReplicas := GetObservatoriumComponentReplicas(ThanosQueryFrontend)
-	if *newReplicas != replicas3 {
-		t.Errorf("The replicas (%v) is not the expected (%v)", *newReplicas, replicas3)
-	}
-}
