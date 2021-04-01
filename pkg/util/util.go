@@ -44,19 +44,6 @@ func GetAnnotation(annotations map[string]string, key string) string {
 	return annotations[key]
 }
 
-// GetReplicaCount returns replicas value.
-// return 2 for deployment and 3 for statefulset
-func GetReplicaCount(resourceType string) *int32 {
-	var replicas2 int32 = 2
-	var replicas3 int32 = 3
-	if resourceType == "Deployment" {
-		return &replicas2
-	} else if resourceType == "StatefulSet" {
-		return &replicas3
-	}
-	return &replicas2
-}
-
 // GetPVCList get pvc with matched labels
 func GetPVCList(c client.Client, matchLabels map[string]string) ([]corev1.PersistentVolumeClaim, error) {
 	pvcList := &corev1.PersistentVolumeClaimList{}

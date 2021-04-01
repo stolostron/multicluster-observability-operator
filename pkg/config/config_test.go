@@ -397,3 +397,12 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 		})
 	}
 }
+
+func TestObservabilityComponentReplicas(t *testing.T) {
+	SetMonitoringCRName("observability")
+	SetObservabilityComponentReplicas("observability-thanos-query-frontend", &Replicas3)
+	newReplicas := GetObservabilityComponentReplicas(ThanosQueryFrontend)
+	if *newReplicas != Replicas3 {
+		t.Errorf("The replicas (%v) is not the expected (%v)", *newReplicas, Replicas3)
+	}
+}

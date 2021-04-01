@@ -136,6 +136,16 @@ const (
 
 	ThanosStoreCPURequets    = "100m"
 	ThanosStoreMemoryRequets = "1Gi"
+
+	ObservatoriumAPI     = "observatorium-api"
+	ThanosQuery          = "thanos-query"
+	ThanosQueryFrontend  = "thanos-query-frontend"
+	ThanosRule           = "thanos-rule"
+	ThanosReceive        = "thanos-receive-default"
+	ThanosStoreMemcached = "thanos-store-memcached"
+	Grafana              = "grafana"
+	RbacQueryProxy       = "rbac-query-proxy"
+	Alertmanager         = "alertmanager"
 )
 
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation
@@ -151,7 +161,33 @@ var (
 	imageManifests              = map[string]string{}
 	hasCustomRuleConfigMap      = false
 	hasCustomAlertmanagerConfig = false
+
+	Replicas1      int32 = 1
+	Replicas2      int32 = 2
+	Replicas3      int32 = 3
+	thanosReplicas       = map[string]*int32{
+		ObservatoriumAPI:    &Replicas2,
+		ThanosQuery:         &Replicas2,
+		ThanosQueryFrontend: &Replicas2,
+
+		ThanosRule:           &Replicas3,
+		ThanosReceive:        &Replicas3,
+		ThanosStoreMemcached: &Replicas3,
+	}
 )
+
+func GetObservabilityComponentReplicas(componentName string) *int32 {
+	return thanosReplicas[componentName]
+}
+
+func SetObservabilityComponentReplicas(componentName string, replicas *int32) {
+	for k := range thanosReplicas {
+		if componentName == GetMonitoringCRName()+"-"+k {
+			thanosReplicas[k] = replicas
+			return
+		}
+	}
+}
 
 // GetClusterNameLabelKey returns the key for the injected label
 func GetClusterNameLabelKey() string {

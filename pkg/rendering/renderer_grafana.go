@@ -7,7 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 
 func (r *Renderer) newGranfanaRenderer() {
@@ -33,7 +33,8 @@ func (r *Renderer) renderGrafanaDeployments(res *resource.Resource) (*unstructur
 
 	spec, ok := u.Object["spec"].(map[string]interface{})
 	if ok {
-		spec["replicas"] = util.GetReplicaCount("Deployment")
+		spec["replicas"] = config.GetObservabilityComponentReplicas(config.Grafana)
+		u.SetName(r.cr.Name + "-" + u.GetName())
 	}
 	return u, nil
 }

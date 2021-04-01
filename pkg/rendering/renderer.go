@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
 	obv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/rendering/patching"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/rendering/templates"
@@ -104,6 +105,7 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 			dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 			dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
 			dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+			dep.Name = r.cr.Name + "-" + dep.Name
 
 			spec := &dep.Spec.Template.Spec
 			spec.Containers[0].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
@@ -134,7 +136,7 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 				}
 
 			case "rbac-query-proxy":
-				dep.Spec.Replicas = util.GetReplicaCount("Deployment")
+				dep.Spec.Replicas = config.GetObservabilityComponentReplicas(config.RbacQueryProxy)
 				updateProxySpec(spec, r.cr)
 			}
 
