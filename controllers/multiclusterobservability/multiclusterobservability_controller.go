@@ -153,9 +153,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			ns = &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 				Name: resNS,
 			}}
-			if err := controllerutil.SetControllerReference(instance, ns, r.Scheme); err != nil {
-				reqLogger.Error(err, "Failed to set controller reference")
-			}
 			if err := r.Client.Create(context.TODO(), ns); err != nil {
 				reqLogger.Error(err, fmt.Sprintf("Failed to create namespace %s", resNS))
 				return ctrl.Result{}, err
