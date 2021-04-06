@@ -106,6 +106,7 @@ func createReadyStatefulSet(name, namespace, statefulSetName string) *appsv1.Sta
 		},
 		Status: appsv1.StatefulSetStatus{
 			ReadyReplicas: 1,
+			Replicas:      1,
 		},
 	}
 }
@@ -147,6 +148,7 @@ func createReadyDeployment(name, namespace string) *appsv1.Deployment {
 		Status: appsv1.DeploymentStatus{
 			ReadyReplicas:     1,
 			AvailableReplicas: 1,
+			Replicas:          1,
 		},
 	}
 }
