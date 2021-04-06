@@ -30,6 +30,7 @@ import (
 	utilpointer "k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
@@ -258,6 +259,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	placementv1.AddToScheme(s)
 	cert.AddToScheme(s)
 	addonv1alpha1.AddToScheme(s)
+	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 
 	svc := createObservatoriumAPIService(name, namespace)
 	grafanaCert := newTestCert(GetGrafanaCerts(), namespace)

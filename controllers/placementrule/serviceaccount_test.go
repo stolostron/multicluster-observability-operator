@@ -13,6 +13,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 
 const (
@@ -73,7 +76,7 @@ func TestCreateClusterRole(t *testing.T) {
 		Rules: []rbacv1.PolicyRule{
 			{
 				Resources: []string{
-					mcoRsName,
+					config.MCORsName,
 				},
 				Verbs: []string{
 					"watch",
@@ -81,7 +84,7 @@ func TestCreateClusterRole(t *testing.T) {
 					"get",
 				},
 				APIGroups: []string{
-					epRsGroup,
+					mcov1beta2.GroupVersion.Group,
 				},
 			},
 			{
@@ -185,7 +188,7 @@ func TestCreateRole(t *testing.T) {
 					"update",
 				},
 				APIGroups: []string{
-					epRsGroup,
+					mcov1beta2.GroupVersion.Group,
 				},
 			},
 		},

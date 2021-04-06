@@ -39,6 +39,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	ctrlruntimescheme "sigs.k8s.io/controller-runtime/pkg/scheme"
+	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	workv1 "github.com/open-cluster-management/api/work/v1"
@@ -178,6 +179,12 @@ func main() {
 	}
 
 	if err := certv1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
+	// add scheme of storage version migration
+	if err := migrationv1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}

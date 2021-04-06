@@ -103,6 +103,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, err
 	} else if isTerminating {
 		reqLogger.Info("MCO instance is in Terminating status, skip the reconcile")
+		// remove the StorageVersionMigration resource
+		cleanObservabilityStorageVersionMigrationResource(r.Client, instance)
 		return ctrl.Result{}, err
 	}
 	//read image manifest configmap to be used to replace the image for each component.
@@ -200,6 +202,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+	}
+
+	// create or update the storage version migration resource
+	err = createOrUpdateObservabilityStorageVersionMigrationResource(r.Client, r.Scheme, instance)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	result, err = r.UpdateStatus(instance)
