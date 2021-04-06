@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -137,10 +138,24 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 	deployer := deploying.NewDeployer(r.Client)
 	//Deploy the resources
+	ns := &corev1.Namespace{}
 	for _, res := range toDeploy {
-		if res.GetNamespace() == config.GetDefaultNamespace() {
+		resNS := res.GetNamespace()
+		if resNS == config.GetDefaultNamespace() {
 			if err := controllerutil.SetControllerReference(instance, res, r.Scheme); err != nil {
 				reqLogger.Error(err, "Failed to set controller reference")
+			}
+		}
+		if resNS == "" {
+			resNS = config.GetDefaultNamespace()
+		}
+		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: resNS}, ns); err != nil && apierrors.IsNotFound(err) {
+			ns = &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
+				Name: resNS,
+			}}
+			if err := r.Client.Create(context.TODO(), ns); err != nil {
+				reqLogger.Error(err, fmt.Sprintf("Failed to create namespace %s", resNS))
+				return ctrl.Result{}, err
 			}
 		}
 		if err := deployer.Deploy(res); err != nil {
