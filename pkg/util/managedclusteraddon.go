@@ -53,7 +53,7 @@ func CreateManagedClusterAddonCR(client client.Client, namespace string) error {
 						Type:               "Progressing",
 						Status:             metav1.ConditionTrue,
 						LastTransitionTime: metav1.NewTime(time.Now()),
-						Reason:             "ManifestWork Created",
+						Reason:             "ManifestWorkCreated",
 						Message:            "Addon Installing",
 					},
 				},
