@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	//"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
 
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
@@ -42,13 +41,6 @@ func createOrUpdateObservabilityStorageVersionMigrationResource(client client.Cl
 			},
 		},
 	}
-
-	// Set MultiClusterObservability instance as the owner and controller
-	//	if mco != nil {
-	//		if err := controllerutil.SetControllerReference(mco, storageVersionMigration, scheme); err != nil {
-	//			return err
-	//		}
-	//	}
 
 	found := &migrationv1alpha1.StorageVersionMigration{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: storageVersionMigrationName}, found)

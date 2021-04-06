@@ -39,7 +39,7 @@ func TestCreateOrUpdateObservabilityStorageVersionMigrationResource(t *testing.T
 		t.Fatalf("createOrUpdateObservabilityStorageVersionMigrationResource: (%v)", err)
 	}
 
-	// Test scenario in which issuer/certificate updated by others
+	// Test scenario in which StorageVersionMigration updated by others
 	svmName := storageVersionMigrationPrefix + mco.GetName()
 	svm := &migrationv1alpha1.StorageVersionMigration{
 		ObjectMeta: metav1.ObjectMeta{
