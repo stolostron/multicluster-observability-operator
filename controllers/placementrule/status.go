@@ -17,6 +17,17 @@ import (
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
 
+var (
+	statusMap = map[string]string{
+		"Available":    "Available",
+		"Progressing":  "Progressing",
+		"Deployed":     "Progressing",
+		"Disabled":     "Degraded",
+		"Degraded":     "Degraded",
+		"NotSupported": "Degraded",
+	}
+)
+
 func updateAddonStatus(c client.Client, addonList mcov1beta1.ObservabilityAddonList) error {
 	for _, addon := range addonList.Items {
 		if addon.Status.Conditions == nil || len(addon.Status.Conditions) == 0 {
@@ -25,7 +36,7 @@ func updateAddonStatus(c client.Client, addonList mcov1beta1.ObservabilityAddonL
 		conditions := []metav1.Condition{}
 		for _, c := range addon.Status.Conditions {
 			condition := metav1.Condition{
-				Type:               c.Type,
+				Type:               statusMap[c.Type],
 				Status:             c.Status,
 				LastTransitionTime: c.LastTransitionTime,
 				Reason:             c.Reason,
