@@ -165,7 +165,7 @@ func checkDeployStatus(
 			return newFailedCondition("DeploymentNotFound", msg)
 		}
 
-		if found.Status.ReadyReplicas < 1 {
+		if found.Status.ReadyReplicas != found.Status.Replicas {
 			msg := fmt.Sprintf("Deployment %s is not ready", name)
 			return newFailedCondition("DeploymentNotReady", msg)
 		}
@@ -201,7 +201,7 @@ func checkStatefulSetStatus(
 			return newFailedCondition("StatefulSetNotFound", msg)
 		}
 
-		if found.Status.ReadyReplicas < 1 {
+		if found.Status.ReadyReplicas != found.Status.Replicas {
 			msg := fmt.Sprintf("StatefulSet %s is not ready", name)
 			return newFailedCondition("StatefulSetNotReady", msg)
 		}
