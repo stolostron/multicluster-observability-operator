@@ -232,7 +232,9 @@ rules:
   - storageversionmigrations
   verbs:
   - create
-  - update
   - delete
   - get
+  - list
+  - update
+  - watch
 
