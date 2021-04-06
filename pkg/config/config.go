@@ -152,6 +152,10 @@ const (
 	ObservatoriumOperator   = "observatorium-operator"
 )
 
+const (
+	MCORsName = "multiclusterobservabilities"
+)
+
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation
 type ObjectStorgeConf struct {
 	Type   string `yaml:"type"`

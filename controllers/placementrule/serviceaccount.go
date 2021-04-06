@@ -14,6 +14,9 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 
 const (
@@ -24,8 +27,6 @@ const (
 	serviceAccountName = "endpoint-observability-sa"
 	epRsName           = "observabilityaddons"
 	epStatusRsName     = "observabilityaddons/status"
-	mcoRsName          = "multiclusterobservabilities"
-	epRsGroup          = "observability.open-cluster-management.io"
 )
 
 func createClusterRole(c client.Client) error {
@@ -40,7 +41,7 @@ func createClusterRole(c client.Client) error {
 		Rules: []rbacv1.PolicyRule{
 			{
 				Resources: []string{
-					mcoRsName,
+					config.MCORsName,
 				},
 				Verbs: []string{
 					"watch",
@@ -48,7 +49,7 @@ func createClusterRole(c client.Client) error {
 					"get",
 				},
 				APIGroups: []string{
-					epRsGroup,
+					mcov1beta2.GroupVersion.Group,
 				},
 			},
 		},
@@ -159,7 +160,7 @@ func createResourceRole(c client.Client) error {
 					"update",
 				},
 				APIGroups: []string{
-					epRsGroup,
+					mcov1beta2.GroupVersion.Group,
 				},
 			},
 			{
