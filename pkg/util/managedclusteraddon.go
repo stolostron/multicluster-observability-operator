@@ -5,6 +5,7 @@ package util
 
 import (
 	"context"
+	"time"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -46,6 +47,15 @@ func CreateManagedClusterAddonCR(client client.Client, namespace string) error {
 				AddOnMeta: addonv1alpha1.AddOnMeta{
 					DisplayName: "Observability Controller",
 					Description: "Manages Observability components.",
+				},
+				Conditions: []metav1.Condition{
+					{
+						Type:               "Progressing",
+						Status:             metav1.ConditionTrue,
+						LastTransitionTime: metav1.NewTime(time.Now()),
+						Reason:             "ManifestWork Created",
+						Message:            "Addon Installing",
+					},
 				},
 			},
 		}
