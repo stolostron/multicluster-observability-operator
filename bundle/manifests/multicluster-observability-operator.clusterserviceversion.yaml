@@ -39,6 +39,7 @@ metadata:
           },
           "spec": {
             "observabilityAddonSpec": {},
+            "resources": {},
             "retentionConfig": {},
             "storageConfig": {
               "metricObjectStorage": {
@@ -98,6 +99,7 @@ spec:
           - secrets
           - serviceaccounts
           - namespaces
+          - nodes
           verbs:
           - create
           - delete

@@ -300,12 +300,7 @@ func newAPISpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.APISpec {
 	apiSpec.TLS = newAPITLS()
 	apiSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ObservatoriumAPI)
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		apiSpec.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ObservatoriumAPICPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ObservatoriumAPIMemoryRequets),
-			},
-		}
+		apiSpec.Resources = mco.Spec.Resources.ObservatoriumAPI
 	}
 	//set the default observatorium components' image
 	apiSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ObservatoriumAPIImgName +
@@ -325,12 +320,7 @@ func newReceiversSpec(
 	receSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosReceive)
 	receSpec.ReplicationFactor = receSpec.Replicas
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		receSpec.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosReceiveCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosReceiveMemoryRequets),
-			},
-		}
+		receSpec.Resources = mco.Spec.Resources.ThanosReceive
 	}
 	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.ReceiveStorageSize,
@@ -343,16 +333,11 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 	ruleSpec := obsv1alpha1.RuleSpec{}
 	ruleSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosRule)
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		ruleSpec.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosRuleCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosRuleMemoryRequets),
-			},
-		}
+		ruleSpec.Resources = mco.Spec.Resources.ThanosRule
 		ruleSpec.ReloaderResources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosRuleReloaderCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosRuleReloaderMemoryRequets),
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosRuleReloaderCPURequests),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosRuleReloaderMemoryRequests),
 			},
 		}
 	}
@@ -401,12 +386,7 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 func newStoreSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.StoreSpec {
 	storeSpec := obsv1alpha1.StoreSpec{}
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		storeSpec.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosStoreCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosStoreMemoryRequets),
-			},
-		}
+		storeSpec.Resources = mco.Spec.Resources.ThanosStore
 	}
 
 	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
@@ -428,16 +408,11 @@ func newStoreCacheSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.St
 		mcoconfig.MemcachedExporterImgName + ":" + mcoconfig.MemcachedExporterImgTag
 	storeCacheSpec.ExporterVersion = mcoconfig.MemcachedExporterImgTag
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		storeCacheSpec.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosCahcedCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosCahcedMemoryRequets),
-			},
-		}
+		storeCacheSpec.Resources = mco.Spec.Resources.ThanosStoreMemcached
 		storeCacheSpec.ExporterResources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosCahcedExporterCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosCahcedExporterMemoryRequets),
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosCahcedExporterCPURequests),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosCahcedExporterMemoryRequests),
 			},
 		}
 	}
@@ -482,12 +457,7 @@ func newQueryFrontendSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1
 	queryFrontendSpec := obsv1alpha1.QueryFrontendSpec{}
 	queryFrontendSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosQueryFrontend)
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		queryFrontendSpec.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosQueryFrontendCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosQueryFrontendMemoryRequets),
-			},
-		}
+		queryFrontendSpec.Resources = mco.Spec.Resources.ThanosQueryFrontend
 	}
 	return queryFrontendSpec
 }
@@ -496,12 +466,7 @@ func newQuerySpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QuerySp
 	querySpec := obsv1alpha1.QuerySpec{}
 	querySpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosQuery)
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		querySpec.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosQueryCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosQueryMemoryRequets),
-			},
-		}
+		querySpec.Resources = mco.Spec.Resources.ThanosQuery
 	}
 	return querySpec
 }
@@ -515,8 +480,8 @@ func newReceiverControllerSpec(mco *mcov1beta2.MultiClusterObservability) obsv1a
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		receiveControllerSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ObservatoriumReceiveControllerCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ObservatoriumReceiveControllerMemoryRequets),
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ObservatoriumReceiveControllerCPURequests),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ObservatoriumReceiveControllerMemoryRequests),
 			},
 		}
 	}
@@ -534,12 +499,7 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 	//Compactions are needed from time to time, only when new blocks appear.
 	compactSpec.Replicas = &mcoconfig.Replicas1
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		compactSpec.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosCompactCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosCompactMemoryRequets),
-			},
-		}
+		compactSpec.Resources = mco.Spec.Resources.ThanosCompact
 	}
 	compactSpec.EnableDownsampling = mco.Spec.EnableDownsampling
 	compactSpec.RetentionResolutionRaw = mco.Spec.RetentionConfig.RetentionResolutionRaw

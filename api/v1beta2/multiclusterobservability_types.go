@@ -46,6 +46,45 @@ type MultiClusterObservabilitySpec struct {
 	// clusters which have observability add-on enabled.
 	// +required
 	ObservabilityAddonSpec *observabilityshared.ObservabilityAddonSpec `json:"observabilityAddonSpec,omitempty"`
+	// Spec of resources per component
+	// +optional
+	Resources *ResourceConfig `json:"resources,omitempty"`
+}
+
+// ResourceConfig is the spec of resources per components
+type ResourceConfig struct {
+	// resources for observatorium-api
+	// +optional
+	// +kubebuilder:default:={requests: {cpu: "20m", memory: "128Mi"}, limits: {cpu: "1", memory: "1Gi"}}
+	ObservatoriumAPI corev1.ResourceRequirements `json:"observatoriumAPI,omitempty"`
+	// resources for thanos-query-frontend
+	// +optional
+	// +kubebuilder:default:={requests: {cpu: "100m", memory: "256Mi"}, limits: {cpu: "1", memory: "1Gi"}}
+	ThanosQueryFrontend corev1.ResourceRequirements `json:"thanosQueryFrontend,omitempty"`
+	// resources for thanos-query
+	// +optional
+	// +kubebuilder:default:={requests: {cpu: "300m", memory: "1Gi"}, limits: {cpu: "1", memory: "1Gi"}}
+	ThanosQuery corev1.ResourceRequirements `json:"thanosQuery,omitempty"`
+	// resources for thanos-compact
+	// +optional
+	// +kubebuilder:default:={requests: {cpu: "100m", memory: "512Mi"}, limits: {cpu: "1", memory: "2Gi"}}
+	ThanosCompact corev1.ResourceRequirements `json:"thanosCompact,omitempty"`
+	// resources for thanos-receiver
+	// +optional
+	// +kubebuilder:default:={requests: {cpu: "300m", memory: "512Mi"}, limits: {cpu: "1", memory: "2Gi"}}
+	ThanosReceive corev1.ResourceRequirements `json:"thanosReceive,omitempty"`
+	// resources for thanos-rule
+	// +optional
+	// +kubebuilder:default:={requests: {cpu: "50m", memory: "512Mi"}, limits: {cpu: "1", memory: "1Gi"}}
+	ThanosRule corev1.ResourceRequirements `json:"thanosRule,omitempty"`
+	// resources for thanos-store-shard
+	// +optional
+	// +kubebuilder:default:={requests: {cpu: "100m", memory: "1Gi"}, limits: {cpu: "1", memory: "2Gi"}}
+	ThanosStore corev1.ResourceRequirements `json:"thanosStore,omitempty"`
+	// resources for thanos-store-memcached
+	// +optional
+	// +kubebuilder:default:={requests: {cpu: "45m", memory: "128Mi"}, limits: {cpu: "1", memory: "1Gi"}}
+	ThanosStoreMemcached corev1.ResourceRequirements `json:"thanosStoreMemcached,omitempty"`
 }
 
 // RetentionConfig is the spec of retention configurations.
