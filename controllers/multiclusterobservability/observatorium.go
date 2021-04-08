@@ -308,7 +308,7 @@ func newAPISpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.APISpec {
 		}
 	}
 	//set the default observatorium components' image
-	apiSpec.Image = mcoconfig.ObservatoriumImgRepo + "/" + mcoconfig.ObservatoriumAPIImgName +
+	apiSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ObservatoriumAPIImgName +
 		":" + mcoconfig.ObservatoriumAPIImgTag
 	apiSpec.Version = mcoconfig.ObservatoriumAPIImgTag
 	replace, image := mcoconfig.ReplaceImage(mco.Annotations, apiSpec.Image, mcoconfig.ObservatoriumAPIImgName)
