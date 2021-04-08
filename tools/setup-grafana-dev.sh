@@ -37,12 +37,14 @@ deploy() {
       exit 1
   fi
   $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-deploy.yaml
+  $sed_command "s~name: observability-grafana$~name: grafana-dev~g" grafana-dev-deploy.yaml
   $sed_command "s~replicas:.*$~replicas: 1~g" grafana-dev-deploy.yaml
   $sed_command "s~grafana-config$~grafana-dev-config~g" grafana-dev-deploy.yaml
   $sed_command "s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-dev~g" grafana-dev-deploy.yaml
   $sed_command "s~grafana-config$~grafana-dev-config~g" grafana-dev-deploy.yaml
+  $sed_command "s~- multicluster-observability-grafana$~- multicluster-observability-grafana-dev~g" grafana-dev-deploy.yaml
 
-  POD_NAME=$(kubectl get pods -n open-cluster-management-observability|grep grafana|awk '{split($0, a, " "); print a[1]}' |head -n 1)
+  POD_NAME=$(kubectl get pods -n open-cluster-management-observability|grep observability-grafana|awk '{split($0, a, " "); print a[1]}' |head -n 1)
   GROUP_ID=$(kubectl exec -n open-cluster-management-observability $POD_NAME -c grafana -- bash -c "ls -l /var/lib/grafana/grafana.db"|awk '{split($0, a, " "); print a[4]}')
   if [[ ${GROUP_ID} == "grafana" ]]; then
     GROUP_ID=472
@@ -89,7 +91,7 @@ spec:
       storage: 1Gi
   storageClassName: gp2
 EOL
-  PVC_CLASS=$(kubectl get pvc -n open-cluster-management-observability alertmanager-db-alertmanager-0 -o yaml|grep "  storageClassName")
+  PVC_CLASS=$(kubectl get pvc -n open-cluster-management-observability alertmanager-db-observability-alertmanager-0 -o yaml|grep "  storageClassName")
   $sed_command "s~  storageClassName:.*$~${PVC_CLASS}~g" grafana-pvc.yaml
   kubectl apply -f grafana-pvc.yaml
 
