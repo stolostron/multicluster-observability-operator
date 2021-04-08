@@ -103,8 +103,14 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, err
 	} else if isTerminating {
 		reqLogger.Info("MCO instance is in Terminating status, skip the reconcile")
-		// remove the StorageVersionMigration resource
-		cleanObservabilityStorageVersionMigrationResource(r.Client, instance)
+		svmCrdExists, err := util.CheckCRDExist(r.CrdClient, config.StorageVersionMigrationCrdName)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if svmCrdExists {
+			// remove the StorageVersionMigration resource and ignore error
+			cleanObservabilityStorageVersionMigrationResource(r.Client, instance)
+		}
 		return ctrl.Result{}, err
 	}
 	//read image manifest configmap to be used to replace the image for each component.
@@ -191,12 +197,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return *result, err
 	}
 
-	crdExists, err := util.CheckCRDExist(r.CrdClient, "placementrules.apps.open-cluster-management.io")
+	pmCrdExists, err := util.CheckCRDExist(r.CrdClient, config.PlacementRuleCrdName)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if crdExists {
+	if pmCrdExists {
 		// create the placementrule
 		err = createPlacementRule(r.Client, r.Scheme, instance)
 		if err != nil {
@@ -204,10 +210,17 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	// create or update the storage version migration resource
-	err = createOrUpdateObservabilityStorageVersionMigrationResource(r.Client, r.Scheme, instance)
+	svmCrdExists, err := util.CheckCRDExist(r.CrdClient, config.StorageVersionMigrationCrdName)
 	if err != nil {
 		return ctrl.Result{}, err
+	}
+
+	if svmCrdExists {
+		// create or update the storage version migration resource
+		err = createOrUpdateObservabilityStorageVersionMigrationResource(r.Client, r.Scheme, instance)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	result, err = r.UpdateStatus(instance)

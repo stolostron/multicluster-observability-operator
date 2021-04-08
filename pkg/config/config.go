@@ -156,6 +156,11 @@ const (
 	MCORsName = "multiclusterobservabilities"
 )
 
+const (
+	PlacementRuleCrdName           = "placementrules.apps.open-cluster-management.io"
+	StorageVersionMigrationCrdName = "storageversionmigrations.migration.k8s.io"
+)
+
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation
 type ObjectStorgeConf struct {
 	Type   string `yaml:"type"`
