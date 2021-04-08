@@ -48,6 +48,7 @@ import (
 	observabilityv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
 	prctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/placementrule"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 	observatoriumAPIs "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
@@ -128,7 +129,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	crdExists, err := util.CheckCRDExist(crdClient, "placementrules.apps.open-cluster-management.io")
+	crdExists, err := util.CheckCRDExist(crdClient, config.PlacementRuleCrdName)
 	if err != nil {
 		setupLog.Error(err, "Failed to check if the CRD exists")
 		os.Exit(1)
