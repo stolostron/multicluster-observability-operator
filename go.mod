@@ -21,6 +21,7 @@ require (
 	k8s.io/kubectl v0.20.4
 	k8s.io/utils v0.0.0-20201110183641-67b214c5f920
 	sigs.k8s.io/controller-runtime v0.8.0
+	sigs.k8s.io/kube-storage-version-migrator v0.0.3-0.20210302135122-481bd04dbc78
 	sigs.k8s.io/kustomize/v3 v3.3.1
 	sigs.k8s.io/yaml v1.2.0
 )
@@ -35,4 +36,5 @@ replace (
 	k8s.io/api => k8s.io/api v0.19.2
 	k8s.io/apimachinery => k8s.io/apimachinery v0.19.2
 	k8s.io/client-go => k8s.io/client-go v0.19.2
+	sigs.k8s.io/kube-storage-version-migrator => github.com/openshift/kubernetes-kube-storage-version-migrator v0.0.3-0.20210302135122-481bd04dbc78
 )
