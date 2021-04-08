@@ -20,8 +20,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -398,8 +398,44 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 	return nil
 }
 
-func watchObservabilityaddon(c controller.Controller, mapFn handler.MapFunc) error {
-	epPred := predicate.Funcs{
+// SetupWithManager sets up the controller with the Manager.
+func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	name := config.GetPlacementRuleName()
+	pmPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Object.GetName() == name && e.Object.GetNamespace() == watchNamespace {
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.ObjectNew.GetName() == name &&
+				e.ObjectNew.GetNamespace() == watchNamespace &&
+				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Object.GetName() == name && e.Object.GetNamespace() == watchNamespace {
+				return e.DeleteStateUnknown
+			}
+			return false
+		},
+	}
+
+	mapFn := handler.MapFunc(func(a client.Object) []ctrl.Request {
+		return []ctrl.Request{
+			{
+				NamespacedName: types.NamespacedName{
+					Name:      name,
+					Namespace: watchNamespace,
+				},
+			},
+		}
+	})
+
+	obsAddonPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			return false
 		},
@@ -419,45 +455,21 @@ func watchObservabilityaddon(c controller.Controller, mapFn handler.MapFunc) err
 		},
 	}
 
-	err := c.Watch(&source.Kind{Type: &mcov1beta1.ObservabilityAddon{}},
-		handler.EnqueueRequestsFromMapFunc(mapFn),
-		epPred)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func watchManifestwork(c controller.Controller, mapFn handler.MapFunc) error {
-	workPred := predicate.Funcs{
+	mcoPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			return false
+			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+			if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				return true
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue {
-				return true
-			}
-			return false
+			return true
 		},
 	}
 
-	err := c.Watch(&source.Kind{Type: &workv1.ManifestWork{}},
-		handler.EnqueueRequestsFromMapFunc(mapFn),
-		workPred)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func watchAllowlistCM(c controller.Controller, mapFn handler.MapFunc) error {
 	customAllowlistPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.AllowlistCustomConfigMapName &&
@@ -483,42 +495,7 @@ func watchAllowlistCM(c controller.Controller, mapFn handler.MapFunc) error {
 		},
 	}
 
-	err := c.Watch(&source.Kind{Type: &corev1.ConfigMap{}},
-		handler.EnqueueRequestsFromMapFunc(mapFn),
-		customAllowlistPred)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func watchMCO(c controller.Controller, mapFn handler.MapFunc) error {
-	mcoPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			return true
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return true
-		},
-	}
-
-	err := c.Watch(&source.Kind{Type: &mcov1beta2.MultiClusterObservability{}},
-		handler.EnqueueRequestsFromMapFunc(mapFn),
-		mcoPred)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func watchCertficate(c controller.Controller, mapFn handler.MapFunc) error {
-	customAllowlistPred := predicate.Funcs{
+	certSecretPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == certsName ||
 				e.Object.GetName() == config.ServerCerts &&
@@ -541,103 +518,47 @@ func watchCertficate(c controller.Controller, mapFn handler.MapFunc) error {
 		},
 	}
 
-	err := c.Watch(&source.Kind{Type: &corev1.Secret{}},
-		handler.EnqueueRequestsFromMapFunc(mapFn),
-		customAllowlistPred)
-	if err != nil {
-		return err
-	}
-	return nil
-}
+	ctrBuilder := ctrl.NewControllerManagedBy(mgr).
+		// Watch for changes to primary resource PlacementRule with predicate
+		For(&placementv1.PlacementRule{}, builder.WithPredicates(pmPred)).
+		// secondary watch for observabilityaddon
+		Watches(&source.Kind{Type: &mcov1beta1.ObservabilityAddon{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(obsAddonPred)).
+		// secondary watch for MCO
+		Watches(&source.Kind{Type: &mcov1beta2.MultiClusterObservability{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(mcoPred)).
+		// secondary watch for custom allowlist configmap
+		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(customAllowlistPred)).
+		// secondary watch for certificate secrets
+		Watches(&source.Kind{Type: &corev1.Secret{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(certSecretPred))
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	// Create a new controller
-	c, err := controller.New("placementrule-controller", mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return err
-	}
-
-	name := config.GetPlacementRuleName()
-
-	pred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == name && e.Object.GetNamespace() == watchNamespace {
-				return true
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == name &&
-				e.ObjectNew.GetNamespace() == watchNamespace &&
-				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetName() == name && e.Object.GetNamespace() == watchNamespace {
-				return e.DeleteStateUnknown
-			}
-			return false
-		},
-	}
-
-	// Watch for changes to primary resource PlacementRule
-	err = c.Watch(&source.Kind{Type: &placementv1.PlacementRule{}}, &handler.EnqueueRequestForObject{}, pred)
-	if err != nil {
-		return err
-	}
-
-	mapFn := handler.MapFunc(
-		func(a client.Object) []ctrl.Request {
-			return []ctrl.Request{
-				{NamespacedName: types.NamespacedName{
-					Name:      name,
-					Namespace: watchNamespace,
-				}},
-			}
-		})
-
-	// secondary watch for observabilityaddon
-	err = watchObservabilityaddon(c, mapFn)
-	if err != nil {
-		return err
-	}
-
-	// secondary watch for manifestwork
-	gk := schema.GroupKind{Group: workv1.GroupVersion.Group, Kind: "ManifestWork"}
-	_, err = r.RESTMapper.RESTMapping(gk, workv1.GroupVersion.Version)
-	if err == nil {
-		err = watchManifestwork(c, mapFn)
-		if err != nil {
-			return err
+	manifestWorkGroupKind := schema.GroupKind{Group: workv1.GroupVersion.Group, Kind: "ManifestWork"}
+	if _, err := r.RESTMapper.RESTMapping(manifestWorkGroupKind, workv1.GroupVersion.Version); err == nil {
+		workPred := predicate.Funcs{
+			CreateFunc: func(e event.CreateEvent) bool {
+				return false
+			},
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				if e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
+					e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+					return true
+				}
+				return false
+			},
+			DeleteFunc: func(e event.DeleteEvent) bool {
+				if e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue {
+					return true
+				}
+				return false
+			},
 		}
-	}
 
-	// secondary watch for mco
-	err = watchMCO(c, mapFn)
-	if err != nil {
-		return err
-	}
-
-	// secondary watch for custom allowlist configmap
-	err = watchAllowlistCM(c, mapFn)
-	if err != nil {
-		return err
-	}
-
-	// secondary watch for certificate secrets
-	err = watchCertficate(c, mapFn)
-	if err != nil {
-		return err
+		// secondary watch for manifestwork
+		ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &workv1.ManifestWork{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(workPred))
 	}
 
 	// watch APIServer for kubeconfig
-	gk = schema.GroupKind{Group: ocinfrav1.GroupVersion.Group, Kind: "APIServer"}
-	_, err = r.RESTMapper.RESTMapping(gk, ocinfrav1.GroupVersion.Version)
-	if err == nil {
-		pred = predicate.Funcs{
+	apiServerGroupKind := schema.GroupKind{Group: ocinfrav1.GroupVersion.Group, Kind: "APIServer"}
+	if _, err := r.RESTMapper.RESTMapping(apiServerGroupKind, ocinfrav1.GroupVersion.Version); err == nil {
+		apiServerPred := predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
 				return false
 			},
@@ -651,14 +572,11 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				return false
 			},
 		}
-		err = c.Watch(&source.Kind{Type: &ocinfrav1.APIServer{}}, &handler.EnqueueRequestForObject{}, pred)
-		if err != nil {
-			return err
-		}
+
+		// secondary watch APIServer for kubeconfig
+		ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &ocinfrav1.APIServer{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(apiServerPred))
 	}
 
-	return ctrl.NewControllerManagedBy(mgr).
-		// Uncomment the following line adding a pointer to an instance of the controlled resource as an argument
-		For(&placementv1.PlacementRule{}).
-		Complete(r)
+	// create and return a new controller
+	return ctrBuilder.Complete(r)
 }
