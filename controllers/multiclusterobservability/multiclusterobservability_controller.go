@@ -331,38 +331,45 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		},
 	}
 
-	// enqueue request map function for MCO deployment and statefulset
-	mapFn := handler.MapFunc(func(a client.Object) []ctrl.Request {
-		return []ctrl.Request{
-			{
-				NamespacedName: types.NamespacedName{
-					Namespace: config.GetDefaultNamespace(),
-				},
-			},
-		}
-	})
-
 	deployPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			return updateObservatoriumReplicas(e.Object, nil, "Deployment")
+			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				return updateObservatoriumReplicas(e.Object, nil, "Deployment")
+			}
+			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			return updateObservatoriumReplicas(e.ObjectNew, e.ObjectOld, "Deployment")
+			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
+				return updateObservatoriumReplicas(e.ObjectNew, e.ObjectOld, "Deployment")
+			}
+			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			return !e.DeleteStateUnknown
+			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				return !e.DeleteStateUnknown
+			}
+			return false
 		},
 	}
 
 	statefulsetPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			return updateObservatoriumReplicas(e.Object, nil, "StatefulSet")
+			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				return updateObservatoriumReplicas(e.Object, nil, "StatefulSet")
+			}
+			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			return updateObservatoriumReplicas(e.ObjectNew, e.ObjectOld, "StatefulSet")
+			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
+				return updateObservatoriumReplicas(e.ObjectNew, e.ObjectOld, "StatefulSet")
+			}
+			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			return !e.DeleteStateUnknown
+			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				return !e.DeleteStateUnknown
+			}
+			return false
 		},
 	}
 
@@ -412,15 +419,25 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	// create a new controller and start watch for relevant resources
 	return ctrl.NewControllerManagedBy(mgr).
+		// Watch for changes to primary resource MultiClusterObservability with predicate
 		For(&mcov1beta2.MultiClusterObservability{}, builder.WithPredicates(mcoPred)).
-		Watches(&source.Kind{Type: &appsv1.Deployment{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(deployPred)).
-		Watches(&source.Kind{Type: &appsv1.StatefulSet{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(statefulsetPred)).
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmPred)).
-		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(secretPred)).
+		// Watch for changes to secondary resource Deployment and requeue the owner Observatorium
+		Watches(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(deployPred)).
+		// Watch for changes to secondary resource statefulSet and requeue the owner Observatorium
+		Watches(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(statefulsetPred)).
+		// Watch for changes to secondary resource ConfigMap and requeue the owner MultiClusterObservability
 		Owns(&corev1.ConfigMap{}).
+		// Watch for changes to secondary resource Secret and requeue the owner MultiClusterObservability
 		Owns(&corev1.Secret{}).
+		// Watch for changes to secondary resource Service and requeue the owner MultiClusterObservability
 		Owns(&corev1.Service{}).
+		// Watch for changes to secondary Observatorium CR and requeue the owner MultiClusterObservability
 		Owns(&observatoriumv1alpha1.Observatorium{}).
+		// Watch the configmap for thanos-ruler-custom-rules update
+		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmPred)).
+		// Watch the secret for deleting event of alertmanager-config
+		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(secretPred)).
+		// actually create the controller with the reconciler
 		Complete(r)
 }
 
