@@ -80,7 +80,7 @@ $ make -f Makefile.prow deploy IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-
 
 5. Deploy the multicluster-observability-operator CR:
 ```
-$ kubectl -n open-cluster-management-observability apply -f config/samples/observability_v1beta2_multiclusterobservability.yaml
+$ kubectl apply -f config/samples/observability_v1beta2_multiclusterobservability.yaml
 ```
 
 6. Verify all the components for the Multicluster Observability are starting up and runing:
