@@ -19,8 +19,8 @@ data:
       "editable": true,
       "gnetId": 12117,
       "graphTooltip": 0,
-      "id": 8,
-      "iteration": 1617156204351,
+      "id": 1,
+      "iteration": 1617980502314,
       "links": [],
       "panels": [
         {
@@ -836,7 +836,7 @@ data:
           },
           "hiddenSeries": false,
           "id": 7,
-          "interval": "4m",
+          "interval": null,
           "legend": {
             "avg": false,
             "current": false,
@@ -2425,7 +2425,7 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": true,
+              "selected": false,
               "text": "open-cluster-management",
               "value": "open-cluster-management"
             },
@@ -2466,7 +2466,7 @@ data:
       "timezone": "",
       "title": "Kubernetes / Compute Resources / Namespace (Pods)",
       "uid": "85a562078cdf77779eaa1add43ccec1e",
-      "version": 4
+      "version": 2
     }
 kind: ConfigMap
 metadata:
