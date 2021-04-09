@@ -2376,9 +2376,7 @@ data:
       "refresh": "1m",
       "schemaVersion": 27,
       "style": "dark",
-      "tags": [
-        "kubernetes-mixin"
-      ],
+      "tags": ["kubernetes-mixin"],
       "templating": {
         "list": [
           {
@@ -2470,31 +2468,13 @@ data:
         "to": "now"
       },
       "timepicker": {
-        "refresh_intervals": [
-          "1m",
-          "5m",
-          "15m",
-          "30m",
-          "1h",
-          "2h",
-          "1d"
-        ],
-        "time_options": [
-          "5m",
-          "15m",
-          "1h",
-          "6h",
-          "12h",
-          "24h",
-          "2d",
-          "7d",
-          "30d"
-        ]
+        "refresh_intervals": ["1m", "5m", "15m", "30m", "1h", "2h", "1d"],
+        "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "2d", "7d", "30d"]
       },
       "timezone": "",
       "title": "Kubernetes / Compute Resources / Namespace (Pods)",
       "uid": "85a562078cdf77779eaa1add43ccec1e",
-      "version": 2
+      "version": 4
     }
 kind: ConfigMap
 metadata:
