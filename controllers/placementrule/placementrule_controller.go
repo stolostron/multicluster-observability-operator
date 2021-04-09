@@ -329,17 +329,18 @@ func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 		return err
 	}
 
+	err = createManifestWorks(client, restMapper, namespace, name, mco, imagePullSecret)
+	if err != nil {
+		log.Error(err, "Failed to create manifestwork")
+		return err
+	}
+
 	err = util.CreateManagedClusterAddonCR(client, namespace)
 	if err != nil {
 		log.Error(err, "Failed to create ManagedClusterAddon")
 		return err
 	}
 
-	err = createManifestWorks(client, restMapper, namespace, name, mco, imagePullSecret)
-	if err != nil {
-		log.Error(err, "Failed to create manifestwork")
-		return err
-	}
 	return nil
 }
 

@@ -227,3 +227,15 @@ rules:
   - delete
   - get
   - list
+- apiGroups:
+  - migration.k8s.io
+  resources:
+  - storageversionmigrations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - update
+  - watch
+

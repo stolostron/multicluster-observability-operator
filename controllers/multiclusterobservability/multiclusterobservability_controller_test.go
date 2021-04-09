@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	cert "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
@@ -21,6 +22,7 @@ import (
 	fakecrdclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -28,6 +30,7 @@ import (
 	utilpointer "k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
@@ -118,6 +121,7 @@ func createReadyStatefulSet(name, namespace, statefulSetName string) *appsv1.Sta
 		},
 		Status: appsv1.StatefulSetStatus{
 			ReadyReplicas: 1,
+			Replicas:      1,
 		},
 	}
 }
@@ -159,6 +163,7 @@ func createReadyDeployment(name, namespace string) *appsv1.Deployment {
 		Status: appsv1.DeploymentStatus{
 			ReadyReplicas:     1,
 			AvailableReplicas: 1,
+			Replicas:          1,
 		},
 	}
 }
@@ -215,6 +220,17 @@ func createPlacementRuleCRD() *apiextensionsv1beta1.CustomResourceDefinition {
 	}
 }
 
+func createCABundleCM() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "rbac-query-proxy-serving-certs-ca-bundle",
+			Namespace: mcoconfig.GetDefaultNamespace(),
+		},
+		Data: map[string]string{
+			"service-ca.crt": "",
+		},
+	}
+}
 func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	var (
 		name      = "monitoring"
@@ -270,13 +286,14 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	placementv1.AddToScheme(s)
 	cert.AddToScheme(s)
 	addonv1alpha1.AddToScheme(s)
+	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 
 	svc := createObservatoriumAPIService(name, namespace)
 	grafanaCert := newTestCert(config.GrafanaCerts, namespace)
 	serverCert := newTestCert(config.ServerCerts, namespace)
 	clustermgmtAddon := newClusterManagementAddon()
 
-	objs := []runtime.Object{mco, svc, grafanaCert, serverCert, clustermgmtAddon}
+	objs := []runtime.Object{mco, svc, grafanaCert, serverCert, clustermgmtAddon, createCABundleCM()}
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
 
@@ -470,6 +487,20 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if status == nil || status.Reason != "Ready" {
 		t.Errorf("Failed to get correct MCO status, expect Ready")
 	}
+
+	//Test finalizer
+	mco.ObjectMeta.DeletionTimestamp = &v1.Time{Time: time.Now()}
+	mco.ObjectMeta.Finalizers = []string{resFinalizer, "test-finalizerr"}
+	mco.ObjectMeta.ResourceVersion = updatedMCO.ObjectMeta.ResourceVersion
+	err = cl.Update(context.TODO(), mco)
+	if err != nil {
+		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
+	}
+	_, err = r.Reconcile(context.TODO(), req)
+	if err != nil {
+		t.Fatalf("reconcile for finalizer: (%v)", err)
+	}
+
 }
 
 func createSecret(key, name, namespace string) *corev1.Secret {

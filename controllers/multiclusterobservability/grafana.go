@@ -8,6 +8,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -22,6 +23,7 @@ import (
 
 const (
 	defaultReplicas int32 = 1
+	caBundle              = "rbac-query-proxy-serving-certs-ca-bundle"
 )
 
 type GrafanaDatasources struct {
@@ -59,9 +61,16 @@ type SecureJsonData struct {
 // GenerateGrafanaDataSource is used to generate the GrafanaDatasource as a secret.
 // the GrafanaDatasource points to observatorium api gateway service
 func GenerateGrafanaDataSource(
-	client client.Client,
+	c client.Client,
 	scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
+
+	cm := &v1.ConfigMap{}
+	err := c.Get(context.TODO(), types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: caBundle}, cm)
+	if err != nil {
+		log.Error(err, "Failed to get ca bundle configmap")
+		return &ctrl.Result{}, err
+	}
 
 	grafanaDatasources, err := yaml.Marshal(GrafanaDatasources{
 		APIVersion: 1,
@@ -71,7 +80,13 @@ func GenerateGrafanaDataSource(
 				Type:      "prometheus",
 				Access:    "proxy",
 				IsDefault: true,
-				URL:       "http://rbac-query-proxy." + config.GetDefaultNamespace() + ".svc.cluster.local:8080",
+				URL:       "https://rbac-query-proxy." + config.GetDefaultNamespace() + ".svc.cluster.local:8443",
+				JSONData: &JsonData{
+					TLSAuthCA: true,
+				},
+				SecureJSONData: &SecureJsonData{
+					TLSCACert: cm.Data["service-ca.crt"],
+				},
 			},
 		},
 	})
@@ -97,7 +112,7 @@ func GenerateGrafanaDataSource(
 
 	// Check if this already exists
 	grafanaDSFound := &corev1.Secret{}
-	err = client.Get(
+	err = c.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      dsSecret.Name,
@@ -112,7 +127,7 @@ func GenerateGrafanaDataSource(
 			"dsSecret.Name", dsSecret.Name,
 		)
 
-		err = client.Create(context.TODO(), dsSecret)
+		err = c.Create(context.TODO(), dsSecret)
 		if err != nil {
 			return &ctrl.Result{}, err
 		}

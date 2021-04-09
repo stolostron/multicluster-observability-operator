@@ -41,6 +41,12 @@ import (
 	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 )
 
+const (
+	resFinalizer = "observability.open-cluster-management.io/res-cleanup"
+	// deprecated one
+	certFinalizer = "observability.open-cluster-management.io/cert-cleanup"
+)
+
 var (
 	log                              = logf.Log.WithName("controller_multiclustermonitoring")
 	enableHubRemoteWrite             = os.Getenv("ENABLE_HUB_REMOTEWRITE")
@@ -91,6 +97,15 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
+		return ctrl.Result{}, err
+	}
+
+	// Init finalizers
+	isTerminating, err := r.initFinalization(instance)
+	if err != nil {
+		return ctrl.Result{}, err
+	} else if isTerminating {
+		reqLogger.Info("MCO instance is in Terminating status, skip the reconcile")
 		return ctrl.Result{}, err
 	}
 
@@ -178,14 +193,27 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return *result, err
 	}
 
-	crdExists, err := util.CheckCRDExist(r.CrdClient, "placementrules.apps.open-cluster-management.io")
+	pmCrdExists, err := util.CheckCRDExist(r.CrdClient, config.PlacementRuleCrdName)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if crdExists {
+	if pmCrdExists {
 		// create the placementrule
 		err = createPlacementRule(r.Client, r.Scheme, instance)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	svmCrdExists, err := util.CheckCRDExist(r.CrdClient, config.StorageVersionMigrationCrdName)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if svmCrdExists {
+		// create or update the storage version migration resource
+		err = createOrUpdateObservabilityStorageVersionMigrationResource(r.Client, r.Scheme, instance)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -247,6 +275,40 @@ func (r *MultiClusterObservabilityReconciler) UpdateStatus(
 // belonging to the given MultiClusterObservability CR name.
 func labelsForMultiClusterMonitoring(name string) map[string]string {
 	return map[string]string{"observability.open-cluster-management.io/name": name}
+}
+
+func (r *MultiClusterObservabilityReconciler) initFinalization(
+	mco *mcov1beta2.MultiClusterObservability) (bool, error) {
+	if mco.GetDeletionTimestamp() != nil && util.Contains(mco.GetFinalizers(), resFinalizer) {
+		log.Info("To delete resources across namespaces")
+		svmCrdExists, err := util.CheckCRDExist(r.CrdClient, config.StorageVersionMigrationCrdName)
+		if err != nil {
+			return false, err
+		}
+		if svmCrdExists {
+			// remove the StorageVersionMigration resource and ignore error
+			cleanObservabilityStorageVersionMigrationResource(r.Client, mco)
+		}
+		mco.SetFinalizers(util.Remove(mco.GetFinalizers(), resFinalizer))
+		err = r.Client.Update(context.TODO(), mco)
+		if err != nil {
+			log.Error(err, "Failed to remove finalizer from mco resource")
+			return false, err
+		}
+		log.Info("Finalizer removed from mco resource")
+		return true, nil
+	}
+	if !util.Contains(mco.GetFinalizers(), resFinalizer) {
+		mco.SetFinalizers(util.Remove(mco.GetFinalizers(), certFinalizer))
+		mco.SetFinalizers(append(mco.GetFinalizers(), resFinalizer))
+		err := r.Client.Update(context.TODO(), mco)
+		if err != nil {
+			log.Error(err, "Failed to add finalizer to mco resource")
+			return false, err
+		}
+		log.Info("Finalizer added to mco resource")
+	}
+	return false, nil
 }
 
 func getStorageClass(mco *mcov1beta2.MultiClusterObservability, cl client.Client) (string, error) {
