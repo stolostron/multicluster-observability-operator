@@ -101,8 +101,8 @@ func TestObservabilityAddonController(t *testing.T) {
 			},
 		},
 	}
-	objs := []runtime.Object{p, mco, pull, newTestRoute(), newTestInfra(), newCASecret(), newCertSecret(), NewMetricsAllowListCM(),
-		newSATokenSecret(), newTestSA(), newSATokenSecret(namespace2), newTestSA(namespace2), newCertSecret(namespace2), newManagedClusterAddon(),
+	objs := []runtime.Object{p, mco, pull, newTestRoute(), newTestInfra(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
+		newSATokenSecret(), newTestSA(), newSATokenSecret(namespace2), newTestSA(namespace2), newManagedClusterAddon(),
 		deprecatedRole}
 	c := fake.NewFakeClient(objs...)
 

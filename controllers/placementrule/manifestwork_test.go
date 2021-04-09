@@ -116,7 +116,7 @@ func TestManifestWork(t *testing.T) {
 	initSchema(t)
 
 	objs := []runtime.Object{newSATokenSecret(), newTestSA(), newTestInfra(),
-		newTestRoute(), newCASecret(), newCertSecret(), NewMetricsAllowListCM(), NewMetricsCustomAllowListCM()}
+		newTestRoute(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(), NewMetricsCustomAllowListCM()}
 	c := fake.NewFakeClient(objs...)
 
 	wd, err := os.Getwd()

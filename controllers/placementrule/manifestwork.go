@@ -255,6 +255,14 @@ func getCerts(client client.Client, namespace string) (*corev1.Secret, error) {
 		return nil, err
 	}
 
+	certs := &corev1.Secret{}
+	err = client.Get(context.TODO(), types.NamespacedName{Name: "observability-managed-cluster-certs",
+		Namespace: config.GetDefaultNamespace()}, certs)
+	if err != nil {
+		log.Error(err, "Failed to get observability-managed-cluster-certs secret")
+		return nil, err
+	}
+
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
@@ -265,7 +273,9 @@ func getCerts(client client.Client, namespace string) (*corev1.Secret, error) {
 			Namespace: spokeNameSpace,
 		},
 		Data: map[string][]byte{
-			"ca.crt": ca.Data["tls.crt"],
+			"ca.crt":  ca.Data["tls.crt"],
+			"tls.crt": certs.Data["tls.crt"],
+			"tls.key": certs.Data["tls.key"],
 		},
 	}, nil
 }
