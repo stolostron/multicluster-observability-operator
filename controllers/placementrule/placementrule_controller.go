@@ -33,7 +33,6 @@ import (
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
-	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
@@ -324,17 +323,7 @@ func deleteGlobalResource(c client.Client) error {
 func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 	mco *mcov1beta2.MultiClusterObservability, imagePullSecret *corev1.Secret,
 	name string, namespace string) error {
-	org := mcoctrl.GetManagedClusterOrg()
-	spec := mcoctrl.CreateCertificateSpec(certsName, true,
-		mcoctrl.GetClientCAIssuer(), false,
-		"mc-"+name, []string{org}, []string{})
-	err := mcoctrl.CreateCertificate(client, nil, nil,
-		certificateName, namespace, spec)
-	if err != nil {
-		return err
-	}
-
-	err = createObsAddon(client, namespace)
+	err := createObsAddon(client, namespace)
 	if err != nil {
 		log.Error(err, "Failed to create observabilityaddon")
 		return err

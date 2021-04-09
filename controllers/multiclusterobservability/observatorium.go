@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
@@ -249,7 +250,7 @@ func newAPIRBAC() obsv1alpha1.APIRBAC {
 				},
 				Subjects: []obsv1alpha1.Subject{
 					{
-						Name: GetGrafanaSubject(),
+						Name: config.GrafanaCN,
 						Kind: obsv1alpha1.User,
 					},
 				},
@@ -261,7 +262,7 @@ func newAPIRBAC() obsv1alpha1.APIRBAC {
 				},
 				Subjects: []obsv1alpha1.Subject{
 					{
-						Name: GetManagedClusterOrg(),
+						Name: config.ManagedClusterOU,
 						Kind: obsv1alpha1.Group,
 					},
 				},
@@ -276,7 +277,7 @@ func newAPITenants() []obsv1alpha1.APITenant {
 			Name: mcoconfig.GetDefaultTenantName(),
 			ID:   mcoconfig.GetTenantUID(),
 			MTLS: &obsv1alpha1.TenantMTLS{
-				SecretName: GetClientCACert(),
+				SecretName: config.ClientCACerts,
 				CAKey:      "ca.crt",
 			},
 		},
@@ -285,11 +286,11 @@ func newAPITenants() []obsv1alpha1.APITenant {
 
 func newAPITLS() obsv1alpha1.TLS {
 	return obsv1alpha1.TLS{
-		SecretName: GetServerCerts(),
+		SecretName: config.ServerCerts,
 		CertKey:    "tls.crt",
 		KeyKey:     "tls.key",
 		CAKey:      "ca.crt",
-		ServerName: serverCertificate,
+		ServerName: config.ServerCertCN,
 	}
 }
 

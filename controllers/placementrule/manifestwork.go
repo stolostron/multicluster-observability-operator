@@ -20,7 +20,6 @@ import (
 	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
-	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
@@ -248,18 +247,11 @@ func getPullSecret(imagePullSecret *corev1.Secret) *corev1.Secret {
 func getCerts(client client.Client, namespace string) (*corev1.Secret, error) {
 
 	ca := &corev1.Secret{}
-	caName := mcoctrl.GetServerCerts()
+	caName := config.ServerCACerts
 	err := client.Get(context.TODO(), types.NamespacedName{Name: caName,
 		Namespace: config.GetDefaultNamespace()}, ca)
 	if err != nil {
 		log.Error(err, "Failed to get ca cert secret", "name", caName)
-		return nil, err
-	}
-
-	certs := &corev1.Secret{}
-	err = client.Get(context.TODO(), types.NamespacedName{Name: certsName, Namespace: namespace}, certs)
-	if err != nil {
-		log.Error(err, "Failed to get certs secret", "name", certsName, "namespace", namespace)
 		return nil, err
 	}
 
@@ -273,9 +265,7 @@ func getCerts(client client.Client, namespace string) (*corev1.Secret, error) {
 			Namespace: spokeNameSpace,
 		},
 		Data: map[string][]byte{
-			"ca.crt":  ca.Data["ca.crt"],
-			"tls.crt": certs.Data["tls.crt"],
-			"tls.key": certs.Data["tls.key"],
+			"ca.crt": ca.Data["tls.crt"],
 		},
 	}, nil
 }

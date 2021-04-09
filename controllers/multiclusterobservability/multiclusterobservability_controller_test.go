@@ -8,7 +8,6 @@ import (
 	"os"
 	"path"
 	"testing"
-	"time"
 
 	cert "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
@@ -22,7 +21,6 @@ import (
 	fakecrdclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -41,6 +39,20 @@ import (
 
 func init() {
 	os.Setenv("TEMPLATES_PATH", "../../../manifests/")
+}
+
+func newTestCert(name string, namespace string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Data: map[string][]byte{
+			"ca.crt":  []byte("test-ca-crt"),
+			"tls.crt": []byte("test-tls-crt"),
+			"tls.key": []byte("test-tls-key"),
+		},
+	}
 }
 
 func TestLabelsForMultiClusterMonitoring(t *testing.T) {
@@ -260,8 +272,8 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	addonv1alpha1.AddToScheme(s)
 
 	svc := createObservatoriumAPIService(name, namespace)
-	grafanaCert := newTestCert(GetGrafanaCerts(), namespace)
-	serverCert := newTestCert(GetServerCerts(), namespace)
+	grafanaCert := newTestCert(config.GrafanaCerts, namespace)
+	serverCert := newTestCert(config.ServerCerts, namespace)
 	clustermgmtAddon := newClusterManagementAddon()
 
 	objs := []runtime.Object{mco, svc, grafanaCert, serverCert, clustermgmtAddon}
@@ -457,19 +469,6 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	status = findStatusCondition(updatedMCO.Status.Conditions, "Ready")
 	if status == nil || status.Reason != "Ready" {
 		t.Errorf("Failed to get correct MCO status, expect Ready")
-	}
-
-	//Test finalizer
-	mco.ObjectMeta.DeletionTimestamp = &v1.Time{Time: time.Now()}
-	mco.ObjectMeta.Finalizers = []string{certFinalizer, "test-finalizerr"}
-	mco.ObjectMeta.ResourceVersion = updatedMCO.ObjectMeta.ResourceVersion
-	err = cl.Update(context.TODO(), mco)
-	if err != nil {
-		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
-	}
-	_, err = r.Reconcile(context.TODO(), req)
-	if err != nil {
-		t.Fatalf("reconcile for finalizer: (%v)", err)
 	}
 }
 
