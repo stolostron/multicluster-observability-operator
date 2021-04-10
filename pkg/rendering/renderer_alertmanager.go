@@ -78,7 +78,9 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	}
 
 	//replace the alertmanager and config-reloader images
-	found, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.AlertManagerImgRepo,
+	found, image := mcoconfig.ReplaceImage(
+		r.cr.Annotations,
+		mcoconfig.DefaultImgRepository+"/"+mcoconfig.AlertManagerKey,
 		mcoconfig.AlertManagerKey)
 	if found {
 		spec.Containers[0].Image = image
