@@ -2,6 +2,8 @@
 # Copyright (c) 2021 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project
 
+obs_namespace='open-cluster-management-observability'
+
 if command -v python &> /dev/null
 then
     PYTHON_CMD="python"
@@ -19,6 +21,7 @@ fi
 usage() {
   cat <<EOF
 Usage: $(basename "${BASH_SOURCE[0]}") [-h] dashboard_name [configmap_path]
+       [-n namespace]
 
 Fetch grafana dashboard and save with a configmap.
 
@@ -27,19 +30,41 @@ Available options:
 -h, --help           Print this help and exit
 dashboard_name       Specified the dashboard to be fetch
 configmap_path       Specified the path to save the configmap
+-n, --namespace      Specify the observability components namespace
 EOF
   exit
 }
 
 start() {
-  if ! [ $# -eq 1 -o $# -eq 2 ]; then
+  if [ $# -eq 0 -o $# -gt 4 ]; then
     usage
   fi
 
   savePath="."
-  if [ $# -eq 2 ]; then
+  if [ $# -ge 2 ]; then
     savePath=$2
   fi
+  dashboard_name=`echo ${1// /-} | tr '[:upper:]' '[:lower:]'`
+
+  while [[ $# -gt 0 ]]
+  do
+  key="$1"
+  case $key in
+      -h|--help)
+      usage
+      ;;
+
+      -n|--namespace)
+      obs_namespace="$2"
+      shift
+      shift
+      ;;
+
+      *)
+      shift
+      ;;
+  esac
+  done
 
   if [ ! -d $savePath ]; then
     mkdir -p $savePath
@@ -49,14 +74,13 @@ start() {
     fi
   fi
 
-  podName=`kubectl get pods -n open-cluster-management-observability -l app=multicluster-observability-grafana-dev --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}'`
+  podName=`kubectl get pods -n "$obs_namespace" -l app=multicluster-observability-grafana-dev --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}'`
   if [ $? -ne 0 ] || [ -z "$podName" ]; then
       echo "Failed to get grafana pod name, please check your grafana-dev deployment"
       exit 1
   fi
 
-  dashboard_name=`echo ${1// /-} | tr '[:upper:]' '[:lower:]'`
-  curlCMD="kubectl exec -it -n open-cluster-management-observability $podName -c grafana-dashboard-loader -- /usr/bin/curl"
+  curlCMD="kubectl exec -it -n "$obs_namespace" $podName -c grafana-dashboard-loader -- /usr/bin/curl"
   XForwardedUser="WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000"
   dashboard=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User: $XForwardedUser" 127.0.0.1:3001/api/dashboards/db/$dashboard_name`
   if [ $? -ne 0 ]; then
