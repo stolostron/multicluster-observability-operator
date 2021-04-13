@@ -2,7 +2,23 @@
 # Copyright (c) 2021 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project
 
+WORKDIR="$(pwd -P)"
+export PATH=${PATH}:${WORKDIR}
+
+if ! command -v jq &> /dev/null; then
+	if [[ "$(uname)" == "Linux" ]]; then
+		curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
+	elif [[ "$(uname)" == "Darwin" ]]; then
+		curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64
+	fi
+	chmod +x ./jq
+fi
+
 sed_command='sed -i'
+if [[ "$(uname)" == "Darwin" ]]; then
+    sed_command='sed -i -e'
+fi
+
 managed_cluster='managed'
 if [ $# -eq 2 ]; then
 	managed_cluster=$2
@@ -25,9 +41,9 @@ do
 	kubectl create ns ${cluster_name}
 
 	# create ca/sa/rolebinding for metrics collector
-	kubectl get configmap metrics-collector-serving-certs-ca-bundle -n open-cluster-management-addon-observability --export -o yaml | kubectl apply -n ${cluster_name} -f -
-	kubectl get secret observability-managed-cluster-certs -n open-cluster-management-addon-observability --export -o yaml | kubectl apply -n ${cluster_name} -f -
-	kubectl get sa endpoint-observability-operator-sa -n open-cluster-management-addon-observability --export -o yaml | kubectl apply -n ${cluster_name} -f -
+	kubectl get configmap metrics-collector-serving-certs-ca-bundle -n open-cluster-management-addon-observability -o json | jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid) | .metadata.creationTimestamp=null' | kubectl apply -n ${cluster_name} -f -
+	kubectl get secret observability-managed-cluster-certs -n open-cluster-management-addon-observability -o json | jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid) | .metadata.creationTimestamp=null' | kubectl apply -n ${cluster_name} -f -
+	kubectl get sa endpoint-observability-operator-sa -n open-cluster-management-addon-observability -o json | jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid) | .metadata.creationTimestamp=null' | kubectl apply -n ${cluster_name} -f -	
 	kubectl -n ${cluster_name} patch secret observability-managed-cluster-certs --type='json' -p='[{"op": "replace", "path": "/metadata/ownerReferences", "value": []}]'
 	kubectl -n ${cluster_name} patch sa endpoint-observability-operator-sa --type='json' -p='[{"op": "replace", "path": "/metadata/ownerReferences", "value": []}]'
 
