@@ -19,8 +19,8 @@ data:
       "editable": true,
       "gnetId": 12124,
       "graphTooltip": 0,
-      "id": 14,
-      "iteration": 1617163342885,
+      "id": 11,
+      "iteration": 1618433020397,
       "links": [],
       "panels": [
         {
@@ -1989,7 +1989,7 @@ data:
       "timezone": "",
       "title": "Kubernetes / Networking / Cluster",
       "uid": "ff635a025bcfea7bc3dd4f508990a3e9",
-      "version": 2
+      "version": 1
     }
 kind: ConfigMap
 metadata:
