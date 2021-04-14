@@ -20,7 +20,6 @@ import (
 	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
-	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
@@ -53,12 +52,8 @@ func deleteManifestWork(c client.Client, name string, namespace string) error {
 }
 
 func deleteManifestWorks(c client.Client, namespace string) error {
-	err := deleteRes(c, namespace)
-	if err != nil {
-		return err
-	}
 
-	err = c.DeleteAllOf(context.TODO(), &workv1.ManifestWork{},
+	err := c.DeleteAllOf(context.TODO(), &workv1.ManifestWork{},
 		client.InNamespace(namespace), client.MatchingLabels{ownerLabelKey: ownerLabelValue})
 	if err != nil {
 		log.Error(err, "Failed to delete observability manifestworks", "namespace", namespace)
@@ -195,13 +190,6 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	// inject namespace
 	manifests = injectIntoWork(manifests, createNameSpace())
 
-	// inject kube secret
-	secret, err := createKubeSecret(c, restMapper, clusterNamespace)
-	if err != nil {
-		return err
-	}
-	manifests = injectIntoWork(manifests, secret)
-
 	//create image pull secret
 	if imagePullSecret != nil {
 		pull := getPullSecret(imagePullSecret)
@@ -248,7 +236,7 @@ func getPullSecret(imagePullSecret *corev1.Secret) *corev1.Secret {
 func getCerts(client client.Client, namespace string) (*corev1.Secret, error) {
 
 	ca := &corev1.Secret{}
-	caName := mcoctrl.GetServerCerts()
+	caName := config.ServerCACerts
 	err := client.Get(context.TODO(), types.NamespacedName{Name: caName,
 		Namespace: config.GetDefaultNamespace()}, ca)
 	if err != nil {
@@ -257,9 +245,10 @@ func getCerts(client client.Client, namespace string) (*corev1.Secret, error) {
 	}
 
 	certs := &corev1.Secret{}
-	err = client.Get(context.TODO(), types.NamespacedName{Name: certsName, Namespace: namespace}, certs)
+	err = client.Get(context.TODO(), types.NamespacedName{Name: "observability-managed-cluster-certs",
+		Namespace: config.GetDefaultNamespace()}, certs)
 	if err != nil {
-		log.Error(err, "Failed to get certs secret", "name", certsName, "namespace", namespace)
+		log.Error(err, "Failed to get observability-managed-cluster-certs secret")
 		return nil, err
 	}
 
@@ -273,7 +262,7 @@ func getCerts(client client.Client, namespace string) (*corev1.Secret, error) {
 			Namespace: spokeNameSpace,
 		},
 		Data: map[string][]byte{
-			"ca.crt":  ca.Data["ca.crt"],
+			"ca.crt":  ca.Data["tls.crt"],
 			"tls.crt": certs.Data["tls.crt"],
 			"tls.key": certs.Data["tls.key"],
 		},

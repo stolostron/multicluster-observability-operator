@@ -19,14 +19,13 @@ import (
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
-	mcocontroller "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 
 const (
 	pullSecretName   = "test-pull-secret"
 	operatorWorkSize = 6
-	resourceWorkSize = 6
+	resourceWorkSize = 5
 )
 
 func newTestMCO() *mcov1beta2.MultiClusterObservability {
@@ -59,7 +58,7 @@ func newTestPullSecret() *corev1.Secret {
 func newCASecret() *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      mcocontroller.GetServerCerts(),
+			Name:      config.ServerCACerts,
 			Namespace: mcoNamespace,
 		},
 		Data: map[string][]byte{
@@ -116,8 +115,7 @@ func TestManifestWork(t *testing.T) {
 
 	initSchema(t)
 
-	objs := []runtime.Object{newSATokenSecret(), newTestSA(), newTestInfra(),
-		newTestRoute(), newCASecret(), newCertSecret(), NewMetricsAllowListCM(), NewMetricsCustomAllowListCM()}
+	objs := []runtime.Object{newTestRoute(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(), NewMetricsCustomAllowListCM()}
 	c := fake.NewFakeClient(objs...)
 
 	wd, err := os.Getwd()

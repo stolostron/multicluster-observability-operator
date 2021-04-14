@@ -238,4 +238,57 @@ rules:
   - list
   - update
   - watch
-
+- apiGroups:
+  - cluster.open-cluster-management.io
+  verbs:
+  - watch
+  - get
+  - list
+  resources:
+  - managedclusters
+- apiGroups:
+  - certificates.k8s.io
+  verbs:
+  - get
+  - list
+  - watch
+  resources:
+  - certificatesigningrequests
+- apiGroups:
+  - certificates.k8s.io
+  verbs:
+  - update
+  resources:
+  - certificatesigningrequests/status
+  - certificatesigningrequests/approval
+- apiGroups:
+  - certificates.k8s.io
+  verbs:
+  - approve
+  resources:
+  - signers
+  resourceNames:
+  - kubernetes.io/kube-apiserver-client
+  - open-cluster-management.io/observability-signer
+- apiGroups:
+  - certificates.k8s.io
+  verbs:
+  - get
+  - list
+  - watch
+  resources:
+  - certificatesigningrequests
+- apiGroups:
+  - certificates.k8s.io
+  verbs:
+  - update
+  resources:
+  - certificatesigningrequests/status
+- apiGroups:
+  - certificates.k8s.io
+  verbs:
+  - sign
+  resources:
+  - signers
+  resourceNames:
+  - open-cluster-management.io/observability-signer

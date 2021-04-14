@@ -33,7 +33,6 @@ import (
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
-	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
@@ -324,19 +323,14 @@ func deleteGlobalResource(c client.Client) error {
 func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 	mco *mcov1beta2.MultiClusterObservability, imagePullSecret *corev1.Secret,
 	name string, namespace string) error {
-	org := mcoctrl.GetManagedClusterOrg()
-	spec := mcoctrl.CreateCertificateSpec(certsName, true,
-		mcoctrl.GetClientCAIssuer(), false,
-		"mc-"+name, []string{org}, []string{})
-	err := mcoctrl.CreateCertificate(client, nil, nil,
-		certificateName, namespace, spec)
+	err := createObsAddon(client, namespace)
 	if err != nil {
+		log.Error(err, "Failed to create observabilityaddon")
 		return err
 	}
 
-	err = createObsAddon(client, namespace)
+	err = createRolebindings(client, namespace, name)
 	if err != nil {
-		log.Error(err, "Failed to create observabilityaddon")
 		return err
 	}
 
@@ -346,7 +340,7 @@ func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 		return err
 	}
 
-	err = util.CreateManagedClusterAddonCR(client, namespace)
+	err = util.CreateManagedClusterAddonCR(client, name, namespace)
 	if err != nil {
 		log.Error(err, "Failed to create ManagedClusterAddon")
 		return err
@@ -355,7 +349,7 @@ func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 	return nil
 }
 
-func deleteManagedClusterRes(client client.Client, namespace string) error {
+func deleteManagedClusterRes(c client.Client, namespace string) error {
 
 	managedclusteraddon := &addonv1alpha1.ManagedClusterAddOn{
 		ObjectMeta: metav1.ObjectMeta{
@@ -363,7 +357,7 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 			Namespace: namespace,
 		},
 	}
-	err := client.Delete(context.TODO(), managedclusteraddon)
+	err := c.Delete(context.TODO(), managedclusteraddon)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
@@ -374,7 +368,7 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 			Namespace: namespace,
 		},
 	}
-	err = client.Delete(context.TODO(), certificate)
+	err = c.Delete(context.TODO(), certificate)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
@@ -385,12 +379,17 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 			Namespace: namespace,
 		},
 	}
-	err = client.Delete(context.TODO(), lease)
+	err = c.Delete(context.TODO(), lease)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
 
-	err = deleteManifestWorks(client, namespace)
+	err = deleteRolebindings(c, namespace)
+	if err != nil {
+		return err
+	}
+
+	err = deleteManifestWorks(c, namespace)
 	if err != nil {
 		log.Error(err, "Failed to delete manifestwork")
 		return err

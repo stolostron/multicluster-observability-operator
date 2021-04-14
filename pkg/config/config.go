@@ -42,8 +42,13 @@ const (
 
 	ComponentVersion = "COMPONENT_VERSION"
 
-	ServerCerts  = "observability-server-certs"
-	GrafanaCerts = "observability-grafana-certs"
+	ServerCACerts    = "observability-server-ca-certs"
+	ClientCACerts    = "observability-client-ca-certs"
+	ServerCerts      = "observability-server-certs"
+	ServerCertCN     = "observability-server-certificate"
+	GrafanaCerts     = "observability-grafana-certs"
+	GrafanaCN        = "grafana"
+	ManagedClusterOU = "acm"
 
 	AlertRuleDefaultConfigMapName = "thanos-ruler-default-rules"
 	AlertRuleDefaultFileKey       = "default_rules.yaml"
