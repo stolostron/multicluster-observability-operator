@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-logr/logr"
 	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
-	ocinfrav1 "github.com/openshift/api/config/v1"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -552,28 +551,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 		// secondary watch for manifestwork
 		ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &workv1.ManifestWork{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(workPred))
-	}
-
-	// watch APIServer for kubeconfig
-	apiServerGroupKind := schema.GroupKind{Group: ocinfrav1.GroupVersion.Group, Kind: "APIServer"}
-	if _, err := r.RESTMapper.RESTMapping(apiServerGroupKind, ocinfrav1.GroupVersion.Version); err == nil {
-		apiServerPred := predicate.Funcs{
-			CreateFunc: func(e event.CreateEvent) bool {
-				return false
-			},
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-					return true
-				}
-				return false
-			},
-			DeleteFunc: func(e event.DeleteEvent) bool {
-				return false
-			},
-		}
-
-		// secondary watch APIServer for kubeconfig
-		ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &ocinfrav1.APIServer{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(apiServerPred))
 	}
 
 	// create and return a new controller
