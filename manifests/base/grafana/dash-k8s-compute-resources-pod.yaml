@@ -19,8 +19,8 @@ data:
       "editable": true,
       "gnetId": 12120,
       "graphTooltip": 0,
-      "id": 10,
-      "iteration": 1617157154828,
+      "id": 9,
+      "iteration": 1618436885090,
       "links": [],
       "panels": [
         {
@@ -1825,7 +1825,9 @@ data:
       "refresh": "1m",
       "schemaVersion": 27,
       "style": "dark",
-      "tags": ["kubernetes-mixin"],
+      "tags": [
+        "kubernetes-mixin"
+      ],
       "templating": {
         "list": [
           {
@@ -1882,7 +1884,7 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": true,
+              "selected": false,
               "text": "open-cluster-management",
               "value": "open-cluster-management"
             },
@@ -1914,8 +1916,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "cert-manager-webhook-559cdf74cf-2hml5",
-              "value": "cert-manager-webhook-559cdf74cf-2hml5"
+              "text": "acm-custom-registry-d4f6cfc6d-f4trs",
+              "value": "acm-custom-registry-d4f6cfc6d-f4trs"
             },
             "datasource": "$datasource",
             "definition": "label_values(kube_pod_info{cluster=\"$cluster\", namespace=\"$namespace\"}, pod)",
@@ -1948,8 +1950,26 @@ data:
         "to": "now"
       },
       "timepicker": {
-        "refresh_intervals": ["1m", "5m", "15m", "30m", "1h", "2h", "1d"],
-        "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "2d", "7d", "30d"]
+        "refresh_intervals": [
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ],
+        "time_options": [
+          "5m",
+          "15m",
+          "1h",
+          "6h",
+          "12h",
+          "24h",
+          "2d",
+          "7d",
+          "30d"
+        ]
       },
       "timezone": "",
       "title": "Kubernetes / Compute Resources / Pod",
