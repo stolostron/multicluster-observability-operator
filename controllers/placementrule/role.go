@@ -5,9 +5,9 @@ package placementrule
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
-	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,11 +20,11 @@ import (
 )
 
 const (
+	addonName          = "observability-controller"
 	resRoleName        = "endpoint-observability-res-role"
 	resRoleBindingName = "endpoint-observability-res-rolebinding"
 	mcoRoleName        = "endpoint-observability-mco-role"
 	mcoRoleBindingName = "endpoint-observability-mco-rolebinding"
-	serviceAccountName = "endpoint-observability-sa"
 	epRsName           = "observabilityaddons"
 	epStatusRsName     = "observabilityaddons/status"
 )
@@ -85,7 +85,7 @@ func createClusterRole(c client.Client) error {
 	return nil
 }
 
-func createClusterRoleBinding(c client.Client, namespace string) error {
+func createClusterRoleBinding(c client.Client, namespace string, name string) error {
 	rb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace + "-" + mcoRoleBindingName,
@@ -100,8 +100,8 @@ func createClusterRoleBinding(c client.Client, namespace string) error {
 		},
 		Subjects: []rbacv1.Subject{
 			{
-				Kind:      "ServiceAccount",
-				Name:      serviceAccountName,
+				Kind:      "Group",
+				Name:      fmt.Sprintf("system:open-cluster-management:cluster:%s:addon:%s", name, addonName),
 				Namespace: namespace,
 			},
 		},
@@ -239,7 +239,7 @@ func createResourceRole(c client.Client) error {
 	return nil
 }
 
-func createResourceRoleBinding(c client.Client, namespace string) error {
+func createResourceRoleBinding(c client.Client, namespace string, name string) error {
 	rb := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      resRoleBindingName,
@@ -255,8 +255,8 @@ func createResourceRoleBinding(c client.Client, namespace string) error {
 		},
 		Subjects: []rbacv1.Subject{
 			{
-				Kind:      "ServiceAccount",
-				Name:      serviceAccountName,
+				Kind:      "Group",
+				Name:      fmt.Sprintf("system:open-cluster-management:cluster:%s:addon:%s", name, addonName),
 				Namespace: namespace,
 			},
 		},
@@ -291,72 +291,6 @@ func createResourceRoleBinding(c client.Client, namespace string) error {
 	return nil
 }
 
-func createServiceAccount(c client.Client, namespace string) error {
-	sa := &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      serviceAccountName,
-			Namespace: namespace,
-			Labels: map[string]string{
-				ownerLabelKey: ownerLabelValue,
-			},
-		},
-	}
-	found := &corev1.ServiceAccount{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating endpoint-observability-controller-sa serviceaccount", "namespace", namespace)
-		err = c.Create(context.TODO(), sa)
-		if err != nil {
-			log.Error(err, "Failed to create endpoint-observability-controller-sa serviceaccount")
-			return err
-		}
-		return nil
-	} else if err != nil {
-		log.Error(err, "Failed to check endpoint-observability-controller-sa serviceaccount")
-		return err
-	}
-
-	log.Info("serviceaccount already existed/unchanged", "namespace", namespace)
-	return nil
-}
-
-func getSAToken(c client.Client, namespace string) ([]byte, []byte, error) {
-
-	err := createClusterRoleBinding(c, namespace)
-	if err != nil {
-		return nil, nil, err
-	}
-	err = createResourceRoleBinding(c, namespace)
-	if err != nil {
-		return nil, nil, err
-	}
-	err = createServiceAccount(c, namespace)
-	if err != nil {
-		return nil, nil, err
-	}
-	saFound := &corev1.ServiceAccount{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, saFound)
-	if err != nil {
-		log.Error(err, "Failed to get endpoint-observability-controller-sa serviceaccount", "namespace", namespace)
-		return nil, nil, err
-	}
-	secrets := saFound.Secrets
-	for _, s := range secrets {
-		secretFound := &corev1.Secret{}
-		err = c.Get(context.TODO(), types.NamespacedName{Name: s.Name, Namespace: namespace}, secretFound)
-		if err != nil {
-			log.Error(err, "Failed to get secret", "secret", s.Name)
-			return nil, nil, err
-		}
-		if secretFound.Type == corev1.SecretTypeServiceAccountToken {
-			token := secretFound.Data["token"]
-			ca := secretFound.Data["ca.crt"]
-			return ca, token, nil
-		}
-	}
-	return nil, nil, errors.NewNotFound(corev1.Resource("secret"), saFound.Name+"-token-*")
-}
-
 func deleteClusterRole(c client.Client) error {
 	clusterrole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
@@ -387,7 +321,7 @@ func deleteResourceRole(c client.Client) error {
 	return nil
 }
 
-func deleteRes(c client.Client, namespace string) error {
+func deleteRolebindings(c client.Client, namespace string) error {
 	crb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace + "-" + resRoleBindingName,
@@ -413,19 +347,6 @@ func deleteRes(c client.Client, namespace string) error {
 	}
 	log.Info("Rolebinding deleted", "name", resRoleBindingName, "namespace", namespace)
 
-	sa := &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      serviceAccountName,
-			Namespace: namespace,
-		},
-	}
-	err = c.Delete(context.TODO(), sa)
-	if err != nil && !errors.IsNotFound(err) {
-		log.Error(err, "Failed to delete serviceaccount", "name", serviceAccountName, "namespace", namespace)
-		return err
-	}
-	log.Info("Serviceaccount deleted", "name", serviceAccountName, "namespace", namespace)
-
 	return nil
 }
 
@@ -450,4 +371,13 @@ func deleteDeprecatedRoles(c client.Client) {
 			}
 		}
 	}
+}
+
+func createRolebindings(c client.Client, namespace string, name string) error {
+	err := createClusterRoleBinding(c, namespace, name)
+	if err != nil {
+		return err
+	}
+	err = createResourceRoleBinding(c, namespace, name)
+	return err
 }

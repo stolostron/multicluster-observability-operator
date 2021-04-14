@@ -300,7 +300,7 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 	}
 	if !util.Contains(mco.GetFinalizers(), resFinalizer) {
 		mco.SetFinalizers(util.Remove(mco.GetFinalizers(), certFinalizer))
-		//mco.SetFinalizers(append(mco.GetFinalizers(), resFinalizer))
+		mco.SetFinalizers(append(mco.GetFinalizers(), resFinalizer))
 		err := r.Client.Update(context.TODO(), mco)
 		if err != nil {
 			log.Error(err, "Failed to add finalizer to mco resource")

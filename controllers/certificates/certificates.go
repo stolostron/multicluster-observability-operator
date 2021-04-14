@@ -175,26 +175,8 @@ func createCertSecret(c client.Client,
 			log.Error(err, "Failed to check certificate secret", "name", name)
 			return err
 		} else {
-			caCertName := serverCACerts
-			if !isServer {
-				caCertName = clientCACerts
-			}
-			caSecret := &corev1.Secret{}
-			err := c.Get(context.TODO(), types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: caCertName}, caSecret)
+			caSecret, caCert, caKey, err := getCA(c, isServer)
 			if err != nil {
-				log.Error(err, "Failed to get ca secret", "name", caCertName)
-				return err
-			}
-			block1, _ := pem.Decode(caSecret.Data["tls.crt"])
-			caCert, err := x509.ParseCertificate(block1.Bytes)
-			if err != nil {
-				log.Error(err, "Failed to parse ca cert", "name", caCertName)
-				return err
-			}
-			block2, _ := pem.Decode(caSecret.Data["tls.key"])
-			caKey, err := x509.ParsePKCS1PrivateKey(block2.Bytes)
-			if err != nil {
-				log.Error(err, "Failed to parse ca key", "name", caCertName)
 				return err
 			}
 			key, cert, err := createCertificate(isServer, cn, ou, dns, ips, caCert, caKey)
@@ -285,4 +267,30 @@ func createCertificate(isServer bool, cn string, ou []string, dns []string, ips 
 	}
 	keyBytes := x509.MarshalPKCS1PrivateKey(key)
 	return keyBytes, caBytes, nil
+}
+
+func getCA(c client.Client, isServer bool) (*corev1.Secret, *x509.Certificate, *rsa.PrivateKey, error) {
+	caCertName := serverCACerts
+	if !isServer {
+		caCertName = clientCACerts
+	}
+	caSecret := &corev1.Secret{}
+	err := c.Get(context.TODO(), types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: caCertName}, caSecret)
+	if err != nil {
+		log.Error(err, "Failed to get ca secret", "name", caCertName)
+		return nil, nil, nil, err
+	}
+	block1, _ := pem.Decode(caSecret.Data["tls.crt"])
+	caCert, err := x509.ParseCertificate(block1.Bytes)
+	if err != nil {
+		log.Error(err, "Failed to parse ca cert", "name", caCertName)
+		return nil, nil, nil, err
+	}
+	block2, _ := pem.Decode(caSecret.Data["tls.key"])
+	caKey, err := x509.ParsePKCS1PrivateKey(block2.Bytes)
+	if err != nil {
+		log.Error(err, "Failed to parse ca key", "name", caCertName)
+		return nil, nil, nil, err
+	}
+	return caSecret, caCert, caKey, nil
 }

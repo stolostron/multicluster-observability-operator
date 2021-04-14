@@ -6,7 +6,6 @@ package certificates
 import (
 	"testing"
 
-	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -41,7 +40,6 @@ func TestCreateCertificates(t *testing.T) {
 	}
 	s := scheme.Scheme
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
-	certv1alpha1.SchemeBuilder.AddToScheme(s)
 	routev1.AddToScheme(s)
 
 	c := fake.NewFakeClient(route)

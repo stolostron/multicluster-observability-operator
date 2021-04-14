@@ -101,9 +101,8 @@ func TestObservabilityAddonController(t *testing.T) {
 			},
 		},
 	}
-	objs := []runtime.Object{p, mco, pull, newTestRoute(), newTestInfra(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
-		newSATokenSecret(), newTestSA(), newSATokenSecret(namespace2), newTestSA(namespace2), newManagedClusterAddon(),
-		deprecatedRole}
+	objs := []runtime.Object{p, mco, pull, newTestRoute(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
+		newManagedClusterAddon(), deprecatedRole}
 	c := fake.NewFakeClient(objs...)
 
 	r := &PlacementRuleReconciler{Client: c, Scheme: s}
@@ -193,10 +192,6 @@ func TestObservabilityAddonController(t *testing.T) {
 	err = c.Create(context.TODO(), mco)
 	if err != nil {
 		t.Fatalf("Failed to create mco: (%v)", err)
-	}
-	err = c.Create(context.TODO(), newTestSA())
-	if err != nil {
-		t.Fatalf("Failed to create sa: (%v)", err)
 	}
 
 	_, err = r.Reconcile(context.TODO(), req)

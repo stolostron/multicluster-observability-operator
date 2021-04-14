@@ -15,14 +15,15 @@ import (
 )
 
 const (
-	namespace = "test-namespace"
+	name      = "test"
+	namespace = "test"
 )
 
 func TestManagedClusterAddon(t *testing.T) {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
 	c := fake.NewFakeClient()
-	err := CreateManagedClusterAddonCR(c, namespace)
+	err := CreateManagedClusterAddonCR(c, name, namespace)
 	if err != nil {
 		t.Fatalf("Failed to create managedclusteraddon: (%v)", err)
 	}

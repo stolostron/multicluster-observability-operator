@@ -25,7 +25,7 @@ import (
 const (
 	pullSecretName   = "test-pull-secret"
 	operatorWorkSize = 6
-	resourceWorkSize = 6
+	resourceWorkSize = 5
 )
 
 func newTestMCO() *mcov1beta2.MultiClusterObservability {
@@ -115,8 +115,7 @@ func TestManifestWork(t *testing.T) {
 
 	initSchema(t)
 
-	objs := []runtime.Object{newSATokenSecret(), newTestSA(), newTestInfra(),
-		newTestRoute(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(), NewMetricsCustomAllowListCM()}
+	objs := []runtime.Object{newTestRoute(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(), NewMetricsCustomAllowListCM()}
 	c := fake.NewFakeClient(objs...)
 
 	wd, err := os.Getwd()

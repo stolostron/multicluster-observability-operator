@@ -329,13 +329,18 @@ func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 		return err
 	}
 
+	err = createRolebindings(client, namespace, name)
+	if err != nil {
+		return err
+	}
+
 	err = createManifestWorks(client, restMapper, namespace, name, mco, imagePullSecret)
 	if err != nil {
 		log.Error(err, "Failed to create manifestwork")
 		return err
 	}
 
-	err = util.CreateManagedClusterAddonCR(client, namespace)
+	err = util.CreateManagedClusterAddonCR(client, name, namespace)
 	if err != nil {
 		log.Error(err, "Failed to create ManagedClusterAddon")
 		return err
@@ -344,7 +349,7 @@ func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 	return nil
 }
 
-func deleteManagedClusterRes(client client.Client, namespace string) error {
+func deleteManagedClusterRes(c client.Client, namespace string) error {
 
 	managedclusteraddon := &addonv1alpha1.ManagedClusterAddOn{
 		ObjectMeta: metav1.ObjectMeta{
@@ -352,7 +357,7 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 			Namespace: namespace,
 		},
 	}
-	err := client.Delete(context.TODO(), managedclusteraddon)
+	err := c.Delete(context.TODO(), managedclusteraddon)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
@@ -363,7 +368,7 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 			Namespace: namespace,
 		},
 	}
-	err = client.Delete(context.TODO(), certificate)
+	err = c.Delete(context.TODO(), certificate)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
@@ -374,12 +379,17 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 			Namespace: namespace,
 		},
 	}
-	err = client.Delete(context.TODO(), lease)
+	err = c.Delete(context.TODO(), lease)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
 
-	err = deleteManifestWorks(client, namespace)
+	err = deleteRolebindings(c, namespace)
+	if err != nil {
+		return err
+	}
+
+	err = deleteManifestWorks(c, namespace)
 	if err != nil {
 		log.Error(err, "Failed to delete manifestwork")
 		return err

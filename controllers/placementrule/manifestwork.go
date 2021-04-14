@@ -52,12 +52,8 @@ func deleteManifestWork(c client.Client, name string, namespace string) error {
 }
 
 func deleteManifestWorks(c client.Client, namespace string) error {
-	err := deleteRes(c, namespace)
-	if err != nil {
-		return err
-	}
 
-	err = c.DeleteAllOf(context.TODO(), &workv1.ManifestWork{},
+	err := c.DeleteAllOf(context.TODO(), &workv1.ManifestWork{},
 		client.InNamespace(namespace), client.MatchingLabels{ownerLabelKey: ownerLabelValue})
 	if err != nil {
 		log.Error(err, "Failed to delete observability manifestworks", "namespace", namespace)
@@ -193,13 +189,6 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 
 	// inject namespace
 	manifests = injectIntoWork(manifests, createNameSpace())
-
-	// inject kube secret
-	secret, err := createKubeSecret(c, restMapper, clusterNamespace)
-	if err != nil {
-		return err
-	}
-	manifests = injectIntoWork(manifests, secret)
 
 	//create image pull secret
 	if imagePullSecret != nil {
