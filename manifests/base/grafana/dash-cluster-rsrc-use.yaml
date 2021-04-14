@@ -19,8 +19,8 @@ data:
       "editable": true,
       "gnetId": 12135,
       "graphTooltip": 0,
-      "id": 24,
-      "iteration": 1601607511586,
+      "id": 3,
+      "iteration": 1618433321379,
       "links": [],
       "panels": [
         {
@@ -44,6 +44,13 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -68,9 +75,10 @@ data:
           "links": [],
           "nullPointMode": "null as zero",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.4.2",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -136,6 +144,13 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -160,9 +175,10 @@ data:
           "links": [],
           "nullPointMode": "null as zero",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.4.2",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -243,6 +259,13 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -267,9 +290,10 @@ data:
           "links": [],
           "nullPointMode": "null as zero",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.4.2",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -335,6 +359,13 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -359,9 +390,10 @@ data:
           "links": [],
           "nullPointMode": "null as zero",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.4.2",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -442,6 +474,13 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -466,9 +505,10 @@ data:
           "links": [],
           "nullPointMode": "null as zero",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.4.2",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -553,6 +593,13 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -577,9 +624,10 @@ data:
           "links": [],
           "nullPointMode": "null as zero",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.4.2",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -679,6 +727,13 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -703,9 +758,10 @@ data:
           "links": [],
           "nullPointMode": "null as zero",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.4.2",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -771,6 +827,13 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -795,9 +858,10 @@ data:
           "links": [],
           "nullPointMode": "null as zero",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.4.2",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -878,6 +942,13 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {},
+              "links": []
+            },
+            "overrides": []
+          },
           "fill": 10,
           "fillGradient": 0,
           "gridPos": {
@@ -902,9 +973,10 @@ data:
           "links": [],
           "nullPointMode": "null as zero",
           "options": {
-            "dataLinks": []
+            "alertThreshold": true
           },
           "percentage": false,
+          "pluginVersion": "7.4.2",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -966,16 +1038,19 @@ data:
         }
       ],
       "refresh": "1m",
-      "schemaVersion": 21,
+      "schemaVersion": 27,
       "style": "dark",
       "tags": [],
       "templating": {
         "list": [
           {
             "current": {
-              "text": "Observatorium",
-              "value": "Observatorium"
+              "selected": false,
+              "text": "Prometheus",
+              "value": "Prometheus"
             },
+            "description": null,
+            "error": null,
             "hide": 2,
             "includeAll": false,
             "label": null,
@@ -991,30 +1066,24 @@ data:
           {
             "allValue": null,
             "current": {
-              "tags": [],
-              "text": "",
-              "value": ""
+              "selected": false,
+              "text": "local-cluster",
+              "value": "local-cluster"
             },
             "datasource": "$datasource",
             "definition": "label_values(node_filesystem_size_bytes, cluster)",
+            "description": null,
+            "error": null,
             "hide": 0,
             "includeAll": false,
             "label": null,
             "multi": false,
             "name": "cluster",
-            "options": [
-              {
-                "selected": true,
-                "text": "",
-                "value": ""
-              },
-              {
-                "selected": false,
-                "text": "",
-                "value": ""
-              }
-            ],
-            "query": "label_values(node_filesystem_size_bytes, cluster)",
+            "options": [],
+            "query": {
+              "query": "label_values(node_filesystem_size_bytes, cluster)",
+              "refId": "Prometheus-cluster-Variable-Query"
+            },
             "refresh": 1,
             "regex": "",
             "skipUrlSync": false,
@@ -1056,7 +1125,7 @@ data:
       "timezone": "",
       "title": "USE Method / Cluster",
       "uid": "3e97d1d02672cdd0861f4c97c64f89b2",
-      "version": 6
+      "version": 1
     }
 kind: ConfigMap
 metadata:
