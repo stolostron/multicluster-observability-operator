@@ -54,7 +54,7 @@ spec:
           - -lease-namespace 
           - REPLACE_WITH_HUB_CLUSTER_NAMESPACE
           - -hub-kubeconfig-secret
-          - hub-kube-config
+          - observability-controller-hub-kubeconfig
           - -lease-duration
           - "60"
           - -startup-delay
@@ -77,4 +77,4 @@ spec:
       volumes:
         - name: hub-kubeconfig-secret
           secret:
-            secretName: hub-kube-config
+            secretName: observability-controller-hub-kubeconfig
