@@ -1330,8 +1330,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Prometheus",
-              "value": "Prometheus"
+              "text": "Observatorium",
+              "value": "Observatorium"
             },
             "description": null,
             "error": null,
@@ -1351,8 +1351,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "local-cluster",
-              "value": "local-cluster"
+              "text": "",
+              "value": ""
             },
             "datasource": null,
             "definition": "label_values(kube_pod_info, cluster)",
@@ -1385,8 +1385,8 @@ data:
             "auto_min": "10s",
             "current": {
               "selected": true,
-              "text": "open-cluster-management",
-              "value": "open-cluster-management"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "label_values(container_network_receive_packets_total, namespace)",

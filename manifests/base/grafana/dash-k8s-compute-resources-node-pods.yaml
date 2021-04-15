@@ -19,8 +19,8 @@ data:
       "editable": true,
       "gnetId": 12119,
       "graphTooltip": 0,
-      "id": 12,
-      "iteration": 1617158332459,
+      "id": 8,
+      "iteration": 1618436854989,
       "links": [],
       "panels": [
         {
@@ -932,8 +932,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Prometheus",
-              "value": "Prometheus"
+              "text": "Observatorium",
+              "value": "Observatorium"
             },
             "description": null,
             "error": null,
@@ -984,8 +984,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "ip-10-0-175-193.ec2.internal",
-              "value": "ip-10-0-175-193.ec2.internal"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "",
@@ -1042,7 +1042,7 @@ data:
       "timezone": "",
       "title": "Kubernetes / Compute Resources / Node (Pods)",
       "uid": "200ac8fdbfbb74b39aff88118e4d1c2c",
-      "version": 2
+      "version": 1
     }
 kind: ConfigMap
 metadata:
