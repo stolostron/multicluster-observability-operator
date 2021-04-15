@@ -41,7 +41,7 @@ const (
 	ownerLabelValue = "multicluster-observability-operator"
 	certificateName = "observability-managed-cluster-certificate"
 	certsName       = "observability-managed-cluster-certs"
-	leaseName       = "observability-lease"
+	leaseName       = "observability-controller"
 )
 
 var (
