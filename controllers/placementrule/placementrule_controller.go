@@ -339,7 +339,7 @@ func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 		return err
 	}
 
-	err = util.CreateManagedClusterAddonCR(client, name, namespace)
+	err = util.CreateManagedClusterAddonCR(client, namespace)
 	if err != nil {
 		log.Error(err, "Failed to create ManagedClusterAddon")
 		return err

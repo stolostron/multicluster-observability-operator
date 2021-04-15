@@ -23,7 +23,7 @@ func TestManagedClusterAddon(t *testing.T) {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
 	c := fake.NewFakeClient()
-	err := CreateManagedClusterAddonCR(c, name, namespace)
+	err := CreateManagedClusterAddonCR(c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to create managedclusteraddon: (%v)", err)
 	}

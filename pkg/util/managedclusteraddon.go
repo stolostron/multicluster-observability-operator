@@ -9,7 +9,6 @@ import (
 	"time"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -18,16 +17,13 @@ import (
 
 const (
 	ManagedClusterAddonName = "observability-controller"
-	Annotation              = `
-	[{"signerName":"kubernetes.io/kube-apiserver-client"},{"signerName":"open-cluster-management.io/observability-signer","subject":{"organization":["open-cluster-management-observability"],"organizationalUnit":["acm"],"commonName":"managed-cluster-observability"}}]
-`
 )
 
 var (
 	spokeNameSpace = os.Getenv("SPOKE_NAMESPACE")
 )
 
-func CreateManagedClusterAddonCR(client client.Client, name string, namespace string) error {
+func CreateManagedClusterAddonCR(client client.Client, namespace string) error {
 	managedClusterAddon := &addonv1alpha1.ManagedClusterAddOn{}
 	// check if managedClusterAddon exists
 	if err := client.Get(
@@ -47,10 +43,6 @@ func CreateManagedClusterAddonCR(client client.Client, name string, namespace st
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      ManagedClusterAddonName,
 				Namespace: namespace,
-				Annotations: map[string]string{
-					"addon.open-cluster-management.io/installNamespace": spokeNameSpace,
-					"addon.open-cluster-management.io/registrations":    Annotation,
-				},
 			},
 			Spec: addonv1alpha1.ManagedClusterAddOnSpec{
 				InstallNamespace: spokeNameSpace,
@@ -71,19 +63,6 @@ func CreateManagedClusterAddonCR(client client.Client, name string, namespace st
 						LastTransitionTime: metav1.NewTime(time.Now()),
 						Reason:             "ManifestWorkCreated",
 						Message:            "Addon Installing",
-					},
-				},
-				Registrations: []addonv1alpha1.RegistrationConfig{
-					{
-						SignerName: "kubernetes.io/kube-apiserver-client",
-					},
-					{
-						SignerName: "open-cluster-management.io/observability-signer",
-						Subject: addonv1alpha1.Subject{
-							User:              "managed-cluster-observability",
-							Groups:            []string{"open-cluster-management-observability"},
-							OrganizationUnits: []string{config.ManagedClusterOU},
-						},
 					},
 				},
 			},
