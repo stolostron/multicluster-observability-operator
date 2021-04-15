@@ -2384,8 +2384,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Prometheus",
-              "value": "Prometheus"
+              "text": "Observatorium",
+              "value": "Observatorium"
             },
             "description": null,
             "error": null,
@@ -2405,8 +2405,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "local-cluster",
-              "value": "local-cluster"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "",
@@ -2436,8 +2436,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "open-cluster-management",
-              "value": "open-cluster-management"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "",

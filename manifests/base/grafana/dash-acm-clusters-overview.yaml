@@ -1817,8 +1817,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Prometheus",
-              "value": "Prometheus"
+              "text": "Observatorium",
+              "value": "Observatorium"
             },
             "description": null,
             "error": null,

@@ -18,8 +18,8 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": 2,
-      "iteration": 1618436687572,
+      "id": 3,
+      "iteration": 1618448327743,
       "links": [],
       "panels": [
         {
@@ -375,6 +375,7 @@ data:
                 "filterable": false
               },
               "mappings": [],
+              "noValue": "-",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -410,7 +411,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to pods",
-                        "url": "./d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$__cell_1"
+                        "url": "./d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
@@ -1010,6 +1011,7 @@ data:
                 "filterable": false
               },
               "mappings": [],
+              "noValue": "-",
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -1117,7 +1119,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to pods",
-                        "url": "./d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$__cell_1"
+                        "url": "./d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
@@ -1291,8 +1293,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Prometheus",
-              "value": "Prometheus"
+              "text": "Observatorium",
+              "value": "Observatorium"
             },
             "description": null,
             "error": null,
@@ -1313,8 +1315,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "local-cluster",
-              "value": "local-cluster"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "label_values(node_cpu_seconds_total,cluster)",
@@ -1360,7 +1362,7 @@ data:
       "timezone": "browser",
       "title": "ACM - Resource Optimization / Cluster",
       "uid": "8Qvi3edMz",
-      "version": 3
+      "version": 2
     }
 kind: ConfigMap
 metadata:

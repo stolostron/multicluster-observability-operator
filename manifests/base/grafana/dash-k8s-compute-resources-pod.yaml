@@ -19,8 +19,8 @@ data:
       "editable": true,
       "gnetId": 12120,
       "graphTooltip": 0,
-      "id": 9,
-      "iteration": 1618436885090,
+      "id": 1,
+      "iteration": 1618447434436,
       "links": [],
       "panels": [
         {
@@ -1833,8 +1833,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Prometheus",
-              "value": "Prometheus"
+              "text": "Observatorium",
+              "value": "Observatorium"
             },
             "description": null,
             "error": null,
@@ -1854,8 +1854,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "local-cluster",
-              "value": "local-cluster"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "label_values(kube_pod_info, cluster)",
@@ -1885,8 +1885,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "open-cluster-management",
-              "value": "open-cluster-management"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "label_values(kube_pod_info{cluster=\"$cluster\"}, namespace)",
@@ -1916,8 +1916,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "acm-custom-registry-d4f6cfc6d-f4trs",
-              "value": "acm-custom-registry-d4f6cfc6d-f4trs"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "label_values(kube_pod_info{cluster=\"$cluster\", namespace=\"$namespace\"}, pod)",
@@ -1974,7 +1974,7 @@ data:
       "timezone": "",
       "title": "Kubernetes / Compute Resources / Pod",
       "uid": "6581e46e4e5c7ba40a07646395ef7b23",
-      "version": 1
+      "version": 2
     }
 kind: ConfigMap
 metadata:

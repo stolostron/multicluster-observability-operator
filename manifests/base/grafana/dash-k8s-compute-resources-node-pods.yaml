@@ -932,8 +932,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Prometheus",
-              "value": "Prometheus"
+              "text": "Observatorium",
+              "value": "Observatorium"
             },
             "description": null,
             "error": null,
@@ -984,8 +984,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "ip-10-0-133-17.ec2.internal",
-              "value": "ip-10-0-133-17.ec2.internal"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "",

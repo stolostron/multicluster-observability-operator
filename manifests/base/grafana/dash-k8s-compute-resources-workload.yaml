@@ -1829,8 +1829,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Prometheus",
-              "value": "Prometheus"
+              "text": "Observatorium",
+              "value": "Observatorium"
             },
             "description": null,
             "error": null,
@@ -1850,8 +1850,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "local-cluster",
-              "value": "local-cluster"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "",
@@ -1881,8 +1881,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "grafana",
-              "value": "grafana"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "",
@@ -1912,8 +1912,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "grafana-deployment",
-              "value": "grafana-deployment"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "",
@@ -1943,8 +1943,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "deployment",
-              "value": "deployment"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "",
