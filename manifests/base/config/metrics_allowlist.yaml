@@ -6,12 +6,29 @@ data:
   metrics_list.yaml: |
     names:
       - :node_memory_MemAvailable_bytes:sum
+      - aggregator_unavailable_apiservice
+      - aggregator_unavailable_apiservice_count
+      - alertmanager_cluster_members
+      - alertmanager_config_hash
+      - alertmanager_config_last_reload_successful
+      - apiserver_client_certificate_expiration_seconds_bucket
+      - apiserver_client_certificate_expiration_seconds_count
+      - apiserver_request:burnrate1d
+      - apiserver_request:burnrate1h
+      - apiserver_request:burnrate2h
+      - apiserver_request:burnrate3d
+      - apiserver_request:burnrate5m
+      - apiserver_request:burnrate6h
+      - apiserver_request:burnrate6h
+      - apiserver_request:burnrate30m
       - apiserver_request_count
       - apiserver_request_latencies_summary_count
       - apiserver_request_latencies_summary_sum
       - apiserver_request_total
       - authenticated_user_requests
       - authentication_attempts
+      - cco_credentials_requests_conditions
+      - cluster:alertmanager_routing_enabled:max
       - cluster:capacity_cpu_cores:sum
       - cluster:capacity_memory_bytes:sum
       - cluster:container_cpu_usage:ratio
@@ -20,8 +37,10 @@ data:
       - cluster:memory_usage:ratio
       - cluster:memory_usage_bytes:sum
       - cluster:usage:resources:sum
+      - cluster_feature_set
       - cluster_infrastructure_provider
       - cluster_version
+      - cluster_version_available_updates
       - cluster_version_payload
       - container_cpu_cfs_periods_total
       - container_cpu_cfs_throttled_periods_total
@@ -39,37 +58,54 @@ data:
       - coredns_dns_request_duration_seconds_sum
       - coredns_dns_request_type_count_total
       - coredns_dns_response_rcode_count_total
+      - coredns_health_request_duration_seconds_bucket
+      - coredns_panic_count_total
       - etcd_debugging_mvcc_db_total_size_in_bytes
       - etcd_debugging_snap_save_total_duration_seconds_sum
       - etcd_disk_backend_commit_duration_seconds_bucket
       - etcd_disk_backend_commit_duration_seconds_sum
       - etcd_disk_wal_fsync_duration_seconds_bucket
       - etcd_disk_wal_fsync_duration_seconds_sum
-      - etcd_object_counts
+      - etcd_http_failed_total
+      - etcd_http_received_total
+      - etcd_http_successful_duration_seconds_bucket
       - etcd_network_client_grpc_received_bytes_total
       - etcd_network_client_grpc_sent_bytes_total
       - etcd_network_peer_received_bytes_total
+      - etcd_network_peer_round_trip_time_seconds_bucket
       - etcd_network_peer_sent_bytes_total
+      - etcd_network_peer_sent_failures_total
+      - etcd_object_counts
       - etcd_server_client_requests_total
+      - etcd_server_has_leader
       - etcd_server_has_leader
       - etcd_server_health_failures
       - etcd_server_leader_changes_seen_total
+      - etcd_server_proposals_applied_total
+      - etcd_server_proposals_committed_total
       - etcd_server_proposals_failed_total
       - etcd_server_proposals_pending
-      - etcd_server_proposals_committed_total
-      - etcd_server_proposals_applied_total
       - etcd_server_quota_backend_bytes
       - go_goroutines
-      - haproxy_backend_connection_errors_total
+      - grpc_client_handled_total
+      - grpc_client_started_total
+      - grpc_server_handled_total
+      - grpc_server_handling_seconds_bucket
+      - grpc_server_started_total
       - haproxy_backend_connections_total
+      - haproxy_backend_connection_errors_total
       - haproxy_backend_current_queue
       - haproxy_backend_http_average_response_latency_milliseconds
       - haproxy_backend_max_sessions
       - haproxy_backend_response_errors_total
       - haproxy_backend_up
+      - haproxy_up
       - http_requests_total
-      - instance:node_filesystem_usage:sum
+      - http_request_duration_seconds_bucket
+      - http_request_duration_seconds_count
+      - image_registry_operator_storage_reconfigured_total
       - instance:node_cpu_utilisation:rate1m
+      - instance:node_filesystem_usage:sum
       - instance:node_load1_per_cpu:ratio
       - instance:node_memory_utilisation:ratio
       - instance:node_network_receive_bytes_excluding_lo:rate1m
@@ -80,58 +116,152 @@ data:
       - instance:node_vmstat_pgmajfault:rate1m
       - instance_device:node_disk_io_time_seconds:rate1m
       - instance_device:node_disk_io_time_weighted_seconds:rate1m
-      - kube_daemonset_status_desired_number_scheduled
-      - kube_daemonset_status_number_unavailable
-      - kube_deployment_status_replicas_unavailable
-      - kube_node_spec_unschedulable
-      - kube_node_status_allocatable_cpu_cores
-      - kube_node_status_allocatable_memory_bytes
-      - kube_node_status_capacity_pods
-      - kube_node_status_capacity_cpu_cores
-      - kube_node_status_condition
-      - kube_pod_container_resource_limits_cpu_cores
-      - kube_pod_container_resource_limits_memory_bytes
-      - kube_pod_container_resource_requests_cpu_cores
-      - kube_pod_container_resource_requests_memory_bytes
-      - kube_pod_info
-      - kube_pod_owner
-      - kube_resourcequota
+      - kubelet_node_name
+      - kubelet_pod_worker_duration_seconds_bucket
       - kubelet_running_container_count
       - kubelet_runtime_operations
       - kubelet_runtime_operations_latency_microseconds
       - kubelet_volume_stats_available_bytes
       - kubelet_volume_stats_capacity_bytes
+      - kubeproxy_sync_proxy_rules_duration_seconds_bucket
+      - kubeproxy_sync_proxy_rules_last_queued_timestamp_seconds
+      - kubeproxy_sync_proxy_rules_last_timestamp_seconds
+      - kube_daemonset_status_current_number_scheduled
+      - kube_daemonset_status_desired_number_scheduled
+      - kube_daemonset_status_number_available
+      - kube_daemonset_status_number_misscheduled
+      - kube_daemonset_status_number_unavailable
+      - kube_daemonset_updated_number_scheduled
+      - kube_deployment_metadata_generation
+      - kube_deployment_spec_replicas
+      - kube_deployment_status_observed_generation
+      - kube_deployment_status_replicas_available
+      - kube_deployment_status_replicas_unavailable
+      - kube_deployment_status_replicas_updated
+      - kube_hpa_spec_max_replicas
+      - kube_hpa_status_current_replicas
+      - kube_hpa_status_desired_replicas
+      - kube_job_failed
+      - kube_job_spec_completions
+      - kube_job_status_succeeded
+      - kube_node_info
+      - kube_node_spec_taint
+      - kube_node_spec_unschedulable
+      - kube_node_status_allocatable
+      - kube_node_status_allocatable_cpu_cores
+      - kube_node_status_allocatable_memory_bytes
+      - kube_node_status_capacity
+      - kube_node_status_capacity_cpu_cores
+      - kube_node_status_capacity_pods
+      - kube_node_status_condition
       - kube_persistentvolume_status_phase
+      - kube_poddisruptionbudget_status_desired_healthy
+      - kube_poddisruptionbudget_status_expected_pods
+      - kube_pod_container_resource_limits_cpu_cores
+      - kube_pod_container_resource_limits_memory_bytes
+      - kube_pod_container_resource_requests_cpu_cores
+      - kube_pod_container_resource_requests_memory_bytes
+      - kube_pod_container_status_last_terminated_reason
+      - kube_pod_container_status_restarts_total
+      - kube_pod_container_status_waiting_reason
+      - kube_pod_info
+      - kube_pod_owner
+      - kube_pod_status_phase
+      - kube_pod_status_ready
+      - kube_resourcequota
+      - kube_statefulset_metadata_generation
+      - kube_statefulset_replicas
+      - kube_statefulset_status_current_revision
+      - kube_statefulset_status_observed_generation
+      - kube_statefulset_status_replicas
+      - kube_statefulset_status_replicas_ready
+      - kube_statefulset_status_replicas_updated
+      - kube_statefulset_status_update_revision
+      - kube_state_metrics_list_total
+      - kube_state_metrics_watch_total
       - machine_cpu_cores
       - machine_memory_bytes
+      - mapi_current_pending_csr
+      - mapi_machine_created_timestamp_seconds
+      - mapi_mao_collector_up
+      - mapi_max_pending_csr
+      - mcd_drain
+      - mcd_kubelet_state
+      - mcd_pivot_err
+      - mcd_reboot_err
+      - min_over_timeprometheus_notifications_queue_capacity
       - mixin_pod_workload
+      - namespace:container_memory_usage_bytes:sum
       - namespace:kube_pod_container_resource_requests_cpu_cores:sum
       - namespace:kube_pod_container_resource_requests_memory_bytes:sum
-      - namespace:container_memory_usage_bytes:sum
       - namespace_workload_pod:kube_pod_owner:relabel
       - node_cpu_seconds_total
       - node_filesystem_avail_bytes
+      - node_filesystem_files
+      - node_filesystem_files_free
       - node_filesystem_free_bytes
+      - node_filesystem_readonly
       - node_filesystem_size_bytes
+      - node_md_disks
+      - node_md_disks_required
       - node_memory_MemAvailable_bytes
       - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate
       - node_namespace_pod_container:container_memory_cache
       - node_namespace_pod_container:container_memory_rss
       - node_namespace_pod_container:container_memory_swap
       - node_namespace_pod_container:container_memory_working_set_bytes
+      - node_netstat_TcpExt_TCPSynRetrans
       - node_netstat_Tcp_OutSegs
       - node_netstat_Tcp_RetransSegs
-      - node_netstat_TcpExt_TCPSynRetrans
+      - node_network_receive_errs_total
+      - node_network_transmit_errs_total
+      - node_network_up
+      - node_nf_conntrack_entries
+      - node_nf_conntrack_entries_limit
+      - node_quantile:kubelet_pleg_relist_duration_seconds:histogram_quantile
+      - node_textfile_scrape_error
+      - node_timex_offset_seconds
+      - node_timex_sync_status
+      - openshift_samples_degraded_info
+      - openshift_samples_failed_imagestream_import_info
+      - openshift_samples_invalidconfig_info
+      - openshift_samples_invalidsecret_info
+      - openshift_samples_retry_imagestream_import_total
+      - openshift_samples_tbr_inaccessible_info
+      - predict_linearprometheus_notifications_queue_length
       - process_cpu_seconds_total
       - process_resident_memory_bytes
+      - prometheus_config_last_reload_successful
+      - prometheus_notifications_alertmanagers_discovered
+      - prometheus_notifications_errors_total
+      - prometheus_notifications_sent_total
+      - prometheus_operator_list_operations_failed_total
+      - prometheus_operator_list_operations_total
+      - prometheus_operator_node_address_lookup_errors_total
+      - prometheus_operator_reconcile_errors_total
+      - prometheus_operator_watch_operations_failed_total
+      - prometheus_operator_watch_operations_total
+      - prometheus_remote_storage_failed_samples_total
+      - prometheus_remote_storage_highest_timestamp_in_seconds
+      - prometheus_remote_storage_queue_highest_sent_timestamp_seconds
+      - prometheus_remote_storage_shards_desired
+      - prometheus_remote_storage_shards_max
+      - prometheus_remote_storage_succeeded_samples_total
+      - prometheus_rule_evaluation_failures_total
+      - prometheus_rule_group_iterations_missed_total
+      - prometheus_target_scrapes_sample_duplicate_timestamp_total
+      - prometheus_target_scrapes_sample_out_of_order_total
+      - prometheus_tsdb_compactions_failed_total
+      - prometheus_tsdb_head_samples_appended_total
+      - prometheus_tsdb_reloads_failures_total
       - rest_client_requests_total
+      - template_router_reload_failure
+      - thanos_querier_store_apis_dns_failures_total
+      - thanos_querier_store_apis_dns_lookups_total
+      - time()-cluster_version_operator_update_retrieval_timestamp_seconds
       - up
+      - vector
       - workqueue_adds_total
-      - workqueue_depth
-      - cluster_monitoring_operator_reconcile_errors_total
-      - cluster_monitoring_operator_reconcile_attempts_total
-      - cluster_operator_conditions
-      - cluster_operator_up      
     matches:
       - __name__="apiserver_request_duration_seconds_bucket",job="apiserver",verb!="WATCH"
       - __name__="workqueue_queue_duration_seconds_bucket",job="apiserver"
