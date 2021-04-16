@@ -73,10 +73,6 @@ func CreateObservabilityCerts(c client.Client, scheme *runtime.Scheme, mco *mcov
 		return err
 	}
 
-	err = createCertSecret(c, scheme, mco, "observability-managed-cluster-certs", false, "observability-managed-cluster", []string{"acm"}, nil, nil)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
