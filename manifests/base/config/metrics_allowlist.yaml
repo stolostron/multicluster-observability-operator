@@ -39,6 +39,10 @@ data:
       - cluster:usage:resources:sum
       - cluster_feature_set
       - cluster_infrastructure_provider
+      - cluster_monitoring_operator_reconcile_errors_total
+      - cluster_monitoring_operator_reconcile_attempts_total
+      - cluster_operator_conditions
+      - cluster_operator_up
       - cluster_version
       - cluster_version_available_updates
       - cluster_version_payload
