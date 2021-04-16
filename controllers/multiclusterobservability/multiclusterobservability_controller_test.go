@@ -44,6 +44,20 @@ func init() {
 	os.Setenv("TEMPLATES_PATH", "../../../manifests/")
 }
 
+func newTestCert(name string, namespace string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Data: map[string][]byte{
+			"ca.crt":  []byte("test-ca-crt"),
+			"tls.crt": []byte("test-tls-crt"),
+			"tls.key": []byte("test-tls-key"),
+		},
+	}
+}
+
 func TestLabelsForMultiClusterMonitoring(t *testing.T) {
 	lab := labelsForMultiClusterMonitoring("test")
 
@@ -275,8 +289,8 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 
 	svc := createObservatoriumAPIService(name, namespace)
-	grafanaCert := newTestCert(GetGrafanaCerts(), namespace)
-	serverCert := newTestCert(GetServerCerts(), namespace)
+	grafanaCert := newTestCert(config.GrafanaCerts, namespace)
+	serverCert := newTestCert(config.ServerCerts, namespace)
 	clustermgmtAddon := newClusterManagementAddon()
 
 	objs := []runtime.Object{mco, svc, grafanaCert, serverCert, clustermgmtAddon, createCABundleCM()}
@@ -476,7 +490,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 
 	//Test finalizer
 	mco.ObjectMeta.DeletionTimestamp = &v1.Time{Time: time.Now()}
-	mco.ObjectMeta.Finalizers = []string{certFinalizer, "test-finalizerr"}
+	mco.ObjectMeta.Finalizers = []string{resFinalizer, "test-finalizerr"}
 	mco.ObjectMeta.ResourceVersion = updatedMCO.ObjectMeta.ResourceVersion
 	err = cl.Update(context.TODO(), mco)
 	if err != nil {
@@ -486,6 +500,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile for finalizer: (%v)", err)
 	}
+
 }
 
 func createSecret(key, name, namespace string) *corev1.Secret {

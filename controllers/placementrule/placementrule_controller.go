@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-logr/logr"
 	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
-	ocinfrav1 "github.com/openshift/api/config/v1"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -33,7 +32,6 @@ import (
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
-	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
@@ -43,7 +41,7 @@ const (
 	ownerLabelValue = "multicluster-observability-operator"
 	certificateName = "observability-managed-cluster-certificate"
 	certsName       = "observability-managed-cluster-certs"
-	leaseName       = "observability-lease"
+	leaseName       = "observability-controller"
 )
 
 var (
@@ -324,19 +322,14 @@ func deleteGlobalResource(c client.Client) error {
 func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 	mco *mcov1beta2.MultiClusterObservability, imagePullSecret *corev1.Secret,
 	name string, namespace string) error {
-	org := mcoctrl.GetManagedClusterOrg()
-	spec := mcoctrl.CreateCertificateSpec(certsName, true,
-		mcoctrl.GetClientCAIssuer(), false,
-		"mc-"+name, []string{org}, []string{})
-	err := mcoctrl.CreateCertificate(client, nil, nil,
-		certificateName, namespace, spec)
+	err := createObsAddon(client, namespace)
 	if err != nil {
+		log.Error(err, "Failed to create observabilityaddon")
 		return err
 	}
 
-	err = createObsAddon(client, namespace)
+	err = createRolebindings(client, namespace, name)
 	if err != nil {
-		log.Error(err, "Failed to create observabilityaddon")
 		return err
 	}
 
@@ -355,7 +348,7 @@ func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 	return nil
 }
 
-func deleteManagedClusterRes(client client.Client, namespace string) error {
+func deleteManagedClusterRes(c client.Client, namespace string) error {
 
 	managedclusteraddon := &addonv1alpha1.ManagedClusterAddOn{
 		ObjectMeta: metav1.ObjectMeta{
@@ -363,7 +356,7 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 			Namespace: namespace,
 		},
 	}
-	err := client.Delete(context.TODO(), managedclusteraddon)
+	err := c.Delete(context.TODO(), managedclusteraddon)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
@@ -374,7 +367,7 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 			Namespace: namespace,
 		},
 	}
-	err = client.Delete(context.TODO(), certificate)
+	err = c.Delete(context.TODO(), certificate)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
@@ -385,12 +378,17 @@ func deleteManagedClusterRes(client client.Client, namespace string) error {
 			Namespace: namespace,
 		},
 	}
-	err = client.Delete(context.TODO(), lease)
+	err = c.Delete(context.TODO(), lease)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}
 
-	err = deleteManifestWorks(client, namespace)
+	err = deleteRolebindings(c, namespace)
+	if err != nil {
+		return err
+	}
+
+	err = deleteManifestWorks(c, namespace)
 	if err != nil {
 		log.Error(err, "Failed to delete manifestwork")
 		return err
@@ -553,28 +551,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 		// secondary watch for manifestwork
 		ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &workv1.ManifestWork{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(workPred))
-	}
-
-	// watch APIServer for kubeconfig
-	apiServerGroupKind := schema.GroupKind{Group: ocinfrav1.GroupVersion.Group, Kind: "APIServer"}
-	if _, err := r.RESTMapper.RESTMapping(apiServerGroupKind, ocinfrav1.GroupVersion.Version); err == nil {
-		apiServerPred := predicate.Funcs{
-			CreateFunc: func(e event.CreateEvent) bool {
-				return false
-			},
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-					return true
-				}
-				return false
-			},
-			DeleteFunc: func(e event.DeleteEvent) bool {
-				return false
-			},
-		}
-
-		// secondary watch APIServer for kubeconfig
-		ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &ocinfrav1.APIServer{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(apiServerPred))
 	}
 
 	// create and return a new controller

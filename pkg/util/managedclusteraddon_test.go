@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	namespace = "test-namespace"
+	name      = "test"
+	namespace = "test"
 )
 
 func TestManagedClusterAddon(t *testing.T) {

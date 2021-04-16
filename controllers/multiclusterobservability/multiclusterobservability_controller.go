@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/certificates"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/deploying"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/rendering"
@@ -41,6 +42,8 @@ import (
 )
 
 const (
+	resFinalizer = "observability.open-cluster-management.io/res-cleanup"
+	// deprecated one
 	certFinalizer = "observability.open-cluster-management.io/cert-cleanup"
 )
 
@@ -103,16 +106,9 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, err
 	} else if isTerminating {
 		reqLogger.Info("MCO instance is in Terminating status, skip the reconcile")
-		svmCrdExists, err := util.CheckCRDExist(r.CrdClient, config.StorageVersionMigrationCrdName)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		if svmCrdExists {
-			// remove the StorageVersionMigration resource and ignore error
-			cleanObservabilityStorageVersionMigrationResource(r.Client, instance)
-		}
 		return ctrl.Result{}, err
 	}
+
 	//read image manifest configmap to be used to replace the image for each component.
 	if _, err = config.ReadImageManifestConfigMap(r.Client); err != nil {
 		return ctrl.Result{}, err
@@ -180,7 +176,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// create the certificates
-	err = createObservabilityCertificate(r.Client, r.Scheme, instance)
+	err = certificates.CreateObservabilityCerts(r.Client, r.Scheme, instance)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -283,13 +279,17 @@ func labelsForMultiClusterMonitoring(name string) map[string]string {
 
 func (r *MultiClusterObservabilityReconciler) initFinalization(
 	mco *mcov1beta2.MultiClusterObservability) (bool, error) {
-	if mco.GetDeletionTimestamp() != nil && util.Contains(mco.GetFinalizers(), certFinalizer) {
-		log.Info("To delete issuer/certificate across namespaces")
-		err := cleanIssuerCert(r.Client)
+	if mco.GetDeletionTimestamp() != nil && util.Contains(mco.GetFinalizers(), resFinalizer) {
+		log.Info("To delete resources across namespaces")
+		svmCrdExists, err := util.CheckCRDExist(r.CrdClient, config.StorageVersionMigrationCrdName)
 		if err != nil {
 			return false, err
 		}
-		mco.SetFinalizers(util.Remove(mco.GetFinalizers(), certFinalizer))
+		if svmCrdExists {
+			// remove the StorageVersionMigration resource and ignore error
+			cleanObservabilityStorageVersionMigrationResource(r.Client, mco)
+		}
+		mco.SetFinalizers(util.Remove(mco.GetFinalizers(), resFinalizer))
 		err = r.Client.Update(context.TODO(), mco)
 		if err != nil {
 			log.Error(err, "Failed to remove finalizer from mco resource")
@@ -298,8 +298,9 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 		log.Info("Finalizer removed from mco resource")
 		return true, nil
 	}
-	if !util.Contains(mco.GetFinalizers(), certFinalizer) {
-		mco.SetFinalizers(append(mco.GetFinalizers(), certFinalizer))
+	if !util.Contains(mco.GetFinalizers(), resFinalizer) {
+		mco.SetFinalizers(util.Remove(mco.GetFinalizers(), certFinalizer))
+		mco.SetFinalizers(append(mco.GetFinalizers(), resFinalizer))
 		err := r.Client.Update(context.TODO(), mco)
 		if err != nil {
 			log.Error(err, "Failed to add finalizer to mco resource")

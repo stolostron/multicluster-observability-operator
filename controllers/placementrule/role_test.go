@@ -5,9 +5,9 @@ package placementrule
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
-	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,47 +23,6 @@ const (
 	token      = "test-token"
 	ca         = "test-ca"
 )
-
-func newTestSA(namespaces ...string) *corev1.ServiceAccount {
-	ns := namespace
-	if len(namespaces) != 0 {
-		ns = namespaces[0]
-	}
-	return &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      serviceAccountName,
-			Namespace: ns,
-			Labels: map[string]string{
-				ownerLabelKey: ownerLabelValue,
-			},
-		},
-		Secrets: []corev1.ObjectReference{
-			{
-				Kind:      "Secret",
-				Namespace: ns,
-				Name:      secretName,
-			},
-		},
-	}
-}
-
-func newSATokenSecret(namespaces ...string) *corev1.Secret {
-	ns := namespace
-	if len(namespaces) != 0 {
-		ns = namespaces[0]
-	}
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
-			Namespace: ns,
-		},
-		Type: corev1.SecretTypeServiceAccountToken,
-		Data: map[string][]byte{
-			"token":  []byte(token),
-			"ca.crt": []byte(ca),
-		},
-	}
-}
 
 func TestCreateClusterRole(t *testing.T) {
 	role := &rbacv1.ClusterRole{
@@ -131,15 +90,15 @@ func TestCreateClusterRoleBinding(t *testing.T) {
 		},
 		Subjects: []rbacv1.Subject{
 			{
-				Kind:      "ServiceAccount",
-				Name:      serviceAccountName + "-test",
+				Kind:      "Group",
+				Name:      "test",
 				Namespace: namespace,
 			},
 		},
 	}
 	objs := []runtime.Object{rb}
 	c := fake.NewFakeClient(objs...)
-	err := createClusterRoleBinding(c, namespace)
+	err := createClusterRoleBinding(c, namespace, namespace)
 	if err != nil {
 		t.Fatalf("createRoleBinding: (%v)", err)
 	}
@@ -148,7 +107,8 @@ func TestCreateClusterRoleBinding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to update ClusterRoleBinding: (%v)", err)
 	}
-	if found.RoleRef.Name != mcoRoleName || found.Subjects[0].Name != serviceAccountName {
+	if found.RoleRef.Name != mcoRoleName ||
+		found.Subjects[0].Name != fmt.Sprintf("system:open-cluster-management:cluster:%s:addon:%s", namespace, addonName) {
 		t.Fatalf("clusterrolebinding is no updated correctly")
 	}
 }
@@ -211,7 +171,7 @@ func TestCreateRole(t *testing.T) {
 
 func TestCreateRoleBinding(t *testing.T) {
 	c := fake.NewFakeClient()
-	err := createResourceRoleBinding(c, namespace)
+	err := createResourceRoleBinding(c, namespace, namespace)
 	if err != nil {
 		t.Fatalf("createRole: (%v)", err)
 	}
@@ -220,7 +180,8 @@ func TestCreateRoleBinding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create RoleBinding: (%v)", err)
 	}
-	if found.RoleRef.Name != resRoleName || found.Subjects[0].Name != serviceAccountName {
+	if found.RoleRef.Name != resRoleName ||
+		found.Subjects[0].Name != fmt.Sprintf("system:open-cluster-management:cluster:%s:addon:%s", namespace, addonName) {
 		t.Fatalf("rolebinding is no created correctly")
 	}
 
@@ -239,15 +200,15 @@ func TestCreateRoleBinding(t *testing.T) {
 		},
 		Subjects: []rbacv1.Subject{
 			{
-				Kind:      "ServiceAccount",
-				Name:      serviceAccountName + "-test",
+				Kind:      "Group",
+				Name:      "test",
 				Namespace: namespace,
 			},
 		},
 	}
 	objs := []runtime.Object{rb}
 	c = fake.NewFakeClient(objs...)
-	err = createResourceRoleBinding(c, namespace)
+	err = createResourceRoleBinding(c, namespace, namespace)
 	if err != nil {
 		t.Fatalf("createRoleBinding: (%v)", err)
 	}
@@ -256,36 +217,8 @@ func TestCreateRoleBinding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to update RoleBinding: (%v)", err)
 	}
-	if found.RoleRef.Name != resRoleName || found.Subjects[0].Name != serviceAccountName {
+	if found.RoleRef.Name != resRoleName ||
+		found.Subjects[0].Name != fmt.Sprintf("system:open-cluster-management:cluster:%s:addon:%s", namespace, addonName) {
 		t.Fatalf("rolebinding is no updated correctly")
 	}
-}
-
-func TestCreateServiceAccount(t *testing.T) {
-	c := fake.NewFakeClient()
-	err := createServiceAccount(c, namespace)
-	if err != nil {
-		t.Fatalf("createServiceAccount: (%v)", err)
-	}
-	found := &corev1.ServiceAccount{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: serviceAccountName, Namespace: namespace}, found)
-	if err != nil {
-		t.Fatalf("Failed to create ServiceAccount: (%v)", err)
-	}
-	if found.Name != serviceAccountName {
-		t.Fatalf("serviceaccount is no created correctly")
-	}
-}
-
-func TestGetSAToken(t *testing.T) {
-	objs := []runtime.Object{newSATokenSecret(), newTestSA()}
-	c := fake.NewFakeClient(objs...)
-	saCA, saToken, err := getSAToken(c, namespace)
-	if err != nil {
-		t.Fatalf("Failed to get ServiceAccount Token: (%v)", err)
-	}
-	if string(saCA) != ca || string(saToken) != token {
-		t.Fatal("Got wrong ca/token")
-	}
-
 }

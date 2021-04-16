@@ -5,6 +5,7 @@ package util
 
 import (
 	"context"
+	"os"
 	"time"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
@@ -16,6 +17,10 @@ import (
 
 const (
 	ManagedClusterAddonName = "observability-controller"
+)
+
+var (
+	spokeNameSpace = os.Getenv("SPOKE_NAMESPACE")
 )
 
 func CreateManagedClusterAddonCR(client client.Client, namespace string) error {
@@ -38,6 +43,9 @@ func CreateManagedClusterAddonCR(client client.Client, namespace string) error {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      ManagedClusterAddonName,
 				Namespace: namespace,
+			},
+			Spec: addonv1alpha1.ManagedClusterAddOnSpec{
+				InstallNamespace: spokeNameSpace,
 			},
 			Status: addonv1alpha1.ManagedClusterAddOnStatus{
 				AddOnConfiguration: addonv1alpha1.ConfigCoordinates{
