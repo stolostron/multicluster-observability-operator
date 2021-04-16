@@ -77,7 +77,6 @@ func CreateObservabilityCerts(c client.Client, scheme *runtime.Scheme, mco *mcov
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
