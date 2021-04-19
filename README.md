@@ -56,34 +56,28 @@ $ make -f Makefile.prow docker-build docker-push IMG=quay.io/<YOUR_USERNAME_IN_Q
 
 ### Run the Operator in the Cluster
 
-1. Before you deploy the multicluster-observability-operator in the cluster, you need make sure the [cert-manager](https://github.com/open-cluster-management/cert-manager) is installed, you can use the following all-in-one manifest to deploy cert-manager:
-
-```
-$ kubectl apply -f https://raw.githubusercontent.com/open-cluster-management/observability-e2e-test/main/cicd-scripts/e2e-setup-manifests/cert-manager/cert-manager-openshift.yaml
-```
-
-2. Create the `open-cluster-management-observability` namespace if it doesn't exist:
+1. Create the `open-cluster-management-observability` namespace if it doesn't exist:
 ```
 $ kubectl create ns open-cluster-management-observability
 ```
 
-3. Deploy the minio service which acts as storage service of the multicluster observability:
+2. Deploy the minio service which acts as storage service of the multicluster observability:
 ```
 $ git clone --depth 1 git@github.com:open-cluster-management/observability-e2e-test.git
 $ kubectl -n open-cluster-management-observability apply -f observability-e2e-test/cicd-scripts/e2e-setup-manifests/minio
 ```
 
-4. Replace the operator image and deploy the multicluster-observability-operator:
+3. Replace the operator image and deploy the multicluster-observability-operator:
 ```
 $ make -f Makefile.prow deploy IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-observability-operator:latest
 ```
 
-5. Deploy the multicluster-observability-operator CR:
+4. Deploy the multicluster-observability-operator CR:
 ```
 $ kubectl apply -f config/samples/observability_v1beta2_multiclusterobservability.yaml
 ```
 
-6. Verify all the components for the Multicluster Observability are starting up and runing:
+5. Verify all the components for the Multicluster Observability are starting up and runing:
 ```
 $ kubectl -n open-cluster-management-observability get pod
 NAME                                                              READY   STATUS    RESTARTS   AGE
@@ -127,10 +121,4 @@ $ kubectl -n open-cluster-management-observability delete -f observability-e2e-t
 
 ```
 $ kubectl delete ns open-cluster-management-observability
-```
-
-5. Delete the cert-manager.
-
-```
-$ kubectl delete -f https://raw.githubusercontent.com/open-cluster-management/observability-e2e-test/main/cicd-scripts/e2e-setup-manifests/cert-manager/cert-manager-openshift.yaml
 ```
