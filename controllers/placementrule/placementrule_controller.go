@@ -8,7 +8,6 @@ import (
 	"errors"
 
 	"github.com/go-logr/logr"
-	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -39,7 +38,6 @@ import (
 const (
 	ownerLabelKey   = "owner"
 	ownerLabelValue = "multicluster-observability-operator"
-	certificateName = "observability-managed-cluster-certificate"
 	certsName       = "observability-managed-cluster-certs"
 	leaseName       = "observability-controller"
 )
@@ -361,17 +359,6 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 		return err
 	}
 
-	certificate := &certv1alpha1.Certificate{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      certificateName,
-			Namespace: namespace,
-		},
-	}
-	err = c.Delete(context.TODO(), certificate)
-	if err != nil && !k8serrors.IsNotFound(err) {
-		return err
-	}
-
 	lease := &coordinationv1.Lease{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      leaseName,
@@ -495,17 +482,15 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	certSecretPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == certsName ||
-				e.Object.GetName() == config.ServerCerts &&
-					e.Object.GetNamespace() == config.GetDefaultNamespace() {
+			if e.Object.GetName() == config.ServerCACerts &&
+				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if (e.ObjectNew.GetName() == certsName ||
-				e.ObjectNew.GetName() == config.ServerCerts &&
-					e.ObjectNew.GetNamespace() == config.GetDefaultNamespace()) &&
+			if (e.ObjectNew.GetName() == config.ServerCACerts &&
+				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace()) &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				return true
 			}
