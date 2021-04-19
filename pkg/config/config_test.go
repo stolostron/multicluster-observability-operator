@@ -537,3 +537,55 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 		})
 	}
 }
+
+func Test_checkIsIBMCloud(t *testing.T) {
+	s := scheme.Scheme
+	nodeIBM := &corev1.Node{
+		Spec: corev1.NodeSpec{
+			ProviderID: "ibm",
+		},
+	}
+	nodeOther := &corev1.Node{}
+
+	type args struct {
+		client client.Client
+		name   string
+	}
+	caselist := []struct {
+		name    string
+		args    args
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "is normal ocp",
+			args: args{
+				client: fake.NewFakeClientWithScheme(s, []runtime.Object{nodeOther}...),
+				name:   "test-secret",
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "is ibm",
+			args: args{
+				client: fake.NewFakeClientWithScheme(s, []runtime.Object{nodeIBM}...),
+				name:   "test-secret",
+			},
+			want:    true,
+			wantErr: false,
+		},
+	}
+	for _, c := range caselist {
+		t.Run(c.name, func(t *testing.T) {
+			got, err := CheckIsIBMCloud(c.args.client)
+			if (err != nil) != c.wantErr {
+				t.Errorf("checkIsIBMCloud() error = %v, wantErr %v", err, c.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, c.want) {
+				t.Errorf("checkIsIBMCloud() = %v, want %v", got, c.want)
+			}
+		})
+	}
+}

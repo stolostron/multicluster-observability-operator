@@ -3,6 +3,10 @@
 package placementrule
 
 import (
+	"crypto/x509"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 
@@ -208,6 +212,78 @@ func TestGetKubeAPIServerCertificate(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("getKubeAPIServerCertificate() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_getValidCertificatesFromURL(t *testing.T) {
+	serverStopped := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Hello, client")
+	}))
+	serverTLS := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Hello, client")
+	}))
+	rootTLS := x509.NewCertPool()
+	rootTLS.AddCert(serverTLS.Certificate())
+	tests := []struct {
+		name    string
+		url     string
+		root    *x509.CertPool
+		want    []*x509.Certificate
+		wantErr bool
+	}{
+		{
+			name:    "invalid url",
+			url:     "abc:@@@@ /invalid:url/",
+			root:    nil,
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "tls connection failed",
+			url:     serverStopped.URL,
+			root:    nil,
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "unauthorized certs",
+			url:     serverTLS.URL,
+			root:    nil,
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name:    "valid certs",
+			url:     serverTLS.URL,
+			root:    rootTLS,
+			want:    []*x509.Certificate{serverTLS.Certificate()},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := getValidCertificatesFromURL(tt.url, tt.root)
+			if (err != nil) != tt.wantErr {
+				t.Errorf(
+					"getValidCertificatesFromURL() returns wrong error. want %t, got %v",
+					tt.wantErr,
+					err,
+				)
+			} else if err == nil {
+				if len(tt.want) != len(got) {
+					t.Errorf("getValidCertificatesFromURL() returns wrong number of certificates. want %d, got %d\n",
+						len(tt.want), len(got))
+				}
+				for i, gotCert := range got {
+					wantCert := tt.want[i]
+					if !wantCert.Equal(gotCert) {
+						t.Errorf("getValidCertificatesFromURL() returns wrong number of certificates. want %v, got %v\n",
+							tt.want, got)
+					}
+				}
 			}
 		})
 	}

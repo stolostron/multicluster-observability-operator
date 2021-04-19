@@ -321,6 +321,28 @@ func GetClusterID(ocpClient ocpClientSet.Interface) (string, error) {
 	return string(clusterVersion.Spec.ClusterID), nil
 }
 
+// checkIsIBMCloud detects if the current cloud vendor is ibm or not
+// we know we are on OCP already, so if it's also ibm cloud, it's roks
+func CheckIsIBMCloud(c client.Client) (bool, error) {
+	nodes := &corev1.NodeList{}
+	err := c.List(context.TODO(), nodes)
+	if err != nil {
+		log.Error(err, "Failed to get nodes list")
+		return false, err
+	}
+	if len(nodes.Items) == 0 {
+		log.Error(err, "Failed to list any nodes")
+		return false, nil
+	}
+
+	providerID := nodes.Items[0].Spec.ProviderID
+	if strings.Contains(providerID, "ibm") {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 // GetPlacementRuleName is used to get placementRuleName
 func GetPlacementRuleName() string {
 	return placementRuleName

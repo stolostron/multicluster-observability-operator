@@ -17,6 +17,7 @@ rules:
   - secrets
   - serviceaccounts
   - namespaces
+  - nodes
   verbs:
   - create
   - delete
