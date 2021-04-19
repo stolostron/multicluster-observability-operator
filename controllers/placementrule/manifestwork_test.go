@@ -94,6 +94,8 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
   names:
     - a
     - b
+  renames:
+    a: c
 `},
 	}
 }
@@ -108,6 +110,8 @@ func NewMetricsCustomAllowListCM() *corev1.ConfigMap {
   names:
     - c
     - d
+  renames:
+    d: e
 `},
 	}
 }

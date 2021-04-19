@@ -31,8 +31,9 @@ const (
 )
 
 type MetricsAllowlist struct {
-	NameList  []string `yaml:"names"`
-	MatchList []string `yaml:"matches"`
+	NameList  []string          `yaml:"names"`
+	MatchList []string          `yaml:"matches"`
+	ReNameMap map[string]string `yaml:"renames"`
 }
 
 func deleteManifestWork(c client.Client, name string, namespace string) error {
@@ -282,6 +283,9 @@ func getMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 	if err == nil {
 		allowlist.NameList = append(allowlist.NameList, customAllowlist.NameList...)
 		allowlist.MatchList = append(allowlist.MatchList, customAllowlist.MatchList...)
+		for k, v := range customAllowlist.ReNameMap {
+			allowlist.ReNameMap[k] = v
+		}
 	} else {
 		log.Info("There is no custom metrics allowlist configmap in the cluster")
 	}
