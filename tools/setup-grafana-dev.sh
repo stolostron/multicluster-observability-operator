@@ -3,12 +3,6 @@
 # Copyright Contributors to the Open Cluster Management project
 
 obs_namespace='open-cluster-management-observability'
-obs_cr_name=$(kubectl get mco -o jsonpath='{.items[].metadata.name}' 2>/dev/null)
-if [ $? -ne 0 ] || [ -z "$obs_cr_name" ]; then
-    echo "Failed to get mco cr name, please enable observability service firstly"
-    exit 1
-fi
-
 deploy_flag=0
 
 sed_command='sed -i-e -e'
@@ -33,6 +27,12 @@ EOF
 }
 
 deploy() {
+  obs_cr_name=$(kubectl get mco -o jsonpath='{.items[].metadata.name}' 2>/dev/null)
+  if [ $? -ne 0 ] || [ -z "$obs_cr_name" ]; then
+      echo "Failed to get mco cr name, please enable observability service firstly"
+      exit 1
+  fi
+
   kubectl get secret -n "$obs_namespace" grafana-config -o 'go-template={{index .data "grafana.ini"}}' | base64 --decode > grafana-dev-config.ini
   if [ $? -ne 0 ]; then
       echo "Failed to get grafana config secret"
@@ -129,6 +129,10 @@ die() {
 }
 
 start() {
+  if [ $# -eq 0 -o $# -gt 3 ]; then
+    usage
+  fi
+
   while [[ $# -gt 0 ]]
   do
   key="$1"
