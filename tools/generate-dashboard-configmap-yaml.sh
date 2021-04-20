@@ -72,6 +72,9 @@ start() {
       exit 1
   fi
 
+  # delete dashboard uid avoid conflict with old dashboard
+  dashboardJson=`echo $dashboardJson | $PYTHON_CMD -c "import sys, json; d=json.load(sys.stdin);del d['uid'];print(json.dumps(d))"`
+
   if [ $dashboardFolderId -ne 0 ]; then
   cat > $savePath/$dashboard_name.yaml <<EOF
 kind: ConfigMap
