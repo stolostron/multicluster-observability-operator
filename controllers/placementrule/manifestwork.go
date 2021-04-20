@@ -25,9 +25,8 @@ import (
 )
 
 const (
-	operatorWorkNameSuffix = "-observability-operator"
-	resWorkNameSuffix      = "-observability-operator-res"
-	localClusterName       = "local-cluster"
+	workNameSuffix   = "-observability"
+	localClusterName = "local-cluster"
 )
 
 type MetricsAllowlist struct {
@@ -145,7 +144,17 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	mco *mcov1beta2.MultiClusterObservability,
 	imagePullSecret *corev1.Secret) error {
 
-	operatorWork := newManifestwork(clusterNamespace+operatorWorkNameSuffix, clusterNamespace)
+	work := newManifestwork(clusterNamespace+workNameSuffix, clusterNamespace)
+
+	manifests := work.Spec.Workload.Manifests
+	// inject observabilityAddon
+	obaddon, err := getObservabilityAddon(c, clusterNamespace, mco)
+	if err != nil {
+		return err
+	}
+	if obaddon != nil {
+		manifests = injectIntoWork(manifests, obaddon)
+	}
 
 	// inject resouces in templates
 	templates, err := loadTemplates(clusterNamespace, mco)
@@ -159,25 +168,9 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 			//raw.Object.GetObjectKind().GroupVersionKind().Kind == "CustomResourceDefinition" {
 			continue
 		}
-		operatorWork.Spec.Workload.Manifests = append(
-			operatorWork.Spec.Workload.Manifests,
+		manifests = append(
+			manifests,
 			workv1.Manifest{RawExtension: raw})
-	}
-
-	err = createManifestwork(c, operatorWork)
-	if err != nil {
-		return err
-	}
-
-	resourceWork := newManifestwork(clusterNamespace+resWorkNameSuffix, clusterNamespace)
-	manifests := resourceWork.Spec.Workload.Manifests
-	// inject observabilityAddon
-	obaddon, err := getObservabilityAddon(c, clusterNamespace, mco)
-	if err != nil {
-		return err
-	}
-	if obaddon != nil {
-		manifests = injectIntoWork(manifests, obaddon)
 	}
 
 	// inject the hub info secret
@@ -210,9 +203,9 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	}
 	manifests = injectIntoWork(manifests, mList)
 
-	resourceWork.Spec.Workload.Manifests = manifests
+	work.Spec.Workload.Manifests = manifests
 
-	err = createManifestwork(c, resourceWork)
+	err = createManifestwork(c, work)
 	return err
 }
 
@@ -355,7 +348,7 @@ func getObservabilityAddon(c client.Client, namespace string,
 }
 
 func removeObservabilityAddon(client client.Client, namespace string) error {
-	name := namespace + resWorkNameSuffix
+	name := namespace + workNameSuffix
 	found := &workv1.ManifestWork{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
 	if err != nil {
