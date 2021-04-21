@@ -324,6 +324,7 @@ func newReceiversSpec(
 	mco *mcov1beta2.MultiClusterObservability,
 	scSelected string) obsv1alpha1.ReceiversSpec {
 	receSpec := obsv1alpha1.ReceiversSpec{}
+	receSpec.Retention = mco.Spec.RetentionConfig.RetentionInLocal
 	receSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosReceive)
 	receSpec.ReplicationFactor = receSpec.Replicas
 	receSpec.ServiceMonitor = true
@@ -344,6 +345,8 @@ func newReceiversSpec(
 
 func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.RuleSpec {
 	ruleSpec := obsv1alpha1.RuleSpec{}
+	ruleSpec.BlockDuration = mco.Spec.RetentionConfig.BlockDuration
+	ruleSpec.Retention = mco.Spec.RetentionConfig.RetentionInLocal
 	ruleSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosRule)
 	ruleSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
@@ -552,6 +555,7 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 	}
 	compactSpec.ServiceMonitor = true
 	compactSpec.EnableDownsampling = mco.Spec.EnableDownsampling
+	compactSpec.DeleteDelay = mco.Spec.RetentionConfig.DeleteDelay
 	compactSpec.RetentionResolutionRaw = mco.Spec.RetentionConfig.RetentionResolutionRaw
 	compactSpec.RetentionResolution5m = mco.Spec.RetentionConfig.RetentionResolution5m
 	compactSpec.RetentionResolution1h = mco.Spec.RetentionConfig.RetentionResolution1h
