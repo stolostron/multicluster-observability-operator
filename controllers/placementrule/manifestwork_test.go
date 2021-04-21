@@ -23,9 +23,8 @@ import (
 )
 
 const (
-	pullSecretName   = "test-pull-secret"
-	operatorWorkSize = 6
-	resourceWorkSize = 5
+	pullSecretName = "test-pull-secret"
+	workSize       = 11
 )
 
 func newTestMCO() *mcov1beta2.MultiClusterObservability {
@@ -133,20 +132,12 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
 	found := &workv1.ManifestWork{}
-	workName := namespace + operatorWorkNameSuffix
+	workName := namespace + workNameSuffix
 	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
 	}
-	if len(found.Spec.Workload.Manifests) != operatorWorkSize {
-		t.Fatalf("Wrong size of manifests in the mainfestwork %s", workName)
-	}
-	workName = namespace + resWorkNameSuffix
-	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
-	if err != nil {
-		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
-	}
-	if len(found.Spec.Workload.Manifests) != resourceWorkSize {
+	if len(found.Spec.Workload.Manifests) != workSize {
 		t.Fatalf("Wrong size of manifests in the mainfestwork %s", workName)
 	}
 
@@ -158,7 +149,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
 	}
-	if len(found.Spec.Workload.Manifests) != resourceWorkSize-1 {
+	if len(found.Spec.Workload.Manifests) != workSize-1 {
 		t.Fatalf("Wrong size of manifests in the mainfestwork %s", workName)
 	}
 
@@ -172,11 +163,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to delete manifestworks: (%v)", err)
 	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + operatorWorkNameSuffix, Namespace: namespace}, found)
-	if err == nil || !errors.IsNotFound(err) {
-		t.Fatalf("Manifestwork not deleted: (%v)", err)
-	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + resWorkNameSuffix, Namespace: namespace}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + workNameSuffix, Namespace: namespace}, found)
 	if err == nil || !errors.IsNotFound(err) {
 		t.Fatalf("Manifestwork not deleted: (%v)", err)
 	}

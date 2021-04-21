@@ -161,8 +161,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		staleAddons = append(staleAddons, addon.Namespace)
 	}
 	for _, work := range workList.Items {
-		if work.Name != work.Namespace+operatorWorkNameSuffix &&
-			work.Name != work.Namespace+resWorkNameSuffix {
+		if work.Name != work.Namespace+workNameSuffix {
 			reqLogger.Info("To delete invalid manifestwork", "name", work.Name, "namespace", work.Namespace)
 			err = deleteManifestWork(r.Client, work.Name, work.Namespace)
 			if err != nil {
