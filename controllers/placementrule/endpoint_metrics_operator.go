@@ -74,9 +74,6 @@ func updateRes(r *resource.Resource, namespace string,
 			if container.Name == "endpoint-observability-operator" {
 				spec.Containers[i] = updateEndpointOperator(mco, namespace, container)
 			}
-			if container.Name == "observability-lease-controller" {
-				spec.Containers[i] = updateLeaseController(mco, namespace, container)
-			}
 		}
 	}
 	// set the imagepullsecrets for sa
@@ -102,6 +99,7 @@ func updateEndpointOperator(mco *mcov1beta2.MultiClusterObservability,
 	namespace string, container corev1.Container) corev1.Container {
 	container.Image = getImage(mco, mcoconfig.EndpointControllerImgName,
 		mcoconfig.EndpointControllerImgTagSuffix, mcoconfig.EndpointControllerKey)
+	container.Image = "blue0/endpoint-monitoring-operator:0.1.0"
 	container.ImagePullPolicy = mco.Spec.ImagePullPolicy
 	for i, env := range container.Env {
 		if env.Name == "HUB_NAMESPACE" {
@@ -110,22 +108,6 @@ func updateEndpointOperator(mco *mcov1beta2.MultiClusterObservability,
 		if env.Name == "COLLECTOR_IMAGE" {
 			container.Env[i].Value = getImage(mco, mcoconfig.MetricsCollectorImgName,
 				mcoconfig.MetricsCollectorImgTagSuffix, mcoconfig.MetricsCollectorKey)
-		}
-	}
-	return container
-}
-
-func updateLeaseController(mco *mcov1beta2.MultiClusterObservability,
-	namespace string, container corev1.Container) corev1.Container {
-	container.Image = getImage(mco, mcoconfig.LeaseControllerImageName,
-		mcoconfig.LeaseControllerImageTagSuffix, mcoconfig.LeaseControllerKey)
-	container.ImagePullPolicy = mco.Spec.ImagePullPolicy
-	for i, arg := range container.Args {
-		if arg == "-lease-name" {
-			container.Args[i+1] = leaseName
-		}
-		if arg == "-lease-namespace" {
-			container.Args[i+1] = namespace
 		}
 	}
 	return container

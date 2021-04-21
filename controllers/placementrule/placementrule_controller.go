@@ -8,7 +8,6 @@ import (
 	"errors"
 
 	"github.com/go-logr/logr"
-	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -39,7 +38,6 @@ const (
 	ownerLabelKey   = "owner"
 	ownerLabelValue = "multicluster-observability-operator"
 	certsName       = "observability-managed-cluster-certs"
-	leaseName       = "observability-controller"
 )
 
 var (
@@ -354,17 +352,6 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 		},
 	}
 	err := c.Delete(context.TODO(), managedclusteraddon)
-	if err != nil && !k8serrors.IsNotFound(err) {
-		return err
-	}
-
-	lease := &coordinationv1.Lease{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      leaseName,
-			Namespace: namespace,
-		},
-	}
-	err = c.Delete(context.TODO(), lease)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return err
 	}

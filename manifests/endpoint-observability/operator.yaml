@@ -45,35 +45,6 @@ spec:
             - name: hub-kubeconfig-secret
               mountPath: "/spoke/hub-kubeconfig"
               readOnly: true
-        - name: observability-lease-controller
-          image: REPLACE_WITH_LEASE_IMAGE
-          imagePullPolicy: Always
-          args:
-          - -lease-name 
-          - observability-controller
-          - -lease-namespace 
-          - REPLACE_WITH_HUB_CLUSTER_NAMESPACE
-          - -hub-kubeconfig-secret
-          - observability-controller-hub-kubeconfig
-          - -lease-duration
-          - "60"
-          - -startup-delay
-          - "10"
-          env:
-          - name: WATCH_NAMESPACE
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.namespace
-          - name: POD_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.name
-          - name: POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.namespace
       volumes:
         - name: hub-kubeconfig-secret
           secret:
