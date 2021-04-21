@@ -270,6 +270,14 @@ spec:
           - delete
           - get
           - list
+        - apiGroups:
+          - cluster.open-cluster-management.io
+          resources:
+          - managedclusters
+          verbs:
+          - watch
+          - get
+          - list
         serviceAccountName: multicluster-observability-operator
       deployments:
       - name: multicluster-observability-operator

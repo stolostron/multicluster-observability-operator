@@ -221,3 +221,11 @@ rules:
   - delete
   - get
   - list
+- apiGroups:
+  - cluster.open-cluster-management.io
+  verbs:
+  - watch
+  - get
+  - list
+  resources:
+  - managedclusters
