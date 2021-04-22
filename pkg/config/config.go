@@ -110,36 +110,14 @@ const (
 )
 
 const (
-	ObservatoriumAPICPURequets    = "20m"
-	ObservatoriumAPIMemoryRequets = "128Mi"
+	ObservatoriumReceiveControllerCPURequests    = "4m"
+	ObservatoriumReceiveControllerMemoryRequests = "32Mi"
 
-	ThanosQueryFrontendCPURequets    = "100m"
-	ThanosQueryFrontendMemoryRequets = "256Mi"
+	ThanosRuleReloaderCPURequests    = "4m"
+	ThanosRuleReloaderMemoryRequests = "25Mi"
 
-	ThanosQueryCPURequets    = "300m"
-	ThanosQueryMemoryRequets = "1Gi"
-
-	ThanosCompactCPURequets    = "100m"
-	ThanosCompactMemoryRequets = "512Mi"
-
-	ObservatoriumReceiveControllerCPURequets    = "4m"
-	ObservatoriumReceiveControllerMemoryRequets = "32Mi"
-
-	ThanosReceiveCPURequets    = "300m"
-	ThanosReceiveMemoryRequets = "512Mi"
-
-	ThanosRuleCPURequets            = "50m"
-	ThanosRuleMemoryRequets         = "512Mi"
-	ThanosRuleReloaderCPURequets    = "4m"
-	ThanosRuleReloaderMemoryRequets = "25Mi"
-
-	ThanosCahcedCPURequets            = "45m"
-	ThanosCahcedMemoryRequets         = "128Mi"
-	ThanosCahcedExporterCPURequets    = "5m"
-	ThanosCahcedExporterMemoryRequets = "50Mi"
-
-	ThanosStoreCPURequets    = "100m"
-	ThanosStoreMemoryRequets = "1Gi"
+	ThanosCahcedExporterCPURequests    = "5m"
+	ThanosCahcedExporterMemoryRequests = "50Mi"
 
 	ObservatoriumAPI        = "observatorium-api"
 	ThanosCompact           = "thanos-compact"

@@ -275,6 +275,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
 				EnableMetrics: false,
 			},
+			Resources: &mcov1beta2.ResourceConfig{},
 		},
 	}
 
