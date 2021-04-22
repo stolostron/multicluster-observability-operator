@@ -263,11 +263,11 @@ spec:
                     type: string
                   retentionResolution1h:
                     default: 30d
-                    description: How long to retain samples of resolution 2 (1 hour) in bucket.
+                    description: How long to retain samples of resolution 2 (1 hour) in bucket. It applies to --retention.resolution-1h in compact.
                     type: string
                   retentionResolution5m:
                     default: 14d
-                    description: How long to retain samples of resolution 1 (5 minutes) in bucket.
+                    description: How long to retain samples of resolution 1 (5 minutes) in bucket. It applies to --retention.resolution-5m in compact.
                     type: string
                   retentionResolutionRaw:
                     default: 5d

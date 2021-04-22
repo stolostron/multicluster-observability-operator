@@ -56,10 +56,12 @@ type RetentionConfig struct {
 	// +kubebuilder:default:="5d"
 	RetentionResolutionRaw string `json:"retentionResolutionRaw,omitempty"`
 	// How long to retain samples of resolution 1 (5 minutes) in bucket.
+	// It applies to --retention.resolution-5m in compact.
 	// +optional
 	// +kubebuilder:default:="14d"
 	RetentionResolution5m string `json:"retentionResolution5m,omitempty"`
 	// How long to retain samples of resolution 2 (1 hour) in bucket.
+	// It applies to --retention.resolution-1h in compact.
 	// +optional
 	// +kubebuilder:default:="30d"
 	RetentionResolution1h string `json:"retentionResolution1h,omitempty"`
