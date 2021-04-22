@@ -71,7 +71,7 @@ type ResourceConfig struct {
 	ThanosCompact corev1.ResourceRequirements `json:"thanosCompact,omitempty"`
 	// resources for thanos-receiver
 	// +optional
-	// +kubebuilder:default:={requests: {cpu: "300m", memory: "512Mi"}, limits: {cpu: "1", memory: "2Gi"}}
+	// +kubebuilder:default:={requests: {cpu: "300m", memory: "512Mi"}, limits: {cpu: "1", memory: "4Gi"}}
 	ThanosReceive corev1.ResourceRequirements `json:"thanosReceive,omitempty"`
 	// resources for thanos-rule
 	// +optional
