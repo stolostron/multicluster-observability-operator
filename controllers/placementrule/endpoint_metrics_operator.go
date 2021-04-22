@@ -99,7 +99,6 @@ func updateEndpointOperator(mco *mcov1beta2.MultiClusterObservability,
 	namespace string, container corev1.Container) corev1.Container {
 	container.Image = getImage(mco, mcoconfig.EndpointControllerImgName,
 		mcoconfig.EndpointControllerImgTagSuffix, mcoconfig.EndpointControllerKey)
-	container.Image = "blue0/endpoint-monitoring-operator:0.1.0"
 	container.ImagePullPolicy = mco.Spec.ImagePullPolicy
 	for i, env := range container.Env {
 		if env.Name == "HUB_NAMESPACE" {
