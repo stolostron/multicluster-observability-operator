@@ -476,6 +476,9 @@ spec:
                         description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                         type: object
                     type: object
+                  serviceMonitor:
+                    description: ServiceMonitor enables servicemonitor.
+                    type: boolean
                   tenants:
                     description: Tenants is a slice of tenants for the Observatorium API.
                     items:
@@ -857,6 +860,9 @@ spec:
                       retentionResolutionRaw:
                         description: RetentionResolutionRaw
                         type: string
+                      serviceMonitor:
+                        description: ServiceMonitor enables servicemonitor.
+                        type: boolean
                       volumeClaimTemplate:
                         description: VolumeClaimTemplate
                         properties:
@@ -987,6 +993,9 @@ spec:
                             description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                         type: object
+                      serviceMonitor:
+                        description: ServiceMonitor enables servicemonitor.
+                        type: boolean
                     type: object
                   queryFrontend:
                     description: Thanos QueryFrontend
@@ -1017,6 +1026,9 @@ spec:
                             description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                         type: object
+                      serviceMonitor:
+                        description: ServiceMonitor enables servicemonitor.
+                        type: boolean
                     type: object
                   receiveController:
                     description: Thanos Receive Controller Spec
@@ -1046,6 +1058,9 @@ spec:
                             description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                         type: object
+                      serviceMonitor:
+                        description: ServiceMonitor enables servicemonitor.
+                        type: boolean
                       version:
                         description: Version describes the version of Thanos receive controller to use.
                         type: string
@@ -1083,6 +1098,9 @@ spec:
                             description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                         type: object
+                      serviceMonitor:
+                        description: ServiceMonitor enables servicemonitor.
+                        type: boolean
                       volumeClaimTemplate:
                         description: VolumeClaimTemplate
                         properties:
@@ -1252,6 +1270,9 @@ spec:
                           - name
                           type: object
                         type: array
+                      serviceMonitor:
+                        description: ServiceMonitor enables servicemonitor.
+                        type: boolean
                       volumeClaimTemplate:
                         description: VolumeClaimTemplate
                         properties:
@@ -1414,6 +1435,9 @@ spec:
                                 description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                 type: object
                             type: object
+                          serviceMonitor:
+                            description: ServiceMonitor enables servicemonitor.
+                            type: boolean
                           version:
                             description: Version of Memcached image to be deployed.
                             type: string
@@ -1440,6 +1464,9 @@ spec:
                             description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                         type: object
+                      serviceMonitor:
+                        description: ServiceMonitor enables servicemonitor.
+                        type: boolean
                       shards:
                         format: int32
                         type: integer

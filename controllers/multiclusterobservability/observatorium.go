@@ -316,6 +316,7 @@ func newAPISpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.APISpec {
 	if replace {
 		apiSpec.Image = image
 	}
+	apiSpec.ServiceMonitor = true
 	return apiSpec
 }
 
@@ -325,6 +326,7 @@ func newReceiversSpec(
 	receSpec := obsv1alpha1.ReceiversSpec{}
 	receSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosReceive)
 	receSpec.ReplicationFactor = receSpec.Replicas
+	receSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		receSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
@@ -343,6 +345,7 @@ func newReceiversSpec(
 func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.RuleSpec {
 	ruleSpec := obsv1alpha1.RuleSpec{}
 	ruleSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosRule)
+	ruleSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		ruleSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
@@ -414,6 +417,7 @@ func newStoreSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) 
 		mco.Spec.StorageConfig.StoreStorageSize,
 		scSelected)
 	storeSpec.Shards = &mcoconfig.Replicas3
+	storeSpec.ServiceMonitor = true
 	storeSpec.Cache = newStoreCacheSpec(mco)
 
 	return storeSpec
@@ -425,6 +429,7 @@ func newStoreCacheSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.St
 		mcoconfig.MemcachedImgName + ":" + mcoconfig.MemcachedImgTag
 	storeCacheSpec.Version = mcoconfig.MemcachedImgTag
 	storeCacheSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosStoreMemcached)
+	storeCacheSpec.ServiceMonitor = true
 	storeCacheSpec.ExporterImage = mcoconfig.MemcachedExporterImgRepo + "/" +
 		mcoconfig.MemcachedExporterImgName + ":" + mcoconfig.MemcachedExporterImgTag
 	storeCacheSpec.ExporterVersion = mcoconfig.MemcachedExporterImgTag
@@ -482,6 +487,7 @@ func newThanosSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string)
 func newQueryFrontendSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QueryFrontendSpec {
 	queryFrontendSpec := obsv1alpha1.QueryFrontendSpec{}
 	queryFrontendSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosQueryFrontend)
+	queryFrontendSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		queryFrontendSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
@@ -496,6 +502,7 @@ func newQueryFrontendSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1
 func newQuerySpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QuerySpec {
 	querySpec := obsv1alpha1.QuerySpec{}
 	querySpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosQuery)
+	querySpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		querySpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
@@ -512,6 +519,7 @@ func newReceiverControllerSpec(mco *mcov1beta2.MultiClusterObservability) obsv1a
 	receiveControllerSpec.Image = mcoconfig.ObservatoriumImgRepo + "/" +
 		mcoconfig.ThanosReceiveControllerImgName +
 		":" + mcoconfig.ThanosReceiveControllerImgTag
+	receiveControllerSpec.ServiceMonitor = true
 	receiveControllerSpec.Version = mcoconfig.ThanosReceiveControllerImgTag
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		receiveControllerSpec.Resources = v1.ResourceRequirements{
@@ -542,6 +550,7 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 			},
 		}
 	}
+	compactSpec.ServiceMonitor = true
 	compactSpec.EnableDownsampling = mco.Spec.EnableDownsampling
 	compactSpec.RetentionResolutionRaw = mco.Spec.RetentionConfig.RetentionResolutionRaw
 	compactSpec.RetentionResolution5m = mco.Spec.RetentionConfig.RetentionResolution5m
