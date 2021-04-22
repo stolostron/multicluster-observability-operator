@@ -194,18 +194,6 @@ rules:
   verbs:
   - '*'
 - apiGroups:
-  - "coordination.k8s.io"
-  resources:
-  - leases
-  verbs:
-  - delete
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-- apiGroups:
   - addon.open-cluster-management.io
   resources:
   - clustermanagementaddons
