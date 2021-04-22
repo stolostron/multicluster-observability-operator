@@ -84,13 +84,16 @@ data:
       - kube_daemonset_status_number_unavailable
       - kube_deployment_status_replicas_unavailable
       - kube_node_spec_unschedulable
+      - kube_node_status_allocatable
       - kube_node_status_allocatable_cpu_cores
       - kube_node_status_allocatable_memory_bytes
       - kube_node_status_capacity_pods
       - kube_node_status_capacity_cpu_cores
       - kube_node_status_condition
+      - kube_pod_container_resource_limits
       - kube_pod_container_resource_limits_cpu_cores
       - kube_pod_container_resource_limits_memory_bytes
+      - kube_pod_container_resource_requests
       - kube_pod_container_resource_requests_cpu_cores
       - kube_pod_container_resource_requests_memory_bytes
       - kube_pod_info
@@ -108,6 +111,7 @@ data:
       - namespace:kube_pod_container_resource_requests_cpu_cores:sum
       - namespace:kube_pod_container_resource_requests_memory_bytes:sum
       - namespace:container_memory_usage_bytes:sum
+      - namespace_cpu:kube_pod_container_resource_requests:sum
       - namespace_workload_pod:kube_pod_owner:relabel
       - node_cpu_seconds_total
       - node_filesystem_avail_bytes
@@ -140,4 +144,5 @@ data:
       - __name__="container_memory_swap",container!=""
       - __name__="container_memory_working_set_bytes",container!=""
     renames:
-      mixin_pod_workload: namespace_workload_pod:kube_pod_owner:relabel
+      - mixin_pod_workload: namespace_workload_pod:kube_pod_owner:relabel
+      - namespace:kube_pod_container_resource_requests_cpu_cores:sum: namespace_cpu:kube_pod_container_resource_requests:sum
