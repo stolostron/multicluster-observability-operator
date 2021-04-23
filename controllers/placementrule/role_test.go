@@ -124,7 +124,7 @@ func TestCreateRole(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create Role: (%v)", err)
 	}
-	if len(found.Rules) != 4 {
+	if len(found.Rules) != 3 {
 		t.Fatalf("role is no created correctly")
 	}
 
@@ -164,7 +164,7 @@ func TestCreateRole(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to update Role: (%v)", err)
 	}
-	if len(found.Rules) != 4 {
+	if len(found.Rules) != 3 {
 		t.Fatalf("role is no updated correctly")
 	}
 }

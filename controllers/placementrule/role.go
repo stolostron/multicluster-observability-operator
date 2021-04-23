@@ -178,21 +178,6 @@ func createResourceRole(c client.Client) error {
 			},
 			{
 				Resources: []string{
-					"leases",
-				},
-				Verbs: []string{
-					"watch",
-					"list",
-					"get",
-					"create",
-					"update",
-				},
-				APIGroups: []string{
-					"coordination.k8s.io",
-				},
-			},
-			{
-				Resources: []string{
 					"managedclusteraddons",
 					"managedclusteraddons/status",
 				},
