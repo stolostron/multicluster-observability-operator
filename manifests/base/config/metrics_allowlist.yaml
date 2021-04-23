@@ -144,5 +144,5 @@ data:
       - __name__="container_memory_swap",container!=""
       - __name__="container_memory_working_set_bytes",container!=""
     renames:
-      - mixin_pod_workload: namespace_workload_pod:kube_pod_owner:relabel
-      - namespace:kube_pod_container_resource_requests_cpu_cores:sum: namespace_cpu:kube_pod_container_resource_requests:sum
+      mixin_pod_workload: namespace_workload_pod:kube_pod_owner:relabel, 
+      namespace:kube_pod_container_resource_requests_cpu_cores:sum: namespace_cpu:kube_pod_container_resource_requests:sum
