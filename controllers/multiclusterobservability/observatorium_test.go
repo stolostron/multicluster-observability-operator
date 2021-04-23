@@ -64,7 +64,6 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 				RetentionResolution5m:  "1h",
 				RetentionResolution1h:  "1h",
 			},
-			Resources: &mcov1beta2.ResourceConfig{},
 		},
 	}
 
@@ -131,7 +130,6 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 				RetentionResolution5m:  "1h",
 				RetentionResolution1h:  "1h",
 			},
-			Resources: &mcov1beta2.ResourceConfig{},
 		},
 	}
 	// Register operator types with the runtime scheme.
