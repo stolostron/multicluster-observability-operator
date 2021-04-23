@@ -321,7 +321,7 @@ func newReceiversSpec(
 	receSpec := obsv1alpha1.ReceiversSpec{}
 	receSpec.Retention = mco.Spec.RetentionConfig.RetentionInLocal
 	receSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosReceive)
-	receSpec.ReplicationFactor = receSpec.Replicas
+	receSpec.ReplicationFactor = &config.Replicas3
 	receSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		receSpec.Resources = mco.Spec.Resources.ThanosReceive
