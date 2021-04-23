@@ -43,7 +43,7 @@ spec:
             weight: 70
       containers:
       - args:
-        - --log-level=debug
+        - --log-level=info
         image: quay.io/open-cluster-management/observatorium-operator:release-2.2-2020-11-18-0c71113
         imagePullPolicy: "{{MULTICLUSTEROBSERVABILITY_IMAGE_PULL_POLICY}}"
         name: observatorium-operator
