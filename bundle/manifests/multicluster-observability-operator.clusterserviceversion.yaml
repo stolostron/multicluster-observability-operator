@@ -39,7 +39,6 @@ metadata:
           },
           "spec": {
             "observabilityAddonSpec": {},
-            "resources": {},
             "retentionConfig": {},
             "storageConfig": {
               "metricObjectStorage": {
