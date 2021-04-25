@@ -88,7 +88,8 @@ const (
 	GrafanaImgTagSuffix       = "7.4.2"
 	GrafanaDashboardLoaderKey = "grafana_dashboard_loader"
 
-	AlertManagerKey               = "prometheus-alertmanager"
+	AlertManagerImgName           = "prometheus-alertmanager"
+	AlertManagerImgKey            = "prometheus_alertmanager"
 	ConfigmapReloaderImgRepo      = "quay.io/openshift"
 	ConfigmapReloaderImgName      = "origin-configmap-reloader"
 	ConfigmapReloaderImgTagSuffix = "4.5.0"
