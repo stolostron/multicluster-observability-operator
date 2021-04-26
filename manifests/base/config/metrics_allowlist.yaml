@@ -87,6 +87,7 @@ data:
       - kube_node_status_allocatable
       - kube_node_status_allocatable_cpu_cores
       - kube_node_status_allocatable_memory_bytes
+      - kube_node_status_capacity
       - kube_node_status_capacity_pods
       - kube_node_status_capacity_cpu_cores
       - kube_node_status_condition
