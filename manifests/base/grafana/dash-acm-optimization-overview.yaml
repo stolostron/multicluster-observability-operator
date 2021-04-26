@@ -18,8 +18,8 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": 3,
-      "iteration": 1618448327743,
+      "id": 2,
+      "iteration": 1619460303763,
       "links": [],
       "panels": [
         {
@@ -90,9 +90,7 @@ data:
             "justifyMode": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": [
-                "mean"
-              ],
+              "calcs": ["mean"],
               "fields": "",
               "values": false
             },
@@ -102,10 +100,12 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "(sum(kube_pod_container_resource_requests_cpu_cores{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable_cpu_cores{cluster=\"$cluster\"})) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\",cluster=\"$cluster\"}[$__interval])))",
+              "expr": "(sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"cpu\"}) / sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"cpu\"})) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\",cluster=\"$cluster\"}[$__interval])))",
               "format": "time_series",
               "instant": true,
+              "interval": "",
               "intervalFactor": 1,
+              "legendFormat": "",
               "refId": "A"
             }
           ],
@@ -263,9 +263,7 @@ data:
             "justifyMode": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": [
-                "mean"
-              ],
+              "calcs": ["mean"],
               "fields": "",
               "values": false
             },
@@ -275,10 +273,12 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "sum(kube_pod_container_resource_requests_cpu_cores{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable_cpu_cores{cluster=\"$cluster\"})",
+              "expr": "sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"cpu\"}) / sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"cpu\"})",
               "format": "time_series",
               "instant": true,
+              "interval": "",
               "intervalFactor": 1,
+              "legendFormat": "",
               "refId": "A"
             }
           ],
@@ -339,9 +339,7 @@ data:
             "justifyMode": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": [
-                "mean"
-              ],
+              "calcs": ["mean"],
               "fields": "",
               "values": false
             },
@@ -574,9 +572,10 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\"}) by (namespace) / sum(kube_pod_container_resource_requests_cpu_cores{cluster=\"$cluster\"}) by (namespace)",
+              "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\"}) by (namespace) / sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"cpu\"}) by (namespace)",
               "format": "table",
               "instant": true,
+              "interval": "",
               "intervalFactor": 1,
               "legendFormat": "",
               "refId": "E",
@@ -592,23 +591,13 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(kube_pod_container_resource_requests_cpu_cores{cluster=\"$cluster\"}) by (namespace)",
+              "expr": "sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"cpu\"}) by (namespace)",
               "format": "table",
-              "instant": true,
-              "intervalFactor": 1,
-              "legendFormat": "",
-              "refId": "D",
-              "step": 10
-            },
-            {
-              "expr": "count(mixin_pod_workload{cluster=\"$cluster\"}) by (namespace)",
-              "format": "table",
-              "hide": false,
               "instant": true,
               "interval": "",
               "intervalFactor": 1,
               "legendFormat": "",
-              "refId": "A",
+              "refId": "D",
               "step": 10
             },
             {
@@ -629,13 +618,7 @@ data:
               "id": "filterFieldsByName",
               "options": {
                 "include": {
-                  "names": [
-                    "namespace",
-                    "Value #E",
-                    "Value #C",
-                    "Value #D",
-                    "Value #B"
-                  ]
+                  "names": ["namespace", "Value #E", "Value #C", "Value #D", "Value #B"]
                 }
               }
             },
@@ -716,9 +699,7 @@ data:
             "justifyMode": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": [
-                "mean"
-              ],
+              "calcs": ["mean"],
               "fields": "",
               "values": false
             },
@@ -728,10 +709,12 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "(sum(kube_pod_container_resource_requests_memory_bytes{cluster=\"$cluster\"})/ sum(kube_node_status_allocatable_memory_bytes{cluster=\"$cluster\"}))\n-\n(1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=\"$cluster\"})/ sum(kube_node_status_allocatable_memory_bytes{cluster=\"$cluster\"}))",
+              "expr": "(sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"memory\"})/ sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"memory\"}))\n-\n(1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=\"$cluster\"})/ sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"memory\"}))",
               "format": "time_series",
               "instant": true,
+              "interval": "",
               "intervalFactor": 1,
+              "legendFormat": "",
               "refId": "A"
             }
           ],
@@ -894,9 +877,7 @@ data:
             "justifyMode": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": [
-                "mean"
-              ],
+              "calcs": ["mean"],
               "fields": "",
               "values": false
             },
@@ -906,7 +887,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "sum(kube_pod_container_resource_requests_memory_bytes{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable_memory_bytes{cluster=\"$cluster\"})",
+              "expr": "sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"memory\"}) / sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"memory\"})",
               "format": "time_series",
               "instant": true,
               "interval": "",
@@ -972,9 +953,7 @@ data:
             "justifyMode": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": [
-                "mean"
-              ],
+              "calcs": ["mean"],
               "fields": "",
               "values": false
             },
@@ -984,7 +963,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable_memory_bytes{cluster=\"$cluster\"})",
+              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"memory\"})",
               "format": "time_series",
               "hide": false,
               "instant": true,
@@ -1209,9 +1188,10 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "sum(container_memory_rss{cluster=\"$cluster\", container!=\"\"}) by (namespace) / sum(kube_pod_container_resource_requests_memory_bytes{cluster=\"$cluster\"}) by (namespace)",
+              "expr": "sum(container_memory_rss{cluster=\"$cluster\", container!=\"\"}) by (namespace) / sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"memory\"}) by (namespace)",
               "format": "table",
               "instant": true,
+              "interval": "",
               "intervalFactor": 2,
               "legendFormat": "",
               "refId": "E",
@@ -1227,21 +1207,13 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(kube_pod_container_resource_requests_memory_bytes{cluster=\"$cluster\"}) by (namespace)",
+              "expr": "sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"memory\"}) by (namespace)",
               "format": "table",
               "instant": true,
+              "interval": "",
               "intervalFactor": 2,
               "legendFormat": "",
               "refId": "D",
-              "step": 10
-            },
-            {
-              "expr": "count(mixin_pod_workload{cluster=\"$cluster\"}) by (namespace)",
-              "format": "table",
-              "instant": true,
-              "intervalFactor": 2,
-              "legendFormat": "",
-              "refId": "A",
               "step": 10
             },
             {
@@ -1268,13 +1240,7 @@ data:
               "id": "filterFieldsByName",
               "options": {
                 "include": {
-                  "names": [
-                    "namespace",
-                    "Value #E",
-                    "Value #C",
-                    "Value #D",
-                    "Value #B"
-                  ]
+                  "names": ["namespace", "Value #E", "Value #C", "Value #D", "Value #B"]
                 }
               }
             }
@@ -1285,16 +1251,14 @@ data:
       "refresh": "1m",
       "schemaVersion": 27,
       "style": "dark",
-      "tags": [
-        "ACM"
-      ],
+      "tags": ["ACM"],
       "templating": {
         "list": [
           {
             "current": {
               "selected": false,
-              "text": "Observatorium",
-              "value": "Observatorium"
+              "text": "",
+              "value": ""
             },
             "description": null,
             "error": null,
@@ -1314,7 +1278,7 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
+              "selected": true,
               "text": "",
               "value": ""
             },
@@ -1349,15 +1313,7 @@ data:
         "to": "now"
       },
       "timepicker": {
-        "refresh_intervals": [
-          "1m",
-          "5m",
-          "15m",
-          "30m",
-          "1h",
-          "2h",
-          "1d"
-        ]
+        "refresh_intervals": ["1m", "5m", "15m", "30m", "1h", "2h", "1d"]
       },
       "timezone": "browser",
       "title": "ACM - Resource Optimization / Cluster",

@@ -973,8 +973,8 @@ data:
         "list": [
           {
             "current": {
-              "text": "Observatorium",
-              "value": "Observatorium"
+              "text": "",
+              "value": ""
             },
             "hide": 2,
             "includeAll": false,
