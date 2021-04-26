@@ -75,7 +75,7 @@ func TestStaleObsAddonCR(t *testing.T) {
 		t.Fatalf("Failed to update observabilityaddon: (%v)", err)
 	}
 
-	err = deleteStaleObsAddon(c, namespace)
+	err = deleteStaleObsAddon(c, namespace, true)
 	if err != nil {
 		t.Fatalf("Failed to remove stale observabilityaddon: (%v)", err)
 	}
