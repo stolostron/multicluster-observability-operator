@@ -822,6 +822,9 @@ spec:
                   compact:
                     description: Thanos CompactSpec
                     properties:
+                      deleteDelay:
+                        description: Time before a block marked for deletion is deleted from bucket
+                        type: string
                       enableDownsampling:
                         description: EnableDownsampling enables downsampling.
                         type: boolean
@@ -1098,6 +1101,9 @@ spec:
                             description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                         type: object
+                      retention:
+                        description: How long to retain raw samples on local storage
+                        type: string
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.
                         type: boolean
@@ -1204,6 +1210,9 @@ spec:
                         items:
                           type: string
                         type: array
+                      blockDuration:
+                        description: Block duration for TSDB block
+                        type: string
                       reloaderImage:
                         description: ReloaderImage is an image of configmap reloader
                         type: string
@@ -1255,6 +1264,9 @@ spec:
                             description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                         type: object
+                      retention:
+                        description: Block retention time on local disk
+                        type: string
                       rulesConfig:
                         description: RulesConfig configures rules from the configmaps
                         items:
