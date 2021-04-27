@@ -179,7 +179,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// delete stale addons if manifestwork does not exist
 	for _, addon := range staleAddons {
-		err = deleteStaleObsAddon(r.Client, addon)
+		err = deleteStaleObsAddon(r.Client, addon, true)
 		if err != nil {
 			return ctrl.Result{}, err
 		}

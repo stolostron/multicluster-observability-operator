@@ -31,14 +31,7 @@ func deleteObsAddon(c client.Client, namespace string) error {
 		log.Error(err, "Failed to check observabilityaddon cr before delete", "namespace", namespace)
 		return err
 	}
-	// forcely remove observabilityaddon if it's already stuck in Terminating more than 5 minutes
-	if found.GetDeletionTimestamp() != nil &&
-		time.Since(found.GetDeletionTimestamp().Time).Minutes() > 5 {
-		err = deleteFinalizer(c, found)
-		if err != nil {
-			return err
-		}
-	}
+
 	err = c.Delete(context.TODO(), found)
 	if err != nil {
 		log.Error(err, "Failed to delete observabilityaddon", "namespace", namespace)
@@ -48,6 +41,11 @@ func deleteObsAddon(c client.Client, namespace string) error {
 	if err != nil {
 		return err
 	}
+
+	// forcely remove observabilityaddon if it's already stuck in Terminating more than 5 minutes
+	time.AfterFunc(time.Duration(5)*time.Minute, func() {
+		deleteStaleObsAddon(c, namespace, false)
+	})
 
 	log.Info("observabilityaddon is deleted", "namespace", namespace)
 	return nil
@@ -88,7 +86,7 @@ func createObsAddon(c client.Client, namespace string) error {
 	return nil
 }
 
-func deleteStaleObsAddon(c client.Client, namespace string) error {
+func deleteStaleObsAddon(c client.Client, namespace string, isForce bool) error {
 	found := &obsv1beta1.ObservabilityAddon{}
 	err := c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found)
 	if err != nil {
@@ -97,6 +95,10 @@ func deleteStaleObsAddon(c client.Client, namespace string) error {
 		}
 		log.Error(err, "Failed to check observabilityaddon cr before delete stale ones", "namespace", namespace)
 		return err
+	}
+	if found.GetDeletionTimestamp() == nil && !isForce {
+		log.Info("observabilityaddon is not in Terminating status, skip", "namespace", namespace)
+		return nil
 	}
 	err = deleteFinalizer(c, found)
 	if err != nil {
