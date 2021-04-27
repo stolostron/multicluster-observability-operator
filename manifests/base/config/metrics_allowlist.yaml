@@ -19,7 +19,6 @@ data:
       - apiserver_request:burnrate3d
       - apiserver_request:burnrate5m
       - apiserver_request:burnrate6h
-      - apiserver_request:burnrate6h
       - apiserver_request:burnrate30m
       - apiserver_request_count
       - apiserver_request_latencies_summary_count
@@ -193,7 +192,6 @@ data:
       - mcd_kubelet_state
       - mcd_pivot_err
       - mcd_reboot_err
-      - min_over_timeprometheus_notifications_queue_capacity
       - mixin_pod_workload
       - namespace:container_memory_usage_bytes:sum
       - namespace:kube_pod_container_resource_requests_cpu_cores:sum
@@ -232,13 +230,14 @@ data:
       - openshift_samples_invalidsecret_info
       - openshift_samples_retry_imagestream_import_total
       - openshift_samples_tbr_inaccessible_info
-      - predict_linearprometheus_notifications_queue_length
       - process_cpu_seconds_total
       - process_resident_memory_bytes
       - prometheus_config_last_reload_successful
       - prometheus_notifications_alertmanagers_discovered
       - prometheus_notifications_errors_total
       - prometheus_notifications_sent_total
+      - prometheus_notifications_queue_capacity
+      - prometheus_notifications_queue_length
       - prometheus_operator_list_operations_failed_total
       - prometheus_operator_list_operations_total
       - prometheus_operator_node_address_lookup_errors_total
