@@ -1,6 +1,6 @@
 module github.com/open-cluster-management/multicluster-observability-operator
 
-go 1.15
+go 1.16
 
 require (
 	github.com/Azure/go-autorest/autorest v0.11.6 // indirect
