@@ -19,7 +19,6 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -42,7 +41,6 @@ import (
 	ctrlruntimescheme "sigs.k8s.io/controller-runtime/pkg/scheme"
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
 
-	"github.com/open-cluster-management/addon-framework/pkg/addonmanager"
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	workv1 "github.com/open-cluster-management/api/work/v1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
@@ -217,14 +215,7 @@ func main() {
 	}
 
 	// setup ocm addon manager
-	addonMgr, err := addonmanager.New(ctrl.GetConfigOrDie())
-	if err != nil {
-		setupLog.Error(err, "Failed to init addon manager")
-		os.Exit(1)
-	}
-	agent := &certctrl.ObservabilityAgent{}
-	addonMgr.AddAgent(agent)
-	addonMgr.Start(context.TODO())
+	certctrl.Start()
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

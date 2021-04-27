@@ -47,11 +47,11 @@ var (
 )
 
 func CreateObservabilityCerts(c client.Client, scheme *runtime.Scheme, mco *mcov1beta2.MultiClusterObservability) error {
-	err := createCASecret(c, scheme, mco, serverCACerts, serverCACertifcateCN)
+	err := createCASecret(c, scheme, mco, false, serverCACerts, serverCACertifcateCN)
 	if err != nil {
 		return err
 	}
-	err = createCASecret(c, scheme, mco, clientCACerts, clientCACertificateCN)
+	err = createCASecret(c, scheme, mco, false, clientCACerts, clientCACertificateCN)
 	if err != nil {
 		return err
 	}
@@ -63,12 +63,12 @@ func CreateObservabilityCerts(c client.Client, scheme *runtime.Scheme, mco *mcov
 	} else {
 		hosts = append(hosts, url)
 	}
-	err = createCertSecret(c, scheme, mco, serverCerts, true, serverCertificateCN, nil, hosts, nil)
+	err = createCertSecret(c, scheme, mco, false, serverCerts, true, serverCertificateCN, nil, hosts, nil)
 	if err != nil {
 		return err
 	}
 
-	err = createCertSecret(c, scheme, mco, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
+	err = createCertSecret(c, scheme, mco, false, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -78,29 +78,22 @@ func CreateObservabilityCerts(c client.Client, scheme *runtime.Scheme, mco *mcov
 
 func createCASecret(c client.Client,
 	scheme *runtime.Scheme, mco *mcov1beta2.MultiClusterObservability,
-	name string, cn string) error {
+	isRenew bool, name string, cn string) error {
+	if isRenew {
+		log.Info("To renew CA certificates", "name", name)
+	}
 	caSecret := &corev1.Secret{}
 	err := c.Get(context.TODO(), types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: name}, caSecret)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			log.Error(err, "Failed to check ca secret", "name", name)
 			return err
-		} else {
-			key, cert, err := createCACertificate(cn)
+		} else if !isRenew {
+			key, cert, err := createCACertificate(cn, nil)
 			if err != nil {
 				return err
 			}
-			certPEM := new(bytes.Buffer)
-			pem.Encode(certPEM, &pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: cert,
-			})
-
-			keyPEM := new(bytes.Buffer)
-			pem.Encode(keyPEM, &pem.Block{
-				Type:  "RSA PRIVATE KEY",
-				Bytes: key,
-			})
+			certPEM, keyPEM := pemEncode(cert, key)
 			caSecret = &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
@@ -119,14 +112,39 @@ func createCASecret(c client.Client,
 				log.Error(err, "Failed to create secret", "name", name)
 				return err
 			}
+		} else {
+			log.Info("Cannot find the certificate secret, skip renew")
 		}
 	} else {
-		log.Info("CA secrets already existed", "name", name)
+		if !isRenew {
+			log.Info("CA secrets already existed", "name", name)
+		} else {
+			block, _ := pem.Decode(caSecret.Data["tls.key"])
+			caKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+			if err != nil {
+				log.Error(err, "Wrong private key found, create new one", "name", name)
+				caKey = nil
+			}
+			key, cert, err := createCACertificate(cn, caKey)
+			if err != nil {
+				return err
+			}
+			certPEM, keyPEM := pemEncode(cert, key)
+			caSecret.Data["ca.crt"] = certPEM.Bytes()
+			caSecret.Data["tls.crt"] = certPEM.Bytes()
+			caSecret.Data["tls.key"] = keyPEM.Bytes()
+			if err := c.Update(context.TODO(), caSecret); err != nil {
+				log.Error(err, "Failed to update secret", "name", name)
+				return err
+			} else {
+				log.Info("CA certificates renewed", "name", name)
+			}
+		}
 	}
 	return nil
 }
 
-func createCACertificate(cn string) ([]byte, []byte, error) {
+func createCACertificate(cn string, caKey *rsa.PrivateKey) ([]byte, []byte, error) {
 	sn, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
 		log.Error(err, "failed to generate serial number")
@@ -145,11 +163,14 @@ func createCACertificate(cn string) ([]byte, []byte, error) {
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign,
 		BasicConstraintsValid: true,
 	}
-	caKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		log.Error(err, "Failed to generate private key", "cn", cn)
-		return nil, nil, err
+	if caKey == nil {
+		caKey, err = rsa.GenerateKey(rand.Reader, 2048)
+		if err != nil {
+			log.Error(err, "Failed to generate private key", "cn", cn)
+			return nil, nil, err
+		}
 	}
+
 	caBytes, err := x509.CreateCertificate(rand.Reader, ca, ca, &caKey.PublicKey, caKey)
 	if err != nil {
 		log.Error(err, "Failed to create certificate", "cn", cn)
@@ -161,34 +182,27 @@ func createCACertificate(cn string) ([]byte, []byte, error) {
 
 func createCertSecret(c client.Client,
 	scheme *runtime.Scheme, mco *mcov1beta2.MultiClusterObservability,
-	name string, isServer bool,
+	isRenew bool, name string, isServer bool,
 	cn string, ou []string, dns []string, ips []net.IP) error {
+	if isRenew {
+		log.Info("To renew certificates", "name", name)
+	}
 	crtSecret := &corev1.Secret{}
 	err := c.Get(context.TODO(), types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: name}, crtSecret)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			log.Error(err, "Failed to check certificate secret", "name", name)
 			return err
-		} else {
+		} else if !isRenew {
 			caSecret, caCert, caKey, err := getCA(c, isServer)
 			if err != nil {
 				return err
 			}
-			key, cert, err := createCertificate(isServer, cn, ou, dns, ips, caCert, caKey)
+			key, cert, err := createCertificate(isServer, cn, ou, dns, ips, caCert, caKey, nil)
 			if err != nil {
 				return err
 			}
-			certPEM := new(bytes.Buffer)
-			pem.Encode(certPEM, &pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: cert,
-			})
-
-			keyPEM := new(bytes.Buffer)
-			pem.Encode(keyPEM, &pem.Block{
-				Type:  "RSA PRIVATE KEY",
-				Bytes: key,
-			})
+			certPEM, keyPEM := pemEncode(cert, key)
 			crtSecret = &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
@@ -208,15 +222,44 @@ func createCertSecret(c client.Client,
 				log.Error(err, "Failed to create secret", "name", name)
 				return err
 			}
+		} else {
+			log.Info("Cannot find the certificate secret, skip renew")
 		}
 	} else {
-		log.Info("Certificate secrets already existed", "name", name)
+		if !isRenew {
+			log.Info("Certificate secrets already existed", "name", name)
+		} else {
+			caSecret, caCert, caKey, err := getCA(c, isServer)
+			if err != nil {
+				return err
+			}
+			block, _ := pem.Decode(crtSecret.Data["tls.key"])
+			crtkey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+			if err != nil {
+				log.Error(err, "Wrong private key found, create new one", "name", name)
+				crtkey = nil
+			}
+			key, cert, err := createCertificate(isServer, cn, ou, dns, ips, caCert, caKey, crtkey)
+			if err != nil {
+				return err
+			}
+			certPEM, keyPEM := pemEncode(cert, key)
+			crtSecret.Data["ca.crt"] = caSecret.Data["tls.crt"]
+			crtSecret.Data["tls.crt"] = certPEM.Bytes()
+			crtSecret.Data["tls.key"] = keyPEM.Bytes()
+			if err := c.Update(context.TODO(), crtSecret); err != nil {
+				log.Error(err, "Failed to update secret", "name", name)
+				return err
+			} else {
+				log.Info("Certificates renewed", "name", name)
+			}
+		}
 	}
 	return nil
 }
 
 func createCertificate(isServer bool, cn string, ou []string, dns []string, ips []net.IP,
-	caCert *x509.Certificate, caKey *rsa.PrivateKey) ([]byte, []byte, error) {
+	caCert *x509.Certificate, caKey *rsa.PrivateKey, key *rsa.PrivateKey) ([]byte, []byte, error) {
 	sn, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
 		log.Error(err, "failed to generate serial number")
@@ -250,11 +293,15 @@ func createCertificate(isServer bool, cn string, ou []string, dns []string, ips 
 	if ips != nil {
 		cert.IPAddresses = ips
 	}
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		log.Error(err, "Failed to generate private key", "cn", cn)
-		return nil, nil, err
+
+	if key == nil {
+		key, err = rsa.GenerateKey(rand.Reader, 2048)
+		if err != nil {
+			log.Error(err, "Failed to generate private key", "cn", cn)
+			return nil, nil, err
+		}
 	}
+
 	caBytes, err := x509.CreateCertificate(rand.Reader, cert, caCert, &key.PublicKey, caKey)
 	if err != nil {
 		log.Error(err, "Failed to create certificate", "cn", cn)
@@ -288,4 +335,20 @@ func getCA(c client.Client, isServer bool) (*corev1.Secret, *x509.Certificate, *
 		return nil, nil, nil, err
 	}
 	return caSecret, caCert, caKey, nil
+}
+
+func pemEncode(cert []byte, key []byte) (*bytes.Buffer, *bytes.Buffer) {
+	certPEM := new(bytes.Buffer)
+	pem.Encode(certPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: cert,
+	})
+
+	keyPEM := new(bytes.Buffer)
+	pem.Encode(keyPEM, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: key,
+	})
+
+	return certPEM, keyPEM
 }
