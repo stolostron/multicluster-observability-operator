@@ -53,6 +53,7 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	spec.Containers[0].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
 	args := spec.Containers[0].Args
 	for idx := range args {
+		args[idx] = strings.Replace(args[idx], "{{MCO_NAME}}", r.cr.Name, 1)
 		args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", mcoconfig.GetDefaultNamespace(), 1)
 	}
 

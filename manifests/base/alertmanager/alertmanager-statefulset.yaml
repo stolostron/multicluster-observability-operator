@@ -48,9 +48,9 @@ spec:
         - --data.retention=120h
         - --web.listen-address=0.0.0.0:9093
         - --web.route-prefix=/
-        - --cluster.peer=alertmanager-0.alertmanager-operated.{{MCO_NAMESPACE}}.svc:9094
-        - --cluster.peer=alertmanager-1.alertmanager-operated.{{MCO_NAMESPACE}}.svc:9094
-        - --cluster.peer=alertmanager-2.alertmanager-operated.{{MCO_NAMESPACE}}.svc:9094
+        - --cluster.peer={{MCO_NAME}}-alertmanager-0.alertmanager-operated.{{MCO_NAMESPACE}}.svc:9094
+        - --cluster.peer={{MCO_NAME}}-alertmanager-1.alertmanager-operated.{{MCO_NAMESPACE}}.svc:9094
+        - --cluster.peer={{MCO_NAME}}-alertmanager-2.alertmanager-operated.{{MCO_NAMESPACE}}.svc:9094
         env:
         - name: POD_IP
           valueFrom:
