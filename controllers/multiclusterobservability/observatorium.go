@@ -417,29 +417,29 @@ func newStoreSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) 
 		scSelected)
 	storeSpec.Shards = &mcoconfig.Replicas3
 	storeSpec.ServiceMonitor = true
-	storeSpec.Cache = newStoreCacheSpec(mco)
+	storeSpec.Cache = newMemCacheSpec(mco)
 
 	return storeSpec
 }
 
-func newStoreCacheSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.StoreCacheSpec {
-	storeCacheSpec := obsv1alpha1.StoreCacheSpec{}
-	storeCacheSpec.Image = mcoconfig.MemcachedImgRepo + "/" +
+func newMemCacheSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.MemCacheSpec {
+	memeCacheSpec := obsv1alpha1.MemCacheSpec{}
+	memeCacheSpec.Image = mcoconfig.MemcachedImgRepo + "/" +
 		mcoconfig.MemcachedImgName + ":" + mcoconfig.MemcachedImgTag
-	storeCacheSpec.Version = mcoconfig.MemcachedImgTag
-	storeCacheSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosStoreMemcached)
-	storeCacheSpec.ServiceMonitor = true
-	storeCacheSpec.ExporterImage = mcoconfig.MemcachedExporterImgRepo + "/" +
+	memeCacheSpec.Version = mcoconfig.MemcachedImgTag
+	memeCacheSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosStoreMemcached)
+	memeCacheSpec.ServiceMonitor = true
+	memeCacheSpec.ExporterImage = mcoconfig.MemcachedExporterImgRepo + "/" +
 		mcoconfig.MemcachedExporterImgName + ":" + mcoconfig.MemcachedExporterImgTag
-	storeCacheSpec.ExporterVersion = mcoconfig.MemcachedExporterImgTag
+	memeCacheSpec.ExporterVersion = mcoconfig.MemcachedExporterImgTag
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		storeCacheSpec.Resources = v1.ResourceRequirements{
+		memeCacheSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
 				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosCahcedCPURequets),
 				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosCahcedMemoryRequets),
 			},
 		}
-		storeCacheSpec.ExporterResources = v1.ResourceRequirements{
+		memeCacheSpec.ExporterResources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
 				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosCahcedExporterCPURequets),
 				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosCahcedExporterMemoryRequets),
@@ -447,20 +447,20 @@ func newStoreCacheSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.St
 		}
 	}
 
-	found, image := mcoconfig.ReplaceImage(mco.Annotations, storeCacheSpec.Image, mcoconfig.MemcachedImgName)
+	found, image := mcoconfig.ReplaceImage(mco.Annotations, memeCacheSpec.Image, mcoconfig.MemcachedImgName)
 	if found {
-		storeCacheSpec.Image = image
+		memeCacheSpec.Image = image
 	}
 
-	found, image = mcoconfig.ReplaceImage(mco.Annotations, storeCacheSpec.ExporterImage, mcoconfig.MemcachedExporterKey)
+	found, image = mcoconfig.ReplaceImage(mco.Annotations, memeCacheSpec.ExporterImage, mcoconfig.MemcachedExporterKey)
 	if found {
-		storeCacheSpec.ExporterImage = image
+		memeCacheSpec.ExporterImage = image
 	}
 
 	limit := int32(1024)
-	storeCacheSpec.MemoryLimitMB = &limit
+	memeCacheSpec.MemoryLimitMB = &limit
 
-	return storeCacheSpec
+	return memeCacheSpec
 }
 
 func newThanosSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.ThanosSpec {
@@ -495,6 +495,7 @@ func newQueryFrontendSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1
 			},
 		}
 	}
+	queryFrontendSpec.Cache = newMemCacheSpec(mco)
 	return queryFrontendSpec
 }
 
