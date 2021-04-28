@@ -19,7 +19,7 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 1,
-      "iteration": 1618436660743,
+      "iteration": 1619459882098,
       "links": [],
       "panels": [
         {
@@ -277,12 +277,7 @@ data:
               "id": "filterFieldsByName",
               "options": {
                 "include": {
-                  "names": [
-                    "cluster",
-                    "Value #A",
-                    "Value #C",
-                    "Value #B"
-                  ]
+                  "names": ["cluster", "Value #A", "Value #C", "Value #B"]
                 }
               }
             }
@@ -331,22 +326,6 @@ data:
               }
             },
             "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Time"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Time"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": null
-                  }
-                ]
-              },
               {
                 "matcher": {
                   "id": "byName",
@@ -482,6 +461,10 @@ data:
                   {
                     "id": "custom.align",
                     "value": "left"
+                  },
+                  {
+                    "id": "displayName",
+                    "value": "Cluster"
                   }
                 ]
               }
@@ -501,18 +484,23 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "(sum(kube_pod_container_resource_requests_cpu_cores) by (cluster) / sum(kube_node_status_allocatable_cpu_cores) by (cluster)) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__interval])) by (cluster))",
-              "format": "table",
-              "instant": true,
-              "intervalFactor": 1,
-              "refId": "C"
-            },
-            {
-              "expr": "sum(kube_pod_container_resource_requests_cpu_cores) by (cluster) / sum(kube_node_status_allocatable_cpu_cores) by (cluster)",
+              "expr": "(sum(kube_pod_container_resource_requests{resource=\"cpu\"}) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__interval])) by (cluster))",
               "format": "table",
               "hide": false,
               "instant": true,
+              "interval": "",
               "intervalFactor": 1,
+              "legendFormat": "",
+              "refId": "C"
+            },
+            {
+              "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\"}) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "",
               "refId": "A"
             },
             {
@@ -538,12 +526,7 @@ data:
               "id": "filterFieldsByName",
               "options": {
                 "include": {
-                  "names": [
-                    "cluster",
-                    "Value #C",
-                    "Value #A",
-                    "Value #B"
-                  ]
+                  "names": ["cluster", "Value #C", "Value #A", "Value #B"]
                 }
               }
             }
@@ -578,22 +561,6 @@ data:
               }
             },
             "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Time"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Time"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": null
-                  }
-                ]
-              },
               {
                 "matcher": {
                   "id": "byName",
@@ -752,26 +719,32 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "(sum(kube_pod_container_resource_requests_memory_bytes) by (cluster) / sum(kube_node_status_allocatable_memory_bytes) by (cluster))\n-\n(1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable_memory_bytes) by (cluster))",
+              "expr": "(sum(kube_pod_container_resource_requests{resource=\"memory\"}) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster))\n-\n(1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster))",
               "format": "table",
               "instant": true,
+              "interval": "",
               "intervalFactor": 1,
+              "legendFormat": "",
               "refId": "C"
             },
             {
-              "expr": "sum(kube_pod_container_resource_requests_memory_bytes) by (cluster) / sum(kube_node_status_allocatable_memory_bytes) by (cluster)",
+              "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\"}) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
+              "interval": "",
               "intervalFactor": 1,
+              "legendFormat": "",
               "refId": "A"
             },
             {
-              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable_memory_bytes) by (cluster)",
+              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
+              "interval": "",
               "intervalFactor": 1,
+              "legendFormat": "",
               "refId": "B"
             }
           ],
@@ -789,12 +762,7 @@ data:
               "id": "filterFieldsByName",
               "options": {
                 "include": {
-                  "names": [
-                    "cluster",
-                    "Value #C",
-                    "Value #A",
-                    "Value #B"
-                  ]
+                  "names": ["cluster", "Value #C", "Value #A", "Value #B"]
                 }
               }
             }
@@ -843,22 +811,6 @@ data:
               }
             },
             "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Time"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Time"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": null
-                  }
-                ]
-              },
               {
                 "matcher": {
                   "id": "byName",
@@ -974,6 +926,10 @@ data:
                   {
                     "id": "custom.align",
                     "value": "left"
+                  },
+                  {
+                    "id": "displayName",
+                    "value": "Cluster"
                   }
                 ]
               }
@@ -993,7 +949,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "sum(cluster:capacity_cpu_cores:sum) by (cluster)",
+              "expr": "sum(machine_cpu_cores) by (cluster)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -1001,13 +957,15 @@ data:
               "refId": "F"
             },
             {
-              "expr": "sum(kube_node_status_allocatable_cpu_cores) by (cluster)",
+              "expr": "sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)",
               "format": "table",
               "instant": true,
+              "interval": "",
+              "legendFormat": "",
               "refId": "B"
             },
             {
-              "expr": "sum(kube_pod_container_resource_requests_cpu_cores) by (cluster) / sum(kube_node_status_allocatable_cpu_cores) by (cluster)",
+              "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\"}) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1064,13 +1022,7 @@ data:
               "id": "filterFieldsByName",
               "options": {
                 "include": {
-                  "names": [
-                    "cluster",
-                    "Value #F",
-                    "Value #B",
-                    "Value #A",
-                    "Value #G"
-                  ]
+                  "names": ["cluster", "Value #F", "Value #B", "Value #A", "Value #G"]
                 }
               }
             }
@@ -1203,22 +1155,6 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Time"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Time"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
                   "options": "Value #F"
                 },
                 "properties": [
@@ -1315,6 +1251,10 @@ data:
                   {
                     "id": "custom.align",
                     "value": "left"
+                  },
+                  {
+                    "id": "displayName",
+                    "value": "Cluster"
                   }
                 ]
               }
@@ -1333,7 +1273,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "sum(cluster:capacity_memory_bytes:sum) by (cluster)",
+              "expr": "sum(machine_memory_bytes) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1343,7 +1283,7 @@ data:
               "refId": "F"
             },
             {
-              "expr": "sum(kube_pod_container_resource_requests_memory_bytes) by (cluster) / sum(kube_node_status_allocatable_memory_bytes) by (cluster)",
+              "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\"}) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1353,7 +1293,7 @@ data:
               "refId": "A"
             },
             {
-              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable_memory_bytes) by (cluster)",
+              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1400,12 +1340,7 @@ data:
               "id": "filterFieldsByName",
               "options": {
                 "include": {
-                  "names": [
-                    "cluster",
-                    "Value #F",
-                    "Value #A",
-                    "Value #G"
-                  ]
+                  "names": ["cluster", "Value #F", "Value #A", "Value #G"]
                 }
               }
             }
@@ -1461,7 +1396,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "topk(5, (1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable_memory_bytes) by (cluster)))",
+              "expr": "topk(5, (1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)))",
               "interval": "",
               "intervalFactor": 1,
               "legendFormat": "{{cluster}}",
@@ -1608,6 +1543,18 @@ data:
                     "value": "left"
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "cluster"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Cluster"
+                  }
+                ]
               }
             ]
           },
@@ -1689,12 +1636,7 @@ data:
               "id": "filterFieldsByName",
               "options": {
                 "include": {
-                  "names": [
-                    "cluster",
-                    "Value #F",
-                    "Value #B",
-                    "Value #A"
-                  ]
+                  "names": ["cluster", "Value #F", "Value #B", "Value #A"]
                 }
               }
             }
@@ -1809,16 +1751,14 @@ data:
       "refresh": "1m",
       "schemaVersion": 27,
       "style": "light",
-      "tags": [
-        "ACM"
-      ],
+      "tags": ["ACM"],
       "templating": {
         "list": [
           {
             "current": {
               "selected": false,
-              "text": "Observatorium",
-              "value": "Observatorium"
+              "text": "",
+              "value": ""
             },
             "description": null,
             "error": null,
@@ -1838,12 +1778,8 @@ data:
             "allValue": null,
             "current": {
               "selected": true,
-              "text": [
-                "All"
-              ],
-              "value": [
-                "$__all"
-              ]
+              "text": ["All"],
+              "value": ["$__all"]
             },
             "datasource": "$datasource",
             "definition": "label_values(node_cpu_seconds_total, cluster)",
@@ -1876,20 +1812,12 @@ data:
         "to": "now"
       },
       "timepicker": {
-        "refresh_intervals": [
-          "1m",
-          "5m",
-          "15m",
-          "30m",
-          "1h",
-          "2h",
-          "1d"
-        ]
+        "refresh_intervals": ["1m", "5m", "15m", "30m", "1h", "2h", "1d"]
       },
       "timezone": "browser",
       "title": "ACM - Clusters Overview",
       "uid": "2b679d600f3b9e7676a7c5ac3643d448",
-      "version": 3
+      "version": 4
     }
 kind: ConfigMap
 metadata:

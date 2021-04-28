@@ -983,8 +983,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Observatorium",
-              "value": "Observatorium"
+              "text": "",
+              "value": ""
             },
             "description": null,
             "error": null,

@@ -1941,8 +1941,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Observatorium",
-              "value": "Observatorium"
+              "text": "",
+              "value": ""
             },
             "description": null,
             "error": null,
@@ -1986,7 +1986,7 @@ data:
           "30d"
         ]
       },
-      "timezone": "",
+      "timezone": "browser",
       "title": "Kubernetes / Networking / Cluster",
       "uid": "ff635a025bcfea7bc3dd4f508990a3e9",
       "version": 2
