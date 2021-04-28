@@ -688,6 +688,10 @@ github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-202
 github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20210325184301-dd3e27fc2978/go.mod h1:xjRErANcCAoAzsgMMurqW3CHBlNun4PH4elIUWLhNEo=
 github.com/open-cluster-management/observatorium-operator v0.0.0-20210421123734-13feeb802b22 h1:IncbzHyzjHUK3oOhsbhFXev6CGIhjtbV9UNmeWo/GDs=
 github.com/open-cluster-management/observatorium-operator v0.0.0-20210421123734-13feeb802b22/go.mod h1:vWUNIjImrJmNA2Mc1rBUZ5EULzAzfkN/k2Aqr285qvk=
+github.com/open-cluster-management/observatorium-operator v0.0.0-20210427102123-bcdf8ae0192c h1:wIZlDqDXWXc0aUHjsWWbYXnNv6oZcErbbauJZiaqGDA=
+github.com/open-cluster-management/observatorium-operator v0.0.0-20210427102123-bcdf8ae0192c/go.mod h1:2pe1pdg7G1EeuuKbbMAZG+BIHbQAnujtOf9tvilV0Js=
+github.com/open-cluster-management/observatorium-operator v0.0.0-20210428022751-dc93429038f5 h1:eh/+FWhOJna+wZC3FyVWtdN+5RbetIix4ctghVaTnsk=
+github.com/open-cluster-management/observatorium-operator v0.0.0-20210428022751-dc93429038f5/go.mod h1:2pe1pdg7G1EeuuKbbMAZG+BIHbQAnujtOf9tvilV0Js=
 github.com/opencontainers/go-digest v1.0.0-rc1/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.0.1/go.mod h1:BtxoFyWECRxE4U/7sNtV5W15zMzWCbyJoFRP3s7yZA0=

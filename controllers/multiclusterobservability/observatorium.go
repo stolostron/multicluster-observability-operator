@@ -373,7 +373,7 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 		scSelected)
 
 	//configure alertmanager in ruler
-	ruleSpec.AlertmanagersURL = []string{mcoconfig.AlertmanagerURL}
+	ruleSpec.AlertmanagerURLs = []string{mcoconfig.AlertmanagerURL}
 	ruleSpec.RulesConfig = []obsv1alpha1.RuleConfig{
 		{
 			Name: mcoconfig.AlertRuleDefaultConfigMapName,
