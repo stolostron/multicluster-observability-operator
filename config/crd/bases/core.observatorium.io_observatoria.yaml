@@ -1003,6 +1003,77 @@ spec:
                   queryFrontend:
                     description: Thanos QueryFrontend
                     properties:
+                      cache:
+                        description: Memcached spec for QueryFrontend
+                        properties:
+                          exporterImage:
+                            description: Memcached Prometheus Exporter image
+                            type: string
+                          exporterResources:
+                            description: Compute Resources required by this container.
+                            properties:
+                              limits:
+                                additionalProperties:
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                  x-kubernetes-int-or-string: true
+                                description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                type: object
+                              requests:
+                                additionalProperties:
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                  x-kubernetes-int-or-string: true
+                                description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                type: object
+                            type: object
+                          exporterVersion:
+                            description: Version of Memcached Prometheus Exporter image to be deployed.
+                            type: string
+                          image:
+                            description: Memcached image
+                            type: string
+                          memoryLimitMb:
+                            description: Memory limit of Memcached in megabytes.
+                            format: int32
+                            type: integer
+                          replicas:
+                            description: Number of Memcached replicas.
+                            format: int32
+                            type: integer
+                          resources:
+                            description: Compute Resources required by this container.
+                            properties:
+                              limits:
+                                additionalProperties:
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                  x-kubernetes-int-or-string: true
+                                description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                type: object
+                              requests:
+                                additionalProperties:
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                  x-kubernetes-int-or-string: true
+                                description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                type: object
+                            type: object
+                          serviceMonitor:
+                            description: ServiceMonitor enables servicemonitor.
+                            type: boolean
+                          version:
+                            description: Version of Memcached image to be deployed.
+                            type: string
+                        type: object
                       replicas:
                         description: Number of Query Frontend replicas.
                         format: int32
@@ -1205,8 +1276,8 @@ spec:
                   rule:
                     description: Thanos RulerSpec
                     properties:
-                      alertmanagersURL:
-                        description: AlertmanagersURL
+                      alertmanagerURLs:
+                        description: AlertmanagerURLs
                         items:
                           type: string
                         type: array
