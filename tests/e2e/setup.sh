@@ -158,6 +158,13 @@ deploy_hub_core() {
     git clone https://github.com/open-cluster-management/registration-operator.git
     cd registration-operator/
     git checkout release-2.1
+
+
+    $sed_command "s~registration-operator:latest~registration-operator:0.0.2~g" deploy/klusterlet/operator.yaml
+    $sed_command "s~registration-operator:latest~registration-operator:0.0.2~g" deploy/cluster-manager/operator.yaml
+    $sed_command "s~quay.io/open-cluster-management/registration~quay.io/open-cluster-management/registration:0.0.2~g" deploy/klusterlet/crds/operator_open-cluster-management_klusterlets.cr.yaml
+    $sed_command "s~quay.io/open-cluster-management/registration~quay.io/open-cluster-management/registration:0.0.2~g" deploy/cluster-manager/crds/operator_open-cluster-management_clustermanagers.cr.yaml
+
     $sed_command "s~replicas: 3~replicas: 1~g" deploy/cluster-manager/*.yaml
     $sed_command "s~cpu: 100m~cpu: 10m~g" deploy/cluster-manager/*.yaml
 
