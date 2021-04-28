@@ -10,7 +10,7 @@ import (
 
 // +kubebuilder:docs-gen:collapse=Go imports
 
-var cronjoblog = logf.Log.WithName("multiClusterObservability-resource")
+var multiclusterobservabilitylog = logf.Log.WithName("multiClusterObservability-resource")
 
 /*
 This setup is doubles as setup for our conversion webhooks: as long as our
