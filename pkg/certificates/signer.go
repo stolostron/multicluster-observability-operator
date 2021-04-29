@@ -11,16 +11,21 @@ import (
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/signer/local"
 	certificatesv1 "k8s.io/api/certificates/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func getClient() (client.Client, error) {
+func getClient(s *runtime.Scheme) (client.Client, error) {
 	config, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
 		return nil, errors.New("failed to create the kube config")
 	}
-	c, err := client.New(config, client.Options{})
+	options := client.Options{}
+	if s != nil {
+		options = client.Options{Scheme: s}
+	}
+	c, err := client.New(config, options)
 	if err != nil {
 		return nil, errors.New("failed to create the kube client")
 	}
@@ -28,7 +33,7 @@ func getClient() (client.Client, error) {
 }
 
 func sign(csr *certificatesv1.CertificateSigningRequest) []byte {
-	c, err := getClient()
+	c, err := getClient(nil)
 	if err != nil {
 		log.Error(err, err.Error())
 		return nil

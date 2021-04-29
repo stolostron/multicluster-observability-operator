@@ -274,7 +274,7 @@ func newAPITenants() []obsv1alpha1.APITenant {
 			ID:   mcoconfig.GetTenantUID(),
 			MTLS: &obsv1alpha1.TenantMTLS{
 				SecretName: config.ClientCACerts,
-				CAKey:      "ca.crt",
+				CAKey:      "tls.crt",
 			},
 		},
 	}

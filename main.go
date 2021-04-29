@@ -28,7 +28,6 @@ import (
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -176,11 +175,6 @@ func main() {
 	}
 
 	if err := placementv1.AddToScheme(mgr.GetScheme()); err != nil {
-		setupLog.Error(err, "")
-		os.Exit(1)
-	}
-
-	if err := certv1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
