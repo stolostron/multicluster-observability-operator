@@ -42,6 +42,7 @@ do
 
 	# create ca/sa/rolebinding for metrics collector
 	kubectl get configmap metrics-collector-serving-certs-ca-bundle -n open-cluster-management-addon-observability -o json | jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid) | .metadata.creationTimestamp=null' | kubectl apply -n ${cluster_name} -f -
+	kubectl get secret observability-controller-open-cluster-management.io-observability-signer-client-cert -n open-cluster-management-addon-observability -o json | jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid) | .metadata.creationTimestamp=null' | kubectl apply -n ${cluster_name} -f -
 	kubectl get secret observability-managed-cluster-certs -n open-cluster-management-addon-observability -o json | jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid) | .metadata.creationTimestamp=null' | kubectl apply -n ${cluster_name} -f -
 	kubectl get sa endpoint-observability-operator-sa -n open-cluster-management-addon-observability -o json | jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid) | .metadata.creationTimestamp=null' | kubectl apply -n ${cluster_name} -f -	
 	kubectl -n ${cluster_name} patch secret observability-managed-cluster-certs --type='json' -p='[{"op": "replace", "path": "/metadata/ownerReferences", "value": []}]'
