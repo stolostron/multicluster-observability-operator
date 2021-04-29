@@ -125,19 +125,6 @@ Default is 2h
    </td>
    <td>N
    </td>
-  </tr>
-  <tr>
-   <td>CleanupInterval
-   </td>
-   <td>string
-   </td>
-   <td>Configure --compact.cleanup-interval in compact. How often we should clean up partially uploaded blocks. Setting it to "0s" disables it.
-<p>
-Default is 5m
-   </td>
-   <td>N
-   </td>
-  </tr>
     <tr>
    <td>DeleteDelay
    </td>
