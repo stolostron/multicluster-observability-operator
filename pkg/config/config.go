@@ -69,7 +69,7 @@ const (
 	ThanosReceiveControllerImgName = "thanos-receive-controller"
 	//ThanosReceiveControllerKey is used to get from mch-image-manifest.xxx configmap
 	ThanosReceiveControllerKey    = "thanos_receive_controller"
-	ThanosReceiveControllerImgTag = "master-2021-02-08-36d6090"
+	ThanosReceiveControllerImgTag = "master-2021-04-28-ee165b6"
 
 	ThanosImgName = "thanos"
 	ThanosImgTag  = "2.3.0-SNAPSHOT-2021-03-19-13-50-28"
