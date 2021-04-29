@@ -8,6 +8,7 @@
 package shared
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -24,6 +25,11 @@ type ObservabilityAddonSpec struct {
 	// +kubebuilder:validation:Minimum=15
 	// +kubebuilder:validation:Maximum=3600
 	Interval int32 `json:"interval,omitempty"`
+
+	// Resource requirement for metrics-collector
+	// +optional
+	// +kubebuilder:default:={requests: {cpu: "100m", memory: "100Mi"}, limits: {cpu: "100m", memory: "600Mi"}}
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 type PreConfiguredStorage struct {

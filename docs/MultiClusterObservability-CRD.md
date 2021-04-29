@@ -370,6 +370,18 @@ The default is 1m
    <td>N
    </td>
   </tr>
+  <tr>
+   <td>Resources
+   </td>
+   <td>ResourceRequirements
+   </td>
+   <td>Resource for the metrics collector resource requirement
+<p>
+The default CPU request is 100m, memory request is 100Mi, default CPU limit is 100m, memory limit is 600Mi. 
+   </td>
+   <td>N
+   </td>
+  </tr>
 </table>
 
 

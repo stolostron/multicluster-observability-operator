@@ -19,6 +19,13 @@ spec:
           image: REPLACE_WITH_OPERATOR_IMAGE
           command:
           - endpoint-monitoring-operator
+          resources:
+            limits:
+              cpu: 100m
+              memory: 600Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
           imagePullPolicy: Always
           env:
             - name: HUB_NAMESPACE
