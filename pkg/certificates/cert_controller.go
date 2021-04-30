@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/kubectl/pkg/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -36,7 +35,7 @@ var (
 	caSecretNames = []string{serverCACerts, clientCACerts}
 )
 
-func Start() {
+func Start(c client.Client) {
 
 	// setup ocm addon manager
 	addonMgr, err := addonmanager.New(ctrl.GetConfigOrDie())
@@ -51,15 +50,6 @@ func Start() {
 	kubeClient, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
 	if err != nil {
 		log.Error(err, "Failed to create kube client")
-		os.Exit(1)
-	}
-	s := scheme.Scheme
-	if err := mcov1beta2.AddToScheme(s); err != nil {
-		os.Exit(1)
-	}
-	c, err := getClient(s)
-	if err != nil {
-		log.Error(err, "Failed to get controller client")
 		os.Exit(1)
 	}
 	watchlist := cache.NewListWatchFromClient(kubeClient.CoreV1().RESTClient(), "secrets", config.GetDefaultNamespace(),
@@ -127,9 +117,9 @@ func Start() {
 						case name == clientCACerts:
 							err = createCASecret(c, nil, nil, true, clientCACerts, clientCACertificateCN)
 						case name == grafanaCerts:
-							err = createCertSecret(c, nil, nil, true, grafanaCerts, true, grafanaCertificateCN, nil, nil, nil)
+							err = createCertSecret(c, nil, nil, true, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
 						case name == serverCerts:
-							err = createCertSecret(c, nil, nil, true, serverCerts, true, serverCertificateCN, nil, nil, nil)
+							err = createCertSecret(c, nil, nil, true, serverCerts, true, serverCertificateCN, nil, getHosts(c), nil)
 						default:
 							return
 						}

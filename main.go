@@ -209,7 +209,7 @@ func main() {
 	}
 
 	// setup ocm addon manager
-	certctrl.Start()
+	certctrl.Start(mgr.GetClient())
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

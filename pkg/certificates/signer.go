@@ -38,7 +38,7 @@ func sign(csr *certificatesv1.CertificateSigningRequest) []byte {
 		log.Error(err, err.Error())
 		return nil
 	}
-	_, caCert, caKey, err := getCA(c, false)
+	caCert, caKey, _, err := getCA(c, false)
 	if err != nil {
 		return nil
 	}
