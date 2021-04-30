@@ -17,7 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
-	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
@@ -329,12 +328,7 @@ func getObservabilityAddon(c client.Client, namespace string,
 	if found.ObjectMeta.DeletionTimestamp != nil {
 		return nil, nil
 	}
-	if mco.Spec.ObservabilityAddonSpec == nil {
-		mco.Spec.ObservabilityAddonSpec = &mcoshared.ObservabilityAddonSpec{
-			EnableMetrics: true,
-			Interval:      30,
-		}
-	}
+
 	return &mcov1beta1.ObservabilityAddon{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "observability.open-cluster-management.io/v1beta1",
@@ -344,10 +338,7 @@ func getObservabilityAddon(c client.Client, namespace string,
 			Name:      obsAddonName,
 			Namespace: spokeNameSpace,
 		},
-		Spec: mcoshared.ObservabilityAddonSpec{
-			EnableMetrics: mco.Spec.ObservabilityAddonSpec.EnableMetrics,
-			Interval:      mco.Spec.ObservabilityAddonSpec.Interval,
-		},
+		Spec: *mco.Spec.ObservabilityAddonSpec,
 	}, nil
 }
 
