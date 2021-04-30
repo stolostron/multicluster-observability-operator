@@ -4,4 +4,4 @@
 
 git clone --depth 1 https://github.com/open-cluster-management/observability-e2e-test.git
 cd observability-e2e-test
-make test-e2e
+# make test-e2e
