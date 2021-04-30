@@ -149,7 +149,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", instance=~\"$instance\", verb!=\"WATCH\", cluster=\"$cluster\"}[5m])) by (le))",
+              "expr": "max(apiserver_request_duration_seconds:histogram_quantile_99) by (cluster)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,

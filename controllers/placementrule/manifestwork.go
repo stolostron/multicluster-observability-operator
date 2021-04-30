@@ -33,6 +33,13 @@ type MetricsAllowlist struct {
 	NameList  []string          `yaml:"names"`
 	MatchList []string          `yaml:"matches"`
 	ReNameMap map[string]string `yaml:"renames"`
+	RuleList  []Rule            `yaml:"rules"`
+}
+
+// Rule is the struct for recording rules and alert rules
+type Rule struct {
+	Record string `yaml:"record"`
+	Expr   string `yaml:"expr"`
 }
 
 func deleteManifestWork(c client.Client, name string, namespace string) error {
@@ -277,6 +284,7 @@ func getMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 		metricNameList := handleDeletedMetrics(customAllowlist.NameList)
 		allowlist.NameList = append(allowlist.NameList, metricNameList...)
 		allowlist.MatchList = append(allowlist.MatchList, customAllowlist.MatchList...)
+		allowlist.RuleList = append(allowlist.RuleList, customAllowlist.RuleList...)
 		for k, v := range customAllowlist.ReNameMap {
 			allowlist.ReNameMap[k] = v
 		}

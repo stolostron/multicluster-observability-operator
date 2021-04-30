@@ -245,7 +245,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "max(histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (verb,le,cluster))) by (cluster)",
+              "expr": "max(apiserver_request_duration_seconds:histogram_quantile_99) by (cluster)",
               "format": "table",
               "instant": true,
               "refId": "A"

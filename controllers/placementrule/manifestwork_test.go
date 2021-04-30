@@ -96,6 +96,9 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
     - b
   renames:
     a: c
+  rules:
+    - record: f
+      expr: g
 `},
 	}
 }
@@ -112,6 +115,9 @@ func NewMetricsCustomAllowListCM() *corev1.ConfigMap {
     - d
   renames:
     d: e
+  rules:
+    - record: h
+      expr: i
 `},
 	}
 }
