@@ -51,7 +51,7 @@ func sign(csr *certificatesv1.CertificateSigningRequest) []byte {
 	certExpiryDuration := 365 * 24 * time.Hour
 	durationUntilExpiry := time.Until(caCert.NotAfter)
 	if durationUntilExpiry <= 0 {
-		log.Error(errors.New("signer has expired"), "the signer has expired: %v", caCert.NotAfter)
+		log.Error(errors.New("signer has expired"), "the signer has expired", "expired time", caCert.NotAfter)
 		return nil
 	}
 	if durationUntilExpiry < certExpiryDuration {
