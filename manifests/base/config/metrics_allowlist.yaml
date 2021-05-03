@@ -21,6 +21,9 @@ data:
       - cluster:memory_usage_bytes:sum
       - cluster:usage:resources:sum
       - cluster_infrastructure_provider
+      - cluster_quantile:scheduler_binding_duration_seconds:histogram_quantile
+      - cluster_quantile:scheduler_e2e_scheduling_duration_seconds:histogram_quantile
+      - cluster_quantile:scheduler_scheduling_algorithm_duration_seconds:histogram_quantile
       - cluster_version
       - cluster_version_payload
       - container_cpu_cfs_periods_total
@@ -129,6 +132,7 @@ data:
       - node_netstat_TcpExt_TCPSynRetrans
       - process_cpu_seconds_total
       - process_resident_memory_bytes
+      - rest_client_request_latency_seconds_bucket
       - rest_client_requests_total
       - up
       - workqueue_adds_total
