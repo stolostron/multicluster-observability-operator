@@ -485,6 +485,8 @@ func newThanosSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string)
 	if replace {
 		thanosSpec.Image = image
 	}
+	thanosSpec.Version = "2.3.0-SNAPSHOT-2021-04-27-14-40-48"
+	thanosSpec.Image = "quay.io/open-cluster-management/thanos:2.3.0-SNAPSHOT-2021-04-27-14-40-48"
 	return thanosSpec
 }
 
