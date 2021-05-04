@@ -36,9 +36,8 @@ const (
 
 	clientCACertificateCN = "observability-client-ca-certificate"
 	clientCACerts         = config.ClientCACerts
-
-	grafanaCertificateCN = config.GrafanaCN
-	grafanaCerts         = config.GrafanaCerts
+	grafanaCertificateCN  = config.GrafanaCN
+	grafanaCerts          = config.GrafanaCerts
 )
 
 var (
@@ -56,14 +55,7 @@ func CreateObservabilityCerts(c client.Client, scheme *runtime.Scheme, mco *mcov
 		return err
 	}
 
-	hosts := []string{config.GetObsAPISvc(mco.GetName())}
-	url, err := config.GetObsAPIUrl(c, config.GetDefaultNamespace())
-	if err != nil {
-		log.Info("Failed to get api route address", "error", err.Error())
-	} else {
-		hosts = append(hosts, url)
-	}
-	err = createCertSecret(c, scheme, mco, false, serverCerts, true, serverCertificateCN, nil, hosts, nil)
+	err = createCertSecret(c, scheme, mco, false, serverCerts, true, serverCertificateCN, nil, getHosts(c), nil)
 	if err != nil {
 		return err
 	}
@@ -131,7 +123,7 @@ func createCASecret(c client.Client,
 			}
 			certPEM, keyPEM := pemEncode(cert, key)
 			caSecret.Data["ca.crt"] = certPEM.Bytes()
-			caSecret.Data["tls.crt"] = certPEM.Bytes()
+			caSecret.Data["tls.crt"] = append(certPEM.Bytes(), caSecret.Data["tls.crt"]...)
 			caSecret.Data["tls.key"] = keyPEM.Bytes()
 			if err := c.Update(context.TODO(), caSecret); err != nil {
 				log.Error(err, "Failed to update secret", "name", name)
@@ -194,7 +186,7 @@ func createCertSecret(c client.Client,
 			log.Error(err, "Failed to check certificate secret", "name", name)
 			return err
 		} else if !isRenew {
-			caSecret, caCert, caKey, err := getCA(c, isServer)
+			caCert, caKey, caCertBytes, err := getCA(c, isServer)
 			if err != nil {
 				return err
 			}
@@ -209,7 +201,7 @@ func createCertSecret(c client.Client,
 					Namespace: config.GetDefaultNamespace(),
 				},
 				Data: map[string][]byte{
-					"ca.crt":  caSecret.Data["tls.crt"],
+					"ca.crt":  caCertBytes,
 					"tls.crt": certPEM.Bytes(),
 					"tls.key": keyPEM.Bytes(),
 				},
@@ -229,7 +221,7 @@ func createCertSecret(c client.Client,
 		if !isRenew {
 			log.Info("Certificate secrets already existed", "name", name)
 		} else {
-			caSecret, caCert, caKey, err := getCA(c, isServer)
+			caCert, caKey, caCertBytes, err := getCA(c, isServer)
 			if err != nil {
 				return err
 			}
@@ -244,7 +236,7 @@ func createCertSecret(c client.Client,
 				return err
 			}
 			certPEM, keyPEM := pemEncode(cert, key)
-			crtSecret.Data["ca.crt"] = caSecret.Data["tls.crt"]
+			crtSecret.Data["ca.crt"] = caCertBytes
 			crtSecret.Data["tls.crt"] = certPEM.Bytes()
 			crtSecret.Data["tls.key"] = keyPEM.Bytes()
 			if err := c.Update(context.TODO(), crtSecret); err != nil {
@@ -311,7 +303,7 @@ func createCertificate(isServer bool, cn string, ou []string, dns []string, ips 
 	return keyBytes, caBytes, nil
 }
 
-func getCA(c client.Client, isServer bool) (*corev1.Secret, *x509.Certificate, *rsa.PrivateKey, error) {
+func getCA(c client.Client, isServer bool) (*x509.Certificate, *rsa.PrivateKey, []byte, error) {
 	caCertName := serverCACerts
 	if !isServer {
 		caCertName = clientCACerts
@@ -322,8 +314,9 @@ func getCA(c client.Client, isServer bool) (*corev1.Secret, *x509.Certificate, *
 		log.Error(err, "Failed to get ca secret", "name", caCertName)
 		return nil, nil, nil, err
 	}
-	block1, _ := pem.Decode(caSecret.Data["tls.crt"])
-	caCert, err := x509.ParseCertificate(block1.Bytes)
+	block1, rest := pem.Decode(caSecret.Data["tls.crt"])
+	caCertBytes := caSecret.Data["tls.crt"][:len(caSecret.Data["tls.crt"])-len(rest)]
+	caCerts, err := x509.ParseCertificates(block1.Bytes)
 	if err != nil {
 		log.Error(err, "Failed to parse ca cert", "name", caCertName)
 		return nil, nil, nil, err
@@ -334,7 +327,51 @@ func getCA(c client.Client, isServer bool) (*corev1.Secret, *x509.Certificate, *
 		log.Error(err, "Failed to parse ca key", "name", caCertName)
 		return nil, nil, nil, err
 	}
-	return caSecret, caCert, caKey, nil
+	return caCerts[0], caKey, caCertBytes, nil
+}
+
+func removeExpiredCA(c client.Client, name string) {
+	caSecret := &corev1.Secret{}
+	err := c.Get(context.TODO(), types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: name}, caSecret)
+	if err != nil {
+		log.Error(err, "Failed to get ca secret", "name", name)
+		return
+	}
+	data := caSecret.Data["tls.crt"]
+	_, restData := pem.Decode(data)
+	caSecret.Data["tls.crt"] = data[:len(data)-len(restData)]
+	if len(restData) > 0 {
+		for {
+			var block *pem.Block
+			index := len(data) - len(restData)
+			block, restData = pem.Decode(restData)
+			certs, err := x509.ParseCertificates(block.Bytes)
+			removeFlag := false
+			if err != nil {
+				log.Error(err, "Find wrong cert bytes, needs to remove it", "name", name)
+				removeFlag = true
+			} else {
+				if time.Now().After(certs[0].NotAfter) {
+					log.Info("CA certificate expired, needs to remove it", "name", name)
+					removeFlag = true
+				}
+			}
+			if !removeFlag {
+				caSecret.Data["tls.crt"] = append(caSecret.Data["tls.crt"], data[index:len(data)-len(restData)]...)
+			}
+			if len(restData) == 0 {
+				break
+			}
+		}
+	}
+	if len(data) != len(caSecret.Data["tls.crt"]) {
+		err = c.Update(context.TODO(), caSecret)
+		if err != nil {
+			log.Error(err, "Failed to update ca secret to removed expired ca", "name", name)
+		} else {
+			log.Info("Expired certificates are removed", "name", name)
+		}
+	}
 }
 
 func pemEncode(cert []byte, key []byte) (*bytes.Buffer, *bytes.Buffer) {
@@ -351,4 +388,15 @@ func pemEncode(cert []byte, key []byte) (*bytes.Buffer, *bytes.Buffer) {
 	})
 
 	return certPEM, keyPEM
+}
+
+func getHosts(c client.Client) []string {
+	hosts := []string{config.GetObsAPISvc(config.GetMonitoringCRName())}
+	url, err := config.GetObsAPIUrl(c, config.GetDefaultNamespace())
+	if err != nil {
+		log.Error(err, "Failed to get api route address")
+	} else {
+		hosts = append(hosts, url)
+	}
+	return hosts
 }

@@ -6,7 +6,6 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.6 // indirect
 	github.com/cloudflare/cfssl v1.5.0
 	github.com/go-logr/logr v0.4.0
-	github.com/jetstack/cert-manager v0.0.0-00010101000000-000000000000
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/open-cluster-management/addon-framework v0.0.0-20210414095446-30a5d245b8c7
 	github.com/open-cluster-management/api v0.0.0-20210409125704-06f2aec1a73f
@@ -30,7 +29,6 @@ require (
 replace (
 	github.com/go-logr/logr => github.com/go-logr/logr v0.3.0
 	github.com/go-logr/zapr => github.com/go-logr/zapr v0.2.0
-	github.com/jetstack/cert-manager => github.com/open-cluster-management/cert-manager v0.0.0-20200821135248-2fd523b053f5
 	github.com/open-cluster-management/api => github.com/open-cluster-management/api v0.0.0-20210409125704-06f2aec1a73f
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad
 	golang.org/x/text => golang.org/x/text v0.3.5

@@ -7,7 +7,6 @@ import (
 	"context"
 	"testing"
 
-	cert "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -59,9 +58,6 @@ func initSchema(t *testing.T) {
 	}
 	if err := workv1.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add workv1 scheme: (%v)", err)
-	}
-	if err := cert.AddToScheme(s); err != nil {
-		t.Fatalf("Unable to add cert scheme: (%v)", err)
 	}
 }
 
