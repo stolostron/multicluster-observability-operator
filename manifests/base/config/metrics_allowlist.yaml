@@ -21,6 +21,9 @@ data:
       - cluster:memory_usage_bytes:sum
       - cluster:usage:resources:sum
       - cluster_infrastructure_provider
+      - cluster_quantile:scheduler_binding_duration_seconds:histogram_quantile
+      - cluster_quantile:scheduler_e2e_scheduling_duration_seconds:histogram_quantile
+      - cluster_quantile:scheduler_scheduling_algorithm_duration_seconds:histogram_quantile
       - cluster_version
       - cluster_version_payload
       - container_cpu_cfs_periods_total
@@ -100,8 +103,19 @@ data:
       - kube_pod_info
       - kube_pod_owner
       - kube_resourcequota
+      - kubelet_cgroup_manager_duration_seconds_bucket
+      - kubelet_cgroup_manager_duration_seconds_count
+      - kubelet_node_config_error
+      - kubelet_pleg_relist_duration_seconds_bucket
+      - kubelet_pleg_relist_duration_seconds_count
+      - kubelet_pleg_relist_interval_seconds_bucket
+      - kubelet_pod_start_duration_seconds_count
+      - kubelet_pod_worker_duration_seconds_count
       - kubelet_running_container_count
-      - kubelet_runtime_operations
+      - kubelet_running_pod_count
+      - kubelet_runtime_operations_duration_seconds_bucket
+      - kubelet_runtime_operations_errors_total
+      - kubelet_runtime_operations_total
       - kubelet_runtime_operations_latency_microseconds
       - kubelet_volume_stats_available_bytes
       - kubelet_volume_stats_capacity_bytes
@@ -129,8 +143,17 @@ data:
       - node_netstat_TcpExt_TCPSynRetrans
       - process_cpu_seconds_total
       - process_resident_memory_bytes
+      - rest_client_request_latency_seconds_bucket
       - rest_client_requests_total
+      - scheduler_e2e_scheduling_duration_seconds_count
+      - scheduler_binding_duration_seconds_count
+      - scheduler_scheduling_algorithm_duration_seconds_count
+      - scheduler_volume_scheduling_duration_seconds_count
+      - storage_operation_duration_seconds_bucket
+      - storage_operation_duration_seconds_count
+      - storage_operation_errors_total
       - up
+      - volume_manager_total_volumes
       - workqueue_adds_total
       - workqueue_depth
       - cluster_monitoring_operator_reconcile_errors_total
