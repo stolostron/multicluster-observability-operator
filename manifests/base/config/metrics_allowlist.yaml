@@ -119,6 +119,9 @@ data:
       - kubelet_runtime_operations_latency_microseconds
       - kubelet_volume_stats_available_bytes
       - kubelet_volume_stats_capacity_bytes
+      - kubeproxy_network_programming_duration_seconds_bucket
+      - kubeproxy_sync_proxy_rules_duration_seconds_bucket
+      - kubeproxy_network_programming_duration_seconds_count
       - kube_persistentvolume_status_phase
       - machine_cpu_cores
       - machine_memory_bytes
