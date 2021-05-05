@@ -25,7 +25,6 @@ data:
       - cluster_version_payload
       - container_cpu_cfs_periods_total
       - container_cpu_cfs_throttled_periods_total
-      - container_cpu_usage_seconds_total
       - container_fs_limit_bytes
       - container_fs_usage_bytes
       - container_network_receive_bytes_total
@@ -120,10 +119,6 @@ data:
       - node_filesystem_size_bytes
       - node_memory_MemAvailable_bytes
       - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate
-      - node_namespace_pod_container:container_memory_cache
-      - node_namespace_pod_container:container_memory_rss
-      - node_namespace_pod_container:container_memory_swap
-      - node_namespace_pod_container:container_memory_working_set_bytes
       - node_netstat_Tcp_OutSegs
       - node_netstat_Tcp_RetransSegs
       - node_netstat_TcpExt_TCPSynRetrans
