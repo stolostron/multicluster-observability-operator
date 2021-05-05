@@ -146,9 +146,13 @@ data:
       - rest_client_request_latency_seconds_bucket
       - rest_client_requests_total
       - scheduler_e2e_scheduling_duration_seconds_count
+      - scheduler_e2e_scheduling_duration_seconds_bucket
       - scheduler_binding_duration_seconds_count
+      - scheduler_binding_duration_seconds_bucket
       - scheduler_scheduling_algorithm_duration_seconds_count
+      - scheduler_scheduling_algorithm_duration_seconds_bucket
       - scheduler_volume_scheduling_duration_seconds_count
+      - scheduler_volume_scheduling_duration_seconds_bucket
       - storage_operation_duration_seconds_bucket
       - storage_operation_duration_seconds_count
       - storage_operation_errors_total
