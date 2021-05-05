@@ -5,6 +5,7 @@ package certificates
 
 import (
 	"errors"
+	"os"
 	"time"
 
 	"github.com/cloudflare/cfssl/config"
@@ -14,9 +15,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func getClient(s *runtime.Scheme) (client.Client, error) {
+	if os.Getenv("TEST") != "" {
+		c := fake.NewFakeClient()
+		return c, nil
+	}
 	config, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
 		return nil, errors.New("failed to create the kube config")
@@ -37,6 +43,12 @@ func sign(csr *certificatesv1.CertificateSigningRequest) []byte {
 	if err != nil {
 		log.Error(err, err.Error())
 		return nil
+	}
+	if os.Getenv("TEST") != "" {
+		err := createCASecret(c, nil, nil, false, clientCACerts, clientCACertificateCN)
+		if err != nil {
+			log.Error(err, "Failed to create CA")
+		}
 	}
 	caCert, caKey, _, err := getCA(c, false)
 	if err != nil {

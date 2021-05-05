@@ -97,9 +97,12 @@ func createCASecret(c client.Client,
 					"tls.key": keyPEM.Bytes(),
 				},
 			}
-			if err := controllerutil.SetControllerReference(mco, caSecret, scheme); err != nil {
-				return err
+			if mco != nil {
+				if err := controllerutil.SetControllerReference(mco, caSecret, scheme); err != nil {
+					return err
+				}
 			}
+
 			if err := c.Create(context.TODO(), caSecret); err != nil {
 				log.Error(err, "Failed to create secret", "name", name)
 				return err
