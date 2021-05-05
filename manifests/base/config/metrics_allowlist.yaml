@@ -111,8 +111,8 @@ data:
       - kubelet_pleg_relist_interval_seconds_bucket
       - kubelet_pod_start_duration_seconds_count
       - kubelet_pod_worker_duration_seconds_count
-      - kubelet_running_container_count
-      - kubelet_running_pod_count
+      - kubelet_running_containers
+      - kubelet_running_pods
       - kubelet_runtime_operations_duration_seconds_bucket
       - kubelet_runtime_operations_errors_total
       - kubelet_runtime_operations_total
