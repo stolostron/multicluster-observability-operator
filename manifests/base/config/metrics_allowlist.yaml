@@ -134,6 +134,10 @@ data:
       - process_resident_memory_bytes
       - rest_client_request_latency_seconds_bucket
       - rest_client_requests_total
+      - scheduler_e2e_scheduling_duration_seconds_count
+      - scheduler_binding_duration_seconds_count
+      - scheduler_scheduling_algorithm_duration_seconds_count
+      - scheduler_volume_scheduling_duration_seconds_count
       - up
       - workqueue_adds_total
       - workqueue_depth
