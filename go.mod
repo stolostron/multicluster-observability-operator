@@ -6,6 +6,7 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.6 // indirect
 	github.com/cloudflare/cfssl v1.5.0
 	github.com/go-logr/logr v0.4.0
+	github.com/gobuffalo/flect v0.2.2
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/open-cluster-management/addon-framework v0.0.0-20210414095446-30a5d245b8c7
 	github.com/open-cluster-management/api v0.0.0-20210409125704-06f2aec1a73f

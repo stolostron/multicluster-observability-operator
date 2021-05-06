@@ -30,6 +30,7 @@ import (
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -92,6 +93,12 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	gvkLabelMap := map[schema.GroupVersionKind]util.Selector{
+		v1.SchemeGroupVersion.WithKind("Secret"): {
+			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
+		},
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Port:                   webhookPort,
 		Scheme:                 scheme,
@@ -99,6 +106,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b9d51391.open-cluster-management.io",
+		NewCache:               util.NewFilteredCacheBuilder(gvkLabelMap),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
