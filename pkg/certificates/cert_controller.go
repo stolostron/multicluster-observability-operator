@@ -59,76 +59,11 @@ func Start(c client.Client) {
 		&v1.Secret{},
 		time.Minute*60,
 		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				restartPods(c, *obj.(*v1.Secret), false)
-			},
+			AddFunc: onAdd(c),
 
-			DeleteFunc: func(obj interface{}) {
-				s := *obj.(*v1.Secret)
-				if util.Contains(caSecretNames, s.Name) {
-					mco := &mcov1beta2.MultiClusterObservability{}
-					err := c.Get(context.TODO(), types.NamespacedName{
-						Name: config.GetMonitoringCRName(),
-					}, mco)
-					if err == nil {
-						log.Info("secret for ca certificate deleted by mistake, add the cert back to the new created one", "name", s.Name)
-						i := 0
-						for {
-							caSecret := &v1.Secret{}
-							err = c.Get(context.TODO(), types.NamespacedName{
-								Name:      s.Name,
-								Namespace: config.GetDefaultNamespace(),
-							}, caSecret)
-							if err == nil {
-								caSecret.Data["tls.crt"] = append(caSecret.Data["tls.crt"], s.Data["tls.crt"]...)
-								err = c.Update(context.TODO(), caSecret)
-								if err != nil {
-									log.Error(err, "Failed to update secret for ca certificate", "name", s.Name)
-								}
-								break
-							} else {
-								// wait mco operator recreate the ca certificate at most 30 seconds
-								if i < 6 {
-									time.Sleep(5 * time.Second)
-									i++
-								} else {
-									log.Info("new secret for ca certificate not created")
-									break
-								}
-							}
-						}
-					}
-				}
-			},
+			DeleteFunc: onDelete(c),
 
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				oldS := *oldObj.(*v1.Secret)
-				newS := *newObj.(*v1.Secret)
-				if !reflect.DeepEqual(oldS.Data, newS.Data) {
-					restartPods(c, newS, true)
-				} else {
-					if util.Contains(caSecretNames, newS.Name) {
-						removeExpiredCA(c, newS.Name)
-					}
-					if needsRenew(newS) {
-						switch name := newS.Name; {
-						case name == serverCACerts:
-							err = createCASecret(c, nil, nil, true, serverCACerts, serverCACertifcateCN)
-						case name == clientCACerts:
-							err = createCASecret(c, nil, nil, true, clientCACerts, clientCACertificateCN)
-						case name == grafanaCerts:
-							err = createCertSecret(c, nil, nil, true, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
-						case name == serverCerts:
-							err = createCertSecret(c, nil, nil, true, serverCerts, true, serverCertificateCN, nil, getHosts(c), nil)
-						default:
-							return
-						}
-						if err != nil {
-							log.Error(err, "Failed to renew the certificate", "name", newS.Name)
-						}
-					}
-				}
-			},
+			UpdateFunc: onUpdate(c),
 		},
 	)
 
@@ -199,4 +134,82 @@ func needsRenew(s v1.Secret) bool {
 	}
 
 	return false
+}
+
+func onAdd(c client.Client) func(obj interface{}) {
+	return func(obj interface{}) {
+		restartPods(c, *obj.(*v1.Secret), false)
+	}
+}
+
+func onDelete(c client.Client) func(obj interface{}) {
+	return func(obj interface{}) {
+		s := *obj.(*v1.Secret)
+		if util.Contains(caSecretNames, s.Name) {
+			mco := &mcov1beta2.MultiClusterObservability{}
+			err := c.Get(context.TODO(), types.NamespacedName{
+				Name: config.GetMonitoringCRName(),
+			}, mco)
+			if err == nil {
+				log.Info("secret for ca certificate deleted by mistake, add the cert back to the new created one", "name", s.Name)
+				i := 0
+				for {
+					caSecret := &v1.Secret{}
+					err = c.Get(context.TODO(), types.NamespacedName{
+						Name:      s.Name,
+						Namespace: config.GetDefaultNamespace(),
+					}, caSecret)
+					if err == nil {
+						caSecret.Data["tls.crt"] = append(caSecret.Data["tls.crt"], s.Data["tls.crt"]...)
+						err = c.Update(context.TODO(), caSecret)
+						if err != nil {
+							log.Error(err, "Failed to update secret for ca certificate", "name", s.Name)
+						}
+						break
+					} else {
+						// wait mco operator recreate the ca certificate at most 30 seconds
+						if i < 6 {
+							time.Sleep(5 * time.Second)
+							i++
+						} else {
+							log.Info("new secret for ca certificate not created")
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+func onUpdate(c client.Client) func(oldObj, newObj interface{}) {
+	return func(oldObj, newObj interface{}) {
+		oldS := *oldObj.(*v1.Secret)
+		newS := *newObj.(*v1.Secret)
+		if !reflect.DeepEqual(oldS.Data, newS.Data) {
+			restartPods(c, newS, true)
+		} else {
+			if util.Contains(caSecretNames, newS.Name) {
+				removeExpiredCA(c, newS.Name)
+			}
+			if needsRenew(newS) {
+				var err error
+				switch name := newS.Name; {
+				case name == serverCACerts:
+					err = createCASecret(c, nil, nil, true, serverCACerts, serverCACertifcateCN)
+				case name == clientCACerts:
+					err = createCASecret(c, nil, nil, true, clientCACerts, clientCACertificateCN)
+				case name == grafanaCerts:
+					err = createCertSecret(c, nil, nil, true, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
+				case name == serverCerts:
+					err = createCertSecret(c, nil, nil, true, serverCerts, true, serverCertificateCN, nil, getHosts(c), nil)
+				default:
+					return
+				}
+				if err != nil {
+					log.Error(err, "Failed to renew the certificate", "name", newS.Name)
+				}
+			}
+		}
+	}
 }

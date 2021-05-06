@@ -490,7 +490,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(node_namespace_pod_container:container_memory_working_set_bytes{cluster=\"$cluster\", node=\"$node\", container!=\"\"}) by (pod)",
+              "expr": "sum(container_memory_working_set_bytes{cluster=\"$cluster\", node=\"$node\", container!=\"\",job=\"kubelet\", metrics_path=\"\/metrics\/cadvisor\", image!=\"\"}) by (pod)",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{pod}}",
@@ -825,7 +825,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "sum(node_namespace_pod_container:container_memory_working_set_bytes{cluster=\"$cluster\", node=\"$node\",container!=\"\"}) by (pod)",
+              "expr": "sum(container_memory_working_set_bytes{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"\/metrics\/cadvisor\", image!=\"\"}) by (pod)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -844,7 +844,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(node_namespace_pod_container:container_memory_working_set_bytes{cluster=\"$cluster\", node=\"$node\",container!=\"\"}) by (pod) / sum(kube_pod_container_resource_requests{node=\"$node\", resource=\"memory\"}) by (pod)",
+              "expr": "sum(container_memory_working_set_bytes{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"\/metrics\/cadvisor\", image!=\"\"}) by (pod) / sum(kube_pod_container_resource_requests{node=\"$node\", resource=\"memory\"}) by (pod)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -864,7 +864,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(node_namespace_pod_container:container_memory_working_set_bytes{cluster=\"$cluster\", node=\"$node\",container!=\"\"}) by (pod) / sum(kube_pod_container_resource_limits{node=\"$node\", resource=\"memory\"}) by (pod)",
+              "expr": "sum(container_memory_working_set_bytes{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"\/metrics\/cadvisor\", image!=\"\"}) by (pod) / sum(kube_pod_container_resource_limits{node=\"$node\", resource=\"memory\"}) by (pod)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -874,7 +874,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(node_namespace_pod_container:container_memory_rss{cluster=\"$cluster\", node=\"$node\",container!=\"\"}) by (pod)",
+              "expr": "sum(container_memory_rss{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"\/metrics\/cadvisor\", image!=\"\"}) by (pod)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -883,7 +883,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(node_namespace_pod_container:container_memory_cache{cluster=\"$cluster\", node=\"$node\",container!=\"\"}) by (pod)",
+              "expr": "sum(container_memory_cache{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"\/metrics\/cadvisor\", image!=\"\"}) by (pod)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -892,7 +892,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(node_namespace_pod_container:container_memory_swap{cluster=\"$cluster\", node=\"$node\",container!=\"\"}) by (pod)",
+              "expr": "sum(container_memory_swap{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"\/metrics\/cadvisor\", image!=\"\"}) by (pod)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
