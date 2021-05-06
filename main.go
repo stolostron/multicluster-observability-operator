@@ -30,6 +30,7 @@ import (
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -93,9 +94,53 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	// Add route Openshift scheme
+	if err := routev1.AddToScheme(scheme); err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
+	if err := ocinfrav1.AddToScheme(scheme); err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
+	if err := workv1.AddToScheme(scheme); err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
+	if err := placementv1.AddToScheme(scheme); err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
+	// add scheme of storage version migration
+	if err := migrationv1alpha1.AddToScheme(scheme); err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
+	if err := addonv1alpha1.AddToScheme(scheme); err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
 	gvkLabelMap := map[schema.GroupVersionKind]util.Selector{
 		v1.SchemeGroupVersion.WithKind("Secret"): {
 			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
+		},
+		v1.SchemeGroupVersion.WithKind("ConfigMap"): {
+			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
+		},
+		appsv1.SchemeGroupVersion.WithKind("Deployment"): {
+			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
+		},
+		appsv1.SchemeGroupVersion.WithKind("StatefulSet"): {
+			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
+		},
+		workv1.SchemeGroupVersion.WithKind("ManifestWork"): {
+			LabelSelector: "owner==multicluster-observability-operator",
 		},
 	}
 
@@ -163,38 +208,6 @@ func main() {
 	}
 	if err := mgr.AddReadyzCheck("check", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
-	}
-
-	// Add route Openshift scheme
-	if err := routev1.AddToScheme(mgr.GetScheme()); err != nil {
-		setupLog.Error(err, "")
-		os.Exit(1)
-	}
-
-	if err := ocinfrav1.AddToScheme(mgr.GetScheme()); err != nil {
-		setupLog.Error(err, "")
-		os.Exit(1)
-	}
-
-	if err := workv1.AddToScheme(mgr.GetScheme()); err != nil {
-		setupLog.Error(err, "")
-		os.Exit(1)
-	}
-
-	if err := placementv1.AddToScheme(mgr.GetScheme()); err != nil {
-		setupLog.Error(err, "")
-		os.Exit(1)
-	}
-
-	// add scheme of storage version migration
-	if err := migrationv1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
-		setupLog.Error(err, "")
-		os.Exit(1)
-	}
-
-	if err := addonv1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
-		setupLog.Error(err, "")
 		os.Exit(1)
 	}
 
