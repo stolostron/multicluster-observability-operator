@@ -1,6 +1,11 @@
+// Copyright 2020 IBM Corporation
 // Copyright (c) 2021 Red Hat, Inc.
 // Copyright Contributors to the Open Cluster Management project
 
+/*
+This file is from  https://github.com/IBM/controller-filtered-cache/tree/main/filteredcache
+Changes to adopt controller-runtime 0.8.0 API
+*/
 package util
 
 import (
