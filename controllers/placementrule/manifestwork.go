@@ -6,6 +6,7 @@ package placementrule
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -273,7 +274,8 @@ func getMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 
 	customAllowlist, err := getAllowList(client, config.AllowlistCustomConfigMapName)
 	if err == nil {
-		allowlist.NameList = append(allowlist.NameList, customAllowlist.NameList...)
+		metricNameList := handleDeletedMetrics(customAllowlist.NameList)
+		allowlist.NameList = append(allowlist.NameList, metricNameList...)
 		allowlist.MatchList = append(allowlist.MatchList, customAllowlist.MatchList...)
 		for k, v := range customAllowlist.ReNameMap {
 			allowlist.ReNameMap[k] = v
@@ -308,6 +310,16 @@ func getAllowList(client client.Client, name string) (*MetricsAllowlist, error) 
 		return nil, err
 	}
 	return allowlist, nil
+}
+
+func handleDeletedMetrics(metricNameList []string) []string {
+	nameList := []string{}
+	for _, name := range metricNameList {
+		if !strings.HasSuffix(name, "-") {
+			nameList = append(nameList, name)
+		}
+	}
+	return nameList
 }
 
 func getObservabilityAddon(c client.Client, namespace string,

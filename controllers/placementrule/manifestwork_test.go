@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"path"
+	"reflect"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -167,4 +168,44 @@ func TestManifestWork(t *testing.T) {
 	if err == nil || !errors.IsNotFound(err) {
 		t.Fatalf("Manifestwork not deleted: (%v)", err)
 	}
+}
+
+func TestHandleDeletedMetrics(t *testing.T) {
+	testCaseList := []struct {
+		name string
+		args []string
+		want []string
+	}{
+		{
+			name: "no deleted metrics",
+			args: []string{"a", "b"},
+			want: []string{"a", "b"},
+		},
+
+		{
+			name: "no metrics",
+			args: []string{},
+			want: []string{},
+		},
+
+		{
+			name: "have deleted metrics",
+			args: []string{"a", "b", "c-"},
+			want: []string{"a", "b"},
+		},
+
+		{
+			name: "deleted all metrics",
+			args: []string{"a-", "b-", "c-"},
+			want: []string{},
+		},
+	}
+
+	for _, c := range testCaseList {
+		got := handleDeletedMetrics(c.args)
+		if !reflect.DeepEqual(got, c.want) {
+			t.Errorf("handleDeletedMetrics() = %v, want %v", got, c.want)
+		}
+	}
+
 }
