@@ -28,6 +28,7 @@ import (
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"github.com/IBM/controller-filtered-cache/filteredcache"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -126,7 +127,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	gvkLabelMap := map[schema.GroupVersionKind]util.Selector{
+	gvkLabelMap := map[schema.GroupVersionKind]filteredcache.Selector{
 		v1.SchemeGroupVersion.WithKind("Secret"): {
 			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
 		},
@@ -154,7 +155,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b9d51391.open-cluster-management.io",
-		NewCache:               util.NewFilteredCacheBuilder(gvkLabelMap),
+		NewCache:               filteredcache.NewFilteredCacheBuilder(gvkLabelMap),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
