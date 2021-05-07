@@ -133,6 +133,9 @@ func main() {
 		v1.SchemeGroupVersion.WithKind("ConfigMap"): {
 			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
 		},
+		v1.SchemeGroupVersion.WithKind("Service"): {
+			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
+		},
 		appsv1.SchemeGroupVersion.WithKind("Deployment"): {
 			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
 		},
