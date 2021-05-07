@@ -690,6 +690,8 @@ github.com/open-cluster-management/observatorium-operator v0.0.0-20210421123734-
 github.com/open-cluster-management/observatorium-operator v0.0.0-20210421123734-13feeb802b22/go.mod h1:vWUNIjImrJmNA2Mc1rBUZ5EULzAzfkN/k2Aqr285qvk=
 github.com/open-cluster-management/observatorium-operator v0.0.0-20210428083021-438dd3cd8102 h1:UTOWKUBVCVUOfBJGQIk6uPlzAw6Vk6uFbHcI/woEN18=
 github.com/open-cluster-management/observatorium-operator v0.0.0-20210428083021-438dd3cd8102/go.mod h1:2pe1pdg7G1EeuuKbbMAZG+BIHbQAnujtOf9tvilV0Js=
+github.com/open-cluster-management/observatorium-operator v0.0.0-20210507042146-666a3a8d15fd h1:lufydUtm+2YeYtknBX+LSH3850uyrgjnI4DXzB1mn7E=
+github.com/open-cluster-management/observatorium-operator v0.0.0-20210507042146-666a3a8d15fd/go.mod h1:2pe1pdg7G1EeuuKbbMAZG+BIHbQAnujtOf9tvilV0Js=
 github.com/opencontainers/go-digest v1.0.0-rc1/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.0.1/go.mod h1:BtxoFyWECRxE4U/7sNtV5W15zMzWCbyJoFRP3s7yZA0=

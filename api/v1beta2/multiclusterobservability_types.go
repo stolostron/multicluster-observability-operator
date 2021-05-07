@@ -42,6 +42,9 @@ type MultiClusterObservabilitySpec struct {
 	// Specifies the storage to be used by Observability
 	// +required
 	StorageConfig *StorageConfig `json:"storageConfig,omitempty"`
+	// Specifies the memcached to be used by Observability
+	// +required
+	CacheConfig *CacheConfig `json:"cacheConfig,omitempty"`
 	// The ObservabilityAddonSpec defines the global settings for all managed
 	// clusters which have observability add-on enabled.
 	// +required
@@ -120,6 +123,22 @@ type StorageConfig struct {
 	// +optional
 	// +kubebuilder:default:="10Gi"
 	StoreStorageSize string `json:"storeStorageSize,omitempty"`
+}
+
+// CacheConfig is the spec of memcached.
+type CacheConfig struct {
+	// Memory limit of Memcached in megabytes.
+	// +optional
+	// +kubebuilder:default:=1024
+	MemoryLimitMB *int32 `json:"memoryLimitMb,omitempty"`
+	// Max item size of Memcached (default: 1m, min: 1k, max: 1024m).
+	// +optional
+	// +kubebuilder:default:="1m"
+	MaxItemSize string `json:"maxItemSize,omitempty"`
+	// Max simultaneous connections of Memcached.
+	// +optional
+	// +kubebuilder:default:=1024
+	ConnectionLimit *int32 `json:"connectionLimit,omitempty"`
 }
 
 // MultiClusterObservabilityStatus defines the observed state of MultiClusterObservability

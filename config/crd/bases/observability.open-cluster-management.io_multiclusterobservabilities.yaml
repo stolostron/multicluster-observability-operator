@@ -295,6 +295,25 @@ spec:
             description: MultiClusterObservabilitySpec defines the desired state of
               MultiClusterObservability
             properties:
+              cacheConfig:
+                description: Specifies the memcached to be used by Observability
+                properties:
+                  connectionLimit:
+                    default: 1024
+                    description: Max simultaneous connections of Memcached.
+                    format: int32
+                    type: integer
+                  maxItemSize:
+                    default: 1m
+                    description: 'Max item size of Memcached (default: 1m, min: 1k,
+                      max: 1024m).'
+                    type: string
+                  memoryLimitMb:
+                    default: 1024
+                    description: Memory limit of Memcached in megabytes.
+                    format: int32
+                    type: integer
+                type: object
               enableDownsampling:
                 default: true
                 description: Enable or disable the downsample. The default value is

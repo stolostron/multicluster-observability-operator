@@ -3,6 +3,7 @@ kind: MultiClusterObservability
 metadata:
   name: observability
 spec:
+  cacheConfig: {}
   observabilityAddonSpec: {}
   retentionConfig: {}
   storageConfig:
