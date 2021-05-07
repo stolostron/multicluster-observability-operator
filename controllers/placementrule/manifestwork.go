@@ -274,8 +274,7 @@ func getMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 
 	customAllowlist, err := getAllowList(client, config.AllowlistCustomConfigMapName)
 	if err == nil {
-		metricNameList := handleDeletedMetrics(customAllowlist.NameList)
-		allowlist.NameList = append(allowlist.NameList, metricNameList...)
+		allowlist.NameList = mergeMetrics(allowlist.NameList, customAllowlist.NameList)
 		allowlist.MatchList = append(allowlist.MatchList, customAllowlist.MatchList...)
 		for k, v := range customAllowlist.ReNameMap {
 			allowlist.ReNameMap[k] = v
@@ -312,14 +311,32 @@ func getAllowList(client client.Client, name string) (*MetricsAllowlist, error) 
 	return allowlist, nil
 }
 
-func handleDeletedMetrics(metricNameList []string) []string {
-	nameList := []string{}
-	for _, name := range metricNameList {
+func mergeMetrics(defaultAllowlist []string, customAllowlist []string) []string {
+	customMetrics := []string{}
+	deletedMetrics := map[string]bool{}
+	for _, name := range customAllowlist {
 		if !strings.HasSuffix(name, "-") {
-			nameList = append(nameList, name)
+			customMetrics = append(customMetrics, name)
+		} else {
+			deletedMetrics[strings.TrimSuffix(name, "-")] = true
 		}
 	}
-	return nameList
+
+	metricsRecorder := map[string]bool{}
+	mergedMetrics := []string{}
+	defaultAllowlist = append(defaultAllowlist, customMetrics...)
+	for _, name := range defaultAllowlist {
+		if metricsRecorder[name] {
+			continue
+		}
+
+		if !deletedMetrics[name] {
+			mergedMetrics = append(mergedMetrics, name)
+			metricsRecorder[name] = true
+		}
+	}
+
+	return mergedMetrics
 }
 
 func getObservabilityAddon(c client.Client, namespace string,

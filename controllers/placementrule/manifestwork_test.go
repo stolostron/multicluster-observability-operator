@@ -172,39 +172,79 @@ func TestManifestWork(t *testing.T) {
 
 func TestHandleDeletedMetrics(t *testing.T) {
 	testCaseList := []struct {
-		name string
-		args []string
-		want []string
+		name             string
+		defaultAllowlist []string
+		customAllowlist  []string
+		want             []string
 	}{
 		{
-			name: "no deleted metrics",
-			args: []string{"a", "b"},
-			want: []string{"a", "b"},
+			name:             "no deleted metrics",
+			defaultAllowlist: []string{"a", "b"},
+			customAllowlist:  []string{"c"},
+			want:             []string{"a", "b", "c"},
 		},
 
 		{
-			name: "no metrics",
-			args: []string{},
-			want: []string{},
+			name:             "no default metrics",
+			defaultAllowlist: []string{},
+			customAllowlist:  []string{"a"},
+			want:             []string{"a"},
 		},
 
 		{
-			name: "have deleted metrics",
-			args: []string{"a", "b", "c-"},
-			want: []string{"a", "b"},
+			name:             "no metrics",
+			defaultAllowlist: []string{},
+			customAllowlist:  []string{},
+			want:             []string{},
 		},
 
 		{
-			name: "deleted all metrics",
-			args: []string{"a-", "b-", "c-"},
-			want: []string{},
+			name:             "have deleted metrics",
+			defaultAllowlist: []string{"a", "b"},
+			customAllowlist:  []string{"c", "b-"},
+			want:             []string{"a", "c"},
+		},
+
+		{
+			name:             "deleted metrics is no exist",
+			defaultAllowlist: []string{"a", "b"},
+			customAllowlist:  []string{"c", "d-"},
+			want:             []string{"a", "b", "c"},
+		},
+
+		{
+			name:             "deleted all metrics",
+			defaultAllowlist: []string{"a", "b"},
+			customAllowlist:  []string{"a-", "b-"},
+			want:             []string{},
+		},
+
+		{
+			name:             "delete custorm metrics",
+			defaultAllowlist: []string{"a", "b"},
+			customAllowlist:  []string{"a", "a-"},
+			want:             []string{"b"},
+		},
+
+		{
+			name:             "have repeated default metrics",
+			defaultAllowlist: []string{"a", "a"},
+			customAllowlist:  []string{"a", "b-"},
+			want:             []string{"a"},
+		},
+
+		{
+			name:             "have repeated custom metrics",
+			defaultAllowlist: []string{"a"},
+			customAllowlist:  []string{"b", "b", "a-"},
+			want:             []string{"b"},
 		},
 	}
 
 	for _, c := range testCaseList {
-		got := handleDeletedMetrics(c.args)
+		got := mergeMetrics(c.defaultAllowlist, c.customAllowlist)
 		if !reflect.DeepEqual(got, c.want) {
-			t.Errorf("handleDeletedMetrics() = %v, want %v", got, c.want)
+			t.Errorf("%v: mergeMetrics() = %v, want %v", c.name, got, c.want)
 		}
 	}
 
