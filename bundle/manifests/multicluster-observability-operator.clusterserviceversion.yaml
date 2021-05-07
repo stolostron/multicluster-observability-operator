@@ -450,7 +450,7 @@ spec:
               - name: cert
                 secret:
                   defaultMode: 420
-                  secretName: multicluster-observability-operator-webhook-server-cert
+                  secretName: multicluster-observability-operator-cert
     strategy: deployment
   installModes:
   - supported: false
@@ -477,8 +477,8 @@ spec:
   webhookdefinitions:
   - type: ConversionWebhook
     admissionReviewVersions: ["v1", "v1beta1"]
-    containerPort: 9443
-    targetPort: 443
+    containerPort: 443
+    targetPort: 9443
     deploymentName: multicluster-observability-operator
     sideEffects: None
     webhookPath: /convert

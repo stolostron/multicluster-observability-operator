@@ -64,11 +64,11 @@ vars:
   objref:
     kind: Service
     version: v1
-    name: multicluster-observability-webhook-service
+    name: multicluster-observability-operator-service
   fieldref:
     fieldpath: metadata.namespace
 - name: SERVICE_NAME
   objref:
     kind: Service
     version: v1
-    name: multicluster-observability-webhook-service
+    name: multicluster-observability-operator-service

@@ -13,7 +13,7 @@ spec:
       clientConfig:
         caBundle: XG4=
         service:
-          name: multicluster-observability-webhook-service
+          name: multicluster-observability-operator-service
           namespace: open-cluster-management
           path: /convert
           port: 443
@@ -29,6 +29,7 @@ spec:
     - mco
     singular: multiclusterobservability
   scope: Cluster
+  preserveUnknownFields: false
   versions:
   - deprecated: true
     deprecationWarning: observability.open-cluster-management.io/v1beta1 MultiClusterObservability is deprecated in v2.3+, unavailable in v2.6+; use observability.open-cluster-management.io/v1beta2 MultiClusterObservability

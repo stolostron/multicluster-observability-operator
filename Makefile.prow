@@ -36,8 +36,7 @@ BUNDLE_IMG ?= controller-bundle:$(VERSION)
 # Image URL to use all building/pushing image targets
 IMG ?= quay.io/open-cluster-management/multicluster-observability-operator:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-#CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
-CRD_OPTIONS ?= "crd:trivialVersions=true"
+CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -149,7 +148,9 @@ bundle: manifests kustomize
 	operator-sdk generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image quay.io/open-cluster-management/multicluster-observability-operator=$(IMG)
 	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
-	sed -i 's/version: 0.1.0/&\n  webhookdefinitions:\n  - type: ConversionWebhook\n    admissionReviewVersions: ["v1", "v1beta1"]\n    containerPort: 9443\n    targetPort: 443\n    deploymentName: multicluster-observability-operator\n    sideEffects: None\n    webhookPath: \/convert\n    conversionCRDs: ["multiclusterobservabilities.observability.open-cluster-management.io"]/g' bundle/manifests/multicluster-observability-operator.clusterserviceversion.yaml
+	#TODO(morvencao): remove the following two sed commands
+	sed -i 's/scope: Cluster/&\n  preserveUnknownFields: false/g' bundle/manifests/observability.open-cluster-management.io_multiclusterobservabilities.yaml
+	sed -i 's/version: 0.1.0/&\n  webhookdefinitions:\n  - type: ConversionWebhook\n    admissionReviewVersions: ["v1", "v1beta1"]\n    containerPort: 443\n    targetPort: 9443\n    deploymentName: multicluster-observability-operator\n    sideEffects: None\n    webhookPath: \/convert\n    conversionCRDs: ["multiclusterobservabilities.observability.open-cluster-management.io"]/g' bundle/manifests/multicluster-observability-operator.clusterserviceversion.yaml
 	operator-sdk bundle validate ./bundle
 
 # Build the bundle image.
