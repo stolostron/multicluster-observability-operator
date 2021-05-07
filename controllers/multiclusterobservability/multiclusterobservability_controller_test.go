@@ -271,6 +271,11 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 				RetentionResolution5m:  "1h",
 				RetentionResolution1h:  "1h",
 			},
+			CacheConfig: &mcov1beta2.CacheConfig{
+				ConnectionLimit: &limit,
+				MaxItemSize:     "1m",
+				MemoryLimitMB:   &limit,
+			},
 			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
 				EnableMetrics: false,
 			},

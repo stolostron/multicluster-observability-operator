@@ -23,6 +23,17 @@ observability.open-cluster-management.io/v1beta2
    <td><strong>Req’d</strong>
    </td>
   </tr>
+   <tr>
+   </td>
+   <td>CacheConfig
+   </td>
+   <td>CacheConfig
+   </td>
+   <td>Specifies the cache configuration to be used by Observability
+   </td>
+   <td>Y
+   </td>
+  </tr>  
   <tr>
    <td>EnableDownsampling
    </td>
@@ -99,6 +110,57 @@ Note: Disabling downsampling is not recommended as querying long time ranges wit
    <td>N
    </td>
   </tr> 
+</table>
+
+### CacheConfig
+
+<table>
+  <tr>
+   <td><strong>Property</strong>
+   </td>
+   <td><strong>Type</strong>
+   </td>
+   <td><strong>Description</strong>
+   </td>
+   <td><strong>Req’d</strong>
+   </td>
+  </tr>
+  <tr>
+   <td>ConnectionLimit
+   </td>
+   <td>int32
+   </td>
+   <td>Max simultaneous connections of Memcached.
+<p>
+The default is 1024
+   </td>
+   <td>N
+   </td>
+  </tr>
+  <tr>
+   <td>MemoryLimitMB
+   </td>
+   <td>int32
+   </td>
+   <td>Memory limit of Memcached in megabytes.
+<p>
+The default is 1024
+   </td>
+   <td>N
+   </td>
+  </tr>
+  <tr>
+   <td>MaxItemSize
+   </td>
+   <td>String
+   </td>
+   <td>Max item size of Memcached (default: 1m, min: 1k, max: 1024m).
+<p>
+The default is 1m
+   </td>
+   <td>N
+   </td>
+  </tr>
 </table>
 
 ### RetentionConfig

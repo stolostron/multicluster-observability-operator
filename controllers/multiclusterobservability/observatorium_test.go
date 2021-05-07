@@ -25,6 +25,7 @@ import (
 
 var (
 	storageClassName = ""
+	limit            = int32(1024)
 )
 
 func TestNewVolumeClaimTemplate(t *testing.T) {
@@ -63,6 +64,11 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 				RetentionResolutionRaw: "1h",
 				RetentionResolution5m:  "1h",
 				RetentionResolution1h:  "1h",
+			},
+			CacheConfig: &mcov1beta2.CacheConfig{
+				ConnectionLimit: &limit,
+				MaxItemSize:     "1m",
+				MemoryLimitMB:   &limit,
 			},
 		},
 	}
@@ -129,6 +135,11 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 				RetentionResolutionRaw: "1h",
 				RetentionResolution5m:  "1h",
 				RetentionResolution1h:  "1h",
+			},
+			CacheConfig: &mcov1beta2.CacheConfig{
+				ConnectionLimit: &limit,
+				MaxItemSize:     "1m",
+				MemoryLimitMB:   &limit,
 			},
 		},
 	}
