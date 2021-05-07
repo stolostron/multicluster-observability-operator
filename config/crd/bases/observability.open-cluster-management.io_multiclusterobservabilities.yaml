@@ -17,6 +17,7 @@ spec:
     - mco
     singular: multiclusterobservability
   scope: Cluster
+  preserveUnknownFields: false
   versions:
   - name: v1beta1
     schema:

@@ -474,3 +474,12 @@ spec:
     name: Red Hat, Inc
     url: https://github.com/open-cluster-management/multicluster-observability-operator
   version: 0.1.0
+  webhookdefinitions:
+  - type: ConversionWebhook
+    admissionReviewVersions: ["v1", "v1beta1"]
+    containerPort: 9443
+    targetPort: 443
+    deploymentName: multicluster-observability-operator
+    sideEffects: None
+    webhookPath: /convert
+    conversionCRDs: ["multiclusterobservabilities.observability.open-cluster-management.io"]
