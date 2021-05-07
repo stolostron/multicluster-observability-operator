@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/Azure/go-autorest/autorest v0.11.6 // indirect
+	github.com/IBM/controller-filtered-cache v0.3.0
 	github.com/cloudflare/cfssl v1.5.0
 	github.com/go-logr/logr v0.4.0
 	github.com/kr/pretty v0.2.1 // indirect

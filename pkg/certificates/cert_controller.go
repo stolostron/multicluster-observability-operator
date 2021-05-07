@@ -53,7 +53,7 @@ func Start(c client.Client) {
 		os.Exit(1)
 	}
 	watchlist := cache.NewListWatchFromClient(kubeClient.CoreV1().RESTClient(), "secrets", config.GetDefaultNamespace(),
-		fields.Everything())
+		fields.OneTermEqualSelector("metadata.namespace", config.GetDefaultNamespace()))
 	_, controller := cache.NewInformer(
 		watchlist,
 		&v1.Secret{},
