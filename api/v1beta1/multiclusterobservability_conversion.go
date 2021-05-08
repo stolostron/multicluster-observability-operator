@@ -52,6 +52,8 @@ func (src *MultiClusterObservability) ConvertTo(dstRaw conversion.Hub) error {
 		RetentionResolution1h:  src.Spec.RetentionResolution1h,
 	}
 
+	dst.Spec.CacheConfig = &observabilityv1beta2.CacheConfig{}
+
 	dst.Spec.EnableDownsampling = src.Spec.EnableDownSampling
 
 	/*
