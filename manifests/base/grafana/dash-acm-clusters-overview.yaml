@@ -257,7 +257,7 @@ data:
               "refId": "C"
             },
             {
-              "expr": "sum by (cluster)(rate(apiserver_request_total{code=~\"5..\"}[1h]))",
+              "expr": "sum by (cluster)(sum:apiserver_request_total:1h{code=~\"5..\"})",
               "format": "table",
               "instant": true,
               "refId": "B"
