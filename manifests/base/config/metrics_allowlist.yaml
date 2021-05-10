@@ -130,7 +130,6 @@ data:
       - cluster_operator_conditions
       - cluster_operator_up      
     matches:
-      - __name__="apiserver_request_duration_seconds_bucket",job="apiserver",verb!="WATCH"
       - __name__="workqueue_queue_duration_seconds_bucket",job="apiserver"
       - __name__="workqueue_adds_total",job="apiserver"
       - __name__="workqueue_depth",job="apiserver"
@@ -144,3 +143,6 @@ data:
     renames:
       mixin_pod_workload: namespace_workload_pod:kube_pod_owner:relabel
       namespace:kube_pod_container_resource_requests_cpu_cores:sum: namespace_cpu:kube_pod_container_resource_requests:sum
+    rules:
+      - record: apiserver_request_duration_seconds:histogram_quantile_99
+        expr: histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (verb,le))
