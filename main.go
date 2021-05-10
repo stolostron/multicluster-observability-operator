@@ -174,6 +174,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	podNamespace, found := os.LookupEnv("POD_NAMESPACE")
+	if !found {
+		podNamespace = config.GetDefaultMCONamespace()
+	}
+
+	if err = util.UpdateCRDWebhookNS(crdClient, podNamespace, config.MCOCrdName); err != nil {
+		setupLog.Error(err, "unable to update webhook service namespace in MCO CRD", "controller", "MultiClusterObservability")
+	}
+
 	if err = (&mcoctrl.MultiClusterObservabilityReconciler{
 		Client:    mgr.GetClient(),
 		Log:       ctrl.Log.WithName("controllers").WithName("MultiClusterObservability"),

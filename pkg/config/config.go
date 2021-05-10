@@ -24,6 +24,7 @@ const (
 	clusterNameLabelKey      = "cluster"
 	obsAPIGateway            = "observatorium-api"
 	infrastructureConfigName = "cluster"
+	defaultMCONamespace      = "open-cluster-management"
 	defaultNamespace         = "open-cluster-management-observability"
 	defaultTenantName        = "default"
 	placementRuleName        = "observability"
@@ -162,6 +163,7 @@ const (
 )
 
 const (
+	MCOCrdName                     = "multiclusterobservabilities.observability.open-cluster-management.io"
 	PlacementRuleCrdName           = "placementrules.apps.open-cluster-management.io"
 	StorageVersionMigrationCrdName = "storageversionmigrations.migration.k8s.io"
 )
@@ -315,6 +317,10 @@ func GetObsAPIUrl(client client.Client, namespace string) (string, error) {
 		return "", err
 	}
 	return found.Spec.Host, nil
+}
+
+func GetDefaultMCONamespace() string {
+	return defaultMCONamespace
 }
 
 func GetDefaultNamespace() string {
