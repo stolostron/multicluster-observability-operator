@@ -1,7 +1,10 @@
 resources:
-- service-account.yaml
+- alertmanager-serviceaccount.yaml
 - alertmanager-config.yaml
 - alertmanager-statefulset.yaml
 - alertmanager-operated.yaml
 - alertmanager-service.yaml
 - alert_rules.yaml
+- alertmanager-cabundle.yaml
+- alertmanager-clusterrole.yaml
+- alertmanager-clusterrolebinding.yaml

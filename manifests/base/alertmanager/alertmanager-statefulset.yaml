@@ -46,7 +46,7 @@ spec:
         - --cluster.listen-address=[$(POD_IP)]:9094
         - --storage.path=/alertmanager
         - --data.retention=120h
-        - --web.listen-address=0.0.0.0:9093
+        - --web.listen-address=127.0.0.1:9093
         - --web.route-prefix=/
         - --cluster.peer={{MCO_NAME}}-alertmanager-0.alertmanager-operated.{{MCO_NAMESPACE}}.svc:9094
         - --cluster.peer={{MCO_NAME}}-alertmanager-1.alertmanager-operated.{{MCO_NAMESPACE}}.svc:9094
@@ -82,6 +82,7 @@ spec:
       - args:
         - -webhook-url=http://localhost:9093/-/reload
         - -volume-dir=/etc/alertmanager/config
+        - -volume-dir=/etc/tls/private
         image: quay.io/openshift/origin-configmap-reloader:4.5.0
         imagePullPolicy: IfNotPresent
         name: config-reloader
@@ -93,6 +94,46 @@ spec:
         - mountPath: /etc/alertmanager/config
           name: config-volume
           readOnly: true
+        - mountPath: /etc/tls/private
+          name: tls-secret
+          readOnly: true
+      - args:
+        - --provider=openshift
+        - --https-address=:9095
+        - --http-address=
+        - --upstream=http://localhost:9093
+        - --openshift-sar={"resource":"namespaces","verb":"get"}
+        - --openshift-delegate-urls={"/":{"resource":"namespaces","verb":"get"}}
+        - --tls-cert=/etc/tls/private/tls.crt
+        - --tls-key=/etc/tls/private/tls.key
+        # - --email-domain=*
+        # - --scope=user:full
+        # - --client-id=alertmanager
+        # - --client-secret=alertmanagersecret
+        - --openshift-service-account=alertmanager
+        - --cookie-secret=AAECAwQFBgcICQoLDA0OFw==
+        - --skip-provider-button=true
+        - --openshift-ca=/etc/pki/tls/cert.pem
+        - --openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        image: quay.io/open-cluster-management/origin-oauth-proxy:2.0.11-SNAPSHOT-2021-04-29-18-29-17
+        imagePullPolicy: IfNotPresent
+        name: alertmanager-proxy
+        ports:
+        - containerPort: 9095
+          name: web
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 1m
+            memory: 20Mi
+        readinessProbe:
+          httpGet:
+            path: /oauth/healthz
+            port: 9095
+            scheme: HTTPS
+        volumeMounts:
+        - mountPath: /etc/tls/private
+          name: tls-secret
       serviceAccount: alertmanager
       serviceAccountName: alertmanager
       volumes:
@@ -100,9 +141,13 @@ spec:
         secret:
           defaultMode: 420
           secretName: alertmanager-config
+      - name: tls-secret
+        secret:
+          defaultMode: 420
+          secretName: alertmanager-tls
   volumeClaimTemplates:
   - metadata:
-      name: alertmanager-db 
+      name: alertmanager-db
     spec:
       accessModes:
       - ReadWriteOnce

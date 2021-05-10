@@ -81,6 +81,20 @@ func (r *TemplateRenderer) GetAlertManagerTemplates(
 	return resourceList, nil
 }
 
+// GetThanosTemplates reads the thanos manifests
+func (r *TemplateRenderer) GetThanosTemplates(
+	mco *mcov1beta2.MultiClusterObservability) ([]*resource.Resource, error) {
+	basePath := path.Join(r.templatesPath, "base")
+	// resourceList contains all kustomize resources
+	resourceList := []*resource.Resource{}
+
+	// add grafana template
+	if err := r.AddTemplateFromPath(basePath+"/thanos", &resourceList); err != nil {
+		return resourceList, err
+	}
+	return resourceList, nil
+}
+
 // GetTemplates reads base manifest
 func (r *TemplateRenderer) GetTemplates(
 	mco *mcov1beta2.MultiClusterObservability) ([]*resource.Resource, error) {

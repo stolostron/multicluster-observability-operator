@@ -92,6 +92,11 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	if found {
 		spec.Containers[1].Image = image
 	}
+	found, image = mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.OauthProxyImgRepo,
+		mcoconfig.OauthProxyKey)
+	if found {
+		spec.Containers[2].Image = image
+	}
 	//replace the volumeClaimTemplate
 	dep.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = &r.cr.Spec.StorageConfig.StorageClass
 	dep.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] =

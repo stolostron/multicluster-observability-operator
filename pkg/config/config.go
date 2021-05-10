@@ -53,12 +53,21 @@ const (
 	GrafanaCN        = "grafana"
 	ManagedClusterOU = "acm"
 
+	AlertmanagerServiceName = "alertmanager"
+	AlertmanagerRouteName   = "alertmanager"
+
 	AlertRuleDefaultConfigMapName = "thanos-ruler-default-rules"
 	AlertRuleDefaultFileKey       = "default_rules.yaml"
 	AlertRuleCustomConfigMapName  = "thanos-ruler-custom-rules"
 	AlertRuleCustomFileKey        = "custom_rules.yaml"
 	AlertmanagerURL               = "http://alertmanager:9093"
 	AlertmanagerConfigName        = "alertmanager-config"
+
+	AlertmanagersDefaultConfigMapName     = "thanos-ruler-config"
+	AlertmanagersDefaultConfigFileKey     = "config.yaml"
+	AlertmanagersDefaultCaBundleMountPath = "/etc/thanos/configmaps/alertmanager-ca-bundle"
+	AlertmanagersDefaultCaBundleName      = "alertmanager-ca-bundle"
+	AlertmanagersDefaultCaBundleKey       = "service-ca.crt"
 
 	AllowlistConfigMapName       = "observability-metrics-allowlist"
 	AllowlistCustomConfigMapName = "observability-metrics-custom-allowlist"
@@ -97,6 +106,11 @@ const (
 	ConfigmapReloaderImgName      = "origin-configmap-reloader"
 	ConfigmapReloaderImgTagSuffix = "4.5.0"
 	ConfigmapReloaderKey          = "prometheus-config-reloader"
+
+	OauthProxyImgRepo      = "quay.io/openshift"
+	OauthProxyImgName      = "origin-oauth-proxy"
+	OauthProxyImgTagSuffix = "4.5.0"
+	OauthProxyKey          = "alertmanager-oauth-proxy"
 
 	EndpointControllerImgTagSuffix = "2.2.0-6a5ea47fc39d51fb4fade6157843f2977442996e"
 	EndpointControllerImgName      = "endpoint-monitoring-operator"
