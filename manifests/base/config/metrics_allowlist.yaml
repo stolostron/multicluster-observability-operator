@@ -9,7 +9,6 @@ data:
       - apiserver_request_count
       - apiserver_request_latencies_summary_count
       - apiserver_request_latencies_summary_sum
-      - apiserver_request_total
       - authenticated_user_requests
       - authentication_attempts
       - cluster:capacity_cpu_cores:sum
@@ -25,14 +24,6 @@ data:
       - cluster_version_payload
       - container_cpu_cfs_periods_total
       - container_cpu_cfs_throttled_periods_total
-      - container_fs_limit_bytes
-      - container_fs_usage_bytes
-      - container_network_receive_bytes_total
-      - container_network_receive_packets_dropped_total
-      - container_network_receive_packets_total
-      - container_network_transmit_bytes_total
-      - container_network_transmit_packets_dropped_total
-      - container_network_transmit_packets_total
       - container_spec_cpu_quota
       - coredns_dns_request_count_total
       - coredns_dns_request_duration_seconds_sum
@@ -80,7 +71,6 @@ data:
       - instance_device:node_disk_io_time_weighted_seconds:rate1m
       - kube_daemonset_status_desired_number_scheduled
       - kube_daemonset_status_number_unavailable
-      - kube_deployment_status_replicas_unavailable
       - kube_node_spec_unschedulable
       - kube_node_status_allocatable
       - kube_node_status_allocatable_cpu_cores
@@ -121,7 +111,6 @@ data:
       - node_netstat_Tcp_OutSegs
       - node_netstat_Tcp_RetransSegs
       - node_netstat_TcpExt_TCPSynRetrans
-      - rest_client_requests_total
       - up
       - cluster_monitoring_operator_reconcile_errors_total
       - cluster_monitoring_operator_reconcile_attempts_total
@@ -144,3 +133,9 @@ data:
     rules:
       - record: apiserver_request_duration_seconds:histogram_quantile_99
         expr: histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (verb,le))
+      - record: apiserver_request_duration_seconds:histogram_quantile_99:instance
+        expr: histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le, instance))
+      - record: sum:apiserver_request_total:1h
+        expr: sum(rate(apiserver_request_total{job=\"apiserver\"}[1h])) by(code, instance)
+      - record: sum:apiserver_request_total:5m
+        expr: sum(rate(apiserver_request_total{job=\"apiserver\"}[5m])) by(code, instance)
