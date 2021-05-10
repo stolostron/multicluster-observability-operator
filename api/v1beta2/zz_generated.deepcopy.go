@@ -115,7 +115,7 @@ func (in *MultiClusterObservabilitySpec) DeepCopyInto(out *MultiClusterObservabi
 	if in.ObservabilityAddonSpec != nil {
 		in, out := &in.ObservabilityAddonSpec, &out.ObservabilityAddonSpec
 		*out = new(shared.ObservabilityAddonSpec)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 }
 
