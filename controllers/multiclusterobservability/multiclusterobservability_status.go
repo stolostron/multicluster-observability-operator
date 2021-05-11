@@ -40,25 +40,28 @@ func updateReadyStatus(
 	c client.Client,
 	mco *mcov1beta2.MultiClusterObservability) {
 
-	if findStatusCondition(*conditions, "Ready") != nil {
-		return
-	}
+	//if findStatusCondition(*conditions, "Ready") != nil {
+	//	return
+	//}
 
 	objStorageStatus := checkObjStorageStatus(c, mco)
 	if objStorageStatus != nil {
 		setStatusCondition(conditions, *objStorageStatus)
+		removeStatusCondition(conditions, "Ready")
 		return
 	}
 
 	deployStatus := checkDeployStatus(c, mco)
 	if deployStatus != nil {
 		setStatusCondition(conditions, *deployStatus)
+		removeStatusCondition(conditions, "Ready")
 		return
 	}
 
 	statefulStatus := checkStatefulSetStatus(c, mco)
 	if statefulStatus != nil {
 		setStatusCondition(conditions, *statefulStatus)
+		removeStatusCondition(conditions, "Ready")
 		return
 	}
 

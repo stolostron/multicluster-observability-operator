@@ -447,9 +447,9 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
 
-	status = findStatusCondition(updatedMCO.Status.Conditions, "Ready")
-	if status == nil || status.Reason != "Ready" {
-		t.Errorf("Failed to get correct MCO status, expect Ready")
+	status = findStatusCondition(updatedMCO.Status.Conditions, "Failed")
+	if status == nil {
+		t.Errorf("Failed to get correct MCO status, expect Failed")
 	}
 
 	// test DeploymentNotReady status
@@ -481,9 +481,9 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Fatalf("Failed to get MultiClusterObservability: (%v)", err)
 	}
 
-	status = findStatusCondition(updatedMCO.Status.Conditions, "Ready")
-	if status == nil || status.Reason != "Ready" {
-		t.Errorf("Failed to get correct MCO status, expect Ready")
+	status = findStatusCondition(updatedMCO.Status.Conditions, "Failed")
+	if status == nil {
+		t.Errorf("Failed to get correct MCO status, expect Failed")
 	}
 
 	//Test finalizer
