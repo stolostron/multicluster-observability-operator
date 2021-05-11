@@ -8,4 +8,4 @@ rules:
   resources:
   - namespaces
   verbs:
-  - "*"
+  - get

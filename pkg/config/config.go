@@ -107,10 +107,10 @@ const (
 	ConfigmapReloaderImgTagSuffix = "4.5.0"
 	ConfigmapReloaderKey          = "prometheus-config-reloader"
 
-	OauthProxyImgRepo      = "quay.io/openshift"
+	OauthProxyImgRepo      = "quay.io/open-cluster-management"
 	OauthProxyImgName      = "origin-oauth-proxy"
-	OauthProxyImgTagSuffix = "4.5.0"
-	OauthProxyKey          = "alertmanager-oauth-proxy"
+	OauthProxyImgTagSuffix = "2.0.11-SNAPSHOT-2021-04-29-18-29-17"
+	OauthProxyKey          = "oauth_proxy"
 
 	EndpointControllerImgTagSuffix = "2.2.0-6a5ea47fc39d51fb4fade6157843f2977442996e"
 	EndpointControllerImgName      = "endpoint-monitoring-operator"
