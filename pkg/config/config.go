@@ -22,13 +22,15 @@ import (
 )
 
 const (
-	clusterNameLabelKey      = "cluster"
-	obsAPIGateway            = "observatorium-api"
-	infrastructureConfigName = "cluster"
-	defaultMCONamespace      = "open-cluster-management"
-	defaultNamespace         = "open-cluster-management-observability"
-	defaultTenantName        = "default"
-	placementRuleName        = "observability"
+	clusterNameLabelKey               = "cluster"
+	obsAPIGateway                     = "observatorium-api"
+	infrastructureConfigName          = "cluster"
+	defaultMCONamespace               = "open-cluster-management"
+	defaultNamespace                  = "open-cluster-management-observability"
+	defaultTenantName                 = "default"
+	placementRuleName                 = "observability"
+	OpenshiftIngressOperatorNamespace = "openshift-ingress-operator"
+	OpenshiftRouterCASecretName       = "router-ca"
 
 	AnnotationKeyImageRepository          = "mco-imageRepository"
 	AnnotationKeyImageTagSuffix           = "mco-imageTagSuffix"
@@ -53,8 +55,10 @@ const (
 	GrafanaCN        = "grafana"
 	ManagedClusterOU = "acm"
 
-	AlertmanagerServiceName = "alertmanager"
-	AlertmanagerRouteName   = "alertmanager"
+	AlertmanagerAccessorSAName     = "observability-alertmanager-accessor"
+	AlertmanagerAccessorSecretName = "observability-alertmanager-accessor"
+	AlertmanagerServiceName        = "alertmanager"
+	AlertmanagerRouteName          = "alertmanager"
 
 	AlertRuleDefaultConfigMapName = "thanos-ruler-default-rules"
 	AlertRuleDefaultFileKey       = "default_rules.yaml"
@@ -338,6 +342,27 @@ func GetObsAPIUrl(client client.Client, namespace string) (string, error) {
 
 func GetDefaultMCONamespace() string {
 	return defaultMCONamespace
+}
+
+// GetHubAlertmanagerEndpoint is used to get the URL for alertmanager
+func GetHubAlertmanagerEndpoint(client client.Client, namespace string) (string, error) {
+	found := &routev1.Route{}
+
+	err := client.Get(context.TODO(), types.NamespacedName{Name: AlertmanagerRouteName, Namespace: namespace}, found)
+	if err != nil {
+		return "", err
+	}
+	return found.Spec.Host, nil
+}
+
+// GetRouterCA is used to get the CA of openshift Route
+func GetRouterCA(client client.Client) (string, error) {
+	routerCA := &corev1.Secret{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: OpenshiftRouterCASecretName, Namespace: OpenshiftIngressOperatorNamespace}, routerCA)
+	if err != nil {
+		return "", err
+	}
+	return string(routerCA.Data["tls.crt"]), nil
 }
 
 func GetDefaultNamespace() string {
