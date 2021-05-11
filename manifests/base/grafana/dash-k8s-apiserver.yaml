@@ -261,7 +261,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum:apiserver_request_total:5m{instance=~\"$instance\",code=~\"2..\", cluster=\"$cluster\"}",
+              "expr": "sum(sum:apiserver_request_total:5m{instance=~\"$instance\",code=~\"2..\", cluster=\"$cluster\"})",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -269,7 +269,7 @@ data:
               "refId": "A"
             },
             {
-              "expr": "sum:apiserver_request_total:5m{instance=~\"$instance\",code=~\"3..\", cluster=\"$cluster\"}",
+              "expr": "sum(sum:apiserver_request_total:5m{instance=~\"$instance\",code=~\"3..\", cluster=\"$cluster\"})",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -278,7 +278,7 @@ data:
               "refId": "B"
             },
             {
-              "expr": "sum:apiserver_request_total:5m{instance=~\"$instance\",code=~\"4..\", cluster=\"$cluster\"}",
+              "expr": "sum(sum:apiserver_request_total:5m{instance=~\"$instance\",code=~\"4..\", cluster=\"$cluster\"})",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -286,7 +286,7 @@ data:
               "refId": "C"
             },
             {
-              "expr": "sum:apiserver_request_total:5m{instance=~\"$instance\",code=~\"5..\", cluster=\"$cluster\"}",
+              "expr": "sum(sum:apiserver_request_total:5m{instance=~\"$instance\",code=~\"5..\", cluster=\"$cluster\"})",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
