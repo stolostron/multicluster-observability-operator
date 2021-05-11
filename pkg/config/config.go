@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"strings"
+	"time"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -34,6 +35,7 @@ const (
 	AnnotationMCOPause                    = "mco-pause"
 	AnnotationMCOWithoutResourcesRequests = "mco-thanos-without-resources-requests"
 	AnnotationSkipCreation                = "skip-creation-if-exist"
+	AnnotationCertDuration                = "mco-cert-duration"
 
 	DefaultImgRepository   = "quay.io/open-cluster-management"
 	DefaultDSImgRepository = "quay.io:443/acm-d"
@@ -181,6 +183,7 @@ var (
 	imageManifests              = map[string]string{}
 	hasCustomRuleConfigMap      = false
 	hasCustomAlertmanagerConfig = false
+	certDuration                = time.Hour * 24 * 365
 
 	Replicas1      int32 = 1
 	Replicas2      int32 = 2
@@ -443,4 +446,21 @@ func SetCustomRuleConfigMap(hasConfigMap bool) {
 // HasCustomRuleConfigMap returns true if there is custom rule configmap
 func HasCustomRuleConfigMap() bool {
 	return hasCustomRuleConfigMap
+}
+
+func GetCertDuration() time.Duration {
+	return certDuration
+}
+
+func SetCertDuration(annotations map[string]string) {
+	if annotations != nil && annotations[AnnotationCertDuration] != "" {
+		d, err := time.ParseDuration(annotations[AnnotationCertDuration])
+		if err != nil {
+			log.Error(err, "Failed to parse cert duration, use default one", "annotation", annotations[AnnotationCertDuration])
+		} else {
+			certDuration = d
+			return
+		}
+	}
+	certDuration = time.Hour * 24 * 365
 }
