@@ -16,7 +16,7 @@ spec:
   - name: oauth-proxy
     port: 9095
     protocol: TCP
-    targetPort: web
+    targetPort: oauth-proxy
   selector:
     alertmanager: observability
     app: multicluster-observability-alertmanager
