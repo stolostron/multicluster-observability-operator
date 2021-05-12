@@ -1355,13 +1355,13 @@ data:
         "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "2d", "7d", "30d"]
       },
       "timezone": "browser",
-      "title": "etcd",
+      "title": "Kubernetes / etcd Cluster",
       "uid": "N8BxQ2jMz",
       "version": 4
     }
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-k8s-compute-resources-namespace-workloads
+  name: grafana-dashboard-k8s-etcd-cluster
   namespace: open-cluster-management-observability
   labels:
     general-folder: "true"
