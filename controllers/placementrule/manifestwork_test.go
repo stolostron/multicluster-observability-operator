@@ -207,42 +207,42 @@ func TestHandleDeletedMetrics(t *testing.T) {
 		{
 			name:             "have deleted metrics",
 			defaultAllowlist: []string{"a", "b"},
-			customAllowlist:  []string{"c", "b-"},
+			customAllowlist:  []string{"c", "-b"},
 			want:             []string{"a", "c"},
 		},
 
 		{
 			name:             "deleted metrics is no exist",
 			defaultAllowlist: []string{"a", "b"},
-			customAllowlist:  []string{"c", "d-"},
+			customAllowlist:  []string{"c", "-d"},
 			want:             []string{"a", "b", "c"},
 		},
 
 		{
 			name:             "deleted all metrics",
 			defaultAllowlist: []string{"a", "b"},
-			customAllowlist:  []string{"a-", "b-"},
+			customAllowlist:  []string{"-a", "-b"},
 			want:             []string{},
 		},
 
 		{
 			name:             "delete custorm metrics",
 			defaultAllowlist: []string{"a", "b"},
-			customAllowlist:  []string{"a", "a-"},
+			customAllowlist:  []string{"a", "-a"},
 			want:             []string{"b"},
 		},
 
 		{
 			name:             "have repeated default metrics",
 			defaultAllowlist: []string{"a", "a"},
-			customAllowlist:  []string{"a", "b-"},
+			customAllowlist:  []string{"a", "-b"},
 			want:             []string{"a"},
 		},
 
 		{
 			name:             "have repeated custom metrics",
 			defaultAllowlist: []string{"a"},
-			customAllowlist:  []string{"b", "b", "a-"},
+			customAllowlist:  []string{"b", "b", "-a"},
 			want:             []string{"b"},
 		},
 	}

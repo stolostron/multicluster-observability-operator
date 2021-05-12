@@ -84,7 +84,7 @@ const (
 	MemcachedExporterImgRepo = "prom"
 	MemcachedExporterImgName = "memcached-exporter"
 	MemcachedExporterKey     = "memcached_exporter"
-	MemcachedExporterImgTag  = "v0.8.0"
+	MemcachedExporterImgTag  = "v0.9.0"
 
 	GrafanaImgRepo            = "grafana"
 	GrafanaImgName            = "grafana"
