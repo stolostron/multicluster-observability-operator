@@ -11,7 +11,7 @@ require (
 	github.com/open-cluster-management/addon-framework v0.0.0-20210414095446-30a5d245b8c7
 	github.com/open-cluster-management/api v0.0.0-20210409125704-06f2aec1a73f
 	github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20210325184301-dd3e27fc2978
-	github.com/open-cluster-management/observatorium-operator v0.0.0-20210428083021-438dd3cd8102
+	github.com/open-cluster-management/observatorium-operator v0.0.0-20210512092645-e959481410d7
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/client-go v0.0.0-20201214125552-e615e336eb49
 	gopkg.in/yaml.v2 v2.4.0

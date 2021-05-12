@@ -192,6 +192,7 @@ func newDefaultObservatoriumSpec(mco *mcov1beta2.MultiClusterObservability,
 
 	obs := &obsv1alpha1.ObservatoriumSpec{}
 	obs.SecurityContext = &v1.SecurityContext{}
+	obs.PullSecret = mco.Spec.ImagePullSecret
 	obs.NodeSelector = mco.Spec.NodeSelector
 	obs.Tolerations = mco.Spec.Tolerations
 	obs.API = newAPISpec(mco)
