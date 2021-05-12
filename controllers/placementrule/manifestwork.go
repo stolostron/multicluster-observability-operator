@@ -323,10 +323,10 @@ func mergeMetrics(defaultAllowlist []string, customAllowlist []string) []string 
 	customMetrics := []string{}
 	deletedMetrics := map[string]bool{}
 	for _, name := range customAllowlist {
-		if !strings.HasSuffix(name, "-") {
+		if !strings.HasPrefix(name, "-") {
 			customMetrics = append(customMetrics, name)
 		} else {
-			deletedMetrics[strings.TrimSuffix(name, "-")] = true
+			deletedMetrics[strings.TrimPrefix(name, "-")] = true
 		}
 	}
 
