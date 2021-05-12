@@ -46,6 +46,9 @@ var (
 )
 
 func CreateObservabilityCerts(c client.Client, scheme *runtime.Scheme, mco *mcov1beta2.MultiClusterObservability) error {
+
+	config.SetCertDuration(mco.Annotations)
+
 	err := createCASecret(c, scheme, mco, false, serverCACerts, serverCACertifcateCN)
 	if err != nil {
 		return err
@@ -54,12 +57,10 @@ func CreateObservabilityCerts(c client.Client, scheme *runtime.Scheme, mco *mcov
 	if err != nil {
 		return err
 	}
-
 	err = createCertSecret(c, scheme, mco, false, serverCerts, true, serverCertificateCN, nil, getHosts(c), nil)
 	if err != nil {
 		return err
 	}
-
 	err = createCertSecret(c, scheme, mco, false, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
 	if err != nil {
 		return err
@@ -153,7 +154,7 @@ func createCACertificate(cn string, caKey *rsa.PrivateKey) ([]byte, []byte, erro
 			CommonName:   cn,
 		},
 		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(5, 0, 0),
+		NotAfter:              time.Now().Add(config.GetCertDuration() * 5),
 		IsCA:                  true,
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign,
 		BasicConstraintsValid: true,
@@ -260,6 +261,7 @@ func createCertificate(isServer bool, cn string, ou []string, dns []string, ips 
 		log.Error(err, "failed to generate serial number")
 		return nil, nil, err
 	}
+
 	cert := &x509.Certificate{
 		SerialNumber: sn,
 		Subject: pkix.Name{
@@ -268,7 +270,7 @@ func createCertificate(isServer bool, cn string, ou []string, dns []string, ips 
 			CommonName:   cn,
 		},
 		NotBefore:   time.Now(),
-		NotAfter:    time.Now().AddDate(1, 0, 0),
+		NotAfter:    time.Now().Add(config.GetCertDuration()),
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 	}
