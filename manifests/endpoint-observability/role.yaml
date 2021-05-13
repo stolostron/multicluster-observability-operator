@@ -22,10 +22,12 @@ rules:
   - pods
   - secrets
   verbs:
+  - create
   - get
   - list
   - watch
   - delete
+  - update
 - apiGroups:
   - ""
   resources:
