@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	routev1 "github.com/openshift/api/route/v1"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -21,6 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -167,6 +169,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 				res.GetKind(), config.GetDefaultNamespace(), res.GetName()))
 			return ctrl.Result{}, err
 		}
+	}
+
+	// expose alertmanager through route
+	result, err = GenerateAlertmanagerRoute(r.Client, r.Scheme, instance)
+	if result != nil {
+		return *result, err
 	}
 
 	// expose observatorium api gateway
@@ -627,4 +635,44 @@ func updateStorageSizeChange(c client.Client, matchLabels map[string]string, mco
 		log.Info("Successfully delete sts due to storage size changed", "sts", sts.Name)
 	}
 	return nil
+}
+
+// GenerateAlertmanagerRoute create route for Alertmanager endpoint
+func GenerateAlertmanagerRoute(
+	runclient client.Client, scheme *runtime.Scheme,
+	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
+	amGateway := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.AlertmanagerRouteName,
+			Namespace: config.GetDefaultNamespace(),
+		},
+		Spec: routev1.RouteSpec{
+			Port: &routev1.RoutePort{
+				TargetPort: intstr.FromString("oauth-proxy"),
+			},
+			To: routev1.RouteTargetReference{
+				Kind: "Service",
+				Name: config.AlertmanagerServiceName,
+			},
+			TLS: &routev1.TLSConfig{
+				Termination:                   routev1.TLSTerminationReencrypt,
+				InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+			},
+		},
+	}
+
+	// Set MultiClusterObservability instance as the owner and controller
+	if err := controllerutil.SetControllerReference(mco, amGateway, scheme); err != nil {
+		return &ctrl.Result{}, err
+	}
+
+	err := runclient.Get(context.TODO(), types.NamespacedName{Name: amGateway.Name, Namespace: amGateway.Namespace}, &routev1.Route{})
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Creating a new route to expose alertmanager", "amGateway.Namespace", amGateway.Namespace, "amGateway.Name", amGateway.Name)
+		err = runclient.Create(context.TODO(), amGateway)
+		if err != nil {
+			return &ctrl.Result{}, err
+		}
+	}
+	return nil, nil
 }
