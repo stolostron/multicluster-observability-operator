@@ -1005,6 +1005,10 @@ spec:
                       cache:
                         description: Memcached spec for QueryFrontend
                         properties:
+                          connectionLimit:
+                            description: Max simultaneous connections
+                            format: int32
+                            type: integer
                           exporterImage:
                             description: Memcached Prometheus Exporter image
                             type: string
@@ -1035,6 +1039,9 @@ spec:
                             type: string
                           image:
                             description: Memcached image
+                            type: string
+                          maxItemSize:
+                            description: 'Max item size (default: 1m, min: 1k, max: 1024m)'
                             type: string
                           memoryLimitMb:
                             description: Memory limit of Memcached in megabytes.
@@ -1275,6 +1282,19 @@ spec:
                   rule:
                     description: Thanos RulerSpec
                     properties:
+                      alertmanagerConfigFile:
+                        description: AlertmanagerConfigFile
+                        properties:
+                          key:
+                            description: Alertmanager ConfigMap key
+                            type: string
+                          name:
+                            description: Alertmanager ConfigMap Name
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
                       alertmanagerURLs:
                         description: AlertmanagerURLs
                         items:
@@ -1283,6 +1303,29 @@ spec:
                       blockDuration:
                         description: Block duration for TSDB block
                         type: string
+                      extraVolumeMounts:
+                        description: ExtraVolumeMounts
+                        items:
+                          properties:
+                            key:
+                              description: File name for the mount
+                              type: string
+                            mountPath:
+                              description: Volume mount path in the pod
+                              type: string
+                            name:
+                              description: Resource name for the volume mount source
+                              type: string
+                            type:
+                              description: Voume mount type, configMap or secret
+                              type: string
+                          required:
+                          - key
+                          - mountPath
+                          - name
+                          - type
+                          type: object
+                        type: array
                       reloaderImage:
                         description: ReloaderImage is an image of configmap reloader
                         type: string
@@ -1456,6 +1499,10 @@ spec:
                       cache:
                         description: Memcached spec for Store
                         properties:
+                          connectionLimit:
+                            description: Max simultaneous connections
+                            format: int32
+                            type: integer
                           exporterImage:
                             description: Memcached Prometheus Exporter image
                             type: string
@@ -1486,6 +1533,9 @@ spec:
                             type: string
                           image:
                             description: Memcached image
+                            type: string
+                          maxItemSize:
+                            description: 'Max item size (default: 1m, min: 1k, max: 1024m)'
                             type: string
                           memoryLimitMb:
                             description: Memory limit of Memcached in megabytes.

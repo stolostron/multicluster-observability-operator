@@ -22,13 +22,15 @@ import (
 )
 
 const (
-	clusterNameLabelKey      = "cluster"
-	obsAPIGateway            = "observatorium-api"
-	infrastructureConfigName = "cluster"
-	defaultMCONamespace      = "open-cluster-management"
-	defaultNamespace         = "open-cluster-management-observability"
-	defaultTenantName        = "default"
-	placementRuleName        = "observability"
+	clusterNameLabelKey               = "cluster"
+	obsAPIGateway                     = "observatorium-api"
+	infrastructureConfigName          = "cluster"
+	defaultMCONamespace               = "open-cluster-management"
+	defaultNamespace                  = "open-cluster-management-observability"
+	defaultTenantName                 = "default"
+	placementRuleName                 = "observability"
+	OpenshiftIngressOperatorNamespace = "openshift-ingress-operator"
+	OpenshiftRouterCASecretName       = "router-ca"
 
 	AnnotationKeyImageRepository          = "mco-imageRepository"
 	AnnotationKeyImageTagSuffix           = "mco-imageTagSuffix"
@@ -53,12 +55,23 @@ const (
 	GrafanaCN        = "grafana"
 	ManagedClusterOU = "acm"
 
+	AlertmanagerAccessorSAName     = "observability-alertmanager-accessor"
+	AlertmanagerAccessorSecretName = "observability-alertmanager-accessor"
+	AlertmanagerServiceName        = "alertmanager"
+	AlertmanagerRouteName          = "alertmanager"
+
 	AlertRuleDefaultConfigMapName = "thanos-ruler-default-rules"
 	AlertRuleDefaultFileKey       = "default_rules.yaml"
 	AlertRuleCustomConfigMapName  = "thanos-ruler-custom-rules"
 	AlertRuleCustomFileKey        = "custom_rules.yaml"
 	AlertmanagerURL               = "http://alertmanager:9093"
 	AlertmanagerConfigName        = "alertmanager-config"
+
+	AlertmanagersDefaultConfigMapName     = "thanos-ruler-config"
+	AlertmanagersDefaultConfigFileKey     = "config.yaml"
+	AlertmanagersDefaultCaBundleMountPath = "/etc/thanos/configmaps/alertmanager-ca-bundle"
+	AlertmanagersDefaultCaBundleName      = "alertmanager-ca-bundle"
+	AlertmanagersDefaultCaBundleKey       = "service-ca.crt"
 
 	AllowlistConfigMapName       = "observability-metrics-allowlist"
 	AllowlistCustomConfigMapName = "observability-metrics-custom-allowlist"
@@ -97,6 +110,11 @@ const (
 	ConfigmapReloaderImgName      = "origin-configmap-reloader"
 	ConfigmapReloaderImgTagSuffix = "4.5.0"
 	ConfigmapReloaderKey          = "prometheus-config-reloader"
+
+	OauthProxyImgRepo      = "quay.io/open-cluster-management"
+	OauthProxyImgName      = "origin-oauth-proxy"
+	OauthProxyImgTagSuffix = "2.0.11-SNAPSHOT-2021-04-29-18-29-17"
+	OauthProxyKey          = "oauth_proxy"
 
 	EndpointControllerImgTagSuffix = "2.2.0-6a5ea47fc39d51fb4fade6157843f2977442996e"
 	EndpointControllerImgName      = "endpoint-monitoring-operator"
@@ -324,6 +342,27 @@ func GetObsAPIUrl(client client.Client, namespace string) (string, error) {
 
 func GetDefaultMCONamespace() string {
 	return defaultMCONamespace
+}
+
+// GetHubAlertmanagerEndpoint is used to get the URL for alertmanager
+func GetHubAlertmanagerEndpoint(client client.Client, namespace string) (string, error) {
+	found := &routev1.Route{}
+
+	err := client.Get(context.TODO(), types.NamespacedName{Name: AlertmanagerRouteName, Namespace: namespace}, found)
+	if err != nil {
+		return "", err
+	}
+	return found.Spec.Host, nil
+}
+
+// GetRouterCA is used to get the CA of openshift Route
+func GetRouterCA(client client.Client) (string, error) {
+	routerCA := &corev1.Secret{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: OpenshiftRouterCASecretName, Namespace: OpenshiftIngressOperatorNamespace}, routerCA)
+	if err != nil {
+		return "", err
+	}
+	return string(routerCA.Data["tls.crt"]), nil
 }
 
 func GetDefaultNamespace() string {

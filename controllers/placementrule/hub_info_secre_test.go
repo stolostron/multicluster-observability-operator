@@ -9,16 +9,20 @@ import (
 
 	routev1 "github.com/openshift/api/route/v1"
 	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 
 const (
 	routeHost = "test-host"
+	routerCA  = "test-ca"
 )
 
-func newTestRoute() *routev1.Route {
+func newTestObsApiRoute() *routev1.Route {
 	return &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "observatorium-api",
@@ -30,10 +34,35 @@ func newTestRoute() *routev1.Route {
 	}
 }
 
+func newTestAlertmanagerRoute() *routev1.Route {
+	return &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.AlertmanagerRouteName,
+			Namespace: mcoNamespace,
+		},
+		Spec: routev1.RouteSpec{
+			Host: routeHost,
+		},
+	}
+}
+
+func newTestRouteCA() *corev1.Secret {
+	configYamlMap := map[string][]byte{}
+	configYamlMap["tls.crt"] = []byte(routerCA)
+
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.OpenshiftRouterCASecretName,
+			Namespace: config.OpenshiftIngressOperatorNamespace,
+		},
+		Data: configYamlMap,
+	}
+}
+
 func TestNewSecret(t *testing.T) {
 	initSchema(t)
 
-	objs := []runtime.Object{newTestRoute()}
+	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestRouteCA()}
 	c := fake.NewFakeClient(objs...)
 
 	hubInfo, err := newHubInfoSecret(c, mcoNamespace, namespace, clusterName, newTestMCO())
@@ -45,7 +74,7 @@ func TestNewSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
 	}
-	if hub.ClusterName != clusterName || !strings.HasPrefix(hub.Endpoint, "https://test-host") {
-		t.Fatalf("Wrong content in hub info secret: (%s)", hub.ClusterName+" "+hub.Endpoint)
+	if hub.ClusterName != clusterName || !strings.HasPrefix(hub.Endpoint, "https://test-host") || !strings.HasPrefix(hub.HubAlertmanagerEndpoint, "https://test-host") || hub.HubRouterCA != routerCA {
+		t.Fatalf("Wrong content in hub info secret: \ngot: (%s)\nwant: (%s)", hub.ClusterName+" "+hub.Endpoint+" "+hub.HubAlertmanagerEndpoint+" "+hub.HubRouterCA, clusterName+" "+"https://test-host"+" "+"https://test-host"+" "+routerCA)
 	}
 }

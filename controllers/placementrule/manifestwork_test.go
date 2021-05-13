@@ -25,7 +25,7 @@ import (
 
 const (
 	pullSecretName = "test-pull-secret"
-	workSize       = 11
+	workSize       = 12
 )
 
 func newTestMCO() *mcov1beta2.MultiClusterObservability {
@@ -121,11 +121,36 @@ func NewMetricsCustomAllowListCM() *corev1.ConfigMap {
 `},
 	}
 }
+
+func NewAmAccessorSA() *corev1.ServiceAccount {
+	return &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.AlertmanagerAccessorSAName,
+			Namespace: mcoNamespace,
+		},
+		Secrets: []corev1.ObjectReference{
+			{Name: config.AlertmanagerAccessorSecretName + "-token-xxx"},
+		},
+	}
+}
+
+func NewAmAccessorTokenSecret() *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.AlertmanagerAccessorSecretName + "-token-xxx",
+			Namespace: mcoNamespace,
+		},
+		Data: map[string][]byte{
+			"token": []byte("xxxxx"),
+		},
+	}
+}
+
 func TestManifestWork(t *testing.T) {
 
 	initSchema(t)
 
-	objs := []runtime.Object{newTestRoute(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(), NewMetricsCustomAllowListCM()}
+	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestRouteCA(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(), NewMetricsCustomAllowListCM(), NewAmAccessorSA(), NewAmAccessorTokenSecret()}
 	c := fake.NewFakeClient(objs...)
 
 	wd, err := os.Getwd()

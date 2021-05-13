@@ -487,6 +487,27 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 
+	amAccessorSAPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Object.GetName() == config.AlertmanagerAccessorSAName &&
+				e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if (e.ObjectNew.GetName() == config.AlertmanagerAccessorSAName &&
+				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace()) &&
+				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+		},
+	}
+
 	ctrBuilder := ctrl.NewControllerManagedBy(mgr).
 		// Watch for changes to primary resource PlacementRule with predicate
 		For(&placementv1.PlacementRule{}, builder.WithPredicates(pmPred)).
@@ -497,7 +518,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// secondary watch for custom allowlist configmap
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(customAllowlistPred)).
 		// secondary watch for certificate secrets
-		Watches(&source.Kind{Type: &corev1.Secret{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(certSecretPred))
+		Watches(&source.Kind{Type: &corev1.Secret{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(certSecretPred)).
+		// secondary watch for alertmanager accessor serviceaccount
+		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(amAccessorSAPred))
 
 	manifestWorkGroupKind := schema.GroupKind{Group: workv1.GroupVersion.Group, Kind: "ManifestWork"}
 	if _, err := r.RESTMapper.RESTMapping(manifestWorkGroupKind, workv1.GroupVersion.Version); err == nil {

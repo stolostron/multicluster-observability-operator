@@ -97,8 +97,8 @@ func TestObservabilityAddonController(t *testing.T) {
 			},
 		},
 	}
-	objs := []runtime.Object{p, mco, pull, newTestRoute(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
-		newManagedClusterAddon(), deprecatedRole}
+	objs := []runtime.Object{p, mco, pull, newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestRouteCA(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
+		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newManagedClusterAddon(), deprecatedRole}
 	c := fake.NewFakeClient(objs...)
 
 	r := &PlacementRuleReconciler{Client: c, Scheme: s}
