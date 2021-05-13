@@ -194,6 +194,7 @@ func onUpdate(c client.Client) func(oldObj, newObj interface{}) {
 			}
 			if needsRenew(newS) {
 				var err error
+				var hosts []string
 				switch name := newS.Name; {
 				case name == serverCACerts:
 					err = createCASecret(c, nil, nil, true, serverCACerts, serverCACertifcateCN)
@@ -202,7 +203,10 @@ func onUpdate(c client.Client) func(oldObj, newObj interface{}) {
 				case name == grafanaCerts:
 					err = createCertSecret(c, nil, nil, true, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
 				case name == serverCerts:
-					err = createCertSecret(c, nil, nil, true, serverCerts, true, serverCertificateCN, nil, getHosts(c), nil)
+					hosts, err = getHosts(c)
+					if err == nil {
+						err = createCertSecret(c, nil, nil, true, serverCerts, true, serverCertificateCN, nil, hosts, nil)
+					}
 				default:
 					return
 				}

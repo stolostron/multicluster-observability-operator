@@ -57,7 +57,11 @@ func CreateObservabilityCerts(c client.Client, scheme *runtime.Scheme, mco *mcov
 	if err != nil {
 		return err
 	}
-	err = createCertSecret(c, scheme, mco, false, serverCerts, true, serverCertificateCN, nil, getHosts(c), nil)
+	hosts, err := getHosts(c)
+	if err != nil {
+		return err
+	}
+	err = createCertSecret(c, scheme, mco, false, serverCerts, true, serverCertificateCN, nil, hosts, nil)
 	if err != nil {
 		return err
 	}
@@ -395,13 +399,14 @@ func pemEncode(cert []byte, key []byte) (*bytes.Buffer, *bytes.Buffer) {
 	return certPEM, keyPEM
 }
 
-func getHosts(c client.Client) []string {
+func getHosts(c client.Client) ([]string, error) {
 	hosts := []string{config.GetObsAPISvc(config.GetMonitoringCRName())}
 	url, err := config.GetObsAPIUrl(c, config.GetDefaultNamespace())
 	if err != nil {
 		log.Error(err, "Failed to get api route address")
+		return nil, err
 	} else {
 		hosts = append(hosts, url)
 	}
-	return hosts
+	return hosts, nil
 }
