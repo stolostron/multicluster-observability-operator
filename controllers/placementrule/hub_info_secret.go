@@ -24,23 +24,40 @@ const (
 
 // HubInfo is the struct for hub info
 type HubInfo struct {
-	ClusterName string `yaml:"cluster-name"`
-	Endpoint    string `yaml:"endpoint"`
+	ClusterName             string `yaml:"cluster-name"`
+	Endpoint                string `yaml:"endpoint"`
+	HubAlertmanagerEndpoint string `yaml:"hub-alertmanager-endpoint"`
+	HubRouterCA             string `yaml:"hub-router-ca"`
 }
 
 func newHubInfoSecret(client client.Client, obsNamespace string,
 	namespace string, clusterName string, mco *mcov1beta2.MultiClusterObservability) (*corev1.Secret, error) {
-	url, err := config.GetObsAPIUrl(client, obsNamespace)
+	obsApiEp, err := config.GetObsAPIUrl(client, obsNamespace)
 	if err != nil {
 		log.Error(err, "Failed to get api gateway")
 		return nil, err
 	}
-	if !strings.HasPrefix(url, "http") {
-		url = protocol + url
+	if !strings.HasPrefix(obsApiEp, "http") {
+		obsApiEp = protocol + obsApiEp
+	}
+	hubAlertmanagerEp, err := config.GetHubAlertmanagerEndpoint(client, obsNamespace)
+	if err != nil {
+		log.Error(err, "Failed to get alertmanager endpoint")
+		return nil, err
+	}
+	if !strings.HasPrefix(hubAlertmanagerEp, "http") {
+		hubAlertmanagerEp = protocol + hubAlertmanagerEp
+	}
+	hubRouterCA, err := config.GetRouterCA(client)
+	if err != nil {
+		log.Error(err, "Failed to CA of openshift Route")
+		return nil, err
 	}
 	hubInfo := &HubInfo{
-		ClusterName: clusterName,
-		Endpoint:    url + urlSubPath,
+		ClusterName:             clusterName,
+		Endpoint:                obsApiEp + urlSubPath,
+		HubAlertmanagerEndpoint: hubAlertmanagerEp,
+		HubRouterCA:             hubRouterCA,
 	}
 	configYaml, err := yaml.Marshal(hubInfo)
 	if err != nil {

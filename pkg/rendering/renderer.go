@@ -40,6 +40,7 @@ type Renderer struct {
 	renderFns             map[string]renderFn
 	renderGrafanaFns      map[string]renderFn
 	renderAlertManagerFns map[string]renderFn
+	renderThanosFns       map[string]renderFn
 }
 
 func NewRenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability) *Renderer {
@@ -58,6 +59,7 @@ func NewRenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability)
 	}
 	renderer.newGranfanaRenderer()
 	renderer.newAlertManagerRenderer()
+	renderer.newThanosRenderer()
 	return renderer
 }
 
@@ -94,7 +96,18 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 	}
 	resources = append(resources, alertResources...)
 
-	for idx, _ := range resources {
+	//render thanos templates
+	thanosTemplates, err := templates.GetTemplateRenderer().GetThanosTemplates(r.cr)
+	if err != nil {
+		return nil, err
+	}
+	thanosResources, err := r.renderThanosTemplates(thanosTemplates)
+	if err != nil {
+		return nil, err
+	}
+	resources = append(resources, thanosResources...)
+
+	for idx := range resources {
 		if resources[idx].GetKind() == "Deployment" {
 			obj := util.GetK8sObj(resources[idx].GetKind())
 			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
@@ -238,17 +251,13 @@ func (r *Renderer) renderClusterRoleBinding(res *resource.Resource) (*unstructur
 
 // UpdateNamespace checks for annotiation to update NS
 func UpdateNamespace(u *unstructured.Unstructured) bool {
-	metadata, ok := u.Object["metadata"].(map[string]interface{})
-	updateNamespace := true
-	if ok {
-		annotations, ok := metadata["annotations"].(map[string]interface{})
-		if ok && annotations != nil {
-			if annotations[nsUpdateAnnoKey] != nil && annotations[nsUpdateAnnoKey].(string) != "" {
-				updateNamespace, _ = strconv.ParseBool(annotations[nsUpdateAnnoKey].(string))
-			}
-		}
+	annotations := u.GetAnnotations()
+	v, ok := annotations[nsUpdateAnnoKey]
+	if !ok {
+		return true
 	}
-	return updateNamespace
+	ret, _ := strconv.ParseBool(v)
+	return ret
 }
 
 func (r *Renderer) renderMutatingWebhookConfiguration(res *resource.Resource) (*unstructured.Unstructured, error) {

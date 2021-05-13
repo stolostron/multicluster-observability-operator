@@ -92,6 +92,13 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	if found {
 		spec.Containers[1].Image = image
 	}
+	// the oauth-proxy image only exists in mch-image-manifest configmap
+	// pass nil annotation to make sure oauth-proxy overrided from mch-image-manifest
+	found, image = mcoconfig.ReplaceImage(nil, mcoconfig.OauthProxyImgRepo,
+		mcoconfig.OauthProxyKey)
+	if found {
+		spec.Containers[2].Image = image
+	}
 	//replace the volumeClaimTemplate
 	dep.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = &r.cr.Spec.StorageConfig.StorageClass
 	dep.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] =

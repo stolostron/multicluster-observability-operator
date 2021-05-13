@@ -6,6 +6,7 @@ package placementrule
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -211,10 +212,62 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	}
 	manifests = injectIntoWork(manifests, mList)
 
+	// inject the alertmanager accessor bearer token secret
+	amAccessorTokenSecret, err := getAmAccessorTokenSecret(c)
+	if err != nil {
+		return err
+	}
+	manifests = injectIntoWork(manifests, amAccessorTokenSecret)
+
 	work.Spec.Workload.Manifests = manifests
 
 	err = createManifestwork(c, work)
 	return err
+}
+
+func getAmAccessorTokenSecret(client client.Client) (*corev1.Secret, error) {
+	amAccessorSA := &corev1.ServiceAccount{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: config.AlertmanagerAccessorSAName,
+		Namespace: config.GetDefaultNamespace()}, amAccessorSA)
+	if err != nil {
+		log.Error(err, "Failed to get Alertmanager accessor serviceaccount", "name", config.AlertmanagerAccessorSAName)
+		return nil, err
+	}
+
+	tokenSrtName := ""
+	for _, secretRef := range amAccessorSA.Secrets {
+		if strings.HasPrefix(secretRef.Name, config.AlertmanagerAccessorSAName+"-token") {
+			tokenSrtName = secretRef.Name
+			break
+		}
+	}
+
+	if tokenSrtName == "" {
+		log.Error(err, "no token secret for Alertmanager accessor serviceaccount", "name", config.AlertmanagerAccessorSAName)
+		return nil, fmt.Errorf("no token secret for Alertmanager accessor serviceaccount: %s", config.AlertmanagerAccessorSAName)
+	}
+
+	tokenSrt := &corev1.Secret{}
+	err = client.Get(context.TODO(), types.NamespacedName{Name: tokenSrtName,
+		Namespace: config.GetDefaultNamespace()}, tokenSrt)
+	if err != nil {
+		log.Error(err, "Failed to get token secret for Alertmanager accessor serviceaccount", "name", tokenSrtName)
+		return nil, err
+	}
+
+	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "Secret",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.AlertmanagerAccessorSecretName,
+			Namespace: spokeNameSpace,
+		},
+		Data: map[string][]byte{
+			"token": tokenSrt.Data["token"],
+		},
+	}, nil
 }
 
 func getPullSecret(imagePullSecret *corev1.Secret) *corev1.Secret {
