@@ -99,7 +99,6 @@ func TestMergeVolumeClaimTemplate(t *testing.T) {
 
 func TestNoUpdateObservatoriumCR(t *testing.T) {
 	var (
-		name      = "monitoring"
 		namespace = mcoconfig.GetDefaultNamespace()
 	)
 
@@ -107,7 +106,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name: mcoconfig.GetObjectPrefix(),
 			Annotations: map[string]string{
 				mcoconfig.AnnotationKeyImageTagSuffix: "tag",
 			},
@@ -148,7 +147,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	cl.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      name,
+			Name:      mcoconfig.GetObjectPrefix(),
 			Namespace: namespace,
 		},
 		observatoriumCRFound,
