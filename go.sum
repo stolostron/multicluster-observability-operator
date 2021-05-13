@@ -95,8 +95,8 @@ github.com/bketelsen/crypt v0.0.3-0.20200106085610-5cbc8cc4026c/go.mod h1:MKsuJm
 github.com/blang/semver v3.5.0+incompatible/go.mod h1:kRBLl5iJ+tD4TcOOxsy/0fnwebNt5EWlYSAyrTnjyyk=
 github.com/blang/semver v3.5.1+incompatible h1:cQNTCjp13qL8KC3Nbxr/y2Bqb63oX6wdnnjpJbkM4JQ=
 github.com/blang/semver v3.5.1+incompatible/go.mod h1:kRBLl5iJ+tD4TcOOxsy/0fnwebNt5EWlYSAyrTnjyyk=
-github.com/brancz/locutus v0.0.0-20210421084121-0f02ffb439b6 h1:Nam40ne0XLOd7EkgvqTuRHnbtWeDq8JqM3TY63Z3lAY=
-github.com/brancz/locutus v0.0.0-20210421084121-0f02ffb439b6/go.mod h1:m6Yh1b4TXyTAuxU/LOkpl8bUl5LFAiTa+qr0AkfT0+E=
+github.com/brancz/locutus v0.0.0-20210511124350-7a84f4d1bcb3 h1:N7vTNNytk6OFY5WoPJ+cSxxlRbNpCUWdyPW8nDHp0Sw=
+github.com/brancz/locutus v0.0.0-20210511124350-7a84f4d1bcb3/go.mod h1:n+EREm6Tinr9eHmIls4DzojRkkA4IrBe6xRpO4HEw0I=
 github.com/casbin/casbin/v2 v2.1.2/go.mod h1:YcPU1XXisHhLzuxH9coDNf2FbKpjGlbCg3n9yuLkIJQ=
 github.com/cenkalti/backoff v2.2.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
@@ -572,8 +572,8 @@ github.com/open-cluster-management/library-e2e-go v0.0.0-20200620112055-c80fc3c1
 github.com/open-cluster-management/library-go v0.0.0-20200828173847-299c21e6c3fc/go.mod h1:X9KdKajEnrx6+LQSjo+61gLdk4Ntmwp+YEYD0CIJT7I=
 github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20210325184301-dd3e27fc2978 h1:KNMUp3ynJfeaExeW/+lM2UZFAu2Iy4+w3Es0JXjrQEw=
 github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20210325184301-dd3e27fc2978/go.mod h1:xjRErANcCAoAzsgMMurqW3CHBlNun4PH4elIUWLhNEo=
-github.com/open-cluster-management/observatorium-operator v0.0.0-20210510030852-c47b4b9d59fd h1:iqLs/V7ekI4RmYu9E9Q/5I0ht3FjK2P3gY8B8Dw/6QY=
-github.com/open-cluster-management/observatorium-operator v0.0.0-20210510030852-c47b4b9d59fd/go.mod h1:2pe1pdg7G1EeuuKbbMAZG+BIHbQAnujtOf9tvilV0Js=
+github.com/open-cluster-management/observatorium-operator v0.0.0-20210512092645-e959481410d7 h1:6F4GeKLsrKg1JIwYHt9ioVppie9RIKoJJTNROrGgeUI=
+github.com/open-cluster-management/observatorium-operator v0.0.0-20210512092645-e959481410d7/go.mod h1:uodFM15U1XBeykVaV3w3V1rvQlXASwPsjyGLnmMmPgA=
 github.com/opencontainers/go-digest v1.0.0-rc1/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.0.1/go.mod h1:BtxoFyWECRxE4U/7sNtV5W15zMzWCbyJoFRP3s7yZA0=

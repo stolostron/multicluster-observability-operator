@@ -733,6 +733,9 @@ spec:
                 required:
                 - thanos
                 type: object
+              pullSecret:
+                description: Pull secret used to pull the images.
+                type: string
               securityContext:
                 description: Security options the pod should run with.
                 properties:
