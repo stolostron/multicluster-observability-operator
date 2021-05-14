@@ -22,6 +22,7 @@ import (
 )
 
 const (
+	crLabelKey                        = "observability.open-cluster-management.io/name"
 	clusterNameLabelKey               = "cluster"
 	obsAPIGateway                     = "observatorium-api"
 	infrastructureConfigName          = "cluster"
@@ -231,6 +232,11 @@ func SetObservabilityComponentReplicas(name string, replicas *int32) {
 			return
 		}
 	}
+}
+
+// GetCrLabelKey returns the key for the CR label injected into the resources created by the operator
+func GetCrLabelKey() string {
+	return crLabelKey
 }
 
 // GetClusterNameLabelKey returns the key for the injected label

@@ -23,6 +23,7 @@ func (r *Renderer) newAlertManagerRenderer() {
 		"Service":               r.renderNamespace,
 		"ServiceAccount":        r.renderNamespace,
 		"ConfigMap":             r.renderNamespace,
+		"ClusterRole":           r.renderClusterRole,
 		"ClusterRoleBinding":    r.renderClusterRoleBinding,
 		"Secret":                r.renderNamespace,
 		"Role":                  r.renderNamespace,
@@ -42,6 +43,7 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	if err != nil {
 		return nil, err
 	}
+	crLabelKey := mcoconfig.GetCrLabelKey()
 	dep := obj.(*v1.StatefulSet)
 	dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 	dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name

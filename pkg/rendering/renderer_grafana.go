@@ -16,6 +16,7 @@ func (r *Renderer) newGranfanaRenderer() {
 		"Service":               r.renderNamespace,
 		"ServiceAccount":        r.renderNamespace,
 		"ConfigMap":             r.renderNamespace,
+		"ClusterRole":           r.renderClusterRole,
 		"ClusterRoleBinding":    r.renderClusterRoleBinding,
 		"Secret":                r.renderNamespace,
 		"Role":                  r.renderNamespace,

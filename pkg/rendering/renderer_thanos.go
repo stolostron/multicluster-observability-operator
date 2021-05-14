@@ -12,6 +12,7 @@ func (r *Renderer) newThanosRenderer() {
 	r.renderThanosFns = map[string]renderFn{
 		"ServiceAccount":     r.renderNamespace,
 		"ConfigMap":          r.renderNamespace,
+		"ClusterRole":        r.renderClusterRole,
 		"ClusterRoleBinding": r.renderClusterRoleBinding,
 		"Secret":             r.renderNamespace,
 	}
