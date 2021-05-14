@@ -32,6 +32,7 @@ const (
 	defaultNamespace         = "open-cluster-management-observability"
 	defaultTenantName        = "default"
 	placementRuleName        = "observability"
+	objectPrefix             = "observability"
 
 	AnnotationKeyImageRepository          = "mco-imageRepository"
 	AnnotationKeyImageTagSuffix           = "mco-imageTagSuffix"
@@ -515,4 +516,8 @@ func SetCustomRuleConfigMap(hasConfigMap bool) {
 // HasCustomRuleConfigMap returns true if there is custom rule configmap
 func HasCustomRuleConfigMap() bool {
 	return hasCustomRuleConfigMap
+}
+
+func GetObjectPrefix() string {
+	return objectPrefix
 }

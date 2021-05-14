@@ -28,8 +28,7 @@ import (
 )
 
 const (
-	obsPartoOfName = "-observatorium"
-	obsAPIGateway  = "observatorium-api"
+	obsAPIGateway = "observatorium-api"
 
 	readOnlyRoleName  = "read-only-metrics"
 	writeOnlyRoleName = "write-only-metrics"
@@ -41,7 +40,7 @@ func GenerateObservatoriumCR(
 	mco *mcov1beta1.MultiClusterObservability) (*reconcile.Result, error) {
 
 	labels := map[string]string{
-		"app": mco.Name,
+		"app": mcoconfig.GetObjectPrefix(),
 	}
 
 	storageClassSelected, err := getStorageClass(mco, cl)
@@ -53,7 +52,7 @@ func GenerateObservatoriumCR(
 
 	observatoriumCR := &observatoriumv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      mco.Name + obsPartoOfName,
+			Name:      mcoconfig.GetObjectPrefix(),
 			Namespace: mcoconfig.GetDefaultNamespace(),
 			Labels:    labels,
 		},
@@ -157,7 +156,7 @@ func GenerateAPIGatewayRoute(
 			},
 			To: routev1.RouteTargetReference{
 				Kind: "Service",
-				Name: mco.Name + "-observatorium-observatorium-api",
+				Name: mcoconfig.GetObjectPrefix() + "-observatorium-api",
 			},
 			TLS: &routev1.TLSConfig{
 				Termination:                   routev1.TLSTerminationPassthrough,
