@@ -263,11 +263,11 @@ func createAllRelatedRes(
 
 	failedCreateManagedClusterRes := false
 	for _, decision := range placement.Status.Decisions {
-		log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
 		currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
 		// only handle the request namespace if the request resource is not from observability  namespace
 		if request.Namespace == "" || request.Namespace == config.GetDefaultNamespace() ||
 			request.Namespace == decision.ClusterNamespace {
+			log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
 			err = createManagedClusterRes(client, restMapper, mco, imagePullSecret,
 				decision.ClusterName, decision.ClusterNamespace)
 			if err != nil {
@@ -417,7 +417,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.ObjectNew.GetName() == obsAddonName &&
-				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue {
+				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
+				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Status.Conditions,
+					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Status.Conditions) {
 				return true
 			}
 			return false
@@ -538,7 +540,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				if e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-					e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+					e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
+					!reflect.DeepEqual(e.ObjectNew.(*workv1.ManifestWork).Spec.Workload.Manifests,
+						e.ObjectOld.(*workv1.ManifestWork).Spec.Workload.Manifests) {
 					return true
 				}
 				return false
