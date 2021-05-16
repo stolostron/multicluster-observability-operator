@@ -9,6 +9,7 @@ import (
 	"reflect"
 
 	"github.com/go-logr/logr"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -194,19 +195,24 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
-	err = updateAddonStatus(r.Client, *obsAddonList)
-	if err != nil {
-		return ctrl.Result{}, err
+	// only update managedclusteraddon status when obs addon's status updated
+	if req.Name == obsAddonName {
+		err = updateAddonStatus(r.Client, *obsAddonList)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
-	opts.Namespace = ""
-	err = r.Client.List(context.TODO(), workList, opts)
-	if err != nil {
-		reqLogger.Error(err, "Failed to list manifestwork resource")
-		return ctrl.Result{}, err
-	}
-	if len(workList.Items) == 0 && deleteAll {
-		err = deleteGlobalResource(r.Client)
+	if deleteAll {
+		opts.Namespace = ""
+		err = r.Client.List(context.TODO(), workList, opts)
+		if err != nil {
+			reqLogger.Error(err, "Failed to list manifestwork resource")
+			return ctrl.Result{}, err
+		}
+		if len(workList.Items) == 0 {
+			err = deleteGlobalResource(r.Client)
+		}
 	}
 
 	return ctrl.Result{}, err
@@ -241,24 +247,14 @@ func createAllRelatedRes(
 		isClusterManagementAddonCreated = true
 	}
 
-	imagePullSecret := &corev1.Secret{}
-	err := client.Get(context.TODO(),
-		types.NamespacedName{
-			Name:      mco.Spec.ImagePullSecret,
-			Namespace: config.GetDefaultNamespace(),
-		}, imagePullSecret)
-	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			imagePullSecret = nil
-		} else {
-			// Error reading the object - requeue the request.
-			return ctrl.Result{}, err
-		}
-	}
-
 	currentClusters := []string{}
 	for _, ep := range obsAddonList.Items {
 		currentClusters = append(currentClusters, ep.Namespace)
+	}
+
+	works, crdWork, dep, hubInfo, err := getGlobalManifestResources(client, mco)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	failedCreateManagedClusterRes := false
@@ -268,8 +264,9 @@ func createAllRelatedRes(
 		if request.Namespace == "" || request.Namespace == config.GetDefaultNamespace() ||
 			request.Namespace == decision.ClusterNamespace {
 			log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
-			err = createManagedClusterRes(client, restMapper, mco, imagePullSecret,
-				decision.ClusterName, decision.ClusterNamespace)
+			err = createManagedClusterRes(client, restMapper, mco,
+				decision.ClusterName, decision.ClusterNamespace,
+				works, crdWork, dep, hubInfo)
 			if err != nil {
 				failedCreateManagedClusterRes = true
 				log.Error(err, "Failed to create managedcluster resources", "namespace", decision.ClusterNamespace)
@@ -331,8 +328,8 @@ func deleteGlobalResource(c client.Client) error {
 }
 
 func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
-	mco *mcov1beta2.MultiClusterObservability, imagePullSecret *corev1.Secret,
-	name string, namespace string) error {
+	mco *mcov1beta2.MultiClusterObservability, name string, namespace string,
+	works []workv1.Manifest, crdWork *workv1.Manifest, dep *appsv1.Deployment, hubInfo *corev1.Secret) error {
 	err := createObsAddon(client, namespace)
 	if err != nil {
 		log.Error(err, "Failed to create observabilityaddon")
@@ -344,7 +341,7 @@ func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 		return err
 	}
 
-	err = createManifestWorks(client, restMapper, namespace, name, mco, imagePullSecret)
+	err = createManifestWorks(client, restMapper, namespace, name, mco, works, crdWork, dep, hubInfo)
 	if err != nil {
 		log.Error(err, "Failed to create manifestwork")
 		return err

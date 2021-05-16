@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v2"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -148,10 +149,69 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 	return nil
 }
 
+func getGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObservability) (
+	[]workv1.Manifest, *workv1.Manifest, *appsv1.Deployment, *corev1.Secret, error) {
+
+	works := []workv1.Manifest{}
+
+	hubInfo, err := newHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, mco)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	// inject namespace
+	works = injectIntoWork(works, createNameSpace())
+
+	//create image pull secret
+	pull, err := getPullSecret(c, mco.Spec.ImagePullSecret)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	if pull != nil {
+		works = injectIntoWork(works, pull)
+	}
+
+	// inject the certificates
+	certs, err := getCerts(c)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	works = injectIntoWork(works, certs)
+
+	// inject the metrics allowlist configmap
+	mList, err := getMetricsListCM(c)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	works = injectIntoWork(works, mList)
+
+	// inject the alertmanager accessor bearer token secret
+	amAccessorTokenSecret, err := getAmAccessorTokenSecret(c)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+	works = injectIntoWork(works, amAccessorTokenSecret)
+
+	// inject resouces in templates
+	templates, crd, dep, err := loadTemplates(mco)
+	if err != nil {
+		log.Error(err, "Failed to load templates")
+		return nil, nil, nil, nil, err
+	}
+	crdWork := &workv1.Manifest{RawExtension: runtime.RawExtension{
+		Object: crd,
+	}}
+	for _, raw := range templates {
+		works = append(works, workv1.Manifest{RawExtension: raw})
+	}
+
+	return works, crdWork, dep, hubInfo, nil
+}
+
 func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	clusterNamespace string, clusterName string,
 	mco *mcov1beta2.MultiClusterObservability,
-	imagePullSecret *corev1.Secret) error {
+	works []workv1.Manifest, crdWork *workv1.Manifest, dep *appsv1.Deployment, hubInfo *corev1.Secret) error {
 
 	work := newManifestwork(clusterNamespace+workNameSuffix, clusterNamespace)
 
@@ -165,59 +225,28 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 		manifests = injectIntoWork(manifests, obaddon)
 	}
 
-	// inject resouces in templates
-	templates, err := loadTemplates(clusterNamespace, mco)
-	if err != nil {
-		log.Error(err, "Failed to load templates")
-		return err
+	manifests = append(manifests, works...)
+
+	if clusterName != localClusterName {
+		manifests = append(manifests, *crdWork)
 	}
-	for _, raw := range templates {
-		if clusterName == localClusterName &&
-			raw.Object == nil {
-			//raw.Object.GetObjectKind().GroupVersionKind().Kind == "CustomResourceDefinition" {
-			continue
+
+	// inject the endpoint operator deployment
+	spec := dep.Spec.Template.Spec
+	for _, container := range spec.Containers {
+		if container.Name == "endpoint-observability-operator" {
+			for j, env := range container.Env {
+				if env.Name == "HUB_NAMESPACE" {
+					container.Env[j].Value = clusterNamespace
+				}
+			}
 		}
-		manifests = append(
-			manifests,
-			workv1.Manifest{RawExtension: raw})
 	}
+	manifests = injectIntoWork(manifests, dep)
 
 	// inject the hub info secret
-	hubInfo, err := newHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, clusterName, mco)
-	if err != nil {
-		return err
-	}
+	hubInfo.Data["clusterName"] = []byte(clusterName)
 	manifests = injectIntoWork(manifests, hubInfo)
-
-	// inject namespace
-	manifests = injectIntoWork(manifests, createNameSpace())
-
-	//create image pull secret
-	if imagePullSecret != nil {
-		pull := getPullSecret(imagePullSecret)
-		manifests = injectIntoWork(manifests, pull)
-	}
-
-	// inject the certificates
-	certs, err := getCerts(c, clusterNamespace)
-	if err != nil {
-		return err
-	}
-	manifests = injectIntoWork(manifests, certs)
-
-	// inject the metrics allowlist configmap
-	mList, err := getMetricsListCM(c)
-	if err != nil {
-		return err
-	}
-	manifests = injectIntoWork(manifests, mList)
-
-	// inject the alertmanager accessor bearer token secret
-	amAccessorTokenSecret, err := getAmAccessorTokenSecret(c)
-	if err != nil {
-		return err
-	}
-	manifests = injectIntoWork(manifests, amAccessorTokenSecret)
 
 	work.Spec.Workload.Manifests = manifests
 
@@ -270,7 +299,21 @@ func getAmAccessorTokenSecret(client client.Client) (*corev1.Secret, error) {
 	}, nil
 }
 
-func getPullSecret(imagePullSecret *corev1.Secret) *corev1.Secret {
+func getPullSecret(c client.Client, name string) (*corev1.Secret, error) {
+	imagePullSecret := &corev1.Secret{}
+	err := c.Get(context.TODO(),
+		types.NamespacedName{
+			Name:      name,
+			Namespace: config.GetDefaultNamespace(),
+		}, imagePullSecret)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil, nil
+		} else {
+			log.Error(err, "Failed to get the pull secret", "name", name)
+			return nil, err
+		}
+	}
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
@@ -284,10 +327,10 @@ func getPullSecret(imagePullSecret *corev1.Secret) *corev1.Secret {
 			".dockerconfigjson": imagePullSecret.Data[".dockerconfigjson"],
 		},
 		Type: corev1.SecretTypeDockerConfigJson,
-	}
+	}, nil
 }
 
-func getCerts(client client.Client, namespace string) (*corev1.Secret, error) {
+func getCerts(client client.Client) (*corev1.Secret, error) {
 
 	ca := &corev1.Secret{}
 	caName := config.ServerCACerts

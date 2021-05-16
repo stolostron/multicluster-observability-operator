@@ -10,7 +10,7 @@ import (
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	v1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -44,7 +44,7 @@ func GetK8sObj(kind string) runtime.Object {
 		"PersistentVolumeClaim":    &corev1.PersistentVolumeClaim{},
 		"Secret":                   &corev1.Secret{},
 		"ConfigMap":                &corev1.ConfigMap{},
-		"CustomResourceDefinition": &v1beta1.CustomResourceDefinition{},
+		"CustomResourceDefinition": &apiextensionsv1.CustomResourceDefinition{},
 		"ObservabilityAddon":       &mcov1beta1.ObservabilityAddon{},
 	}
 	return objs[kind]
@@ -185,8 +185,8 @@ func compareConfigMap(obj1 runtime.Object, obj2 runtime.Object) bool {
 }
 
 func compareCRD(obj1 runtime.Object, obj2 runtime.Object) bool {
-	crd1 := obj1.(*v1beta1.CustomResourceDefinition)
-	crd2 := obj2.(*v1beta1.CustomResourceDefinition)
+	crd1 := obj1.(*apiextensionsv1.CustomResourceDefinition)
+	crd2 := obj2.(*apiextensionsv1.CustomResourceDefinition)
 	if crd1.Name != crd2.Name {
 		log.Info("Find updated name for crd", "crd", crd1.Name)
 		return false

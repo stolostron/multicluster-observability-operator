@@ -34,7 +34,7 @@ replace (
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad
 	golang.org/x/text => golang.org/x/text v0.3.5
 	k8s.io/api => k8s.io/api v0.19.2
-	k8s.io/apimachinery => k8s.io/apimachinery v0.19.2
+	//k8s.io/apimachinery => k8s.io/apimachinery v0.19.2
 	k8s.io/client-go => k8s.io/client-go v0.19.2
 	sigs.k8s.io/kube-storage-version-migrator => github.com/openshift/kubernetes-kube-storage-version-migrator v0.0.3-0.20210302135122-481bd04dbc78
 )
