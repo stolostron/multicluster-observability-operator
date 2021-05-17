@@ -31,7 +31,7 @@ type HubInfo struct {
 }
 
 func newHubInfoSecret(client client.Client, obsNamespace string,
-	namespace string, clusterName string, mco *mcov1beta2.MultiClusterObservability) (*corev1.Secret, error) {
+	namespace string, mco *mcov1beta2.MultiClusterObservability) (*corev1.Secret, error) {
 	obsApiEp, err := config.GetObsAPIUrl(client, obsNamespace)
 	if err != nil {
 		log.Error(err, "Failed to get api gateway")
@@ -54,7 +54,6 @@ func newHubInfoSecret(client client.Client, obsNamespace string,
 		return nil, err
 	}
 	hubInfo := &HubInfo{
-		ClusterName:             clusterName,
 		Endpoint:                obsApiEp + urlSubPath,
 		HubAlertmanagerEndpoint: hubAlertmanagerEp,
 		HubRouterCA:             hubRouterCA,

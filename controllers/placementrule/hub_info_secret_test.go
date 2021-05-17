@@ -65,7 +65,7 @@ func TestNewSecret(t *testing.T) {
 	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestRouteCA()}
 	c := fake.NewFakeClient(objs...)
 
-	hubInfo, err := newHubInfoSecret(c, mcoNamespace, namespace, clusterName, newTestMCO())
+	hubInfo, err := newHubInfoSecret(c, mcoNamespace, namespace, newTestMCO())
 	if err != nil {
 		t.Fatalf("Failed to initial the hub info secret: (%v)", err)
 	}
@@ -74,7 +74,7 @@ func TestNewSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
 	}
-	if hub.ClusterName != clusterName || !strings.HasPrefix(hub.Endpoint, "https://test-host") || !strings.HasPrefix(hub.HubAlertmanagerEndpoint, "https://test-host") || hub.HubRouterCA != routerCA {
-		t.Fatalf("Wrong content in hub info secret: \ngot: (%s)\nwant: (%s)", hub.ClusterName+" "+hub.Endpoint+" "+hub.HubAlertmanagerEndpoint+" "+hub.HubRouterCA, clusterName+" "+"https://test-host"+" "+"https://test-host"+" "+routerCA)
+	if !strings.HasPrefix(hub.Endpoint, "https://test-host") || !strings.HasPrefix(hub.HubAlertmanagerEndpoint, "https://test-host") || hub.HubRouterCA != routerCA {
+		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.Endpoint+" "+hub.HubAlertmanagerEndpoint+" "+hub.HubRouterCA, clusterName+" "+"https://test-host"+" "+"https://test-host"+" "+routerCA)
 	}
 }

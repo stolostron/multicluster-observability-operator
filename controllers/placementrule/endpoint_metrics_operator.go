@@ -4,9 +4,10 @@
 package placementrule
 
 import (
-	v1 "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
@@ -26,42 +27,43 @@ var (
 	templatePath = "/usr/local/manifests/endpoint-observability"
 )
 
-func loadTemplates(namespace string,
-	mco *mcov1beta2.MultiClusterObservability) ([]runtime.RawExtension, error) {
+func loadTemplates(mco *mcov1beta2.MultiClusterObservability) (
+	[]runtime.RawExtension, *apiextensionsv1.CustomResourceDefinition, *appsv1.Deployment, error) {
 	templateRenderer := templates.NewTemplateRenderer(templatePath)
 	resourceList := []*resource.Resource{}
 	err := templateRenderer.AddTemplateFromPath(templatePath, &resourceList)
 	if err != nil {
 		log.Error(err, "Failed to load templates")
-		return nil, err
+		return nil, nil, nil, err
 	}
+	crd := &apiextensionsv1.CustomResourceDefinition{}
+	dep := &appsv1.Deployment{}
 	rawExtensionList := []runtime.RawExtension{}
 	for _, r := range resourceList {
-		if r.GetKind() == "CustomResourceDefinition" {
-			data, err := r.MarshalJSON()
-			if err != nil {
-				return nil, err
-			}
-			rawExtensionList = append(rawExtensionList, runtime.RawExtension{Raw: data})
+		obj, err := updateRes(r, mco)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if r.GetKind() == "Deployment" {
+			dep = obj.(*appsv1.Deployment)
+		} else if r.GetKind() == "CustomResourceDefinition" {
+			crd = obj.(*apiextensionsv1.CustomResourceDefinition)
 		} else {
-			obj, err := updateRes(r, namespace, mco)
-			if err != nil {
-				return nil, err
-			}
 			rawExtensionList = append(rawExtensionList, runtime.RawExtension{Object: obj})
 		}
 	}
-	return rawExtensionList, nil
+	return rawExtensionList, crd, dep, nil
 }
 
-func updateRes(r *resource.Resource, namespace string,
+func updateRes(r *resource.Resource,
 	mco *mcov1beta2.MultiClusterObservability) (runtime.Object, error) {
 
 	kind := r.GetKind()
-	if kind != "ClusterRole" && kind != "ClusterRoleBinding" {
+	if kind != "ClusterRole" && kind != "ClusterRoleBinding" && kind != "CustomResourceDefinition" {
 		r.SetNamespace(spokeNameSpace)
 	}
 	obj := util.GetK8sObj(kind)
+	obj.GetObjectKind()
 	err := runtime.DefaultUnstructuredConverter.FromUnstructured(r.Map(), obj)
 	if err != nil {
 		log.Error(err, "failed to convert the resource", "resource", r.GetName())
@@ -69,10 +71,10 @@ func updateRes(r *resource.Resource, namespace string,
 	}
 	// set the images and watch_namespace for endpoint metrics operator
 	if r.GetKind() == "Deployment" && r.GetName() == deployName {
-		spec := obj.(*v1.Deployment).Spec.Template.Spec
+		spec := obj.(*appsv1.Deployment).Spec.Template.Spec
 		for i, container := range spec.Containers {
 			if container.Name == "endpoint-observability-operator" {
-				spec.Containers[i] = updateEndpointOperator(mco, namespace, container)
+				spec.Containers[i] = updateEndpointOperator(mco, container)
 			}
 		}
 	}
@@ -96,14 +98,11 @@ func updateRes(r *resource.Resource, namespace string,
 }
 
 func updateEndpointOperator(mco *mcov1beta2.MultiClusterObservability,
-	namespace string, container corev1.Container) corev1.Container {
+	container corev1.Container) corev1.Container {
 	container.Image = getImage(mco, mcoconfig.EndpointControllerImgName,
 		mcoconfig.EndpointControllerImgTagSuffix, mcoconfig.EndpointControllerKey)
 	container.ImagePullPolicy = mco.Spec.ImagePullPolicy
 	for i, env := range container.Env {
-		if env.Name == "HUB_NAMESPACE" {
-			container.Env[i].Value = namespace
-		}
 		if env.Name == "COLLECTOR_IMAGE" {
 			container.Env[i].Value = getImage(mco, mcoconfig.MetricsCollectorImgName,
 				mcoconfig.MetricsCollectorImgTagSuffix, mcoconfig.MetricsCollectorKey)

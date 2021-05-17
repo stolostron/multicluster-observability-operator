@@ -6,8 +6,10 @@ package placementrule
 import (
 	"context"
 	"errors"
+	"reflect"
 
 	"github.com/go-logr/logr"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -96,7 +98,10 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	placement := &placementv1.PlacementRule{}
 	if !deleteAll {
 		// Fetch the PlacementRule instance
-		err = r.Client.Get(context.TODO(), req.NamespacedName, placement)
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      config.GetPlacementRuleName(),
+			Namespace: config.GetDefaultNamespace(),
+		}, placement)
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				deleteAll = true
@@ -121,6 +126,11 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	opts := &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
 	}
+	if req.Namespace != config.GetDefaultNamespace() &&
+		req.Namespace != "" {
+		opts.Namespace = req.Namespace
+	}
+
 	obsAddonList := &mcov1beta1.ObservabilityAddonList{}
 	err = r.Client.List(context.TODO(), obsAddonList, opts)
 	if err != nil {
@@ -185,18 +195,24 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
-	err = updateAddonStatus(r.Client, *obsAddonList)
-	if err != nil {
-		return ctrl.Result{}, err
+	// only update managedclusteraddon status when obs addon's status updated
+	if req.Name == obsAddonName {
+		err = updateAddonStatus(r.Client, *obsAddonList)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
-	err = r.Client.List(context.TODO(), workList, opts)
-	if err != nil {
-		reqLogger.Error(err, "Failed to list manifestwork resource")
-		return ctrl.Result{}, err
-	}
-	if len(workList.Items) == 0 && deleteAll {
-		err = deleteGlobalResource(r.Client)
+	if deleteAll {
+		opts.Namespace = ""
+		err = r.Client.List(context.TODO(), workList, opts)
+		if err != nil {
+			reqLogger.Error(err, "Failed to list manifestwork resource")
+			return ctrl.Result{}, err
+		}
+		if len(workList.Items) == 0 {
+			err = deleteGlobalResource(r.Client)
+		}
 	}
 
 	return ctrl.Result{}, err
@@ -231,36 +247,33 @@ func createAllRelatedRes(
 		isClusterManagementAddonCreated = true
 	}
 
-	imagePullSecret := &corev1.Secret{}
-	err := client.Get(context.TODO(),
-		types.NamespacedName{
-			Name:      mco.Spec.ImagePullSecret,
-			Namespace: request.Namespace,
-		}, imagePullSecret)
-	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			imagePullSecret = nil
-		} else {
-			// Error reading the object - requeue the request.
-			return ctrl.Result{}, err
-		}
-	}
-	mco.Namespace = watchNamespace
-
 	currentClusters := []string{}
 	for _, ep := range obsAddonList.Items {
 		currentClusters = append(currentClusters, ep.Namespace)
 	}
 
+	works, crdWork, dep, hubInfo, err := getGlobalManifestResources(client, mco)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	failedCreateManagedClusterRes := false
 	for _, decision := range placement.Status.Decisions {
-		log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
 		currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
-		err = createManagedClusterRes(client, restMapper, mco, imagePullSecret,
-			decision.ClusterName, decision.ClusterNamespace)
-		if err != nil {
-			failedCreateManagedClusterRes = true
-			log.Error(err, "Failed to create managedcluster resources", "namespace", decision.ClusterNamespace)
+		// only handle the request namespace if the request resource is not from observability  namespace
+		if request.Namespace == "" || request.Namespace == config.GetDefaultNamespace() ||
+			request.Namespace == decision.ClusterNamespace {
+			log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
+			err = createManagedClusterRes(client, restMapper, mco,
+				decision.ClusterName, decision.ClusterNamespace,
+				works, crdWork, dep, hubInfo)
+			if err != nil {
+				failedCreateManagedClusterRes = true
+				log.Error(err, "Failed to create managedcluster resources", "namespace", decision.ClusterNamespace)
+			}
+			if request.Namespace == decision.ClusterNamespace {
+				break
+			}
 		}
 	}
 
@@ -315,8 +328,8 @@ func deleteGlobalResource(c client.Client) error {
 }
 
 func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
-	mco *mcov1beta2.MultiClusterObservability, imagePullSecret *corev1.Secret,
-	name string, namespace string) error {
+	mco *mcov1beta2.MultiClusterObservability, name string, namespace string,
+	works []workv1.Manifest, crdWork *workv1.Manifest, dep *appsv1.Deployment, hubInfo *corev1.Secret) error {
 	err := createObsAddon(client, namespace)
 	if err != nil {
 		log.Error(err, "Failed to create observabilityaddon")
@@ -328,7 +341,7 @@ func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 		return err
 	}
 
-	err = createManifestWorks(client, restMapper, namespace, name, mco, imagePullSecret)
+	err = createManifestWorks(client, restMapper, namespace, name, mco, works, crdWork, dep, hubInfo)
 	if err != nil {
 		log.Error(err, "Failed to create manifestwork")
 		return err
@@ -395,24 +408,15 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 
-	mapFn := handler.MapFunc(func(a client.Object) []ctrl.Request {
-		return []ctrl.Request{
-			{
-				NamespacedName: types.NamespacedName{
-					Name:      name,
-					Namespace: watchNamespace,
-				},
-			},
-		}
-	})
-
 	obsAddonPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.ObjectNew.GetName() == obsAddonName &&
-				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue {
+				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
+				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Status.Conditions,
+					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Status.Conditions) {
 				return true
 			}
 			return false
@@ -431,7 +435,10 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+			// only reconcile when ObservabilityAddonSpec updated
+			if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
+				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.ObservabilityAddonSpec,
+					e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.ObservabilityAddonSpec) {
 				return true
 			}
 			return false
@@ -512,15 +519,15 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// Watch for changes to primary resource PlacementRule with predicate
 		For(&placementv1.PlacementRule{}, builder.WithPredicates(pmPred)).
 		// secondary watch for observabilityaddon
-		Watches(&source.Kind{Type: &mcov1beta1.ObservabilityAddon{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(obsAddonPred)).
+		Watches(&source.Kind{Type: &mcov1beta1.ObservabilityAddon{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(obsAddonPred)).
 		// secondary watch for MCO
-		Watches(&source.Kind{Type: &mcov1beta2.MultiClusterObservability{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(mcoPred)).
+		Watches(&source.Kind{Type: &mcov1beta2.MultiClusterObservability{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(mcoPred)).
 		// secondary watch for custom allowlist configmap
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(customAllowlistPred)).
+		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(customAllowlistPred)).
 		// secondary watch for certificate secrets
-		Watches(&source.Kind{Type: &corev1.Secret{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(certSecretPred)).
+		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(certSecretPred)).
 		// secondary watch for alertmanager accessor serviceaccount
-		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(amAccessorSAPred))
+		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred))
 
 	manifestWorkGroupKind := schema.GroupKind{Group: workv1.GroupVersion.Group, Kind: "ManifestWork"}
 	if _, err := r.RESTMapper.RESTMapping(manifestWorkGroupKind, workv1.GroupVersion.Version); err == nil {
@@ -530,21 +537,20 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				if e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-					e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+					e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
+					!reflect.DeepEqual(e.ObjectNew.(*workv1.ManifestWork).Spec.Workload.Manifests,
+						e.ObjectOld.(*workv1.ManifestWork).Spec.Workload.Manifests) {
 					return true
 				}
 				return false
 			},
 			DeleteFunc: func(e event.DeleteEvent) bool {
-				if e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue {
-					return true
-				}
-				return false
+				return e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue
 			},
 		}
 
 		// secondary watch for manifestwork
-		ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &workv1.ManifestWork{}}, handler.EnqueueRequestsFromMapFunc(mapFn), builder.WithPredicates(workPred))
+		ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &workv1.ManifestWork{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(workPred))
 	}
 
 	// create and return a new controller

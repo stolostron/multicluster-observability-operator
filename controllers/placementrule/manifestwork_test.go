@@ -159,7 +159,12 @@ func TestManifestWork(t *testing.T) {
 	}
 	templatePath = path.Join(wd, "../../manifests/endpoint-observability")
 
-	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), newTestPullSecret())
+	works, crdWork, dep, hubInfo, err := getGlobalManifestResources(c, newTestMCO())
+	if err != nil {
+		t.Fatalf("Failed to get global manifestwork resourc: (%v)", err)
+	}
+
+	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, crdWork, dep, hubInfo)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
@@ -169,11 +174,19 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
 	}
-	if len(found.Spec.Workload.Manifests) != workSize {
-		t.Fatalf("Wrong size of manifests in the mainfestwork %s", workName)
+	if len(found.Spec.Workload.Manifests) != workSize-1 {
+		t.Fatalf("Wrong size of manifests in the mainfestwork %s: %d", workName, len(found.Spec.Workload.Manifests))
 	}
 
-	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), nil)
+	err = c.Create(context.TODO(), newTestPullSecret())
+	if err != nil {
+		t.Fatalf("Failed to create pull secret: (%v)", err)
+	}
+	works, crdWork, dep, hubInfo, err = getGlobalManifestResources(c, newTestMCO())
+	if err != nil {
+		t.Fatalf("Failed to get global manifestwork resourc: (%v)", err)
+	}
+	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, crdWork, dep, hubInfo)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
@@ -181,12 +194,12 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
 	}
-	if len(found.Spec.Workload.Manifests) != workSize-1 {
-		t.Fatalf("Wrong size of manifests in the mainfestwork %s", workName)
+	if len(found.Spec.Workload.Manifests) != workSize {
+		t.Fatalf("Wrong size of manifests in the mainfestwork %s: %d", workName, len(found.Spec.Workload.Manifests))
 	}
 
 	spokeNameSpace = "spoke-ns"
-	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), newTestPullSecret())
+	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, crdWork, dep, hubInfo)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks with updated namespace: (%v)", err)
 	}
