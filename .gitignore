@@ -78,3 +78,5 @@ tags
 .history
 # End of https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 .build-harness-bootstrap
+main
+multicluster-observability-operator
