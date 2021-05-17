@@ -341,7 +341,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if status == nil || status.Reason != "DeploymentNotFound" {
 		t.Errorf("Failed to get correct MCO status, expect Failed")
 	}
-	expectedDeploymentNames := getExpectedDeploymentNames(name)
+	expectedDeploymentNames := getExpectedDeploymentNames()
 	for _, deployName := range expectedDeploymentNames {
 		deploy := createReadyDeployment(deployName, namespace)
 		err = cl.Create(context.TODO(), deploy)
@@ -364,7 +364,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Errorf("Failed to get correct MCO status, expect Failed")
 	}
 
-	expectedStatefulSetNames := getExpectedStatefulSetNames(name)
+	expectedStatefulSetNames := getExpectedStatefulSetNames()
 	for _, statefulName := range expectedStatefulSetNames {
 		deploy := createReadyStatefulSet(name, namespace, statefulName)
 		err = cl.Create(context.TODO(), deploy)
@@ -428,11 +428,17 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	// test StatefulSetNotReady status
-	err = cl.Delete(context.TODO(), createReadyStatefulSet(name, namespace, name+"-alertmanager"))
+	err = cl.Delete(context.TODO(), createReadyStatefulSet(
+		name,
+		namespace,
+		config.GetObjectPrefix()+"-alertmanager"))
 	if err != nil {
 		t.Fatalf("Failed to delete alertmanager: (%v)", err)
 	}
-	failedAlertManager := createFailedStatefulSet(name, namespace, "alertmanager")
+	failedAlertManager := createFailedStatefulSet(
+		name,
+		namespace,
+		config.GetObjectPrefix()+"-alertmanager")
 	err = cl.Create(context.TODO(), failedAlertManager)
 	if err != nil {
 		t.Fatalf("Failed to create alertmanager: (%v)", err)
@@ -453,7 +459,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	// test DeploymentNotReady status
-	err = cl.Delete(context.TODO(), createReadyDeployment(name+"-rbac-query-proxy", namespace))
+	err = cl.Delete(context.TODO(), createReadyDeployment(config.GetObjectPrefix()+"-rbac-query-proxy", namespace))
 	if err != nil {
 		t.Fatalf("Failed to delete rbac-query-proxy: (%v)", err)
 	}
@@ -461,7 +467,10 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to delete alertmanager: (%v)", err)
 	}
-	err = cl.Create(context.TODO(), createReadyStatefulSet(name, namespace, "alertmanager"))
+	err = cl.Create(context.TODO(), createReadyStatefulSet(
+		name,
+		namespace,
+		config.GetObjectPrefix()+"-alertmanager"))
 	if err != nil {
 		t.Fatalf("Failed to delete alertmanager: (%v)", err)
 	}

@@ -14,6 +14,7 @@ import (
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	storev1 "k8s.io/api/storage/v1"
 	crdClientSet "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -297,6 +298,12 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 			// remove the StorageVersionMigration resource and ignore error
 			cleanObservabilityStorageVersionMigrationResource(r.Client, mco)
 		}
+		// clean up the cluster resources, eg. clusterrole, clusterrolebinding, etc
+		if err = cleanUpClusterScopedResources(r.Client, mco); err != nil {
+			log.Error(err, "Failed to remove cluster scoped resources")
+			return false, err
+		}
+
 		mco.SetFinalizers(util.Remove(mco.GetFinalizers(), resFinalizer))
 		err = r.Client.Update(context.TODO(), mco)
 		if err != nil {
@@ -542,7 +549,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"observability.open-cluster-management.io/name": mco.GetName(),
 				"alertmanager": "observability",
-			}, mco.GetName(), mco.Spec.StorageConfig.AlertmanagerStorageSize)
+			}, mco.Spec.StorageConfig.AlertmanagerStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -554,7 +561,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-receive",
-			}, mco.GetName(), mco.Spec.StorageConfig.ReceiveStorageSize)
+			}, mco.Spec.StorageConfig.ReceiveStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -566,7 +573,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-compact",
-			}, mco.GetName(), mco.Spec.StorageConfig.CompactStorageSize)
+			}, mco.Spec.StorageConfig.CompactStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -578,7 +585,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-rule",
-			}, mco.GetName(), mco.Spec.StorageConfig.RuleStorageSize)
+			}, mco.Spec.StorageConfig.RuleStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -590,7 +597,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-store",
-			}, mco.GetName(), mco.Spec.StorageConfig.StoreStorageSize)
+			}, mco.Spec.StorageConfig.StoreStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -598,7 +605,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 	return nil, nil
 }
 
-func updateStorageSizeChange(c client.Client, matchLabels map[string]string, mcoName, storageSize string) error {
+func updateStorageSizeChange(c client.Client, matchLabels map[string]string, storageSize string) error {
 
 	pvcList := []corev1.PersistentVolumeClaim{}
 	stsList := []appsv1.StatefulSet{}
@@ -675,4 +682,39 @@ func GenerateAlertmanagerRoute(
 		}
 	}
 	return nil, nil
+}
+
+// cleanUpClusterScopedResources delete the cluster scoped resources created by the MCO operator
+// The cluster scoped resources need to be deleted manually because they don't have ownerrefenence set as the MCO CR
+func cleanUpClusterScopedResources(cl client.Client, mco *mcov1beta2.MultiClusterObservability) error {
+	matchLabels := map[string]string{config.GetCrLabelKey(): mco.Name}
+	listOpts := []client.ListOption{
+		client.MatchingLabels(matchLabels),
+	}
+
+	clusterRoleList := &rbacv1.ClusterRoleList{}
+	err := cl.List(context.TODO(), clusterRoleList, listOpts...)
+	if err != nil {
+		return err
+	}
+	for _, clusterRoleRes := range clusterRoleList.Items {
+		err := cl.Delete(context.TODO(), &clusterRoleRes, &client.DeleteOptions{})
+		if err != nil {
+			return err
+		}
+	}
+
+	clusterRoleBindingList := &rbacv1.ClusterRoleBindingList{}
+	err = cl.List(context.TODO(), clusterRoleBindingList, listOpts...)
+	if err != nil {
+		return err
+	}
+	for _, clusterRoleBindingRes := range clusterRoleBindingList.Items {
+		err := cl.Delete(context.TODO(), &clusterRoleBindingRes, &client.DeleteOptions{})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -28,7 +28,6 @@ const (
 	metadataErr = "failed to find metadata field"
 
 	nsUpdateAnnoKey = "update-namespace"
-	crLabelKey      = "observability.open-cluster-management.io/name"
 )
 
 var log = logf.Log.WithName("renderer")
@@ -50,6 +49,7 @@ func NewRenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability)
 		"Service":               renderer.renderNamespace,
 		"ServiceAccount":        renderer.renderNamespace,
 		"ConfigMap":             renderer.renderNamespace,
+		"ClusterRole":           renderer.renderClusterRole,
 		"ClusterRoleBinding":    renderer.renderClusterRoleBinding,
 		"Secret":                renderer.renderNamespace,
 		"Role":                  renderer.renderNamespace,
@@ -114,11 +114,12 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 			if err != nil {
 				return nil, err
 			}
+			crLabelKey := config.GetCrLabelKey()
 			dep := obj.(*v1.Deployment)
 			dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 			dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
 			dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
-			dep.Name = r.cr.Name + "-" + dep.Name
+			dep.Name = mcoconfig.GetObjectPrefix() + "-" + dep.Name
 
 			spec := &dep.Spec.Template.Spec
 			spec.Containers[0].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
@@ -175,7 +176,6 @@ func updateProxySpec(spec *corev1.PodSpec, mco *obv1beta2.MultiClusterObservabil
 	args := spec.Containers[0].Args
 	for idx := range args {
 		args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", mcoconfig.GetDefaultNamespace(), 1)
-		args[idx] = strings.Replace(args[idx], "{{MCO_CR_NAME}}", mco.Name, 1)
 	}
 	for idx := range spec.Volumes {
 		if spec.Volumes[idx].Name == "ca-certs" {
@@ -229,8 +229,30 @@ func (r *Renderer) renderNamespace(res *resource.Resource) (*unstructured.Unstru
 	return u, nil
 }
 
+func (r *Renderer) renderClusterRole(res *resource.Resource) (*unstructured.Unstructured, error) {
+	u := &unstructured.Unstructured{Object: res.Map()}
+
+	labels := u.GetLabels()
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	crLabelKey := config.GetCrLabelKey()
+	labels[crLabelKey] = r.cr.Name
+	u.SetLabels(labels)
+
+	return u, nil
+}
+
 func (r *Renderer) renderClusterRoleBinding(res *resource.Resource) (*unstructured.Unstructured, error) {
 	u := &unstructured.Unstructured{Object: res.Map()}
+
+	labels := u.GetLabels()
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	crLabelKey := config.GetCrLabelKey()
+	labels[crLabelKey] = r.cr.Name
+	u.SetLabels(labels)
 
 	subjects, ok := u.Object["subjects"].([]interface{})
 	if !ok {

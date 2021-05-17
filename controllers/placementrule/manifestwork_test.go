@@ -214,7 +214,7 @@ func TestManifestWork(t *testing.T) {
 	}
 }
 
-func TestHandleDeletedMetrics(t *testing.T) {
+func TestMergeMetrics(t *testing.T) {
 	testCaseList := []struct {
 		name             string
 		defaultAllowlist []string
@@ -247,6 +247,13 @@ func TestHandleDeletedMetrics(t *testing.T) {
 			defaultAllowlist: []string{"a", "b"},
 			customAllowlist:  []string{"c", "-b"},
 			want:             []string{"a", "c"},
+		},
+
+		{
+			name:             "have deleted matches",
+			defaultAllowlist: []string{"__name__=\"a\",job=\"a\"", "__name__=\"b\",job=\"b\""},
+			customAllowlist:  []string{"-__name__=\"b\",job=\"b\"", "__name__=\"c\",job=\"c\""},
+			want:             []string{"__name__=\"a\",job=\"a\"", "__name__=\"c\",job=\"c\""},
 		},
 
 		{
@@ -291,5 +298,4 @@ func TestHandleDeletedMetrics(t *testing.T) {
 			t.Errorf("%v: mergeMetrics() = %v, want %v", c.name, got, c.want)
 		}
 	}
-
 }

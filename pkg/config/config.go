@@ -22,6 +22,7 @@ import (
 )
 
 const (
+	crLabelKey                        = "observability.open-cluster-management.io/name"
 	clusterNameLabelKey               = "cluster"
 	obsAPIGateway                     = "observatorium-api"
 	infrastructureConfigName          = "cluster"
@@ -29,6 +30,7 @@ const (
 	defaultNamespace                  = "open-cluster-management-observability"
 	defaultTenantName                 = "default"
 	placementRuleName                 = "observability"
+	objectPrefix                      = "observability"
 	OpenshiftIngressOperatorNamespace = "openshift-ingress-operator"
 	OpenshiftRouterCASecretName       = "router-ca"
 
@@ -231,6 +233,11 @@ func SetObservabilityComponentReplicas(name string, replicas *int32) {
 			return
 		}
 	}
+}
+
+// GetCrLabelKey returns the key for the CR label injected into the resources created by the operator
+func GetCrLabelKey() string {
+	return crLabelKey
 }
 
 // GetClusterNameLabelKey returns the key for the injected label
@@ -502,4 +509,8 @@ func SetCertDuration(annotations map[string]string) {
 		}
 	}
 	certDuration = time.Hour * 24 * 365
+}
+
+func GetObjectPrefix() string {
+	return objectPrefix
 }

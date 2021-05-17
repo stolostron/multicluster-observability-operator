@@ -23,6 +23,7 @@ func (r *Renderer) newAlertManagerRenderer() {
 		"Service":               r.renderNamespace,
 		"ServiceAccount":        r.renderNamespace,
 		"ConfigMap":             r.renderNamespace,
+		"ClusterRole":           r.renderClusterRole,
 		"ClusterRoleBinding":    r.renderClusterRoleBinding,
 		"Secret":                r.renderNamespace,
 		"Role":                  r.renderNamespace,
@@ -42,18 +43,19 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	if err != nil {
 		return nil, err
 	}
+	crLabelKey := mcoconfig.GetCrLabelKey()
 	dep := obj.(*v1.StatefulSet)
 	dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 	dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
 	dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
-	dep.Name = r.cr.Name + "-" + dep.Name
+	dep.Name = mcoconfig.GetObjectPrefix() + "-" + dep.Name
 	dep.Spec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.Alertmanager)
 
 	spec := &dep.Spec.Template.Spec
 	spec.Containers[0].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
 	args := spec.Containers[0].Args
 	for idx := range args {
-		args[idx] = strings.Replace(args[idx], "{{MCO_NAME}}", r.cr.Name, 1)
+		args[idx] = strings.Replace(args[idx], "{{MCO_NAME}}", mcoconfig.GetObjectPrefix(), 1)
 		args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", mcoconfig.GetDefaultNamespace(), 1)
 	}
 

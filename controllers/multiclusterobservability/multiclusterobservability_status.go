@@ -136,23 +136,23 @@ func updateAddonSpecStatus(
 	}
 }
 
-func getExpectedDeploymentNames(mcoCRName string) []string {
+func getExpectedDeploymentNames() []string {
+	prefix := config.GetObjectPrefix()
 	return []string{
-		mcoCRName + "-" + config.Grafana,
-		mcoCRName + "-" + config.ObservatoriumAPI,
-		mcoCRName + "-" + config.ThanosQuery,
-		mcoCRName + "-" + config.ThanosQueryFrontend,
-		mcoCRName + "-" + config.ThanosReceiveController,
-		mcoCRName + "-" + config.ObservatoriumOperator,
-		mcoCRName + "-" + config.RbacQueryProxy,
+		prefix + "-" + config.Grafana,
+		prefix + "-" + config.ObservatoriumAPI,
+		prefix + "-" + config.ThanosQuery,
+		prefix + "-" + config.ThanosQueryFrontend,
+		prefix + "-" + config.ThanosReceiveController,
+		prefix + "-" + config.ObservatoriumOperator,
+		prefix + "-" + config.RbacQueryProxy,
 	}
 }
 
 func checkDeployStatus(
 	c client.Client,
 	mco *mcov1beta2.MultiClusterObservability) *mcoshared.Condition {
-	mcoCRName := config.GetMonitoringCRName()
-	expectedDeploymentNames := getExpectedDeploymentNames(mcoCRName)
+	expectedDeploymentNames := getExpectedDeploymentNames()
 	for _, name := range expectedDeploymentNames {
 		found := &appsv1.Deployment{}
 		namespacedName := types.NamespacedName{
@@ -174,21 +174,22 @@ func checkDeployStatus(
 	return nil
 }
 
-func getExpectedStatefulSetNames(mcoCRName string) []string {
+func getExpectedStatefulSetNames() []string {
+	prefix := config.GetObjectPrefix()
 	return []string{
-		mcoCRName + "-" + config.Alertmanager,
-		mcoCRName + "-" + config.ThanosCompact,
-		mcoCRName + "-" + config.ThanosReceive,
-		mcoCRName + "-" + config.ThanosRule,
-		mcoCRName + "-" + config.ThanosStoreMemcached,
-		mcoCRName + "-" + config.ThanosStoreShard + "-0",
+		prefix + "-" + config.Alertmanager,
+		prefix + "-" + config.ThanosCompact,
+		prefix + "-" + config.ThanosReceive,
+		prefix + "-" + config.ThanosRule,
+		prefix + "-" + config.ThanosStoreMemcached,
+		prefix + "-" + config.ThanosStoreShard + "-0",
 	}
 }
 
 func checkStatefulSetStatus(
 	c client.Client,
 	mco *mcov1beta2.MultiClusterObservability) *mcoshared.Condition {
-	expectedStatefulSetNames := getExpectedStatefulSetNames(config.GetMonitoringCRName())
+	expectedStatefulSetNames := getExpectedStatefulSetNames()
 	for _, name := range expectedStatefulSetNames {
 		found := &appsv1.StatefulSet{}
 		namespacedName := types.NamespacedName{
