@@ -237,6 +237,13 @@ func TestMergeMetrics(t *testing.T) {
 		},
 
 		{
+			name:             "have deleted matches",
+			defaultAllowlist: []string{"__name__=\"a\",job=\"a\"", "__name__=\"b\",job=\"b\""},
+			customAllowlist:  []string{"-__name__=\"b\",job=\"b\"", "__name__=\"c\",job=\"c\""},
+			want:             []string{"__name__=\"a\",job=\"a\"", "__name__=\"c\",job=\"c\""},
+		},
+
+		{
 			name:             "deleted metrics is no exist",
 			defaultAllowlist: []string{"a", "b"},
 			customAllowlist:  []string{"c", "-d"},
