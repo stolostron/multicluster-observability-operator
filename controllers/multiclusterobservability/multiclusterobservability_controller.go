@@ -549,7 +549,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"observability.open-cluster-management.io/name": mco.GetName(),
 				"alertmanager": "observability",
-			}, mco.GetName(), mco.Spec.StorageConfig.AlertmanagerStorageSize)
+			}, mco.Spec.StorageConfig.AlertmanagerStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -561,7 +561,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-receive",
-			}, mco.GetName(), mco.Spec.StorageConfig.ReceiveStorageSize)
+			}, mco.Spec.StorageConfig.ReceiveStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -573,7 +573,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-compact",
-			}, mco.GetName(), mco.Spec.StorageConfig.CompactStorageSize)
+			}, mco.Spec.StorageConfig.CompactStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -585,7 +585,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-rule",
-			}, mco.GetName(), mco.Spec.StorageConfig.RuleStorageSize)
+			}, mco.Spec.StorageConfig.RuleStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -597,7 +597,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-store",
-			}, mco.GetName(), mco.Spec.StorageConfig.StoreStorageSize)
+			}, mco.Spec.StorageConfig.StoreStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -605,7 +605,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 	return nil, nil
 }
 
-func updateStorageSizeChange(c client.Client, matchLabels map[string]string, mcoName, storageSize string) error {
+func updateStorageSizeChange(c client.Client, matchLabels map[string]string, storageSize string) error {
 
 	pvcList := []corev1.PersistentVolumeClaim{}
 	stsList := []appsv1.StatefulSet{}

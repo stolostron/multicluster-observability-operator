@@ -30,6 +30,7 @@ const (
 	defaultNamespace                  = "open-cluster-management-observability"
 	defaultTenantName                 = "default"
 	placementRuleName                 = "observability"
+	objectPrefix                      = "observability"
 	OpenshiftIngressOperatorNamespace = "openshift-ingress-operator"
 	OpenshiftRouterCASecretName       = "router-ca"
 
@@ -508,4 +509,8 @@ func SetCertDuration(annotations map[string]string) {
 		}
 	}
 	certDuration = time.Hour * 24 * 365
+}
+
+func GetObjectPrefix() string {
+	return objectPrefix
 }

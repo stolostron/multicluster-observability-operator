@@ -119,7 +119,7 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 			dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 			dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
 			dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
-			dep.Name = r.cr.Name + "-" + dep.Name
+			dep.Name = mcoconfig.GetObjectPrefix() + "-" + dep.Name
 
 			spec := &dep.Spec.Template.Spec
 			spec.Containers[0].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
@@ -176,7 +176,6 @@ func updateProxySpec(spec *corev1.PodSpec, mco *obv1beta2.MultiClusterObservabil
 	args := spec.Containers[0].Args
 	for idx := range args {
 		args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", mcoconfig.GetDefaultNamespace(), 1)
-		args[idx] = strings.Replace(args[idx], "{{MCO_CR_NAME}}", mco.Name, 1)
 	}
 	for idx := range spec.Volumes {
 		if spec.Volumes[idx].Name == "ca-certs" {
