@@ -21,7 +21,7 @@ type ObservabilityAddonSpec struct {
 
 	// Interval for the observability addon push metrics to hub server.
 	// +optional
-	// +kubebuilder:default:=30
+	// +kubebuilder:default:=60
 	// +kubebuilder:validation:Minimum=15
 	// +kubebuilder:validation:Maximum=3600
 	Interval int32 `json:"interval,omitempty"`
