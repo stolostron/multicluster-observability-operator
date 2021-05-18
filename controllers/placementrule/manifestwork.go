@@ -378,7 +378,7 @@ func getMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 	customAllowlist, err := getAllowList(client, config.AllowlistCustomConfigMapName)
 	if err == nil {
 		allowlist.NameList = mergeMetrics(allowlist.NameList, customAllowlist.NameList)
-		allowlist.NameList = mergeMetrics(allowlist.NameList, customAllowlist.MatchList)
+		allowlist.MatchList = mergeMetrics(allowlist.MatchList, customAllowlist.MatchList)
 		allowlist.RuleList = append(allowlist.RuleList, customAllowlist.RuleList...)
 		for k, v := range customAllowlist.ReNameMap {
 			allowlist.ReNameMap[k] = v
