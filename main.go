@@ -137,6 +137,9 @@ func main() {
 		v1.SchemeGroupVersion.WithKind("Service"): {
 			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
 		},
+		v1.SchemeGroupVersion.WithKind("ServiceAccount"): {
+			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
+		},
 		appsv1.SchemeGroupVersion.WithKind("Deployment"): {
 			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
 		},
@@ -145,6 +148,9 @@ func main() {
 		},
 		workv1.SchemeGroupVersion.WithKind("ManifestWork"): {
 			LabelSelector: "owner==multicluster-observability-operator",
+		},
+		placementv1.SchemeGroupVersion.WithKind("PlacementRule"): {
+			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
 		},
 	}
 
