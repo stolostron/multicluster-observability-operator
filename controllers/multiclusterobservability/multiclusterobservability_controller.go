@@ -654,6 +654,7 @@ func GenerateAlertmanagerRoute(
 			Namespace: config.GetDefaultNamespace(),
 		},
 		Spec: routev1.RouteSpec{
+			Path: "/api/v2",
 			Port: &routev1.RoutePort{
 				TargetPort: intstr.FromString("oauth-proxy"),
 			},
