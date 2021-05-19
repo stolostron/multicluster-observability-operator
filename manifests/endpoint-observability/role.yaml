@@ -97,7 +97,10 @@ rules:
   - config.openshift.io
   resources:
   - clusterversions
+  - infrastructures
   verbs:
+  - list
+  - watch
   - get
 - apiGroups:
     - work.open-cluster-management.io
