@@ -8,7 +8,7 @@ require (
 	github.com/cloudflare/cfssl v1.5.0
 	github.com/go-logr/logr v0.4.0
 	github.com/kr/pretty v0.2.1 // indirect
-	github.com/open-cluster-management/addon-framework v0.0.0-20210414095446-30a5d245b8c7
+	github.com/open-cluster-management/addon-framework v0.0.0-20210519012201-d00a09b436d2
 	github.com/open-cluster-management/api v0.0.0-20210409125704-06f2aec1a73f
 	github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20210325184301-dd3e27fc2978
 	github.com/open-cluster-management/observatorium-operator v0.0.0-20210512092645-e959481410d7
@@ -34,7 +34,6 @@ replace (
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad
 	golang.org/x/text => golang.org/x/text v0.3.5
 	k8s.io/api => k8s.io/api v0.19.2
-	//k8s.io/apimachinery => k8s.io/apimachinery v0.19.2
 	k8s.io/client-go => k8s.io/client-go v0.19.2
 	sigs.k8s.io/kube-storage-version-migrator => github.com/openshift/kubernetes-kube-storage-version-migrator v0.0.3-0.20210302135122-481bd04dbc78
 )
