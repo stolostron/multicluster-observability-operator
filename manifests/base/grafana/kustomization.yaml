@@ -11,8 +11,6 @@ resources:
 - dash-k8s-etcd.yaml
 - dash-k8s-apiserver.yaml
 - dash-k8s-networking-cluster.yaml
-- dash-k8s-networking-namespace-pods.yaml
-- dash-k8s-networking-pod.yaml
 - dash-k8s-compute-resources-cluster.yaml
 - dash-k8s-compute-resources-namespace-pods.yaml
 - dash-k8s-compute-resources-namespace-workloads.yaml
