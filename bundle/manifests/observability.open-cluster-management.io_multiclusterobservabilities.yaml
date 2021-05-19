@@ -316,19 +316,19 @@ spec:
                     description: configure --delete-delay in compact Time before a block marked for deletion is deleted from bucket.
                     type: string
                   retentionInLocal:
-                    default: 4d
+                    default: 24h
                     description: 'How long to retain raw samples in a local disk. It applies to rule/receive: --tsdb.retention in receive --tsdb.retention in rule'
                     type: string
                   retentionResolution1h:
-                    default: 30d
+                    default: 0d
                     description: How long to retain samples of resolution 2 (1 hour) in bucket. It applies to --retention.resolution-1h in compact.
                     type: string
                   retentionResolution5m:
-                    default: 14d
+                    default: 180d
                     description: How long to retain samples of resolution 1 (5 minutes) in bucket. It applies to --retention.resolution-5m in compact.
                     type: string
                   retentionResolutionRaw:
-                    default: 5d
+                    default: 30d
                     description: How long to retain raw samples in a bucket. It applies to --retention.resolution-raw in compact.
                     type: string
                 type: object
