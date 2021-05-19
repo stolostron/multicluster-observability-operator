@@ -20,7 +20,7 @@ data:
       "gnetId": 12124,
       "graphTooltip": 0,
       "id": 12,
-      "iteration": 1621446998548,
+      "iteration": 1621460740486,
       "links": [],
       "panels": [
         {
@@ -71,6 +71,7 @@ data:
           },
           "hiddenSeries": false,
           "id": 3,
+          "interval": "1m",
           "legend": {
             "alignAsTable": true,
             "avg": false,
@@ -107,7 +108,7 @@ data:
               "expr": "sum(instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=\"$cluster\"}) by (instance)",
               "format": "time_series",
               "interval": "",
-              "intervalFactor": 4,
+              "intervalFactor": 1,
               "legendFormat": "{{instance}}",
               "refId": "A",
               "step": 10
@@ -185,6 +186,7 @@ data:
           },
           "hiddenSeries": false,
           "id": 4,
+          "interval": "1m",
           "legend": {
             "alignAsTable": true,
             "avg": false,
@@ -221,7 +223,7 @@ data:
               "expr": "sum(instance:node_network_transmit_bytes_excluding_lo:rate1m{cluster=\"$cluster\"}) by (instance)",
               "format": "time_series",
               "interval": "",
-              "intervalFactor": 4,
+              "intervalFactor": 1,
               "legendFormat": "{{instance}}",
               "refId": "A",
               "step": 10
@@ -330,54 +332,6 @@ data:
                   {
                     "id": "displayName",
                     "value": "Current Bandwidth Transmitted"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "Bps"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #C"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Average Bandwidth Received"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "Bps"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #D"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Average Bandwidth Transmitted"
                   },
                   {
                     "id": "unit",
@@ -516,26 +470,6 @@ data:
               "step": 10
             },
             {
-              "expr": "avg(instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=\"$cluster\"}) by (instance)",
-              "format": "table",
-              "instant": true,
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "",
-              "refId": "C",
-              "step": 10
-            },
-            {
-              "expr": "avg(instance:node_network_transmit_bytes_excluding_lo:rate1m{cluster=\"$cluster\"}) by (instance)",
-              "format": "table",
-              "instant": true,
-              "interval": "",
-              "intervalFactor": 2,
-              "legendFormat": "",
-              "refId": "D",
-              "step": 10
-            },
-            {
               "expr": "sum(instance:node_network_receive_drop_excluding_lo:rate1m{cluster=\"$cluster\"}) by (instance)",
               "format": "table",
               "instant": true,
@@ -595,252 +529,6 @@ data:
             "x": 0,
             "y": 19
           },
-          "id": 6,
-          "panels": [],
-          "repeat": null,
-          "repeatIteration": null,
-          "repeatRowId": null,
-          "showTitle": true,
-          "title": "Average Bandwidth",
-          "titleSize": "h6",
-          "type": "row"
-        },
-        {
-          "aliasColors": {},
-          "bars": true,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "color": {},
-              "custom": {},
-              "thresholds": {
-                "mode": "absolute",
-                "steps": []
-              },
-              "unit": "Bps"
-            },
-            "overrides": []
-          },
-          "fill": 1,
-          "fillGradient": 0,
-          "gridPos": {
-            "h": 9,
-            "w": 12,
-            "x": 0,
-            "y": 20
-          },
-          "hiddenSeries": false,
-          "id": 7,
-          "legend": {
-            "alignAsTable": true,
-            "avg": false,
-            "current": true,
-            "hideEmpty": true,
-            "hideZero": true,
-            "max": false,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "total": false,
-            "values": true
-          },
-          "lines": false,
-          "linewidth": 1,
-          "links": [],
-          "minSpan": 24,
-          "nullPointMode": "null",
-          "options": {
-            "alertThreshold": true
-          },
-          "percentage": false,
-          "pluginVersion": "7.4.2",
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "repeat": null,
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "avg(instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=\"$cluster\"}) by (instance)",
-              "format": "time_series",
-              "interval": "",
-              "intervalFactor": 4,
-              "legendFormat": "{{namespace}}",
-              "refId": "A",
-              "step": 10
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Average Rate of Bytes Received",
-          "tooltip": {
-            "shared": true,
-            "sort": 2,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "$$hashKey": "object:794",
-              "format": "Bps",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": "0",
-              "show": true
-            },
-            {
-              "$$hashKey": "object:795",
-              "format": "Bps",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": "0",
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
-          "aliasColors": {},
-          "bars": true,
-          "dashLength": 10,
-          "dashes": false,
-          "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {
-              "color": {},
-              "custom": {},
-              "thresholds": {
-                "mode": "absolute",
-                "steps": []
-              },
-              "unit": "Bps"
-            },
-            "overrides": []
-          },
-          "fill": 1,
-          "fillGradient": 0,
-          "gridPos": {
-            "h": 9,
-            "w": 12,
-            "x": 12,
-            "y": 20
-          },
-          "hiddenSeries": false,
-          "id": 8,
-          "legend": {
-            "alignAsTable": true,
-            "avg": false,
-            "current": true,
-            "hideEmpty": true,
-            "hideZero": true,
-            "max": false,
-            "min": false,
-            "rightSide": true,
-            "show": true,
-            "total": false,
-            "values": true
-          },
-          "lines": false,
-          "linewidth": 1,
-          "links": [],
-          "minSpan": 24,
-          "nullPointMode": "null",
-          "options": {
-            "alertThreshold": true
-          },
-          "percentage": false,
-          "pluginVersion": "7.4.2",
-          "pointradius": 2,
-          "points": false,
-          "renderer": "flot",
-          "repeat": null,
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
-          "targets": [
-            {
-              "expr": "avg(instance:node_network_transmit_bytes_excluding_lo:rate1m{cluster=\"$cluster\"}) by (instance)",
-              "format": "time_series",
-              "interval": "",
-              "intervalFactor": 4,
-              "legendFormat": "{{namespace}}",
-              "refId": "A",
-              "step": 10
-            }
-          ],
-          "thresholds": [],
-          "timeFrom": null,
-          "timeRegions": [],
-          "timeShift": null,
-          "title": "Average Rate of Bytes Transmitted",
-          "tooltip": {
-            "shared": true,
-            "sort": 2,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "$$hashKey": "object:954",
-              "format": "Bps",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": "0",
-              "show": true
-            },
-            {
-              "$$hashKey": "object:955",
-              "format": "Bps",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": "0",
-              "show": true
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
-        },
-        {
-          "collapse": true,
-          "collapsed": false,
-          "datasource": "$datasource",
-          "gridPos": {
-            "h": 1,
-            "w": 24,
-            "x": 0,
-            "y": 29
-          },
           "id": 15,
           "panels": [],
           "repeat": null,
@@ -870,7 +558,7 @@ data:
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 30
+            "y": 20
           },
           "hiddenSeries": false,
           "id": 16,
@@ -981,7 +669,7 @@ data:
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 39
+            "y": 29
           },
           "hiddenSeries": false,
           "id": 17,
@@ -1092,7 +780,7 @@ data:
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 48
+            "y": 38
           },
           "hiddenSeries": false,
           "id": 18,
@@ -1208,7 +896,7 @@ data:
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 57
+            "y": 47
           },
           "hiddenSeries": false,
           "id": 19,
@@ -1451,7 +1139,7 @@ data:
         ]
       },
       "time": {
-        "from": "now-3h",
+        "from": "now-1h",
         "to": "now"
       },
       "timepicker": {
@@ -1479,7 +1167,7 @@ data:
       "timezone": "browser",
       "title": "Kubernetes / Networking / Cluster",
       "uid": "ff635a025bcfea7bc3dd4f508990a3e9",
-      "version": 13
+      "version": 19
     }
 kind: ConfigMap
 metadata:
