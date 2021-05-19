@@ -113,10 +113,6 @@ data:
       - node_netstat_Tcp_RetransSegs
       - node_netstat_TcpExt_TCPSynRetrans
       - up
-      - cluster_monitoring_operator_reconcile_errors_total
-      - cluster_monitoring_operator_reconcile_attempts_total
-      - cluster_operator_conditions
-      - cluster_operator_up      
     matches:
       - __name__="workqueue_queue_duration_seconds_bucket",job="apiserver"
       - __name__="workqueue_adds_total",job="apiserver"
