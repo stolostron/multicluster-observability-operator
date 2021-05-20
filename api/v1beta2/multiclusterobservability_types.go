@@ -53,23 +53,23 @@ type RetentionConfig struct {
 	// How long to retain raw samples in a bucket.
 	// It applies to --retention.resolution-raw in compact.
 	// +optional
-	// +kubebuilder:default:="5d"
+	// +kubebuilder:default:="30d"
 	RetentionResolutionRaw string `json:"retentionResolutionRaw,omitempty"`
 	// How long to retain samples of resolution 1 (5 minutes) in bucket.
 	// It applies to --retention.resolution-5m in compact.
 	// +optional
-	// +kubebuilder:default:="14d"
+	// +kubebuilder:default:="180d"
 	RetentionResolution5m string `json:"retentionResolution5m,omitempty"`
 	// How long to retain samples of resolution 2 (1 hour) in bucket.
 	// It applies to --retention.resolution-1h in compact.
 	// +optional
-	// +kubebuilder:default:="30d"
+	// +kubebuilder:default:="0d"
 	RetentionResolution1h string `json:"retentionResolution1h,omitempty"`
 	// How long to retain raw samples in a local disk. It applies to rule/receive:
 	// --tsdb.retention in receive
 	// --tsdb.retention in rule
 	// +optional
-	// +kubebuilder:default:="4d"
+	// +kubebuilder:default:="24h"
 	RetentionInLocal string `json:"retentionInLocal,omitempty"`
 	// Configure --compact.cleanup-interval in compact.
 	// How often we should clean up partially uploaded blocks and
