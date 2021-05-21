@@ -61,6 +61,8 @@ const (
 	AlertmanagerAccessorSecretName = "observability-alertmanager-accessor"
 	AlertmanagerServiceName        = "alertmanager"
 	AlertmanagerRouteName          = "alertmanager"
+	AlertmanagerRouteBYOCAName     = "alertmanager-byo-ca"
+	AlertmanagerRouteBYOCERTName   = "alertmanager-byo-cert"
 
 	AlertRuleDefaultConfigMapName = "thanos-ruler-default-rules"
 	AlertRuleDefaultFileKey       = "default_rules.yaml"
@@ -362,8 +364,16 @@ func GetHubAlertmanagerEndpoint(client client.Client, namespace string) (string,
 	return found.Spec.Host, nil
 }
 
-// GetRouterCA is used to get the CA of openshift Route
-func GetRouterCA(client client.Client) (string, error) {
+// GetAlertmanagerRouterCA is used to get the CA of openshift Route
+func GetAlertmanagerRouterCA(client client.Client) (string, error) {
+	amRouteBYOCaSrt := &corev1.Secret{}
+	amRouteBYOCertSrt := &corev1.Secret{}
+	err1 := client.Get(context.TODO(), types.NamespacedName{Name: AlertmanagerRouteBYOCAName, Namespace: GetDefaultNamespace()}, amRouteBYOCaSrt)
+	err2 := client.Get(context.TODO(), types.NamespacedName{Name: AlertmanagerRouteBYOCERTName, Namespace: GetDefaultNamespace()}, amRouteBYOCertSrt)
+	if err1 == nil && err2 == nil {
+		return string(amRouteBYOCaSrt.Data["tls.crt"]), nil
+	}
+
 	routerCA := &corev1.Secret{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: OpenshiftRouterCASecretName, Namespace: OpenshiftIngressOperatorNamespace}, routerCA)
 	if err != nil {

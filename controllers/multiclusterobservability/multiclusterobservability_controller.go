@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -440,14 +441,26 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	secretPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
+				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
+					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
+				return true
+			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() &&
+				(e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
+					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName) {
+				return true
+			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetName() == config.AlertmanagerConfigName &&
-				e.Object.GetNamespace() == config.GetDefaultNamespace() {
+			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
+				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
+					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName ||
+					e.Object.GetName() == config.AlertmanagerConfigName) {
 				return true
 			}
 			return false
@@ -669,15 +682,51 @@ func GenerateAlertmanagerRoute(
 		},
 	}
 
+	amRouteBYOCaSrt := &corev1.Secret{}
+	amRouteBYOCertSrt := &corev1.Secret{}
+	err1 := runclient.Get(context.TODO(), types.NamespacedName{Name: config.AlertmanagerRouteBYOCAName, Namespace: config.GetDefaultNamespace()}, amRouteBYOCaSrt)
+	err2 := runclient.Get(context.TODO(), types.NamespacedName{Name: config.AlertmanagerRouteBYOCERTName, Namespace: config.GetDefaultNamespace()}, amRouteBYOCertSrt)
+
+	if err1 == nil && err2 == nil {
+		log.Info("BYO CA/Certificate found for the Route of Alertmanager, will using BYO CA/certificate for the Route of Alertmanager")
+		amRouteCA, ok := amRouteBYOCaSrt.Data["tls.crt"]
+		if !ok {
+			return &ctrl.Result{}, fmt.Errorf("Invalid BYO CA for the Route of Alertmanager")
+		}
+		amGateway.Spec.TLS.CACertificate = string(amRouteCA)
+
+		amRouteCert, ok := amRouteBYOCertSrt.Data["tls.crt"]
+		if !ok {
+			return &ctrl.Result{}, fmt.Errorf("Invalid BYO Certificate for the Route of Alertmanager")
+		}
+		amGateway.Spec.TLS.Certificate = string(amRouteCert)
+
+		amRouteCertKey, ok := amRouteBYOCertSrt.Data["tls.key"]
+		if !ok {
+			return &ctrl.Result{}, fmt.Errorf("Invalid BYO Certificate Key for the Route of Alertmanager")
+		}
+		amGateway.Spec.TLS.Key = string(amRouteCertKey)
+	}
+
 	// Set MultiClusterObservability instance as the owner and controller
 	if err := controllerutil.SetControllerReference(mco, amGateway, scheme); err != nil {
 		return &ctrl.Result{}, err
 	}
 
-	err := runclient.Get(context.TODO(), types.NamespacedName{Name: amGateway.Name, Namespace: amGateway.Namespace}, &routev1.Route{})
+	found := &routev1.Route{}
+	err := runclient.Get(context.TODO(), types.NamespacedName{Name: amGateway.Name, Namespace: amGateway.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating a new route to expose alertmanager", "amGateway.Namespace", amGateway.Namespace, "amGateway.Name", amGateway.Name)
 		err = runclient.Create(context.TODO(), amGateway)
+		if err != nil {
+			return &ctrl.Result{}, err
+		}
+		return nil, nil
+	}
+	if !reflect.DeepEqual(found.Spec.TLS, amGateway.Spec.TLS) {
+		log.Info("Found update for the TLS configuration of the Alertmanager Route, try to update the Route")
+		amGateway.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		err = runclient.Update(context.TODO(), amGateway)
 		if err != nil {
 			return &ctrl.Result{}, err
 		}
