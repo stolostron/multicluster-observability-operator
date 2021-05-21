@@ -2035,8 +2035,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Prometheus",
-              "value": "Prometheus"
+              "text": "",
+              "value": ""
             },
             "description": null,
             "error": null,
@@ -2056,8 +2056,8 @@ data:
             "allValue": null,
             "current": {
               "selected": true,
-              "text": "local-cluster",
-              "value": "local-cluster"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "",

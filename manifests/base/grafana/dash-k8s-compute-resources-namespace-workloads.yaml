@@ -864,8 +864,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Prometheus",
-              "value": "Prometheus"
+              "text": "",
+              "value": ""
             },
             "description": null,
             "error": null,
@@ -889,8 +889,8 @@ data:
             "auto_min": "10s",
             "current": {
               "selected": false,
-              "text": "deployment",
-              "value": "deployment"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "label_values(namespace_workload_pod:kube_pod_owner:relabel{namespace=~\"$namespace\", workload=~\".+\"}, workload_type)",
@@ -920,8 +920,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "local-cluster",
-              "value": "local-cluster"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "label_values(kube_pod_info, cluster)",
@@ -951,8 +951,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "grafana",
-              "value": "grafana"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "label_values(kube_pod_info{cluster=\"$cluster\"}, namespace)",

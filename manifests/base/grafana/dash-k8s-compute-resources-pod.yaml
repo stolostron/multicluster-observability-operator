@@ -1147,8 +1147,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Prometheus",
-              "value": "Prometheus"
+              "text": "",
+              "value": ""
             },
             "description": null,
             "error": null,
@@ -1168,8 +1168,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "local-cluster",
-              "value": "local-cluster"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "label_values(kube_pod_info, cluster)",
@@ -1199,8 +1199,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "grafana",
-              "value": "grafana"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "label_values(kube_pod_info{cluster=\"$cluster\"}, namespace)",
@@ -1230,8 +1230,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "grafana-deployment-7948575ddb-zlnft",
-              "value": "grafana-deployment-7948575ddb-zlnft"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "label_values(kube_pod_info{cluster=\"$cluster\", namespace=\"$namespace\"}, pod)",
