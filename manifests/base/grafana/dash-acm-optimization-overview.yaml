@@ -19,7 +19,7 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 2,
-      "iteration": 1619460303763,
+      "iteration": 1621618422811,
       "links": [],
       "panels": [
         {
@@ -90,7 +90,9 @@ data:
             "justifyMode": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": ["mean"],
+              "calcs": [
+                "mean"
+              ],
               "fields": "",
               "values": false
             },
@@ -263,7 +265,9 @@ data:
             "justifyMode": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": ["mean"],
+              "calcs": [
+                "mean"
+              ],
               "fields": "",
               "values": false
             },
@@ -339,7 +343,9 @@ data:
             "justifyMode": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": ["mean"],
+              "calcs": [
+                "mean"
+              ],
               "fields": "",
               "values": false
             },
@@ -618,7 +624,13 @@ data:
               "id": "filterFieldsByName",
               "options": {
                 "include": {
-                  "names": ["namespace", "Value #E", "Value #C", "Value #D", "Value #B"]
+                  "names": [
+                    "namespace",
+                    "Value #E",
+                    "Value #C",
+                    "Value #D",
+                    "Value #B"
+                  ]
                 }
               }
             },
@@ -699,7 +711,9 @@ data:
             "justifyMode": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": ["mean"],
+              "calcs": [
+                "mean"
+              ],
               "fields": "",
               "values": false
             },
@@ -877,7 +891,9 @@ data:
             "justifyMode": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": ["mean"],
+              "calcs": [
+                "mean"
+              ],
               "fields": "",
               "values": false
             },
@@ -953,7 +969,9 @@ data:
             "justifyMode": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": ["mean"],
+              "calcs": [
+                "mean"
+              ],
               "fields": "",
               "values": false
             },
@@ -1240,7 +1258,274 @@ data:
               "id": "filterFieldsByName",
               "options": {
                 "include": {
-                  "names": ["namespace", "Value #E", "Value #C", "Value #D", "Value #B"]
+                  "names": [
+                    "namespace",
+                    "Value #E",
+                    "Value #C",
+                    "Value #D",
+                    "Value #B"
+                  ]
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "collapsed": false,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 46
+          },
+          "id": 30,
+          "panels": [],
+          "title": "Networking",
+          "type": "row"
+        },
+        {
+          "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": null,
+                "filterable": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #A"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Current Bandwidth Received"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "Bps"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #B"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Current Bandwidth Transmitted"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "Bps"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #G"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Rate of Received Packets Dropped"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "pps"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #H"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Rate of Transmitted Packets Dropped"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "pps"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "namespace"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Namespace"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": false,
+                        "title": "Drill down to pods",
+                        "url": "d/8b7a8b326d7a6f1f04244066368c67af/kubernetes-networking-namespace-pods?orgId=1&refresh=1m&var-namespace=${__data.fields.namespace}"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": null
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 300
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 24,
+            "x": 0,
+            "y": 47
+          },
+          "id": 34,
+          "minSpan": 24,
+          "options": {
+            "showHeader": true,
+            "sortBy": []
+          },
+          "pluginVersion": "7.4.2",
+          "targets": [
+            {
+              "expr": "sum(instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=\"$cluster\"}) by (instance)",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "",
+              "refId": "A",
+              "step": 10
+            },
+            {
+              "expr": "sum(instance:node_network_transmit_bytes_excluding_lo:rate1m{cluster=\"$cluster\"}) by (instance)",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "",
+              "refId": "B",
+              "step": 10
+            },
+            {
+              "expr": "sum(instance:node_network_receive_drop_excluding_lo:rate1m{cluster=\"$cluster\"}) by (instance)",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "",
+              "refId": "G",
+              "step": 10
+            },
+            {
+              "expr": "sum(instance:node_network_transmit_drop_excluding_lo:rate1m{cluster=\"$cluster\"}) by (instance)",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "intervalFactor": 2,
+              "legendFormat": "",
+              "refId": "H",
+              "step": 10
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Current Status",
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {
+                "reducers": []
+              }
+            },
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "Value #A",
+                    "Value #B",
+                    "Value #C",
+                    "Value #D",
+                    "Value #G",
+                    "Value #H",
+                    "instance"
+                  ]
                 }
               }
             }
@@ -1251,14 +1536,16 @@ data:
       "refresh": "1m",
       "schemaVersion": 27,
       "style": "dark",
-      "tags": ["ACM"],
+      "tags": [
+        "ACM"
+      ],
       "templating": {
         "list": [
           {
             "current": {
               "selected": false,
-              "text": "",
-              "value": ""
+              "text": "Prometheus",
+              "value": "Prometheus"
             },
             "description": null,
             "error": null,
@@ -1278,9 +1565,9 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": true,
-              "text": "",
-              "value": ""
+              "selected": false,
+              "text": "local-cluster",
+              "value": "local-cluster"
             },
             "datasource": "$datasource",
             "definition": "label_values(node_cpu_seconds_total,cluster)",
@@ -1313,12 +1600,20 @@ data:
         "to": "now"
       },
       "timepicker": {
-        "refresh_intervals": ["1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+        "refresh_intervals": [
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ]
       },
       "timezone": "browser",
       "title": "ACM - Resource Optimization / Cluster",
       "uid": "8Qvi3edMz",
-      "version": 2
+      "version": 3
     }
 kind: ConfigMap
 metadata:
