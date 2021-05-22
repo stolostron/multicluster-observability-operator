@@ -82,37 +82,35 @@ Install the `multicluster-observability-operator` on Red Hat Advanced Cluster Ma
    You should be able to have the following pods in `open-cluster-management-observability` namespace.
 
    ```
-   NAME                                                              READY   STATUS    RESTARTS   AGE
-   alertmanager-0                                                    2/2     Running   0          8m57s
-   alertmanager-1                                                    2/2     Running   0          8m36s
-   alertmanager-2                                                    2/2     Running   0          8m18s
-   grafana-658d56d649-6p9q5                                          2/2     Running   0          8m59s
-   grafana-658d56d649-vpcth                                          2/2     Running   0          8m59s
-   observability-observatorium-observatorium-api-6884555dd7-7zzff    1/1     Running   0          8m36s
-   observability-observatorium-observatorium-api-6884555dd7-hfp6g    1/1     Running   0          8m36s
-   observability-observatorium-thanos-compact-0                      1/1     Running   0          8m36s
-   observability-observatorium-thanos-compact-1                      1/1     Running   0          8m21s
-   observability-observatorium-thanos-compact-2                      1/1     Running   0          8m2s
-   observability-observatorium-thanos-query-55c767cc97-64njg         1/1     Running   0          8m36s
-   observability-observatorium-thanos-query-55c767cc97-t5nmw         1/1     Running   0          8m36s
-   observability-observatorium-thanos-query-frontend-578d44f97c8tf   1/1     Running   0          8m36s
-   observability-observatorium-thanos-query-frontend-578d44f9jq647   1/1     Running   0          8m36s
-   observability-observatorium-thanos-receive-controller-5965wd5vk   1/1     Running   0          8m35s
-   observability-observatorium-thanos-receive-default-0              1/1     Running   0          8m36s
-   observability-observatorium-thanos-receive-default-1              1/1     Running   0          8m9s
-   observability-observatorium-thanos-receive-default-2              1/1     Running   0          7m38s
-   observability-observatorium-thanos-rule-0                         1/1     Running   0          8m36s
-   observability-observatorium-thanos-rule-1                         1/1     Running   0          8m10s
-   observability-observatorium-thanos-rule-2                         1/1     Running   0          7m39s
-   observability-observatorium-thanos-store-memcached-0              2/2     Running   0          8m36s
-   observability-observatorium-thanos-store-memcached-1              2/2     Running   0          8m32s
-   observability-observatorium-thanos-store-memcached-2              2/2     Running   0          8m29s
-   observability-observatorium-thanos-store-shard-0-0                1/1     Running   0          8m36s
-   observability-observatorium-thanos-store-shard-1-0                1/1     Running   0          8m36s
-   observability-observatorium-thanos-store-shard-2-0                1/1     Running   0          8m36s
-   observatorium-operator-6c6d88c5db-x7xss                           1/1     Running   0          8m58s
-   rbac-query-proxy-7ffb8bc6c9-pt96z                                 1/1     Running   0          8m58s
-   rbac-query-proxy-7ffb8bc6c9-z7sng                                 1/1     Running   0          8m58s
+NAME                                                      READY   STATUS    RESTARTS   AGE
+alertmanager-0                                            2/2     Running   0          40m
+alertmanager-1                                            2/2     Running   0          40m
+alertmanager-2                                            2/2     Running   0          39m
+grafana-759d6d85bd-hcpkc                                  2/2     Running   0          40m
+grafana-759d6d85bd-st5zm                                  2/2     Running   0          40m
+observability-observatorium-api-bcbb75cf6-z9j48           1/1     Running   0          40m
+observability-observatorium-api-bcbb75cf6-zz77q           1/1     Running   0          40m
+observability-thanos-compact-0                            1/1     Running   0          40m
+observability-thanos-query-64f8889db-7jjq4                1/1     Running   0          40m
+observability-thanos-query-64f8889db-nrmqj                1/1     Running   0          40m
+observability-thanos-query-frontend-6b9db848f8-gvfsh      1/1     Running   0          40m
+observability-thanos-query-frontend-6b9db848f8-qd6w9      1/1     Running   0          40m
+observability-thanos-receive-controller-66b5d44c6-2jfhz   1/1     Running   0          40m
+observability-thanos-receive-default-0                    1/1     Running   0          40m
+observability-thanos-receive-default-1                    1/1     Running   0          39m
+observability-thanos-receive-default-2                    1/1     Running   0          39m
+observability-thanos-rule-0                               2/2     Running   0          40m
+observability-thanos-rule-1                               2/2     Running   0          39m
+observability-thanos-rule-2                               2/2     Running   0          39m
+observability-thanos-store-memcached-0                    2/2     Running   0          40m
+observability-thanos-store-memcached-1                    2/2     Running   0          39m
+observability-thanos-store-memcached-2                    2/2     Running   0          39m
+observability-thanos-store-shard-0-0                      1/1     Running   0          40m
+observability-thanos-store-shard-1-0                      1/1     Running   0          40m
+observability-thanos-store-shard-2-0                      1/1     Running   0          40m
+observatorium-operator-587794dd89-4ft2b                   1/1     Running   0          40m
+rbac-query-proxy-c9885f67-shfw8                           1/1     Running   0          40m
+rbac-query-proxy-c9885f67-vnnlj                           1/1     Running   0          40m
    ```
 
 7. View metrics in Grafana by navigating to the following URL: https://{YOUR_ACM_CONSOLE_DOMAIN}/grafana. The metrics are in the dashboard named _ACM:Cluster Monitoring_.
