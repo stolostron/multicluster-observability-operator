@@ -12,12 +12,12 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
+	placementv1alpha1 "github.com/open-cluster-management/api/cluster/v1alpha1"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 
-func TestCreatePlacementRule(t *testing.T) {
+func TestcreatePlacement(t *testing.T) {
 	var (
 		name       = "monitoring"
 		namespace  = mcoconfig.GetDefaultNamespace()
@@ -32,29 +32,33 @@ func TestCreatePlacementRule(t *testing.T) {
 
 	s := scheme.Scheme
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
-	appsv1.SchemeBuilder.AddToScheme(s)
+	placementv1alpha1.AddToScheme(s)
 
 	c := fake.NewFakeClient()
 
-	err := createPlacementRule(c, s, mco)
+	err := createPlacement(c, s, mco)
 	if err != nil {
-		t.Fatalf("createPlacementRule: (%v)", err)
+		t.Fatalf("createPlacement: (%v)", err)
 	}
 
-	// Test scenario in which placementrule updated by others
-	p := &appsv1.PlacementRule{
+	// Test scenario in which placement updated by others
+	p := &placementv1alpha1.Placement{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pName,
 			Namespace: namespace,
 		},
-		Spec: appsv1.PlacementRuleSpec{
-			GenericPlacementFields: appsv1.GenericPlacementFields{
-				ClusterSelector: &metav1.LabelSelector{
-					MatchExpressions: []metav1.LabelSelectorRequirement{
-						{
-							Key:      "observability" + testSuffix,
-							Operator: metav1.LabelSelectorOpNotIn,
-							Values:   []string{"disabled"},
+		Spec: placementv1alpha1.PlacementSpec{
+			Predicates: []placementv1alpha1.ClusterPredicate{
+				{
+					RequiredClusterSelector: placementv1alpha1.ClusterSelector{
+						LabelSelector: metav1.LabelSelector{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      "observability" + testSuffix,
+									Operator: metav1.LabelSelectorOpNotIn,
+									Values:   []string{"disabled"},
+								},
+							},
 						},
 					},
 				},
@@ -62,18 +66,18 @@ func TestCreatePlacementRule(t *testing.T) {
 		},
 	}
 	c = fake.NewFakeClient(p)
-	err = createPlacementRule(c, s, mco)
+	err = createPlacement(c, s, mco)
 	if err != nil {
-		t.Fatalf("createPlacementRule: (%v)", err)
+		t.Fatalf("createPlacement: (%v)", err)
 	}
 
-	found := &appsv1.PlacementRule{}
+	found := &placementv1alpha1.Placement{}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: pName, Namespace: namespace}, found)
 	if err != nil {
-		t.Fatalf("Failed to get placementrule (%s): (%v)", pName, err)
+		t.Fatalf("Failed to get placement (%s): (%v)", pName, err)
 	}
-	if found.Spec.GenericPlacementFields.ClusterSelector.MatchExpressions[0].Key != "observability" {
-		t.Fatalf("Failed to revert placementrule (%s)", pName)
+	if found.Spec.Predicates[0].RequiredClusterSelector.LabelSelector.MatchExpressions[0].Key != "observability" {
+		t.Fatalf("Failed to revert placement (%s)", pName)
 	}
 
 }

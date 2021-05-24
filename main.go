@@ -45,8 +45,8 @@ import (
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
+	placementv1alpha1 "github.com/open-cluster-management/api/cluster/v1alpha1"
 	workv1 "github.com/open-cluster-management/api/work/v1"
-	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	observabilityv1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 	observabilityv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
@@ -72,7 +72,7 @@ func init() {
 
 	utilruntime.Must(observabilityv1beta1.AddToScheme(scheme))
 	utilruntime.Must(observabilityv1beta2.AddToScheme(scheme))
-	utilruntime.Must(placementv1.AddToScheme(scheme))
+	utilruntime.Must(placementv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(observatoriumAPIs.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
@@ -117,7 +117,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := placementv1.AddToScheme(scheme); err != nil {
+	if err := placementv1alpha1.AddToScheme(scheme); err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
@@ -155,7 +155,7 @@ func main() {
 		workv1.SchemeGroupVersion.WithKind("ManifestWork"): {
 			LabelSelector: "owner==multicluster-observability-operator",
 		},
-		placementv1.SchemeGroupVersion.WithKind("PlacementRule"): {
+		placementv1alpha1.SchemeGroupVersion.WithKind("Placement"): {
 			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
 		},
 	}

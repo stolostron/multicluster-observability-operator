@@ -32,7 +32,7 @@ import (
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
-	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
+	placementv1alpha1 "github.com/open-cluster-management/api/cluster/v1alpha1"
 	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
@@ -197,7 +197,7 @@ func createClusterVersion() *configv1.ClusterVersion {
 	}
 }
 
-func createPlacementRuleCRD() *apiextensionsv1beta1.CustomResourceDefinition {
+func createPlacementCRD() *apiextensionsv1beta1.CustomResourceDefinition {
 	return &apiextensionsv1beta1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{Name: "placementrules.apps.open-cluster-management.io"},
 		Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
@@ -282,7 +282,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
 	routev1.AddToScheme(s)
-	placementv1.AddToScheme(s)
+	placementv1alpha1.AddToScheme(s)
 	addonv1alpha1.AddToScheme(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 
@@ -299,7 +299,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	cl := fake.NewFakeClient(objs...)
 
 	ocpClient := fakeconfigclient.NewSimpleClientset([]runtime.Object{createClusterVersion()}...)
-	crdClient := fakecrdclient.NewSimpleClientset([]runtime.Object{createPlacementRuleCRD()}...)
+	crdClient := fakecrdclient.NewSimpleClientset([]runtime.Object{createPlacementCRD()}...)
 	// Create a ReconcileMemcached object with the scheme and fake client.
 	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, OcpClient: ocpClient, CrdClient: crdClient}
 	config.SetMonitoringCRName(name)

@@ -14,33 +14,37 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
+	placementv1alpha1 "github.com/open-cluster-management/api/cluster/v1alpha1"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 
-func createPlacementRule(client client.Client, scheme *runtime.Scheme,
+func createPlacement(client client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability) error {
-	name := config.GetPlacementRuleName()
+	name := config.GetPlacementName()
 	namespace := config.GetDefaultNamespace()
-	p := &appsv1.PlacementRule{
+	p := &placementv1alpha1.Placement{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
-		Spec: appsv1.PlacementRuleSpec{
-			GenericPlacementFields: appsv1.GenericPlacementFields{
-				ClusterSelector: &metav1.LabelSelector{
-					MatchExpressions: []metav1.LabelSelectorRequirement{
-						{
-							Key:      "observability",
-							Operator: metav1.LabelSelectorOpNotIn,
-							Values:   []string{"disabled"},
-						},
-						{
-							Key:      "vendor",
-							Operator: metav1.LabelSelectorOpIn,
-							Values:   []string{"OpenShift"},
+		Spec: placementv1alpha1.PlacementSpec{
+			Predicates: []placementv1alpha1.ClusterPredicate{
+				{
+					RequiredClusterSelector: placementv1alpha1.ClusterSelector{
+						LabelSelector: metav1.LabelSelector{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      "observability",
+									Operator: metav1.LabelSelectorOpNotIn,
+									Values:   []string{"disabled"},
+								},
+								{
+									Key:      "vendor",
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"OpenShift"},
+								},
+							},
 						},
 					},
 				},
@@ -55,32 +59,32 @@ func createPlacementRule(client client.Client, scheme *runtime.Scheme,
 		}
 	}
 
-	found := &appsv1.PlacementRule{}
+	found := &placementv1alpha1.Placement{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating PlacementRule", "name", name)
+		log.Info("Creating Placement", "name", name)
 		err = client.Create(context.TODO(), p)
 		if err != nil {
-			log.Error(err, "Failed to create PlacementRule", "name", name)
+			log.Error(err, "Failed to create Placement", "name", name)
 			return err
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check PlacementRule", "name", name)
+		log.Error(err, "Failed to check Placement", "name", name)
 		return err
 	}
 
 	if !reflect.DeepEqual(found.Spec, p.Spec) {
-		log.Info("Reverting PlacementRule", "name", name)
+		log.Info("Reverting Placement", "name", name)
 		p.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 		err = client.Update(context.TODO(), p)
 		if err != nil {
-			log.Error(err, "Failed to revert PlacementRule", "name", name)
+			log.Error(err, "Failed to revert Placement", "name", name)
 			return err
 		}
 		return nil
 	}
 
-	log.Info("PlacementRule already existed", "name", name)
+	log.Info("Placement already existed", "name", name)
 	return nil
 }

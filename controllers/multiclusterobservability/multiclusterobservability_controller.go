@@ -210,7 +210,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	if pmCrdExists {
 		// create the placementrule
-		err = createPlacementRule(r.Client, r.Scheme, instance)
+		err = createPlacement(r.Client, r.Scheme, instance)
 		if err != nil {
 			return ctrl.Result{}, err
 		}

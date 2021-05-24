@@ -9,8 +9,7 @@ require (
 	github.com/go-logr/logr v0.4.0
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/open-cluster-management/addon-framework v0.0.0-20210519012201-d00a09b436d2
-	github.com/open-cluster-management/api v0.0.0-20210409125704-06f2aec1a73f
-	github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20210325184301-dd3e27fc2978
+	github.com/open-cluster-management/api v0.0.0-20210513122330-d76f10481f05
 	github.com/open-cluster-management/observatorium-operator v0.0.0-20210512092645-e959481410d7
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/client-go v0.0.0-20201214125552-e615e336eb49
@@ -30,7 +29,6 @@ require (
 replace (
 	github.com/go-logr/logr => github.com/go-logr/logr v0.3.0
 	github.com/go-logr/zapr => github.com/go-logr/zapr v0.2.0
-	github.com/open-cluster-management/api => github.com/open-cluster-management/api v0.0.0-20210409125704-06f2aec1a73f
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad
 	golang.org/x/text => golang.org/x/text v0.3.5
 	k8s.io/api => k8s.io/api v0.19.2

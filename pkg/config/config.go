@@ -30,7 +30,7 @@ const (
 	defaultMCONamespace               = "open-cluster-management"
 	defaultNamespace                  = "open-cluster-management-observability"
 	defaultTenantName                 = "default"
-	placementRuleName                 = "observability"
+	placementName                     = "observability"
 	objectPrefix                      = "observability"
 	OpenshiftIngressOperatorNamespace = "openshift-ingress-operator"
 	OpenshiftIngressNamespace         = "openshift-ingress"
@@ -460,9 +460,9 @@ func CheckIsIBMCloud(c client.Client) (bool, error) {
 	return false, nil
 }
 
-// GetPlacementRuleName is used to get placementRuleName
-func GetPlacementRuleName() string {
-	return placementRuleName
+// GetPlacementName is used to get placementRuleName
+func GetPlacementName() string {
+	return placementName
 }
 
 // IsPaused returns true if the multiclusterobservability instance is labeled as paused, and false otherwise

@@ -21,8 +21,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
+	placementv1alpha1 "github.com/open-cluster-management/api/cluster/v1alpha1"
 	workv1 "github.com/open-cluster-management/api/work/v1"
-	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
@@ -42,8 +42,8 @@ var (
 
 func initSchema(t *testing.T) {
 	s := scheme.Scheme
-	if err := placementv1.AddToScheme(s); err != nil {
-		t.Fatalf("Unable to add placementrule scheme: (%v)", err)
+	if err := placementv1alpha1.AddToScheme(s); err != nil {
+		t.Fatalf("Unable to add placement scheme: (%v)", err)
 	}
 	if err := mcov1beta2.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add mcov1beta2 scheme: (%v)", err)
@@ -72,13 +72,13 @@ func TestObservabilityAddonController(t *testing.T) {
 	config.SetMonitoringCRName(mcoName)
 
 	placementRuleName := config.GetPlacementRuleName()
-	p := &placementv1.PlacementRule{
+	p := &placementv1alpha1.Placement{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      placementRuleName,
 			Namespace: mcoNamespace,
 		},
-		Status: placementv1.PlacementRuleStatus{
-			Decisions: []placementv1.PlacementDecision{
+		Status: placementv1alpha1.PlacementStatus{
+			Decisions: []placementv1alpha1.PlacementDecision{
 				{
 					ClusterName:      clusterName,
 					ClusterNamespace: namespace,
@@ -131,13 +131,13 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("Deprecated role not removed")
 	}
 
-	newPlacement := &placementv1.PlacementRule{}
+	newPlacement := &placementv1alpha1.Placement{}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: placementRuleName, Namespace: mcoNamespace}, newPlacement)
 	if err != nil {
 		t.Fatalf("Failed to get placementrule: (%v)", err)
 	}
-	newPlacement.Status = placementv1.PlacementRuleStatus{
-		Decisions: []placementv1.PlacementDecision{
+	newPlacement.Status = placementv1alpha1.PlacementStatus{
+		Decisions: []placementv1alpha1.PlacementDecision{
 			{
 				ClusterName:      clusterName,
 				ClusterNamespace: namespace,

@@ -28,8 +28,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
+	placementv1alpha1 "github.com/open-cluster-management/api/cluster/v1alpha1"
 	workv1 "github.com/open-cluster-management/api/work/v1"
-	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
@@ -95,11 +95,11 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			return ctrl.Result{}, err
 		}
 	}
-	placement := &placementv1.PlacementRule{}
+	placement := &placementv1alpha1.Placement{}
 	if !deleteAll {
-		// Fetch the PlacementRule instance
+		// Fetch the Placement instance
 		err = r.Client.Get(context.TODO(), types.NamespacedName{
-			Name:      config.GetPlacementRuleName(),
+			Name:      config.GetPlacementName(),
 			Namespace: config.GetDefaultNamespace(),
 		}, placement)
 		if err != nil {
@@ -223,7 +223,7 @@ func createAllRelatedRes(
 	restMapper meta.RESTMapper,
 	request ctrl.Request,
 	mco *mcov1beta2.MultiClusterObservability,
-	placement *placementv1.PlacementRule,
+	placement *placementv1alpha1.Placement,
 	obsAddonList *mcov1beta1.ObservabilityAddonList) (ctrl.Result, error) {
 
 	// create the clusterrole if not there
@@ -384,7 +384,7 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	name := config.GetPlacementRuleName()
+	name := config.GetPlacementName()
 	pmPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == name && e.Object.GetNamespace() == watchNamespace {
@@ -544,7 +544,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	ctrBuilder := ctrl.NewControllerManagedBy(mgr).
 		// Watch for changes to primary resource PlacementRule with predicate
-		For(&placementv1.PlacementRule{}, builder.WithPredicates(pmPred)).
+		For(&placementv1alpha1.Placement{}, builder.WithPredicates(pmPred)).
 		// secondary watch for observabilityaddon
 		Watches(&source.Kind{Type: &mcov1beta1.ObservabilityAddon{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(obsAddonPred)).
 		// secondary watch for MCO
