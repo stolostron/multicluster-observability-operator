@@ -1,7 +1,7 @@
 // Copyright (c) 2021 Red Hat, Inc.
 // Copyright Contributors to the Open Cluster Management project
 
-package placementrule
+package placement
 
 import (
 	appsv1 "k8s.io/api/apps/v1"

@@ -1,7 +1,7 @@
 // Copyright (c) 2021 Red Hat, Inc.
 // Copyright Contributors to the Open Cluster Management project
 
-package placementrule
+package placement
 
 import (
 	"context"
@@ -43,14 +43,14 @@ const (
 )
 
 var (
-	log                             = logf.Log.WithName("controller_placementrule")
+	log                             = logf.Log.WithName("controller_placement")
 	watchNamespace                  = config.GetDefaultNamespace()
 	isCRoleCreated                  = false
 	isClusterManagementAddonCreated = false
 )
 
-// PlacementRuleReconciler reconciles a PlacementRule object
-type PlacementRuleReconciler struct {
+// PlacementReconciler reconciles a Placement object
+type PlacementReconciler struct {
 	Client     client.Client
 	Log        logr.Logger
 	Scheme     *runtime.Scheme
@@ -65,15 +65,15 @@ type PlacementRuleReconciler struct {
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // Modify the Reconcile function to compare the state specified by
-// the PlacementRule object against the actual cluster state, and then
+// the Placement object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.0/pkg/reconcile
-func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *PlacementReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
-	reqLogger.Info("Reconciling PlacementRule")
+	reqLogger.Info("Reconciling Placement")
 
 	if config.GetMonitoringCRName() == "" {
 		reqLogger.Info("multicluster observability resource is not available")
@@ -95,13 +95,13 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			return ctrl.Result{}, err
 		}
 	}
-	placement := &placementv1alpha1.Placement{}
+	placementDecision := &placementv1alpha1.PlacementDecision{}
 	if !deleteAll {
 		// Fetch the Placement instance
 		err = r.Client.Get(context.TODO(), types.NamespacedName{
 			Name:      config.GetPlacementName(),
 			Namespace: config.GetDefaultNamespace(),
-		}, placement)
+		}, placementDecision)
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				deleteAll = true
@@ -139,7 +139,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	if !deleteAll {
-		res, err := createAllRelatedRes(r.Client, r.RESTMapper, req, mco, placement, obsAddonList)
+		res, err := createAllRelatedRes(r.Client, r.RESTMapper, req, mco, placementDecision, obsAddonList)
 		if err != nil {
 			return res, err
 		}
@@ -223,7 +223,7 @@ func createAllRelatedRes(
 	restMapper meta.RESTMapper,
 	request ctrl.Request,
 	mco *mcov1beta2.MultiClusterObservability,
-	placement *placementv1alpha1.Placement,
+	placementDecision *placementv1alpha1.PlacementDecision,
 	obsAddonList *mcov1beta1.ObservabilityAddonList) (ctrl.Result, error) {
 
 	// create the clusterrole if not there
@@ -258,20 +258,20 @@ func createAllRelatedRes(
 	}
 
 	failedCreateManagedClusterRes := false
-	for _, decision := range placement.Status.Decisions {
-		currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
+	for _, decision := range placementDecision.Status.Decisions {
+		currentClusters = util.Remove(currentClusters, decision.ClusterName)
 		// only handle the request namespace if the request resource is not from observability  namespace
 		if request.Namespace == "" || request.Namespace == config.GetDefaultNamespace() ||
-			request.Namespace == decision.ClusterNamespace {
+			request.Namespace == decision.ClusterName {
 			log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
 			err = createManagedClusterRes(client, restMapper, mco,
-				decision.ClusterName, decision.ClusterNamespace,
+				decision.ClusterName, decision.ClusterName,
 				works, crdWork, dep, hubInfo)
 			if err != nil {
 				failedCreateManagedClusterRes = true
-				log.Error(err, "Failed to create managedcluster resources", "namespace", decision.ClusterNamespace)
+				log.Error(err, "Failed to create managedcluster resources", "namespace", decision.ClusterName)
 			}
-			if request.Namespace == decision.ClusterNamespace {
+			if request.Namespace == decision.ClusterName {
 				break
 			}
 		}
@@ -383,7 +383,7 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *PlacementReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	name := config.GetPlacementName()
 	pmPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {

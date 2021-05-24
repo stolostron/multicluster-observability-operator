@@ -17,7 +17,6 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	fakecrdclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	utilpointer "k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
@@ -197,28 +195,6 @@ func createClusterVersion() *configv1.ClusterVersion {
 	}
 }
 
-func createPlacementCRD() *apiextensionsv1beta1.CustomResourceDefinition {
-	return &apiextensionsv1beta1.CustomResourceDefinition{
-		ObjectMeta: metav1.ObjectMeta{Name: "placementrules.apps.open-cluster-management.io"},
-		Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
-			Scope:                 apiextensionsv1beta1.NamespaceScoped,
-			Conversion:            &apiextensionsv1beta1.CustomResourceConversion{Strategy: apiextensionsv1beta1.NoneConverter},
-			PreserveUnknownFields: utilpointer.BoolPtr(false),
-			Group:                 "apps.open-cluster-management.io",
-			Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
-				Kind:     "PlacementRule",
-				ListKind: "PlacementRuleList",
-				Plural:   "placementrules",
-				Singular: "placementrule",
-			},
-			Version: "v1",
-			Versions: []apiextensionsv1beta1.CustomResourceDefinitionVersion{
-				{Name: "v1", Storage: true, Served: true},
-			},
-		},
-	}
-}
-
 func createCABundleCM() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -299,7 +275,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	cl := fake.NewFakeClient(objs...)
 
 	ocpClient := fakeconfigclient.NewSimpleClientset([]runtime.Object{createClusterVersion()}...)
-	crdClient := fakecrdclient.NewSimpleClientset([]runtime.Object{createPlacementCRD()}...)
+	crdClient := fakecrdclient.NewSimpleClientset([]runtime.Object{}...)
 	// Create a ReconcileMemcached object with the scheme and fake client.
 	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, OcpClient: ocpClient, CrdClient: crdClient}
 	config.SetMonitoringCRName(name)

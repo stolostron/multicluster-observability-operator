@@ -203,17 +203,10 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return *result, err
 	}
 
-	pmCrdExists, err := util.CheckCRDExist(r.CrdClient, config.PlacementRuleCrdName)
+	// create the placement
+	err = createPlacement(r.Client, r.Scheme, instance)
 	if err != nil {
 		return ctrl.Result{}, err
-	}
-
-	if pmCrdExists {
-		// create the placementrule
-		err = createPlacement(r.Client, r.Scheme, instance)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
 	}
 
 	svmCrdExists, err := util.CheckCRDExist(r.CrdClient, config.StorageVersionMigrationCrdName)

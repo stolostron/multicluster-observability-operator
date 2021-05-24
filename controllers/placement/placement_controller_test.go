@@ -1,7 +1,7 @@
 // Copyright (c) 2021 Red Hat, Inc.
 // Copyright Contributors to the Open Cluster Management project
 
-package placementrule
+package placement
 
 import (
 	"context"
@@ -30,7 +30,6 @@ import (
 
 const (
 	namespace    = "test-ns"
-	namespace2   = "test-ns-2"
 	clusterName  = "cluster1"
 	clusterName2 = "cluster2"
 	mcoName      = "test-mco"
@@ -68,24 +67,23 @@ func initSchema(t *testing.T) {
 func TestObservabilityAddonController(t *testing.T) {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
+	placementv1alpha1.AddToScheme(s)
 	initSchema(t)
 	config.SetMonitoringCRName(mcoName)
 
-	placementRuleName := config.GetPlacementRuleName()
-	p := &placementv1alpha1.Placement{
+	placementName := config.GetPlacementName()
+	p := &placementv1alpha1.PlacementDecision{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      placementRuleName,
+			Name:      placementName,
 			Namespace: mcoNamespace,
 		},
-		Status: placementv1alpha1.PlacementStatus{
-			Decisions: []placementv1alpha1.PlacementDecision{
+		Status: placementv1alpha1.PlacementDecisionStatus{
+			Decisions: []placementv1alpha1.ClusterDecision{
 				{
-					ClusterName:      clusterName,
-					ClusterNamespace: namespace,
+					ClusterName: clusterName,
 				},
 				{
-					ClusterName:      clusterName2,
-					ClusterNamespace: namespace2,
+					ClusterName: clusterName2,
 				},
 			},
 		},
@@ -95,7 +93,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	deprecatedRole := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "endpoint-observability-role",
-			Namespace: namespace,
+			Namespace: clusterName,
 			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
@@ -105,10 +103,10 @@ func TestObservabilityAddonController(t *testing.T) {
 		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newManagedClusterAddon(), deprecatedRole}
 	c := fake.NewFakeClient(objs...)
 
-	r := &PlacementRuleReconciler{Client: c, Scheme: s}
+	r := &PlacementReconciler{Client: c, Scheme: s}
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
-			Name:      placementRuleName,
+			Name:      placementName,
 			Namespace: mcoNamespace,
 		},
 	}
@@ -116,48 +114,48 @@ func TestObservabilityAddonController(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
+
 	found := &workv1.ManifestWork{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + workNameSuffix, Namespace: namespace}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: clusterName + workNameSuffix, Namespace: clusterName}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork for cluster1: (%v)", err)
 	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace2 + workNameSuffix, Namespace: namespace2}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: clusterName2 + workNameSuffix, Namespace: clusterName2}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork for cluster2: (%v)", err)
 	}
 	foundRole := &rbacv1.Role{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: "endpoint-observability-role", Namespace: namespace}, foundRole)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: "endpoint-observability-role", Namespace: clusterName}, foundRole)
 	if err == nil || !errors.IsNotFound(err) {
 		t.Fatalf("Deprecated role not removed")
 	}
 
-	newPlacement := &placementv1alpha1.Placement{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: placementRuleName, Namespace: mcoNamespace}, newPlacement)
+	newPlacement := &placementv1alpha1.PlacementDecision{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: placementName, Namespace: mcoNamespace}, newPlacement)
 	if err != nil {
-		t.Fatalf("Failed to get placementrule: (%v)", err)
+		t.Fatalf("Failed to get placementdecision: (%v)", err)
 	}
-	newPlacement.Status = placementv1alpha1.PlacementStatus{
-		Decisions: []placementv1alpha1.PlacementDecision{
+	newPlacement.Status = placementv1alpha1.PlacementDecisionStatus{
+		Decisions: []placementv1alpha1.ClusterDecision{
 			{
-				ClusterName:      clusterName,
-				ClusterNamespace: namespace,
+				ClusterName: clusterName,
 			},
 		},
 	}
 
 	err = c.Update(context.TODO(), newPlacement)
 	if err != nil {
-		t.Fatalf("Failed to update placementrule: (%v)", err)
+		t.Fatalf("Failed to update placementdecision: (%v)", err)
 	}
 	_, err = r.Reconcile(context.TODO(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + workNameSuffix, Namespace: namespace}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: clusterName + workNameSuffix, Namespace: clusterName}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork for cluster1: (%v)", err)
 	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace2 + workNameSuffix, Namespace: namespace2}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: clusterName2 + workNameSuffix, Namespace: clusterName2}, found)
 	if err == nil || !errors.IsNotFound(err) {
 		t.Fatalf("Failed to delete manifestwork for cluster2: (%v)", err)
 	}
@@ -198,7 +196,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + workNameSuffix, Namespace: namespace}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: clusterName + workNameSuffix, Namespace: clusterName}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork for cluster1: (%v)", err)
 	}
@@ -207,7 +205,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	invalidWork := &workv1.ManifestWork{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      invalidName,
-			Namespace: namespace,
+			Namespace: clusterName,
 			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
@@ -222,7 +220,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: invalidName, Namespace: namespace}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: invalidName, Namespace: clusterName}, found)
 	if err == nil {
 		t.Fatalf("Invalid manifestwork not removed")
 	}
@@ -235,7 +233,7 @@ func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "managedClusterAddonName",
-			Namespace: namespace,
+			Namespace: clusterName,
 		},
 	}
 }
