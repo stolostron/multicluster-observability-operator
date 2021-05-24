@@ -12,23 +12,18 @@ import (
 
 // MultiClusterObservabilitySpec defines the desired state of MultiClusterObservability
 type MultiClusterObservabilitySpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
+	// Advanced configurations for observability
+	// +optional
+	AdvancedConfig *AdvancedConfig `json:"advanced,omitempty"`
 	// Enable or disable the downsample.
-	// The default value is true.
-	// This is not recommended as querying long time ranges
-	// without non-downsampled data is not efficient and useful.
 	// +optional
 	// +kubebuilder:default:=true
 	EnableDownsampling bool `json:"enableDownsampling"`
 	// Pull policy of the MultiClusterObservability images
 	// +optional
-	// +kubebuilder:default:=Always
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 	// Pull secret of the MultiClusterObservability images
 	// +optional
-	// +kubebuilder:default:=multiclusterhub-operator-pull-secret
 	ImagePullSecret string `json:"imagePullSecret,omitempty"`
 	// Spec of NodeSelector
 	// +optional
@@ -36,9 +31,6 @@ type MultiClusterObservabilitySpec struct {
 	// Tolerations causes all components to tolerate any taints.
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
-	// The spec of the data retention configurations
-	// +required
-	RetentionConfig *RetentionConfig `json:"retentionConfig,omitempty"`
 	// Specifies the storage to be used by Observability
 	// +required
 	StorageConfig *StorageConfig `json:"storageConfig,omitempty"`
@@ -48,44 +40,171 @@ type MultiClusterObservabilitySpec struct {
 	ObservabilityAddonSpec *observabilityshared.ObservabilityAddonSpec `json:"observabilityAddonSpec,omitempty"`
 }
 
+type AdvancedConfig struct {
+	// The spec of the data retention configurations
+	// +optional
+	RetentionConfig *RetentionConfig `json:"retentionConfig,omitempty"`
+	// The spec of rbac-query-proxy
+	RBACQueryProxy *RBACQueryProxySpec `json:"rbacQueryProxy,omitempty"`
+	// Specifies the store memcached
+	// +optional
+	StoreMemcached *CacheConfig `json:"storeMemcached,omitempty"`
+	// Specifies the store memcached
+	// +optional
+	QueryFrontendMemcached *CacheConfig `json:"queryFrontendMemcached,omitempty"`
+	// Spec of observatorium api
+	// +optional
+	ObservatoriumAPI *ObservatoriumAPISpec `json:"observatoriumAPI,omitempty"`
+	// spec for thanos-query-frontend
+	// +optional
+	QueryFrontend *QueryFrontendSpec `json:"queryFrontend,omitempty"`
+	// spec for thanos-query
+	// +optional
+	Query *QuerySpec `json:"query,omitempty"`
+	// spec for thanos-compact
+	// +optional
+	Compact *CompactSpec `json:"compact,omitempty"`
+	// spec for thanos-receiver
+	// +optional
+	Receive *ReceiversSpec `json:"receive,omitempty"`
+	// spec for thanos-rule
+	// +optional
+	Rule *RuleSpec `json:"rule,omitempty"`
+	// spec for thanos-store-shard
+	// +optional
+	Store *StoreSpec `json:"store,omitempty"`
+}
+
+type RBACQueryProxySpec struct {
+	// Compute Resources required by the rbac-query-proxy.
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+	// Replicas for the rbac-query-proxy.
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+}
+
+// Thanos Compact Spec
+type ObservatoriumAPISpec struct {
+	// Compute Resources required by the observatorium api.
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+	// Replicas for observatorium api.
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+}
+
+// Thanos Compact Spec
+type CompactSpec struct {
+	// Compute Resources required by the compact.
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+}
+
+// Thanos Receivers Spec
+type ReceiversSpec struct {
+	// Compute Resources required by the Receivers.
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+	// Replicas for receivers.
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+}
+
+// Thanos QueryFrontend Spec
+type QueryFrontendSpec struct {
+	// Compute Resources required by the Query frontend.
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+	// Replicas for query frontend.
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+}
+
+// Thanos Store Spec
+type StoreSpec struct {
+	// Compute Resources required by the store.
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+	// Replicas for the store.
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+}
+
+// Thanos Store Spec
+type Spec struct {
+	// Compute Resources required by the store.
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+	// Replicas for the store.
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+}
+
+// Thanos Ruler Spec
+type RuleSpec struct {
+	// Compute Resources required by the ruler.
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+	// Replicas for the ruler.
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+}
+
+// Thanos Query Spec
+type QuerySpec struct {
+	// Compute Resources required by the query.
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+	// Replicas for the query.
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+}
+
+// CacheConfig is the spec of memcached.
+type CacheConfig struct {
+	// Memory limit of Memcached in megabytes.
+	// +optional
+	MemoryLimitMB *int32 `json:"memoryLimitMb,omitempty"`
+	// Max item size of Memcached (default: 1m, min: 1k, max: 1024m).
+	// +optional
+	MaxItemSize string `json:"maxItemSize,omitempty"`
+	// Max simultaneous connections of Memcached.
+	// +optional
+	ConnectionLimit *int32 `json:"connectionLimit,omitempty"`
+	// Compute Resources required by the memory cached.
+	// +optional
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+	// Replicas for the memory cached.
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+}
+
 // RetentionConfig is the spec of retention configurations.
 type RetentionConfig struct {
 	// How long to retain raw samples in a bucket.
 	// It applies to --retention.resolution-raw in compact.
 	// +optional
-	// +kubebuilder:default:="30d"
 	RetentionResolutionRaw string `json:"retentionResolutionRaw,omitempty"`
 	// How long to retain samples of resolution 1 (5 minutes) in bucket.
 	// It applies to --retention.resolution-5m in compact.
 	// +optional
-	// +kubebuilder:default:="180d"
 	RetentionResolution5m string `json:"retentionResolution5m,omitempty"`
 	// How long to retain samples of resolution 2 (1 hour) in bucket.
 	// It applies to --retention.resolution-1h in compact.
 	// +optional
-	// +kubebuilder:default:="0d"
 	RetentionResolution1h string `json:"retentionResolution1h,omitempty"`
 	// How long to retain raw samples in a local disk. It applies to rule/receive:
 	// --tsdb.retention in receive
 	// --tsdb.retention in rule
 	// +optional
-	// +kubebuilder:default:="24h"
 	RetentionInLocal string `json:"retentionInLocal,omitempty"`
-	// Configure --compact.cleanup-interval in compact.
-	// How often we should clean up partially uploaded blocks and
-	// blocks with deletion mark in the background when --wait has been enabled.
-	// Setting it to "0s" disables it
-	// +optional
-	// +kubebuilder:default:="5m"
-	CleanupInterval string `json:"cleanupInterval,omitempty"`
 	// configure --delete-delay in compact
 	// Time before a block marked for deletion is deleted from bucket.
 	// +optional
-	// +kubebuilder:default:="48h"
 	DeleteDelay string `json:"deleteDelay,omitempty"`
 	// configure --tsdb.block-duration in rule (Block duration for TSDB block)
 	// +optional
-	// +kubebuilder:default:="2h"
 	BlockDuration string `json:"blockDuration,omitempty"`
 }
 

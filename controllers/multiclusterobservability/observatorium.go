@@ -192,7 +192,7 @@ func newDefaultObservatoriumSpec(mco *mcov1beta2.MultiClusterObservability,
 
 	obs := &obsv1alpha1.ObservatoriumSpec{}
 	obs.SecurityContext = &v1.SecurityContext{}
-	obs.PullSecret = mco.Spec.ImagePullSecret
+	obs.PullSecret = mcoconfig.GetImagePullSecret(mco.Spec)
 	obs.NodeSelector = mco.Spec.NodeSelector
 	obs.Tolerations = mco.Spec.Tolerations
 	obs.API = newAPISpec(mco)
@@ -296,14 +296,14 @@ func newAPISpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.APISpec {
 	apiSpec.RBAC = newAPIRBAC()
 	apiSpec.Tenants = newAPITenants()
 	apiSpec.TLS = newAPITLS()
-	apiSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ObservatoriumAPI)
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.ObservatoriumAPI != nil &&
+		mco.Spec.AdvancedConfig.ObservatoriumAPI.Replicas != nil {
+		apiSpec.Replicas = mco.Spec.AdvancedConfig.ObservatoriumAPI.Replicas
+	} else {
+		apiSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ObservatoriumAPI)
+	}
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		apiSpec.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ObservatoriumAPICPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ObservatoriumAPIMemoryRequets),
-			},
-		}
+		apiSpec.Resources = mcoconfig.GetResources(config.ObservatoriumAPI, mco.Spec.AdvancedConfig)
 	}
 	//set the default observatorium components' image
 	apiSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ObservatoriumAPIImgName +
@@ -321,8 +321,20 @@ func newReceiversSpec(
 	mco *mcov1beta2.MultiClusterObservability,
 	scSelected string) obsv1alpha1.ReceiversSpec {
 	receSpec := obsv1alpha1.ReceiversSpec{}
-	receSpec.Retention = mco.Spec.RetentionConfig.RetentionInLocal
-	receSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosReceive)
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.RetentionConfig != nil &&
+		mco.Spec.AdvancedConfig.RetentionConfig.RetentionInLocal != "" {
+		receSpec.Retention = mco.Spec.AdvancedConfig.RetentionConfig.RetentionInLocal
+	} else {
+		receSpec.Retention = mcoconfig.RetentionInLocal
+	}
+
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Receive != nil &&
+		mco.Spec.AdvancedConfig.Receive.Replicas != nil {
+		receSpec.Replicas = mco.Spec.AdvancedConfig.Receive.Replicas
+	} else {
+		receSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosReceive)
+	}
+
 	if *receSpec.Replicas < 3 {
 		receSpec.ReplicationFactor = receSpec.Replicas
 	} else {
@@ -331,12 +343,7 @@ func newReceiversSpec(
 
 	receSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		receSpec.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosReceiveCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosReceiveMemoryRequets),
-			},
-		}
+		receSpec.Resources = mcoconfig.GetResources(config.ThanosReceive, mco.Spec.AdvancedConfig)
 	}
 	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.ReceiveStorageSize,
@@ -347,17 +354,27 @@ func newReceiversSpec(
 
 func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.RuleSpec {
 	ruleSpec := obsv1alpha1.RuleSpec{}
-	ruleSpec.BlockDuration = mco.Spec.RetentionConfig.BlockDuration
-	ruleSpec.Retention = mco.Spec.RetentionConfig.RetentionInLocal
-	ruleSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosRule)
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.RetentionConfig != nil &&
+		mco.Spec.AdvancedConfig.RetentionConfig.BlockDuration != "" {
+		ruleSpec.BlockDuration = mco.Spec.AdvancedConfig.RetentionConfig.BlockDuration
+	} else {
+		ruleSpec.BlockDuration = mcoconfig.BlockDuration
+	}
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.RetentionConfig != nil &&
+		mco.Spec.AdvancedConfig.RetentionConfig.RetentionInLocal != "" {
+		ruleSpec.Retention = mco.Spec.AdvancedConfig.RetentionConfig.RetentionInLocal
+	} else {
+		ruleSpec.Retention = mcoconfig.RetentionInLocal
+	}
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Rule != nil &&
+		mco.Spec.AdvancedConfig.Rule.Replicas != nil {
+		ruleSpec.Replicas = mco.Spec.AdvancedConfig.Rule.Replicas
+	} else {
+		ruleSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosRule)
+	}
 	ruleSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		ruleSpec.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosRuleCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosRuleMemoryRequets),
-			},
-		}
+		ruleSpec.Resources = mcoconfig.GetResources(config.ThanosRule, mco.Spec.AdvancedConfig)
 		ruleSpec.ReloaderResources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
 				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosRuleReloaderCPURequets),
@@ -424,42 +441,50 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 func newStoreSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.StoreSpec {
 	storeSpec := obsv1alpha1.StoreSpec{}
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		storeSpec.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosStoreCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosStoreMemoryRequets),
-			},
-		}
+		storeSpec.Resources = mcoconfig.GetResources(config.ThanosStoreShard, mco.Spec.AdvancedConfig)
 	}
 
 	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.StoreStorageSize,
 		scSelected)
-	storeSpec.Shards = &mcoconfig.Replicas3
+
+	storeSpec.Shards = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosStoreShard)
 	storeSpec.ServiceMonitor = true
-	storeSpec.Cache = newMemCacheSpec(mco)
+	storeSpec.Cache = newMemCacheSpec(mcoconfig.ThanosStoreMemcached, mco)
 
 	return storeSpec
 }
 
-func newMemCacheSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.MemCacheSpec {
-	memeCacheSpec := obsv1alpha1.MemCacheSpec{}
-	memeCacheSpec.Image = mcoconfig.MemcachedImgRepo + "/" +
+func newMemCacheSpec(component string, mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.MemCacheSpec {
+	var cacheConfig *mcov1beta2.CacheConfig
+	if mco.Spec.AdvancedConfig != nil {
+		if component == mcoconfig.ThanosStoreMemcached {
+			cacheConfig = mco.Spec.AdvancedConfig.StoreMemcached
+		} else {
+			cacheConfig = mco.Spec.AdvancedConfig.QueryFrontendMemcached
+		}
+	}
+	memCacheSpec := obsv1alpha1.MemCacheSpec{}
+	memCacheSpec.Image = mcoconfig.MemcachedImgRepo + "/" +
 		mcoconfig.MemcachedImgName + ":" + mcoconfig.MemcachedImgTag
-	memeCacheSpec.Version = mcoconfig.MemcachedImgTag
-	memeCacheSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosStoreMemcached)
-	memeCacheSpec.ServiceMonitor = true
-	memeCacheSpec.ExporterImage = mcoconfig.MemcachedExporterImgRepo + "/" +
+	memCacheSpec.Version = mcoconfig.MemcachedImgTag
+	if cacheConfig != nil && cacheConfig.Replicas != nil {
+		memCacheSpec.Replicas = cacheConfig.Replicas
+	} else {
+		memCacheSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosStoreMemcached)
+	}
+	memCacheSpec.ServiceMonitor = true
+	memCacheSpec.ExporterImage = mcoconfig.MemcachedExporterImgRepo + "/" +
 		mcoconfig.MemcachedExporterImgName + ":" + mcoconfig.MemcachedExporterImgTag
-	memeCacheSpec.ExporterVersion = mcoconfig.MemcachedExporterImgTag
+	memCacheSpec.ExporterVersion = mcoconfig.MemcachedExporterImgTag
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		memeCacheSpec.Resources = v1.ResourceRequirements{
+		memCacheSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
 				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosCahcedCPURequets),
 				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosCahcedMemoryRequets),
 			},
 		}
-		memeCacheSpec.ExporterResources = v1.ResourceRequirements{
+		memCacheSpec.ExporterResources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
 				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosCahcedExporterCPURequets),
 				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosCahcedExporterMemoryRequets),
@@ -467,20 +492,32 @@ func newMemCacheSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.MemC
 		}
 	}
 
-	found, image := mcoconfig.ReplaceImage(mco.Annotations, memeCacheSpec.Image, mcoconfig.MemcachedImgName)
+	found, image := mcoconfig.ReplaceImage(mco.Annotations, memCacheSpec.Image, mcoconfig.MemcachedImgName)
 	if found {
-		memeCacheSpec.Image = image
+		memCacheSpec.Image = image
 	}
 
-	found, image = mcoconfig.ReplaceImage(mco.Annotations, memeCacheSpec.ExporterImage, mcoconfig.MemcachedExporterKey)
+	found, image = mcoconfig.ReplaceImage(mco.Annotations, memCacheSpec.ExporterImage, mcoconfig.MemcachedExporterKey)
 	if found {
-		memeCacheSpec.ExporterImage = image
+		memCacheSpec.ExporterImage = image
+	}
+	if cacheConfig != nil && cacheConfig.MemoryLimitMB != nil {
+		memCacheSpec.MemoryLimitMB = cacheConfig.MemoryLimitMB
+	} else {
+		memCacheSpec.MemoryLimitMB = &mcoconfig.MemoryLimitMB
+	}
+	if cacheConfig != nil && cacheConfig.ConnectionLimit != nil {
+		memCacheSpec.ConnectionLimit = cacheConfig.ConnectionLimit
+	} else {
+		memCacheSpec.ConnectionLimit = &mcoconfig.ConnectionLimit
+	}
+	if cacheConfig != nil && cacheConfig.MaxItemSize != "" {
+		memCacheSpec.MaxItemSize = cacheConfig.MaxItemSize
+	} else {
+		memCacheSpec.MaxItemSize = mcoconfig.MaxItemSize
 	}
 
-	limit := int32(1024)
-	memeCacheSpec.MemoryLimitMB = &limit
-
-	return memeCacheSpec
+	return memCacheSpec
 }
 
 func newThanosSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.ThanosSpec {
@@ -508,14 +545,9 @@ func newQueryFrontendSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1
 	queryFrontendSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosQueryFrontend)
 	queryFrontendSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		queryFrontendSpec.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosQueryFrontendCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosQueryFrontendMemoryRequets),
-			},
-		}
+		queryFrontendSpec.Resources = mcoconfig.GetResources(config.ThanosQueryFrontend, mco.Spec.AdvancedConfig)
 	}
-	queryFrontendSpec.Cache = newMemCacheSpec(mco)
+	queryFrontendSpec.Cache = newMemCacheSpec(mcoconfig.ThanosQueryFrontendMemcached, mco)
 	return queryFrontendSpec
 }
 
@@ -524,12 +556,7 @@ func newQuerySpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QuerySp
 	querySpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosQuery)
 	querySpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		querySpec.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosQueryCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosQueryMemoryRequets),
-			},
-		}
+		querySpec.Resources = mcoconfig.GetResources(config.ThanosQuery, mco.Spec.AdvancedConfig)
 	}
 	return querySpec
 }
@@ -563,19 +590,38 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 	//Compactions are needed from time to time, only when new blocks appear.
 	compactSpec.Replicas = &mcoconfig.Replicas1
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		compactSpec.Resources = v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosCompactCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosCompactMemoryRequets),
-			},
-		}
+		compactSpec.Resources = mcoconfig.GetResources(config.ThanosCompact, mco.Spec.AdvancedConfig)
 	}
 	compactSpec.ServiceMonitor = true
 	compactSpec.EnableDownsampling = mco.Spec.EnableDownsampling
-	compactSpec.DeleteDelay = mco.Spec.RetentionConfig.DeleteDelay
-	compactSpec.RetentionResolutionRaw = mco.Spec.RetentionConfig.RetentionResolutionRaw
-	compactSpec.RetentionResolution5m = mco.Spec.RetentionConfig.RetentionResolution5m
-	compactSpec.RetentionResolution1h = mco.Spec.RetentionConfig.RetentionResolution1h
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.RetentionConfig != nil &&
+		mco.Spec.AdvancedConfig.RetentionConfig.DeleteDelay != "" {
+		compactSpec.DeleteDelay = mco.Spec.AdvancedConfig.RetentionConfig.DeleteDelay
+	} else {
+		compactSpec.DeleteDelay = mcoconfig.DeleteDelay
+	}
+
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.RetentionConfig != nil &&
+		mco.Spec.AdvancedConfig.RetentionConfig.RetentionResolutionRaw != "" {
+		compactSpec.RetentionResolutionRaw = mco.Spec.AdvancedConfig.RetentionConfig.RetentionResolutionRaw
+	} else {
+		compactSpec.RetentionResolutionRaw = mcoconfig.RetentionResolutionRaw
+	}
+
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.RetentionConfig != nil &&
+		mco.Spec.AdvancedConfig.RetentionConfig.RetentionResolution5m != "" {
+		compactSpec.RetentionResolution5m = mco.Spec.AdvancedConfig.RetentionConfig.RetentionResolution5m
+	} else {
+		compactSpec.RetentionResolution5m = mcoconfig.RetentionResolution5m
+	}
+
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.RetentionConfig != nil &&
+		mco.Spec.AdvancedConfig.RetentionConfig.RetentionResolution1h != "" {
+		compactSpec.RetentionResolution1h = mco.Spec.AdvancedConfig.RetentionConfig.RetentionResolution1h
+	} else {
+		compactSpec.RetentionResolution1h = mcoconfig.RetentionResolution1h
+	}
+
 	compactSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.CompactStorageSize,
 		scSelected)

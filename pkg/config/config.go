@@ -14,11 +14,14 @@ import (
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	observabilityv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 )
 
 const (
@@ -131,9 +134,7 @@ const (
 	LeaseControllerKey            = "klusterlet_addon_lease_controller"
 
 	RbacQueryProxyKey = "rbac_query_proxy"
-)
 
-const (
 	ObservatoriumAPICPURequets    = "20m"
 	ObservatoriumAPIMemoryRequets = "128Mi"
 
@@ -165,19 +166,33 @@ const (
 	ThanosStoreCPURequets    = "100m"
 	ThanosStoreMemoryRequets = "1Gi"
 
-	ObservatoriumAPI        = "observatorium-api"
-	ThanosCompact           = "thanos-compact"
-	ThanosQuery             = "thanos-query"
-	ThanosQueryFrontend     = "thanos-query-frontend"
-	ThanosRule              = "thanos-rule"
-	ThanosReceive           = "thanos-receive-default"
-	ThanosStoreMemcached    = "thanos-store-memcached"
-	ThanosStoreShard        = "thanos-store-shard"
-	Grafana                 = "grafana"
-	RbacQueryProxy          = "rbac-query-proxy"
-	Alertmanager            = "alertmanager"
-	ThanosReceiveController = "thanos-receive-controller"
-	ObservatoriumOperator   = "observatorium-operator"
+	ObservatoriumAPI             = "observatorium-api"
+	ThanosCompact                = "thanos-compact"
+	ThanosQuery                  = "thanos-query"
+	ThanosQueryFrontend          = "thanos-query-frontend"
+	ThanosQueryFrontendMemcached = "thanos-query-frontend-memcached"
+	ThanosRule                   = "thanos-rule"
+	ThanosReceive                = "thanos-receive-default"
+	ThanosStoreMemcached         = "thanos-store-memcached"
+	ThanosStoreShard             = "thanos-store-shard"
+	Grafana                      = "grafana"
+	RBACQueryProxy               = "rbac-query-proxy"
+	Alertmanager                 = "alertmanager"
+	ThanosReceiveController      = "thanos-receive-controller"
+	ObservatoriumOperator        = "observatorium-operator"
+
+	RetentionResolutionRaw = "30d"
+	RetentionResolution5m  = "180d"
+	RetentionResolution1h  = "0d"
+	RetentionInLocal       = "24h"
+	DeleteDelay            = "48h"
+	BlockDuration          = "2h"
+
+	DefaultImagePullPolicy = "Always"
+	DefaultImagePullSecret = "multiclusterhub-operator-pull-secret"
+
+	ResourceLimits   = "limits"
+	ResourceRequests = "requests"
 )
 
 const (
@@ -205,34 +220,31 @@ var (
 	hasCustomAlertmanagerConfig = false
 	certDuration                = time.Hour * 24 * 365
 
-	Replicas1      int32 = 1
-	Replicas2      int32 = 2
-	Replicas3      int32 = 3
-	thanosReplicas       = map[string]*int32{
+	Replicas1         int32 = 1
+	Replicas2         int32 = 2
+	Replicas3         int32 = 3
+	componentReplicas       = map[string]*int32{
 		ObservatoriumAPI:    &Replicas2,
 		ThanosQuery:         &Replicas2,
 		ThanosQueryFrontend: &Replicas2,
 		Grafana:             &Replicas2,
-		RbacQueryProxy:      &Replicas2,
+		RBACQueryProxy:      &Replicas2,
 
-		ThanosRule:           &Replicas3,
-		ThanosReceive:        &Replicas3,
-		ThanosStoreMemcached: &Replicas3,
-		Alertmanager:         &Replicas3,
+		ThanosRule:                   &Replicas3,
+		ThanosReceive:                &Replicas3,
+		ThanosStoreShard:             &Replicas3,
+		ThanosStoreMemcached:         &Replicas3,
+		ThanosQueryFrontendMemcached: &Replicas3,
+		Alertmanager:                 &Replicas3,
 	}
+
+	MemoryLimitMB   = int32(1024)
+	ConnectionLimit = int32(1024)
+	MaxItemSize     = "1m"
 )
 
 func GetObservabilityComponentReplicas(componentName string) *int32 {
-	return thanosReplicas[componentName]
-}
-
-func SetObservabilityComponentReplicas(name string, replicas *int32) {
-	for k := range thanosReplicas {
-		if name == GetMonitoringCRName()+"-"+k {
-			thanosReplicas[k] = replicas
-			return
-		}
-	}
+	return componentReplicas[componentName]
 }
 
 // GetCrLabelKey returns the key for the CR label injected into the resources created by the operator
@@ -513,4 +525,184 @@ func SetCertDuration(annotations map[string]string) {
 
 func GetObjectPrefix() string {
 	return objectPrefix
+}
+
+func GetImagePullPolicy(mco observabilityv1beta2.MultiClusterObservabilitySpec) corev1.PullPolicy {
+	if mco.ImagePullPolicy != "" {
+		return mco.ImagePullPolicy
+	} else {
+		return DefaultImagePullPolicy
+	}
+}
+
+func GetImagePullSecret(mco observabilityv1beta2.MultiClusterObservabilitySpec) string {
+	if mco.ImagePullSecret != "" {
+		return mco.ImagePullSecret
+	} else {
+		return DefaultImagePullSecret
+	}
+}
+
+func getDefaultResource(resourceType string, resource corev1.ResourceName,
+	component string) string {
+
+	switch component {
+	case ObservatoriumAPI:
+		if resource == corev1.ResourceCPU {
+			return ObservatoriumAPICPURequets
+		}
+		if resource == corev1.ResourceMemory {
+			return ObservatoriumAPIMemoryRequets
+		}
+	case ThanosCompact:
+		if resource == corev1.ResourceCPU {
+			return ThanosCompactCPURequets
+		}
+		if resource == corev1.ResourceMemory {
+			return ThanosCompactMemoryRequets
+		}
+	case ThanosQuery:
+		if resource == corev1.ResourceCPU {
+			return ThanosQueryCPURequets
+		}
+		if resource == corev1.ResourceMemory {
+			return ThanosQueryMemoryRequets
+		}
+	case ThanosQueryFrontend:
+		if resource == corev1.ResourceCPU {
+			return ThanosQueryFrontendCPURequets
+		}
+		if resource == corev1.ResourceMemory {
+			return ThanosQueryFrontendMemoryRequets
+		}
+	case ThanosRule:
+		if resource == corev1.ResourceCPU {
+			return ThanosRuleCPURequets
+		}
+		if resource == corev1.ResourceMemory {
+			return ThanosRuleMemoryRequets
+		}
+	case ThanosReceive:
+		if resource == corev1.ResourceCPU {
+			return ThanosReceiveCPURequets
+		}
+		if resource == corev1.ResourceMemory {
+			return ThanosReceiveMemoryRequets
+		}
+	case ThanosStoreShard:
+		if resource == corev1.ResourceCPU {
+			return ThanosStoreCPURequets
+		}
+		if resource == corev1.ResourceMemory {
+			return ThanosStoreMemoryRequets
+		}
+	}
+	return ""
+}
+
+func getResource(resourceType string, resource corev1.ResourceName,
+	component string, advanced *observabilityv1beta2.AdvancedConfig) string {
+	if advanced == nil {
+		return getDefaultResource(resourceType, resource, component)
+	}
+	var resourcesReq *corev1.ResourceRequirements
+	switch component {
+	case ObservatoriumAPI:
+		if advanced.ObservatoriumAPI != nil {
+			resourcesReq = advanced.ObservatoriumAPI.Resources
+		}
+	case ThanosCompact:
+		if advanced.Compact != nil {
+			resourcesReq = advanced.Compact.Resources
+		}
+	case ThanosQuery:
+		if advanced.Query != nil {
+			resourcesReq = advanced.Query.Resources
+		}
+	case ThanosQueryFrontend:
+		if advanced.QueryFrontend != nil {
+			resourcesReq = advanced.QueryFrontend.Resources
+		}
+	case ThanosQueryFrontendMemcached:
+		if advanced.QueryFrontendMemcached != nil {
+			resourcesReq = advanced.QueryFrontendMemcached.Resources
+		}
+	case ThanosRule:
+		if advanced.Rule != nil {
+			resourcesReq = advanced.Rule.Resources
+		}
+	case ThanosReceive:
+		if advanced.Receive != nil {
+			resourcesReq = advanced.Receive.Resources
+		}
+	case ThanosStoreMemcached:
+		if advanced.StoreMemcached != nil {
+			resourcesReq = advanced.StoreMemcached.Resources
+		}
+	case ThanosStoreShard:
+		if advanced.Store != nil {
+			resourcesReq = advanced.Store.Resources
+		}
+	case RBACQueryProxy:
+		if advanced.RBACQueryProxy != nil {
+			resourcesReq = advanced.RBACQueryProxy.Resources
+		}
+	}
+
+	if resourcesReq != nil {
+		if resourceType == ResourceRequests {
+			if len(resourcesReq.Requests) != 0 {
+				if resource == corev1.ResourceCPU {
+					return resourcesReq.Requests.Cpu().String()
+				} else if resource == corev1.ResourceMemory {
+					return resourcesReq.Requests.Memory().String()
+				} else {
+					return getDefaultResource(resourceType, resource, component)
+				}
+			} else {
+				return getDefaultResource(resourceType, resource, component)
+			}
+		}
+		if resourceType == ResourceLimits {
+			if len(resourcesReq.Limits) != 0 {
+				if resource == corev1.ResourceCPU {
+					return resourcesReq.Limits.Cpu().String()
+				}
+				if resource == corev1.ResourceMemory {
+					return resourcesReq.Limits.Memory().String()
+				}
+			}
+		}
+	} else {
+		return getDefaultResource(resourceType, resource, component)
+	}
+	return ""
+}
+
+func GetResources(component string, advanced *observabilityv1beta2.AdvancedConfig) corev1.ResourceRequirements {
+
+	cpuRequests := getResource(ResourceRequests, corev1.ResourceCPU, component, advanced)
+	cpuLimits := getResource(ResourceLimits, corev1.ResourceCPU, component, advanced)
+	memoryRequests := getResource(ResourceRequests, corev1.ResourceMemory, component, advanced)
+	memoryLimits := getResource(ResourceLimits, corev1.ResourceMemory, component, advanced)
+
+	resourceReq := corev1.ResourceRequirements{}
+	requests := corev1.ResourceList{}
+	limits := corev1.ResourceList{}
+	if cpuRequests != "" {
+		requests[corev1.ResourceName(corev1.ResourceCPU)] = resource.MustParse(cpuRequests)
+	}
+	if memoryRequests != "" {
+		requests[corev1.ResourceName(corev1.ResourceMemory)] = resource.MustParse(memoryRequests)
+	}
+	if cpuLimits != "" {
+		limits[corev1.ResourceName(corev1.ResourceCPU)] = resource.MustParse(cpuRequests)
+	}
+	if memoryLimits != "" {
+		limits[corev1.ResourceName(corev1.ResourceCPU)] = resource.MustParse(cpuRequests)
+	}
+	resourceReq.Limits = limits
+	resourceReq.Requests = requests
+
+	return resourceReq
 }

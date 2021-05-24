@@ -52,7 +52,7 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	dep.Spec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.Alertmanager)
 
 	spec := &dep.Spec.Template.Spec
-	spec.Containers[0].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
+	spec.Containers[0].ImagePullPolicy = mcoconfig.GetImagePullPolicy(r.cr.Spec)
 	args := spec.Containers[0].Args
 	for idx := range args {
 		args[idx] = strings.Replace(args[idx], "{{MCO_NAME}}", mcoconfig.GetObjectPrefix(), 1)
@@ -73,11 +73,11 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	// }
 	spec.Containers[0].Args = args
 
-	spec.Containers[1].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
+	spec.Containers[1].ImagePullPolicy = mcoconfig.GetImagePullPolicy(r.cr.Spec)
 	spec.NodeSelector = r.cr.Spec.NodeSelector
 	spec.Tolerations = r.cr.Spec.Tolerations
 	spec.ImagePullSecrets = []corev1.LocalObjectReference{
-		{Name: r.cr.Spec.ImagePullSecret},
+		{Name: mcoconfig.GetImagePullSecret(r.cr.Spec)},
 	}
 
 	//replace the alertmanager and config-reloader images

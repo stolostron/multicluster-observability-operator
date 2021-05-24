@@ -13,6 +13,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubectl/pkg/scheme"
@@ -398,15 +399,6 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 	}
 }
 
-func TestObservabilityComponentReplicas(t *testing.T) {
-	SetMonitoringCRName("observability")
-	SetObservabilityComponentReplicas("observability-thanos-query-frontend", &Replicas3)
-	newReplicas := GetObservabilityComponentReplicas(ThanosQueryFrontend)
-	if *newReplicas != Replicas3 {
-		t.Errorf("The replicas (%v) is not the expected (%v)", *newReplicas, Replicas3)
-	}
-}
-
 func Test_checkIsIBMCloud(t *testing.T) {
 	s := scheme.Scheme
 	nodeIBM := &corev1.Node{
@@ -463,5 +455,84 @@ func TestGetObjectPrefix(t *testing.T) {
 	got := GetObjectPrefix()
 	if got != "observability" {
 		t.Errorf("GetObjectPrefix() = %v, want observability", got)
+	}
+}
+
+func TestGetResources(t *testing.T) {
+	caseList := []struct {
+		name          string
+		componentName string
+		raw           *mcov1beta2.AdvancedConfig
+		result        func(resources corev1.ResourceRequirements) bool
+	}{
+		{
+			name:          "Have CPU defined in requests",
+			componentName: ObservatoriumAPI,
+			raw: &mcov1beta2.AdvancedConfig{
+				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{
+					Resources: &corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU: resource.MustParse("1"),
+						},
+					},
+				},
+			},
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == "1"
+			},
+		},
+		{
+			name:          "No CPU defined in requests",
+			componentName: ObservatoriumAPI,
+			raw: &mcov1beta2.AdvancedConfig{
+				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{
+					Resources: &corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{},
+					},
+				},
+			},
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequets
+			},
+		},
+		{
+			name:          "No requests defined in resources",
+			componentName: ObservatoriumAPI,
+			raw: &mcov1beta2.AdvancedConfig{
+				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{
+					Resources: &corev1.ResourceRequirements{},
+				},
+			},
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequets
+			},
+		},
+		{
+			name:          "No resources defined",
+			componentName: ObservatoriumAPI,
+			raw: &mcov1beta2.AdvancedConfig{
+				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{},
+			},
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequets
+			},
+		},
+		{
+			name:          "No advanced defined",
+			componentName: ObservatoriumAPI,
+			raw:           nil,
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequets
+			},
+		},
+	}
+
+	for _, c := range caseList {
+		t.Run(c.name, func(t *testing.T) {
+			resources := GetResources(c.componentName, c.raw)
+			if !c.result(resources) {
+				t.Errorf("case (%v) output (%v) is not the expected", c.name, resources)
+			}
+		})
 	}
 }

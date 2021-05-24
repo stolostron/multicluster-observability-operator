@@ -163,7 +163,7 @@ func getGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObs
 	works = injectIntoWork(works, createNameSpace())
 
 	//create image pull secret
-	pull, err := getPullSecret(c, mco.Spec.ImagePullSecret)
+	pull, err := getPullSecret(c, config.GetImagePullSecret(mco.Spec))
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}

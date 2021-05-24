@@ -368,48 +368,6 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		},
 	}
 
-	deployPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				return updateObservatoriumReplicas(e.Object, nil, "Deployment")
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
-				return updateObservatoriumReplicas(e.ObjectNew, e.ObjectOld, "Deployment")
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				return !e.DeleteStateUnknown
-			}
-			return false
-		},
-	}
-
-	statefulsetPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				return updateObservatoriumReplicas(e.Object, nil, "StatefulSet")
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
-				return updateObservatoriumReplicas(e.ObjectNew, e.ObjectOld, "StatefulSet")
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				return !e.DeleteStateUnknown
-			}
-			return false
-		},
-	}
-
 	cmPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.AlertRuleCustomConfigMapName &&
@@ -458,11 +416,11 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 	return ctrl.NewControllerManagedBy(mgr).
 		// Watch for changes to primary resource MultiClusterObservability with predicate
 		For(&mcov1beta2.MultiClusterObservability{}, builder.WithPredicates(mcoPred)).
-		// Watch for changes to secondary resource Deployment and requeue the owner Observatorium
-		Watches(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(deployPred)).
-		// Watch for changes to secondary resource statefulSet and requeue the owner Observatorium
-		Watches(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(statefulsetPred)).
-		// Watch for changes to secondary resource ConfigMap and requeue the owner MultiClusterObservability
+		// Watch for changes to secondary resource Deployment and requeue the owner MultiClusterObservability
+		Owns(&appsv1.Deployment{}).
+		// Watch for changes to secondary resource statefulSet and requeue the owner MultiClusterObservability
+		Owns(&appsv1.StatefulSet{}).
+		// Watch for changes to secondary resource ConfigMap and requeue the owner c
 		Owns(&corev1.ConfigMap{}).
 		// Watch for changes to secondary resource Secret and requeue the owner MultiClusterObservability
 		Owns(&corev1.Secret{}).
@@ -476,45 +434,6 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(secretPred)).
 		// actually create the controller with the reconciler
 		Complete(r)
-}
-
-func updateObservatoriumReplicas(objectNew, objectOld client.Object, watchedType string) bool {
-	if objectNew.GetNamespace() != config.GetDefaultNamespace() {
-		return false
-	}
-	switch watchedType {
-	case "Deployment":
-		newReplicas := objectNew.(*appsv1.Deployment).Spec.Replicas
-		deployName := objectNew.GetName()
-		if objectOld != nil {
-			oldReplicas := objectOld.(*appsv1.Deployment).Spec.Replicas
-			if newReplicas != oldReplicas {
-				if *newReplicas != 0 {
-					config.SetObservabilityComponentReplicas(deployName, newReplicas)
-				}
-			}
-			return objectNew.GetResourceVersion() != objectOld.GetResourceVersion()
-		} else {
-			config.SetObservabilityComponentReplicas(deployName, newReplicas)
-			return true
-		}
-	case "StatefulSet":
-		newReplicas := objectNew.(*appsv1.StatefulSet).Spec.Replicas
-		stsName := objectNew.GetName()
-		if objectOld != nil {
-			oldReplicas := objectOld.(*appsv1.StatefulSet).Spec.Replicas
-			if newReplicas != oldReplicas {
-				if *newReplicas != 0 {
-					config.SetObservabilityComponentReplicas(stsName, newReplicas)
-				}
-			}
-			return objectNew.GetResourceVersion() != objectOld.GetResourceVersion()
-		} else {
-			config.SetObservabilityComponentReplicas(stsName, newReplicas)
-			return true
-		}
-	}
-	return false
 }
 
 func checkStorageChanged(mcoOldConfig, mcoNewConfig *mcov1beta2.StorageConfig) {
