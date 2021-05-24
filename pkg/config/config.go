@@ -289,7 +289,7 @@ func GetReplicas(component string, advanced *observabilityv1beta2.AdvancedConfig
 			replicas = advanced.RBACQueryProxy.Replicas
 		}
 	}
-	if replicas == nil {
+	if replicas == nil || *replicas == 0 {
 		replicas = Replicas[component]
 	}
 	return replicas

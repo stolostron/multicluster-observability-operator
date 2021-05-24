@@ -46,10 +46,12 @@ func (src *MultiClusterObservability) ConvertTo(dstRaw conversion.Hub) error {
 		ReceiveStorageSize:      src.Spec.StorageConfig.StatefulSetSize,
 	}
 
-	dst.Spec.AdvancedConfig.RetentionConfig = &observabilityv1beta2.RetentionConfig{
-		RetentionResolutionRaw: src.Spec.RetentionResolutionRaw,
-		RetentionResolution5m:  src.Spec.RetentionResolution5m,
-		RetentionResolution1h:  src.Spec.RetentionResolution1h,
+	dst.Spec.AdvancedConfig = &observabilityv1beta2.AdvancedConfig{
+		RetentionConfig: &observabilityv1beta2.RetentionConfig{
+			RetentionResolutionRaw: src.Spec.RetentionResolutionRaw,
+			RetentionResolution5m:  src.Spec.RetentionResolution5m,
+			RetentionResolution1h:  src.Spec.RetentionResolution1h,
+		},
 	}
 
 	dst.Spec.EnableDownsampling = src.Spec.EnableDownSampling

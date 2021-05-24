@@ -614,6 +614,7 @@ func TestGetResources(t *testing.T) {
 }
 
 func TestGetReplicas(t *testing.T) {
+	var replicas0 int32 = 0
 	caseList := []struct {
 		name          string
 		componentName string
@@ -630,6 +631,18 @@ func TestGetReplicas(t *testing.T) {
 			},
 			result: func(replicas *int32) bool {
 				return replicas == &Replicas1
+			},
+		},
+		{
+			name:          "Do not allow to set 0",
+			componentName: ObservatoriumAPI,
+			raw: &mcov1beta2.AdvancedConfig{
+				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{
+					Replicas: &replicas0,
+				},
+			},
+			result: func(replicas *int32) bool {
+				return replicas == &Replicas2
 			},
 		},
 		{
