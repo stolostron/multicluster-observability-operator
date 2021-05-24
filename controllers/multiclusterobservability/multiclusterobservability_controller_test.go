@@ -289,9 +289,12 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	svc := createObservatoriumAPIService(name, namespace)
 	grafanaCert := newTestCert(config.GrafanaCerts, namespace)
 	serverCert := newTestCert(config.ServerCerts, namespace)
+	// byo case for the alertmanager route
+	testAmRouteBYOCaSecret := newTestCert(config.AlertmanagerRouteBYOCAName, namespace)
+	testAmRouteBYOCertSecret := newTestCert(config.AlertmanagerRouteBYOCERTName, namespace)
 	clustermgmtAddon := newClusterManagementAddon()
 
-	objs := []runtime.Object{mco, svc, grafanaCert, serverCert, clustermgmtAddon, createCABundleCM()}
+	objs := []runtime.Object{mco, svc, grafanaCert, serverCert, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon, createCABundleCM()}
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
 
@@ -322,6 +325,21 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	status := findStatusCondition(updatedMCO.Status.Conditions, "Failed")
 	if status == nil || status.Reason != "ObjectStorageSecretNotFound" {
 		t.Errorf("Failed to get correct MCO status, expect Failed")
+	}
+
+	amRoute := &routev1.Route{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name:      config.AlertmanagerRouteName,
+		Namespace: namespace,
+	}, amRoute)
+	if err != nil {
+		t.Fatalf("Failed to get alertmanager's route: (%v)", err)
+	}
+	// check the BYO certificate for alertmanager's route
+	if amRoute.Spec.TLS.CACertificate != "test-tls-crt" ||
+		amRoute.Spec.TLS.Certificate != "test-tls-crt" ||
+		amRoute.Spec.TLS.Key != "test-tls-key" {
+		t.Fatalf("incorrect certificate for alertmanager's route")
 	}
 
 	err = cl.Create(context.TODO(), createSecret("test", "test", namespace))

@@ -27,7 +27,7 @@ type HubInfo struct {
 	ClusterName             string `yaml:"cluster-name"`
 	Endpoint                string `yaml:"endpoint"`
 	HubAlertmanagerEndpoint string `yaml:"hub-alertmanager-endpoint"`
-	HubRouterCA             string `yaml:"hub-router-ca"`
+	HubAlertmanagerRouterCA string `yaml:"hub-alertmanager-router-ca"`
 }
 
 func newHubInfoSecret(client client.Client, obsNamespace string,
@@ -48,7 +48,7 @@ func newHubInfoSecret(client client.Client, obsNamespace string,
 	if !strings.HasPrefix(hubAlertmanagerEp, "http") {
 		hubAlertmanagerEp = protocol + hubAlertmanagerEp
 	}
-	hubRouterCA, err := config.GetRouterCA(client)
+	hubAlertmanagerRouterCA, err := config.GetAlertmanagerRouterCA(client)
 	if err != nil {
 		log.Error(err, "Failed to CA of openshift Route")
 		return nil, err
@@ -56,7 +56,7 @@ func newHubInfoSecret(client client.Client, obsNamespace string,
 	hubInfo := &HubInfo{
 		Endpoint:                obsApiEp + urlSubPath,
 		HubAlertmanagerEndpoint: hubAlertmanagerEp,
-		HubRouterCA:             hubRouterCA,
+		HubAlertmanagerRouterCA: hubAlertmanagerRouterCA,
 	}
 	configYaml, err := yaml.Marshal(hubInfo)
 	if err != nil {

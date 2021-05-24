@@ -150,7 +150,7 @@ func TestManifestWork(t *testing.T) {
 
 	initSchema(t)
 
-	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestRouteCA(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(), NewMetricsCustomAllowListCM(), NewAmAccessorSA(), NewAmAccessorTokenSecret()}
+	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(), NewMetricsCustomAllowListCM(), NewAmAccessorSA(), NewAmAccessorTokenSecret()}
 	c := fake.NewFakeClient(objs...)
 
 	wd, err := os.Getwd()

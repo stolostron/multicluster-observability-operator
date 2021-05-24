@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -18,8 +19,11 @@ import (
 )
 
 const (
-	routeHost = "test-host"
-	routerCA  = "test-ca"
+	routeHost        = "test-host"
+	routerCA         = "test-ca"
+	routerBYOCA      = "test-ca"
+	routerBYOCert    = "test-cert"
+	routerBYOCertKey = "test-key"
 )
 
 func newTestObsApiRoute() *routev1.Route {
@@ -46,14 +50,56 @@ func newTestAlertmanagerRoute() *routev1.Route {
 	}
 }
 
-func newTestRouteCA() *corev1.Secret {
+func newTestIngressController() *operatorv1.IngressController {
+	return &operatorv1.IngressController{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.OpenshiftIngressOperatorCRName,
+			Namespace: config.OpenshiftIngressOperatorNamespace,
+		},
+		Spec: operatorv1.IngressControllerSpec{
+			DefaultCertificate: &corev1.LocalObjectReference{
+				Name: "custom-certs-default",
+			},
+		},
+	}
+
+}
+
+func newTestRouteCASecret() *corev1.Secret {
 	configYamlMap := map[string][]byte{}
 	configYamlMap["tls.crt"] = []byte(routerCA)
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.OpenshiftRouterCASecretName,
-			Namespace: config.OpenshiftIngressOperatorNamespace,
+			Name:      "custom-certs-default",
+			Namespace: config.OpenshiftIngressNamespace,
+		},
+		Data: configYamlMap,
+	}
+}
+
+func newTestAmRouteBYOCA() *corev1.Secret {
+	configYamlMap := map[string][]byte{}
+	configYamlMap["tls.crt"] = []byte(routerBYOCA)
+
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.AlertmanagerRouteBYOCAName,
+			Namespace: mcoNamespace,
+		},
+		Data: configYamlMap,
+	}
+}
+
+func newTestAmRouteBYOCert() *corev1.Secret {
+	configYamlMap := map[string][]byte{}
+	configYamlMap["tls.crt"] = []byte(routerBYOCert)
+	configYamlMap["tls.key"] = []byte(routerBYOCertKey)
+
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.AlertmanagerRouteBYOCERTName,
+			Namespace: mcoNamespace,
 		},
 		Data: configYamlMap,
 	}
@@ -62,7 +108,7 @@ func newTestRouteCA() *corev1.Secret {
 func TestNewSecret(t *testing.T) {
 	initSchema(t)
 
-	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestRouteCA()}
+	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret()}
 	c := fake.NewFakeClient(objs...)
 
 	hubInfo, err := newHubInfoSecret(c, mcoNamespace, namespace, newTestMCO())
@@ -74,7 +120,27 @@ func TestNewSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
 	}
-	if !strings.HasPrefix(hub.Endpoint, "https://test-host") || !strings.HasPrefix(hub.HubAlertmanagerEndpoint, "https://test-host") || hub.HubRouterCA != routerCA {
-		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.Endpoint+" "+hub.HubAlertmanagerEndpoint+" "+hub.HubRouterCA, clusterName+" "+"https://test-host"+" "+"https://test-host"+" "+routerCA)
+	if !strings.HasPrefix(hub.Endpoint, "https://test-host") || !strings.HasPrefix(hub.HubAlertmanagerEndpoint, "https://test-host") || hub.HubAlertmanagerRouterCA != routerCA {
+		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.Endpoint+" "+hub.HubAlertmanagerEndpoint+" "+hub.HubAlertmanagerRouterCA, clusterName+" "+"https://test-host"+" "+"https://test-host"+" "+routerCA)
+	}
+}
+
+func TestNewBYOSecret(t *testing.T) {
+	initSchema(t)
+
+	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestAmRouteBYOCA(), newTestAmRouteBYOCert()}
+	c := fake.NewFakeClient(objs...)
+
+	hubInfo, err := newHubInfoSecret(c, mcoNamespace, namespace, newTestMCO())
+	if err != nil {
+		t.Fatalf("Failed to initial the hub info secret: (%v)", err)
+	}
+	hub := &HubInfo{}
+	err = yaml.Unmarshal(hubInfo.Data[hubInfoKey], &hub)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
+	}
+	if !strings.HasPrefix(hub.Endpoint, "https://test-host") || !strings.HasPrefix(hub.HubAlertmanagerEndpoint, "https://test-host") || hub.HubAlertmanagerRouterCA != routerBYOCA {
+		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.Endpoint+" "+hub.HubAlertmanagerEndpoint+" "+hub.HubAlertmanagerRouterCA, clusterName+" "+"https://test-host"+" "+"https://test-host"+" "+routerBYOCA)
 	}
 }
