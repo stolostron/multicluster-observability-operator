@@ -133,7 +133,10 @@ const (
 	LeaseControllerImageName      = "klusterlet-addon-lease-controller"
 	LeaseControllerKey            = "klusterlet_addon_lease_controller"
 
-	RbacQueryProxyKey = "rbac_query_proxy"
+	RBACQueryProxyKey = "rbac_query_proxy"
+
+	RBACQueryProxyCPURequets    = "20m"
+	RBACQueryProxyMemoryRequets = "100Mi"
 
 	ObservatoriumAPICPURequets    = "20m"
 	ObservatoriumAPIMemoryRequets = "128Mi"
@@ -643,6 +646,20 @@ func getDefaultResource(resourceType string, resource corev1.ResourceName,
 		}
 		if resource == corev1.ResourceMemory {
 			return ThanosStoreMemoryRequets
+		}
+	case ThanosQueryFrontendMemcached, ThanosStoreMemcached:
+		if resource == corev1.ResourceCPU {
+			return ThanosCahcedCPURequets
+		}
+		if resource == corev1.ResourceMemory {
+			return ThanosCahcedMemoryRequets
+		}
+	case RBACQueryProxy:
+		if resource == corev1.ResourceCPU {
+			return RBACQueryProxyCPURequets
+		}
+		if resource == corev1.ResourceMemory {
+			return RBACQueryProxyMemoryRequets
 		}
 	}
 	return ""

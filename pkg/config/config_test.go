@@ -466,7 +466,7 @@ func TestGetResources(t *testing.T) {
 		result        func(resources corev1.ResourceRequirements) bool
 	}{
 		{
-			name:          "Have requests defined in requests",
+			name:          "Have requests defined in resources",
 			componentName: ObservatoriumAPI,
 			raw: &mcov1beta2.AdvancedConfig{
 				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{
@@ -486,7 +486,7 @@ func TestGetResources(t *testing.T) {
 			},
 		},
 		{
-			name:          "Have limits defined in requests",
+			name:          "Have limits defined in resources",
 			componentName: ObservatoriumAPI,
 			raw: &mcov1beta2.AdvancedConfig{
 				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{
@@ -501,6 +501,26 @@ func TestGetResources(t *testing.T) {
 			result: func(resources corev1.ResourceRequirements) bool {
 				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequets &&
 					resources.Requests.Memory().String() == ObservatoriumAPIMemoryRequets &&
+					resources.Limits.Cpu().String() == "1" &&
+					resources.Limits.Memory().String() == "1Gi"
+			},
+		},
+		{
+			name:          "Have limits defined in resources",
+			componentName: RBACQueryProxy,
+			raw: &mcov1beta2.AdvancedConfig{
+				RBACQueryProxy: &mcov1beta2.RBACQueryProxySpec{
+					Resources: &corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("1"),
+							corev1.ResourceMemory: resource.MustParse("1Gi"),
+						},
+					},
+				},
+			},
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == RBACQueryProxyCPURequets &&
+					resources.Requests.Memory().String() == RBACQueryProxyMemoryRequets &&
 					resources.Limits.Cpu().String() == "1" &&
 					resources.Limits.Memory().String() == "1Gi"
 			},
@@ -584,10 +604,10 @@ func TestGetResources(t *testing.T) {
 	}
 
 	for _, c := range caseList {
-		t.Run(c.name, func(t *testing.T) {
+		t.Run(c.componentName+":"+c.name, func(t *testing.T) {
 			resources := GetResources(c.componentName, c.raw)
 			if !c.result(resources) {
-				t.Errorf("case (%v) output (%v) is not the expected", c.name, resources)
+				t.Errorf("case (%v) output (%v) is not the expected", c.componentName+":"+c.name, resources)
 			}
 		})
 	}
@@ -632,10 +652,10 @@ func TestGetReplicas(t *testing.T) {
 		},
 	}
 	for _, c := range caseList {
-		t.Run(c.name, func(t *testing.T) {
+		t.Run(c.componentName+":"+c.name, func(t *testing.T) {
 			replicas := GetReplicas(c.componentName, c.raw)
 			if !c.result(replicas) {
-				t.Errorf("case (%v) output (%v) is not the expected", c.name, replicas)
+				t.Errorf("case (%v) output (%v) is not the expected", c.componentName+":"+c.name, replicas)
 			}
 		})
 	}

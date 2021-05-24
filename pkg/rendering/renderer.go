@@ -168,7 +168,7 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 
 func updateProxySpec(spec *corev1.PodSpec, mco *obv1beta2.MultiClusterObservability) {
 	found, image := mcoconfig.ReplaceImage(mco.Annotations, spec.Containers[0].Image,
-		mcoconfig.RbacQueryProxyKey)
+		mcoconfig.RBACQueryProxyKey)
 	if found {
 		spec.Containers[0].Image = image
 	}
