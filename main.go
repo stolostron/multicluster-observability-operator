@@ -30,6 +30,7 @@ import (
 
 	"github.com/IBM/controller-filtered-cache/filteredcache"
 	ocinfrav1 "github.com/openshift/api/config/v1"
+	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -102,6 +103,11 @@ func main() {
 	}
 
 	if err := ocinfrav1.AddToScheme(scheme); err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
+	if err := operatorv1.AddToScheme(scheme); err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}

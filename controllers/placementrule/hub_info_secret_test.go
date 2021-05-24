@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -49,14 +50,29 @@ func newTestAlertmanagerRoute() *routev1.Route {
 	}
 }
 
-func newTestRouteCA() *corev1.Secret {
+func newTestIngressController() *operatorv1.IngressController {
+	return &operatorv1.IngressController{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.OpenshiftIngressOperatorCRName,
+			Namespace: config.OpenshiftIngressOperatorNamespace,
+		},
+		Spec: operatorv1.IngressControllerSpec{
+			DefaultCertificate: &corev1.LocalObjectReference{
+				Name: "custom-certs-default",
+			},
+		},
+	}
+
+}
+
+func newTestRouteCASecret() *corev1.Secret {
 	configYamlMap := map[string][]byte{}
 	configYamlMap["tls.crt"] = []byte(routerCA)
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.OpenshiftRouterCASecretName,
-			Namespace: config.OpenshiftIngressOperatorNamespace,
+			Name:      "custom-certs-default",
+			Namespace: config.OpenshiftIngressNamespace,
 		},
 		Data: configYamlMap,
 	}
@@ -92,7 +108,7 @@ func newTestAmRouteBYOCert() *corev1.Secret {
 func TestNewSecret(t *testing.T) {
 	initSchema(t)
 
-	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestRouteCA()}
+	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret()}
 	c := fake.NewFakeClient(objs...)
 
 	hubInfo, err := newHubInfoSecret(c, mcoNamespace, namespace, newTestMCO())

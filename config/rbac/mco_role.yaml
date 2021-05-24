@@ -188,6 +188,14 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - operator.openshift.io
+  resources:
+  - ingresscontrollers
+  verbs:
+  - 'get'
+  - 'list'
+  - 'watch'
+- apiGroups:
   - certmanager.k8s.io
   resources:
   - '*'

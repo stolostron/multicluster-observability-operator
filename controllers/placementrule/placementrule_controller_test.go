@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
+	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -51,6 +52,9 @@ func initSchema(t *testing.T) {
 		t.Fatalf("Unable to add mcov1beta1 scheme: (%v)", err)
 	}
 	if err := routev1.AddToScheme(s); err != nil {
+		t.Fatalf("Unable to add routev1 scheme: (%v)", err)
+	}
+	if err := operatorv1.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add routev1 scheme: (%v)", err)
 	}
 	if err := ocinfrav1.AddToScheme(s); err != nil {
@@ -97,7 +101,7 @@ func TestObservabilityAddonController(t *testing.T) {
 			},
 		},
 	}
-	objs := []runtime.Object{p, mco, pull, newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestRouteCA(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
+	objs := []runtime.Object{p, mco, pull, newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
 		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newManagedClusterAddon(), deprecatedRole}
 	c := fake.NewFakeClient(objs...)
 
