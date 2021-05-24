@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
 	observabilityv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 )
 
@@ -161,13 +162,18 @@ const (
 	ThanosRuleReloaderCPURequets    = "4m"
 	ThanosRuleReloaderMemoryRequets = "25Mi"
 
-	ThanosCahcedCPURequets            = "45m"
-	ThanosCahcedMemoryRequets         = "128Mi"
-	ThanosCahcedExporterCPURequets    = "5m"
-	ThanosCahcedExporterMemoryRequets = "50Mi"
+	ThanosCachedCPURequets            = "45m"
+	ThanosCachedMemoryRequets         = "128Mi"
+	ThanosCachedExporterCPURequets    = "5m"
+	ThanosCachedExporterMemoryRequets = "50Mi"
 
 	ThanosStoreCPURequets    = "100m"
 	ThanosStoreMemoryRequets = "1Gi"
+
+	MetricsCollectorCPURequets    = "100m"
+	MetricsCollectorMemoryRequets = "100Mi"
+	MetricsCollectorCPULimits     = "100m"
+	MetricsCollectorMemoryLimits  = "600Mi"
 
 	ObservatoriumAPI             = "observatorium-api"
 	ThanosCompact                = "thanos-compact"
@@ -183,6 +189,7 @@ const (
 	Alertmanager                 = "alertmanager"
 	ThanosReceiveController      = "thanos-receive-controller"
 	ObservatoriumOperator        = "observatorium-operator"
+	MetricsCollector             = "metrics-collector"
 
 	RetentionResolutionRaw = "30d"
 	RetentionResolution5m  = "180d"
@@ -649,10 +656,10 @@ func getDefaultResource(resourceType string, resource corev1.ResourceName,
 		}
 	case ThanosQueryFrontendMemcached, ThanosStoreMemcached:
 		if resource == corev1.ResourceCPU {
-			return ThanosCahcedCPURequets
+			return ThanosCachedCPURequets
 		}
 		if resource == corev1.ResourceMemory {
-			return ThanosCahcedMemoryRequets
+			return ThanosCachedMemoryRequets
 		}
 	case RBACQueryProxy:
 		if resource == corev1.ResourceCPU {
@@ -660,6 +667,13 @@ func getDefaultResource(resourceType string, resource corev1.ResourceName,
 		}
 		if resource == corev1.ResourceMemory {
 			return RBACQueryProxyMemoryRequets
+		}
+	case MetricsCollector:
+		if resource == corev1.ResourceCPU {
+			return MetricsCollectorCPURequets
+		}
+		if resource == corev1.ResourceMemory {
+			return MetricsCollectorMemoryRequets
 		}
 	}
 	return ""
@@ -752,6 +766,52 @@ func GetResources(component string, advanced *observabilityv1beta2.AdvancedConfi
 	memoryLimits := getResource(ResourceLimits, corev1.ResourceMemory, component, advanced)
 
 	resourceReq := corev1.ResourceRequirements{}
+	requests := corev1.ResourceList{}
+	limits := corev1.ResourceList{}
+	if cpuRequests != "" {
+		requests[corev1.ResourceName(corev1.ResourceCPU)] = resource.MustParse(cpuRequests)
+	}
+	if memoryRequests != "" {
+		requests[corev1.ResourceName(corev1.ResourceMemory)] = resource.MustParse(memoryRequests)
+	}
+	if cpuLimits != "" {
+		limits[corev1.ResourceName(corev1.ResourceCPU)] = resource.MustParse(cpuLimits)
+	}
+	if memoryLimits != "" {
+		limits[corev1.ResourceName(corev1.ResourceMemory)] = resource.MustParse(memoryLimits)
+	}
+	resourceReq.Limits = limits
+	resourceReq.Requests = requests
+
+	return resourceReq
+}
+
+func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec) *corev1.ResourceRequirements {
+	cpuRequests := MetricsCollectorCPURequets
+	cpuLimits := MetricsCollectorCPULimits
+	memoryRequests := MetricsCollectorMemoryRequets
+	memoryLimits := MetricsCollectorMemoryLimits
+
+	if oba.Resources != nil {
+		if len(oba.Resources.Requests) != 0 {
+			if oba.Resources.Requests.Cpu().String() != "0" {
+				cpuRequests = oba.Resources.Requests.Cpu().String()
+			}
+			if oba.Resources.Requests.Memory().String() != "0" {
+				memoryRequests = oba.Resources.Requests.Memory().String()
+			}
+		}
+		if len(oba.Resources.Limits) != 0 {
+			if oba.Resources.Limits.Cpu().String() != "0" {
+				cpuLimits = oba.Resources.Limits.Cpu().String()
+			}
+			if oba.Resources.Limits.Memory().String() != "0" {
+				memoryLimits = oba.Resources.Limits.Memory().String()
+			}
+		}
+	}
+
+	resourceReq := &corev1.ResourceRequirements{}
 	requests := corev1.ResourceList{}
 	limits := corev1.ResourceList{}
 	if cpuRequests != "" {

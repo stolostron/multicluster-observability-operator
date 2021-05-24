@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 )
 
@@ -669,6 +670,72 @@ func TestGetReplicas(t *testing.T) {
 			replicas := GetReplicas(c.componentName, c.raw)
 			if !c.result(replicas) {
 				t.Errorf("case (%v) output (%v) is not the expected", c.componentName+":"+c.name, replicas)
+			}
+		})
+	}
+}
+
+func TestGetOBAResources(t *testing.T) {
+	caseList := []struct {
+		name          string
+		componentName string
+		raw           *mcoshared.ObservabilityAddonSpec
+		result        func(resources corev1.ResourceRequirements) bool
+	}{
+		{
+			name:          "Have requests defined",
+			componentName: ObservatoriumAPI,
+			raw: &mcoshared.ObservabilityAddonSpec{
+				Resources: &corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+					},
+				},
+			},
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == "1" &&
+					resources.Requests.Memory().String() == "1Gi" &&
+					resources.Limits.Cpu().String() == MetricsCollectorCPULimits &&
+					resources.Limits.Memory().String() == MetricsCollectorMemoryLimits
+			},
+		},
+		{
+			name:          "Have limits defined",
+			componentName: ObservatoriumAPI,
+			raw: &mcoshared.ObservabilityAddonSpec{
+				Resources: &corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("1"),
+					},
+				},
+			},
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == MetricsCollectorCPURequets &&
+					resources.Requests.Memory().String() == MetricsCollectorMemoryRequets &&
+					resources.Limits.Cpu().String() == "1" &&
+					resources.Limits.Memory().String() == MetricsCollectorMemoryLimits
+			},
+		},
+		{
+			name:          "no resources defined",
+			componentName: ObservatoriumAPI,
+			raw: &mcoshared.ObservabilityAddonSpec{
+				Resources: &corev1.ResourceRequirements{},
+			},
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == MetricsCollectorCPURequets &&
+					resources.Requests.Memory().String() == MetricsCollectorMemoryRequets &&
+					resources.Limits.Cpu().String() == MetricsCollectorCPULimits &&
+					resources.Limits.Memory().String() == MetricsCollectorMemoryLimits
+			},
+		},
+	}
+	for _, c := range caseList {
+		t.Run(c.componentName+":"+c.name, func(t *testing.T) {
+			resources := GetOBAResources(c.raw)
+			if !c.result(*resources) {
+				t.Errorf("case (%v) output (%v) is not the expected", c.componentName+":"+c.name, resources)
 			}
 		})
 	}
