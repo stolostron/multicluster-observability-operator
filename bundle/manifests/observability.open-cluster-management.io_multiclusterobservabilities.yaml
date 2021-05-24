@@ -84,13 +84,6 @@ spec:
                     minimum: 15
                     type: integer
                   resources:
-                    default:
-                      limits:
-                        cpu: 100m
-                        memory: 600Mi
-                      requests:
-                        cpu: 100m
-                        memory: 100Mi
                     description: Resource requirement for metrics-collector
                     properties:
                       limits:
@@ -239,16 +232,358 @@ spec:
           spec:
             description: MultiClusterObservabilitySpec defines the desired state of MultiClusterObservability
             properties:
+              advanced:
+                description: Advanced configurations for observability
+                properties:
+                  compact:
+                    description: spec for thanos-compact
+                    properties:
+                      resources:
+                        description: Compute Resources required by the compact.
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                        type: object
+                    type: object
+                  observatoriumAPI:
+                    description: Spec of observatorium api
+                    properties:
+                      replicas:
+                        description: Replicas for observatorium api.
+                        format: int32
+                        type: integer
+                      resources:
+                        description: Compute Resources required by the observatorium api.
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                        type: object
+                    type: object
+                  query:
+                    description: spec for thanos-query
+                    properties:
+                      replicas:
+                        description: Replicas for the query.
+                        format: int32
+                        type: integer
+                      resources:
+                        description: Compute Resources required by the query.
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                        type: object
+                    type: object
+                  queryFrontend:
+                    description: spec for thanos-query-frontend
+                    properties:
+                      replicas:
+                        description: Replicas for query frontend.
+                        format: int32
+                        type: integer
+                      resources:
+                        description: Compute Resources required by the Query frontend.
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                        type: object
+                    type: object
+                  queryFrontendMemcached:
+                    description: Specifies the store memcached
+                    properties:
+                      connectionLimit:
+                        description: Max simultaneous connections of Memcached.
+                        format: int32
+                        type: integer
+                      maxItemSize:
+                        description: 'Max item size of Memcached (default: 1m, min: 1k, max: 1024m).'
+                        type: string
+                      memoryLimitMb:
+                        description: Memory limit of Memcached in megabytes.
+                        format: int32
+                        type: integer
+                      replicas:
+                        description: Replicas for the memory cached.
+                        format: int32
+                        type: integer
+                      resources:
+                        description: Compute Resources required by the memory cached.
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                        type: object
+                    type: object
+                  rbacQueryProxy:
+                    description: The spec of rbac-query-proxy
+                    properties:
+                      replicas:
+                        description: Replicas for the rbac-query-proxy.
+                        format: int32
+                        type: integer
+                      resources:
+                        description: Compute Resources required by the rbac-query-proxy.
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                        type: object
+                    type: object
+                  receive:
+                    description: spec for thanos-receiver
+                    properties:
+                      replicas:
+                        description: Replicas for receivers.
+                        format: int32
+                        type: integer
+                      resources:
+                        description: Compute Resources required by the Receivers.
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                        type: object
+                    type: object
+                  retentionConfig:
+                    description: The spec of the data retention configurations
+                    properties:
+                      blockDuration:
+                        description: configure --tsdb.block-duration in rule (Block duration for TSDB block)
+                        type: string
+                      deleteDelay:
+                        description: configure --delete-delay in compact Time before a block marked for deletion is deleted from bucket.
+                        type: string
+                      retentionInLocal:
+                        description: 'How long to retain raw samples in a local disk. It applies to rule/receive: --tsdb.retention in receive --tsdb.retention in rule'
+                        type: string
+                      retentionResolution1h:
+                        description: How long to retain samples of resolution 2 (1 hour) in bucket. It applies to --retention.resolution-1h in compact.
+                        type: string
+                      retentionResolution5m:
+                        description: How long to retain samples of resolution 1 (5 minutes) in bucket. It applies to --retention.resolution-5m in compact.
+                        type: string
+                      retentionResolutionRaw:
+                        description: How long to retain raw samples in a bucket. It applies to --retention.resolution-raw in compact.
+                        type: string
+                    type: object
+                  rule:
+                    description: spec for thanos-rule
+                    properties:
+                      replicas:
+                        description: Replicas for the ruler.
+                        format: int32
+                        type: integer
+                      resources:
+                        description: Compute Resources required by the ruler.
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                        type: object
+                    type: object
+                  store:
+                    description: spec for thanos-store-shard
+                    properties:
+                      replicas:
+                        description: Replicas for the store.
+                        format: int32
+                        type: integer
+                      resources:
+                        description: Compute Resources required by the store.
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                        type: object
+                    type: object
+                  storeMemcached:
+                    description: Specifies the store memcached
+                    properties:
+                      connectionLimit:
+                        description: Max simultaneous connections of Memcached.
+                        format: int32
+                        type: integer
+                      maxItemSize:
+                        description: 'Max item size of Memcached (default: 1m, min: 1k, max: 1024m).'
+                        type: string
+                      memoryLimitMb:
+                        description: Memory limit of Memcached in megabytes.
+                        format: int32
+                        type: integer
+                      replicas:
+                        description: Replicas for the memory cached.
+                        format: int32
+                        type: integer
+                      resources:
+                        description: Compute Resources required by the memory cached.
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                        type: object
+                    type: object
+                type: object
               enableDownsampling:
                 default: true
-                description: Enable or disable the downsample. The default value is true. This is not recommended as querying long time ranges without non-downsampled data is not efficient and useful.
+                description: Enable or disable the downsample.
                 type: boolean
               imagePullPolicy:
-                default: Always
                 description: Pull policy of the MultiClusterObservability images
                 type: string
               imagePullSecret:
-                default: multiclusterhub-operator-pull-secret
                 description: Pull secret of the MultiClusterObservability images
                 type: string
               nodeSelector:
@@ -271,13 +606,6 @@ spec:
                     minimum: 15
                     type: integer
                   resources:
-                    default:
-                      limits:
-                        cpu: 100m
-                        memory: 600Mi
-                      requests:
-                        cpu: 100m
-                        memory: 100Mi
                     description: Resource requirement for metrics-collector
                     properties:
                       limits:
@@ -299,38 +627,6 @@ spec:
                         description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                         type: object
                     type: object
-                type: object
-              retentionConfig:
-                description: The spec of the data retention configurations
-                properties:
-                  blockDuration:
-                    default: 2h
-                    description: configure --tsdb.block-duration in rule (Block duration for TSDB block)
-                    type: string
-                  cleanupInterval:
-                    default: 5m
-                    description: Configure --compact.cleanup-interval in compact. How often we should clean up partially uploaded blocks and blocks with deletion mark in the background when --wait has been enabled. Setting it to "0s" disables it
-                    type: string
-                  deleteDelay:
-                    default: 48h
-                    description: configure --delete-delay in compact Time before a block marked for deletion is deleted from bucket.
-                    type: string
-                  retentionInLocal:
-                    default: 24h
-                    description: 'How long to retain raw samples in a local disk. It applies to rule/receive: --tsdb.retention in receive --tsdb.retention in rule'
-                    type: string
-                  retentionResolution1h:
-                    default: 0d
-                    description: How long to retain samples of resolution 2 (1 hour) in bucket. It applies to --retention.resolution-1h in compact.
-                    type: string
-                  retentionResolution5m:
-                    default: 180d
-                    description: How long to retain samples of resolution 1 (5 minutes) in bucket. It applies to --retention.resolution-5m in compact.
-                    type: string
-                  retentionResolutionRaw:
-                    default: 30d
-                    description: How long to retain raw samples in a bucket. It applies to --retention.resolution-raw in compact.
-                    type: string
                 type: object
               storageConfig:
                 description: Specifies the storage to be used by Observability

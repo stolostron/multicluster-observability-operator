@@ -39,7 +39,6 @@ metadata:
           },
           "spec": {
             "observabilityAddonSpec": {},
-            "retentionConfig": {},
             "storageConfig": {
               "metricObjectStorage": {
                 "key": "thanos.yaml",

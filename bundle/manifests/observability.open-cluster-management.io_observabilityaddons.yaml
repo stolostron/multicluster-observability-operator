@@ -44,13 +44,6 @@ spec:
                 minimum: 15
                 type: integer
               resources:
-                default:
-                  limits:
-                    cpu: 100m
-                    memory: 600Mi
-                  requests:
-                    cpu: 100m
-                    memory: 100Mi
                 description: Resource requirement for metrics-collector
                 properties:
                   limits:
