@@ -131,16 +131,6 @@ type StoreSpec struct {
 	Replicas *int32 `json:"replicas,omitempty"`
 }
 
-// Thanos Store Spec
-type Spec struct {
-	// Compute Resources required by the store.
-	// +optional
-	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
-	// Replicas for the store.
-	// +optional
-	Replicas *int32 `json:"replicas,omitempty"`
-}
-
 // Thanos Ruler Spec
 type RuleSpec struct {
 	// Compute Resources required by the ruler.
