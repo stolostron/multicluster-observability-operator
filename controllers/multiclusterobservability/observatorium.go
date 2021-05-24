@@ -296,12 +296,7 @@ func newAPISpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.APISpec {
 	apiSpec.RBAC = newAPIRBAC()
 	apiSpec.Tenants = newAPITenants()
 	apiSpec.TLS = newAPITLS()
-	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.ObservatoriumAPI != nil &&
-		mco.Spec.AdvancedConfig.ObservatoriumAPI.Replicas != nil {
-		apiSpec.Replicas = mco.Spec.AdvancedConfig.ObservatoriumAPI.Replicas
-	} else {
-		apiSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ObservatoriumAPI)
-	}
+	apiSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ObservatoriumAPI, mco.Spec.AdvancedConfig)
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		apiSpec.Resources = mcoconfig.GetResources(config.ObservatoriumAPI, mco.Spec.AdvancedConfig)
 	}
@@ -328,13 +323,7 @@ func newReceiversSpec(
 		receSpec.Retention = mcoconfig.RetentionInLocal
 	}
 
-	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Receive != nil &&
-		mco.Spec.AdvancedConfig.Receive.Replicas != nil {
-		receSpec.Replicas = mco.Spec.AdvancedConfig.Receive.Replicas
-	} else {
-		receSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosReceive)
-	}
-
+	receSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ThanosReceive, mco.Spec.AdvancedConfig)
 	if *receSpec.Replicas < 3 {
 		receSpec.ReplicationFactor = receSpec.Replicas
 	} else {
@@ -366,12 +355,8 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 	} else {
 		ruleSpec.Retention = mcoconfig.RetentionInLocal
 	}
-	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Rule != nil &&
-		mco.Spec.AdvancedConfig.Rule.Replicas != nil {
-		ruleSpec.Replicas = mco.Spec.AdvancedConfig.Rule.Replicas
-	} else {
-		ruleSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosRule)
-	}
+	ruleSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ThanosRule, mco.Spec.AdvancedConfig)
+
 	ruleSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		ruleSpec.Resources = mcoconfig.GetResources(config.ThanosRule, mco.Spec.AdvancedConfig)
@@ -448,7 +433,7 @@ func newStoreSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) 
 		mco.Spec.StorageConfig.StoreStorageSize,
 		scSelected)
 
-	storeSpec.Shards = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosStoreShard)
+	storeSpec.Shards = mcoconfig.GetReplicas(mcoconfig.ThanosStoreShard, mco.Spec.AdvancedConfig)
 	storeSpec.ServiceMonitor = true
 	storeSpec.Cache = newMemCacheSpec(mcoconfig.ThanosStoreMemcached, mco)
 
@@ -468,11 +453,8 @@ func newMemCacheSpec(component string, mco *mcov1beta2.MultiClusterObservability
 	memCacheSpec.Image = mcoconfig.MemcachedImgRepo + "/" +
 		mcoconfig.MemcachedImgName + ":" + mcoconfig.MemcachedImgTag
 	memCacheSpec.Version = mcoconfig.MemcachedImgTag
-	if cacheConfig != nil && cacheConfig.Replicas != nil {
-		memCacheSpec.Replicas = cacheConfig.Replicas
-	} else {
-		memCacheSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosStoreMemcached)
-	}
+	memCacheSpec.Replicas = mcoconfig.GetReplicas(component, mco.Spec.AdvancedConfig)
+
 	memCacheSpec.ServiceMonitor = true
 	memCacheSpec.ExporterImage = mcoconfig.MemcachedExporterImgRepo + "/" +
 		mcoconfig.MemcachedExporterImgName + ":" + mcoconfig.MemcachedExporterImgTag
@@ -542,7 +524,7 @@ func newThanosSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string)
 
 func newQueryFrontendSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QueryFrontendSpec {
 	queryFrontendSpec := obsv1alpha1.QueryFrontendSpec{}
-	queryFrontendSpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosQueryFrontend)
+	queryFrontendSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ThanosQueryFrontend, mco.Spec.AdvancedConfig)
 	queryFrontendSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		queryFrontendSpec.Resources = mcoconfig.GetResources(config.ThanosQueryFrontend, mco.Spec.AdvancedConfig)
@@ -553,7 +535,7 @@ func newQueryFrontendSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1
 
 func newQuerySpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QuerySpec {
 	querySpec := obsv1alpha1.QuerySpec{}
-	querySpec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.ThanosQuery)
+	querySpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ThanosQuery, mco.Spec.AdvancedConfig)
 	querySpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		querySpec.Resources = mcoconfig.GetResources(config.ThanosQuery, mco.Spec.AdvancedConfig)

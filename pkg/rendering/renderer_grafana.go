@@ -34,7 +34,7 @@ func (r *Renderer) renderGrafanaDeployments(res *resource.Resource) (*unstructur
 
 	spec, ok := u.Object["spec"].(map[string]interface{})
 	if ok {
-		spec["replicas"] = config.GetObservabilityComponentReplicas(config.Grafana)
+		spec["replicas"] = config.GetReplicas(config.Grafana, r.cr.Spec.AdvancedConfig)
 	}
 	return u, nil
 }

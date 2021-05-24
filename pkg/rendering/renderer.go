@@ -150,7 +150,7 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 				}
 
 			case "rbac-query-proxy":
-				dep.Spec.Replicas = config.GetObservabilityComponentReplicas(config.RBACQueryProxy)
+				dep.Spec.Replicas = config.GetReplicas(config.RBACQueryProxy, r.cr.Spec.AdvancedConfig)
 				updateProxySpec(spec, r.cr)
 			}
 

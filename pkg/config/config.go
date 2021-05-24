@@ -220,10 +220,10 @@ var (
 	hasCustomAlertmanagerConfig = false
 	certDuration                = time.Hour * 24 * 365
 
-	Replicas1         int32 = 1
-	Replicas2         int32 = 2
-	Replicas3         int32 = 3
-	componentReplicas       = map[string]*int32{
+	Replicas1 int32 = 1
+	Replicas2 int32 = 2
+	Replicas3 int32 = 3
+	Replicas        = map[string]*int32{
 		ObservatoriumAPI:    &Replicas2,
 		ThanosQuery:         &Replicas2,
 		ThanosQueryFrontend: &Replicas2,
@@ -243,8 +243,53 @@ var (
 	MaxItemSize     = "1m"
 )
 
-func GetObservabilityComponentReplicas(componentName string) *int32 {
-	return componentReplicas[componentName]
+func GetReplicas(component string, advanced *observabilityv1beta2.AdvancedConfig) *int32 {
+	if advanced == nil {
+		return Replicas[component]
+	}
+	var replicas *int32
+	switch component {
+	case ObservatoriumAPI:
+		if advanced.ObservatoriumAPI != nil {
+			replicas = advanced.ObservatoriumAPI.Replicas
+		}
+	case ThanosQuery:
+		if advanced.Query != nil {
+			replicas = advanced.Query.Replicas
+		}
+	case ThanosQueryFrontend:
+		if advanced.QueryFrontend != nil {
+			replicas = advanced.QueryFrontend.Replicas
+		}
+	case ThanosQueryFrontendMemcached:
+		if advanced.QueryFrontendMemcached != nil {
+			replicas = advanced.QueryFrontendMemcached.Replicas
+		}
+	case ThanosRule:
+		if advanced.Rule != nil {
+			replicas = advanced.Rule.Replicas
+		}
+	case ThanosReceive:
+		if advanced.Receive != nil {
+			replicas = advanced.Receive.Replicas
+		}
+	case ThanosStoreMemcached:
+		if advanced.StoreMemcached != nil {
+			replicas = advanced.StoreMemcached.Replicas
+		}
+	case ThanosStoreShard:
+		if advanced.Store != nil {
+			replicas = advanced.Store.Replicas
+		}
+	case RBACQueryProxy:
+		if advanced.RBACQueryProxy != nil {
+			replicas = advanced.RBACQueryProxy.Replicas
+		}
+	}
+	if replicas == nil {
+		replicas = Replicas[component]
+	}
+	return replicas
 }
 
 // GetCrLabelKey returns the key for the CR label injected into the resources created by the operator
@@ -545,7 +590,10 @@ func GetImagePullSecret(mco observabilityv1beta2.MultiClusterObservabilitySpec) 
 
 func getDefaultResource(resourceType string, resource corev1.ResourceName,
 	component string) string {
-
+	//No provide the default limits
+	if resourceType != ResourceRequests {
+		return ""
+	}
 	switch component {
 	case ObservatoriumAPI:
 		if resource == corev1.ResourceCPU {
@@ -696,10 +744,10 @@ func GetResources(component string, advanced *observabilityv1beta2.AdvancedConfi
 		requests[corev1.ResourceName(corev1.ResourceMemory)] = resource.MustParse(memoryRequests)
 	}
 	if cpuLimits != "" {
-		limits[corev1.ResourceName(corev1.ResourceCPU)] = resource.MustParse(cpuRequests)
+		limits[corev1.ResourceName(corev1.ResourceCPU)] = resource.MustParse(cpuLimits)
 	}
 	if memoryLimits != "" {
-		limits[corev1.ResourceName(corev1.ResourceCPU)] = resource.MustParse(cpuRequests)
+		limits[corev1.ResourceName(corev1.ResourceMemory)] = resource.MustParse(memoryLimits)
 	}
 	resourceReq.Limits = limits
 	resourceReq.Requests = requests

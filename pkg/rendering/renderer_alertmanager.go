@@ -49,7 +49,7 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
 	dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 	dep.Name = mcoconfig.GetObjectPrefix() + "-" + dep.Name
-	dep.Spec.Replicas = mcoconfig.GetObservabilityComponentReplicas(mcoconfig.Alertmanager)
+	dep.Spec.Replicas = mcoconfig.GetReplicas(mcoconfig.Alertmanager, r.cr.Spec.AdvancedConfig)
 
 	spec := &dep.Spec.Template.Spec
 	spec.Containers[0].ImagePullPolicy = mcoconfig.GetImagePullPolicy(r.cr.Spec)

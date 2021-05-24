@@ -466,19 +466,67 @@ func TestGetResources(t *testing.T) {
 		result        func(resources corev1.ResourceRequirements) bool
 	}{
 		{
-			name:          "Have CPU defined in requests",
+			name:          "Have requests defined in requests",
 			componentName: ObservatoriumAPI,
 			raw: &mcov1beta2.AdvancedConfig{
 				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{
 					Resources: &corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
-							corev1.ResourceCPU: resource.MustParse("1"),
+							corev1.ResourceCPU:    resource.MustParse("1"),
+							corev1.ResourceMemory: resource.MustParse("1Gi"),
 						},
 					},
 				},
 			},
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == "1"
+				return resources.Requests.Cpu().String() == "1" &&
+					resources.Requests.Memory().String() == "1Gi" &&
+					resources.Limits.Cpu().String() == "0" &&
+					resources.Limits.Memory().String() == "0"
+			},
+		},
+		{
+			name:          "Have limits defined in requests",
+			componentName: ObservatoriumAPI,
+			raw: &mcov1beta2.AdvancedConfig{
+				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{
+					Resources: &corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("1"),
+							corev1.ResourceMemory: resource.MustParse("1Gi"),
+						},
+					},
+				},
+			},
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequets &&
+					resources.Requests.Memory().String() == ObservatoriumAPIMemoryRequets &&
+					resources.Limits.Cpu().String() == "1" &&
+					resources.Limits.Memory().String() == "1Gi"
+			},
+		},
+		{
+			name:          "Have requests and limits defined in requests",
+			componentName: ObservatoriumAPI,
+			raw: &mcov1beta2.AdvancedConfig{
+				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{
+					Resources: &corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("1"),
+							corev1.ResourceMemory: resource.MustParse("1Gi"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("1"),
+							corev1.ResourceMemory: resource.MustParse("1Gi"),
+						},
+					},
+				},
+			},
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == "1" &&
+					resources.Requests.Memory().String() == "1Gi" &&
+					resources.Limits.Cpu().String() == "1" &&
+					resources.Limits.Memory().String() == "1Gi"
 			},
 		},
 		{
@@ -492,7 +540,9 @@ func TestGetResources(t *testing.T) {
 				},
 			},
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequets
+				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequets &&
+					resources.Requests.Memory().String() == ObservatoriumAPIMemoryRequets &&
+					resources.Limits.Cpu().String() == "0" && resources.Limits.Memory().String() == "0"
 			},
 		},
 		{
@@ -504,7 +554,9 @@ func TestGetResources(t *testing.T) {
 				},
 			},
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequets
+				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequets &&
+					resources.Requests.Memory().String() == ObservatoriumAPIMemoryRequets &&
+					resources.Limits.Cpu().String() == "0" && resources.Limits.Memory().String() == "0"
 			},
 		},
 		{
@@ -514,7 +566,9 @@ func TestGetResources(t *testing.T) {
 				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{},
 			},
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequets
+				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequets &&
+					resources.Requests.Memory().String() == ObservatoriumAPIMemoryRequets &&
+					resources.Limits.Cpu().String() == "0" && resources.Limits.Memory().String() == "0"
 			},
 		},
 		{
@@ -522,7 +576,9 @@ func TestGetResources(t *testing.T) {
 			componentName: ObservatoriumAPI,
 			raw:           nil,
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequets
+				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequets &&
+					resources.Requests.Memory().String() == ObservatoriumAPIMemoryRequets &&
+					resources.Limits.Cpu().String() == "0" && resources.Limits.Memory().String() == "0"
 			},
 		},
 	}
@@ -532,6 +588,54 @@ func TestGetResources(t *testing.T) {
 			resources := GetResources(c.componentName, c.raw)
 			if !c.result(resources) {
 				t.Errorf("case (%v) output (%v) is not the expected", c.name, resources)
+			}
+		})
+	}
+}
+
+func TestGetReplicas(t *testing.T) {
+	caseList := []struct {
+		name          string
+		componentName string
+		raw           *mcov1beta2.AdvancedConfig
+		result        func(replicas *int32) bool
+	}{
+		{
+			name:          "Have replicas defined",
+			componentName: ObservatoriumAPI,
+			raw: &mcov1beta2.AdvancedConfig{
+				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{
+					Replicas: &Replicas1,
+				},
+			},
+			result: func(replicas *int32) bool {
+				return replicas == &Replicas1
+			},
+		},
+		{
+			name:          "No advanced defined",
+			componentName: ObservatoriumAPI,
+			raw:           nil,
+			result: func(replicas *int32) bool {
+				return replicas == &Replicas2
+			},
+		},
+		{
+			name:          "No replicas defined",
+			componentName: ObservatoriumAPI,
+			raw: &mcov1beta2.AdvancedConfig{
+				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{},
+			},
+			result: func(replicas *int32) bool {
+				return replicas == &Replicas2
+			},
+		},
+	}
+	for _, c := range caseList {
+		t.Run(c.name, func(t *testing.T) {
+			replicas := GetReplicas(c.componentName, c.raw)
+			if !c.result(replicas) {
+				t.Errorf("case (%v) output (%v) is not the expected", c.name, replicas)
 			}
 		})
 	}
