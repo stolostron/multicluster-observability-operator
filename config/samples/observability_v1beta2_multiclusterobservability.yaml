@@ -4,7 +4,6 @@ metadata:
   name: observability
 spec:
   observabilityAddonSpec: {}
-  retentionConfig: {}
   storageConfig:
     metricObjectStorage:
       name: thanos-object-storage

@@ -46,10 +46,12 @@ func (src *MultiClusterObservability) ConvertTo(dstRaw conversion.Hub) error {
 		ReceiveStorageSize:      src.Spec.StorageConfig.StatefulSetSize,
 	}
 
-	dst.Spec.RetentionConfig = &observabilityv1beta2.RetentionConfig{
-		RetentionResolutionRaw: src.Spec.RetentionResolutionRaw,
-		RetentionResolution5m:  src.Spec.RetentionResolution5m,
-		RetentionResolution1h:  src.Spec.RetentionResolution1h,
+	dst.Spec.AdvancedConfig = &observabilityv1beta2.AdvancedConfig{
+		RetentionConfig: &observabilityv1beta2.RetentionConfig{
+			RetentionResolutionRaw: src.Spec.RetentionResolutionRaw,
+			RetentionResolution5m:  src.Spec.RetentionResolution5m,
+			RetentionResolution1h:  src.Spec.RetentionResolution1h,
+		},
 	}
 
 	dst.Spec.EnableDownsampling = src.Spec.EnableDownSampling
@@ -86,9 +88,9 @@ func (dst *MultiClusterObservability) ConvertFrom(srcRaw conversion.Hub) error {
 	// TODO(morvencao): convert the AvailabilityConfig field
 	// dst.Spec.AvailabilityConfig =
 
-	dst.Spec.RetentionResolutionRaw = src.Spec.RetentionConfig.RetentionResolutionRaw
-	dst.Spec.RetentionResolution5m = src.Spec.RetentionConfig.RetentionResolution5m
-	dst.Spec.RetentionResolution1h = src.Spec.RetentionConfig.RetentionResolution1h
+	dst.Spec.RetentionResolutionRaw = src.Spec.AdvancedConfig.RetentionConfig.RetentionResolutionRaw
+	dst.Spec.RetentionResolution5m = src.Spec.AdvancedConfig.RetentionConfig.RetentionResolution5m
+	dst.Spec.RetentionResolution1h = src.Spec.AdvancedConfig.RetentionConfig.RetentionResolution1h
 
 	dst.Spec.StorageConfig = &StorageConfigObject{
 		MetricObjectStorage:     src.Spec.StorageConfig.MetricObjectStorage,

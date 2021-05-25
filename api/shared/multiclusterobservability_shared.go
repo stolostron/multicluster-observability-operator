@@ -28,8 +28,7 @@ type ObservabilityAddonSpec struct {
 
 	// Resource requirement for metrics-collector
 	// +optional
-	// +kubebuilder:default:={requests: {cpu: "100m", memory: "100Mi"}, limits: {cpu: "100m", memory: "600Mi"}}
-	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 type PreConfiguredStorage struct {

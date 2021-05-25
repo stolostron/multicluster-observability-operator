@@ -122,11 +122,11 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 			dep.Name = mcoconfig.GetObjectPrefix() + "-" + dep.Name
 
 			spec := &dep.Spec.Template.Spec
-			spec.Containers[0].ImagePullPolicy = r.cr.Spec.ImagePullPolicy
+			spec.Containers[0].ImagePullPolicy = mcoconfig.GetImagePullPolicy(r.cr.Spec)
 			spec.NodeSelector = r.cr.Spec.NodeSelector
 			spec.Tolerations = r.cr.Spec.Tolerations
 			spec.ImagePullSecrets = []corev1.LocalObjectReference{
-				{Name: r.cr.Spec.ImagePullSecret},
+				{Name: mcoconfig.GetImagePullSecret(r.cr.Spec)},
 			}
 
 			switch resources[idx].GetName() {
@@ -150,7 +150,7 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 				}
 
 			case "rbac-query-proxy":
-				dep.Spec.Replicas = config.GetObservabilityComponentReplicas(config.RbacQueryProxy)
+				dep.Spec.Replicas = config.GetReplicas(config.RBACQueryProxy, r.cr.Spec.AdvancedConfig)
 				updateProxySpec(spec, r.cr)
 			}
 
@@ -168,7 +168,7 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 
 func updateProxySpec(spec *corev1.PodSpec, mco *obv1beta2.MultiClusterObservability) {
 	found, image := mcoconfig.ReplaceImage(mco.Annotations, spec.Containers[0].Image,
-		mcoconfig.RbacQueryProxyKey)
+		mcoconfig.RBACQueryProxyKey)
 	if found {
 		spec.Containers[0].Image = image
 	}
@@ -185,6 +185,7 @@ func updateProxySpec(spec *corev1.PodSpec, mco *obv1beta2.MultiClusterObservabil
 			spec.Volumes[idx].Secret.SecretName = mcoconfig.GrafanaCerts
 		}
 	}
+	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.RBACQueryProxy, mco.Spec.AdvancedConfig)
 }
 
 func (r *Renderer) renderTemplates(templates []*resource.Resource) ([]*unstructured.Unstructured, error) {

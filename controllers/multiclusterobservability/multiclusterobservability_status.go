@@ -145,7 +145,7 @@ func getExpectedDeploymentNames() []string {
 		prefix + "-" + config.ThanosQueryFrontend,
 		prefix + "-" + config.ThanosReceiveController,
 		prefix + "-" + config.ObservatoriumOperator,
-		prefix + "-" + config.RbacQueryProxy,
+		prefix + "-" + config.RBACQueryProxy,
 	}
 }
 

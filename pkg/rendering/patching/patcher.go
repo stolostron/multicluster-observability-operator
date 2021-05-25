@@ -66,7 +66,7 @@ func generateImagePatch(
 	container, _ := res.GetFieldValue(specFirstContainer)
 	containerMap, _ := container.(map[string]interface{})
 	containerMap["image"] = generatedImage
-	containerMap["imagePullPolicy"] = mco.Spec.ImagePullPolicy
+	containerMap["imagePullPolicy"] = mcoconfig.GetImagePullPolicy(mco.Spec)
 
 	return newKunstructuredForSpecContainers(containerMap), nil
 }
@@ -85,10 +85,8 @@ func generateImagePullSecretsPatch(
 	res *resource.Resource,
 	mco *mcov1beta2.MultiClusterObservability) (ifc.Kunstructured, error) {
 
-	pullSecret := mco.Spec.ImagePullSecret
-	if pullSecret == "" {
-		return nil, nil
-	}
+	pullSecret := mcoconfig.GetImagePullSecret(mco.Spec)
+
 	template := strings.Replace(imagePullSecretsTemplate, "__kind__", res.GetKind(), 1)
 	template = strings.Replace(template, "__pullsecrets__", pullSecret, 1)
 	json, err := yaml.YAMLToJSON([]byte(template))

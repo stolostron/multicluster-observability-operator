@@ -20,6 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
+	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
@@ -163,7 +164,7 @@ func getGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObs
 	works = injectIntoWork(works, createNameSpace())
 
 	//create image pull secret
-	pull, err := getPullSecret(c, mco.Spec.ImagePullSecret)
+	pull, err := getPullSecret(c, config.GetImagePullSecret(mco.Spec))
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -471,7 +472,11 @@ func getObservabilityAddon(c client.Client, namespace string,
 			Name:      obsAddonName,
 			Namespace: spokeNameSpace,
 		},
-		Spec: *mco.Spec.ObservabilityAddonSpec,
+		Spec: mcoshared.ObservabilityAddonSpec{
+			EnableMetrics: mco.Spec.ObservabilityAddonSpec.EnableMetrics,
+			Interval:      mco.Spec.ObservabilityAddonSpec.Interval,
+			Resources:     config.GetOBAResources(mco.Spec.ObservabilityAddonSpec),
+		},
 	}, nil
 }
 

@@ -266,11 +266,6 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 				ReceiveStorageSize:      "1Gi",
 				StoreStorageSize:        "1Gi",
 			},
-			RetentionConfig: &mcov1beta2.RetentionConfig{
-				RetentionResolutionRaw: "1h",
-				RetentionResolution5m:  "1h",
-				RetentionResolution1h:  "1h",
-			},
 			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
 				EnableMetrics: false,
 			},
