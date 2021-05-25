@@ -251,7 +251,6 @@ spec:
           - cluster.open-cluster-management.io
           resources:
           - placements
-          - placementdecisions
           verbs:
           - delete
           - get
@@ -260,6 +259,14 @@ spec:
           - create
           - update
           - patch
+        - apiGroups:
+          - cluster.open-cluster-management.io
+          resources:
+          - placementdecisions
+          verbs:
+          - get
+          - list
+          - watch
         - apiGroups:
           - work.open-cluster-management.io
           resources:

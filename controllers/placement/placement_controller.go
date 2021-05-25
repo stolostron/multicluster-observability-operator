@@ -91,13 +91,15 @@ func (r *PlacementReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, err
 		}
 	}
-	placementDecision := &placementv1alpha1.PlacementDecision{}
+
+	placementDecisions := &placementv1alpha1.PlacementDecisionList{}
+	placementDecisionsListOpts := []client.ListOption{
+		client.InNamespace(config.GetDefaultNamespace()),
+		client.MatchingLabels{ownerLabelKey: config.GetPlacementName()},
+	}
 	if !deleteAll {
 		// Fetch the Placement instance
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
-			Name:      config.GetPlacementName(),
-			Namespace: config.GetDefaultNamespace(),
-		}, placementDecision)
+		err = r.Client.List(context.TODO(), placementDecisions, placementDecisionsListOpts...)
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				deleteAll = true
@@ -135,9 +137,12 @@ func (r *PlacementReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if !deleteAll {
-		res, err := createAllRelatedRes(r.Client, r.RESTMapper, req, mco, placementDecision, obsAddonList)
-		if err != nil {
-			return res, err
+		if len(placementDecisions.Items) > 1 {
+			res, err := createAllRelatedRes(r.Client, r.RESTMapper, req, mco,
+				&placementDecisions.Items[0], obsAddonList)
+			if err != nil {
+				return res, err
+			}
 		}
 	} else {
 		res, err := deleteAllObsAddons(r.Client, obsAddonList)
