@@ -6,6 +6,7 @@ data:
   metrics_list.yaml: |
     names:
       - :node_memory_MemAvailable_bytes:sum
+      - ALERTS
       - apiserver_request_count
       - apiserver_request_latencies_summary_count
       - apiserver_request_latencies_summary_sum
