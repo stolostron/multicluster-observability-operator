@@ -96,6 +96,8 @@ func (d *Deployer) updateDeployment(desiredObj, runtimeObj *unstructured.Unstruc
 		log.Error(err, fmt.Sprintf("Failed to Unmarshal Deployment %s", runtimeObj.GetName()))
 	}
 
+	log.Info("DryRunCreate for DeepDerivative", "Kind:", desiredDepoly.GroupVersionKind(), "Name:", desiredDepoly.GetName())
+	client.NewDryRunClient(d.client).Create(context.TODO(), desiredDepoly, &client.CreateOptions{})
 	if !apiequality.Semantic.DeepDerivative(desiredDepoly.Spec, runtimeDepoly.Spec) {
 		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
 		return d.client.Update(context.TODO(), desiredDepoly)
@@ -119,6 +121,8 @@ func (d *Deployer) updateStatefulSet(desiredObj, runtimeObj *unstructured.Unstru
 		log.Error(err, fmt.Sprintf("Failed to Unmarshal StatefulSet %s", runtimeObj.GetName()))
 	}
 
+	log.Info("DryRunCreate for DeepDerivative", "Kind:", desiredDepoly.GroupVersionKind(), "Name:", desiredDepoly.GetName())
+	client.NewDryRunClient(d.client).Create(context.TODO(), desiredDepoly, &client.CreateOptions{})
 	if !apiequality.Semantic.DeepDerivative(desiredDepoly.Spec.Template, runtimeDepoly.Spec.Template) ||
 		!apiequality.Semantic.DeepDerivative(desiredDepoly.Spec.Replicas, runtimeDepoly.Spec.Replicas) {
 		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
@@ -145,6 +149,8 @@ func (d *Deployer) updateService(desiredObj, runtimeObj *unstructured.Unstructur
 		log.Error(err, fmt.Sprintf("Failed to Unmarshal Service %s", runtimeObj.GetName()))
 	}
 
+	log.Info("DryRunCreate for DeepDerivative", "Kind:", desiredService.GroupVersionKind(), "Name:", desiredService.GetName())
+	client.NewDryRunClient(d.client).Create(context.TODO(), desiredService, &client.CreateOptions{})
 	if !apiequality.Semantic.DeepDerivative(desiredService.Spec, runtimeService.Spec) {
 		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
 		return d.client.Update(context.TODO(), desiredService)
@@ -168,6 +174,8 @@ func (d *Deployer) updateConfigMap(desiredObj, runtimeObj *unstructured.Unstruct
 		log.Error(err, fmt.Sprintf("Failed to Unmarshal ConfigMap %s", runtimeObj.GetName()))
 	}
 
+	log.Info("DryRunCreate for DeepDerivative", "Kind:", desiredConfigMap.GroupVersionKind(), "Name:", desiredConfigMap.GetName())
+	client.NewDryRunClient(d.client).Create(context.TODO(), desiredConfigMap, &client.CreateOptions{})
 	if !apiequality.Semantic.DeepDerivative(desiredConfigMap.Data, runtimeConfigMap.Data) {
 		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
 		return d.client.Update(context.TODO(), desiredConfigMap)
@@ -177,15 +185,27 @@ func (d *Deployer) updateConfigMap(desiredObj, runtimeObj *unstructured.Unstruct
 }
 
 func (d *Deployer) updateSecret(desiredObj, runtimeObj *unstructured.Unstructured) error {
+	runtimeJSON, _ := runtimeObj.MarshalJSON()
+	runtimeSecret := &corev1.Secret{}
+	err := json.Unmarshal(runtimeJSON, runtimeSecret)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime Secret %s", runtimeObj.GetName()))
+	}
+
 	desiredJSON, _ := desiredObj.MarshalJSON()
 	desiredSecret := &corev1.Secret{}
-	err := json.Unmarshal(desiredJSON, desiredSecret)
+	err = json.Unmarshal(desiredJSON, desiredSecret)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Failed to Unmarshal desired Secret %s", desiredObj.GetName()))
 	}
 
-	log.Info("Update", "Kind:", desiredObj.GroupVersionKind(), "Name:", desiredObj.GetName())
-	return d.client.Update(context.TODO(), desiredSecret)
+	log.Info("DryRunCreate for DeepDerivative", "Kind:", desiredSecret.GroupVersionKind(), "Name:", desiredSecret.GetName())
+	client.NewDryRunClient(d.client).Create(context.TODO(), desiredSecret, &client.CreateOptions{})
+	if !apiequality.Semantic.DeepDerivative(desiredSecret.Data, runtimeSecret.Data) {
+		log.Info("Update", "Kind:", desiredObj.GroupVersionKind(), "Name:", desiredObj.GetName())
+		return d.client.Update(context.TODO(), desiredSecret)
+	}
+	return nil
 }
 
 func (d *Deployer) updateClusterRole(desiredObj, runtimeObj *unstructured.Unstructured) error {
