@@ -80,7 +80,7 @@ func GenerateObservatoriumCR(
 
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating a new observatorium CR",
-			"observatorium", observatoriumCR,
+			"observatorium", observatoriumCR.Name,
 		)
 		err = cl.Create(context.TODO(), observatoriumCR)
 		if err != nil {
@@ -106,13 +106,17 @@ func GenerateObservatoriumCR(
 		}
 	}
 
+	log.Info("Updating observatorium CR",
+		"observatorium", observatoriumCR.Name,
+	)
+
 	newObj := observatoriumCRFound.DeepCopy()
 	newObj.Spec = newSpec
 	err = cl.Update(context.TODO(), newObj)
 	if err != nil {
 		log.Error(err, "Failed to update observatorium CR %s", observatoriumCR.Name)
 		// add timeout for update failure avoid update conflict
-		return &ctrl.Result{Requeue: true, RequeueAfter: time.Second * 3}, err
+		return &ctrl.Result{RequeueAfter: time.Second * 3}, err
 	}
 
 	// delete the store-share statefulset in scalein scenario

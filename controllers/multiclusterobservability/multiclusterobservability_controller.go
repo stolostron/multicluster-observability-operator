@@ -264,18 +264,21 @@ func (r *MultiClusterObservabilityReconciler) UpdateStatus(
 			mco.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 			err = r.Client.Status().Update(context.TODO(), mco)
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Failed to update %s status ", mco.Name))
-				return &ctrl.Result{}, err
+				log.Error(err, fmt.Sprintf("Failed to update %s status when update conflict", mco.Name))
+				// add timeout for update failure avoid update conflict
+				return &ctrl.Result{RequeueAfter: time.Second * 3}, nil
 			}
-			return &ctrl.Result{Requeue: true, RequeueAfter: time.Second}, nil
+			return nil, nil
 		}
 
-		log.Error(err, fmt.Sprintf("Failed to update %s status ", mco.Name))
-		return &ctrl.Result{}, err
+		log.Error(err, fmt.Sprintf("Failed to update %s status", mco.Name))
+		return &ctrl.Result{RequeueAfter: time.Second}, nil
 	}
 
 	if findStatusCondition(newStatus.Conditions, "Ready") == nil {
-		return &ctrl.Result{Requeue: true, RequeueAfter: time.Second * 2}, nil
+		// add timeout to waiting for all components ready and then update mco status
+		log.Info("Waiting for all components ready", "Reason", "Failed to found Ready status")
+		return &ctrl.Result{RequeueAfter: time.Second * 30}, nil
 	}
 
 	return nil, nil
