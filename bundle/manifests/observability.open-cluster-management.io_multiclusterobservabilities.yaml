@@ -235,6 +235,36 @@ spec:
               advanced:
                 description: Advanced configurations for observability
                 properties:
+                  alertmanager:
+                    description: The spec of alertmanager
+                    properties:
+                      replicas:
+                        description: Replicas for this component.
+                        format: int32
+                        type: integer
+                      resources:
+                        description: Compute Resources required by this component.
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                        type: object
+                    type: object
                   compact:
                     description: spec for thanos-compact
                     properties:
@@ -261,15 +291,45 @@ spec:
                             type: object
                         type: object
                     type: object
+                  grafana:
+                    description: The spec of grafana
+                    properties:
+                      replicas:
+                        description: Replicas for this component.
+                        format: int32
+                        type: integer
+                      resources:
+                        description: Compute Resources required by this component.
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            type: object
+                        type: object
+                    type: object
                   observatoriumAPI:
                     description: Spec of observatorium api
                     properties:
                       replicas:
-                        description: Replicas for observatorium api.
+                        description: Replicas for this component.
                         format: int32
                         type: integer
                       resources:
-                        description: Compute Resources required by the observatorium api.
+                        description: Compute Resources required by this component.
                         properties:
                           limits:
                             additionalProperties:
@@ -295,11 +355,11 @@ spec:
                     description: spec for thanos-query
                     properties:
                       replicas:
-                        description: Replicas for the query.
+                        description: Replicas for this component.
                         format: int32
                         type: integer
                       resources:
-                        description: Compute Resources required by the query.
+                        description: Compute Resources required by this component.
                         properties:
                           limits:
                             additionalProperties:
@@ -325,11 +385,11 @@ spec:
                     description: spec for thanos-query-frontend
                     properties:
                       replicas:
-                        description: Replicas for query frontend.
+                        description: Replicas for this component.
                         format: int32
                         type: integer
                       resources:
-                        description: Compute Resources required by the Query frontend.
+                        description: Compute Resources required by this component.
                         properties:
                           limits:
                             additionalProperties:
@@ -366,11 +426,11 @@ spec:
                         format: int32
                         type: integer
                       replicas:
-                        description: Replicas for the memory cached.
+                        description: Replicas for this component.
                         format: int32
                         type: integer
                       resources:
-                        description: Compute Resources required by the memory cached.
+                        description: Compute Resources required by this component.
                         properties:
                           limits:
                             additionalProperties:
@@ -396,11 +456,11 @@ spec:
                     description: The spec of rbac-query-proxy
                     properties:
                       replicas:
-                        description: Replicas for the rbac-query-proxy.
+                        description: Replicas for this component.
                         format: int32
                         type: integer
                       resources:
-                        description: Compute Resources required by the rbac-query-proxy.
+                        description: Compute Resources required by this component.
                         properties:
                           limits:
                             additionalProperties:
@@ -426,11 +486,11 @@ spec:
                     description: spec for thanos-receiver
                     properties:
                       replicas:
-                        description: Replicas for receivers.
+                        description: Replicas for this component.
                         format: int32
                         type: integer
                       resources:
-                        description: Compute Resources required by the Receivers.
+                        description: Compute Resources required by this component.
                         properties:
                           limits:
                             additionalProperties:
@@ -478,11 +538,11 @@ spec:
                     description: spec for thanos-rule
                     properties:
                       replicas:
-                        description: Replicas for the ruler.
+                        description: Replicas for this component.
                         format: int32
                         type: integer
                       resources:
-                        description: Compute Resources required by the ruler.
+                        description: Compute Resources required by this component.
                         properties:
                           limits:
                             additionalProperties:
@@ -508,11 +568,11 @@ spec:
                     description: spec for thanos-store-shard
                     properties:
                       replicas:
-                        description: Replicas for the store.
+                        description: Replicas for this component.
                         format: int32
                         type: integer
                       resources:
-                        description: Compute Resources required by the store.
+                        description: Compute Resources required by this component.
                         properties:
                           limits:
                             additionalProperties:
@@ -549,11 +609,11 @@ spec:
                         format: int32
                         type: integer
                       replicas:
-                        description: Replicas for the memory cached.
+                        description: Replicas for this component.
                         format: int32
                         type: integer
                       resources:
-                        description: Compute Resources required by the memory cached.
+                        description: Compute Resources required by this component.
                         properties:
                           limits:
                             additionalProperties:
