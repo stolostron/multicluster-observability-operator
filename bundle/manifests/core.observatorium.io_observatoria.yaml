@@ -1735,7 +1735,6 @@ spec:
             required:
             - hashrings
             - objectStorageConfig
-            - thanos
             type: object
           status:
             description: ObservatoriumStatus defines the observed state of Observatorium
