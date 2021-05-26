@@ -1706,8 +1706,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Prometheus",
-              "value": "Prometheus"
+              "text": "",
+              "value": ""
             },
             "description": null,
             "error": null,
