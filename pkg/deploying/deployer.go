@@ -54,6 +54,8 @@ func (d *Deployer) Deploy(obj *unstructured.Unstructured) error {
 	err := d.client.Get(context.TODO(), types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			log.Info("DryRunCreate", "Kind:", obj.GroupVersionKind(), "Name:", obj.GetName())
+			client.NewDryRunClient(d.client).Create(context.TODO(), obj, &client.CreateOptions{})
 			log.Info("Create", "Kind:", obj.GroupVersionKind(), "Name:", obj.GetName())
 			return d.client.Create(context.TODO(), obj)
 		}
