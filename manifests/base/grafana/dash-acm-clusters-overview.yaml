@@ -19,7 +19,7 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 1,
-      "iteration": 1622046207348,
+      "iteration": 1622071956622,
       "links": [],
       "panels": [
         {
@@ -1085,7 +1085,7 @@ data:
           },
           "lines": false,
           "linewidth": 1,
-          "nullPointMode": "null",
+          "nullPointMode": "null as zero",
           "options": {
             "alertThreshold": true
           },
@@ -1096,7 +1096,7 @@ data:
           "renderer": "flot",
           "seriesOverrides": [],
           "spaceLength": 10,
-          "stack": true,
+          "stack": false,
           "steppedLine": false,
           "targets": [
             {
@@ -1128,25 +1128,27 @@ data:
           },
           "yaxes": [
             {
+              "$$hashKey": "object:281",
               "format": "percentunit",
               "label": null,
               "logBase": 1,
-              "max": null,
-              "min": null,
+              "max": "1",
+              "min": "0",
               "show": true
             },
             {
+              "$$hashKey": "object:282",
               "format": "short",
               "label": null,
               "logBase": 1,
               "max": null,
               "min": null,
-              "show": true
+              "show": false
             }
           ],
           "yaxis": {
             "align": false,
-            "alignLevel": null
+            "alignLevel": 1
           }
         },
         {
@@ -1411,7 +1413,7 @@ data:
           },
           "lines": false,
           "linewidth": 1,
-          "nullPointMode": "null",
+          "nullPointMode": "null as zero",
           "options": {
             "alertThreshold": true
           },
@@ -1420,13 +1422,19 @@ data:
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
-          "seriesOverrides": [],
+          "seriesOverrides": [
+            {
+              "$$hashKey": "object:595"
+            }
+          ],
           "spaceLength": 10,
-          "stack": true,
+          "stack": false,
           "steppedLine": false,
           "targets": [
             {
               "expr": "topk(5, (1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)))",
+              "format": "time_series",
+              "instant": false,
               "interval": "",
               "intervalFactor": 1,
               "legendFormat": "{{cluster}}",
@@ -1453,15 +1461,17 @@ data:
           },
           "yaxes": [
             {
+              "$$hashKey": "object:564",
               "decimals": null,
               "format": "percentunit",
               "label": null,
               "logBase": 1,
-              "max": null,
-              "min": null,
+              "max": "1",
+              "min": "0",
               "show": true
             },
             {
+              "$$hashKey": "object:565",
               "format": "short",
               "label": null,
               "logBase": 1,
@@ -1778,7 +1788,7 @@ data:
       "timezone": "browser",
       "title": "ACM - Clusters Overview",
       "uid": "2b679d600f3b9e7676a7c5ac3643d448",
-      "version": 13
+      "version": 15
     }
 kind: ConfigMap
 metadata:
