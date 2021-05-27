@@ -671,6 +671,28 @@ func TestGetResources(t *testing.T) {
 					resources.Limits.Memory().String() == "1Gi"
 			},
 		},
+		{
+			name:          "Have limits defined",
+			componentName: ThanosQueryFrontendMemcached,
+			raw: &mcov1beta2.AdvancedConfig{
+				QueryFrontendMemcached: &mcov1beta2.CacheConfig{
+					CommonSpec: mcov1beta2.CommonSpec{
+						Resources: &corev1.ResourceRequirements{
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("1"),
+								corev1.ResourceMemory: resource.MustParse("1Gi"),
+							},
+						},
+					},
+				},
+			},
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == ThanosCachedCPURequets &&
+					resources.Requests.Memory().String() == ThanosCachedMemoryRequets &&
+					resources.Limits.Cpu().String() == "1" &&
+					resources.Limits.Memory().String() == "1Gi"
+			},
+		},
 	}
 
 	for _, c := range caseList {

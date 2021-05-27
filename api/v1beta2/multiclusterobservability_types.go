@@ -110,7 +110,7 @@ type CacheConfig struct {
 	// +optional
 	ConnectionLimit *int32 `json:"connectionLimit,omitempty"`
 
-	CommonSpec CommonSpec `json:"-,inline"`
+	CommonSpec `json:",inline"`
 }
 
 // RetentionConfig is the spec of retention configurations.
