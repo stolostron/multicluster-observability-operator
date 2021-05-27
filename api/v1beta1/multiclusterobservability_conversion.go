@@ -88,9 +88,11 @@ func (dst *MultiClusterObservability) ConvertFrom(srcRaw conversion.Hub) error {
 	// TODO(morvencao): convert the AvailabilityConfig field
 	// dst.Spec.AvailabilityConfig =
 
-	dst.Spec.RetentionResolutionRaw = src.Spec.AdvancedConfig.RetentionConfig.RetentionResolutionRaw
-	dst.Spec.RetentionResolution5m = src.Spec.AdvancedConfig.RetentionConfig.RetentionResolution5m
-	dst.Spec.RetentionResolution1h = src.Spec.AdvancedConfig.RetentionConfig.RetentionResolution1h
+	if src.Spec.AdvancedConfig != nil && src.Spec.AdvancedConfig.RetentionConfig != nil {
+		dst.Spec.RetentionResolutionRaw = src.Spec.AdvancedConfig.RetentionConfig.RetentionResolutionRaw
+		dst.Spec.RetentionResolution5m = src.Spec.AdvancedConfig.RetentionConfig.RetentionResolution5m
+		dst.Spec.RetentionResolution1h = src.Spec.AdvancedConfig.RetentionConfig.RetentionResolution1h
+	}
 
 	dst.Spec.StorageConfig = &StorageConfigObject{
 		MetricObjectStorage:     src.Spec.StorageConfig.MetricObjectStorage,
