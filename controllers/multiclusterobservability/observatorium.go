@@ -93,7 +93,6 @@ func GenerateObservatoriumCR(
 
 	oldSpec := observatoriumCRFound.Spec
 	newSpec := observatoriumCR.Spec
-	// @TODO: resolve design issue on whether enable/disable downsampling will affact retension period config
 	oldSpecBytes, _ := yaml.Marshal(oldSpec)
 	newSpecBytes, _ := yaml.Marshal(newSpec)
 	if bytes.Equal(newSpecBytes, oldSpecBytes) {
