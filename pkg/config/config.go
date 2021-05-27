@@ -144,6 +144,14 @@ const (
 	RBACQueryProxyCPURequets    = "20m"
 	RBACQueryProxyMemoryRequets = "100Mi"
 
+	GrafanaCPURequets    = "4m"
+	GrafanaMemoryRequets = "100Mi"
+	GrafanaCPULimits     = "500m"
+	GrafanaMemoryLimits  = "1Gi"
+
+	AlertmanagerCPURequets    = "4m"
+	AlertmanagerMemoryRequets = "200Mi"
+
 	ObservatoriumAPICPURequets    = "20m"
 	ObservatoriumAPIMemoryRequets = "128Mi"
 
@@ -278,7 +286,7 @@ func GetReplicas(component string, advanced *observabilityv1beta2.AdvancedConfig
 		}
 	case ThanosQueryFrontendMemcached:
 		if advanced.QueryFrontendMemcached != nil {
-			replicas = advanced.QueryFrontendMemcached.Replicas
+			replicas = advanced.QueryFrontendMemcached.CommonSpec.Replicas
 		}
 	case ThanosRule:
 		if advanced.Rule != nil {
@@ -290,7 +298,7 @@ func GetReplicas(component string, advanced *observabilityv1beta2.AdvancedConfig
 		}
 	case ThanosStoreMemcached:
 		if advanced.StoreMemcached != nil {
-			replicas = advanced.StoreMemcached.Replicas
+			replicas = advanced.StoreMemcached.CommonSpec.Replicas
 		}
 	case ThanosStoreShard:
 		if advanced.Store != nil {
@@ -299,6 +307,14 @@ func GetReplicas(component string, advanced *observabilityv1beta2.AdvancedConfig
 	case RBACQueryProxy:
 		if advanced.RBACQueryProxy != nil {
 			replicas = advanced.RBACQueryProxy.Replicas
+		}
+	case Grafana:
+		if advanced.Grafana != nil {
+			replicas = advanced.Grafana.Replicas
+		}
+	case Alertmanager:
+		if advanced.Alertmanager != nil {
+			replicas = advanced.Alertmanager.Replicas
 		}
 	}
 	if replicas == nil || *replicas == 0 {
@@ -626,7 +642,7 @@ func GetImagePullSecret(mco observabilityv1beta2.MultiClusterObservabilitySpec) 
 func getDefaultResource(resourceType string, resource corev1.ResourceName,
 	component string) string {
 	//No provide the default limits
-	if resourceType != ResourceRequests {
+	if resourceType == ResourceLimits && component != Grafana {
 		return ""
 	}
 	switch component {
@@ -700,6 +716,29 @@ func getDefaultResource(resourceType string, resource corev1.ResourceName,
 		if resource == corev1.ResourceMemory {
 			return MetricsCollectorMemoryRequets
 		}
+	case Alertmanager:
+		if resource == corev1.ResourceCPU {
+			return AlertmanagerCPURequets
+		}
+		if resource == corev1.ResourceMemory {
+			return AlertmanagerMemoryRequets
+		}
+	case Grafana:
+		if resourceType == ResourceRequests {
+			if resource == corev1.ResourceCPU {
+				return GrafanaCPURequets
+			}
+			if resource == corev1.ResourceMemory {
+				return GrafanaMemoryRequets
+			}
+		} else if resourceType == ResourceLimits {
+			if resource == corev1.ResourceCPU {
+				return GrafanaCPULimits
+			}
+			if resource == corev1.ResourceMemory {
+				return GrafanaMemoryLimits
+			}
+		}
 	}
 	return ""
 }
@@ -729,7 +768,7 @@ func getResource(resourceType string, resource corev1.ResourceName,
 		}
 	case ThanosQueryFrontendMemcached:
 		if advanced.QueryFrontendMemcached != nil {
-			resourcesReq = advanced.QueryFrontendMemcached.Resources
+			resourcesReq = advanced.QueryFrontendMemcached.CommonSpec.Resources
 		}
 	case ThanosRule:
 		if advanced.Rule != nil {
@@ -741,7 +780,7 @@ func getResource(resourceType string, resource corev1.ResourceName,
 		}
 	case ThanosStoreMemcached:
 		if advanced.StoreMemcached != nil {
-			resourcesReq = advanced.StoreMemcached.Resources
+			resourcesReq = advanced.StoreMemcached.CommonSpec.Resources
 		}
 	case ThanosStoreShard:
 		if advanced.Store != nil {
@@ -750,6 +789,14 @@ func getResource(resourceType string, resource corev1.ResourceName,
 	case RBACQueryProxy:
 		if advanced.RBACQueryProxy != nil {
 			resourcesReq = advanced.RBACQueryProxy.Resources
+		}
+	case Grafana:
+		if advanced.Grafana != nil {
+			resourcesReq = advanced.Grafana.Resources
+		}
+	case Alertmanager:
+		if advanced.Alertmanager != nil {
+			resourcesReq = advanced.Alertmanager.Resources
 		}
 	}
 
@@ -771,10 +818,13 @@ func getResource(resourceType string, resource corev1.ResourceName,
 			if len(resourcesReq.Limits) != 0 {
 				if resource == corev1.ResourceCPU {
 					return resourcesReq.Limits.Cpu().String()
-				}
-				if resource == corev1.ResourceMemory {
+				} else if resource == corev1.ResourceMemory {
 					return resourcesReq.Limits.Memory().String()
+				} else {
+					return getDefaultResource(resourceType, resource, component)
 				}
+			} else {
+				return getDefaultResource(resourceType, resource, component)
 			}
 		}
 	} else {
@@ -793,14 +843,29 @@ func GetResources(component string, advanced *observabilityv1beta2.AdvancedConfi
 	resourceReq := corev1.ResourceRequirements{}
 	requests := corev1.ResourceList{}
 	limits := corev1.ResourceList{}
+	if cpuRequests == "0" {
+		cpuRequests = getDefaultResource(ResourceRequests, corev1.ResourceCPU, component)
+	}
 	if cpuRequests != "" {
 		requests[corev1.ResourceName(corev1.ResourceCPU)] = resource.MustParse(cpuRequests)
+	}
+
+	if memoryRequests == "0" {
+		memoryRequests = getDefaultResource(ResourceRequests, corev1.ResourceMemory, component)
 	}
 	if memoryRequests != "" {
 		requests[corev1.ResourceName(corev1.ResourceMemory)] = resource.MustParse(memoryRequests)
 	}
+
+	if cpuLimits == "0" {
+		cpuLimits = getDefaultResource(ResourceLimits, corev1.ResourceCPU, component)
+	}
 	if cpuLimits != "" {
 		limits[corev1.ResourceName(corev1.ResourceCPU)] = resource.MustParse(cpuLimits)
+	}
+
+	if memoryLimits == "0" {
+		memoryLimits = getDefaultResource(ResourceLimits, corev1.ResourceMemory, component)
 	}
 	if memoryLimits != "" {
 		limits[corev1.ResourceName(corev1.ResourceMemory)] = resource.MustParse(memoryLimits)

@@ -470,7 +470,7 @@ func TestGetResources(t *testing.T) {
 			name:          "Have requests defined in resources",
 			componentName: ObservatoriumAPI,
 			raw: &mcov1beta2.AdvancedConfig{
-				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{
+				ObservatoriumAPI: &mcov1beta2.CommonSpec{
 					Resources: &corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("1"),
@@ -490,7 +490,7 @@ func TestGetResources(t *testing.T) {
 			name:          "Have limits defined in resources",
 			componentName: ObservatoriumAPI,
 			raw: &mcov1beta2.AdvancedConfig{
-				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{
+				ObservatoriumAPI: &mcov1beta2.CommonSpec{
 					Resources: &corev1.ResourceRequirements{
 						Limits: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("1"),
@@ -510,7 +510,7 @@ func TestGetResources(t *testing.T) {
 			name:          "Have limits defined in resources",
 			componentName: RBACQueryProxy,
 			raw: &mcov1beta2.AdvancedConfig{
-				RBACQueryProxy: &mcov1beta2.RBACQueryProxySpec{
+				RBACQueryProxy: &mcov1beta2.CommonSpec{
 					Resources: &corev1.ResourceRequirements{
 						Limits: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("1"),
@@ -530,7 +530,7 @@ func TestGetResources(t *testing.T) {
 			name:          "Have requests and limits defined in requests",
 			componentName: ObservatoriumAPI,
 			raw: &mcov1beta2.AdvancedConfig{
-				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{
+				ObservatoriumAPI: &mcov1beta2.CommonSpec{
 					Resources: &corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceCPU:    resource.MustParse("1"),
@@ -554,7 +554,7 @@ func TestGetResources(t *testing.T) {
 			name:          "No CPU defined in requests",
 			componentName: ObservatoriumAPI,
 			raw: &mcov1beta2.AdvancedConfig{
-				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{
+				ObservatoriumAPI: &mcov1beta2.CommonSpec{
 					Resources: &corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{},
 					},
@@ -570,7 +570,7 @@ func TestGetResources(t *testing.T) {
 			name:          "No requests defined in resources",
 			componentName: ObservatoriumAPI,
 			raw: &mcov1beta2.AdvancedConfig{
-				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{
+				ObservatoriumAPI: &mcov1beta2.CommonSpec{
 					Resources: &corev1.ResourceRequirements{},
 				},
 			},
@@ -584,7 +584,7 @@ func TestGetResources(t *testing.T) {
 			name:          "No resources defined",
 			componentName: ObservatoriumAPI,
 			raw: &mcov1beta2.AdvancedConfig{
-				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{},
+				ObservatoriumAPI: &mcov1beta2.CommonSpec{},
 			},
 			result: func(resources corev1.ResourceRequirements) bool {
 				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequets &&
@@ -600,6 +600,97 @@ func TestGetResources(t *testing.T) {
 				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequets &&
 					resources.Requests.Memory().String() == ObservatoriumAPIMemoryRequets &&
 					resources.Limits.Cpu().String() == "0" && resources.Limits.Memory().String() == "0"
+			},
+		},
+		{
+			name:          "No advanced defined",
+			componentName: Grafana,
+			raw:           nil,
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == GrafanaCPURequets &&
+					resources.Requests.Memory().String() == GrafanaMemoryRequets &&
+					resources.Limits.Cpu().String() == GrafanaCPULimits &&
+					resources.Limits.Memory().String() == GrafanaMemoryLimits
+			},
+		},
+		{
+			name:          "Have requests defined",
+			componentName: Grafana,
+			raw: &mcov1beta2.AdvancedConfig{
+				Grafana: &mcov1beta2.CommonSpec{
+					Resources: &corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU: resource.MustParse("1"),
+						},
+					},
+				},
+			},
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == "1" &&
+					resources.Requests.Memory().String() == GrafanaMemoryRequets &&
+					resources.Limits.Cpu().String() == GrafanaCPULimits &&
+					resources.Limits.Memory().String() == GrafanaMemoryLimits
+			},
+		},
+		{
+			name:          "Have limits defined",
+			componentName: Grafana,
+			raw: &mcov1beta2.AdvancedConfig{
+				Grafana: &mcov1beta2.CommonSpec{
+					Resources: &corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU: resource.MustParse("1"),
+						},
+					},
+				},
+			},
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == GrafanaCPURequets &&
+					resources.Requests.Memory().String() == GrafanaMemoryRequets &&
+					resources.Limits.Cpu().String() == "1" &&
+					resources.Limits.Memory().String() == GrafanaMemoryLimits
+			},
+		},
+		{
+			name:          "Have limits defined",
+			componentName: Grafana,
+			raw: &mcov1beta2.AdvancedConfig{
+				Grafana: &mcov1beta2.CommonSpec{
+					Resources: &corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("1"),
+							corev1.ResourceMemory: resource.MustParse("1Gi"),
+						},
+					},
+				},
+			},
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == GrafanaCPURequets &&
+					resources.Requests.Memory().String() == GrafanaMemoryRequets &&
+					resources.Limits.Cpu().String() == "1" &&
+					resources.Limits.Memory().String() == "1Gi"
+			},
+		},
+		{
+			name:          "Have limits defined",
+			componentName: ThanosQueryFrontendMemcached,
+			raw: &mcov1beta2.AdvancedConfig{
+				QueryFrontendMemcached: &mcov1beta2.CacheConfig{
+					CommonSpec: mcov1beta2.CommonSpec{
+						Resources: &corev1.ResourceRequirements{
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("1"),
+								corev1.ResourceMemory: resource.MustParse("1Gi"),
+							},
+						},
+					},
+				},
+			},
+			result: func(resources corev1.ResourceRequirements) bool {
+				return resources.Requests.Cpu().String() == ThanosCachedCPURequets &&
+					resources.Requests.Memory().String() == ThanosCachedMemoryRequets &&
+					resources.Limits.Cpu().String() == "1" &&
+					resources.Limits.Memory().String() == "1Gi"
 			},
 		},
 	}
@@ -626,7 +717,7 @@ func TestGetReplicas(t *testing.T) {
 			name:          "Have replicas defined",
 			componentName: ObservatoriumAPI,
 			raw: &mcov1beta2.AdvancedConfig{
-				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{
+				ObservatoriumAPI: &mcov1beta2.CommonSpec{
 					Replicas: &Replicas1,
 				},
 			},
@@ -638,7 +729,7 @@ func TestGetReplicas(t *testing.T) {
 			name:          "Do not allow to set 0",
 			componentName: ObservatoriumAPI,
 			raw: &mcov1beta2.AdvancedConfig{
-				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{
+				ObservatoriumAPI: &mcov1beta2.CommonSpec{
 					Replicas: &replicas0,
 				},
 			},
@@ -658,7 +749,7 @@ func TestGetReplicas(t *testing.T) {
 			name:          "No replicas defined",
 			componentName: ObservatoriumAPI,
 			raw: &mcov1beta2.AdvancedConfig{
-				ObservatoriumAPI: &mcov1beta2.ObservatoriumAPISpec{},
+				ObservatoriumAPI: &mcov1beta2.CommonSpec{},
 			},
 			result: func(replicas *int32) bool {
 				return replicas == &Replicas2

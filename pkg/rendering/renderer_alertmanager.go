@@ -4,7 +4,7 @@
 package rendering
 
 import (
-	"strings"
+	"strconv"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -54,24 +54,18 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	spec := &dep.Spec.Template.Spec
 	spec.Containers[0].ImagePullPolicy = mcoconfig.GetImagePullPolicy(r.cr.Spec)
 	args := spec.Containers[0].Args
-	for idx := range args {
-		args[idx] = strings.Replace(args[idx], "{{MCO_NAME}}", mcoconfig.GetObjectPrefix(), 1)
-		args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", mcoconfig.GetDefaultNamespace(), 1)
+
+	if *dep.Spec.Replicas > 1 {
+		for i := int32(0); i < *dep.Spec.Replicas; i++ {
+			args = append(args, "--cluster.peer="+
+				mcoconfig.GetObjectPrefix()+"-alertmanager-"+
+				strconv.Itoa(int(i))+".alertmanager-operated."+
+				mcoconfig.GetDefaultNamespace()+".svc:9094")
+		}
 	}
 
-	//TODO: need to update cluster.peer
-	// if r.cr.Spec.AvailabilityConfig == mcov1beta2.HABasic {
-	// 	// it is not for HA, so remove the cluster.peer
-	// 	for idx := 0; idx < len(args); {
-	// 		if strings.Contains(args[idx], "cluster.peer=") {
-	// 			args = util.Remove(args, args[idx])
-	// 			idx--
-	// 			continue
-	// 		}
-	// 		idx++
-	// 	}
-	// }
 	spec.Containers[0].Args = args
+	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.RBACQueryProxy, r.cr.Spec.AdvancedConfig)
 
 	spec.Containers[1].ImagePullPolicy = mcoconfig.GetImagePullPolicy(r.cr.Spec)
 	spec.NodeSelector = r.cr.Spec.NodeSelector

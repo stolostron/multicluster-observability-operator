@@ -45,7 +45,14 @@ type AdvancedConfig struct {
 	// +optional
 	RetentionConfig *RetentionConfig `json:"retentionConfig,omitempty"`
 	// The spec of rbac-query-proxy
-	RBACQueryProxy *RBACQueryProxySpec `json:"rbacQueryProxy,omitempty"`
+	// +optional
+	RBACQueryProxy *CommonSpec `json:"rbacQueryProxy,omitempty"`
+	// The spec of grafana
+	// +optional
+	Grafana *CommonSpec `json:"grafana,omitempty"`
+	// The spec of alertmanager
+	// +optional
+	Alertmanager *CommonSpec `json:"alertmanager,omitempty"`
 	// Specifies the store memcached
 	// +optional
 	StoreMemcached *CacheConfig `json:"storeMemcached,omitempty"`
@@ -54,42 +61,32 @@ type AdvancedConfig struct {
 	QueryFrontendMemcached *CacheConfig `json:"queryFrontendMemcached,omitempty"`
 	// Spec of observatorium api
 	// +optional
-	ObservatoriumAPI *ObservatoriumAPISpec `json:"observatoriumAPI,omitempty"`
+	ObservatoriumAPI *CommonSpec `json:"observatoriumAPI,omitempty"`
 	// spec for thanos-query-frontend
 	// +optional
-	QueryFrontend *QueryFrontendSpec `json:"queryFrontend,omitempty"`
+	QueryFrontend *CommonSpec `json:"queryFrontend,omitempty"`
 	// spec for thanos-query
 	// +optional
-	Query *QuerySpec `json:"query,omitempty"`
+	Query *CommonSpec `json:"query,omitempty"`
 	// spec for thanos-compact
 	// +optional
 	Compact *CompactSpec `json:"compact,omitempty"`
 	// spec for thanos-receiver
 	// +optional
-	Receive *ReceiversSpec `json:"receive,omitempty"`
+	Receive *CommonSpec `json:"receive,omitempty"`
 	// spec for thanos-rule
 	// +optional
-	Rule *RuleSpec `json:"rule,omitempty"`
+	Rule *CommonSpec `json:"rule,omitempty"`
 	// spec for thanos-store-shard
 	// +optional
-	Store *StoreSpec `json:"store,omitempty"`
+	Store *CommonSpec `json:"store,omitempty"`
 }
 
-type RBACQueryProxySpec struct {
-	// Compute Resources required by the rbac-query-proxy.
+type CommonSpec struct {
+	// Compute Resources required by this component.
 	// +optional
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
-	// Replicas for the rbac-query-proxy.
-	// +optional
-	Replicas *int32 `json:"replicas,omitempty"`
-}
-
-// Thanos Compact Spec
-type ObservatoriumAPISpec struct {
-	// Compute Resources required by the observatorium api.
-	// +optional
-	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
-	// Replicas for observatorium api.
+	// Replicas for this component.
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
 }
@@ -99,56 +96,6 @@ type CompactSpec struct {
 	// Compute Resources required by the compact.
 	// +optional
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
-}
-
-// Thanos Receivers Spec
-type ReceiversSpec struct {
-	// Compute Resources required by the Receivers.
-	// +optional
-	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
-	// Replicas for receivers.
-	// +optional
-	Replicas *int32 `json:"replicas,omitempty"`
-}
-
-// Thanos QueryFrontend Spec
-type QueryFrontendSpec struct {
-	// Compute Resources required by the Query frontend.
-	// +optional
-	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
-	// Replicas for query frontend.
-	// +optional
-	Replicas *int32 `json:"replicas,omitempty"`
-}
-
-// Thanos Store Spec
-type StoreSpec struct {
-	// Compute Resources required by the store.
-	// +optional
-	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
-	// Replicas for the store.
-	// +optional
-	Replicas *int32 `json:"replicas,omitempty"`
-}
-
-// Thanos Ruler Spec
-type RuleSpec struct {
-	// Compute Resources required by the ruler.
-	// +optional
-	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
-	// Replicas for the ruler.
-	// +optional
-	Replicas *int32 `json:"replicas,omitempty"`
-}
-
-// Thanos Query Spec
-type QuerySpec struct {
-	// Compute Resources required by the query.
-	// +optional
-	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
-	// Replicas for the query.
-	// +optional
-	Replicas *int32 `json:"replicas,omitempty"`
 }
 
 // CacheConfig is the spec of memcached.
@@ -162,12 +109,8 @@ type CacheConfig struct {
 	// Max simultaneous connections of Memcached.
 	// +optional
 	ConnectionLimit *int32 `json:"connectionLimit,omitempty"`
-	// Compute Resources required by the memory cached.
-	// +optional
-	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
-	// Replicas for the memory cached.
-	// +optional
-	Replicas *int32 `json:"replicas,omitempty"`
+
+	CommonSpec `json:",inline"`
 }
 
 // RetentionConfig is the spec of retention configurations.
