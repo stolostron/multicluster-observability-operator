@@ -4,9 +4,10 @@
 package multiclusterobservability
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"reflect"
+	"time"
 
 	obsv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -21,6 +22,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/yaml"
 
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
@@ -91,8 +93,9 @@ func GenerateObservatoriumCR(
 
 	oldSpec := observatoriumCRFound.Spec
 	newSpec := observatoriumCR.Spec
-	// @TODO: resolve design issue on whether enable/disable downsampling will affact retension period config
-	if reflect.DeepEqual(newSpec, oldSpec) {
+	oldSpecBytes, _ := yaml.Marshal(oldSpec)
+	newSpecBytes, _ := yaml.Marshal(newSpec)
+	if bytes.Equal(newSpecBytes, oldSpecBytes) {
 		return nil, nil
 	}
 
@@ -107,7 +110,9 @@ func GenerateObservatoriumCR(
 	newObj.Spec = newSpec
 	err = cl.Update(context.TODO(), newObj)
 	if err != nil {
-		return &ctrl.Result{}, err
+		log.Error(err, "Failed to update observatorium CR %s", observatoriumCR.Name)
+		// add timeout for update failure avoid update conflict
+		return &ctrl.Result{Requeue: true, RequeueAfter: time.Second * 3}, err
 	}
 
 	// delete the store-share statefulset in scalein scenario
