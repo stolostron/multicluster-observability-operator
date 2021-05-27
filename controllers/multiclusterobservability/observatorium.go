@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"time"
 
 	obsv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -110,7 +111,9 @@ func GenerateObservatoriumCR(
 	newObj.Spec = newSpec
 	err = cl.Update(context.TODO(), newObj)
 	if err != nil {
-		return &ctrl.Result{}, err
+		log.Error(err, "Failed to update observatorium CR %s", observatoriumCR.Name)
+		// add timeout for update failure avoid update conflict
+		return &ctrl.Result{Requeue: true, RequeueAfter: time.Second * 3}, err
 	}
 
 	// delete the store-share statefulset in scalein scenario
