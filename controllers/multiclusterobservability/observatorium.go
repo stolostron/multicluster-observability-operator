@@ -4,9 +4,9 @@
 package multiclusterobservability
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"reflect"
 
 	obsv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -21,6 +21,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/yaml"
 
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
@@ -92,7 +93,9 @@ func GenerateObservatoriumCR(
 	oldSpec := observatoriumCRFound.Spec
 	newSpec := observatoriumCR.Spec
 	// @TODO: resolve design issue on whether enable/disable downsampling will affact retension period config
-	if reflect.DeepEqual(newSpec, oldSpec) {
+	oldSpecBytes, _ := yaml.Marshal(oldSpec)
+	newSpecBytes, _ := yaml.Marshal(newSpec)
+	if bytes.Equal(newSpecBytes, oldSpecBytes) {
 		return nil, nil
 	}
 
