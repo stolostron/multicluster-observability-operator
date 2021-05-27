@@ -136,7 +136,7 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 				if found {
 					spec.Containers[0].Image = image
 				}
-				spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.RBACQueryProxy, r.cr.Spec.AdvancedConfig)
+				spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.Grafana, r.cr.Spec.AdvancedConfig)
 				found, image = mcoconfig.ReplaceImage(r.cr.Annotations, spec.Containers[1].Image,
 					mcoconfig.GrafanaDashboardLoaderKey)
 				if found {
