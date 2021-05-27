@@ -65,7 +65,7 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	}
 
 	spec.Containers[0].Args = args
-	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.RBACQueryProxy, r.cr.Spec.AdvancedConfig)
+	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.Alertmanager, r.cr.Spec.AdvancedConfig)
 
 	spec.Containers[1].ImagePullPolicy = mcoconfig.GetImagePullPolicy(r.cr.Spec)
 	spec.NodeSelector = r.cr.Spec.NodeSelector
