@@ -1019,7 +1019,7 @@ data:
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(sum:apiserver_request_total:5m, cluster)",
+              "query": "label_values(process_resident_memory_bytes, cluster)",
               "refId": "Observatorium-cluster-Variable-Query"
             },
             "refresh": 1,
@@ -1050,7 +1050,7 @@ data:
             "name": "instance",
             "options": [],
             "query": {
-              "query": "label_values(sum:apiserver_request_total:5m{cluster=\"$cluster\"}, instance)",
+              "query": "label_values(process_resident_memory_bytes{cluster=\"$cluster\"}, instance)",
               "refId": "Observatorium-instance-Variable-Query"
             },
             "refresh": 1,
