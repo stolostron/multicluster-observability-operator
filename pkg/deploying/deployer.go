@@ -175,37 +175,69 @@ func (d *Deployer) updateConfigMap(desiredObj, runtimeObj *unstructured.Unstruct
 }
 
 func (d *Deployer) updateSecret(desiredObj, runtimeObj *unstructured.Unstructured) error {
+	runtimeJSON, _ := runtimeObj.MarshalJSON()
+	runtimeSecret := &corev1.Secret{}
+	err := json.Unmarshal(runtimeJSON, runtimeSecret)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime Secret %s", runtimeObj.GetName()))
+	}
+
 	desiredJSON, _ := desiredObj.MarshalJSON()
 	desiredSecret := &corev1.Secret{}
-	err := json.Unmarshal(desiredJSON, desiredSecret)
+	err = json.Unmarshal(desiredJSON, desiredSecret)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Failed to Unmarshal desired Secret %s", desiredObj.GetName()))
 	}
 
-	log.Info("Update", "Kind:", desiredObj.GroupVersionKind(), "Name:", desiredObj.GetName())
-	return d.client.Update(context.TODO(), desiredSecret)
+	if !apiequality.Semantic.DeepDerivative(desiredSecret.Data, runtimeSecret.Data) {
+		log.Info("Update", "Kind:", desiredObj.GroupVersionKind(), "Name:", desiredObj.GetName())
+		return d.client.Update(context.TODO(), desiredSecret)
+	}
+	return nil
 }
 
 func (d *Deployer) updateClusterRole(desiredObj, runtimeObj *unstructured.Unstructured) error {
+	runtimeJSON, _ := runtimeObj.MarshalJSON()
+	runtimeClusterRole := &rbacv1.ClusterRole{}
+	err := json.Unmarshal(runtimeJSON, runtimeClusterRole)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime ClusterRole %s", runtimeObj.GetName()))
+	}
+
 	desiredJSON, _ := desiredObj.MarshalJSON()
 	desiredClusterRole := &rbacv1.ClusterRole{}
-	err := json.Unmarshal(desiredJSON, desiredClusterRole)
+	err = json.Unmarshal(desiredJSON, desiredClusterRole)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Failed to Unmarshal desired ClusterRole %s", desiredObj.GetName()))
 	}
 
-	log.Info("Update", "Kind:", desiredObj.GroupVersionKind(), "Name:", desiredObj.GetName())
-	return d.client.Update(context.TODO(), desiredClusterRole)
+	if !apiequality.Semantic.DeepDerivative(desiredClusterRole.Rules, runtimeClusterRole.Rules) ||
+		!apiequality.Semantic.DeepDerivative(desiredClusterRole.AggregationRule, runtimeClusterRole.AggregationRule) {
+		log.Info("Update", "Kind:", desiredObj.GroupVersionKind(), "Name:", desiredObj.GetName())
+		return d.client.Update(context.TODO(), desiredClusterRole)
+	}
+	return nil
 }
 
 func (d *Deployer) updateClusterRoleBinding(desiredObj, runtimeObj *unstructured.Unstructured) error {
+	runtimeJSON, _ := runtimeObj.MarshalJSON()
+	runtimeClusterRoleBinding := &rbacv1.ClusterRoleBinding{}
+	err := json.Unmarshal(runtimeJSON, runtimeClusterRoleBinding)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime ClusterRoleBinding %s", runtimeObj.GetName()))
+	}
+
 	desiredJSON, _ := desiredObj.MarshalJSON()
 	desiredClusterRoleBinding := &rbacv1.ClusterRoleBinding{}
-	err := json.Unmarshal(desiredJSON, desiredClusterRoleBinding)
+	err = json.Unmarshal(desiredJSON, desiredClusterRoleBinding)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Failed to Unmarshal desired ClusterRoleBinding %s", desiredObj.GetName()))
 	}
 
-	log.Info("Update", "Kind:", desiredObj.GroupVersionKind(), "Name:", desiredObj.GetName())
-	return d.client.Update(context.TODO(), desiredClusterRoleBinding)
+	if !apiequality.Semantic.DeepDerivative(desiredClusterRoleBinding.Subjects, runtimeClusterRoleBinding.Subjects) ||
+		!apiequality.Semantic.DeepDerivative(desiredClusterRoleBinding.RoleRef, runtimeClusterRoleBinding.RoleRef) {
+		log.Info("Update", "Kind:", desiredObj.GroupVersionKind(), "Name:", desiredObj.GetName())
+		return d.client.Update(context.TODO(), desiredClusterRoleBinding)
+	}
+	return nil
 }
