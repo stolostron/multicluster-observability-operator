@@ -108,7 +108,6 @@ spec:
         # - --client-id=alertmanager
         # - --client-secret=alertmanagersecret
         - --openshift-service-account=alertmanager
-        - --cookie-secret=AAECAwQFBgcICQoLDA0OFw==
         - --skip-provider-button=true
         - --openshift-ca=/etc/pki/tls/cert.pem
         - --openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
