@@ -7,9 +7,6 @@ data:
     names:
       - :node_memory_MemAvailable_bytes:sum
       - ALERTS
-      - apiserver_request_count
-      - apiserver_request_latencies_summary_count
-      - apiserver_request_latencies_summary_sum
       - authenticated_user_requests
       - authentication_attempts
       - cluster:capacity_cpu_cores:sum
@@ -147,3 +144,7 @@ data:
         expr: sum(grpc_server_started_total{job=\"etcd\",grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\"}) - sum(grpc_server_handled_total{job=\"etcd\",grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\"})
       - record: active_streams_lease:grpc_server_handled_total:sum
         expr: sum(grpc_server_started_total{job=\"etcd\",grpc_service=\"etcdserverpb.Lease\",grpc_type=\"bidi_stream\"}) - sum(grpc_server_handled_total{job=\"etcd\",grpc_service=\"etcdserverpb.Lease\",grpc_type=\"bidi_stream\"})
+      - record: cluster:kube_pod_container_resource_requests:cpu:sum
+        expr: sum(kube_pod_container_resource_requests{resource=\"cpu\"})
+      - record: cluster:kube_pod_container_resource_requests:memory:sum
+        expr: sum(kube_pod_container_resource_requests{resource=\"memory\"})
