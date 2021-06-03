@@ -59,6 +59,8 @@ var (
 	isRuleStorageSizeChanged         = false
 	isReceiveStorageSizeChanged      = false
 	isStoreStorageSizeChanged        = false
+	updateStatusProcessStarted       = false
+	updateStatusProcessStop          = make(chan struct{})
 )
 
 // MultiClusterObservabilityReconciler reconciles a MultiClusterObservability object
@@ -229,7 +231,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	result, err = r.UpdateStatus(instance)
+	result, err = r.updateStatus(instance)
 	if result != nil {
 		return *result, err
 	}
@@ -237,8 +239,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	return ctrl.Result{}, nil
 }
 
-// UpdateStatus override UpdateStatus interface
-func (r *MultiClusterObservabilityReconciler) UpdateStatus(
+// updateStatus override UpdateStatus interface
+func (r *MultiClusterObservabilityReconciler) updateStatus(
 	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
 	log.Info("Update MCO status")
 	oldStatus := &mco.Status
@@ -266,7 +268,7 @@ func (r *MultiClusterObservabilityReconciler) UpdateStatus(
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Failed to update %s status when update conflict", mco.Name))
 				// add timeout for update failure avoid update conflict
-				return &ctrl.Result{RequeueAfter: time.Second * 3}, nil
+				return &ctrl.Result{RequeueAfter: time.Second}, nil
 			}
 			return nil, nil
 		}
@@ -276,12 +278,32 @@ func (r *MultiClusterObservabilityReconciler) UpdateStatus(
 	}
 
 	if findStatusCondition(newStatus.Conditions, "Ready") == nil {
-		// add timeout to waiting for all components ready and then update mco status
-		log.Info("Waiting for all components ready", "Reason", "Failed to found Ready status")
-		return &ctrl.Result{RequeueAfter: time.Second * 30}, nil
+		if !updateStatusProcessStarted {
+			go r.startUpdateStatusReadyProcess(mco)
+		}
+	} else {
+		updateStatusProcessStop <- struct{}{}
 	}
 
 	return nil, nil
+}
+
+func (r *MultiClusterObservabilityReconciler) startUpdateStatusReadyProcess(
+	mco *mcov1beta2.MultiClusterObservability) {
+	updateStatusProcessStarted = true
+	defer close(updateStatusProcessStop)
+	for {
+		select {
+		case <-updateStatusProcessStop:
+			log.Info("stop")
+			updateStatusProcessStarted = false
+			return
+		default:
+			log.Info("running")
+			r.updateStatus(mco)
+			time.Sleep(2 * time.Second)
+		}
+	}
 }
 
 // labelsForMultiClusterMonitoring returns the labels for selecting the resources
