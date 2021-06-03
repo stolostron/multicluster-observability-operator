@@ -1,6 +1,7 @@
 resources:
 - alertmanager-serviceaccount.yaml
 - alertmanager-config.yaml
+- alertmanager-proxy.yaml
 - alertmanager-statefulset.yaml
 - alertmanager-operated.yaml
 - alertmanager-service.yaml
