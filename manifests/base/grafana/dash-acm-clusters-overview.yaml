@@ -489,7 +489,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "(sum(kube_pod_container_resource_requests{resource=\"cpu\"}) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__interval])) by (cluster))",
+              "expr": "(sum(cluster:kube_pod_container_resource_requests:cpu:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__interval])) by (cluster))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -499,7 +499,7 @@ data:
               "refId": "C"
             },
             {
-              "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\"}) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)",
+              "expr": "sum(cluster:kube_pod_container_resource_requests:cpu:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -729,7 +729,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "(sum(kube_pod_container_resource_requests{resource=\"memory\"}) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster))\n-\n(1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster))",
+              "expr": "(sum(cluster:kube_pod_container_resource_requests:memory:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster))\n-\n(1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster))",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -738,7 +738,7 @@ data:
               "refId": "C"
             },
             {
-              "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\"}) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)",
+              "expr": "sum(cluster:kube_pod_container_resource_requests:memory:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -980,7 +980,7 @@ data:
               "refId": "B"
             },
             {
-              "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\"}) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)",
+              "expr": "sum(cluster:kube_pod_container_resource_requests:cpu:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1309,7 +1309,7 @@ data:
               "refId": "F"
             },
             {
-              "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\"}) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)",
+              "expr": "sum(cluster:kube_pod_container_resource_requests:memory:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1732,41 +1732,6 @@ data:
             "regex": "",
             "skipUrlSync": false,
             "type": "datasource"
-          },
-          {
-            "allValue": null,
-            "current": {
-              "selected": true,
-              "text": [
-                "All"
-              ],
-              "value": [
-                "$__all"
-              ]
-            },
-            "datasource": "$datasource",
-            "definition": "label_values(node_cpu_seconds_total, cluster)",
-            "description": null,
-            "error": null,
-            "hide": 2,
-            "includeAll": true,
-            "label": "cluster",
-            "multi": true,
-            "name": "cluster",
-            "options": [],
-            "query": {
-              "query": "label_values(node_cpu_seconds_total, cluster)",
-              "refId": "Observatorium-cluster-Variable-Query"
-            },
-            "refresh": 1,
-            "regex": "",
-            "skipUrlSync": false,
-            "sort": 1,
-            "tagValuesQuery": "",
-            "tags": [],
-            "tagsQuery": "",
-            "type": "query",
-            "useTags": false
           }
         ]
       },
