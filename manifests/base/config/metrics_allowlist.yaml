@@ -7,6 +7,10 @@ data:
     names:
       - :node_memory_MemAvailable_bytes:sum
       - ALERTS
+      - acm_policyreport_info
+      - apiserver_request_count
+      - apiserver_request_latencies_summary_count
+      - apiserver_request_latencies_summary_sum
       - authenticated_user_requests
       - authentication_attempts
       - cluster:capacity_cpu_cores:sum
