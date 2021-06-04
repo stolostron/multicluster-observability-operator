@@ -144,6 +144,8 @@ func (d *Deployer) updateService(desiredObj, runtimeObj *unstructured.Unstructur
 	}
 
 	if !apiequality.Semantic.DeepDerivative(desiredService.Spec, runtimeService.Spec) {
+		desiredService.ObjectMeta.ResourceVersion = runtimeService.ObjectMeta.ResourceVersion
+		desiredService.Spec.ClusterIP = runtimeService.Spec.ClusterIP
 		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
 		return d.client.Update(context.TODO(), desiredService)
 	}
