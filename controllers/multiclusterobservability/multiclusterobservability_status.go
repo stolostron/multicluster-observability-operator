@@ -10,6 +10,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -18,6 +19,76 @@ import (
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
+
+var (
+	stopStatusUpdate       = make(chan struct{})
+	stopCheckReady         = make(chan struct{})
+	requeueStatusUpdate    = make(chan struct{})
+	mcoCreateTimeout       = 30 * time.Minute
+	updateStatusIsRunnning = false
+)
+
+// Start goroutines to update MCO status
+func StartStatusUpdate(c client.Client, instance *mcov1beta2.MultiClusterObservability) {
+	if !updateStatusIsRunnning {
+		go func() {
+			updateStatusIsRunnning = true
+			defer close(stopStatusUpdate)
+			defer close(requeueStatusUpdate)
+			for {
+				select {
+				case <-stopStatusUpdate:
+					updateStatusIsRunnning = false
+					stopCheckReady <- struct{}{}
+					fmt.Println("stop")
+					return
+				case <-requeueStatusUpdate:
+					fmt.Println("requeue")
+					updateStatus(c, instance)
+					if checkReadyStatus(c, instance) {
+						stopCheckReady <- struct{}{}
+					}
+				}
+			}
+		}()
+
+		go func() {
+			defer close(stopCheckReady)
+			for {
+				select {
+				case <-stopCheckReady:
+					fmt.Println("stopCheckReady")
+					return
+				case <-time.After(2 * time.Second):
+					fmt.Println("runCheckReady")
+					if checkReadyStatus(c, instance) {
+						requeueStatusUpdate <- struct{}{}
+					}
+				}
+			}
+		}()
+	}
+}
+
+// updateStatus override UpdateStatus interface
+func updateStatus(c client.Client, instance *mcov1beta2.MultiClusterObservability) {
+	oldStatus := instance.Status
+	newStatus := oldStatus.DeepCopy()
+	updateInstallStatus(&newStatus.Conditions)
+	updateReadyStatus(&newStatus.Conditions, c, instance)
+	updateAddonSpecStatus(&newStatus.Conditions, instance)
+	fillupStatus(&newStatus.Conditions)
+	instance.Status.Conditions = newStatus.Conditions
+	if !apiequality.Semantic.DeepDerivative(newStatus.Conditions, oldStatus.Conditions) {
+		err := c.Status().Update(context.TODO(), instance)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("failed to update status of mco %s", instance.Name))
+			return
+		}
+	}
+
+	return
+}
 
 // fillup the status if there is no status and lastTransitionTime in upgrade case
 func fillupStatus(conditions *[]mcoshared.Condition) {
@@ -33,6 +104,29 @@ func fillupStatus(conditions *[]mcoshared.Condition) {
 
 func updateInstallStatus(conditions *[]mcoshared.Condition) {
 	setStatusCondition(conditions, *newInstallingCondition())
+}
+
+func checkReadyStatus(c client.Client, mco *mcov1beta2.MultiClusterObservability) bool {
+
+	if findStatusCondition(mco.Status.Conditions, "Ready") != nil {
+		return true
+	}
+
+	objStorageStatus := checkObjStorageStatus(c, mco)
+	if objStorageStatus != nil {
+		return false
+	}
+
+	deployStatus := checkDeployStatus(c, mco)
+	if deployStatus != nil {
+		return false
+	}
+
+	statefulStatus := checkStatefulSetStatus(c, mco)
+	if statefulStatus != nil {
+		return false
+	}
+	return true
 }
 
 func updateReadyStatus(

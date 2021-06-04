@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"time"
 
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
@@ -59,8 +58,6 @@ var (
 	isRuleStorageSizeChanged         = false
 	isReceiveStorageSizeChanged      = false
 	isStoreStorageSizeChanged        = false
-	updateStatusProcessStarted       = false
-	updateStatusProcessStop          = make(chan struct{})
 )
 
 // MultiClusterObservabilityReconciler reconciles a MultiClusterObservability object
@@ -105,6 +102,9 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
 	}
+
+	// start to update mco status
+	StartStatusUpdate(r.Client, instance)
 
 	// Init finalizers
 	isTerminating, err := r.initFinalization(instance)
@@ -231,79 +231,10 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	result, err = r.updateStatus(instance)
-	if result != nil {
-		return *result, err
-	}
+	//update status
+	requeueStatusUpdate <- struct{}{}
 
 	return ctrl.Result{}, nil
-}
-
-// updateStatus override UpdateStatus interface
-func (r *MultiClusterObservabilityReconciler) updateStatus(
-	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
-	log.Info("Update MCO status")
-	oldStatus := &mco.Status
-	newStatus := oldStatus.DeepCopy()
-	updateInstallStatus(&newStatus.Conditions)
-	updateReadyStatus(&newStatus.Conditions, r.Client, mco)
-	updateAddonSpecStatus(&newStatus.Conditions, mco)
-	fillupStatus(&newStatus.Conditions)
-	mco.Status.Conditions = newStatus.Conditions
-	err := r.Client.Status().Update(context.TODO(), mco)
-	if err != nil {
-		if apierrors.IsConflict(err) {
-			// Error from object being modified is normal behavior and should not be treated like an error
-			log.Info("Failed to update status", "Reason", "Object has been modified")
-			found := &mcov1beta2.MultiClusterObservability{}
-			err = r.Client.Get(context.TODO(), types.NamespacedName{
-				Name: config.GetMonitoringCRName(),
-			}, found)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Failed to get existing mco %s", mco.Name))
-				return &ctrl.Result{}, err
-			}
-			mco.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-			err = r.Client.Status().Update(context.TODO(), mco)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Failed to update %s status when update conflict", mco.Name))
-				// add timeout for update failure avoid update conflict
-				return &ctrl.Result{RequeueAfter: time.Second}, nil
-			}
-			return nil, nil
-		}
-
-		log.Error(err, fmt.Sprintf("Failed to update %s status", mco.Name))
-		return &ctrl.Result{RequeueAfter: time.Second}, nil
-	}
-
-	if findStatusCondition(newStatus.Conditions, "Ready") == nil {
-		if !updateStatusProcessStarted {
-			go r.startUpdateStatusReadyProcess(mco)
-		}
-	} else {
-		updateStatusProcessStop <- struct{}{}
-	}
-
-	return nil, nil
-}
-
-func (r *MultiClusterObservabilityReconciler) startUpdateStatusReadyProcess(
-	mco *mcov1beta2.MultiClusterObservability) {
-	updateStatusProcessStarted = true
-	defer close(updateStatusProcessStop)
-	for {
-		select {
-		case <-updateStatusProcessStop:
-			log.Info("stop")
-			updateStatusProcessStarted = false
-			return
-		default:
-			log.Info("running")
-			r.updateStatus(mco)
-			time.Sleep(2 * time.Second)
-		}
-	}
 }
 
 // labelsForMultiClusterMonitoring returns the labels for selecting the resources
@@ -337,6 +268,10 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 			return false, err
 		}
 		log.Info("Finalizer removed from mco resource")
+
+		// stop update status routine
+		stopStatusUpdate <- struct{}{}
+
 		return true, nil
 	}
 	if !util.Contains(mco.GetFinalizers(), resFinalizer) {
