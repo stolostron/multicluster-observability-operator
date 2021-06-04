@@ -33,8 +33,8 @@ func StartStatusUpdate(c client.Client, instance *mcov1beta2.MultiClusterObserva
 	if !updateStatusIsRunnning {
 		go func() {
 			updateStatusIsRunnning = true
-			defer close(stopStatusUpdate)
-			defer close(requeueStatusUpdate)
+			// defer close(stopStatusUpdate)
+			// defer close(requeueStatusUpdate)
 			for {
 				select {
 				case <-stopStatusUpdate:
@@ -53,7 +53,7 @@ func StartStatusUpdate(c client.Client, instance *mcov1beta2.MultiClusterObserva
 		}()
 
 		go func() {
-			defer close(stopCheckReady)
+			// defer close(stopCheckReady)
 			for {
 				select {
 				case <-stopCheckReady:
