@@ -21,11 +21,11 @@ import (
 )
 
 var (
-	stopStatusUpdate       = make(chan struct{})
-	stopCheckReady         = make(chan struct{})
-	requeueStatusUpdate    = make(chan struct{})
-	mcoCreateTimeout       = 30 * time.Minute
-	updateStatusIsRunnning = false
+	stopStatusUpdate            = make(chan struct{})
+	stopCheckReady              = make(chan struct{})
+	requeueStatusUpdate         = make(chan struct{})
+	updateStatusIsRunnning      = false
+	updateReadyStatusIsRunnning = false
 )
 
 // Start goroutines to update MCO status
@@ -40,27 +40,30 @@ func StartStatusUpdate(c client.Client, instance *mcov1beta2.MultiClusterObserva
 				case <-stopStatusUpdate:
 					updateStatusIsRunnning = false
 					stopCheckReady <- struct{}{}
-					fmt.Println("stop")
+					log.V(1).Info("status update goroutine is stopped.")
 					return
 				case <-requeueStatusUpdate:
-					fmt.Println("requeue")
-					updateStatus(c, instance)
-					if checkReadyStatus(c, instance) {
+					log.V(1).Info("status update goroutine is triggered.")
+					updateStatus(c)
+					if updateReadyStatusIsRunnning && checkReadyStatus(c, instance) {
 						stopCheckReady <- struct{}{}
 					}
 				}
 			}
 		}()
-
+	}
+	if !updateReadyStatusIsRunnning {
 		go func() {
+			updateReadyStatusIsRunnning = true
 			// defer close(stopCheckReady)
 			for {
 				select {
 				case <-stopCheckReady:
-					fmt.Println("stopCheckReady")
+					updateReadyStatusIsRunnning = false
+					log.V(1).Info("check status ready goroutine is stopped.")
 					return
 				case <-time.After(2 * time.Second):
-					fmt.Println("runCheckReady")
+					log.V(1).Info("check status ready goroutine is triggered.")
 					if checkReadyStatus(c, instance) {
 						requeueStatusUpdate <- struct{}{}
 					}
@@ -71,7 +74,15 @@ func StartStatusUpdate(c client.Client, instance *mcov1beta2.MultiClusterObserva
 }
 
 // updateStatus override UpdateStatus interface
-func updateStatus(c client.Client, instance *mcov1beta2.MultiClusterObservability) {
+func updateStatus(c client.Client) {
+	instance := &mcov1beta2.MultiClusterObservability{}
+	err := c.Get(context.TODO(), types.NamespacedName{
+		Name: config.GetMonitoringCRName(),
+	}, instance)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to get existing mco %s", instance.Name))
+		return
+	}
 	oldStatus := instance.Status
 	newStatus := oldStatus.DeepCopy()
 	updateInstallStatus(&newStatus.Conditions)
