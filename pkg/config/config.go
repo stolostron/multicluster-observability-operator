@@ -83,9 +83,9 @@ const (
 	ThanosReceiveControllerKey    = "thanos_receive_controller"
 	ThanosReceiveControllerImgTag = "master-2021-02-08-36d6090"
 
-	ThanosImgRepo = "quay.io/thanos"
+	ThanosImgRepo = DefaultImgRepository
 	ThanosImgName = "thanos"
-	ThanosImgTag  = "master-2020-08-12-70f89d83"
+	ThanosImgTag  = "2.2.0-07de623d1f9a049e184dbec3716a3de05b270a1f"
 
 	MemcachedImgRepo = "docker.io"
 	MemcachedImgName = "memcached"
