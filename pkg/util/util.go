@@ -5,6 +5,8 @@ package util
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -72,4 +74,15 @@ func GetStatefulSetList(c client.Client, matchLabels map[string]string) ([]appsv
 		return nil, err
 	}
 	return stsList.Items, nil
+}
+
+// GeneratePassword returns a base64 encoded securely random bytes.
+func GeneratePassword(n int) (string, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(b), err
 }

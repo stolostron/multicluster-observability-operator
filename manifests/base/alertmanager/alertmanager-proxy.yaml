@@ -1,0 +1,12 @@
+apiVersion: v1
+data: {}
+kind: Secret
+metadata:
+  labels:
+    app.kubernetes.io/name: alertmanager-proxy
+  name: alertmanager-proxy
+  namespace: open-cluster-management
+  annotations:
+    skip-creation-if-exist: "true"
+type: Opaque
+

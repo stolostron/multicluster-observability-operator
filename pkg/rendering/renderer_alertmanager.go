@@ -25,7 +25,7 @@ func (r *Renderer) newAlertManagerRenderer() {
 		"ConfigMap":             r.renderNamespace,
 		"ClusterRole":           r.renderClusterRole,
 		"ClusterRoleBinding":    r.renderClusterRoleBinding,
-		"Secret":                r.renderNamespace,
+		"Secret":                r.renderAlertManagerSecret,
 		"Role":                  r.renderNamespace,
 		"RoleBinding":           r.renderNamespace,
 		"Ingress":               r.renderNamespace,
@@ -106,6 +106,34 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	}
 
 	return &unstructured.Unstructured{Object: unstructuredObj}, nil
+}
+
+func (r *Renderer) renderAlertManagerSecret(res *resource.Resource) (*unstructured.Unstructured, error) {
+	u, err := r.renderNamespace(res)
+	if err != nil {
+		return nil, err
+	}
+
+	if u.GetName() == "alertmanager-proxy" {
+		obj := util.GetK8sObj(u.GetKind())
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, obj)
+		if err != nil {
+			return nil, err
+		}
+		srt := obj.(*corev1.Secret)
+		p, err := util.GeneratePassword(43)
+		if err != nil {
+			return nil, err
+		}
+		srt.Data["session_secret"] = []byte(p)
+		unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+		if err != nil {
+			return nil, err
+		}
+		return &unstructured.Unstructured{Object: unstructuredObj}, nil
+	}
+
+	return u, nil
 }
 
 func (r *Renderer) renderAlertManagerTemplates(templates []*resource.Resource) ([]*unstructured.Unstructured, error) {
