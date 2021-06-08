@@ -230,13 +230,10 @@ func TestStartStatusUpdate(t *testing.T) {
 	objs := []runtime.Object{mco, createSecret("test", "test", mcoconfig.GetDefaultMCONamespace())}
 	cl := fake.NewFakeClient(objs...)
 
-	go StartStatusUpdate(cl, mco)
+	StartStatusUpdate(cl, mco)
 
 	requeueStatusUpdate <- struct{}{}
-
 	time.Sleep(3 * time.Second)
-
-	requeueStatusUpdate <- struct{}{}
 
 	instance := &mcov1beta2.MultiClusterObservability{}
 	_ = cl.Get(context.TODO(), types.NamespacedName{
@@ -246,6 +243,4 @@ func TestStartStatusUpdate(t *testing.T) {
 	if findStatusCondition(instance.Status.Conditions, "Installing") == nil {
 		t.Fatal("failed to update mco status")
 	}
-
-	time.Sleep(10 * time.Second)
 }
