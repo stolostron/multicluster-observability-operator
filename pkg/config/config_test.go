@@ -787,8 +787,8 @@ func TestGetOBAResources(t *testing.T) {
 			result: func(resources corev1.ResourceRequirements) bool {
 				return resources.Requests.Cpu().String() == "1" &&
 					resources.Requests.Memory().String() == "1Gi" &&
-					resources.Limits.Cpu().String() == MetricsCollectorCPULimits &&
-					resources.Limits.Memory().String() == MetricsCollectorMemoryLimits
+					resources.Limits.Cpu().String() == "0" &&
+					resources.Limits.Memory().String() == "0"
 			},
 		},
 		{
@@ -805,7 +805,7 @@ func TestGetOBAResources(t *testing.T) {
 				return resources.Requests.Cpu().String() == MetricsCollectorCPURequets &&
 					resources.Requests.Memory().String() == MetricsCollectorMemoryRequets &&
 					resources.Limits.Cpu().String() == "1" &&
-					resources.Limits.Memory().String() == MetricsCollectorMemoryLimits
+					resources.Limits.Memory().String() == "0"
 			},
 		},
 		{
@@ -817,8 +817,8 @@ func TestGetOBAResources(t *testing.T) {
 			result: func(resources corev1.ResourceRequirements) bool {
 				return resources.Requests.Cpu().String() == MetricsCollectorCPURequets &&
 					resources.Requests.Memory().String() == MetricsCollectorMemoryRequets &&
-					resources.Limits.Cpu().String() == MetricsCollectorCPULimits &&
-					resources.Limits.Memory().String() == MetricsCollectorMemoryLimits
+					resources.Limits.Cpu().String() == "0" &&
+					resources.Limits.Memory().String() == "0"
 			},
 		},
 	}

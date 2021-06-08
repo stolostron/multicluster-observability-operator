@@ -185,8 +185,6 @@ const (
 
 	MetricsCollectorCPURequets    = "100m"
 	MetricsCollectorMemoryRequets = "100Mi"
-	MetricsCollectorCPULimits     = "100m"
-	MetricsCollectorMemoryLimits  = "600Mi"
 
 	ObservatoriumAPI             = "observatorium-api"
 	ThanosCompact                = "thanos-compact"
@@ -878,9 +876,7 @@ func GetResources(component string, advanced *observabilityv1beta2.AdvancedConfi
 
 func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec) *corev1.ResourceRequirements {
 	cpuRequests := MetricsCollectorCPURequets
-	cpuLimits := MetricsCollectorCPULimits
 	memoryRequests := MetricsCollectorMemoryRequets
-	memoryLimits := MetricsCollectorMemoryLimits
 
 	if oba.Resources != nil {
 		if len(oba.Resources.Requests) != 0 {
@@ -891,17 +887,8 @@ func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec) *corev1.ResourceRequ
 				memoryRequests = oba.Resources.Requests.Memory().String()
 			}
 		}
-		if len(oba.Resources.Limits) != 0 {
-			if oba.Resources.Limits.Cpu().String() != "0" {
-				cpuLimits = oba.Resources.Limits.Cpu().String()
-			}
-			if oba.Resources.Limits.Memory().String() != "0" {
-				memoryLimits = oba.Resources.Limits.Memory().String()
-			}
-		}
 	}
 
-	resourceReq := &corev1.ResourceRequirements{}
 	requests := corev1.ResourceList{}
 	limits := corev1.ResourceList{}
 	if cpuRequests != "" {
@@ -910,12 +897,17 @@ func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec) *corev1.ResourceRequ
 	if memoryRequests != "" {
 		requests[corev1.ResourceName(corev1.ResourceMemory)] = resource.MustParse(memoryRequests)
 	}
-	if cpuLimits != "" {
+
+	if oba.Resources != nil && oba.Resources.Limits.Cpu().String() != "0" {
+		cpuLimits := oba.Resources.Limits.Cpu().String()
 		limits[corev1.ResourceName(corev1.ResourceCPU)] = resource.MustParse(cpuLimits)
 	}
-	if memoryLimits != "" {
+	if oba.Resources != nil && oba.Resources.Limits.Memory().String() != "0" {
+		memoryLimits := oba.Resources.Limits.Memory().String()
 		limits[corev1.ResourceName(corev1.ResourceMemory)] = resource.MustParse(memoryLimits)
 	}
+
+	resourceReq := &corev1.ResourceRequirements{}
 	resourceReq.Limits = limits
 	resourceReq.Requests = requests
 
