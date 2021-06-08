@@ -16,7 +16,7 @@ service/grafana-dev created
 ingress.extensions/grafana-dev created
 ```
 
-## Swith user to be grafana admin
+## Switch user to be grafana admin
 
 Secondly, you need to ask a user to login `https://$ACM_URL/grafana-dev/` before use this script `switch-to-grafana-admin.sh` to switch the user to be a grafana admin.
 
@@ -66,6 +66,13 @@ Note: if your dashboard is not in `General` folder,  you can specify the folder 
 ```
 annotations:
   observability.open-cluster-management.io/dashboard-folder: Custom
+```
+
+6. Update metrics allowlist
+
+When you generate a new dashboard like [example/custom-dashboard.yaml](example/custom-dashboard.yaml), there may have no data when you first create it. This is because it depends on some new metrics which don't upload to hub by default. You also need to update custom metrics allowlist, so that new metrics can be uploaded to the server and shown in dashboard. In this example, run the following command to update metrics.
+```yaml
+oc apply -f observability-metrics-custom-allowlist.yaml
 ```
 
 ## Uninstall grafana develop instance
