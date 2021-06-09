@@ -1,6 +1,6 @@
-# Persistent Stores used in ACM Observability
+# Persistent Stores used in Open Cluster Management Observability
 
-ACM Observability is a stateful application. It creates following persistent volumes (there are more than 1 copies as it runs as stateful sets).
+Open Cluster Management Observability is a stateful application. It creates following persistent volumes (there are more than 1 copies as it runs as stateful sets).
 
 ### List of Stateful sets
 
