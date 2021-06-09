@@ -123,23 +123,38 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 	}
 
 	manifests := work.Spec.Workload.Manifests
-	updated := false
+	needUpdate := false
 	if len(found.Spec.Workload.Manifests) == len(manifests) {
 		for i, m := range found.Spec.Workload.Manifests {
 			if !util.CompareObject(m.RawExtension, manifests[i].RawExtension) {
-				updated = true
+				needUpdate = true
 				break
 			}
 		}
 	} else {
-		updated = true
+		needUpdate = true
 	}
 
-	if updated {
+	if needUpdate {
 		log.Info("Updating manifestwork", namespace, namespace, "name", name)
 		work.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 		err = c.Update(context.TODO(), work)
 		if err != nil {
+			if k8serrors.IsConflict(err) {
+				log.Info("Failed to update manifestwork", "Reason", "Object has been modified")
+				err = c.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Failed to get existing manifestwork %s", name))
+					return err
+				}
+				work.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+				err = c.Update(context.TODO(), work)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Failed to update manifestwork %s when update conflict", name))
+					return err
+				}
+				return nil
+			}
 			log.Error(err, "Failed to update monitoring-endpoint-monitoring-work work")
 			return err
 		}
