@@ -31,4 +31,11 @@ data:
             clusterID: "{{ $labels.clusterID }}"
             PersistentVolumeClaim: "{{ $labels.persistentvolumeclaim }}"
             severity: warning            
-
+        - alert: CriticalPolicyReport
+          annotations:
+            summary: There is a policy report with severity of critical.
+            description: "The policy: {{ $labels.policy }} has a severity of critical on cluster: {{ $labels.cluster }}"
+          expr: sum(acm_policyreport_info{severity="critical"}) by (cluster, category, clusterID, policy, severity) > 0
+          for: 1m
+          labels:
+            severity: critical
