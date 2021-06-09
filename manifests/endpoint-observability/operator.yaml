@@ -20,9 +20,6 @@ spec:
           command:
           - endpoint-monitoring-operator
           resources:
-            limits:
-              cpu: 100m
-              memory: 600Mi
             requests:
               cpu: 100m
               memory: 100Mi

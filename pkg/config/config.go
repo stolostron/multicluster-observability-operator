@@ -185,8 +185,8 @@ const (
 
 	MetricsCollectorCPURequets    = "100m"
 	MetricsCollectorMemoryRequets = "100Mi"
-	MetricsCollectorCPULimits     = "100m"
-	MetricsCollectorMemoryLimits  = "600Mi"
+	MetricsCollectorCPULimits     = ""
+	MetricsCollectorMemoryLimits  = ""
 
 	ObservatoriumAPI             = "observatorium-api"
 	ThanosCompact                = "thanos-compact"
