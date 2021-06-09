@@ -439,8 +439,8 @@ func GetDefaultMCONamespace() string {
 	return defaultMCONamespace
 }
 
-// GetHubAlertmanagerEndpoint is used to get the URL for alertmanager
-func GetHubAlertmanagerEndpoint(client client.Client, namespace string) (string, error) {
+// GetAlertmanagerEndpoint is used to get the URL for alertmanager
+func GetAlertmanagerEndpoint(client client.Client, namespace string) (string, error) {
 	found := &routev1.Route{}
 
 	err := client.Get(context.TODO(), types.NamespacedName{Name: AlertmanagerRouteName, Namespace: namespace}, found)

@@ -22,12 +22,13 @@ const (
 	protocol    = "https://"
 )
 
-// HubInfo is the struct for hub info
+// HubInfo is the struct that contains the observatorium api gateway URL, hub alertmanager URl and hub router CA
 type HubInfo struct {
-	ClusterName             string `yaml:"cluster-name"`
-	Endpoint                string `yaml:"endpoint"`
-	HubAlertmanagerEndpoint string `yaml:"hub-alertmanager-endpoint"`
-	HubAlertmanagerRouterCA string `yaml:"hub-alertmanager-router-ca"`
+	ClusterName              string `yaml:"cluster-name"`
+	Endpoint                 string `yaml:"endpoint"` // deprecated, keep it for back compatibility, use 'ObservatoriumAPIEndpoint' to replace 'Endpoint'
+	ObservatoriumAPIEndpoint string `yaml:"observatorium-api-endpoint"`
+	AlertmanagerEndpoint     string `yaml:"alertmanager-endpoint"`
+	AlertmanagerRouterCA     string `yaml:"alertmanager-router-ca"`
 }
 
 func newHubInfoSecret(client client.Client, obsNamespace string,
@@ -40,23 +41,24 @@ func newHubInfoSecret(client client.Client, obsNamespace string,
 	if !strings.HasPrefix(obsApiEp, "http") {
 		obsApiEp = protocol + obsApiEp
 	}
-	hubAlertmanagerEp, err := config.GetHubAlertmanagerEndpoint(client, obsNamespace)
+	alertmanagerEndpoint, err := config.GetAlertmanagerEndpoint(client, obsNamespace)
 	if err != nil {
 		log.Error(err, "Failed to get alertmanager endpoint")
 		return nil, err
 	}
-	if !strings.HasPrefix(hubAlertmanagerEp, "http") {
-		hubAlertmanagerEp = protocol + hubAlertmanagerEp
+	if !strings.HasPrefix(alertmanagerEndpoint, "http") {
+		alertmanagerEndpoint = protocol + alertmanagerEndpoint
 	}
-	hubAlertmanagerRouterCA, err := config.GetAlertmanagerRouterCA(client)
+	alertmanagerRouterCA, err := config.GetAlertmanagerRouterCA(client)
 	if err != nil {
 		log.Error(err, "Failed to CA of openshift Route")
 		return nil, err
 	}
 	hubInfo := &HubInfo{
-		Endpoint:                obsApiEp + urlSubPath,
-		HubAlertmanagerEndpoint: hubAlertmanagerEp,
-		HubAlertmanagerRouterCA: hubAlertmanagerRouterCA,
+		Endpoint:                 obsApiEp + urlSubPath,
+		ObservatoriumAPIEndpoint: obsApiEp + urlSubPath,
+		AlertmanagerEndpoint:     alertmanagerEndpoint,
+		AlertmanagerRouterCA:     alertmanagerRouterCA,
 	}
 	configYaml, err := yaml.Marshal(hubInfo)
 	if err != nil {
