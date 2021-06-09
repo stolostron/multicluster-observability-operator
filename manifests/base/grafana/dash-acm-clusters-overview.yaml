@@ -291,6 +291,7 @@ data:
         },
         {
           "datasource": null,
+          "description": "Leader election changes per cluster over the time range selected for dashboard.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1876,7 +1877,7 @@ data:
       "timezone": "browser",
       "title": "ACM - Clusters Overview",
       "uid": "2b679d600f3b9e7676a7c5ac3643d448",
-      "version": 6
+      "version": 7
     }
 kind: ConfigMap
 metadata:
