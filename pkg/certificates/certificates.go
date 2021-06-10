@@ -229,16 +229,20 @@ func createCertSecret(c client.Client,
 	} else {
 		if crtSecret.Name == serverCerts {
 			block, _ := pem.Decode(crtSecret.Data["tls.crt"])
-			serverCrt, err := x509.ParseCertificate(block.Bytes)
-			if err != nil {
-				log.Error(err, "Failed to parse the server certificate, renew it")
-				isRenew = true
-			}
-			// to handle upgrade scenario in which hosts maybe update
-			for _, dnsString := range dns {
-				if !util.Contains(serverCrt.DNSNames, dnsString) {
+			if block == nil || block.Bytes == nil {
+				log.Info("Empty block in server certificate, skip")
+			} else {
+				serverCrt, err := x509.ParseCertificate(block.Bytes)
+				if err != nil {
+					log.Error(err, "Failed to parse the server certificate, renew it")
 					isRenew = true
-					break
+				}
+				// to handle upgrade scenario in which hosts maybe update
+				for _, dnsString := range dns {
+					if !util.Contains(serverCrt.DNSNames, dnsString) {
+						isRenew = true
+						break
+					}
 				}
 			}
 		}
