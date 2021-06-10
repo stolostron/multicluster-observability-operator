@@ -14,6 +14,7 @@ require (
 	github.com/open-cluster-management/observatorium-operator v0.0.0-20210512092645-e959481410d7
 	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
 	github.com/openshift/client-go v0.0.0-20201214125552-e615e336eb49
+	go.uber.org/zap v1.15.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.20.5
 	k8s.io/apiextensions-apiserver v0.20.2
@@ -28,8 +29,6 @@ require (
 )
 
 replace (
-	github.com/go-logr/logr => github.com/go-logr/logr v0.3.0
-	github.com/go-logr/zapr => github.com/go-logr/zapr v0.2.0
 	github.com/open-cluster-management/api => github.com/open-cluster-management/api v0.0.0-20210409125704-06f2aec1a73f
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad
 	golang.org/x/text => golang.org/x/text v0.3.5

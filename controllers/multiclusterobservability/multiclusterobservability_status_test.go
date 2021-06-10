@@ -4,14 +4,20 @@
 package multiclusterobservability
 
 import (
+	"context"
 	"reflect"
 	"testing"
 	"time"
 
 	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
+	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestFillupStatus(t *testing.T) {
@@ -184,5 +190,57 @@ func TestFindStatusCondition(t *testing.T) {
 				t.Error(actual)
 			}
 		})
+	}
+}
+
+func TestStartStatusUpdate(t *testing.T) {
+	mcoconfig.SetMonitoringCRName("observability")
+	// A MultiClusterObservability object with metadata and spec.
+	mco := &mcov1beta2.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: mcoconfig.GetMonitoringCRName(),
+		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
+					Key:  "test",
+					Name: "test",
+				},
+				StorageClass:            "gp2",
+				AlertmanagerStorageSize: "1Gi",
+				CompactStorageSize:      "1Gi",
+				RuleStorageSize:         "1Gi",
+				ReceiveStorageSize:      "1Gi",
+				StoreStorageSize:        "1Gi",
+			},
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: false,
+			},
+		},
+		Status: mcov1beta2.MultiClusterObservabilityStatus{
+			Conditions: []mcoshared.Condition{},
+		},
+	}
+
+	// Register operator types with the runtime scheme.
+	s := scheme.Scheme
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
+
+	objs := []runtime.Object{mco, createSecret("test", "test", mcoconfig.GetDefaultMCONamespace())}
+	cl := fake.NewFakeClient(objs...)
+
+	StartStatusUpdate(cl, mco)
+
+	requeueStatusUpdate <- struct{}{}
+	time.Sleep(3 * time.Second)
+
+	instance := &mcov1beta2.MultiClusterObservability{}
+	_ = cl.Get(context.TODO(), types.NamespacedName{
+		Name: mcoconfig.GetMonitoringCRName(),
+	}, instance)
+
+	if findStatusCondition(instance.Status.Conditions, "Installing") == nil {
+		t.Fatal("failed to update mco status")
 	}
 }

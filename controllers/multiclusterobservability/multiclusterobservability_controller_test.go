@@ -311,6 +311,9 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
+	//wait for update status
+	time.Sleep(1 * time.Second)
+
 	updatedMCO := &mcov1beta2.MultiClusterObservability{}
 	err = cl.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
@@ -345,6 +348,9 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
+	//wait for update status
+	time.Sleep(1 * time.Second)
+
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
 	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
@@ -367,6 +373,9 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
+	//wait for update status
+	time.Sleep(1 * time.Second)
+
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
 	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
@@ -397,6 +406,8 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 			t.Fatalf("reconcile: (%v)", err)
 		}
 	}
+	//wait for update status
+	time.Sleep(1 * time.Second)
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
 	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
@@ -429,6 +440,9 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
+	//wait for update status
+	time.Sleep(1 * time.Second)
+
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
 	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
@@ -460,6 +474,9 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
+	//wait for update status
+	time.Sleep(1 * time.Second)
+
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
 	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
@@ -497,6 +514,9 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
+	//wait for update status
+	time.Sleep(1 * time.Second)
+
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
 	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {
