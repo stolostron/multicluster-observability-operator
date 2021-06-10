@@ -26,6 +26,7 @@ import (
 
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
 
 const (
@@ -226,6 +227,26 @@ func createCertSecret(c client.Client,
 			log.Info("Cannot find the certificate secret, skip renew")
 		}
 	} else {
+		if crtSecret.Name == serverCerts {
+			block, _ := pem.Decode(crtSecret.Data["tls.crt"])
+			if block == nil || block.Bytes == nil {
+				log.Info("Empty block in server certificate, skip")
+			} else {
+				serverCrt, err := x509.ParseCertificate(block.Bytes)
+				if err != nil {
+					log.Error(err, "Failed to parse the server certificate, renew it")
+					isRenew = true
+				}
+				// to handle upgrade scenario in which hosts maybe update
+				for _, dnsString := range dns {
+					if !util.Contains(serverCrt.DNSNames, dnsString) {
+						isRenew = true
+						break
+					}
+				}
+			}
+		}
+
 		if !isRenew {
 			log.Info("Certificate secrets already existed", "name", name)
 		} else {
