@@ -1,8 +1,8 @@
 # Persistent Stores used in Open Cluster Management Observability
 
-Open Cluster Management Observability is a stateful application. It creates following persistent volumes (there are more than 1 copies as it runs as stateful sets).
+Open Cluster Management Observability is a stateful application. It creates following persistent volumes (the number of copies depend on replication factor set).
 
-### List of Stateful sets
+### List of Persistent Volumes
 
 | Name | Purpose |
 | ----------- | ----------- |
@@ -11,7 +11,7 @@ Open Cluster Management Observability is a stateful application. It creates foll
 | thanos-rule |The thanos ruler evaluates Prometheus recording and alerting rules against a chosen query API by issuing queries at a fixed interval. Rule results are written back to the disk in the Prometheus 2.0 storage format. Rule results are written back to disk in the Prometheus 2.0 storage format. The amount of hours or days of data retained in this stateful set was fixed in API Version `observability.open-cluster-management.io/v1beta1`. It has been exposed as an API parameter in `observability.open-cluster-management.io/v1beta2`: _RetentionInLocal_ |
 | thanos-receive-default | Thanos receiver accepts incoming data (Prometheus remote-write requests) and writes these into a local instance of the Prometheus TSDB. Periodically (every 2 hours), TSDB blocks are uploaded to the object storage for long term storage and compaction. The amount of hours or days of data retained in this stateful set, which acts a local cache was fixed in API Version `observability.open-cluster-management.io/v1beta`. It has been exposed as an API parameter in `observability.open-cluster-management.io/v1beta2`: _RetentionInLocal_ |
 | thanos-store-shard| It acts primarily as an API gateway and therefore does not need significant amounts of local disk space. It joins a Thanos cluster on startup and advertises the data it can access. It keeps a small amount of information about all remote blocks on local disk and keeps it in sync with the bucket. This data is generally safe to delete across restarts at the cost of increased startup times. |
-| | |
+
 
 
 
@@ -25,7 +25,7 @@ In Mutlicluster Observability Operator API: `observability.open-cluster-manageme
     statefulSetSize: 10Gi
     statefulSetStorageClass: gp2
 ```
-Taking into consideration that one size fits all results in wasting space, we have allowed all settings to be individually tunable in the next revision:  `observability.open-cluster-management.io/v1beta2`
+Taking into consideration this can result in wasted space, we have allowed settings to be individually tunable in the next revision:  `observability.open-cluster-management.io/v1beta2`
 
 ```
     //defaults shown below
@@ -37,7 +37,7 @@ Taking into consideration that one size fits all results in wasting space, we ha
     StoreStorageSize: 10 Gi
 
 ```
-**Note**: The default storage class, as configured in the system, is used for configuring the persistent volumes automatically unless a different storage class is specified in the custom resource specification. If no storage class exists, for example in default OpenShift bare metal installations, one must be created or the installation of observability fails.
+**Note**: The default storage class, as configured in the system, is used for configuring the persistent volumes automatically unless a different storage class is specified in the custom resource specification. If no storage class exists, for example in default OpenShift bare metal installations, a storage class must be created and specified or the installation of observability fails.
 <br>
 <br>
 
