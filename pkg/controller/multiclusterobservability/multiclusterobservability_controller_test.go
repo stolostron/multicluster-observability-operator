@@ -38,15 +38,6 @@ func init() {
 	os.Setenv("TEMPLATES_PATH", "../../../manifests/")
 }
 
-func TestLabelsForMultiClusterMonitoring(t *testing.T) {
-	lab := labelsForMultiClusterMonitoring("test")
-
-	value, _ := lab["observability.open-cluster-management.io/name"]
-	if value != "test" {
-		t.Errorf("value (%v) is not the expected (test)", value)
-	}
-}
-
 func createObservatoriumAPIService(name, namespace string) *corev1.Service {
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
