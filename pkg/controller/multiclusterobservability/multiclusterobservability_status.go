@@ -132,14 +132,13 @@ func updateAddonSpecStatus(
 	}
 }
 
-func getExpectedDeploymentNames() []string {
-	prefix := config.GetObjectPrefix()
+func getExpectedDeploymentNames(mcoCRName string) []string {
 	return []string{
 		"grafana",
-		prefix + "-observatorium-api",
-		prefix + "-thanos-query",
-		prefix + "-thanos-query-frontend",
-		prefix + "-thanos-receive-controller",
+		mcoCRName + "-observatorium-observatorium-api",
+		mcoCRName + "-observatorium-thanos-query",
+		mcoCRName + "-observatorium-thanos-query-frontend",
+		mcoCRName + "-observatorium-thanos-receive-controller",
 		"observatorium-operator",
 		"rbac-query-proxy",
 	}
@@ -148,7 +147,8 @@ func getExpectedDeploymentNames() []string {
 func checkDeployStatus(
 	c client.Client,
 	mco *mcov1beta1.MultiClusterObservability) *mcov1beta1.Condition {
-	expectedDeploymentNames := getExpectedDeploymentNames()
+	mcoCRName := config.GetMonitoringCRName()
+	expectedDeploymentNames := getExpectedDeploymentNames(mcoCRName)
 	for _, name := range expectedDeploymentNames {
 		found := &appsv1.Deployment{}
 		namespacedName := types.NamespacedName{
@@ -170,24 +170,21 @@ func checkDeployStatus(
 	return nil
 }
 
-func getExpectedStatefulSetNames() []string {
-	prefix := config.GetObjectPrefix()
+func getExpectedStatefulSetNames(mcoCRName string) []string {
 	return []string{
 		"alertmanager",
-		prefix + "-thanos-compact",
-		prefix + "-thanos-receive-default",
-		prefix + "-thanos-rule",
-		prefix + "-thanos-store-memcached",
-		prefix + "-thanos-store-shard-0",
-		prefix + "-thanos-store-shard-1",
-		prefix + "-thanos-store-shard-2",
+		mcoCRName + "-observatorium-thanos-compact",
+		mcoCRName + "-observatorium-thanos-receive-default",
+		mcoCRName + "-observatorium-thanos-rule",
+		mcoCRName + "-observatorium-thanos-store-memcached",
+		mcoCRName + "-observatorium-thanos-store-shard-0",
 	}
 }
 
 func checkStatefulSetStatus(
 	c client.Client,
 	mco *mcov1beta1.MultiClusterObservability) *mcov1beta1.Condition {
-	expectedStatefulSetNames := getExpectedStatefulSetNames()
+	expectedStatefulSetNames := getExpectedStatefulSetNames(config.GetMonitoringCRName())
 	for _, name := range expectedStatefulSetNames {
 		found := &appsv1.StatefulSet{}
 		namespacedName := types.NamespacedName{
