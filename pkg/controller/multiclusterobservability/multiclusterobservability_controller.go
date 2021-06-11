@@ -385,6 +385,12 @@ func (r *ReconcileMultiClusterObservability) UpdateStatus(
 	return nil, nil
 }
 
+// labelsForMultiClusterMonitoring returns the labels for selecting the resources
+// belonging to the given MultiClusterObservability CR name.
+func labelsForMultiClusterMonitoring(name string) map[string]string {
+	return map[string]string{"observability.open-cluster-management.io/name": name}
+}
+
 func (r *ReconcileMultiClusterObservability) initFinalization(
 	mco *mcov1beta1.MultiClusterObservability) (bool, error) {
 	if mco.GetDeletionTimestamp() != nil && util.Contains(mco.GetFinalizers(), certFinalizer) {

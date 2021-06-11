@@ -38,6 +38,15 @@ func init() {
 	os.Setenv("TEMPLATES_PATH", "../../../manifests/")
 }
 
+func TestLabelsForMultiClusterMonitoring(t *testing.T) {
+	lab := labelsForMultiClusterMonitoring("test")
+
+	value, _ := lab["observability.open-cluster-management.io/name"]
+	if value != "test" {
+		t.Errorf("value (%v) is not the expected (test)", value)
+	}
+}
+
 func createObservatoriumAPIService(name, namespace string) *corev1.Service {
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -45,7 +54,7 @@ func createObservatoriumAPIService(name, namespace string) *corev1.Service {
 			Kind:       "Service",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name + "-observatorium-api",
+			Name:      name + "-observatorium-observatorium-api",
 			Namespace: namespace,
 			Labels: map[string]string{
 				"app.kubernetes.io/component": "api",
@@ -267,7 +276,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if status == nil || status.Reason != "DeploymentNotFound" {
 		t.Errorf("Failed to get correct MCO status, expect Failed")
 	}
-	expectedDeploymentNames := getExpectedDeploymentNames()
+	expectedDeploymentNames := getExpectedDeploymentNames(name)
 	for _, deployName := range expectedDeploymentNames {
 		deploy := createReadyDeployment(deployName, namespace)
 		err = cl.Create(context.TODO(), deploy)
@@ -290,7 +299,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Errorf("Failed to get correct MCO status, expect Failed")
 	}
 
-	expectedStatefulSetNames := getExpectedStatefulSetNames()
+	expectedStatefulSetNames := getExpectedStatefulSetNames(name)
 	for _, statefulName := range expectedStatefulSetNames {
 		deploy := createReadyStatefulSet(name, namespace, statefulName)
 		err = cl.Create(context.TODO(), deploy)

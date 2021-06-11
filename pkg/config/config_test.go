@@ -589,10 +589,3 @@ func Test_checkIsIBMCloud(t *testing.T) {
 		})
 	}
 }
-
-func TestGetObjectPrefix(t *testing.T) {
-	got := GetObjectPrefix()
-	if got != "observability" {
-		t.Errorf("GetObjectPrefix() = %v, want observability", got)
-	}
-}

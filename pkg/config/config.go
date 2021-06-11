@@ -32,7 +32,6 @@ const (
 	defaultNamespace         = "open-cluster-management-observability"
 	defaultTenantName        = "default"
 	placementRuleName        = "observability"
-	objectPrefix             = "observability"
 
 	AnnotationKeyImageRepository          = "mco-imageRepository"
 	AnnotationKeyImageTagSuffix           = "mco-imageTagSuffix"
@@ -389,8 +388,8 @@ func GetTenantUID() string {
 }
 
 // GetObsAPISvc returns observatorium api service
-func GetObsAPISvc(prefix string) string {
-	return prefix + "-observatorium-api." + defaultNamespace + ".svc.cluster.local"
+func GetObsAPISvc(instanceName string) string {
+	return instanceName + "-observatorium" + "-observatorium-api." + defaultNamespace + ".svc.cluster.local"
 }
 
 // GenerateMonitoringCR is used to generate monitoring CR with the default values
@@ -516,8 +515,4 @@ func SetCustomRuleConfigMap(hasConfigMap bool) {
 // HasCustomRuleConfigMap returns true if there is custom rule configmap
 func HasCustomRuleConfigMap() bool {
 	return hasCustomRuleConfigMap
-}
-
-func GetObjectPrefix() string {
-	return objectPrefix
 }
