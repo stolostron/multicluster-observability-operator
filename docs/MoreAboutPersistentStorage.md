@@ -26,7 +26,7 @@ The following information is exposed in the Mutlicluster Observability Operator 
     statefulSetStorageClass: gp2
 ```
 
-<!--should we be concerned about pre-announcing here-->
+<!--should we be concerned about pre-announcing here--> 
 Considering the information from the API, this can result in wasted space. You can now update the following parameters individually in  `observability.open-cluster-management.io/v1beta2`. View the following parameters that can be updated:
 
 ```
