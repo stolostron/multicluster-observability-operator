@@ -23,7 +23,7 @@ The following information is exposed in the Mutlicluster Observability Operator 
     statefulSetStorageClass: gp2
 ```
 
-Considering the information from the API, this can result in wasted space. You can now update the following parameters individually in `observability.open-cluster-management.io/v1beta2`. View the following parameters that can be updated:
+In the `observability.open-cluster-management.io/v1beta1` API, one fixed size is used for all of the stateful sets, which can result in wasted space. You can now update the stateful sets individually in the `observability.open-cluster-management.io/v1beta2` API, as shown in the following example:
 
 ```
     //defaults shown below
@@ -42,4 +42,3 @@ Considering the information from the API, this can result in wasted space. You c
 
 In addition to the persistent volumes previously mentioned, the time series historical data is stored in object stores. Thanos uses object storage as the primary storage for metrics and metadata related to them. Details about the object storage and downsampling are provided in another document.
 
-//what's the link to the "other document?
