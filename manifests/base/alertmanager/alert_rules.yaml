@@ -10,7 +10,7 @@ data:
         - alert: KubePersistentVolumeFillingUp
           annotations:
             summary: PersistentVolume is filling up.
-            description: "The PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} is only {{ $value | humanizePercentage }} free."        
+            description: "The PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} is only {{ $value | humanizePercentage }} free."
           expr: kubelet_volume_stats_available_bytes{namespace="open-cluster-management-observability"}/kubelet_volume_stats_capacity_bytes{namespace="open-cluster-management-observability"} < 0.03
           for: 1m
           labels:
@@ -22,7 +22,7 @@ data:
         - alert: KubePersistentVolumeFillingUp
           annotations:
             summary: PersistentVolume is filling up and is predicted to run out of space in 6h.
-            description: "The PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} is only {{ $value | humanizePercentage }} free."                        
+            description: "The PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} is only {{ $value | humanizePercentage }} free."
           expr: (kubelet_volume_stats_available_bytes{namespace="open-cluster-management-observability"}/kubelet_volume_stats_capacity_bytes{namespace="open-cluster-management-observability"}) < 0.15 and (predict_linear(kubelet_volume_stats_available_bytes{namespace="open-cluster-management-observability"}[6h], 4 * 24 * 3600)) <0
           for: 1h
           labels:
@@ -30,7 +30,9 @@ data:
             cluster: "{{ $labels.cluster }}"
             clusterID: "{{ $labels.clusterID }}"
             PersistentVolumeClaim: "{{ $labels.persistentvolumeclaim }}"
-            severity: warning            
+            severity: warning
+      - name: policy-reports
+        rules:
         - alert: CriticalPolicyReport
           annotations:
             summary: There is a policy report with severity of critical.
