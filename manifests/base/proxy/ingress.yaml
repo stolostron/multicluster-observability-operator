@@ -1,4 +1,4 @@
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: rbac-query-proxy-ingress
@@ -13,6 +13,8 @@ spec:
       paths:
       - path: "/observability-query"
         backend:
-          serviceName: rbac-query-proxy
-          servicePort: 8443
+          service:
+            name: rbac-query-proxy
+            port:
+              number: 8443
         pathType: ImplementationSpecific
