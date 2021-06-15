@@ -254,6 +254,7 @@ spec:
           - clustermanagementaddons
           verbs:
           - create
+          - update
           - get
           - delete
           - list

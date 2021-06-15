@@ -205,6 +205,7 @@ rules:
   - clustermanagementaddons
   verbs:
   - create
+  - update
   - get 
   - delete
   - list
