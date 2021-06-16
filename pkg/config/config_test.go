@@ -337,7 +337,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 			Kind:       "ConfigMap",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ImageManifestConfigMapName + version,
+			Name:      ImageManifestConfigMapNamePrefix + version,
 			Namespace: "ns2",
 		},
 		Data: map[string]string{
@@ -346,6 +346,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 	}
 	os.Setenv("POD_NAMESPACE", "ns2")
 	os.Setenv("COMPONENT_VERSION", version)
+	SetImageManifestConfigMapName()
 	scheme := runtime.NewScheme()
 	corev1.AddToScheme(scheme)
 	client := fake.NewFakeClientWithScheme(scheme, cm)
@@ -357,7 +358,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 		preFunc  func()
 	}{
 		{
-			name:     "read the " + ImageManifestConfigMapName + "2.1.1",
+			name:     "read the " + ImageManifestConfigMapNamePrefix + "2.1.1",
 			expected: true,
 			data: map[string]string{
 				"test-key": "test-value-1",
@@ -365,7 +366,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 			preFunc: func() {},
 		},
 		{
-			name:     "Should not read the " + ImageManifestConfigMapName + "2.1.1 again",
+			name:     "Should not read the " + ImageManifestConfigMapNamePrefix + "2.1.1 again",
 			expected: false,
 			data: map[string]string{
 				"test-key": "test-value-1",
@@ -373,12 +374,13 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 			preFunc: func() {},
 		},
 		{
-			name:     ImageManifestConfigMapName + "2.1.1 configmap does not exist",
+			name:     ImageManifestConfigMapNamePrefix + "2.1.1 configmap does not exist",
 			expected: true,
 			data:     map[string]string{},
 			preFunc: func() {
 				SetImageManifests(map[string]string{})
 				os.Setenv(ComponentVersion, "invalid")
+				SetImageManifestConfigMapName()
 			},
 		},
 	}

@@ -133,12 +133,24 @@ func main() {
 		os.Exit(1)
 	}
 
+	podNamespace, found := os.LookupEnv("POD_NAMESPACE")
+	if !found {
+		podNamespace = config.GetDefaultMCONamespace()
+	}
+
+	// set image manifests configmap name. e.g.: mch-image-manifest-2.3.0
+	config.SetImageManifestConfigMapName()
+
 	gvkLabelMap := map[schema.GroupVersionKind]filteredcache.Selector{
 		v1.SchemeGroupVersion.WithKind("Secret"): {
 			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
 		},
 		v1.SchemeGroupVersion.WithKind("ConfigMap"): {
 			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
+		},
+		v1.SchemeGroupVersion.WithKind("ConfigMap"): {
+			FieldSelector: fmt.Sprintf("metadata.namespace==%s", podNamespace) + "," +
+				fmt.Sprintf("metadata.name==%s", config.GetImageManifestConfigMapName()),
 		},
 		v1.SchemeGroupVersion.WithKind("Service"): {
 			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
@@ -184,11 +196,6 @@ func main() {
 	if err != nil {
 		setupLog.Error(err, "Failed to create the CRD client")
 		os.Exit(1)
-	}
-
-	podNamespace, found := os.LookupEnv("POD_NAMESPACE")
-	if !found {
-		podNamespace = config.GetDefaultMCONamespace()
 	}
 
 	if err = util.UpdateCRDWebhookNS(crdClient, podNamespace, config.MCOCrdName); err != nil {

@@ -52,7 +52,7 @@ const (
 	DefaultDSImgRepository = "quay.io:443/acm-d"
 	DefaultImgTagSuffix    = "latest"
 
-	ImageManifestConfigMapName = "mch-image-manifest-"
+	ImageManifestConfigMapNamePrefix = "mch-image-manifest-"
 
 	ComponentVersion = "COMPONENT_VERSION"
 
@@ -239,6 +239,7 @@ var (
 	monitoringCRName            = ""
 	tenantUID                   = ""
 	imageManifests              = map[string]string{}
+	imageManifestConfigMapName  = ""
 	hasCustomRuleConfigMap      = false
 	hasCustomAlertmanagerConfig = false
 	certDuration                = time.Hour * 24 * 365
@@ -333,6 +334,17 @@ func GetClusterNameLabelKey() string {
 	return clusterNameLabelKey
 }
 
+func GetImageManifestConfigMapName() string {
+	return imageManifestConfigMapName
+}
+
+func SetImageManifestConfigMapName() {
+	componentVersion, found := os.LookupEnv(ComponentVersion)
+	if found {
+		imageManifestConfigMapName = ImageManifestConfigMapNamePrefix + componentVersion
+	}
+}
+
 // ReadImageManifestConfigMap reads configmap with the name is mch-image-manifest-xxx
 func ReadImageManifestConfigMap(c client.Client) (bool, error) {
 	//Only need to read if imageManifests is empty
@@ -340,12 +352,9 @@ func ReadImageManifestConfigMap(c client.Client) (bool, error) {
 		return false, nil
 	}
 
-	imageCMName := ImageManifestConfigMapName
-	componentVersion, found := os.LookupEnv(ComponentVersion)
-	if found {
-		imageCMName = ImageManifestConfigMapName + componentVersion
+	if imageManifestConfigMapName == "" {
+		SetImageManifestConfigMapName()
 	}
-
 	podNamespace, found := os.LookupEnv("POD_NAMESPACE")
 	if found {
 		//Get image manifest configmap
@@ -353,7 +362,7 @@ func ReadImageManifestConfigMap(c client.Client) (bool, error) {
 		err := c.Get(
 			context.TODO(),
 			types.NamespacedName{
-				Name:      imageCMName,
+				Name:      GetImageManifestConfigMapName(),
 				Namespace: podNamespace,
 			},
 			imageCM)
@@ -361,7 +370,7 @@ func ReadImageManifestConfigMap(c client.Client) (bool, error) {
 			imageManifests = imageCM.Data
 		} else {
 			if errors.IsNotFound(err) {
-				log.Info("Cannot get image manifest configmap", "configmap name", imageCMName)
+				log.Info("Cannot get image manifest configmap", "configmap name", GetImageManifestConfigMapName())
 			} else {
 				log.Error(err, "Failed to read mch-image-manifest configmap")
 				return false, err
