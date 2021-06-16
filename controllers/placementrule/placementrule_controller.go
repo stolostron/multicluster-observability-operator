@@ -48,6 +48,7 @@ var (
 	watchNamespace                  = config.GetDefaultNamespace()
 	isCRoleCreated                  = false
 	isClusterManagementAddonCreated = false
+	isplacementControllerRunnning   = false
 )
 
 // PlacementRuleReconciler reconciles a PlacementRule object
@@ -588,6 +589,11 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func StartPlacementController(mgr manager.Manager) error {
+	if isplacementControllerRunnning {
+		return nil
+	}
+	isplacementControllerRunnning = true
+
 	crdClient, err := util.GetOrCreateCRDClient()
 	if err != nil {
 		log.Error(err, "Failed to create the CRD client")
