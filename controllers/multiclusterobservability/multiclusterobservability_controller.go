@@ -31,12 +31,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
+	placemengctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/placementrule"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/certificates"
+	certctrl "github.com/open-cluster-management/multicluster-observability-operator/pkg/certificates"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/deploying"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/rendering"
@@ -62,6 +65,7 @@ var (
 
 // MultiClusterObservabilityReconciler reconciles a MultiClusterObservability object
 type MultiClusterObservabilityReconciler struct {
+	Manager   manager.Manager
 	Client    client.Client
 	Log       logr.Logger
 	Scheme    *runtime.Scheme
@@ -105,6 +109,14 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	// start to update mco status
 	StartStatusUpdate(r.Client, instance)
+
+	if os.Getenv("UNIT_TEST") != "true" {
+		// start placement controller
+		placemengctrl.StartPlacementController(r.Manager)
+
+		// setup ocm addon manager
+		certctrl.Start(r.Client)
+	}
 
 	// Init finalizers
 	isTerminating, err := r.initFinalization(instance)

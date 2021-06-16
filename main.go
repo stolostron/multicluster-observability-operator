@@ -50,8 +50,6 @@ import (
 	observabilityv1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
 	observabilityv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
-	prctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/placementrule"
-	certctrl "github.com/open-cluster-management/multicluster-observability-operator/pkg/certificates"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 	observatoriumAPIs "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
@@ -196,6 +194,7 @@ func main() {
 	}
 
 	if err = (&mcoctrl.MultiClusterObservabilityReconciler{
+		Manager:   mgr,
 		Client:    mgr.GetClient(),
 		Log:       ctrl.Log.WithName("controllers").WithName("MultiClusterObservability"),
 		Scheme:    mgr.GetScheme(),
@@ -205,25 +204,6 @@ func main() {
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MultiClusterObservability")
 		os.Exit(1)
-	}
-
-	crdExists, err := util.CheckCRDExist(crdClient, config.PlacementRuleCrdName)
-	if err != nil {
-		setupLog.Error(err, "Failed to check if the CRD exists")
-		os.Exit(1)
-	}
-
-	if crdExists {
-		if err = (&prctrl.PlacementRuleReconciler{
-			Client:     mgr.GetClient(),
-			Log:        ctrl.Log.WithName("controllers").WithName("PlacementRule"),
-			Scheme:     mgr.GetScheme(),
-			APIReader:  mgr.GetAPIReader(),
-			RESTMapper: mgr.GetRESTMapper(),
-		}).SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "PlacementRule")
-			os.Exit(1)
-		}
 	}
 	// +kubebuilder:scaffold:builder
 
@@ -253,9 +233,6 @@ func main() {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Captain")
 		os.Exit(1)
 	}
-
-	// setup ocm addon manager
-	certctrl.Start(mgr.GetClient())
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
