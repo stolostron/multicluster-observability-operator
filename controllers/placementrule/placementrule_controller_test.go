@@ -71,7 +71,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	initSchema(t)
 	config.SetMonitoringCRName(mcoName)
 
-	placementRuleName := config.GetPlacementRuleName()
+	placementRuleName := config.GetDefaultCRName()
 	p := &placementv1.PlacementRule{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      placementRuleName,

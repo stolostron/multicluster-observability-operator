@@ -77,10 +77,10 @@ func restartPods(c client.Client, s v1.Secret, isUpdate bool) {
 	}
 	dName := ""
 	if s.Name == config.ServerCACerts || s.Name == config.GrafanaCerts {
-		dName = config.GetMonitoringCRName() + "-rbac-query-proxy"
+		dName = config.GetOperandName(config.RBACQueryProxy)
 	}
 	if s.Name == config.ClientCACerts || s.Name == config.ServerCerts {
-		dName = config.GetMonitoringCRName() + "-observatorium-api"
+		dName = config.GetOperandName(config.ObservatoriumAPI)
 	}
 	if dName != "" {
 		updateDeployLabel(c, dName, s.ObjectMeta.CreationTimestamp.Time, isUpdate)

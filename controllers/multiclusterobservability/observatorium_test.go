@@ -101,7 +101,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: mcoconfig.GetObjectPrefix(),
+			Name: mcoconfig.GetDefaultCRName(),
 			Annotations: map[string]string{
 				mcoconfig.AnnotationKeyImageTagSuffix: "tag",
 			},
@@ -137,7 +137,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	cl.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      mcoconfig.GetObjectPrefix(),
+			Name:      mcoconfig.GetDefaultCRName(),
 			Namespace: namespace,
 		},
 		observatoriumCRFound,

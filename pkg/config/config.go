@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	obsv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -34,8 +35,8 @@ const (
 	defaultMCONamespace               = "open-cluster-management"
 	defaultNamespace                  = "open-cluster-management-observability"
 	defaultTenantName                 = "default"
-	placementRuleName                 = "observability"
-	objectPrefix                      = "observability"
+	defaultCRName                     = "observability"
+	operandNamePrefix                 = "observability-"
 	OpenshiftIngressOperatorNamespace = "openshift-ingress-operator"
 	OpenshiftIngressNamespace         = "openshift-ingress"
 	OpenshiftIngressOperatorCRName    = "default"
@@ -209,6 +210,7 @@ const (
 	ThanosReceiveController      = "thanos-receive-controller"
 	ObservatoriumOperator        = "observatorium-operator"
 	MetricsCollector             = "metrics-collector"
+	Observatorium                = "observatorium"
 
 	RetentionResolutionRaw = "30d"
 	RetentionResolution5m  = "180d"
@@ -267,6 +269,8 @@ var (
 		ThanosQueryFrontendMemcached: &Replicas3,
 		Alertmanager:                 &Replicas3,
 	}
+	// use this map to store the operand name
+	operandNames = map[string]string{}
 
 	MemoryLimitMB   = int32(1024)
 	ConnectionLimit = int32(1024)
@@ -559,9 +563,9 @@ func CheckIsIBMCloud(c client.Client) (bool, error) {
 	return false, nil
 }
 
-// GetPlacementRuleName is used to get placementRuleName
-func GetPlacementRuleName() string {
-	return placementRuleName
+// GetDefaultCRName is used to get default CR name.
+func GetDefaultCRName() string {
+	return defaultCRName
 }
 
 // IsPaused returns true if the multiclusterobservability instance is labeled as paused, and false otherwise
@@ -635,8 +639,8 @@ func SetCertDuration(annotations map[string]string) {
 	certDuration = time.Hour * 24 * 365
 }
 
-func GetObjectPrefix() string {
-	return objectPrefix
+func GetOperandNamePrefix() string {
+	return operandNamePrefix
 }
 
 func GetImagePullPolicy(mco observabilityv1beta2.MultiClusterObservabilitySpec) corev1.PullPolicy {
@@ -936,4 +940,53 @@ func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec) *corev1.ResourceRequ
 	resourceReq.Requests = requests
 
 	return resourceReq
+}
+
+func GetOperandName(name string) string {
+	log.V(1).Info("operand is", "key", name, "name", operandNames[name])
+	return operandNames[name]
+}
+
+func SetOperandNames(c client.Client) error {
+	if len(operandNames) != 0 {
+		return nil
+	}
+	//set the default values.
+	operandNames[Grafana] = GetOperandNamePrefix() + Grafana
+	operandNames[RBACQueryProxy] = GetOperandNamePrefix() + RBACQueryProxy
+	operandNames[Alertmanager] = GetOperandNamePrefix() + Alertmanager
+	operandNames[ObservatoriumOperator] = GetOperandNamePrefix() + ObservatoriumOperator
+	operandNames[Observatorium] = GetDefaultCRName()
+	operandNames[ObservatoriumAPI] = GetOperandNamePrefix() + ObservatoriumAPI
+
+	// Check if the Observatorium CR already exists
+	opts := &client.ListOptions{
+		Namespace: GetDefaultNamespace(),
+	}
+
+	observatoriumList := &obsv1alpha1.ObservatoriumList{}
+	err := c.List(context.TODO(), observatoriumList, opts)
+	if err != nil {
+		return err
+	}
+	if len(observatoriumList.Items) != 0 {
+		for _, observatorium := range observatoriumList.Items {
+			for _, ownerRef := range observatorium.OwnerReferences {
+				if ownerRef.Kind == "MultiClusterObservability" && ownerRef.Name == GetMonitoringCRName() {
+					if observatorium.Name != GetDefaultCRName() {
+						// this is for upgrade case.
+						operandNames[Grafana] = Grafana
+						operandNames[RBACQueryProxy] = RBACQueryProxy
+						operandNames[Alertmanager] = Alertmanager
+						operandNames[ObservatoriumOperator] = ObservatoriumOperator
+						operandNames[Observatorium] = observatorium.Name
+						operandNames[ObservatoriumAPI] = observatorium.Name + "-" + ObservatoriumAPI
+					}
+					break
+				}
+			}
+		}
+	}
+
+	return nil
 }
