@@ -6,12 +6,11 @@ package util
 import (
 	"context"
 	"fmt"
-	"time"
+	"reflect"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
@@ -29,33 +28,34 @@ type clusterManagementAddOnSpec struct {
 }
 
 func CreateClusterManagementAddon(c client.Client) error {
-	addOnFound := false
-	clusterManagementAddon := &addonv1alpha1.ClusterManagementAddOn{}
-	for !addOnFound {
-		if err := c.Get(context.TODO(), types.NamespacedName{Name: ObservabilityController},
-			clusterManagementAddon); err != nil {
-			if errors.IsNotFound(err) {
-				clusterManagementAddon := newClusterManagementAddon()
-				if err := c.Create(context.TODO(), clusterManagementAddon); err != nil {
-					log.Error(err, "Failed to create observability-controller clustermanagementaddon ")
-					return err
-				}
-				log.Info("Created observability-controller clustermanagementaddon")
-				return nil
-			}
-			switch err.(type) {
-			case *cache.ErrCacheNotStarted:
-				time.Sleep(time.Second)
-				continue
-			default:
-				log.Error(err, "Cannot create observability-controller clustermanagementaddon")
-			}
+	clusterManagementAddon := newClusterManagementAddon()
+	found := &addonv1alpha1.ClusterManagementAddOn{}
+	err := c.Get(context.TODO(), types.NamespacedName{Name: ObservabilityController}, found)
+	if err != nil && errors.IsNotFound(err) {
+		if err := c.Create(context.TODO(), clusterManagementAddon); err != nil {
+			log.Error(err, "Failed to create observability-controller clustermanagementaddon ")
 			return err
 		}
+		log.Info("Created observability-controller clustermanagementaddon")
+		return nil
+	} else if err != nil {
+		log.Error(err, "Cannot create observability-controller clustermanagementaddon")
+		return err
+	}
 
-		log.Info(fmt.Sprintf("%s clustermanagementaddon is present ", ObservabilityController))
+	if !reflect.DeepEqual(found.Spec, clusterManagementAddon.Spec) ||
+		!reflect.DeepEqual(found.ObjectMeta.Annotations, clusterManagementAddon.ObjectMeta.Annotations) {
+		log.Info("Updating observability-controller clustermanagementaddon")
+		clusterManagementAddon.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		err = c.Update(context.TODO(), clusterManagementAddon)
+		if err != nil {
+			log.Error(err, "Failed to update observability-controller clustermanagementaddon")
+			return err
+		}
 		return nil
 	}
+
+	log.Info(fmt.Sprintf("%s clustermanagementaddon is present ", ObservabilityController))
 	return nil
 }
 
