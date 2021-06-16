@@ -65,26 +65,16 @@ func GetOrCreateCRDClient() (crdClientSet.Interface, error) {
 }
 
 func CheckCRDExist(crdClient crdClientSet.Interface, crdName string) (bool, error) {
-	_, err := crdClient.ApiextensionsV1beta1().CustomResourceDefinitions().Get(context.TODO(), crdName, metav1.GetOptions{})
+	log.Info("unable to get CRD with ApiextensionsV1beta1 Client, not found, will try to get it with ApiextensionsV1 Client.")
+	_, err := crdClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), crdName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			log.Info("unable to get CRD with ApiextensionsV1beta1 Client, not found, will try to get it with ApiextensionsV1 Client.")
-			_, err = crdClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), crdName, metav1.GetOptions{})
-			if err != nil {
-				if apierrors.IsNotFound(err) {
-					log.Info("unable to get CRD with ApiextensionsV1 Client, not found.")
-					return false, nil
-				}
-				log.Error(err, "failed to get PlacementRule CRD with ApiextensionsV1 Client")
-				// ignore the error since only care if the CRD exists or not
-				return false, nil
-			}
-			return true, nil
-		} else {
-			log.Error(err, "failed to get PlacementRule CRD with ApiextensionsV1beta1 Client")
-			// ignore the error since only care if the CRD exists or not
+			log.Info("unable to get CRD with ApiextensionsV1 Client, not found.")
 			return false, nil
 		}
+		log.Error(err, "failed to get PlacementRule CRD with ApiextensionsV1 Client")
+		// ignore the error since only care if the CRD exists or not
+		return false, nil
 	}
 	return true, nil
 }
