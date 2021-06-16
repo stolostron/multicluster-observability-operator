@@ -155,6 +155,10 @@ bundle: manifests kustomize
 	operator-sdk generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image quay.io/open-cluster-management/multicluster-observability-operator=$(IMG)
 	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+	#TODO(morvencao): filter the rbac resource with operator-sdk bundle command
+	rm -f ./bundle/manifests/multicluster-observability-operator-manager-role_rbac.authorization.k8s.io_v1_clusterrole.yaml
+	rm -f ./bundle/manifests/multicluster-observability-operator-manager-rolebinding_rbac.authorization.k8s.io_v1_clusterrolebinding.yaml
+	rm -f ./bundle/manifests/multicluster-observability-operator_v1_serviceaccount.yaml
 	operator-sdk bundle validate ./bundle
 
 # Build the bundle image.
