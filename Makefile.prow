@@ -45,10 +45,12 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
-# use gsed for darwin
-ifeq ("$OSTYPE", "linux-gnu")
+UNAME := $(shell uname)
+
+ifeq ($(UNAME), Linux)
 SED=@sed
-else
+endif
+ifeq ($(UNAME), Darwin)
 # run `brew install gnu-sed` to install gsed
 SED=@gsed
 endif
