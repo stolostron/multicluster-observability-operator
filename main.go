@@ -28,17 +28,19 @@ import (
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	"github.com/IBM/controller-filtered-cache/filteredcache"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	ctrlruntimescheme "sigs.k8s.io/controller-runtime/pkg/scheme"
@@ -133,30 +135,32 @@ func main() {
 		os.Exit(1)
 	}
 
-	gvkLabelMap := map[schema.GroupVersionKind]filteredcache.Selector{
-		v1.SchemeGroupVersion.WithKind("Secret"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
-		},
-		v1.SchemeGroupVersion.WithKind("ConfigMap"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
-		},
-		v1.SchemeGroupVersion.WithKind("Service"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
-		},
-		v1.SchemeGroupVersion.WithKind("ServiceAccount"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
-		},
-		appsv1.SchemeGroupVersion.WithKind("Deployment"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
-		},
-		appsv1.SchemeGroupVersion.WithKind("StatefulSet"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
-		},
-		workv1.SchemeGroupVersion.WithKind("ManifestWork"): {
-			LabelSelector: "owner==multicluster-observability-operator",
-		},
-		placementv1.SchemeGroupVersion.WithKind("PlacementRule"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
+	cacheOpts := cache.Options{
+		SelectorsByObject: cache.SelectorsByObject{
+			&corev1.Secret{}: {
+				Field: fields.SelectorFromSet(fields.Set{"metadata.namespace": config.GetDefaultNamespace()}),
+			},
+			&corev1.ConfigMap{}: {
+				Field: fields.SelectorFromSet(fields.Set{"metadata.namespace": config.GetDefaultNamespace()}),
+			},
+			&corev1.ServiceAccount{}: {
+				Field: fields.SelectorFromSet(fields.Set{"metadata.namespace": config.GetDefaultNamespace()}),
+			},
+			&corev1.Service{}: {
+				Field: fields.SelectorFromSet(fields.Set{"metadata.namespace": config.GetDefaultNamespace()}),
+			},
+			&appsv1.Deployment{}: {
+				Field: fields.SelectorFromSet(fields.Set{"metadata.namespace": config.GetDefaultNamespace()}),
+			},
+			&appsv1.StatefulSet{}: {
+				Field: fields.SelectorFromSet(fields.Set{"metadata.namespace": config.GetDefaultNamespace()}),
+			},
+			&workv1.ManifestWork{}: {
+				Label: labels.SelectorFromSet(labels.Set{"owner": "multicluster-observability-operator"}),
+			},
+			&placementv1.PlacementRule{}: {
+				Field: fields.SelectorFromSet(fields.Set{"metadata.namespace": config.GetDefaultNamespace()}),
+			},
 		},
 	}
 
@@ -167,7 +171,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b9d51391.open-cluster-management.io",
-		NewCache:               filteredcache.NewFilteredCacheBuilder(gvkLabelMap),
+		NewCache:               cache.BuilderWithOptions(cacheOpts),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

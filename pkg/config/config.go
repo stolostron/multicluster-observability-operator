@@ -40,6 +40,7 @@ const (
 	OpenshiftIngressNamespace         = "openshift-ingress"
 	OpenshiftIngressOperatorCRName    = "default"
 	OpenshiftIngressDefaultCertName   = "router-certs-default"
+	OpenshiftIngressRouteCAName       = "router-ca"
 
 	AnnotationKeyImageRepository          = "mco-imageRepository"
 	AnnotationKeyImageTagSuffix           = "mco-imageTagSuffix"

@@ -521,6 +521,31 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 
+	routeCASecretPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if (e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace &&
+				e.Object.GetName() == config.OpenshiftIngressRouteCAName) ||
+				(e.Object.GetNamespace() == config.OpenshiftIngressNamespace &&
+					e.Object.GetName() == config.OpenshiftIngressDefaultCertName) {
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if ((e.ObjectNew.GetNamespace() == config.OpenshiftIngressOperatorNamespace &&
+				e.ObjectNew.GetName() == config.OpenshiftIngressRouteCAName) ||
+				(e.ObjectNew.GetNamespace() == config.OpenshiftIngressNamespace &&
+					e.ObjectNew.GetName() == config.OpenshiftIngressDefaultCertName)) &&
+				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+		},
+	}
+
 	amAccessorSAPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.AlertmanagerAccessorSAName &&
@@ -555,6 +580,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(certSecretPred)).
 		// secondary watch for alertmanager route byo cert secrets
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amRouterCertSecretPred)).
+		// secondary watch for openshift route ca secret
+		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(routeCASecretPred)).
 		// secondary watch for alertmanager accessor serviceaccount
 		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred))
 
