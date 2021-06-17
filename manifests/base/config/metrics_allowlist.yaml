@@ -7,7 +7,7 @@ data:
     names:
       - :node_memory_MemAvailable_bytes:sum
       - ALERTS
-      - acm_policyreport_info
+      - policyreport_info
       - authenticated_user_requests
       - authentication_attempts
       - cluster:capacity_cpu_cores:sum
