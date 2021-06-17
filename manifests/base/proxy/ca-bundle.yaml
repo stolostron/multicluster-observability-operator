@@ -1,8 +1,0 @@
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: rbac-query-proxy-serving-certs-ca-bundle
-  annotations:
-    service.alpha.openshift.io/inject-cabundle: 'true'
-data:
-  service-ca.crt: ""

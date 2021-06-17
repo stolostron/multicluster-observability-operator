@@ -187,6 +187,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return *result, err
 	}
 
+	// expose rbac proxy through route
+	result, err = GenerateProxyRoute(r.Client, r.Scheme, instance)
+	if result != nil {
+		return *result, err
+	}
+
 	// create the certificates
 	err = certificates.CreateObservabilityCerts(r.Client, r.Scheme, instance)
 	if err != nil {
@@ -606,6 +612,82 @@ func GenerateAlertmanagerRoute(
 		log.Info("Found update for the TLS configuration of the Alertmanager Route, try to update the Route")
 		amGateway.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 		err = runclient.Update(context.TODO(), amGateway)
+		if err != nil {
+			return &ctrl.Result{}, err
+		}
+	}
+	return nil, nil
+}
+
+// GenerateProxyRoute create route for Proxy endpoint
+func GenerateProxyRoute(
+	runclient client.Client, scheme *runtime.Scheme,
+	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
+	proxyGateway := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.ProxyRouteName,
+			Namespace: config.GetDefaultNamespace(),
+		},
+		Spec: routev1.RouteSpec{
+			Port: &routev1.RoutePort{
+				TargetPort: intstr.FromString("https"),
+			},
+			To: routev1.RouteTargetReference{
+				Kind: "Service",
+				Name: config.ProxyServiceName,
+			},
+			TLS: &routev1.TLSConfig{
+				Termination:                   routev1.TLSTerminationReencrypt,
+				InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+			},
+		},
+	}
+
+	proxyRouteBYOCaSrt := &corev1.Secret{}
+	proxyRouteBYOCertSrt := &corev1.Secret{}
+	err1 := runclient.Get(context.TODO(), types.NamespacedName{Name: config.ProxyRouteBYOCAName, Namespace: config.GetDefaultNamespace()}, proxyRouteBYOCaSrt)
+	err2 := runclient.Get(context.TODO(), types.NamespacedName{Name: config.ProxyRouteBYOCERTName, Namespace: config.GetDefaultNamespace()}, proxyRouteBYOCertSrt)
+
+	if err1 == nil && err2 == nil {
+		log.Info("BYO CA/Certificate found for the Route of Proxy, will using BYO CA/certificate for the Route of Proxy")
+		proxyRouteCA, ok := proxyRouteBYOCaSrt.Data["tls.crt"]
+		if !ok {
+			return &ctrl.Result{}, fmt.Errorf("Invalid BYO CA for the Route of Proxy")
+		}
+		proxyGateway.Spec.TLS.CACertificate = string(proxyRouteCA)
+
+		proxyRouteCert, ok := proxyRouteBYOCertSrt.Data["tls.crt"]
+		if !ok {
+			return &ctrl.Result{}, fmt.Errorf("Invalid BYO Certificate for the Route of Proxy")
+		}
+		proxyGateway.Spec.TLS.Certificate = string(proxyRouteCert)
+
+		proxyRouteCertKey, ok := proxyRouteBYOCertSrt.Data["tls.key"]
+		if !ok {
+			return &ctrl.Result{}, fmt.Errorf("Invalid BYO Certificate Key for the Route of Proxy")
+		}
+		proxyGateway.Spec.TLS.Key = string(proxyRouteCertKey)
+	}
+
+	// Set MultiClusterObservability instance as the owner and controller
+	if err := controllerutil.SetControllerReference(mco, proxyGateway, scheme); err != nil {
+		return &ctrl.Result{}, err
+	}
+
+	found := &routev1.Route{}
+	err := runclient.Get(context.TODO(), types.NamespacedName{Name: proxyGateway.Name, Namespace: proxyGateway.Namespace}, found)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Creating a new route to expose rbac proxy", "proxyGateway.Namespace", proxyGateway.Namespace, "proxyGateway.Name", proxyGateway.Name)
+		err = runclient.Create(context.TODO(), proxyGateway)
+		if err != nil {
+			return &ctrl.Result{}, err
+		}
+		return nil, nil
+	}
+	if !reflect.DeepEqual(found.Spec.TLS, proxyGateway.Spec.TLS) {
+		log.Info("Found update for the TLS configuration of the Proxy Route, try to update the Route")
+		proxyGateway.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+		err = runclient.Update(context.TODO(), proxyGateway)
 		if err != nil {
 			return &ctrl.Result{}, err
 		}

@@ -86,6 +86,11 @@ const (
 
 	AllowlistConfigMapName       = "observability-metrics-allowlist"
 	AllowlistCustomConfigMapName = "observability-metrics-custom-allowlist"
+
+	ProxyServiceName      = "rbac-query-proxy"
+	ProxyRouteName        = "rbac-query-proxy"
+	ProxyRouteBYOCAName   = "proxy-byo-ca"
+	ProxyRouteBYOCERTName = "proxy-byo-cert"
 )
 
 const (

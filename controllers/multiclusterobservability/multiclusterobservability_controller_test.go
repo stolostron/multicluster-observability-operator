@@ -219,17 +219,6 @@ func createPlacementRuleCRD() *apiextensionsv1beta1.CustomResourceDefinition {
 	}
 }
 
-func createCABundleCM() *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "rbac-query-proxy-serving-certs-ca-bundle",
-			Namespace: mcoconfig.GetDefaultNamespace(),
-		},
-		Data: map[string]string{
-			"service-ca.crt": "",
-		},
-	}
-}
 func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	var (
 		name      = "monitoring"
@@ -289,7 +278,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	testAmRouteBYOCertSecret := newTestCert(config.AlertmanagerRouteBYOCERTName, namespace)
 	clustermgmtAddon := newClusterManagementAddon()
 
-	objs := []runtime.Object{mco, svc, grafanaCert, serverCert, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon, createCABundleCM()}
+	objs := []runtime.Object{mco, svc, grafanaCert, serverCert, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon}
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
 
