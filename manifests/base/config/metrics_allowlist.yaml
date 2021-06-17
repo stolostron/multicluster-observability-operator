@@ -7,7 +7,6 @@ data:
     names:
       - :node_memory_MemAvailable_bytes:sum
       - ALERTS
-      - policyreport_info
       - authenticated_user_requests
       - authentication_attempts
       - cluster:capacity_cpu_cores:sum
@@ -111,6 +110,7 @@ data:
       - node_netstat_Tcp_OutSegs
       - node_netstat_Tcp_RetransSegs
       - node_netstat_TcpExt_TCPSynRetrans
+      - policyreport_info
       - up
       - cluster_monitoring_operator_reconcile_errors_total
       - cluster_monitoring_operator_reconcile_attempts_total
