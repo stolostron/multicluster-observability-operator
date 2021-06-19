@@ -32,8 +32,6 @@ import (
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
-	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -133,30 +131,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	// cacheResourcesNamespaces is the union for all namespaces in which the resources(secret, configmap and serviceaccount...) need to be cached.
+	// this is added to workaround the limitation of controller-filtered-cache, see: https://github.com/IBM/controller-filtered-cache#limitation
+	// to make sure resources outside of the default observability namespace can also be watched
+	// this may add memory footprint of MCO, but shoud be in control.
+	// TODO(morvencao): Remove this once the community support selector logic OR for filter cache: https://github.com/kubernetes-sigs/controller-runtime/blob/master/designs/use-selectors-at-cache.md
+	cacheResourcesNamespaces := []string{config.GetDefaultNamespace(), config.GetDefaultMCONamespace(),
+		config.OpenshiftIngressNamespace, config.OpenshiftIngressOperatorNamespace}
+
 	gvkLabelMap := map[schema.GroupVersionKind]filteredcache.Selector{
-		v1.SchemeGroupVersion.WithKind("Secret"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
-		},
-		v1.SchemeGroupVersion.WithKind("ConfigMap"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
-		},
-		v1.SchemeGroupVersion.WithKind("Service"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
-		},
-		v1.SchemeGroupVersion.WithKind("ServiceAccount"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
-		},
-		appsv1.SchemeGroupVersion.WithKind("Deployment"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
-		},
-		appsv1.SchemeGroupVersion.WithKind("StatefulSet"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
-		},
 		workv1.SchemeGroupVersion.WithKind("ManifestWork"): {
 			LabelSelector: "owner==multicluster-observability-operator",
-		},
-		placementv1.SchemeGroupVersion.WithKind("PlacementRule"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
 		},
 	}
 
@@ -167,7 +152,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b9d51391.open-cluster-management.io",
-		NewCache:               filteredcache.NewFilteredCacheBuilder(gvkLabelMap),
+		NewCache:               filteredcache.MultiNamespacedFilteredCacheBuilder(gvkLabelMap, cacheResourcesNamespaces),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
