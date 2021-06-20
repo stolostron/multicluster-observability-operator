@@ -133,30 +133,32 @@ func main() {
 		os.Exit(1)
 	}
 
-	gvkLabelMap := map[schema.GroupVersionKind]filteredcache.Selector{
-		v1.SchemeGroupVersion.WithKind("Secret"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
+	gvkLabelsMap := map[schema.GroupVersionKind][]filteredcache.Selector{
+		v1.SchemeGroupVersion.WithKind("Secret"): []filteredcache.Selector{
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.OpenshiftIngressOperatorNamespace)},
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.OpenshiftIngressNamespace)},
 		},
-		v1.SchemeGroupVersion.WithKind("ConfigMap"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
+		v1.SchemeGroupVersion.WithKind("ConfigMap"): []filteredcache.Selector{
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
-		v1.SchemeGroupVersion.WithKind("Service"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
+		v1.SchemeGroupVersion.WithKind("Service"): []filteredcache.Selector{
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
-		v1.SchemeGroupVersion.WithKind("ServiceAccount"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
+		v1.SchemeGroupVersion.WithKind("ServiceAccount"): []filteredcache.Selector{
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
-		appsv1.SchemeGroupVersion.WithKind("Deployment"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
+		appsv1.SchemeGroupVersion.WithKind("Deployment"): []filteredcache.Selector{
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
-		appsv1.SchemeGroupVersion.WithKind("StatefulSet"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
+		appsv1.SchemeGroupVersion.WithKind("StatefulSet"): []filteredcache.Selector{
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
-		workv1.SchemeGroupVersion.WithKind("ManifestWork"): {
-			LabelSelector: "owner==multicluster-observability-operator",
+		workv1.SchemeGroupVersion.WithKind("ManifestWork"): []filteredcache.Selector{
+			{LabelSelector: "owner==multicluster-observability-operator"},
 		},
-		placementv1.SchemeGroupVersion.WithKind("PlacementRule"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace()),
+		placementv1.SchemeGroupVersion.WithKind("PlacementRule"): []filteredcache.Selector{
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
 	}
 
@@ -167,7 +169,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b9d51391.open-cluster-management.io",
-		NewCache:               filteredcache.NewFilteredCacheBuilder(gvkLabelMap),
+		NewCache:               filteredcache.NewEnhancedFilteredCacheBuilder(gvkLabelsMap),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
