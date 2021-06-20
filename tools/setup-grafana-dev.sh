@@ -109,9 +109,9 @@ EOL
   rm -rf grafana-dev-deploy.yaml* grafana-dev-svc.yaml* grafana-dev-ingress.yaml* grafana-dev-config.ini* grafana-pvc.yaml*
 
   # delete ownerReferences
-  kubectl patch deployment grafana-dev -p '{"metadata": {"ownerReferences":null}}'
-  kubectl patch svc grafana-dev -p '{"metadata": {"ownerReferences":null}}'
-  kubectl patch ingress grafana-dev -p '{"metadata": {"ownerReferences":null}}'
+  kubectl -n "$obs_namespace" patch deployment grafana-dev -p '{"metadata": {"ownerReferences":null}}'
+  kubectl -n "$obs_namespace" patch svc grafana-dev -p '{"metadata": {"ownerReferences":null}}'
+  kubectl -n "$obs_namespace" patch ingress grafana-dev -p '{"metadata": {"ownerReferences":null}}'
 }
 
 clean() {
