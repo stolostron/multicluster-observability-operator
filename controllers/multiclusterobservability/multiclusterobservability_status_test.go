@@ -241,6 +241,26 @@ func TestStartStatusUpdate(t *testing.T) {
 	}, instance)
 
 	if findStatusCondition(instance.Status.Conditions, "Installing") == nil {
-		t.Fatal("failed to update mco status")
+		t.Fatal("failed to update mco status with Installing")
+	}
+	if findStatusCondition(instance.Status.Conditions, "MetricsDisabled") == nil {
+		t.Fatal("failed to update mco status with MetricsDisabled")
+	}
+
+	instance.Spec.ObservabilityAddonSpec.EnableMetrics = true
+	err := cl.Update(context.TODO(), instance)
+	if err != nil {
+		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
+	}
+	requeueStatusUpdate <- struct{}{}
+	time.Sleep(3 * time.Second)
+
+	instance = &mcov1beta2.MultiClusterObservability{}
+	_ = cl.Get(context.TODO(), types.NamespacedName{
+		Name: mcoconfig.GetMonitoringCRName(),
+	}, instance)
+
+	if findStatusCondition(instance.Status.Conditions, "MetricsDisabled") != nil {
+		t.Fatal("failed to update mco status to remove MetricsDisabled")
 	}
 }
