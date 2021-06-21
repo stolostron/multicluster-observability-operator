@@ -27,12 +27,6 @@ EOF
 }
 
 deploy() {
-  obs_cr_name=$(kubectl get mco -o jsonpath='{.items[].metadata.name}' 2>/dev/null)
-  if [ $? -ne 0 ] || [ -z "$obs_cr_name" ]; then
-      echo "Failed to get mco cr name, please enable observability service firstly"
-      exit 1
-  fi
-
   kubectl get secret -n "$obs_namespace" grafana-config -o 'go-template={{index .data "grafana.ini"}}' | base64 --decode > grafana-dev-config.ini
   if [ $? -ne 0 ]; then
       echo "Failed to get grafana config secret"
@@ -47,14 +41,14 @@ deploy() {
       exit 1
   fi
   $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-deploy.yaml
-  $sed_command "s~name: ${obs_cr_name}-grafana$~name: grafana-dev~g" grafana-dev-deploy.yaml
+  $sed_command "s~name: observability-grafana$~name: grafana-dev~g" grafana-dev-deploy.yaml
   $sed_command "s~replicas:.*$~replicas: 1~g" grafana-dev-deploy.yaml
   $sed_command "s~grafana-config$~grafana-dev-config~g" grafana-dev-deploy.yaml
   $sed_command "s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-dev~g" grafana-dev-deploy.yaml
   $sed_command "s~grafana-config$~grafana-dev-config~g" grafana-dev-deploy.yaml
   $sed_command "s~- multicluster-observability-grafana$~- multicluster-observability-grafana-dev~g" grafana-dev-deploy.yaml
 
-  POD_NAME=$(kubectl get pods -n "$obs_namespace"|grep "${obs_cr_name}"-grafana|awk '{split($0, a, " "); print a[1]}' |head -n 1)
+  POD_NAME=$(kubectl get pods -n "$obs_namespace"|grep observability-grafana|awk '{split($0, a, " "); print a[1]}' |head -n 1)
   GROUP_ID=$(kubectl get pods "$POD_NAME" -n "$obs_namespace" -o jsonpath='{.spec.securityContext.fsGroup}')
   if [[ ${GROUP_ID} == "grafana" ]]; then
     GROUP_ID=472
@@ -101,7 +95,7 @@ spec:
       storage: 1Gi
   storageClassName: gp2
 EOL
-  PVC_CLASS=$(kubectl get pvc -n "$obs_namespace" alertmanager-db-${obs_cr_name}-alertmanager-0 -o yaml|grep "  storageClassName")
+  PVC_CLASS=$(kubectl get pvc -n "$obs_namespace" alertmanager-db-observability-alertmanager-0 -o yaml|grep "  storageClassName")
   $sed_command "s~  storageClassName:.*$~${PVC_CLASS}~g" grafana-pvc.yaml
   kubectl apply -f grafana-pvc.yaml
 
