@@ -169,6 +169,9 @@ func main() {
 		placementv1.SchemeGroupVersion.WithKind("PlacementRule"): []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
+		operatorv1.SchemeGroupVersion.WithKind("IngressController"): []filteredcache.Selector{
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s,metadata.name==%s", config.OpenshiftIngressOperatorNamespace, config.OpenshiftIngressOperatorCRName)},
+		},
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{

@@ -9,6 +9,7 @@ import (
 	"reflect"
 
 	"github.com/go-logr/logr"
+	operatorv1 "github.com/openshift/api/operator/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -515,6 +516,30 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 
+	ingressControllerPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Object.GetName() == config.OpenshiftIngressOperatorCRName &&
+				e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.ObjectNew.GetName() == config.OpenshiftIngressOperatorCRName &&
+				e.ObjectNew.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Object.GetName() == config.OpenshiftIngressOperatorCRName &&
+				e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
+				return true
+			}
+			return false
+		},
+	}
+
 	amRouterCertSecretPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
@@ -601,6 +626,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(customAllowlistPred)).
 		// secondary watch for certificate secrets
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(certSecretPred)).
+		// secondary watch for default ingresscontroller
+		Watches(&source.Kind{Type: &operatorv1.IngressController{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(ingressControllerPred)).
 		// secondary watch for alertmanager route byo cert secrets
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amRouterCertSecretPred)).
 		// secondary watch for openshift route ca secret
