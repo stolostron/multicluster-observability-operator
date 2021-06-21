@@ -6,11 +6,11 @@ package multiclusterobservability
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,25 +51,25 @@ func StartStatusUpdate(c client.Client, instance *mcov1beta2.MultiClusterObserva
 				}
 			}
 		}()
-	}
-	if !updateReadyStatusIsRunnning {
-		go func() {
-			updateReadyStatusIsRunnning = true
-			// defer close(stopCheckReady)
-			for {
-				select {
-				case <-stopCheckReady:
-					updateReadyStatusIsRunnning = false
-					log.V(1).Info("check status ready goroutine is stopped.")
-					return
-				case <-time.After(2 * time.Second):
-					log.V(1).Info("check status ready goroutine is triggered.")
-					if checkReadyStatus(c, instance) {
-						requeueStatusUpdate <- struct{}{}
+		if !updateReadyStatusIsRunnning {
+			go func() {
+				updateReadyStatusIsRunnning = true
+				// defer close(stopCheckReady)
+				for {
+					select {
+					case <-stopCheckReady:
+						updateReadyStatusIsRunnning = false
+						log.V(1).Info("check status ready goroutine is stopped.")
+						return
+					case <-time.After(2 * time.Second):
+						log.V(1).Info("check status ready goroutine is triggered.")
+						if checkReadyStatus(c, instance) {
+							requeueStatusUpdate <- struct{}{}
+						}
 					}
 				}
-			}
-		}()
+			}()
+		}
 	}
 }
 
@@ -90,7 +90,7 @@ func updateStatus(c client.Client) {
 	updateAddonSpecStatus(&newStatus.Conditions, instance)
 	fillupStatus(&newStatus.Conditions)
 	instance.Status.Conditions = newStatus.Conditions
-	if !apiequality.Semantic.DeepDerivative(newStatus.Conditions, oldStatus.Conditions) {
+	if !reflect.DeepEqual(newStatus.Conditions, oldStatus.Conditions) {
 		err := c.Status().Update(context.TODO(), instance)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("failed to update status of mco %s", instance.Name))
