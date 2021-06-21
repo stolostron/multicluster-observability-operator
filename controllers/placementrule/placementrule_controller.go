@@ -9,6 +9,7 @@ import (
 	"reflect"
 
 	"github.com/go-logr/logr"
+	operatorv1 "github.com/openshift/api/operator/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -473,6 +474,27 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 
+	imageManifestPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Object.GetName() == config.GetImageManifestConfigMapName() {
+				log.V(1).Info("configmap is created", "configmap", config.GetImageManifestConfigMapName())
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.ObjectNew.GetName() == config.GetImageManifestConfigMapName() &&
+				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+				log.V(1).Info("configmap is updated", "configmap", config.GetImageManifestConfigMapName())
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+		},
+	}
+
 	certSecretPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.ServerCACerts &&
@@ -490,6 +512,30 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+		},
+	}
+
+	ingressControllerPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Object.GetName() == config.OpenshiftIngressOperatorCRName &&
+				e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.ObjectNew.GetName() == config.OpenshiftIngressOperatorCRName &&
+				e.ObjectNew.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Object.GetName() == config.OpenshiftIngressOperatorCRName &&
+				e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
+				return true
+			}
 			return false
 		},
 	}
@@ -517,6 +563,31 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
 				return true
 			}
+			return false
+		},
+	}
+
+	routeCASecretPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if (e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace &&
+				e.Object.GetName() == config.OpenshiftIngressRouteCAName) ||
+				(e.Object.GetNamespace() == config.OpenshiftIngressNamespace &&
+					e.Object.GetName() == config.OpenshiftIngressDefaultCertName) {
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if ((e.ObjectNew.GetNamespace() == config.OpenshiftIngressOperatorNamespace &&
+				e.ObjectNew.GetName() == config.OpenshiftIngressRouteCAName) ||
+				(e.ObjectNew.GetNamespace() == config.OpenshiftIngressNamespace &&
+					e.ObjectNew.GetName() == config.OpenshiftIngressDefaultCertName)) &&
+				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
 			return false
 		},
 	}
@@ -549,12 +620,18 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&source.Kind{Type: &mcov1beta1.ObservabilityAddon{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(obsAddonPred)).
 		// secondary watch for MCO
 		Watches(&source.Kind{Type: &mcov1beta2.MultiClusterObservability{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(mcoPred)).
+		// Watch the configmap for mch-image-manifest-* update
+		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(imageManifestPred)).
 		// secondary watch for custom allowlist configmap
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(customAllowlistPred)).
 		// secondary watch for certificate secrets
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(certSecretPred)).
+		// secondary watch for default ingresscontroller
+		Watches(&source.Kind{Type: &operatorv1.IngressController{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(ingressControllerPred)).
 		// secondary watch for alertmanager route byo cert secrets
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amRouterCertSecretPred)).
+		// secondary watch for openshift route ca secret
+		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(routeCASecretPred)).
 		// secondary watch for alertmanager accessor serviceaccount
 		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred))
 
