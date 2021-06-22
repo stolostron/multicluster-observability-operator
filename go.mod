@@ -6,6 +6,7 @@ require (
 	github.com/IBM/controller-filtered-cache v0.3.1
 	github.com/cloudflare/cfssl v1.5.0
 	github.com/go-logr/logr v0.4.0
+	github.com/hashicorp/go-version v1.2.0
 	github.com/open-cluster-management/addon-framework v0.0.0-20210519012201-d00a09b436d2
 	github.com/open-cluster-management/api v0.0.0-20210409125704-06f2aec1a73f
 	github.com/open-cluster-management/multicloud-operators-placementrule v0.0.0-20210325184301-dd3e27fc2978

@@ -19,6 +19,7 @@ import (
 	crdClientSet "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -382,16 +383,25 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	imageManifestPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == config.GetImageManifestConfigMapName() {
-				log.V(1).Info("configmap is created", "configmap", config.GetImageManifestConfigMapName())
+			obj, err := meta.Accessor(e.Object)
+			if err != nil {
+				return false
+			}
+			cmLabelValue, exits := obj.GetLabels()[config.OCMManifestConfigMapTypeLabelValue]
+			if exits && cmLabelValue == config.OCMManifestConfigMapTypeLabelKey {
+				log.V(1).Info("OCM image manifests configmap is created", "configmap", e.Object.GetName())
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == config.GetImageManifestConfigMapName() &&
-				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				log.V(1).Info("configmap is updated", "configmap", config.GetImageManifestConfigMapName())
+			obj, err := meta.Accessor(e.ObjectNew)
+			if err != nil {
+				return false
+			}
+			cmLabelValue, exits := obj.GetLabels()[config.OCMManifestConfigMapTypeLabelValue]
+			if exits && cmLabelValue == config.OCMManifestConfigMapTypeLabelKey && e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+				log.V(1).Info("OCM image manifests configmap is updated", "configmap", e.ObjectNew.GetName())
 				return true
 			}
 			return false

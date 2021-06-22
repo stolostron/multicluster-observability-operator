@@ -136,9 +136,6 @@ func main() {
 		podNamespace = config.GetDefaultMCONamespace()
 	}
 
-	// set image manifests configmap name. e.g.: mch-image-manifest-2.3.0
-	config.SetImageManifestConfigMapName()
-
 	gvkLabelsMap := map[schema.GroupVersionKind][]filteredcache.Selector{
 		v1.SchemeGroupVersion.WithKind("Secret"): []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
@@ -147,7 +144,7 @@ func main() {
 		},
 		v1.SchemeGroupVersion.WithKind("ConfigMap"): []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s,metadata.name==%s", podNamespace, config.GetImageManifestConfigMapName())},
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", podNamespace), LabelSelector: fmt.Sprintf("%s==%s", config.OCMManifestConfigMapTypeLabelKey, config.OCMManifestConfigMapTypeLabelValue)},
 		},
 		v1.SchemeGroupVersion.WithKind("Service"): []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},

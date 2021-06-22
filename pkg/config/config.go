@@ -5,17 +5,18 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	goversion "github.com/hashicorp/go-version"
 	obsv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -54,7 +55,10 @@ const (
 	DefaultDSImgRepository = "quay.io:443/acm-d"
 	DefaultImgTagSuffix    = "latest"
 
-	ImageManifestConfigMapNamePrefix = "mch-image-manifest-"
+	ImageManifestConfigMapNamePrefix    = "mch-image-manifest-"
+	OCMManifestConfigMapTypeLabelKey    = "ocm-configmap-type"
+	OCMManifestConfigMapTypeLabelValue  = "image-manifest"
+	OCMManifestConfigMapVersionLabelKey = "ocm-release-version"
 
 	ComponentVersion = "COMPONENT_VERSION"
 
@@ -355,40 +359,52 @@ func SetImageManifestConfigMapName() {
 	}
 }
 
-// ReadImageManifestConfigMap reads configmap with the name is mch-image-manifest-xxx
+// ReadImageManifestConfigMap reads configmap with the label ocm-configmap-type=image-manifest
 func ReadImageManifestConfigMap(c client.Client) (bool, error) {
-	//Only need to read if imageManifests is empty
-	if len(imageManifests) != 0 {
+	podNamespace, found := os.LookupEnv("POD_NAMESPACE")
+	if !found {
 		return false, nil
 	}
 
-	if imageManifestConfigMapName == "" {
-		SetImageManifestConfigMapName()
+	// List image manifest configmap with label ocm-configmap-type=image-manifest
+	matchLabels := map[string]string{OCMManifestConfigMapTypeLabelKey: OCMManifestConfigMapTypeLabelValue}
+	listOpts := []client.ListOption{
+		client.InNamespace(podNamespace),
+		client.MatchingLabels(matchLabels),
 	}
 
-	podNamespace, found := os.LookupEnv("POD_NAMESPACE")
-	if found {
-		//Get image manifest configmap
-		imageCM := &corev1.ConfigMap{}
-		err := c.Get(
-			context.TODO(),
-			types.NamespacedName{
-				Name:      GetImageManifestConfigMapName(),
-				Namespace: podNamespace,
-			},
-			imageCM)
-		if err == nil {
-			imageManifests = imageCM.Data
-		} else {
-			if errors.IsNotFound(err) {
-				log.Info("Cannot get image manifest configmap", "configmap name", GetImageManifestConfigMapName())
-			} else {
-				log.Error(err, "Failed to read mch-image-manifest configmap")
-				return false, err
+	imageCMList := &corev1.ConfigMapList{}
+	err := c.List(context.TODO(), imageCMList, listOpts...)
+	if err != nil {
+		return false, fmt.Errorf("Failed to list mch-image-manifest configmaps: %v", err)
+	}
+	// loop through the image configmap list and get the one with the latest version
+	maxSemiVersion, err := goversion.NewVersion("0.0.1")
+	if err != nil {
+		return false, fmt.Errorf("Failed to init the semi version: %v", err)
+	}
+	for _, imageCM := range imageCMList.Items {
+		cmLabelValue, exists := imageCM.GetLabels()[OCMManifestConfigMapVersionLabelKey]
+		if exists {
+			CurrentSemiVer, err := goversion.NewVersion(cmLabelValue)
+			if err != nil {
+				log.Error(err, "Invalid version for the mch-image-manifest configmap label", "configmap", imageCM.GetName(), "version label value", cmLabelValue)
+				// ignore current one and continue the next one
+				continue
 			}
-
+			if maxSemiVersion.LessThan(CurrentSemiVer) {
+				imageManifests = imageCM.Data
+				maxSemiVersion = CurrentSemiVer
+			}
 		}
 	}
+
+	// no match mch-image-manifest configmap found
+	if maxSemiVersion.Original() == "0.0.1" {
+		log.Info("no mch-image-manifest configmap found")
+		return false, nil
+	}
+
 	return true, nil
 }
 
