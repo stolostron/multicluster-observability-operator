@@ -41,6 +41,7 @@ import (
 
 func init() {
 	os.Setenv("TEMPLATES_PATH", "../../../manifests/")
+	os.Setenv("UNIT_TEST", "true")
 }
 
 func newTestCert(name string, namespace string) *corev1.Secret {

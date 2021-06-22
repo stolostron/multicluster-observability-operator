@@ -32,10 +32,16 @@ const (
 )
 
 var (
-	caSecretNames = []string{serverCACerts, clientCACerts}
+	caSecretNames            = []string{serverCACerts, clientCACerts}
+	isCertControllerRunnning = false
 )
 
 func Start(c client.Client) {
+
+	if isCertControllerRunnning {
+		return
+	}
+	isCertControllerRunnning = true
 
 	// setup ocm addon manager
 	addonMgr, err := addonmanager.New(ctrl.GetConfigOrDie())

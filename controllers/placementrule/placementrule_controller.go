@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -48,6 +49,7 @@ var (
 	watchNamespace                  = config.GetDefaultNamespace()
 	isCRoleCreated                  = false
 	isClusterManagementAddonCreated = false
+	isplacementControllerRunnning   = false
 )
 
 // PlacementRuleReconciler reconciles a PlacementRule object
@@ -661,4 +663,37 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// create and return a new controller
 	return ctrBuilder.Complete(r)
+}
+
+func StartPlacementController(mgr manager.Manager) error {
+	if isplacementControllerRunnning {
+		return nil
+	}
+	isplacementControllerRunnning = true
+
+	crdClient, err := util.GetOrCreateCRDClient()
+	if err != nil {
+		log.Error(err, "Failed to create the CRD client")
+		return err
+	}
+	crdExists, err := util.CheckCRDExist(crdClient, config.PlacementRuleCrdName)
+	if err != nil {
+		log.Error(err, "Failed to check if the CRD exists")
+		return err
+	}
+
+	if crdExists {
+		if err = (&PlacementRuleReconciler{
+			Client:     mgr.GetClient(),
+			Log:        ctrl.Log.WithName("controllers").WithName("PlacementRule"),
+			Scheme:     mgr.GetScheme(),
+			APIReader:  mgr.GetAPIReader(),
+			RESTMapper: mgr.GetRESTMapper(),
+		}).SetupWithManager(mgr); err != nil {
+			log.Error(err, "unable to create controller", "controller", "PlacementRule")
+			return err
+		}
+	}
+
+	return nil
 }
