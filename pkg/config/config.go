@@ -352,13 +352,6 @@ func GetImageManifestConfigMapName() string {
 	return imageManifestConfigMapName
 }
 
-func SetImageManifestConfigMapName() {
-	componentVersion, found := os.LookupEnv(ComponentVersion)
-	if found {
-		imageManifestConfigMapName = ImageManifestConfigMapNamePrefix + componentVersion
-	}
-}
-
 // ReadImageManifestConfigMap reads configmap with the label ocm-configmap-type=image-manifest
 func ReadImageManifestConfigMap(c client.Client) (bool, error) {
 	podNamespace, found := os.LookupEnv("POD_NAMESPACE")
