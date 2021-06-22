@@ -74,7 +74,7 @@ func (r *TemplateRenderer) GetAlertManagerTemplates(
 	// resourceList contains all kustomize resources
 	resourceList := []*resource.Resource{}
 
-	// add grafana template
+	// add alertmanager template
 	if err := r.AddTemplateFromPath(basePath+"/alertmanager", &resourceList); err != nil {
 		return resourceList, err
 	}
@@ -88,8 +88,22 @@ func (r *TemplateRenderer) GetThanosTemplates(
 	// resourceList contains all kustomize resources
 	resourceList := []*resource.Resource{}
 
-	// add grafana template
+	// add thanos template
 	if err := r.AddTemplateFromPath(basePath+"/thanos", &resourceList); err != nil {
+		return resourceList, err
+	}
+	return resourceList, nil
+}
+
+// GetProxyTemplates reads the rbac-query-proxy manifests
+func (r *TemplateRenderer) GetProxyTemplates(
+	mco *mcov1beta2.MultiClusterObservability) ([]*resource.Resource, error) {
+	basePath := path.Join(r.templatesPath, "base")
+	// resourceList contains all kustomize resources
+	resourceList := []*resource.Resource{}
+
+	// add rbac-query-proxy template
+	if err := r.AddTemplateFromPath(basePath+"/proxy", &resourceList); err != nil {
 		return resourceList, err
 	}
 	return resourceList, nil
@@ -109,11 +123,6 @@ func (r *TemplateRenderer) GetTemplates(
 
 	// add config template
 	if err := r.AddTemplateFromPath(basePath+"/config", &resourceList); err != nil {
-		return resourceList, err
-	}
-
-	// add proxy template
-	if err := r.AddTemplateFromPath(basePath+"/proxy", &resourceList); err != nil {
 		return resourceList, err
 	}
 

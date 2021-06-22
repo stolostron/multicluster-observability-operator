@@ -6,7 +6,6 @@ package rendering
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -40,6 +39,7 @@ type Renderer struct {
 	renderGrafanaFns      map[string]renderFn
 	renderAlertManagerFns map[string]renderFn
 	renderThanosFns       map[string]renderFn
+	renderProxyFns        map[string]renderFn
 }
 
 func NewRenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability) *Renderer {
@@ -60,6 +60,7 @@ func NewRenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability)
 	renderer.newGranfanaRenderer()
 	renderer.newAlertManagerRenderer()
 	renderer.newThanosRenderer()
+	renderer.newProxyRenderer()
 	return renderer
 }
 
@@ -107,6 +108,17 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 	}
 	resources = append(resources, thanosResources...)
 
+	//render proxy templates
+	proxyTemplates, err := templates.GetTemplateRenderer().GetProxyTemplates(r.cr)
+	if err != nil {
+		return nil, err
+	}
+	proxyResources, err := r.renderProxyTemplates(proxyTemplates)
+	if err != nil {
+		return nil, err
+	}
+	resources = append(resources, proxyResources...)
+
 	for idx := range resources {
 		if resources[idx].GetKind() == "Deployment" {
 			obj := util.GetK8sObj(resources[idx].GetKind())
@@ -149,10 +161,6 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 				if found {
 					spec.Containers[0].Image = image
 				}
-
-			case "rbac-query-proxy":
-				dep.Spec.Replicas = config.GetReplicas(config.RBACQueryProxy, r.cr.Spec.AdvancedConfig)
-				updateProxySpec(spec, r.cr)
 			}
 
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
@@ -165,28 +173,6 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 	}
 
 	return resources, nil
-}
-
-func updateProxySpec(spec *corev1.PodSpec, mco *obv1beta2.MultiClusterObservability) {
-	found, image := mcoconfig.ReplaceImage(mco.Annotations, spec.Containers[0].Image,
-		mcoconfig.RBACQueryProxyKey)
-	if found {
-		spec.Containers[0].Image = image
-	}
-
-	args := spec.Containers[0].Args
-	for idx := range args {
-		args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", mcoconfig.GetDefaultNamespace(), 1)
-	}
-	for idx := range spec.Volumes {
-		if spec.Volumes[idx].Name == "ca-certs" {
-			spec.Volumes[idx].Secret.SecretName = mcoconfig.ServerCerts
-		}
-		if spec.Volumes[idx].Name == "client-certs" {
-			spec.Volumes[idx].Secret.SecretName = mcoconfig.GrafanaCerts
-		}
-	}
-	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.RBACQueryProxy, mco.Spec.AdvancedConfig)
 }
 
 func (r *Renderer) renderTemplates(templates []*resource.Resource) ([]*unstructured.Unstructured, error) {

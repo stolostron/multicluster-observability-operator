@@ -44,14 +44,12 @@ spec:
         image: quay.io/open-cluster-management/rbac-query-proxy:0.1.0-7f8235c135bd332688eb6f8062b5868af47cc0f9
         imagePullPolicy: Always
         args:
-        - "--listen-address=0.0.0.0:8443"
+        - "--listen-address=0.0.0.0:8080"
         - "--metrics-server=https://observability-observatorium-api.{{MCO_NAMESPACE}}.svc.cluster.local:8080/api/metrics/v1/default"
         ports:
-        - containerPort: 8443
-          name: https
+        - containerPort: 8080
+          name: http
         volumeMounts:
-        - name: certs
-          mountPath: /var/rbac_proxy/serving_certs
         - name: ca-certs
           mountPath: /var/rbac_proxy/ca
         - name: client-certs
@@ -72,6 +70,50 @@ spec:
           requests:
             cpu: 20m
             memory: 100Mi
+      - args:
+        - --provider=openshift
+        - --https-address=:8443
+        - --http-address=
+        - --upstream=http://localhost:8080
+        - '--client-id={{MCO_NAMESPACE}}'
+        - '--client-secret-file=/var/run/secrets/kubernetes.io/serviceaccount/token'
+        - '--pass-user-bearer-token=true'
+        - '--pass-access-token=true'
+        - --openshift-sar={"resource":"namespaces","verb":"get"}
+        - --openshift-delegate-urls={"/":{"resource":"namespaces","verb":"get"}}
+        - --tls-cert=/etc/tls/private/tls.crt
+        - --tls-key=/etc/tls/private/tls.key
+        - --openshift-service-account=rbac-query-proxy
+        - --cookie-secret-file=/etc/proxy/secrets/session_secret
+        - --skip-provider-button=true
+        - --openshift-ca=/etc/pki/tls/cert.pem
+        - --openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        image: quay.io/open-cluster-management/origin-oauth-proxy:2.0.11-SNAPSHOT-2021-04-29-18-29-17
+        imagePullPolicy: Always
+        name: oauth-proxy
+        ports:
+        - containerPort: 8443
+          name: oauth-proxy
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 1m
+            memory: 20Mi
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /oauth/healthz
+            port: 8443
+            scheme: HTTPS
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        volumeMounts:
+        - mountPath: /etc/tls/private
+          name: certs
+          readOnly: true
+        - mountPath: /etc/proxy/secrets
+          name: cookie-secret
       serviceAccountName: rbac-query-proxy
       imagePullSecrets:
       - name: multiclusterhub-operator-pull-secret
@@ -79,6 +121,9 @@ spec:
       - name: certs
         secret:
           secretName: rbac-proxy-certs
+      - name: cookie-secret
+        secret:
+          secretName: rbac-proxy-cookie-secret
       - name: ca-certs
         secret:
           secretName: observability-server-certs

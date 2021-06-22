@@ -5,10 +5,11 @@ package multiclusterobservability
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,7 +24,6 @@ import (
 
 const (
 	defaultReplicas int32 = 1
-	caBundle              = "rbac-query-proxy-serving-certs-ca-bundle"
 )
 
 type GrafanaDatasources struct {
@@ -65,13 +65,6 @@ func GenerateGrafanaDataSource(
 	scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
 
-	cm := &v1.ConfigMap{}
-	err := c.Get(context.TODO(), types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: caBundle}, cm)
-	if err != nil {
-		log.Error(err, "Failed to get ca bundle configmap")
-		return &ctrl.Result{}, err
-	}
-
 	grafanaDatasources, err := yaml.Marshal(GrafanaDatasources{
 		APIVersion: 1,
 		Datasources: []*GrafanaDatasource{
@@ -80,13 +73,7 @@ func GenerateGrafanaDataSource(
 				Type:      "prometheus",
 				Access:    "proxy",
 				IsDefault: true,
-				URL:       "https://rbac-query-proxy." + config.GetDefaultNamespace() + ".svc.cluster.local:8443",
-				JSONData: &JsonData{
-					TLSAuthCA: true,
-				},
-				SecureJSONData: &SecureJsonData{
-					TLSCACert: cm.Data["service-ca.crt"],
-				},
+				URL:       fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", config.ProxyServiceName, config.GetDefaultNamespace()),
 			},
 		},
 	})
@@ -136,6 +123,16 @@ func GenerateGrafanaDataSource(
 		return nil, nil
 	} else if err != nil {
 		return &ctrl.Result{}, err
+	}
+
+	if !reflect.DeepEqual(grafanaDSFound.Data, dsSecret.Data) {
+		log.Info("Updating grafana datasource secret")
+		dsSecret.ObjectMeta.ResourceVersion = grafanaDSFound.ObjectMeta.ResourceVersion
+		err = c.Update(context.TODO(), dsSecret)
+		if err != nil {
+			log.Error(err, "Failed to update grafana datasource secret")
+			return &ctrl.Result{}, err
+		}
 	}
 
 	return nil, nil
