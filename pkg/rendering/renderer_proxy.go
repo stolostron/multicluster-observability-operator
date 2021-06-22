@@ -82,9 +82,6 @@ func (r *Renderer) renderProxyDeployment(res *resource.Resource) (*unstructured.
 		spec.Containers[0].Image = image
 	}
 
-	// temp code to bypass multi-repo commit problem
-	spec.Containers[0].Image = "blue0/rbac-query-proxy:2.3.0"
-
 	// the oauth-proxy image only exists in mch-image-manifest configmap
 	// pass nil annotation to make sure oauth-proxy overrided from mch-image-manifest
 	found, image = mcoconfig.ReplaceImage(nil, mcoconfig.OauthProxyImgRepo,
