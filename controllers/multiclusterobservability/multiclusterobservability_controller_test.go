@@ -36,7 +36,6 @@ import (
 	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
-	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 
 func init() {
@@ -223,7 +222,7 @@ func createPlacementRuleCRD() *apiextensionsv1beta1.CustomResourceDefinition {
 func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	var (
 		name      = "monitoring"
-		namespace = mcoconfig.GetDefaultNamespace()
+		namespace = config.GetDefaultNamespace()
 	)
 
 	wd, err := os.Getwd()
@@ -240,7 +239,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 			Annotations: map[string]string{
-				mcoconfig.AnnotationKeyImageTagSuffix: "tag",
+				config.AnnotationKeyImageTagSuffix: "tag",
 			},
 		},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
@@ -420,6 +419,15 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to delete mco: (%v)", err)
 	}
+	// reconcile to make sure the finalizer of the mco cr is deleted
+	_, err = r.Reconcile(context.TODO(), req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+
+	// wait for the stop status update channel is closed
+	time.Sleep(1 * time.Second)
+
 	mco.Spec.ObservabilityAddonSpec.EnableMetrics = true
 	mco.ObjectMeta.ResourceVersion = ""
 	err = cl.Create(context.TODO(), mco)
@@ -535,9 +543,9 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 
 func createSecret(key, name, namespace string) *corev1.Secret {
 
-	s3Conf := &mcoconfig.ObjectStorgeConf{
+	s3Conf := &config.ObjectStorgeConf{
 		Type: "s3",
-		Config: mcoconfig.Config{
+		Config: config.Config{
 			Bucket:    "bucket",
 			Endpoint:  "endpoint",
 			Insecure:  true,
@@ -583,7 +591,7 @@ func TestCheckObjStorageStatus(t *testing.T) {
 		t.Errorf("check s3 conf failed: got %v, expected non-nil", mcoCondition)
 	}
 
-	err := c.Create(context.TODO(), createSecret("test", "test", mcoconfig.GetDefaultNamespace()))
+	err := c.Create(context.TODO(), createSecret("test", "test", config.GetDefaultNamespace()))
 	if err != nil {
 		t.Fatalf("Failed to create secret: (%v)", err)
 	}
@@ -593,7 +601,7 @@ func TestCheckObjStorageStatus(t *testing.T) {
 		t.Errorf("check s3 conf failed: got %v, expected nil", mcoCondition)
 	}
 
-	updateSecret := createSecret("error", "test", mcoconfig.GetDefaultNamespace())
+	updateSecret := createSecret("error", "test", config.GetDefaultNamespace())
 	updateSecret.ObjectMeta.ResourceVersion = "1"
 	err = c.Update(context.TODO(), updateSecret)
 	if err != nil {
