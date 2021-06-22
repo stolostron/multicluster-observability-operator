@@ -448,14 +448,14 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	err = cl.Delete(context.TODO(), createReadyStatefulSet(
 		name,
 		namespace,
-		config.GetObjectPrefix()+"-alertmanager"))
+		config.GetOperandNamePrefix()+"alertmanager"))
 	if err != nil {
 		t.Fatalf("Failed to delete alertmanager: (%v)", err)
 	}
 	failedAlertManager := createFailedStatefulSet(
 		name,
 		namespace,
-		config.GetObjectPrefix()+"-alertmanager")
+		config.GetOperandNamePrefix()+"alertmanager")
 	err = cl.Create(context.TODO(), failedAlertManager)
 	if err != nil {
 		t.Fatalf("Failed to create alertmanager: (%v)", err)
@@ -479,7 +479,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	// test DeploymentNotReady status
-	err = cl.Delete(context.TODO(), createReadyDeployment(config.GetObjectPrefix()+"-rbac-query-proxy", namespace))
+	err = cl.Delete(context.TODO(), createReadyDeployment(config.GetOperandNamePrefix()+"rbac-query-proxy", namespace))
 	if err != nil {
 		t.Fatalf("Failed to delete rbac-query-proxy: (%v)", err)
 	}
@@ -490,7 +490,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	err = cl.Create(context.TODO(), createReadyStatefulSet(
 		name,
 		namespace,
-		config.GetObjectPrefix()+"-alertmanager"))
+		config.GetOperandNamePrefix()+"alertmanager"))
 	if err != nil {
 		t.Fatalf("Failed to delete alertmanager: (%v)", err)
 	}

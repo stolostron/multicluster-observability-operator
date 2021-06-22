@@ -131,7 +131,6 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 			dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 			dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
 			dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
-			dep.Name = mcoconfig.GetObjectPrefix() + "-" + dep.Name
 
 			spec := &dep.Spec.Template.Spec
 			spec.Containers[0].ImagePullPolicy = mcoconfig.GetImagePullPolicy(r.cr.Spec)
@@ -143,24 +142,14 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 
 			switch resources[idx].GetName() {
 
-			case "grafana":
-				found, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.GrafanaImgRepo, mcoconfig.GrafanaImgName)
-				if found {
-					spec.Containers[0].Image = image
-				}
-				spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.Grafana, r.cr.Spec.AdvancedConfig)
-				found, image = mcoconfig.ReplaceImage(r.cr.Annotations, spec.Containers[1].Image,
-					mcoconfig.GrafanaDashboardLoaderKey)
-				if found {
-					spec.Containers[1].Image = image
-				}
-
 			case "observatorium-operator":
 				found, image := mcoconfig.ReplaceImage(r.cr.Annotations, spec.Containers[0].Image,
 					mcoconfig.ObservatoriumOperatorImgName)
 				if found {
 					spec.Containers[0].Image = image
 				}
+				dep.Name = mcoconfig.GetOperandName(config.ObservatoriumOperator)
+
 			}
 
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)

@@ -102,7 +102,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if !deleteAll {
 		// Fetch the PlacementRule instance
 		err = r.Client.Get(context.TODO(), types.NamespacedName{
-			Name:      config.GetPlacementRuleName(),
+			Name:      config.GetDefaultCRName(),
 			Namespace: config.GetDefaultNamespace(),
 		}, placement)
 		if err != nil {
@@ -387,7 +387,7 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	name := config.GetPlacementRuleName()
+	name := config.GetDefaultCRName()
 	pmPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == name && e.Object.GetNamespace() == watchNamespace {

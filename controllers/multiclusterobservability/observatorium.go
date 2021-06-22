@@ -43,7 +43,7 @@ func GenerateObservatoriumCR(
 	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
 
 	labels := map[string]string{
-		"app": mcoconfig.GetObjectPrefix(),
+		"app": mcoconfig.GetOperandName(mcoconfig.Observatorium),
 	}
 
 	storageClassSelected, err := getStorageClass(mco, cl)
@@ -55,7 +55,7 @@ func GenerateObservatoriumCR(
 
 	observatoriumCR := &obsv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      mcoconfig.GetObjectPrefix(),
+			Name:      mcoconfig.GetOperandName(mcoconfig.Observatorium),
 			Namespace: mcoconfig.GetDefaultNamespace(),
 			Labels:    labels,
 		},
@@ -164,7 +164,7 @@ func GenerateAPIGatewayRoute(
 			},
 			To: routev1.RouteTargetReference{
 				Kind: "Service",
-				Name: mcoconfig.GetObjectPrefix() + "-observatorium-api",
+				Name: mcoconfig.GetOperandNamePrefix() + "observatorium-api",
 			},
 			TLS: &routev1.TLSConfig{
 				Termination:                   routev1.TLSTerminationPassthrough,

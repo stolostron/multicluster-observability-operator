@@ -48,7 +48,7 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 	dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
 	dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
-	dep.Name = mcoconfig.GetObjectPrefix() + "-" + dep.Name
+	dep.Name = mcoconfig.GetOperandName(mcoconfig.Alertmanager)
 	dep.Spec.Replicas = mcoconfig.GetReplicas(mcoconfig.Alertmanager, r.cr.Spec.AdvancedConfig)
 
 	spec := &dep.Spec.Template.Spec
@@ -58,7 +58,7 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 	if *dep.Spec.Replicas > 1 {
 		for i := int32(0); i < *dep.Spec.Replicas; i++ {
 			args = append(args, "--cluster.peer="+
-				mcoconfig.GetObjectPrefix()+"-alertmanager-"+
+				mcoconfig.GetOperandNamePrefix()+"alertmanager-"+
 				strconv.Itoa(int(i))+".alertmanager-operated."+
 				mcoconfig.GetDefaultNamespace()+".svc:9094")
 		}

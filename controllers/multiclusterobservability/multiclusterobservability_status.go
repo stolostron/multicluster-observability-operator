@@ -242,15 +242,14 @@ func updateAddonSpecStatus(
 }
 
 func getExpectedDeploymentNames() []string {
-	prefix := config.GetObjectPrefix()
 	return []string{
-		prefix + "-" + config.Grafana,
-		prefix + "-" + config.ObservatoriumAPI,
-		prefix + "-" + config.ThanosQuery,
-		prefix + "-" + config.ThanosQueryFrontend,
-		prefix + "-" + config.ThanosReceiveController,
-		prefix + "-" + config.ObservatoriumOperator,
-		prefix + "-" + config.RBACQueryProxy,
+		config.GetOperandNamePrefix() + config.Grafana,
+		config.GetOperandNamePrefix() + config.ObservatoriumAPI,
+		config.GetOperandNamePrefix() + config.ThanosQuery,
+		config.GetOperandNamePrefix() + config.ThanosQueryFrontend,
+		config.GetOperandNamePrefix() + config.ThanosReceiveController,
+		config.GetOperandNamePrefix() + config.ObservatoriumOperator,
+		config.GetOperandNamePrefix() + config.RBACQueryProxy,
 	}
 }
 
@@ -280,14 +279,13 @@ func checkDeployStatus(
 }
 
 func getExpectedStatefulSetNames() []string {
-	prefix := config.GetObjectPrefix()
 	return []string{
-		prefix + "-" + config.Alertmanager,
-		prefix + "-" + config.ThanosCompact,
-		prefix + "-" + config.ThanosReceive,
-		prefix + "-" + config.ThanosRule,
-		prefix + "-" + config.ThanosStoreMemcached,
-		prefix + "-" + config.ThanosStoreShard + "-0",
+		config.GetOperandNamePrefix() + config.Alertmanager,
+		config.GetOperandNamePrefix() + config.ThanosCompact,
+		config.GetOperandNamePrefix() + config.ThanosReceive,
+		config.GetOperandNamePrefix() + config.ThanosRule,
+		config.GetOperandNamePrefix() + config.ThanosStoreMemcached,
+		config.GetOperandNamePrefix() + config.ThanosStoreShard + "-0",
 	}
 }
 

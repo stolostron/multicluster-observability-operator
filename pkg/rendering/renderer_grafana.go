@@ -4,10 +4,13 @@
 package rendering
 
 import (
+	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
+	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
 
 func (r *Renderer) newGranfanaRenderer() {
@@ -32,11 +35,34 @@ func (r *Renderer) renderGrafanaDeployments(res *resource.Resource) (*unstructur
 		return nil, err
 	}
 
-	spec, ok := u.Object["spec"].(map[string]interface{})
-	if ok {
-		spec["replicas"] = config.GetReplicas(config.Grafana, r.cr.Spec.AdvancedConfig)
+	obj := util.GetK8sObj(u.GetKind())
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, obj)
+	if err != nil {
+		return nil, err
 	}
-	return u, nil
+	dep := obj.(*v1.Deployment)
+	dep.Name = config.GetOperandName(config.Grafana)
+	dep.Spec.Replicas = config.GetReplicas(config.Grafana, r.cr.Spec.AdvancedConfig)
+
+	spec := &dep.Spec.Template.Spec
+
+	found, image := config.ReplaceImage(r.cr.Annotations, config.GrafanaImgRepo, config.GrafanaImgName)
+	if found {
+		spec.Containers[0].Image = image
+	}
+	spec.Containers[0].Resources = config.GetResources(config.Grafana, r.cr.Spec.AdvancedConfig)
+	found, image = config.ReplaceImage(r.cr.Annotations, spec.Containers[1].Image,
+		config.GrafanaDashboardLoaderKey)
+	if found {
+		spec.Containers[1].Image = image
+	}
+
+	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	return &unstructured.Unstructured{Object: unstructuredObj}, nil
 }
 
 func (r *Renderer) renderGrafanaTemplates(templates []*resource.Resource) ([]*unstructured.Unstructured, error) {

@@ -49,6 +49,7 @@ func (r *Renderer) renderProxyDeployment(res *resource.Resource) (*unstructured.
 	dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 	dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
 	dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
+	dep.Name = mcoconfig.GetOperandName(config.RBACQueryProxy)
 	dep.Spec.Replicas = config.GetReplicas(config.RBACQueryProxy, r.cr.Spec.AdvancedConfig)
 
 	spec := &dep.Spec.Template.Spec

@@ -53,6 +53,7 @@ func TestOnAdd(t *testing.T) {
 			CreationTimestamp: metav1.Date(2020, time.January, 2, 0, 0, 0, 0, time.UTC),
 		},
 	}
+	config.SetOperandNames(c)
 	onAdd(c)(caSecret)
 	c = fake.NewFakeClient(newDeployment(name+"-rbac-query-proxy"),
 		newDeployment(name+"-observatorium-api"))
