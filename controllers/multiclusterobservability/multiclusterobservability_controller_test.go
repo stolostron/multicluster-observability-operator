@@ -418,6 +418,15 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to delete mco: (%v)", err)
 	}
+	// reconcile to make sure the finalizer of the mco cr is deleted
+	_, err = r.Reconcile(context.TODO(), req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+
+	// wait for the stop status update channel is closed
+	time.Sleep(1 * time.Second)
+
 	mco.Spec.ObservabilityAddonSpec.EnableMetrics = true
 	mco.ObjectMeta.ResourceVersion = ""
 	err = cl.Create(context.TODO(), mco)
