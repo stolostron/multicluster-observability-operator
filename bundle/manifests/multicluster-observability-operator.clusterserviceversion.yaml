@@ -336,6 +336,14 @@ spec:
           - get
           - list
         - apiGroups:
+          - operator.open-cluster-management.io
+          resources:
+          - multiclusterhubs
+          verbs:
+          - watch
+          - get
+          - list
+        - apiGroups:
           - certificates.k8s.io
           resources:
           - certificatesigningrequests

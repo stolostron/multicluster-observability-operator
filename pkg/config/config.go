@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	goversion "github.com/hashicorp/go-version"
 	obsv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
@@ -235,6 +234,7 @@ const (
 )
 
 const (
+	MCHCrdName                     = "multiclusterhubs.operator.open-cluster-management.io"
 	MCOCrdName                     = "multiclusterobservabilities.observability.open-cluster-management.io"
 	PlacementRuleCrdName           = "placementrules.apps.open-cluster-management.io"
 	StorageVersionMigrationCrdName = "storageversionmigrations.migration.k8s.io"
@@ -353,14 +353,17 @@ func GetImageManifestConfigMapName() string {
 }
 
 // ReadImageManifestConfigMap reads configmap with the label ocm-configmap-type=image-manifest
-func ReadImageManifestConfigMap(c client.Client) (bool, error) {
+func ReadImageManifestConfigMap(c client.Client, version string) (bool, error) {
 	podNamespace, found := os.LookupEnv("POD_NAMESPACE")
 	if !found {
-		return false, nil
+		podNamespace = GetDefaultMCONamespace()
 	}
 
-	// List image manifest configmap with label ocm-configmap-type=image-manifest
-	matchLabels := map[string]string{OCMManifestConfigMapTypeLabelKey: OCMManifestConfigMapTypeLabelValue}
+	// List image manifest configmap with label ocm-configmap-type=image-manifest and ocm-release-version
+	matchLabels := map[string]string{
+		OCMManifestConfigMapTypeLabelKey:    OCMManifestConfigMapTypeLabelValue,
+		OCMManifestConfigMapVersionLabelKey: version,
+	}
 	listOpts := []client.ListOption{
 		client.InNamespace(podNamespace),
 		client.MatchingLabels(matchLabels),
@@ -371,33 +374,13 @@ func ReadImageManifestConfigMap(c client.Client) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("Failed to list mch-image-manifest configmaps: %v", err)
 	}
-	// loop through the image configmap list and get the one with the latest version
-	maxSemiVersion, err := goversion.NewVersion("0.0.1")
-	if err != nil {
-		return false, fmt.Errorf("Failed to init the semi version: %v", err)
-	}
-	for _, imageCM := range imageCMList.Items {
-		cmLabelValue, exists := imageCM.GetLabels()[OCMManifestConfigMapVersionLabelKey]
-		if exists {
-			CurrentSemiVer, err := goversion.NewVersion(cmLabelValue)
-			if err != nil {
-				log.Error(err, "Invalid version for the mch-image-manifest configmap label", "configmap", imageCM.GetName(), "version label value", cmLabelValue)
-				// ignore current one and continue the next one
-				continue
-			}
-			if maxSemiVersion.LessThan(CurrentSemiVer) {
-				imageManifests = imageCM.Data
-				maxSemiVersion = CurrentSemiVer
-			}
-		}
-	}
 
-	// no match mch-image-manifest configmap found
-	if maxSemiVersion.Original() == "0.0.1" {
-		log.Info("no mch-image-manifest configmap found")
+	if len(imageCMList.Items) != 1 {
+		// there should be only one matched image manifest configmap found
 		return false, nil
 	}
 
+	imageManifests = imageCMList.Items[0].Data
 	return true, nil
 }
 

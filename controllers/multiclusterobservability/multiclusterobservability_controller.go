@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -45,6 +46,7 @@ import (
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/deploying"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/rendering"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
+	mchv1 "github.com/open-cluster-management/multiclusterhub-operator/pkg/apis/operator/v1"
 	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 )
 
@@ -66,13 +68,14 @@ var (
 
 // MultiClusterObservabilityReconciler reconciles a MultiClusterObservability object
 type MultiClusterObservabilityReconciler struct {
-	Manager   manager.Manager
-	Client    client.Client
-	Log       logr.Logger
-	Scheme    *runtime.Scheme
-	OcpClient ocpClientSet.Interface
-	CrdClient crdClientSet.Interface
-	APIReader client.Reader
+	Manager    manager.Manager
+	Client     client.Client
+	Log        logr.Logger
+	Scheme     *runtime.Scheme
+	OcpClient  ocpClientSet.Interface
+	CrdClient  crdClientSet.Interface
+	APIReader  client.Reader
+	RESTMapper meta.RESTMapper
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io,resources=multiclusterobservabilities,verbs=get;list;watch;create;update;patch;delete
@@ -128,9 +131,36 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, err
 	}
 
-	//read image manifest configmap to be used to replace the image for each component.
-	if _, err = config.ReadImageManifestConfigMap(r.Client); err != nil {
+	mchCrdExists, err := util.CheckCRDExist(r.CrdClient, config.MCHCrdName)
+	if err != nil {
 		return ctrl.Result{}, err
+	}
+
+	if mchCrdExists {
+		mchList := &mchv1.MultiClusterHubList{}
+		podNamespace, found := os.LookupEnv("POD_NAMESPACE")
+		if !found {
+			podNamespace = config.GetDefaultMCONamespace()
+		}
+		mchistOpts := []client.ListOption{
+			client.InNamespace(podNamespace),
+		}
+		err := r.Client.List(context.TODO(), mchList, mchistOpts...)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		// normally there should only one MCH CR in the cluster
+		if len(mchList.Items) == 1 {
+			mch := mchList.Items[0]
+			mchVer := mch.Status.CurrentVersion
+			if mchVer != "" {
+				//read image manifest configmap to be used to replace the image for each component.
+				if _, err = config.ReadImageManifestConfigMap(r.Client, mchVer); err != nil {
+					return ctrl.Result{}, err
+				}
+			}
+		}
 	}
 
 	// Do not reconcile objects if this instance of mch is labeled "paused"
@@ -381,36 +411,6 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		},
 	}
 
-	imageManifestPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			obj, err := meta.Accessor(e.Object)
-			if err != nil {
-				return false
-			}
-			cmLabelValue, exits := obj.GetLabels()[config.OCMManifestConfigMapTypeLabelValue]
-			if exits && cmLabelValue == config.OCMManifestConfigMapTypeLabelKey {
-				log.V(1).Info("OCM image manifests configmap is created", "configmap", e.Object.GetName())
-				return true
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			obj, err := meta.Accessor(e.ObjectNew)
-			if err != nil {
-				return false
-			}
-			cmLabelValue, exits := obj.GetLabels()[config.OCMManifestConfigMapTypeLabelValue]
-			if exits && cmLabelValue == config.OCMManifestConfigMapTypeLabelKey && e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				log.V(1).Info("OCM image manifests configmap is updated", "configmap", e.ObjectNew.GetName())
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return false
-		},
-	}
-
 	secretPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
@@ -439,8 +439,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		},
 	}
 
-	// create a new controller and start watch for relevant resources
-	return ctrl.NewControllerManagedBy(mgr).
+	ctrBuilder := ctrl.NewControllerManagedBy(mgr).
 		// Watch for changes to primary resource MultiClusterObservability with predicate
 		For(&mcov1beta2.MultiClusterObservability{}, builder.WithPredicates(mcoPred)).
 		// Watch for changes to secondary resource Deployment and requeue the owner MultiClusterObservability
@@ -457,12 +456,45 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		Owns(&observatoriumv1alpha1.Observatorium{}).
 		// Watch the configmap for thanos-ruler-custom-rules update
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmPred)).
-		// Watch the configmap for mch-image-manifest-* update
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(imageManifestPred)).
 		// Watch the secret for deleting event of alertmanager-config
-		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(secretPred)).
-		// actually create the controller with the reconciler
-		Complete(r)
+		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(secretPred))
+
+	mchGroupKind := schema.GroupKind{Group: mchv1.SchemeGroupVersion.Group, Kind: "MultiClusterHub"}
+	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.SchemeGroupVersion.Version); err == nil {
+		imageManifestCMPred := predicate.Funcs{
+			CreateFunc: func(e event.CreateEvent) bool {
+				return false
+			},
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				podNamespace, found := os.LookupEnv("POD_NAMESPACE")
+				if !found {
+					podNamespace = config.GetDefaultMCONamespace()
+				}
+				if e.ObjectNew.GetNamespace() == podNamespace &&
+					e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
+					// only enqueue the request when the MCH is installed/upgraded successfully
+					return true
+				}
+				return false
+			},
+			DeleteFunc: func(e event.DeleteEvent) bool {
+				return false
+			},
+		}
+
+		mchCrdExists, err := util.CheckCRDExist(r.CrdClient, config.MCHCrdName)
+		if err != nil {
+			return err
+		}
+
+		if mchCrdExists {
+			// secondary watch for MCH
+			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &mchv1.MultiClusterHub{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(imageManifestCMPred))
+		}
+	}
+
+	// create and return a new controller
+	return ctrBuilder.Complete(r)
 }
 
 func checkStorageChanged(mcoOldConfig, mcoNewConfig *mcov1beta2.StorageConfig) {

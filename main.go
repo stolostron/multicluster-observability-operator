@@ -52,6 +52,7 @@ import (
 	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
+	mchv1 "github.com/open-cluster-management/multiclusterhub-operator/pkg/apis/operator/v1"
 	observatoriumAPIs "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
@@ -120,6 +121,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := mchv1.SchemeBuilder.AddToScheme(scheme); err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
 	// add scheme of storage version migration
 	if err := migrationv1alpha1.AddToScheme(scheme); err != nil {
 		setupLog.Error(err, "")
@@ -144,7 +150,6 @@ func main() {
 		},
 		v1.SchemeGroupVersion.WithKind("ConfigMap"): []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", podNamespace), LabelSelector: fmt.Sprintf("%s==%s", config.OCMManifestConfigMapTypeLabelKey, config.OCMManifestConfigMapTypeLabelValue)},
 		},
 		v1.SchemeGroupVersion.WithKind("Service"): []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
@@ -163,6 +168,9 @@ func main() {
 		},
 		placementv1.SchemeGroupVersion.WithKind("PlacementRule"): []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
+		},
+		mchv1.SchemeGroupVersion.WithKind("MultiClusterHub"): []filteredcache.Selector{
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", podNamespace)},
 		},
 		operatorv1.SchemeGroupVersion.WithKind("IngressController"): []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s,metadata.name==%s", config.OpenshiftIngressOperatorNamespace, config.OpenshiftIngressOperatorCRName)},
@@ -200,13 +208,14 @@ func main() {
 	}
 
 	if err = (&mcoctrl.MultiClusterObservabilityReconciler{
-		Manager:   mgr,
-		Client:    mgr.GetClient(),
-		Log:       ctrl.Log.WithName("controllers").WithName("MultiClusterObservability"),
-		Scheme:    mgr.GetScheme(),
-		OcpClient: ocpClient,
-		CrdClient: crdClient,
-		APIReader: mgr.GetAPIReader(),
+		Manager:    mgr,
+		Client:     mgr.GetClient(),
+		Log:        ctrl.Log.WithName("controllers").WithName("MultiClusterObservability"),
+		Scheme:     mgr.GetScheme(),
+		OcpClient:  ocpClient,
+		CrdClient:  crdClient,
+		APIReader:  mgr.GetAPIReader(),
+		RESTMapper: mgr.GetRESTMapper(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MultiClusterObservability")
 		os.Exit(1)

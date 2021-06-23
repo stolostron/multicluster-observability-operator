@@ -356,6 +356,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 	caseList := []struct {
 		name         string
 		inputCMList  []string
+		version      string
 		expectedData map[string]string
 		expectedRet  bool
 		preFunc      func()
@@ -363,6 +364,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 		{
 			name:         "no image manifest configmap",
 			inputCMList:  []string{},
+			version:      "2.3.0",
 			expectedRet:  false,
 			expectedData: map[string]string{},
 			preFunc: func() {
@@ -371,12 +373,11 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 			},
 		},
 		{
-			name:        "single valid image manifest configmap",
-			inputCMList: []string{"2.2.3"},
-			expectedRet: true,
-			expectedData: map[string]string{
-				"test-key": "test-value:2.2.3",
-			},
+			name:         "single valid image manifest configmap",
+			inputCMList:  []string{"2.2.3"},
+			version:      "2.3.0",
+			expectedRet:  false,
+			expectedData: map[string]string{},
 			preFunc: func() {
 				os.Setenv("POD_NAMESPACE", ns)
 				SetImageManifests(map[string]string{})
@@ -385,6 +386,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 		{
 			name:        "multiple valid image manifest configmaps",
 			inputCMList: []string{"2.2.3", "2.3.0"},
+			version:     "2.3.0",
 			expectedRet: true,
 			expectedData: map[string]string{
 				"test-key": "test-value:2.3.0",
@@ -397,6 +399,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 		{
 			name:        "multiple image manifest configmaps with invalid",
 			inputCMList: []string{"2.2.3", "2.3.0", "invalid"},
+			version:     "2.3.0",
 			expectedRet: true,
 			expectedData: map[string]string{
 				"test-key": "test-value:2.3.0",
@@ -409,6 +412,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 		{
 			name:         "valid image manifest configmaps with no namespace set",
 			inputCMList:  []string{"2.2.3", "2.3.0"},
+			version:      "2.3.0",
 			expectedRet:  false,
 			expectedData: map[string]string{},
 			preFunc: func() {
@@ -427,7 +431,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 			}
 			client := fake.NewFakeClientWithScheme(scheme, initObjs...)
 
-			gotRet, err := ReadImageManifestConfigMap(client)
+			gotRet, err := ReadImageManifestConfigMap(client, c.version)
 			if err != nil {
 				t.Errorf("Failed read image manifest configmap due to %v", err)
 			}
