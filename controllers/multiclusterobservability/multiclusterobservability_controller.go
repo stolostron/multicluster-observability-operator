@@ -719,7 +719,8 @@ func GenerateProxyRoute(
 }
 
 // cleanUpClusterScopedResources delete the cluster scoped resources created by the MCO operator
-// The cluster scoped resources need to be deleted manually because they don't have ownerrefenence set as the MCO CR
+// The cluster scoped resources need to be deleted manually because they don't have ownerrefenence
+//  set as the MCO CR
 func cleanUpClusterScopedResources(cl client.Client, mco *mcov1beta2.MultiClusterObservability) error {
 	matchLabels := map[string]string{config.GetCrLabelKey(): mco.Name}
 	listOpts := []client.ListOption{
