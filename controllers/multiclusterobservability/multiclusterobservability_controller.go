@@ -154,7 +154,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		if len(mchList.Items) == 1 {
 			mch := mchList.Items[0]
 			mchVer := mch.Status.CurrentVersion
-			if mchVer != "" {
+			if mchVer != "" && (mch.Status.CurrentVersion == mch.Status.DesiredVersion) {
 				//read image manifest configmap to be used to replace the image for each component.
 				if _, err = config.ReadImageManifestConfigMap(r.Client, mchVer); err != nil {
 					return ctrl.Result{}, err

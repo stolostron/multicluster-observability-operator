@@ -704,6 +704,7 @@ func StartPlacementController(mgr manager.Manager) error {
 			Log:        ctrl.Log.WithName("controllers").WithName("PlacementRule"),
 			Scheme:     mgr.GetScheme(),
 			APIReader:  mgr.GetAPIReader(),
+			CrdClient:  crdClient,
 			RESTMapper: mgr.GetRESTMapper(),
 		}).SetupWithManager(mgr); err != nil {
 			log.Error(err, "unable to create controller", "controller", "PlacementRule")
