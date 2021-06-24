@@ -6,6 +6,7 @@ package util
 import (
 	"context"
 	"os"
+	"reflect"
 	"time"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
@@ -23,7 +24,7 @@ var (
 	spokeNameSpace = os.Getenv("SPOKE_NAMESPACE")
 )
 
-func CreateManagedClusterAddonCR(client client.Client, namespace string) error {
+func CreateManagedClusterAddonCR(c client.Client, namespace string) error {
 	newManagedClusterAddon := &addonv1alpha1.ManagedClusterAddOn{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
@@ -58,7 +59,7 @@ func CreateManagedClusterAddonCR(client client.Client, namespace string) error {
 	}
 	managedClusterAddon := &addonv1alpha1.ManagedClusterAddOn{}
 	// check if managedClusterAddon exists
-	if err := client.Get(
+	if err := c.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      ManagedClusterAddonName,
@@ -67,11 +68,11 @@ func CreateManagedClusterAddonCR(client client.Client, namespace string) error {
 		managedClusterAddon,
 	); err != nil && errors.IsNotFound(err) {
 		// create new managedClusterAddon
-		if err := client.Create(context.TODO(), newManagedClusterAddon); err != nil {
+		if err := c.Create(context.TODO(), newManagedClusterAddon); err != nil {
 			log.Error(err, "Cannot create observability-controller  ManagedClusterAddOn")
 			return err
 		}
-		if err := client.Status().Update(context.TODO(), newManagedClusterAddon); err != nil {
+		if err := c.Status().Update(context.TODO(), newManagedClusterAddon); err != nil {
 			log.Error(err, "Cannot update status for observability-controller  ManagedClusterAddOn")
 			return err
 		}
@@ -83,7 +84,7 @@ func CreateManagedClusterAddonCR(client client.Client, namespace string) error {
 	if !reflect.DeepEqual(managedClusterAddon.Spec, newManagedClusterAddon.Spec) {
 		log.Info("Updating observability-controller managedClusterAddon")
 		newManagedClusterAddon.ObjectMeta.ResourceVersion = managedClusterAddon.ObjectMeta.ResourceVersion
-		err = c.Update(context.TODO(), newManagedClusterAddon)
+		err := c.Update(context.TODO(), newManagedClusterAddon)
 		if err != nil {
 			log.Error(err, "Failed to update observability-controller managedClusterAddon")
 			return err
