@@ -95,6 +95,12 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	crdClient, err := util.GetOrCreateCRDClient()
+	if err != nil {
+		setupLog.Error(err, "Failed to create the CRD client")
+		os.Exit(1)
+	}
+
 	// Add route Openshift scheme
 	if err := routev1.AddToScheme(scheme); err != nil {
 		setupLog.Error(err, "")
@@ -116,14 +122,28 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := placementv1.AddToScheme(scheme); err != nil {
+	placementRuleCrdExists, err := util.CheckCRDExist(crdClient, config.PlacementRuleCrdName)
+	if err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
+	if placementRuleCrdExists {
+		if err := placementv1.AddToScheme(scheme); err != nil {
+			setupLog.Error(err, "")
+			os.Exit(1)
+		}
+	}
 
-	if err := mchv1.SchemeBuilder.AddToScheme(scheme); err != nil {
+	mchCrdExists, err := util.CheckCRDExist(crdClient, config.MCHCrdName)
+	if err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
+	}
+	if mchCrdExists {
+		if err := mchv1.SchemeBuilder.AddToScheme(scheme); err != nil {
+			setupLog.Error(err, "")
+			os.Exit(1)
+		}
 	}
 
 	// add scheme of storage version migration
@@ -166,15 +186,21 @@ func main() {
 		workv1.SchemeGroupVersion.WithKind("ManifestWork"): []filteredcache.Selector{
 			{LabelSelector: "owner==multicluster-observability-operator"},
 		},
-		placementv1.SchemeGroupVersion.WithKind("PlacementRule"): []filteredcache.Selector{
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
-		},
-		mchv1.SchemeGroupVersion.WithKind("MultiClusterHub"): []filteredcache.Selector{
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", podNamespace)},
-		},
 		operatorv1.SchemeGroupVersion.WithKind("IngressController"): []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s,metadata.name==%s", config.OpenshiftIngressOperatorNamespace, config.OpenshiftIngressOperatorCRName)},
 		},
+	}
+
+	if placementRuleCrdExists {
+		gvkLabelsMap[placementv1.SchemeGroupVersion.WithKind("PlacementRule")] = []filteredcache.Selector{
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
+		}
+	}
+
+	if mchCrdExists {
+		gvkLabelsMap[mchv1.SchemeGroupVersion.WithKind("MultiClusterHub")] = []filteredcache.Selector{
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", podNamespace)},
+		}
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -194,12 +220,6 @@ func main() {
 	ocpClient, err := util.GetOrCreateOCPClient()
 	if err != nil {
 		setupLog.Error(err, "Failed to create the OpenShift client")
-		os.Exit(1)
-	}
-
-	crdClient, err := util.GetOrCreateCRDClient()
-	if err != nil {
-		setupLog.Error(err, "Failed to create the CRD client")
 		os.Exit(1)
 	}
 
