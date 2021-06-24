@@ -24,6 +24,38 @@ var (
 )
 
 func CreateManagedClusterAddonCR(client client.Client, namespace string) error {
+	newManagedClusterAddon := &addonv1alpha1.ManagedClusterAddOn{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
+			Kind:       "ManagedClusterAddOn",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ManagedClusterAddonName,
+			Namespace: namespace,
+		},
+		Spec: addonv1alpha1.ManagedClusterAddOnSpec{
+			InstallNamespace: spokeNameSpace,
+		},
+		Status: addonv1alpha1.ManagedClusterAddOnStatus{
+			AddOnConfiguration: addonv1alpha1.ConfigCoordinates{
+				CRDName: "observabilityaddons.observability.open-cluster-management.io",
+				CRName:  "observability-addon",
+			},
+			AddOnMeta: addonv1alpha1.AddOnMeta{
+				DisplayName: "Observability Controller",
+				Description: "Manages Observability components.",
+			},
+			Conditions: []metav1.Condition{
+				{
+					Type:               "Progressing",
+					Status:             metav1.ConditionTrue,
+					LastTransitionTime: metav1.NewTime(time.Now()),
+					Reason:             "ManifestWorkCreated",
+					Message:            "Addon Installing",
+				},
+			},
+		},
+	}
 	managedClusterAddon := &addonv1alpha1.ManagedClusterAddOn{}
 	// check if managedClusterAddon exists
 	if err := client.Get(
@@ -35,38 +67,6 @@ func CreateManagedClusterAddonCR(client client.Client, namespace string) error {
 		managedClusterAddon,
 	); err != nil && errors.IsNotFound(err) {
 		// create new managedClusterAddon
-		newManagedClusterAddon := &addonv1alpha1.ManagedClusterAddOn{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
-				Kind:       "ManagedClusterAddOn",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      ManagedClusterAddonName,
-				Namespace: namespace,
-			},
-			Spec: addonv1alpha1.ManagedClusterAddOnSpec{
-				InstallNamespace: spokeNameSpace,
-			},
-			Status: addonv1alpha1.ManagedClusterAddOnStatus{
-				AddOnConfiguration: addonv1alpha1.ConfigCoordinates{
-					CRDName: "observabilityaddons.observability.open-cluster-management.io",
-					CRName:  "observability-addon",
-				},
-				AddOnMeta: addonv1alpha1.AddOnMeta{
-					DisplayName: "Observability Controller",
-					Description: "Manages Observability components.",
-				},
-				Conditions: []metav1.Condition{
-					{
-						Type:               "Progressing",
-						Status:             metav1.ConditionTrue,
-						LastTransitionTime: metav1.NewTime(time.Now()),
-						Reason:             "ManifestWorkCreated",
-						Message:            "Addon Installing",
-					},
-				},
-			},
-		}
 		if err := client.Create(context.TODO(), newManagedClusterAddon); err != nil {
 			log.Error(err, "Cannot create observability-controller  ManagedClusterAddOn")
 			return err
@@ -79,6 +79,18 @@ func CreateManagedClusterAddonCR(client client.Client, namespace string) error {
 		log.Error(err, "Failed to get ManagedClusterAddOn ", "namespace", namespace)
 		return err
 	}
+
+	if !reflect.DeepEqual(managedClusterAddon.Spec, newManagedClusterAddon.Spec) {
+		log.Info("Updating observability-controller managedClusterAddon")
+		newManagedClusterAddon.ObjectMeta.ResourceVersion = managedClusterAddon.ObjectMeta.ResourceVersion
+		err = c.Update(context.TODO(), newManagedClusterAddon)
+		if err != nil {
+			log.Error(err, "Failed to update observability-controller managedClusterAddon")
+			return err
+		}
+		return nil
+	}
+
 	log.Info("ManagedClusterAddOn already present", "namespace", namespace)
 
 	return nil
