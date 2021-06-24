@@ -461,9 +461,9 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	mchGroupKind := schema.GroupKind{Group: mchv1.SchemeGroupVersion.Group, Kind: "MultiClusterHub"}
 	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.SchemeGroupVersion.Version); err == nil {
-		imageManifestCMPred := predicate.Funcs{
+		mchPred := predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
-				return false
+				return true
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				podNamespace, found := os.LookupEnv("POD_NAMESPACE")
@@ -489,7 +489,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 
 		if mchCrdExists {
 			// secondary watch for MCH
-			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &mchv1.MultiClusterHub{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(imageManifestCMPred))
+			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &mchv1.MultiClusterHub{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(mchPred))
 		}
 	}
 
