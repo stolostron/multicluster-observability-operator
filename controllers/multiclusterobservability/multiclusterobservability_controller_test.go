@@ -76,6 +76,10 @@ func newTestImageManifestsConfigMap(namespace, version string) *corev1.ConfigMap
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.ImageManifestConfigMapNamePrefix + version,
 			Namespace: namespace,
+			Labels: map[string]string{
+				config.OCMManifestConfigMapTypeLabelKey:    config.OCMManifestConfigMapTypeLabelValue,
+				config.OCMManifestConfigMapVersionLabelKey: version,
+			},
 		},
 		Data: testImagemanifestsMap,
 	}
@@ -622,9 +626,6 @@ func TestImageReplaceForMCO(t *testing.T) {
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
-			Annotations: map[string]string{
-				config.AnnotationKeyImageTagSuffix: "tag",
-			},
 		},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			StorageConfig: &mcov1beta2.StorageConfig{
@@ -800,7 +801,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 			if !exists {
 				t.Fatalf("The image key(%s) for the container(%s) doesn't exist in the deployment(%s)", imageKey, container.Name, deployName)
 			}
-			if imageValue == container.Image {
+			if imageValue != container.Image {
 				t.Fatalf("The image(%s) for the container(%s) in the deployment(%s) should not replace with the one in the image manifests", imageValue, container.Name, deployName)
 			}
 		}
@@ -830,7 +831,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 			if !exists {
 				t.Fatalf("The image key(%s) for the container(%s) doesn't exist in the statefulset(%s)", imageKey, container.Name, statefulName)
 			}
-			if imageValue == container.Image {
+			if imageValue != container.Image {
 				t.Fatalf("The image(%s) for the container(%s) in the statefulset(%s) should not replace with the one in the image manifests", imageValue, container.Name, statefulName)
 			}
 		}
