@@ -12,7 +12,6 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
-	fakecrdclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -129,9 +128,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	objs := []runtime.Object{p, mco, pull, newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
 		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newManagedClusterAddon(), deprecatedRole}
 	c := fake.NewFakeClient(objs...)
-	crdClient := fakecrdclient.NewSimpleClientset([]runtime.Object{createPlacementRuleCRD()}...)
-
-	r := &PlacementRuleReconciler{Client: c, Scheme: s, CrdClient: crdClient}
+	r := &PlacementRuleReconciler{Client: c, Scheme: s, CRDMap: map[string]bool{config.PlacementRuleCrdName: true}}
 
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
