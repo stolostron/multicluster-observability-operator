@@ -5,6 +5,7 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -15,7 +16,6 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -54,7 +54,11 @@ const (
 	DefaultDSImgRepository = "quay.io:443/acm-d"
 	DefaultImgTagSuffix    = "latest"
 
-	ImageManifestConfigMapNamePrefix = "mch-image-manifest-"
+	MCHUpdatedRequestName               = "mch-updated-request"
+	ImageManifestConfigMapNamePrefix    = "mch-image-manifest-"
+	OCMManifestConfigMapTypeLabelKey    = "ocm-configmap-type"
+	OCMManifestConfigMapTypeLabelValue  = "image-manifest"
+	OCMManifestConfigMapVersionLabelKey = "ocm-release-version"
 
 	ComponentVersion = "COMPONENT_VERSION"
 
@@ -231,6 +235,7 @@ const (
 )
 
 const (
+	MCHCrdName                     = "multiclusterhubs.operator.open-cluster-management.io"
 	MCOCrdName                     = "multiclusterobservabilities.observability.open-cluster-management.io"
 	PlacementRuleCrdName           = "placementrules.apps.open-cluster-management.io"
 	StorageVersionMigrationCrdName = "storageversionmigrations.migration.k8s.io"
@@ -348,47 +353,31 @@ func GetImageManifestConfigMapName() string {
 	return imageManifestConfigMapName
 }
 
-func SetImageManifestConfigMapName() {
-	componentVersion, found := os.LookupEnv(ComponentVersion)
-	if found {
-		imageManifestConfigMapName = ImageManifestConfigMapNamePrefix + componentVersion
+// ReadImageManifestConfigMap reads configmap with the label ocm-configmap-type=image-manifest
+func ReadImageManifestConfigMap(c client.Client, version string) (bool, error) {
+	mcoNamespace := GetMCONamespace()
+	// List image manifest configmap with label ocm-configmap-type=image-manifest and ocm-release-version
+	matchLabels := map[string]string{
+		OCMManifestConfigMapTypeLabelKey:    OCMManifestConfigMapTypeLabelValue,
+		OCMManifestConfigMapVersionLabelKey: version,
 	}
-}
+	listOpts := []client.ListOption{
+		client.InNamespace(mcoNamespace),
+		client.MatchingLabels(matchLabels),
+	}
 
-// ReadImageManifestConfigMap reads configmap with the name is mch-image-manifest-xxx
-func ReadImageManifestConfigMap(c client.Client) (bool, error) {
-	//Only need to read if imageManifests is empty
-	if len(imageManifests) != 0 {
+	imageCMList := &corev1.ConfigMapList{}
+	err := c.List(context.TODO(), imageCMList, listOpts...)
+	if err != nil {
+		return false, fmt.Errorf("Failed to list mch-image-manifest configmaps: %v", err)
+	}
+
+	if len(imageCMList.Items) != 1 {
+		// there should be only one matched image manifest configmap found
 		return false, nil
 	}
 
-	if imageManifestConfigMapName == "" {
-		SetImageManifestConfigMapName()
-	}
-
-	podNamespace, found := os.LookupEnv("POD_NAMESPACE")
-	if found {
-		//Get image manifest configmap
-		imageCM := &corev1.ConfigMap{}
-		err := c.Get(
-			context.TODO(),
-			types.NamespacedName{
-				Name:      GetImageManifestConfigMapName(),
-				Namespace: podNamespace,
-			},
-			imageCM)
-		if err == nil {
-			imageManifests = imageCM.Data
-		} else {
-			if errors.IsNotFound(err) {
-				log.Info("Cannot get image manifest configmap", "configmap name", GetImageManifestConfigMapName())
-			} else {
-				log.Error(err, "Failed to read mch-image-manifest configmap")
-				return false, err
-			}
-
-		}
-	}
+	imageManifests = imageCMList.Items[0].Data
 	return true, nil
 }
 
@@ -455,8 +444,12 @@ func GetObsAPIUrl(client client.Client, namespace string) (string, error) {
 	return found.Spec.Host, nil
 }
 
-func GetDefaultMCONamespace() string {
-	return defaultMCONamespace
+func GetMCONamespace() string {
+	podNamespace, found := os.LookupEnv("POD_NAMESPACE")
+	if !found {
+		podNamespace = defaultMCONamespace
+	}
+	return podNamespace
 }
 
 // GetAlertmanagerEndpoint is used to get the URL for alertmanager

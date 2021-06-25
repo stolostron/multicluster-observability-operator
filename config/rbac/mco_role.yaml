@@ -256,6 +256,14 @@ rules:
   resources:
   - managedclusters
 - apiGroups:
+  - operator.open-cluster-management.io
+  verbs:
+  - watch
+  - get
+  - list
+  resources:
+  - multiclusterhubs
+- apiGroups:
   - certificates.k8s.io
   verbs:
   - get

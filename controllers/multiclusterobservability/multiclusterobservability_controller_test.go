@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"path"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,6 +32,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
 
+	mchv1 "github.com/open-cluster-management/multiclusterhub-operator/pkg/apis/operator/v1"
+
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
@@ -39,7 +42,6 @@ import (
 )
 
 func init() {
-	os.Setenv("TEMPLATES_PATH", "../../../manifests/")
 	os.Setenv("UNIT_TEST", "true")
 }
 
@@ -53,6 +55,44 @@ func newTestCert(name string, namespace string) *corev1.Secret {
 			"ca.crt":  []byte("test-ca-crt"),
 			"tls.crt": []byte("test-tls-crt"),
 			"tls.key": []byte("test-tls-key"),
+		},
+	}
+}
+
+var testImagemanifestsMap = map[string]string{
+	"endpoint_monitoring_operator": "test.io/endpoint-monitoring:test",
+	"grafana":                      "test.io/grafana:test",
+	"grafana_dashboard_loader":     "test.io/grafana-dashboard-loader:test",
+	"management_ingress":           "test.io/management-ingress:test",
+	"observatorium":                "test.io/observatorium:test",
+	"observatorium_operator":       "test.io/observatorium-operator:test",
+	"prometheus_alertmanager":      "test.io/prometheus-alertmanager:test",
+	"prometheus-config-reloader":   "test.io/configmap-reloader:test",
+	"rbac_query_proxy":             "test.io/rbac-query-proxy:test",
+	"thanos":                       "test.io/thanos:test",
+	"thanos_receive_controller":    "test.io/thanos_receive_controller:test",
+}
+
+func newTestImageManifestsConfigMap(namespace, version string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.ImageManifestConfigMapNamePrefix + version,
+			Namespace: namespace,
+		},
+		Data: testImagemanifestsMap,
+	}
+}
+
+func newMCHInstanceWithVersion(namespace, version string) *mchv1.MultiClusterHub {
+	return &mchv1.MultiClusterHub{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: namespace,
+		},
+		Spec: mchv1.MultiClusterHubSpec{},
+		Status: mchv1.MultiClusterHubStatus{
+			CurrentVersion: version,
+			DesiredVersion: version,
 		},
 	}
 }
@@ -199,7 +239,7 @@ func createClusterVersion() *configv1.ClusterVersion {
 
 func createPlacementRuleCRD() *apiextensionsv1beta1.CustomResourceDefinition {
 	return &apiextensionsv1beta1.CustomResourceDefinition{
-		ObjectMeta: metav1.ObjectMeta{Name: "placementrules.apps.open-cluster-management.io"},
+		ObjectMeta: metav1.ObjectMeta{Name: config.PlacementRuleCrdName},
 		Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
 			Scope:                 apiextensionsv1beta1.NamespaceScoped,
 			Conversion:            &apiextensionsv1beta1.CustomResourceConversion{Strategy: apiextensionsv1beta1.NoneConverter},
@@ -219,6 +259,28 @@ func createPlacementRuleCRD() *apiextensionsv1beta1.CustomResourceDefinition {
 	}
 }
 
+func createMultiClusterHubCRD() *apiextensionsv1beta1.CustomResourceDefinition {
+	return &apiextensionsv1beta1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{Name: config.MCHCrdName},
+		Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
+			Scope:      apiextensionsv1beta1.NamespaceScoped,
+			Conversion: &apiextensionsv1beta1.CustomResourceConversion{Strategy: apiextensionsv1beta1.NoneConverter},
+			Group:      "operator.open-cluster-management.io",
+			Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
+				Kind:       "MultiClusterHub",
+				ListKind:   "MultiClusterHubList",
+				Plural:     "multiclusterhubs",
+				ShortNames: []string{"mch"},
+				Singular:   "multiclusterhub",
+			},
+			Version: "v1",
+			Versions: []apiextensionsv1beta1.CustomResourceDefinitionVersion{
+				{Name: "v1", Storage: true, Served: true},
+			},
+		},
+	}
+}
+
 func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	var (
 		name      = "monitoring"
@@ -229,9 +291,8 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get work dir: (%v)", err)
 	}
-	//provide a non-existence path to bypass the rendering
-	//cannot convert unstructured.Unstructured into v1.Service in fake client
-	os.Setenv("TEMPLATES_PATH", path.Join(wd, "../../../tests/manifests"))
+	testManifestsPath := path.Join(wd, "../../tests/manifests")
+	os.Setenv("TEMPLATES_PATH", testManifestsPath)
 
 	// A MultiClusterObservability object with metadata and spec.
 	mco := &mcov1beta2.MultiClusterObservability{
@@ -539,6 +600,257 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Fatalf("reconcile for finalizer: (%v)", err)
 	}
 
+}
+
+func TestImageReplaceForMCO(t *testing.T) {
+	var (
+		name      = "test-monitoring"
+		namespace = config.GetDefaultNamespace()
+		version   = "2.3.0"
+	)
+
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get work dir: (%v)", err)
+	}
+	testManifestsPath := path.Join(wd, "../../tests/manifests")
+	manifestsPath := path.Join(wd, "../../manifests")
+	os.Setenv("TEMPLATES_PATH", testManifestsPath)
+	err = os.Symlink(manifestsPath, testManifestsPath)
+	if err != nil {
+		t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
+	}
+
+	// A MultiClusterObservability object with metadata and spec.
+	mco := &mcov1beta2.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Annotations: map[string]string{
+				config.AnnotationKeyImageTagSuffix: "tag",
+			},
+		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
+					Key:  "test",
+					Name: "test",
+				},
+				StorageClass:            "gp2",
+				AlertmanagerStorageSize: "1Gi",
+				CompactStorageSize:      "1Gi",
+				RuleStorageSize:         "1Gi",
+				ReceiveStorageSize:      "1Gi",
+				StoreStorageSize:        "1Gi",
+			},
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: false,
+			},
+		},
+	}
+
+	// Register operator types with the runtime scheme.
+	s := scheme.Scheme
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	observatoriumv1alpha1.AddToScheme(s)
+	routev1.AddToScheme(s)
+	placementv1.AddToScheme(s)
+	addonv1alpha1.AddToScheme(s)
+	mchv1.SchemeBuilder.AddToScheme(s)
+	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
+
+	observatoriumAPIsvc := createObservatoriumAPIService(name, namespace)
+	grafanaCert := newTestCert(config.GrafanaCerts, namespace)
+	serverCert := newTestCert(config.ServerCerts, namespace)
+	// create the image manifest configmap
+	imageManifestsCM := newTestImageManifestsConfigMap(config.GetMCONamespace(), version)
+	// byo case for the alertmanager route
+	testAmRouteBYOCaSecret := newTestCert(config.AlertmanagerRouteBYOCAName, namespace)
+	testAmRouteBYOCertSecret := newTestCert(config.AlertmanagerRouteBYOCERTName, namespace)
+	clustermgmtAddon := newClusterManagementAddon()
+
+	objs := []runtime.Object{mco, observatoriumAPIsvc, grafanaCert, serverCert, imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon}
+	// Create a fake client to mock API calls.
+	cl := fake.NewFakeClient(objs...)
+
+	ocpClient := fakeconfigclient.NewSimpleClientset([]runtime.Object{createClusterVersion()}...)
+	crdClient := fakecrdclient.NewSimpleClientset([]runtime.Object{createPlacementRuleCRD(), createMultiClusterHubCRD()}...)
+
+	// Create a ReconcileMemcached object with the scheme and fake client.
+	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, OcpClient: ocpClient, CrdClient: crdClient}
+	config.SetMonitoringCRName(name)
+	// Mock request to simulate Reconcile() being called on an event for a
+	// watched resource .
+	req := ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      name,
+			Namespace: namespace,
+		},
+	}
+
+	// Create empty client
+	_, err = r.Reconcile(context.TODO(), req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+	//wait for update status
+	time.Sleep(1 * time.Second)
+
+	expectedDeploymentNames := []string{
+		config.GetOperandNamePrefix() + config.Grafana,
+		config.GetOperandNamePrefix() + config.ObservatoriumOperator,
+		config.GetOperandNamePrefix() + config.RBACQueryProxy,
+	}
+	for _, deployName := range expectedDeploymentNames {
+		deploy := &appsv1.Deployment{}
+		err = cl.Get(context.TODO(), types.NamespacedName{
+			Name:      deployName,
+			Namespace: namespace,
+		}, deploy)
+		if err != nil {
+			t.Fatalf("Failed to get deployment %s: %v", deployName, err)
+		}
+		for _, container := range deploy.Spec.Template.Spec.Containers {
+			imageKey := strings.ReplaceAll(container.Name, "-", "_")
+			switch container.Name {
+			case "oauth-proxy":
+				// TODO: add oauth-proxy image to image manifests
+				continue
+			case "config-reloader":
+				imageKey = "prometheus-config-reloader"
+			}
+			imageValue, exists := testImagemanifestsMap[imageKey]
+			if !exists {
+				t.Fatalf("The image key(%s) for the container(%s) doesn't exist in the deployment(%s)", imageKey, container.Name, deployName)
+			}
+			if imageValue == container.Image {
+				t.Fatalf("The image(%s) for the container(%s) in the deployment(%s) should not replace with the one in the image manifests", imageValue, container.Name, deployName)
+			}
+		}
+
+	}
+
+	expectedStatefulSetNames := []string{
+		config.GetOperandNamePrefix() + config.Alertmanager,
+	}
+	for _, statefulName := range expectedStatefulSetNames {
+		sts := &appsv1.StatefulSet{}
+		err = cl.Get(context.TODO(), types.NamespacedName{
+			Name:      statefulName,
+			Namespace: namespace,
+		}, sts)
+		if err != nil {
+			t.Fatalf("Failed to get statefulset %s: %v", statefulName, err)
+		}
+		for _, container := range sts.Spec.Template.Spec.Containers {
+			imageKey := strings.ReplaceAll(container.Name, "-", "_")
+			switch container.Name {
+			case "oauth-proxy", "alertmanager-proxy":
+				// TODO: add oauth-proxy image to image manifests
+				continue
+			case "alertmanager":
+				imageKey = "prometheus_alertmanager"
+			case "config-reloader":
+				imageKey = "prometheus-config-reloader"
+			}
+			imageValue, exists := testImagemanifestsMap[imageKey]
+			if !exists {
+				t.Fatalf("The image key(%s) for the container(%s) doesn't exist in the statefulset(%s)", imageKey, container.Name, statefulName)
+			}
+			if imageValue == container.Image {
+				t.Fatalf("The image(%s) for the container(%s) in the statefulset(%s) should not replace with the one in the image manifests", imageValue, container.Name, statefulName)
+			}
+		}
+	}
+
+	err = cl.Create(context.TODO(), newMCHInstanceWithVersion(config.GetMCONamespace(), version))
+	if err != nil {
+		t.Fatalf("Failed to create mch instance: (%v)", err)
+	}
+
+	// create reconcile request for MCH update event
+	req = ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      config.MCHUpdatedRequestName,
+			Namespace: config.GetMCONamespace(),
+		},
+	}
+
+	// trigger another reconcile for MCH update event
+	_, err = r.Reconcile(context.TODO(), req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+
+	//wait for update status
+	time.Sleep(1 * time.Second)
+
+	for _, deployName := range expectedDeploymentNames {
+		deploy := &appsv1.Deployment{}
+		err = cl.Get(context.TODO(), types.NamespacedName{
+			Name:      deployName,
+			Namespace: namespace,
+		}, deploy)
+		if err != nil {
+			t.Fatalf("Failed to get deployment %s: %v", deployName, err)
+		}
+		for _, container := range deploy.Spec.Template.Spec.Containers {
+			imageKey := strings.ReplaceAll(container.Name, "-", "_")
+			switch container.Name {
+			case "oauth-proxy":
+				// TODO: add oauth-proxy image to image manifests
+				continue
+			case "config-reloader":
+				imageKey = "prometheus-config-reloader"
+			}
+			imageValue, exists := testImagemanifestsMap[imageKey]
+			if !exists {
+				t.Fatalf("The image key(%s) for the container(%s) doesn't exist in the deployment(%s)", imageKey, container.Name, deployName)
+			}
+			if imageValue == container.Image {
+				t.Fatalf("The image(%s) for the container(%s) in the deployment(%s) should not replace with the one in the image manifests", imageValue, container.Name, deployName)
+			}
+		}
+	}
+
+	for _, statefulName := range expectedStatefulSetNames {
+		sts := &appsv1.StatefulSet{}
+		err = cl.Get(context.TODO(), types.NamespacedName{
+			Name:      statefulName,
+			Namespace: namespace,
+		}, sts)
+		if err != nil {
+			t.Fatalf("Failed to get statefulset %s: %v", statefulName, err)
+		}
+		for _, container := range sts.Spec.Template.Spec.Containers {
+			imageKey := strings.ReplaceAll(container.Name, "-", "_")
+			switch container.Name {
+			case "oauth-proxy", "alertmanager-proxy":
+				// TODO: add oauth-proxy image to image manifests
+				continue
+			case "alertmanager":
+				imageKey = "prometheus_alertmanager"
+			case "config-reloader":
+				imageKey = "prometheus-config-reloader"
+			}
+			imageValue, exists := testImagemanifestsMap[imageKey]
+			if !exists {
+				t.Fatalf("The image key(%s) for the container(%s) doesn't exist in the statefulset(%s)", imageKey, container.Name, statefulName)
+			}
+			if imageValue == container.Image {
+				t.Fatalf("The image(%s) for the container(%s) in the statefulset(%s) should not replace with the one in the image manifests", imageValue, container.Name, statefulName)
+			}
+		}
+	}
+
+	if err = os.Remove(testManifestsPath); err != nil {
+		t.Fatalf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
+	}
+
+	// stop update status routine
+	stopStatusUpdate <- struct{}{}
+	//wait for update status
+	time.Sleep(1 * time.Second)
 }
 
 func createSecret(key, name, namespace string) *corev1.Secret {

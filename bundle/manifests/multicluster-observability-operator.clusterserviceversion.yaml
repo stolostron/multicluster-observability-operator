@@ -336,6 +336,14 @@ spec:
           - get
           - list
         - apiGroups:
+          - operator.open-cluster-management.io
+          resources:
+          - multiclusterhubs
+          verbs:
+          - watch
+          - get
+          - list
+        - apiGroups:
           - certificates.k8s.io
           resources:
           - certificatesigningrequests
@@ -413,8 +421,6 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
-                - name: COMPONENT_VERSION
-                  value: 2.3.0
                 - name: OPERATOR_NAME
                   value: multicluster-observability-operator
                 - name: TEMPLATES_PATH

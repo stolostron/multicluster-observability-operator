@@ -12,6 +12,7 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	crdClientSet "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,6 +28,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
@@ -36,6 +38,7 @@ import (
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
+	mchv1 "github.com/open-cluster-management/multiclusterhub-operator/pkg/apis/operator/v1"
 )
 
 const (
@@ -57,6 +60,7 @@ type PlacementRuleReconciler struct {
 	Client     client.Client
 	Log        logr.Logger
 	Scheme     *runtime.Scheme
+	CrdClient  crdClientSet.Interface
 	APIReader  client.Reader
 	RESTMapper meta.RESTMapper
 }
@@ -122,8 +126,32 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	//read image manifest configmap to be used to replace the image for each component.
-	if _, err = config.ReadImageManifestConfigMap(r.Client); err != nil {
+	mchCrdExists, err := util.CheckCRDExist(r.CrdClient, config.MCHCrdName)
+	if err != nil {
 		return ctrl.Result{}, err
+	}
+
+	if req.Name == config.MCHUpdatedRequestName && mchCrdExists {
+		mchList := &mchv1.MultiClusterHubList{}
+		mchistOpts := []client.ListOption{
+			client.InNamespace(config.GetMCONamespace()),
+		}
+		err := r.Client.List(context.TODO(), mchList, mchistOpts...)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		// normally there should only one MCH CR in the cluster
+		if len(mchList.Items) == 1 {
+			mch := mchList.Items[0]
+			if mch.Status.CurrentVersion == mch.Status.DesiredVersion && mch.Status.CurrentVersion != "" {
+				mchVer := mch.Status.CurrentVersion
+				//read image manifest configmap to be used to replace the image for each component.
+				if _, err = config.ReadImageManifestConfigMap(r.Client, mchVer); err != nil {
+					return ctrl.Result{}, err
+				}
+			}
+		}
 	}
 
 	opts := &client.ListOptions{
@@ -476,27 +504,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 
-	imageManifestPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == config.GetImageManifestConfigMapName() {
-				log.V(1).Info("configmap is created", "configmap", config.GetImageManifestConfigMapName())
-				return true
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == config.GetImageManifestConfigMapName() &&
-				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				log.V(1).Info("configmap is updated", "configmap", config.GetImageManifestConfigMapName())
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return false
-		},
-	}
-
 	certSecretPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.ServerCACerts &&
@@ -622,8 +629,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&source.Kind{Type: &mcov1beta1.ObservabilityAddon{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(obsAddonPred)).
 		// secondary watch for MCO
 		Watches(&source.Kind{Type: &mcov1beta2.MultiClusterObservability{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(mcoPred)).
-		// Watch the configmap for mch-image-manifest-* update
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(imageManifestPred)).
 		// secondary watch for custom allowlist configmap
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(customAllowlistPred)).
 		// secondary watch for certificate secrets
@@ -661,6 +666,43 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &workv1.ManifestWork{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(workPred))
 	}
 
+	mchGroupKind := schema.GroupKind{Group: mchv1.SchemeGroupVersion.Group, Kind: "MultiClusterHub"}
+	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.SchemeGroupVersion.Version); err == nil {
+		mchPred := predicate.Funcs{
+			CreateFunc: func(e event.CreateEvent) bool {
+				return true
+			},
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
+					e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
+					// only enqueue the request when the MCH is installed/upgraded successfully
+					return true
+				}
+				return false
+			},
+			DeleteFunc: func(e event.DeleteEvent) bool {
+				return false
+			},
+		}
+
+		mchCrdExists, err := util.CheckCRDExist(r.CrdClient, config.MCHCrdName)
+		if err != nil {
+			return err
+		}
+
+		if mchCrdExists {
+			// secondary watch for MCH
+			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &mchv1.MultiClusterHub{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+				return []reconcile.Request{
+					{NamespacedName: types.NamespacedName{
+						Name:      config.MCHUpdatedRequestName,
+						Namespace: a.GetNamespace(),
+					}},
+				}
+			}), builder.WithPredicates(mchPred))
+		}
+	}
+
 	// create and return a new controller
 	return ctrBuilder.Complete(r)
 }
@@ -688,6 +730,7 @@ func StartPlacementController(mgr manager.Manager) error {
 			Log:        ctrl.Log.WithName("controllers").WithName("PlacementRule"),
 			Scheme:     mgr.GetScheme(),
 			APIReader:  mgr.GetAPIReader(),
+			CrdClient:  crdClient,
 			RESTMapper: mgr.GetRESTMapper(),
 		}).SetupWithManager(mgr); err != nil {
 			log.Error(err, "unable to create controller", "controller", "PlacementRule")

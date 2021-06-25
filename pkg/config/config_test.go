@@ -4,6 +4,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -331,56 +332,92 @@ func NewFakeClient(mco *mcov1beta2.MultiClusterObservability,
 }
 
 func TestReadImageManifestConfigMap(t *testing.T) {
-	cm := &corev1.ConfigMap{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "ConfigMap",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      ImageManifestConfigMapNamePrefix + version,
-			Namespace: "ns2",
-		},
-		Data: map[string]string{
-			"test-key": "test-value-1",
-		},
+	var buildTestImageManifestCM func(ns, version string) *corev1.ConfigMap
+	buildTestImageManifestCM = func(ns, version string) *corev1.ConfigMap {
+		return &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      ImageManifestConfigMapNamePrefix + version,
+				Namespace: ns,
+				Labels: map[string]string{
+					OCMManifestConfigMapTypeLabelKey:    OCMManifestConfigMapTypeLabelValue,
+					OCMManifestConfigMapVersionLabelKey: version,
+				},
+			},
+			Data: map[string]string{
+				"test-key": fmt.Sprintf("test-value:%s", version),
+			},
+		}
 	}
-	os.Setenv("POD_NAMESPACE", "ns2")
-	os.Setenv("COMPONENT_VERSION", version)
-	SetImageManifestConfigMapName()
+
+	ns := "testing"
 	scheme := runtime.NewScheme()
 	corev1.AddToScheme(scheme)
-	client := fake.NewFakeClientWithScheme(scheme, cm)
 
 	caseList := []struct {
-		expected bool
-		name     string
-		data     map[string]string
-		preFunc  func()
+		name         string
+		inputCMList  []string
+		version      string
+		expectedData map[string]string
+		expectedRet  bool
+		preFunc      func()
 	}{
 		{
-			name:     "read the " + ImageManifestConfigMapNamePrefix + "2.1.1",
-			expected: true,
-			data: map[string]string{
-				"test-key": "test-value-1",
-			},
-			preFunc: func() {},
-		},
-		{
-			name:     "Should not read the " + ImageManifestConfigMapNamePrefix + "2.1.1 again",
-			expected: false,
-			data: map[string]string{
-				"test-key": "test-value-1",
-			},
-			preFunc: func() {},
-		},
-		{
-			name:     ImageManifestConfigMapNamePrefix + "2.1.1 configmap does not exist",
-			expected: true,
-			data:     map[string]string{},
+			name:         "no image manifest configmap",
+			inputCMList:  []string{},
+			version:      "2.3.0",
+			expectedRet:  false,
+			expectedData: map[string]string{},
 			preFunc: func() {
+				os.Setenv("POD_NAMESPACE", ns)
 				SetImageManifests(map[string]string{})
-				os.Setenv(ComponentVersion, "invalid")
-				SetImageManifestConfigMapName()
+			},
+		},
+		{
+			name:         "single valid image manifest configmap",
+			inputCMList:  []string{"2.2.3"},
+			version:      "2.3.0",
+			expectedRet:  false,
+			expectedData: map[string]string{},
+			preFunc: func() {
+				os.Setenv("POD_NAMESPACE", ns)
+				SetImageManifests(map[string]string{})
+			},
+		},
+		{
+			name:        "multiple valid image manifest configmaps",
+			inputCMList: []string{"2.2.3", "2.3.0"},
+			version:     "2.3.0",
+			expectedRet: true,
+			expectedData: map[string]string{
+				"test-key": "test-value:2.3.0",
+			},
+			preFunc: func() {
+				os.Setenv("POD_NAMESPACE", ns)
+				SetImageManifests(map[string]string{})
+			},
+		},
+		{
+			name:        "multiple image manifest configmaps with invalid",
+			inputCMList: []string{"2.2.3", "2.3.0", "invalid"},
+			version:     "2.3.0",
+			expectedRet: true,
+			expectedData: map[string]string{
+				"test-key": "test-value:2.3.0",
+			},
+			preFunc: func() {
+				os.Setenv("POD_NAMESPACE", ns)
+				SetImageManifests(map[string]string{})
+			},
+		},
+		{
+			name:         "valid image manifest configmaps with no namespace set",
+			inputCMList:  []string{"2.2.3", "2.3.0"},
+			version:      "2.3.0",
+			expectedRet:  false,
+			expectedData: map[string]string{},
+			preFunc: func() {
+				os.Unsetenv("POD_NAMESPACE")
+				SetImageManifests(map[string]string{})
 			},
 		},
 	}
@@ -388,15 +425,21 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 	for _, c := range caseList {
 		t.Run(c.name, func(t *testing.T) {
 			c.preFunc()
-			output, err := ReadImageManifestConfigMap(client)
+			initObjs := []runtime.Object{}
+			for _, cmName := range c.inputCMList {
+				initObjs = append(initObjs, buildTestImageManifestCM(ns, cmName))
+			}
+			client := fake.NewFakeClientWithScheme(scheme, initObjs...)
+
+			gotRet, err := ReadImageManifestConfigMap(client, c.version)
 			if err != nil {
 				t.Errorf("Failed read image manifest configmap due to %v", err)
 			}
-			if output != c.expected {
-				t.Errorf("case (%v) output (%v) is not the expected (%v)", c.name, output, c.expected)
+			if gotRet != c.expectedRet {
+				t.Errorf("case (%v) output (%v) is not the expected (%v)", c.name, gotRet, c.expectedRet)
 			}
-			if !reflect.DeepEqual(GetImageManifests(), c.data) {
-				t.Errorf("case (%v) output (%v) is not the expected (%v)", c.name, GetImageManifests(), c.data)
+			if !reflect.DeepEqual(GetImageManifests(), c.expectedData) {
+				t.Errorf("case (%v) output (%v) is not the expected (%v)", c.name, GetImageManifests(), c.expectedData)
 			}
 		})
 	}
