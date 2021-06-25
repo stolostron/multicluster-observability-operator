@@ -57,6 +57,7 @@ func (r *Renderer) renderProxyDeployment(res *resource.Resource) (*unstructured.
 	args0 := spec.Containers[0].Args
 	for idx := range args0 {
 		args0[idx] = strings.Replace(args0[idx], "{{MCO_NAMESPACE}}", mcoconfig.GetDefaultNamespace(), 1)
+		args0[idx] = strings.Replace(args0[idx], "{{OBSERVATORIUM_NAME}}", mcoconfig.GetOperandName(mcoconfig.Observatorium), 1)
 	}
 	spec.Containers[0].Args = args0
 	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.RBACQueryProxy, r.cr.Spec.AdvancedConfig)
