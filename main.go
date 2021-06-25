@@ -71,7 +71,6 @@ func init() {
 
 	utilruntime.Must(observabilityv1beta1.AddToScheme(scheme))
 	utilruntime.Must(observabilityv1beta2.AddToScheme(scheme))
-	utilruntime.Must(placementv1.AddToScheme(scheme))
 	utilruntime.Must(observatoriumAPIs.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
@@ -157,11 +156,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	podNamespace, found := os.LookupEnv("POD_NAMESPACE")
-	if !found {
-		podNamespace = config.GetDefaultMCONamespace()
-	}
-
+	mcoNamespace := config.GetMCONamespace()
 	gvkLabelsMap := map[schema.GroupVersionKind][]filteredcache.Selector{
 		v1.SchemeGroupVersion.WithKind("Secret"): []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
@@ -199,7 +194,7 @@ func main() {
 
 	if mchCrdExists {
 		gvkLabelsMap[mchv1.SchemeGroupVersion.WithKind("MultiClusterHub")] = []filteredcache.Selector{
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", podNamespace)},
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", mcoNamespace)},
 		}
 	}
 
@@ -223,7 +218,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = util.UpdateCRDWebhookNS(crdClient, podNamespace, config.MCOCrdName); err != nil {
+	if err = util.UpdateCRDWebhookNS(crdClient, mcoNamespace, config.MCOCrdName); err != nil {
 		setupLog.Error(err, "unable to update webhook service namespace in MCO CRD", "controller", "MultiClusterObservability")
 	}
 

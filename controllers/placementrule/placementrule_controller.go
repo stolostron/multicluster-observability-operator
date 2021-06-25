@@ -6,7 +6,6 @@ package placementrule
 import (
 	"context"
 	"errors"
-	"os"
 	"reflect"
 
 	"github.com/go-logr/logr"
@@ -126,10 +125,33 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	//read image manifest configmap to be used to replace the image for each component.
-	// the MultiClusterObservabilityReconciler will read the image manifests, no need to read it again.
-	//if _, err = config.ReadImageManifestConfigMap(r.Client); err != nil {
-	//	return ctrl.Result{}, err
-	//}
+	mchCrdExists, err := util.CheckCRDExist(r.CrdClient, config.MCHCrdName)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if mchCrdExists {
+		mchList := &mchv1.MultiClusterHubList{}
+		mchistOpts := []client.ListOption{
+			client.InNamespace(config.GetMCONamespace()),
+		}
+		err := r.Client.List(context.TODO(), mchList, mchistOpts...)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		// normally there should only one MCH CR in the cluster
+		if len(mchList.Items) == 1 {
+			mch := mchList.Items[0]
+			if mch.Status.CurrentVersion == mch.Status.DesiredVersion && mch.Status.CurrentVersion != "" {
+				mchVer := mch.Status.CurrentVersion
+				//read image manifest configmap to be used to replace the image for each component.
+				if _, err = config.ReadImageManifestConfigMap(r.Client, mchVer); err != nil {
+					return ctrl.Result{}, err
+				}
+			}
+		}
+	}
 
 	opts := &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
@@ -650,11 +672,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				return true
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
-				podNamespace, found := os.LookupEnv("POD_NAMESPACE")
-				if !found {
-					podNamespace = config.GetDefaultMCONamespace()
-				}
-				if e.ObjectNew.GetNamespace() == podNamespace &&
+				if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
 					e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
 					// only enqueue the request when the MCH is installed/upgraded successfully
 					return true

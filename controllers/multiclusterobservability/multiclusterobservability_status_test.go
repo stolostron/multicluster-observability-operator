@@ -227,7 +227,7 @@ func TestStartStatusUpdate(t *testing.T) {
 	s := scheme.Scheme
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 
-	objs := []runtime.Object{mco, createSecret("test", "test", mcoconfig.GetDefaultMCONamespace())}
+	objs := []runtime.Object{mco, createSecret("test", "test", mcoconfig.GetMCONamespace())}
 	cl := fake.NewFakeClient(objs...)
 
 	StartStatusUpdate(cl, mco)

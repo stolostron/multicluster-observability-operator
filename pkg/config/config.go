@@ -354,18 +354,14 @@ func GetImageManifestConfigMapName() string {
 
 // ReadImageManifestConfigMap reads configmap with the label ocm-configmap-type=image-manifest
 func ReadImageManifestConfigMap(c client.Client, version string) (bool, error) {
-	podNamespace, found := os.LookupEnv("POD_NAMESPACE")
-	if !found {
-		podNamespace = GetDefaultMCONamespace()
-	}
-
+	mcoNamespace := GetMCONamespace()
 	// List image manifest configmap with label ocm-configmap-type=image-manifest and ocm-release-version
 	matchLabels := map[string]string{
 		OCMManifestConfigMapTypeLabelKey:    OCMManifestConfigMapTypeLabelValue,
 		OCMManifestConfigMapVersionLabelKey: version,
 	}
 	listOpts := []client.ListOption{
-		client.InNamespace(podNamespace),
+		client.InNamespace(mcoNamespace),
 		client.MatchingLabels(matchLabels),
 	}
 
@@ -447,8 +443,12 @@ func GetObsAPIUrl(client client.Client, namespace string) (string, error) {
 	return found.Spec.Host, nil
 }
 
-func GetDefaultMCONamespace() string {
-	return defaultMCONamespace
+func GetMCONamespace() string {
+	podNamespace, found := os.LookupEnv("POD_NAMESPACE")
+	if !found {
+		podNamespace = defaultMCONamespace
+	}
+	return podNamespace
 }
 
 // GetAlertmanagerEndpoint is used to get the URL for alertmanager

@@ -11,12 +11,15 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	fakecrdclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	utilpointer "k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -65,6 +68,28 @@ func initSchema(t *testing.T) {
 	}
 }
 
+func createPlacementRuleCRD() *apiextensionsv1beta1.CustomResourceDefinition {
+	return &apiextensionsv1beta1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{Name: "placementrules.apps.open-cluster-management.io"},
+		Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
+			Scope:                 apiextensionsv1beta1.NamespaceScoped,
+			Conversion:            &apiextensionsv1beta1.CustomResourceConversion{Strategy: apiextensionsv1beta1.NoneConverter},
+			PreserveUnknownFields: utilpointer.BoolPtr(false),
+			Group:                 "apps.open-cluster-management.io",
+			Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
+				Kind:     "PlacementRule",
+				ListKind: "PlacementRuleList",
+				Plural:   "placementrules",
+				Singular: "placementrule",
+			},
+			Version: "v1",
+			Versions: []apiextensionsv1beta1.CustomResourceDefinitionVersion{
+				{Name: "v1", Storage: true, Served: true},
+			},
+		},
+	}
+}
+
 func TestObservabilityAddonController(t *testing.T) {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
@@ -104,8 +129,10 @@ func TestObservabilityAddonController(t *testing.T) {
 	objs := []runtime.Object{p, mco, pull, newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
 		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newManagedClusterAddon(), deprecatedRole}
 	c := fake.NewFakeClient(objs...)
+	crdClient := fakecrdclient.NewSimpleClientset([]runtime.Object{createPlacementRuleCRD()}...)
 
-	r := &PlacementRuleReconciler{Client: c, Scheme: s}
+	r := &PlacementRuleReconciler{Client: c, Scheme: s, CrdClient: crdClient}
+
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      placementRuleName,

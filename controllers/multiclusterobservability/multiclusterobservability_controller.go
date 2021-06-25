@@ -138,12 +138,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	if mchCrdExists {
 		mchList := &mchv1.MultiClusterHubList{}
-		podNamespace, found := os.LookupEnv("POD_NAMESPACE")
-		if !found {
-			podNamespace = config.GetDefaultMCONamespace()
-		}
 		mchistOpts := []client.ListOption{
-			client.InNamespace(podNamespace),
+			client.InNamespace(config.GetMCONamespace()),
 		}
 		err := r.Client.List(context.TODO(), mchList, mchistOpts...)
 		if err != nil {
@@ -153,8 +149,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		// normally there should only one MCH CR in the cluster
 		if len(mchList.Items) == 1 {
 			mch := mchList.Items[0]
-			mchVer := mch.Status.CurrentVersion
-			if mchVer != "" && (mch.Status.CurrentVersion == mch.Status.DesiredVersion) {
+			if mch.Status.CurrentVersion == mch.Status.DesiredVersion && mch.Status.CurrentVersion != "" {
+				mchVer := mch.Status.CurrentVersion
 				//read image manifest configmap to be used to replace the image for each component.
 				if _, err = config.ReadImageManifestConfigMap(r.Client, mchVer); err != nil {
 					return ctrl.Result{}, err
@@ -466,11 +462,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 				return true
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
-				podNamespace, found := os.LookupEnv("POD_NAMESPACE")
-				if !found {
-					podNamespace = config.GetDefaultMCONamespace()
-				}
-				if e.ObjectNew.GetNamespace() == podNamespace &&
+				if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
 					e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
 					// only enqueue the request when the MCH is installed/upgraded successfully
 					return true
