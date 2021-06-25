@@ -136,7 +136,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, err
 	}
 
-	if mchCrdExists {
+	if req.Name == config.MCHUpdatedRequestName && mchCrdExists {
 		mchList := &mchv1.MultiClusterHubList{}
 		mchistOpts := []client.ListOption{
 			client.InNamespace(config.GetMCONamespace()),
@@ -481,7 +481,14 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 
 		if mchCrdExists {
 			// secondary watch for MCH
-			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &mchv1.MultiClusterHub{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(mchPred))
+			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &mchv1.MultiClusterHub{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+				return []reconcile.Request{
+					{NamespacedName: types.NamespacedName{
+						Name:      config.MCHUpdatedRequestName,
+						Namespace: a.GetNamespace(),
+					}},
+				}
+			}), builder.WithPredicates(mchPred))
 		}
 	}
 

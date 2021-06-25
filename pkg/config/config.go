@@ -54,6 +54,7 @@ const (
 	DefaultDSImgRepository = "quay.io:443/acm-d"
 	DefaultImgTagSuffix    = "latest"
 
+	MCHUpdatedRequestName               = "mch-updated-request"
 	ImageManifestConfigMapNamePrefix    = "mch-image-manifest-"
 	OCMManifestConfigMapTypeLabelKey    = "ocm-configmap-type"
 	OCMManifestConfigMapTypeLabelValue  = "image-manifest"

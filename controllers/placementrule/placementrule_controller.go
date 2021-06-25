@@ -28,6 +28,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
@@ -130,7 +131,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	if mchCrdExists {
+	if req.Name == config.MCHUpdatedRequestName && mchCrdExists {
 		mchList := &mchv1.MultiClusterHubList{}
 		mchistOpts := []client.ListOption{
 			client.InNamespace(config.GetMCONamespace()),
@@ -691,7 +692,14 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 		if mchCrdExists {
 			// secondary watch for MCH
-			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &mchv1.MultiClusterHub{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(mchPred))
+			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &mchv1.MultiClusterHub{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+				return []reconcile.Request{
+					{NamespacedName: types.NamespacedName{
+						Name:      config.MCHUpdatedRequestName,
+						Namespace: a.GetNamespace(),
+					}},
+				}
+			}), builder.WithPredicates(mchPred))
 		}
 	}
 
