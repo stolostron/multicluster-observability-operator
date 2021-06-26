@@ -12,7 +12,6 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	crdClientSet "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,7 +59,7 @@ type PlacementRuleReconciler struct {
 	Client     client.Client
 	Log        logr.Logger
 	Scheme     *runtime.Scheme
-	CrdClient  crdClientSet.Interface
+	CRDMap     map[string]bool
 	APIReader  client.Reader
 	RESTMapper meta.RESTMapper
 }
@@ -126,11 +125,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	//read image manifest configmap to be used to replace the image for each component.
-	mchCrdExists, err := util.CheckCRDExist(r.CrdClient, config.MCHCrdName)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
+	mchCrdExists, _ := r.CRDMap[config.MCHCrdName]
 	if req.Name == config.MCHUpdatedRequestName && mchCrdExists {
 		mchList := &mchv1.MultiClusterHubList{}
 		mchistOpts := []client.ListOption{
@@ -685,11 +680,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			},
 		}
 
-		mchCrdExists, err := util.CheckCRDExist(r.CrdClient, config.MCHCrdName)
-		if err != nil {
-			return err
-		}
-
+		mchCrdExists, _ := r.CRDMap[config.MCHCrdName]
 		if mchCrdExists {
 			// secondary watch for MCH
 			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &mchv1.MultiClusterHub{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
@@ -707,35 +698,22 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrBuilder.Complete(r)
 }
 
-func StartPlacementController(mgr manager.Manager) error {
+func StartPlacementController(mgr manager.Manager, crdMap map[string]bool) error {
 	if isplacementControllerRunnning {
 		return nil
 	}
 	isplacementControllerRunnning = true
 
-	crdClient, err := util.GetOrCreateCRDClient()
-	if err != nil {
-		log.Error(err, "Failed to create the CRD client")
+	if err := (&PlacementRuleReconciler{
+		Client:     mgr.GetClient(),
+		Log:        ctrl.Log.WithName("controllers").WithName("PlacementRule"),
+		Scheme:     mgr.GetScheme(),
+		APIReader:  mgr.GetAPIReader(),
+		CRDMap:     crdMap,
+		RESTMapper: mgr.GetRESTMapper(),
+	}).SetupWithManager(mgr); err != nil {
+		log.Error(err, "unable to create controller", "controller", "PlacementRule")
 		return err
-	}
-	crdExists, err := util.CheckCRDExist(crdClient, config.PlacementRuleCrdName)
-	if err != nil {
-		log.Error(err, "Failed to check if the CRD exists")
-		return err
-	}
-
-	if crdExists {
-		if err = (&PlacementRuleReconciler{
-			Client:     mgr.GetClient(),
-			Log:        ctrl.Log.WithName("controllers").WithName("PlacementRule"),
-			Scheme:     mgr.GetScheme(),
-			APIReader:  mgr.GetAPIReader(),
-			CrdClient:  crdClient,
-			RESTMapper: mgr.GetRESTMapper(),
-		}).SetupWithManager(mgr); err != nil {
-			log.Error(err, "unable to create controller", "controller", "PlacementRule")
-			return err
-		}
 	}
 
 	return nil

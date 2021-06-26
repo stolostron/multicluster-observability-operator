@@ -11,12 +11,10 @@ import (
 
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
-	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storev1 "k8s.io/api/storage/v1"
-	crdClientSet "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -72,8 +70,7 @@ type MultiClusterObservabilityReconciler struct {
 	Client     client.Client
 	Log        logr.Logger
 	Scheme     *runtime.Scheme
-	OcpClient  ocpClientSet.Interface
-	CrdClient  crdClientSet.Interface
+	CRDMap     map[string]bool
 	APIReader  client.Reader
 	RESTMapper meta.RESTMapper
 }
@@ -115,8 +112,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	StartStatusUpdate(r.Client, instance)
 
 	if os.Getenv("UNIT_TEST") != "true" {
-		// start placement controller
-		placemengctrl.StartPlacementController(r.Manager)
+		pmCrdExists, _ := r.CRDMap[config.PlacementRuleCrdName]
+		if pmCrdExists {
+			// start placement controller
+			placemengctrl.StartPlacementController(r.Manager, r.CRDMap)
+		}
 
 		// setup ocm addon manager
 		certctrl.Start(r.Client)
@@ -131,11 +131,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, err
 	}
 
-	mchCrdExists, err := util.CheckCRDExist(r.CrdClient, config.MCHCrdName)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
+	mchCrdExists, _ := r.CRDMap[config.MCHCrdName]
 	if req.Name == config.MCHUpdatedRequestName && mchCrdExists {
 		mchList := &mchv1.MultiClusterHubList{}
 		mchistOpts := []client.ListOption{
@@ -255,11 +251,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return *result, err
 	}
 
-	pmCrdExists, err := util.CheckCRDExist(r.CrdClient, config.PlacementRuleCrdName)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
+	pmCrdExists, _ := r.CRDMap[config.PlacementRuleCrdName]
 	if pmCrdExists {
 		// create the placementrule
 		err = createPlacementRule(r.Client, r.Scheme, instance)
@@ -268,11 +260,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	svmCrdExists, err := util.CheckCRDExist(r.CrdClient, config.StorageVersionMigrationCrdName)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
+	svmCrdExists, _ := r.CRDMap[config.StorageVersionMigrationCrdName]
 	if svmCrdExists {
 		// create or update the storage version migration resource
 		err = createOrUpdateObservabilityStorageVersionMigrationResource(r.Client, r.Scheme, instance)
@@ -297,22 +285,19 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 	mco *mcov1beta2.MultiClusterObservability) (bool, error) {
 	if mco.GetDeletionTimestamp() != nil && util.Contains(mco.GetFinalizers(), resFinalizer) {
 		log.Info("To delete resources across namespaces")
-		svmCrdExists, err := util.CheckCRDExist(r.CrdClient, config.StorageVersionMigrationCrdName)
-		if err != nil {
-			return false, err
-		}
+		svmCrdExists, _ := r.CRDMap[config.StorageVersionMigrationCrdName]
 		if svmCrdExists {
 			// remove the StorageVersionMigration resource and ignore error
 			cleanObservabilityStorageVersionMigrationResource(r.Client, mco)
 		}
 		// clean up the cluster resources, eg. clusterrole, clusterrolebinding, etc
-		if err = cleanUpClusterScopedResources(r.Client, mco); err != nil {
+		if err := cleanUpClusterScopedResources(r.Client, mco); err != nil {
 			log.Error(err, "Failed to remove cluster scoped resources")
 			return false, err
 		}
 
 		mco.SetFinalizers(util.Remove(mco.GetFinalizers(), resFinalizer))
-		err = r.Client.Update(context.TODO(), mco)
+		err := r.Client.Update(context.TODO(), mco)
 		if err != nil {
 			log.Error(err, "Failed to remove finalizer from mco resource")
 			return false, err
@@ -474,11 +459,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 			},
 		}
 
-		mchCrdExists, err := util.CheckCRDExist(r.CrdClient, config.MCHCrdName)
-		if err != nil {
-			return err
-		}
-
+		mchCrdExists, _ := r.CRDMap[config.MCHCrdName]
 		if mchCrdExists {
 			// secondary watch for MCH
 			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &mchv1.MultiClusterHub{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
