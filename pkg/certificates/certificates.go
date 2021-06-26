@@ -50,11 +50,11 @@ func CreateObservabilityCerts(c client.Client, scheme *runtime.Scheme, mco *mcov
 
 	config.SetCertDuration(mco.Annotations)
 
-	err := createCASecret(c, scheme, mco, false, serverCACerts, serverCACertifcateCN)
+	err, serverCrtUpdated := createCASecret(c, scheme, mco, false, serverCACerts, serverCACertifcateCN)
 	if err != nil {
 		return err
 	}
-	err = createCASecret(c, scheme, mco, false, clientCACerts, clientCACertificateCN)
+	err, clientCrtUpdated := createCASecret(c, scheme, mco, false, clientCACerts, clientCACertificateCN)
 	if err != nil {
 		return err
 	}
@@ -62,11 +62,11 @@ func CreateObservabilityCerts(c client.Client, scheme *runtime.Scheme, mco *mcov
 	if err != nil {
 		return err
 	}
-	err = createCertSecret(c, scheme, mco, false, serverCerts, true, serverCertificateCN, nil, hosts, nil)
+	err = createCertSecret(c, scheme, mco, serverCrtUpdated, serverCerts, true, serverCertificateCN, nil, hosts, nil)
 	if err != nil {
 		return err
 	}
-	err = createCertSecret(c, scheme, mco, false, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
+	err = createCertSecret(c, scheme, mco, clientCrtUpdated, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func CreateObservabilityCerts(c client.Client, scheme *runtime.Scheme, mco *mcov
 
 func createCASecret(c client.Client,
 	scheme *runtime.Scheme, mco *mcov1beta2.MultiClusterObservability,
-	isRenew bool, name string, cn string) error {
+	isRenew bool, name string, cn string) (error, bool) {
 	if isRenew {
 		log.Info("To renew CA certificates", "name", name)
 	}
@@ -85,11 +85,11 @@ func createCASecret(c client.Client,
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			log.Error(err, "Failed to check ca secret", "name", name)
-			return err
-		} else if !isRenew {
+			return err, false
+		} else {
 			key, cert, err := createCACertificate(cn, nil)
 			if err != nil {
-				return err
+				return err, false
 			}
 			certPEM, keyPEM := pemEncode(cert, key)
 			caSecret = &corev1.Secret{
@@ -105,16 +105,16 @@ func createCASecret(c client.Client,
 			}
 			if mco != nil {
 				if err := controllerutil.SetControllerReference(mco, caSecret, scheme); err != nil {
-					return err
+					return err, false
 				}
 			}
 
 			if err := c.Create(context.TODO(), caSecret); err != nil {
 				log.Error(err, "Failed to create secret", "name", name)
-				return err
+				return err, false
+			} else {
+				return nil, true
 			}
-		} else {
-			log.Info("Cannot find the certificate secret, skip renew")
 		}
 	} else {
 		if !isRenew {
@@ -128,7 +128,7 @@ func createCASecret(c client.Client,
 			}
 			key, cert, err := createCACertificate(cn, caKey)
 			if err != nil {
-				return err
+				return err, false
 			}
 			certPEM, keyPEM := pemEncode(cert, key)
 			caSecret.Data["ca.crt"] = certPEM.Bytes()
@@ -136,13 +136,14 @@ func createCASecret(c client.Client,
 			caSecret.Data["tls.key"] = keyPEM.Bytes()
 			if err := c.Update(context.TODO(), caSecret); err != nil {
 				log.Error(err, "Failed to update secret", "name", name)
-				return err
+				return err, false
 			} else {
 				log.Info("CA certificates renewed", "name", name)
+				return nil, true
 			}
 		}
 	}
-	return nil
+	return nil, false
 }
 
 func createCACertificate(cn string, caKey *rsa.PrivateKey) ([]byte, []byte, error) {
@@ -194,7 +195,7 @@ func createCertSecret(c client.Client,
 		if !errors.IsNotFound(err) {
 			log.Error(err, "Failed to check certificate secret", "name", name)
 			return err
-		} else if !isRenew {
+		} else {
 			caCert, caKey, caCertBytes, err := getCA(c, isServer)
 			if err != nil {
 				return err
@@ -215,19 +216,19 @@ func createCertSecret(c client.Client,
 					"tls.key": keyPEM.Bytes(),
 				},
 			}
-			if err := controllerutil.SetControllerReference(mco, crtSecret, scheme); err != nil {
-				return err
+			if mco != nil {
+				if err := controllerutil.SetControllerReference(mco, crtSecret, scheme); err != nil {
+					return err
+				}
 			}
 			err = c.Create(context.TODO(), crtSecret)
 			if err != nil {
 				log.Error(err, "Failed to create secret", "name", name)
 				return err
 			}
-		} else {
-			log.Info("Cannot find the certificate secret, skip renew")
 		}
 	} else {
-		if crtSecret.Name == serverCerts {
+		if crtSecret.Name == serverCerts && !isRenew {
 			block, _ := pem.Decode(crtSecret.Data["tls.crt"])
 			if block == nil || block.Bytes == nil {
 				log.Info("Empty block in server certificate, skip")
