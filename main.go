@@ -192,11 +192,11 @@ func main() {
 		}
 	}
 
-	/* 	if mchCrdExists {
+	if mchCrdExists {
 		gvkLabelsMap[mchv1.SchemeGroupVersion.WithKind("MultiClusterHub")] = []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", mcoNamespace)},
 		}
-	} */
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Port:                   webhookPort,
