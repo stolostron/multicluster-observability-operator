@@ -334,6 +334,8 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 
 	svc := createObservatoriumAPIService(name, namespace)
+	serverCACerts := newTestCert(config.ServerCACerts, namespace)
+	clientCACerts := newTestCert(config.ClientCACerts, namespace)
 	grafanaCert := newTestCert(config.GrafanaCerts, namespace)
 	serverCert := newTestCert(config.ServerCerts, namespace)
 	// byo case for the alertmanager route
@@ -341,7 +343,8 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	testAmRouteBYOCertSecret := newTestCert(config.AlertmanagerRouteBYOCERTName, namespace)
 	clustermgmtAddon := newClusterManagementAddon()
 
-	objs := []runtime.Object{mco, svc, grafanaCert, serverCert, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon}
+	objs := []runtime.Object{mco, svc, serverCACerts, clientCACerts, grafanaCert, serverCert,
+		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon}
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
 
@@ -657,6 +660,8 @@ func TestImageReplaceForMCO(t *testing.T) {
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 
 	observatoriumAPIsvc := createObservatoriumAPIService(name, namespace)
+	serverCACerts := newTestCert(config.ServerCACerts, namespace)
+	clientCACerts := newTestCert(config.ClientCACerts, namespace)
 	grafanaCert := newTestCert(config.GrafanaCerts, namespace)
 	serverCert := newTestCert(config.ServerCerts, namespace)
 	// create the image manifest configmap
@@ -666,7 +671,8 @@ func TestImageReplaceForMCO(t *testing.T) {
 	testAmRouteBYOCertSecret := newTestCert(config.AlertmanagerRouteBYOCERTName, namespace)
 	clustermgmtAddon := newClusterManagementAddon()
 
-	objs := []runtime.Object{mco, observatoriumAPIsvc, grafanaCert, serverCert, imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon}
+	objs := []runtime.Object{mco, observatoriumAPIsvc, serverCACerts, clientCACerts, grafanaCert, serverCert,
+		imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon}
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
 

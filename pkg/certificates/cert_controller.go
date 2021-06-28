@@ -203,9 +203,9 @@ func onUpdate(c client.Client) func(oldObj, newObj interface{}) {
 				var hosts []string
 				switch name := newS.Name; {
 				case name == serverCACerts:
-					err = createCASecret(c, nil, nil, true, serverCACerts, serverCACertifcateCN)
+					err, _ = createCASecret(c, nil, nil, true, serverCACerts, serverCACertifcateCN)
 				case name == clientCACerts:
-					err = createCASecret(c, nil, nil, true, clientCACerts, clientCACertificateCN)
+					err, _ = createCASecret(c, nil, nil, true, clientCACerts, clientCACertificateCN)
 				case name == grafanaCerts:
 					err = createCertSecret(c, nil, nil, true, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
 				case name == serverCerts:
