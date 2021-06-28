@@ -14,12 +14,10 @@ import (
 	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
-	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
-	fakecrdclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -78,6 +76,10 @@ func newTestImageManifestsConfigMap(namespace, version string) *corev1.ConfigMap
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.ImageManifestConfigMapNamePrefix + version,
 			Namespace: namespace,
+			Labels: map[string]string{
+				config.OCMManifestConfigMapTypeLabelKey:    config.OCMManifestConfigMapTypeLabelValue,
+				config.OCMManifestConfigMapVersionLabelKey: version,
+			},
 		},
 		Data: testImagemanifestsMap,
 	}
@@ -343,10 +345,8 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
 
-	ocpClient := fakeconfigclient.NewSimpleClientset([]runtime.Object{createClusterVersion()}...)
-	crdClient := fakecrdclient.NewSimpleClientset([]runtime.Object{createPlacementRuleCRD()}...)
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, OcpClient: ocpClient, CrdClient: crdClient}
+	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.PlacementRuleCrdName: true}}
 	config.SetMonitoringCRName(name)
 	// Mock request to simulate Reconcile() being called on an event for a
 	// watched resource .
@@ -626,9 +626,6 @@ func TestImageReplaceForMCO(t *testing.T) {
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
-			Annotations: map[string]string{
-				config.AnnotationKeyImageTagSuffix: "tag",
-			},
 		},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			StorageConfig: &mcov1beta2.StorageConfig{
@@ -673,11 +670,8 @@ func TestImageReplaceForMCO(t *testing.T) {
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
 
-	ocpClient := fakeconfigclient.NewSimpleClientset([]runtime.Object{createClusterVersion()}...)
-	crdClient := fakecrdclient.NewSimpleClientset([]runtime.Object{createPlacementRuleCRD(), createMultiClusterHubCRD()}...)
-
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, OcpClient: ocpClient, CrdClient: crdClient}
+	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.PlacementRuleCrdName: true, config.MCHCrdName: true}}
 	config.SetMonitoringCRName(name)
 	// Mock request to simulate Reconcile() being called on an event for a
 	// watched resource .
@@ -807,7 +801,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 			if !exists {
 				t.Fatalf("The image key(%s) for the container(%s) doesn't exist in the deployment(%s)", imageKey, container.Name, deployName)
 			}
-			if imageValue == container.Image {
+			if imageValue != container.Image {
 				t.Fatalf("The image(%s) for the container(%s) in the deployment(%s) should not replace with the one in the image manifests", imageValue, container.Name, deployName)
 			}
 		}
@@ -837,7 +831,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 			if !exists {
 				t.Fatalf("The image key(%s) for the container(%s) doesn't exist in the statefulset(%s)", imageKey, container.Name, statefulName)
 			}
-			if imageValue == container.Image {
+			if imageValue != container.Image {
 				t.Fatalf("The image(%s) for the container(%s) in the statefulset(%s) should not replace with the one in the image manifests", imageValue, container.Name, statefulName)
 			}
 		}

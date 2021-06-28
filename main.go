@@ -212,14 +212,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	ocpClient, err := util.GetOrCreateOCPClient()
+	if err = util.UpdateCRDWebhookNS(crdClient, mcoNamespace, config.MCOCrdName); err != nil {
+		setupLog.Error(err, "unable to update webhook service namespace in MCO CRD", "controller", "MultiClusterObservability")
+	}
+
+	svmCrdExists, err := util.CheckCRDExist(crdClient, config.StorageVersionMigrationCrdName)
 	if err != nil {
-		setupLog.Error(err, "Failed to create the OpenShift client")
+		setupLog.Error(err, "")
 		os.Exit(1)
 	}
 
-	if err = util.UpdateCRDWebhookNS(crdClient, mcoNamespace, config.MCOCrdName); err != nil {
-		setupLog.Error(err, "unable to update webhook service namespace in MCO CRD", "controller", "MultiClusterObservability")
+	crdMaps := map[string]bool{
+		config.MCHCrdName:                     mchCrdExists,
+		config.PlacementRuleCrdName:           placementRuleCrdExists,
+		config.StorageVersionMigrationCrdName: svmCrdExists,
 	}
 
 	if err = (&mcoctrl.MultiClusterObservabilityReconciler{
@@ -227,8 +233,7 @@ func main() {
 		Client:     mgr.GetClient(),
 		Log:        ctrl.Log.WithName("controllers").WithName("MultiClusterObservability"),
 		Scheme:     mgr.GetScheme(),
-		OcpClient:  ocpClient,
-		CrdClient:  crdClient,
+		CRDMap:     crdMaps,
 		APIReader:  mgr.GetAPIReader(),
 		RESTMapper: mgr.GetRESTMapper(),
 	}).SetupWithManager(mgr); err != nil {
