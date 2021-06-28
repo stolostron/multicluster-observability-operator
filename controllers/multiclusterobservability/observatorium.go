@@ -470,6 +470,7 @@ func newMemCacheSpec(component string, mco *mcov1beta2.MultiClusterObservability
 	memCacheSpec.ExporterVersion = mcoconfig.MemcachedExporterImgTag
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		memCacheSpec.Resources = mcoconfig.GetResources(component, mco.Spec.AdvancedConfig)
+		memCacheSpec.ExporterResources = mcoconfig.GetResources(mcoconfig.MemcachedExporter, mco.Spec.AdvancedConfig)
 	}
 
 	found, image := mcoconfig.ReplaceImage(mco.Annotations, memCacheSpec.Image, mcoconfig.MemcachedImgName)

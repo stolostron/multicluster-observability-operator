@@ -169,6 +169,9 @@ const (
 	ThanosQueryFrontendCPURequets    = "100m"
 	ThanosQueryFrontendMemoryRequets = "256Mi"
 
+	MemcachedExporterCPURequets    = "5m"
+	MemcachedExporterMemoryRequets = "50Mi"
+
 	ThanosQueryCPURequets    = "300m"
 	ThanosQueryMemoryRequets = "1Gi"
 
@@ -208,6 +211,7 @@ const (
 	ThanosReceive                = "thanos-receive-default"
 	ThanosStoreMemcached         = "thanos-store-memcached"
 	ThanosStoreShard             = "thanos-store-shard"
+	MemcachedExporter            = "memcached-exporter"
 	Grafana                      = "grafana"
 	RBACQueryProxy               = "rbac-query-proxy"
 	Alertmanager                 = "alertmanager"
@@ -714,6 +718,13 @@ func getDefaultResource(resourceType string, resource corev1.ResourceName,
 		}
 		if resource == corev1.ResourceMemory {
 			return ThanosCachedMemoryRequets
+		}
+	case MemcachedExporter:
+		if resource == corev1.ResourceCPU {
+			return MemcachedExporterCPURequets
+		}
+		if resource == corev1.ResourceMemory {
+			return MemcachedExporterMemoryRequets
 		}
 	case RBACQueryProxy:
 		if resource == corev1.ResourceCPU {
