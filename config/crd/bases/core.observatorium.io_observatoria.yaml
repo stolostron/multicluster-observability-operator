@@ -558,6 +558,11 @@ spec:
                 - rbac
                 - tenants
                 type: object
+              envVars:
+                additionalProperties:
+                  type: string
+                description: EnvVars define the common environment variables. EnvVars apply to thanos compact/receive/rule/store components
+                type: object
               hashrings:
                 description: Hashrings describes a list of Hashrings
                 items:

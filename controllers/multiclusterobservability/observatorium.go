@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	obsv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
@@ -206,6 +207,9 @@ func newDefaultObservatoriumSpec(mco *mcov1beta2.MultiClusterObservability,
 	obs.Tolerations = mco.Spec.Tolerations
 	obs.API = newAPISpec(mco)
 	obs.Thanos = newThanosSpec(mco, scSelected)
+	if util.ProxyEnvVarsAreSet() {
+		obs.EnvVars = newEnvVars()
+	}
 
 	obs.Hashrings = []*obsv1alpha1.Hashring{
 		{Hashring: "default", Tenants: []string{mcoconfig.GetTenantUID()}},
@@ -218,6 +222,16 @@ func newDefaultObservatoriumSpec(mco *mcov1beta2.MultiClusterObservability,
 		obs.ObjectStorageConfig.Thanos.Key = objStorageConf.Key
 	}
 	return obs
+}
+
+// return proxy variables
+// OLM set these environment variables as a unit
+func newEnvVars() map[string]string {
+	return map[string]string{
+		"HTTP_PROXY":  os.Getenv("HTTP_PROXY"),
+		"HTTPS_PROXY": os.Getenv("HTTPS_PROXY"),
+		"NO_PROXY":    os.Getenv("NO_PROXY"),
+	}
 }
 
 func newAPIRBAC() obsv1alpha1.APIRBAC {
