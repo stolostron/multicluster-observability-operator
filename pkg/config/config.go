@@ -239,7 +239,6 @@ const (
 )
 
 const (
-	ManifestWorkCrdName            = "manifestworks.work.open-cluster-management.io"
 	MCHCrdName                     = "multiclusterhubs.operator.open-cluster-management.io"
 	MCOCrdName                     = "multiclusterobservabilities.observability.open-cluster-management.io"
 	PlacementRuleCrdName           = "placementrules.apps.open-cluster-management.io"

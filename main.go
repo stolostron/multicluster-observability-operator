@@ -19,12 +19,9 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"os"
-	"sync"
-	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -271,31 +268,6 @@ func main() {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Captain")
 		os.Exit(1)
 	}
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	// wait the manifestwork CRD for no more than 10 minutes
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*600)
-	defer cancel()
-
-	go func(ctx context.Context) {
-		setupLog.Info("checking the manifestworks.work.open-cluster-management.io CRD...")
-		for {
-			select {
-			case <-ctx.Done():
-				setupLog.Error(fmt.Errorf("timeout waiting for the manifestworks.work.open-cluster-management.io CRD"), "CRD manifestworks.work.open-cluster-management.io not found after 10 minutes.")
-				os.Exit(1)
-			case <-time.After(time.Second * 5):
-				if mchCrdExists, _ := util.CheckCRDExist(crdClient, config.ManifestWorkCrdName); mchCrdExists {
-					wg.Done()
-					return
-				}
-			}
-		}
-	}(ctx)
-
-	// wait for the ManifestWork CRD is created before starting the manager
-	wg.Wait()
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
