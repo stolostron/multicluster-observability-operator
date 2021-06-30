@@ -102,7 +102,7 @@ const (
 const (
 	ObservatoriumImgRepo           = "quay.io/observatorium"
 	ObservatoriumAPIImgName        = "observatorium"
-	ObservatoriumAPIImgTag         = "2.3.0-SNAPSHOT-2021-04-12-08-03-48"
+	ObservatoriumAPIImgTag         = "2.3.0-SNAPSHOT-2021-06-30-00-51-08"
 	ObservatoriumOperatorImgName   = "observatorium_operator"
 	ThanosReceiveControllerImgName = "thanos-receive-controller"
 	//ThanosReceiveControllerKey is used to get from mch-image-manifest.xxx configmap
@@ -110,7 +110,7 @@ const (
 	ThanosReceiveControllerImgTag = "master-2021-04-28-ee165b6"
 
 	ThanosImgName = "thanos"
-	ThanosImgTag  = "2.3.0-SNAPSHOT-2021-03-19-13-50-28"
+	ThanosImgTag  = "2.3.0-SNAPSHOT-2021-06-30-00-51-08"
 
 	MemcachedImgRepo = "docker.io"
 	MemcachedImgName = "memcached"

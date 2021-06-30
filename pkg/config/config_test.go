@@ -82,7 +82,7 @@ func TestReplaceImage(t *testing.T) {
 		{
 			annotations: map[string]string{
 				AnnotationKeyImageRepository: DefaultImgRepository,
-				AnnotationKeyImageTagSuffix:  "2.1.0-SNAPSHOT-2020-08-11-14-16-48",
+				AnnotationKeyImageTagSuffix:  "2.3.0-SNAPSHOT-2021-06-30-00-51-08",
 			},
 			name:      "Image is in the same org",
 			imageRepo: DefaultImgRepository,
@@ -115,7 +115,7 @@ func TestReplaceImage(t *testing.T) {
 		{
 			annotations: map[string]string{
 				AnnotationKeyImageRepository: DefaultDSImgRepository,
-				AnnotationKeyImageTagSuffix:  "2.1.0-SNAPSHOT-2020-08-11-14-16-48",
+				AnnotationKeyImageTagSuffix:  "2.3.0-SNAPSHOT-2021-06-30-00-51-08",
 			},
 			name:      "Image is from the ds build",
 			imageRepo: "test.org",
