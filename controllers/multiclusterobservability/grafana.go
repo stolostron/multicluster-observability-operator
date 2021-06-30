@@ -78,7 +78,6 @@ func GenerateGrafanaDataSource(
 				URL:       fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", config.ProxyServiceName, config.GetDefaultNamespace()),
 				JSONData: &JsonData{
 					QueryTimeout: "300s",
-					HttpMethod:   "POST",
 				},
 			},
 		},
