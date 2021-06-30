@@ -48,8 +48,10 @@ type GrafanaDatasource struct {
 }
 
 type JsonData struct {
-	TLSAuth   bool `yaml:"tlsAuth"`
-	TLSAuthCA bool `yaml:"tlsAuthWithCACert"`
+	TLSAuth      bool   `yaml:"tlsAuth"`
+	TLSAuthCA    bool   `yaml:"tlsAuthWithCACert"`
+	QueryTimeout string `yaml:"queryTimeout"`
+	HttpMethod   string `yaml:"httpMethod"`
 }
 
 type SecureJsonData struct {
@@ -74,6 +76,10 @@ func GenerateGrafanaDataSource(
 				Access:    "proxy",
 				IsDefault: true,
 				URL:       fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", config.ProxyServiceName, config.GetDefaultNamespace()),
+				JSONData: &JsonData{
+					QueryTimeout: "300s",
+					HttpMethod:   "POST",
+				},
 			},
 		},
 	})
