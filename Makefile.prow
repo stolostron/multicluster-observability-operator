@@ -155,9 +155,6 @@ e2e-tests:
 .PHONY: bundle
 bundle: manifests kustomize
 	operator-sdk generate kustomize manifests -q
-	# fix the operator display name
-	$(SED) -i 's/Multi Cluster Observability/MultiClusterObservability/g' config/manifests/bases/multicluster-observability-operator.clusterserviceversion.yaml
-	$(SED) -i 's/Observability Addon/ObservabilityAddon/g' config/manifests/bases/multicluster-observability-operator.clusterserviceversion.yaml
 	cd config/manager && $(KUSTOMIZE) edit set image quay.io/open-cluster-management/multicluster-observability-operator=$(IMG)
 	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	#TODO(morvencao): filter the rbac resource with operator-sdk bundle command
