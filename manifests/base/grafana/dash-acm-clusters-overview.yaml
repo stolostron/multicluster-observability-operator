@@ -290,21 +290,20 @@ data:
           "type": "table"
         },
         {
-          "datasource": null,
           "description": "Leader election changes per cluster over the time range selected for dashboard.",
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
               "custom": {
                 "align": null,
                 "filterable": false
               },
-              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": []
+              },
+              "mappings": [],
+              "color": {
+                "mode": "thresholds"
               }
             },
             "overrides": [
@@ -332,12 +331,12 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value"
+                  "options": "Value #A"
                 },
                 "properties": [
                   {
                     "id": "displayName",
-                    "value": "Leader election changes"
+                    "value": "Leader Election Changes"
                   },
                   {
                     "id": "custom.align",
@@ -368,6 +367,67 @@ data:
                     "value": "color-text"
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #B"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "DB Size"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "bytes"
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #C"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Has a Leader"
+                  },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "id": 1,
+                        "type": 1,
+                        "from": "",
+                        "to": "",
+                        "text": "Yes",
+                        "value": "1"
+                      },
+                      {
+                        "id": 2,
+                        "type": 1,
+                        "from": "",
+                        "to": "",
+                        "text": "No",
+                        "value": "0"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  }
+                ]
               }
             ]
           },
@@ -381,7 +441,8 @@ data:
           "interval": "1m",
           "options": {
             "showHeader": true,
-            "sortBy": []
+            "sortBy": [],
+            "frameIndex": 2
           },
           "pluginVersion": "7.4.2",
           "targets": [
@@ -392,10 +453,26 @@ data:
               "interval": "",
               "legendFormat": "",
               "refId": "A"
+            },
+            {
+              "expr": "max(etcd_debugging_mvcc_db_total_size_in_bytes{job=\"etcd\"}) by (cluster)",
+              "legendFormat": "",
+              "interval": "",
+              "refId": "B",
+              "hide": false,
+              "format": "table",
+              "instant": true
+            },
+            {
+              "expr": "max(etcd_server_has_leader{job=\"etcd\"}) by (cluster)",
+              "legendFormat": "",
+              "interval": "",
+              "refId": "C",
+              "hide": false,
+              "format": "table",
+              "instant": true
             }
           ],
-          "timeFrom": null,
-          "timeShift": null,
           "title": "etcd",
           "transformations": [
             {
@@ -404,9 +481,28 @@ data:
                 "include": {
                   "names": [
                     "cluster",
-                    "Value"
+                    "Value #B",
+                    "Value #A",
+                    "Value #C"
                   ]
                 }
+              }
+            },
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "indexByName": {
+                  "cluster": 0,
+                  "Value #C": 1,
+                  "Value #A": 2,
+                  "Value #B": 3
+                },
+                "renameByName": {}
               }
             }
           ],
