@@ -34,6 +34,7 @@ type ObservabilityAddonStatus struct {
 
 // ObservabilityAddon is the Schema for the observabilityaddon API
 // +kubebuilder:resource:path=observabilityaddons,scope=Namespaced,shortName=oba
+// +operator-sdk:csv:customresourcedefinitions:displayName="ObservabilityAddon"
 type ObservabilityAddon struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

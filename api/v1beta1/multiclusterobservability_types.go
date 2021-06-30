@@ -122,6 +122,7 @@ type MultiClusterObservabilityStatus struct {
 // Hub and Managed Clusters all through this one custom resource.
 // +kubebuilder:pruning:PreserveUnknownFields
 // +kubebuilder:resource:path=multiclusterobservabilities,scope=Cluster,shortName=mco
+// +operator-sdk:csv:customresourcedefinitions:displayName="MultiClusterObservability"
 type MultiClusterObservability struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
