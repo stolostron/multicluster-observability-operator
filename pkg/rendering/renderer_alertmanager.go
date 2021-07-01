@@ -4,7 +4,6 @@
 package rendering
 
 import (
-	"os"
 	"strconv"
 
 	v1 "k8s.io/api/apps/v1"
@@ -82,24 +81,6 @@ func (r *Renderer) renderAlertManagerStatefulSet(res *resource.Resource) (*unstr
 		mcoconfig.AlertManagerImgKey)
 	if found {
 		spec.Containers[0].Image = image
-	}
-
-	if util.ProxyEnvVarsAreSet() {
-		spec.Containers[0].Env = append(spec.Containers[0].Env, []corev1.EnvVar{
-			{
-				Name:  "HTTP_PROXY",
-				Value: os.Getenv("HTTP_PROXY"),
-			},
-			{
-				Name:  "HTTPS_PROXY",
-				Value: os.Getenv("HTTPS_PROXY"),
-			},
-			{
-				Name:  "NO_PROXY",
-				Value: os.Getenv("NO_PROXY"),
-			},
-		}...)
-		log.V(1).Info("Proxy configuration environment variables are set.", "HTTP_PROXY:", os.Getenv("HTTP_PROXY"), "HTTPS_PROXY:", os.Getenv("HTTPS_PROXY"), "NO_PROXY:", os.Getenv("NO_PROXY"))
 	}
 
 	found, image = mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.ConfigmapReloaderImgRepo,
