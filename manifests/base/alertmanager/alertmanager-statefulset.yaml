@@ -54,7 +54,7 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: status.podIP
-        image: quay.io/open-cluster-management/prometheus-alertmanager:2.3.0-SNAPSHOT-2021-04-07-09-02-32
+        image: quay.io/open-cluster-management/prometheus-alertmanager:2.3.0-SNAPSHOT-2021-06-30-00-51-08
         imagePullPolicy: IfNotPresent
         name: alertmanager
         ports:
