@@ -207,7 +207,7 @@ func newDefaultObservatoriumSpec(mco *mcov1beta2.MultiClusterObservability,
 	obs.Tolerations = mco.Spec.Tolerations
 	obs.API = newAPISpec(mco)
 	obs.Thanos = newThanosSpec(mco, scSelected)
-	if util.ProxyEnvVarsAreSet() {
+	if config.IsPorxyRequired(mco.GetAnnotations()) {
 		obs.EnvVars = newEnvVars()
 	}
 

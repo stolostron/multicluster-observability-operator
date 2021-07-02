@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"os"
 
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -86,16 +85,4 @@ func GeneratePassword(n int) (string, error) {
 	}
 
 	return base64.StdEncoding.EncodeToString(b), err
-}
-
-// ProxyEnvVarsAreSet ...
-// OLM handles these environment variables as a unit;
-// if at least one of them is set, all three are considered overridden
-// and the cluster-wide defaults are not used for the deployments of the subscribed Operator.
-// https://docs.openshift.com/container-platform/4.6/operators/admin/olm-configuring-proxy-support.html
-func ProxyEnvVarsAreSet() bool {
-	if os.Getenv("HTTP_PROXY") != "" || os.Getenv("HTTPS_PROXY") != "" || os.Getenv("NO_PROXY") != "" {
-		return true
-	}
-	return false
 }
