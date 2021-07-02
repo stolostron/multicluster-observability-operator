@@ -49,7 +49,7 @@ const (
 	AnnotationMCOWithoutResourcesRequests = "mco-thanos-without-resources-requests"
 	AnnotationSkipCreation                = "skip-creation-if-exist"
 	AnnotationCertDuration                = "mco-cert-duration"
-	AnnotationProxyDisable                = "mco-proxy-disable"
+	AnnotationProxyIgnore                 = "mco-proxy-ignore"
 
 	DefaultImgRepository   = "quay.io/open-cluster-management"
 	DefaultDSImgRepository = "quay.io:443/acm-d"
@@ -580,12 +580,12 @@ func IsPaused(annotations map[string]string) bool {
 	return false
 }
 
-// IsPorxyRequired returns true if PROXY env is available and there is no mco-proxy-disable:true annotation in mco instance
+// IsProxyRequired returns true if PROXY env is available and there is no mco-proxy-ignore:true annotation in mco instance
 // OLM handles these environment variables as a unit;
 // if at least one of them is set, all three are considered overridden
 // and the cluster-wide defaults are not used for the deployments of the subscribed Operator.
 // https://docs.openshift.com/container-platform/4.6/operators/admin/olm-configuring-proxy-support.html
-func IsPorxyRequired(annotations map[string]string) bool {
+func IsProxyRequired(annotations map[string]string) bool {
 	if os.Getenv("HTTP_PROXY") == "" && os.Getenv("HTTPS_PROXY") == "" && os.Getenv("NO_PROXY") == "" {
 		return false
 	}
@@ -593,8 +593,8 @@ func IsPorxyRequired(annotations map[string]string) bool {
 		return true
 	}
 
-	if annotations[AnnotationProxyDisable] != "" &&
-		strings.EqualFold(annotations[AnnotationProxyDisable], "true") {
+	if annotations[AnnotationProxyIgnore] != "" &&
+		strings.EqualFold(annotations[AnnotationProxyIgnore], "true") {
 		return false
 	}
 
