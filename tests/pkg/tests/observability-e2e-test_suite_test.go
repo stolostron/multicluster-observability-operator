@@ -15,7 +15,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
-	"github.com/sclevine/agouti"
 	"gopkg.in/yaml.v2"
 	"k8s.io/klog"
 
@@ -89,8 +88,6 @@ func TestObservabilityE2E(t *testing.T) {
 	junitReporter := reporters.NewJUnitReporter(reportFile)
 	RunSpecsWithDefaultAndCustomReporters(t, "Observability E2E Suite", []Reporter{junitReporter})
 }
-
-var agoutiDriver *agouti.WebDriver
 
 var _ = BeforeSuite(func() {
 	initVars()

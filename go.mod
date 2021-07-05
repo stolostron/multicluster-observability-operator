@@ -3,6 +3,21 @@ module github.com/open-cluster-management/multicluster-observability-operator
 go 1.16
 
 require (
+	gopkg.in/yaml.v2 v2.3.0
+	k8s.io/klog v1.0.0
+	github.com/cenkalti/backoff v2.2.1+incompatible
+	github.com/go-kit/kit v0.10.0
+	github.com/gogo/protobuf v1.3.1
+	github.com/golang/protobuf v1.4.2
+	github.com/golang/snappy v0.0.1
+	github.com/oklog/run v1.1.0
+	github.com/open-cluster-management/multicluster-monitoring-operator v0.0.0-20210216210616-0f181640bb3a
+	github.com/pkg/errors v0.9.1
+	github.com/prometheus/client_golang v1.7.1
+	github.com/prometheus/client_model v0.2.0
+	github.com/prometheus/common v0.14.0
+	github.com/prometheus/prometheus v2.3.2+incompatible
+	github.com/spf13/cobra v1.0.5
 	github.com/IBM/controller-filtered-cache v0.3.2-0.20210627031010-9f7db599b250
 	github.com/cloudflare/cfssl v1.5.0
 	github.com/go-logr/logr v0.4.0
@@ -13,6 +28,7 @@ require (
 	github.com/open-cluster-management/observatorium-operator v0.0.0-20210630101922-5eab9bc11b82
 	github.com/openshift/api v3.9.1-0.20191111211345-a27ff30ebf09+incompatible
 	github.com/openshift/client-go v0.0.0-20201214125552-e615e336eb49
+	github.com/openshift/prom-label-proxy v0.0.0-20200605071327-9371ee4a9422
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.21.1
 	k8s.io/apiextensions-apiserver v0.21.1
@@ -24,6 +40,12 @@ require (
 	sigs.k8s.io/kube-storage-version-migrator v0.0.3
 	sigs.k8s.io/kustomize/v3 v3.3.1
 	sigs.k8s.io/yaml v1.2.0
+	github.com/ghodss/yaml v1.0.0
+	github.com/onsi/ginkgo v1.16.1
+	github.com/onsi/gomega v1.10.1
+	github.com/stretchr/testify v1.6.1
+	golang.org/x/sys v0.0.0-20210414055047-fe65e336abe0 // indirect
+	sigs.k8s.io/kustomize/api v0.6.5
 )
 
 replace (
@@ -41,6 +63,8 @@ replace (
 	sigs.k8s.io/cluster-api-provider-azure => github.com/openshift/cluster-api-provider-azure v0.1.0-alpha.3.0.20200120114645-8a9592f1f87b
 	sigs.k8s.io/cluster-api-provider-openstack => github.com/openshift/cluster-api-provider-openstack v0.0.0-20200526112135-319a35b2e38e
 	sigs.k8s.io/kube-storage-version-migrator => github.com/openshift/kubernetes-kube-storage-version-migrator v0.0.3-0.20210302135122-481bd04dbc78
+	github.com/prometheus/common => github.com/prometheus/common v0.9.1
+	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.0.0-20190424153033-d3245f150225
 )
 
 // needed because otherwise installer fetches a library-go version that requires bitbucket.com/ww/goautoneg which is dead

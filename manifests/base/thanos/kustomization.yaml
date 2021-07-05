@@ -1,4 +1,0 @@
-resources:
-- thanos-ruler-config.yaml
-- thanos-ruler-clusterrole.yaml
-- thanos-ruler-clusterrolebinding.yaml
