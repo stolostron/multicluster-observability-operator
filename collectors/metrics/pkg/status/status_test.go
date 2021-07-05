@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/operators/multiclusterobservability/api/shared"
+	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 )
 
 func init() {

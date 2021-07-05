@@ -16,9 +16,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/open-cluster-management/multicluster-monitoring-operator/collectors/metrics/pkg/logger"
-	oav1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/operators/multiclusterobservability/api/v1beta1"
+	"github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	observabilityshared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
 
 const (

@@ -22,12 +22,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	clientmodel "github.com/prometheus/client_model/go"
 
-	metricshttp "github.com/open-cluster-management/multicluster-monitoring-operator/collectors/metrics/pkg/http"
-	rlogger "github.com/open-cluster-management/multicluster-monitoring-operator/collectors/metrics/pkg/logger"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/collectors/metrics/pkg/metricfamily"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/collectors/metrics/pkg/metricsclient"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/collectors/metrics/pkg/simulator"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/collectors/metrics/pkg/status"
+	metricshttp "github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/http"
+	rlogger "github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/logger"
+	"github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/metricfamily"
+	"github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/metricsclient"
+	"github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/simulator"
+	"github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/status"
 )
 
 const (

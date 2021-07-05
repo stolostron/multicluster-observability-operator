@@ -3,7 +3,7 @@
 FROM registry.ci.openshift.org/open-cluster-management/builder:go1.16-linux AS builder
 
 WORKDIR /workspace
-COPY . .
+COPY go.sum go.mod ./operators/endpointmetrics ./
 
 RUN CGO_ENABLED=0 go build -a -installsuffix cgo -o build/_output/bin/endpoint-monitoring-operator main.go
 

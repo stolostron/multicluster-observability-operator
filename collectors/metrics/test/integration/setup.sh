@@ -131,7 +131,7 @@ deploy_metrics_collector() {
 
 	echo "Current directory"
 	echo $(pwd)
-	# git clone https://github.com/open-cluster-management/multicluster-monitoring-operator/collectors/metrics.git
+	# git clone https://github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics.git
 
 	cd metrics-collector
     echo -n "Creating pull secret: " && kubectl create secret docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=$DOCKER_USER --docker-password=$DOCKER_PASS 

@@ -16,7 +16,7 @@ ENV PATH usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/
 
 # copy go tests into build image
 RUN mkdir -p /go/src/github.com/open-cluster-management/multicluster-observability-operator/tests/
-COPY . /go/src/github.com/open-cluster-management/multicluster-observability-operator/tests/
+COPY go.sum go.mod ./tests /go/src/github.com/open-cluster-management/multicluster-observability-operator/tests/
 
 WORKDIR "/go/src/github.com/open-cluster-management/multicluster-observability-operator/tests/"
 

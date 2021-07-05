@@ -22,10 +22,10 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 
-	"github.com/open-cluster-management/multicluster-monitoring-operator/collectors/metrics/pkg/forwarder"
-	collectorhttp "github.com/open-cluster-management/multicluster-monitoring-operator/collectors/metrics/pkg/http"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/collectors/metrics/pkg/logger"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/collectors/metrics/pkg/metricfamily"
+	"github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/forwarder"
+	collectorhttp "github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/http"
+	"github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/logger"
+	"github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/metricfamily"
 )
 
 func main() {
