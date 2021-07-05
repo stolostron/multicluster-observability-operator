@@ -1,0 +1,12 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: open-cluster-management:rbac-query-proxy
+subjects:
+- kind: ServiceAccount
+  name: rbac-query-proxy
+  namespace: open-cluster-management-observability
+roleRef:
+  kind: ClusterRole
+  name: open-cluster-management:rbac-query-proxy
+  apiGroup: rbac.authorization.k8s.io

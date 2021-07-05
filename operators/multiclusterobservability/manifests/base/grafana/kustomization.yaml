@@ -1,0 +1,21 @@
+resources:
+- cluster-role.yaml
+- cluster-role-binding.yaml
+- service-account.yaml
+- config.yaml
+- deployment.yaml
+- ingress.yaml
+- service.yaml
+- dash-acm-optimization-overview.yaml
+- dash-acm-clusters-overview.yaml
+- dash-k8s-etcd.yaml
+- dash-k8s-apiserver.yaml
+- dash-k8s-networking-cluster.yaml
+- dash-k8s-compute-resources-cluster.yaml
+- dash-k8s-compute-resources-namespace-pods.yaml
+- dash-k8s-compute-resources-namespace-workloads.yaml
+- dash-k8s-compute-resources-workload.yaml
+- dash-k8s-compute-resources-node-pods.yaml
+- dash-k8s-compute-resources-pod.yaml
+- dash-cluster-rsrc-use.yaml
+- dash-node-rsrc-use.yaml

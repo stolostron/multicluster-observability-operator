@@ -1,6 +1,6 @@
 # Copyright Contributors to the Open Cluster Management project
 
-FROM registry.ci.openshift.org/open-cluster-management/builder:go1.16-linux-amd64 AS builder
+FROM registry.ci.openshift.org/open-cluster-management/builder:go1.16-linux AS builder
 
 WORKDIR /workspace
 COPY . .
@@ -41,8 +41,11 @@ LABEL org.label-schema.vendor="Red Hat" \
     io.openshift.tags="$IMAGE_OPENSHIFT_TAGS"
 
 WORKDIR /
-COPY --from=builder /workspace/main rbac-query-proxy
+
+RUN microdnf update -y && microdnf clean all
+
+COPY --from=builder /workspace/main grafana-dashboard-loader
 
 EXPOSE 3002
 
-ENTRYPOINT ["/rbac-query-proxy"]
+ENTRYPOINT ["/grafana-dashboard-loader"]

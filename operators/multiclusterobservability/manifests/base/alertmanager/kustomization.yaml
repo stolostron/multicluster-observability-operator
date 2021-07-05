@@ -1,0 +1,14 @@
+resources:
+- alertmanager-serviceaccount.yaml
+- alertmanager-config.yaml
+- alertmanager-proxy.yaml
+- alertmanager-statefulset.yaml
+- alertmanager-operated.yaml
+- alertmanager-service.yaml
+- alert_rules.yaml
+- alertmanager-cabundle.yaml
+- alertmanager-clusterrole.yaml
+- alertmanager-clusterrolebinding.yaml
+- alertmanager-accessor-clusterrole.yaml
+- alertmanager-accessor-clusterrolebinding.yaml
+- alertmanager-accessor-serviceaccount.yaml

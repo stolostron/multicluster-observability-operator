@@ -1,11 +1,11 @@
-# Copyright Contributors to the Open Cluster Management project
-
-FROM registry.ci.openshift.org/open-cluster-management/builder:go1.16-linux-amd64 AS builder
+# Copyright (c) 2021 Red Hat, Inc.
+# Copyright Contributors to the Open Cluster Management project.
+FROM registry.ci.openshift.org/open-cluster-management/builder:go1.16-linux AS builder
 
 WORKDIR /workspace
 COPY . .
 
-RUN CGO_ENABLED=0 go build -a -installsuffix cgo -v -i -o main cmd/main.go
+RUN CGO_ENABLED=0 go build -a -installsuffix cgo -o build/_output/bin/endpoint-monitoring-operator main.go
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
@@ -40,9 +40,13 @@ LABEL org.label-schema.vendor="Red Hat" \
     io.k8s.description="$IMAGE_DESCRIPTION" \
     io.openshift.tags="$IMAGE_OPENSHIFT_TAGS"
 
-WORKDIR /
-COPY --from=builder /workspace/main rbac-query-proxy
+ENV OPERATOR=/usr/local/bin/endpoint-monitoring-operator \
+    USER_UID=1001 \
+    USER_NAME=endpoint-monitoring-operator
 
-EXPOSE 3002
+RUN microdnf update -y && microdnf clean all
+# install operator binary
+COPY --from=builder /workspace/build/_output/bin/endpoint-monitoring-operator ${OPERATOR}
+USER ${USER_UID}
 
-ENTRYPOINT ["/rbac-query-proxy"]
+ENTRYPOINT ["/usr/local/bin/endpoint-monitoring-operator"]

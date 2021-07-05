@@ -1,0 +1,58 @@
+# Copyright (c) 2021 Red Hat, Inc.
+# Copyright Contributors to the Open Cluster Management project.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: endpoint-observability-operator
+  namespace: open-cluster-management-addon-observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: endpoint-observability-operator
+  template:
+    metadata:
+      labels:
+        name: endpoint-observability-operator
+    spec:
+      serviceAccountName: endpoint-observability-operator
+      containers:
+      - name: endpoint-observability-operator
+        image: quay.io/open-cluster-management/endpoint-metrics-operator:latest
+        imagePullPolicy: Always
+        command:
+        - endpoint-monitoring-operator
+        env:
+        - name: WATCH_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: SERVICE_ACCOUNT
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.serviceAccountName
+        - name: OPERATOR_NAME
+          value: "endpoint-monitoring-operator"
+        - name: COLLECTOR_IMAGE
+          value: REPLACE_WITH_METRICS_COLLECTOR_IMAGE
+        - name: HUB_KUBECONFIG
+          value: /spoke/hub-kubeconfig/kubeconfig
+        - name: HUB_NAMESPACE
+          value: REPLACE_WITH_HUB_NAMESPACE
+        volumeMounts:
+        - mountPath: /spoke/hub-kubeconfig
+          name: hub-kubeconfig-secret
+          readOnly: true
+      volumes:
+      - name: hub-kubeconfig-secret
+        secret:
+          defaultMode: 420
+          secretName: hub-kube-config
