@@ -19,8 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/open-cluster-management/endpoint-metrics-operator/pkg/util"
-	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
+	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
 
 var (

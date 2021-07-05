@@ -15,7 +15,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
-	obv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
+	obv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/rendering/patching"

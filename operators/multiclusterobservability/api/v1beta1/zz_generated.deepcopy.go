@@ -21,7 +21,7 @@ limitations under the License.
 package v1beta1
 
 import (
-	"github.com/open-cluster-management/multicluster-observability-operator/api/shared"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	"k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )

@@ -6,7 +6,7 @@ import (
 	"context"
 	"time"
 
-	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

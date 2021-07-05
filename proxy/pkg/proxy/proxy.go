@@ -19,7 +19,7 @@ import (
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	"github.com/open-cluster-management/rbac-query-proxy/pkg/util"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/proxy/pkg/util"
 )
 
 const (

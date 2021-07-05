@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
 

@@ -15,7 +15,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 

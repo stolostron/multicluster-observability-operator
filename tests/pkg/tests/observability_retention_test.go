@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/open-cluster-management/observability-e2e-test/pkg/utils"
+	"github.com/open-cluster-management/multicluster-observability-operator/tests/pkg/utils"
 )
 
 var _ = Describe("Observability:", func() {

@@ -13,12 +13,12 @@ This document attempts to explain how the different components in Open Cluster M
 Component |Git Repo	| Description	
 ---  | ------ | ----  
 MCO Operator | [multicluster-observability-operator](https://github.com/open-cluster-management/multicluster-observability-operator) | Operator for monitoring. This is the root repo. If we follow the Readme instructions here to install, the code from all other repos mentioned below are used/referenced.
-Endpoint Operator | [endpoint-metrics-operator](https://github.com/open-cluster-management/endpoint-metrics-operator) | Operator that manages  setting up observability and data collection at the managed clusters.
+Endpoint Operator | [endpoint-metrics-operator](https://github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics) | Operator that manages  setting up observability and data collection at the managed clusters.
 Observatorium Operator | [observatorium-operator](https://github.com/open-cluster-management/observatorium-operator) | Operator to deploy the Observatorium project. Inside the open cluster management, at this time, it means metrics using Thanos. Forked from main observatorium-operator repo.
-Metrics collector | [metrics-collector](https://github.com/open-cluster-management/metrics-collector) | Scrapes metrics from Prometheus at managed clusters, the metric collection being shaped by configuring allow-list. 
-RBAC Proxy | [rbac_query_proxy](https://github.com/open-cluster-management/rbac-query-proxy) | Helper service that acts a multicluster metrics RBAC proxy.
+Metrics collector | [metrics-collector](https://github.com/open-cluster-management/multicluster-monitoring-operator/collectors/metrics) | Scrapes metrics from Prometheus at managed clusters, the metric collection being shaped by configuring allow-list. 
+RBAC Proxy | [rbac_query_proxy](https://github.com/open-cluster-management/multicluster-monitoring-operator/proxy) | Helper service that acts a multicluster metrics RBAC proxy.
 Grafana | [grafana](https://github.com/open-cluster-management/grafana) | Grafana repo -  for  dashboarding and metric analytics. Forked from main grafana repo.
-Dashboard Loader | [grafana-dashboard-loader](https://github.com/open-cluster-management/grafana-dashboard-loader) | Sidecar proxy to load grafana dashboards from configmaps. 
+Dashboard Loader | [grafana-dashboard-loader](https://github.com/open-cluster-management/multicluster-monitoring-operator/loaders/dashboards) | Sidecar proxy to load grafana dashboards from configmaps. 
 Management Ingress | [management-ingress](https://github.com/open-cluster-management/management-ingress) | NGINX based ingress controller to serve Open Cluster Management services. 
 Observatorium API | [observatorium](https://github.com/open-cluster-management/observatorium) | API Gateway which controls reading, writing of the Observability data to the backend infrastructure. Forked from main observatorium API repo.
 Thanos Ecosystem | [kube-thanos](https://github.com/open-cluster-management/kube-thanos) | Kubernetes specific configuration for deploying Thanos. The observatorium operator leverages this configuration to deploy the backend Thanos components.

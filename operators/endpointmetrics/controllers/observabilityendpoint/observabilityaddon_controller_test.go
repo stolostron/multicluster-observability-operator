@@ -20,8 +20,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
-	oashared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
-	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	oashared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
 
 const (

@@ -11,7 +11,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 
-	"github.com/open-cluster-management/observability-e2e-test/pkg/utils"
+	"github.com/open-cluster-management/multicluster-observability-operator/tests/pkg/utils"
 )
 
 var _ = Describe("Observability:", func() {

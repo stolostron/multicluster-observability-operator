@@ -8,7 +8,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 )
 

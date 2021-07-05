@@ -34,8 +34,8 @@ import (
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
-	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
+	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 

@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	obsv1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	obsv1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )
 

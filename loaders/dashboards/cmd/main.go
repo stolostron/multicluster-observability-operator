@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/klog"
 
-	"github.com/open-cluster-management/grafana-dashboard-loader/pkg/controller"
+	"github.com/open-cluster-management/multicluster-monitoring-operator/loaders/dashboards/pkg/controller"
 )
 
 func main() {

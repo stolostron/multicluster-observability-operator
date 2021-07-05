@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 )
 

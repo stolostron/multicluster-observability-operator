@@ -20,9 +20,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	workv1 "github.com/open-cluster-management/api/work/v1"
-	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
-	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
+	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
 )

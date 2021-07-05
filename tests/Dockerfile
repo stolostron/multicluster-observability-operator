@@ -15,10 +15,10 @@ RUN curl -fksSL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.6.3/
 ENV PATH usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/go/bin:/go/bin:.
 
 # copy go tests into build image
-RUN mkdir -p /go/src/github.com/open-cluster-management/observability-e2e-test/
-COPY . /go/src/github.com/open-cluster-management/observability-e2e-test/
+RUN mkdir -p /go/src/github.com/open-cluster-management/multicluster-observability-operator/tests/
+COPY . /go/src/github.com/open-cluster-management/multicluster-observability-operator/tests/
 
-WORKDIR "/go/src/github.com/open-cluster-management/observability-e2e-test/"
+WORKDIR "/go/src/github.com/open-cluster-management/multicluster-observability-operator/tests/"
 
 RUN git clone https://github.com/open-cluster-management/observability-gitops.git
 
@@ -53,9 +53,9 @@ RUN oc version
 
 # copy compiled tests into built image
 RUN mkdir -p /opt/tests
-COPY --from=build /go/src/github.com/open-cluster-management/observability-e2e-test/pkg/tests/tests.test /opt/tests/observability-e2e-test.test
-COPY --from=build /go/src/github.com/open-cluster-management/observability-e2e-test/observability-gitops /observability-gitops
-COPY --from=build /go/src/github.com/open-cluster-management/observability-e2e-test/format-results.sh /opt/tests/
+COPY --from=build /go/src/github.com/open-cluster-management/multicluster-observability-operator/tests/pkg/tests/tests.test /opt/tests/observability-e2e-test.test
+COPY --from=build /go/src/github.com/open-cluster-management/multicluster-observability-operator/tests/observability-gitops /observability-gitops
+COPY --from=build /go/src/github.com/open-cluster-management/multicluster-observability-operator/tests/format-results.sh /opt/tests/
 
 VOLUME /results
 WORKDIR "/opt/tests/"
