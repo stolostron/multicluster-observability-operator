@@ -3,7 +3,7 @@
 FROM registry.ci.openshift.org/open-cluster-management/builder:go1.16-linux AS builder
 
 ENV GOFLAGS="-mod=vendor"
-COPY go.sum go.mod ./collectors/metrics /go/src/github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics
+COPY go.sum go.mod ./collectors/metrics /go/src/github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/
 RUN cd /go/src/github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics && \
     go mod vendor && go mod tidy && go mod verify && \
     go build ./cmd/metrics-collector

@@ -16,11 +16,11 @@ import (
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
 	obv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
-	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/rendering/patching"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/rendering/templates"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/patching"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 )
 
 const (

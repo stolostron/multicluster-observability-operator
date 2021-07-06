@@ -17,7 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/logger"
-	observabilityshared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
 
@@ -45,7 +44,7 @@ func New(logger log.Logger) (*StatusReport, error) {
 			return nil, errors.New("Failed to create the kube config")
 		}
 		s := scheme.Scheme
-		if err := observabilityshared.AddToScheme(s); err != nil {
+		if err := oav1beta1.AddToScheme(s); err != nil {
 			return nil, errors.New("Failed to add observabilityaddon into scheme")
 		}
 		kubeClient, err = client.New(config, client.Options{Scheme: s})
@@ -64,7 +63,7 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 	if s.statusClient == nil {
 		return nil
 	}
-	addon := &observabilityshared.ObservabilityAddon{}
+	addon := &oav1beta1.ObservabilityAddon{}
 	err := s.statusClient.Get(context.TODO(), types.NamespacedName{
 		Name:      name,
 		Namespace: namespace,

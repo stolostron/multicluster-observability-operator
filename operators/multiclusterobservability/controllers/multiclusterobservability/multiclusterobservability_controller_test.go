@@ -36,7 +36,7 @@ import (
 	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
 
 func init() {
@@ -616,6 +616,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get work dir: (%v)", err)
 	}
+	os.MkdirAll(path.Join(wd, "../../tests"), 0755)
 	testManifestsPath := path.Join(wd, "../../tests/manifests")
 	manifestsPath := path.Join(wd, "../../manifests")
 	os.Setenv("TEMPLATES_PATH", testManifestsPath)
@@ -846,6 +847,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	if err = os.Remove(testManifestsPath); err != nil {
 		t.Fatalf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
 	}
+	os.Remove(path.Join(wd, "../../tests"))
 
 	// stop update status routine
 	stopStatusUpdate <- struct{}{}

@@ -149,7 +149,6 @@ unit-tests:
 	cd operators/endpointmetrics; go test `go list ./... | grep -v test`
 	cd operators/multiclusterobservability; go test `go list ./... | grep -v test`
 	cd proxy; go test `go list ./... | grep -v test`
-	cd tests; go test `go list ./... | grep -v test`
 	cd collectors/metrics; go test `go list ./... | grep -v test`
 
 .PHONY: e2e-tests

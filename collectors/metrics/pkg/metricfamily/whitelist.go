@@ -3,7 +3,7 @@ package metricfamily
 import (
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/pkg/labels"
-	"github.com/prometheus/prometheus/promql"
+	"github.com/prometheus/prometheus/promql/parser"
 )
 
 type whitelist [][]*labels.Matcher
@@ -16,7 +16,7 @@ type whitelist [][]*labels.Matcher
 func NewWhitelist(rules []string) (Transformer, error) {
 	var ms [][]*labels.Matcher
 	for i := range rules {
-		matchers, err := promql.ParseMetricSelector(rules[i])
+		matchers, err := parser.ParseMetricSelector(rules[i])
 		if err != nil {
 			return nil, err
 		}

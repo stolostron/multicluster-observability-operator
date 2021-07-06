@@ -164,7 +164,7 @@ func createDeployment(clusterID string, clusterType string,
 	for _, rule := range allowlist.RuleList {
 		commands = append(commands, fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr))
 	}
-	return &appsv1.Deployment{
+	metricsCollectorDep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      metricsCollectorName,
 			Namespace: namespace,
@@ -205,7 +205,6 @@ func createDeployment(clusterID string, clusterType string,
 							},
 							VolumeMounts:    mounts,
 							ImagePullPolicy: corev1.PullAlways,
-							Resources:       obsAddonSpec.Resources,
 						},
 					},
 					Volumes: volumes,
@@ -213,6 +212,10 @@ func createDeployment(clusterID string, clusterType string,
 			},
 		},
 	}
+	if obsAddonSpec.Resources != nil {
+		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *obsAddonSpec.Resources
+	}
+	return metricsCollectorDep
 }
 
 func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonSpec oashared.ObservabilityAddonSpec,

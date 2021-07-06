@@ -9,7 +9,7 @@ import (
 	"encoding/base64"
 	"os"
 
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
