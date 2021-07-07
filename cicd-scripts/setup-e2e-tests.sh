@@ -268,7 +268,7 @@ deploy_mco_operator() {
     # install minio service
     kubectl create ns ${OBSERVABILITY_NS} || true
 
-    kubectl -n ${OBSERVABILITY_NS} apply -f ${ROOTDIR}/cicd-scripts/e2e-setup-manifests/minio
+    kubectl -n ${OBSERVABILITY_NS} apply -f ${ROOTDIR}/examples/minio
     echo "minio is deployed successfully."
 
     # wait until minio is ready
@@ -330,7 +330,7 @@ delete_mco_operator() {
         cd ${ROOTDIR}/multicluster-observability-operator
     fi
     # kubectl -n ${OBSERVABILITY_NS} delete -f ${ROOTDIR}/observability-gitops/mco/func/observability.yaml --ignore-not-found
-    kubectl -n ${OBSERVABILITY_NS} delete -f ${ROOTDIR}/cicd-scripts/e2e-setup-manifests/minio --ignore-not-found
+    kubectl -n ${OBSERVABILITY_NS} delete -f ${ROOTDIR}/examples/minio --ignore-not-found
 
     # wait until all resources are deleted before delete the mco
     for i in {1..20}; do
