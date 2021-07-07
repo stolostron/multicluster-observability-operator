@@ -4,6 +4,7 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -40,7 +41,7 @@ var _ = Describe("Observability:", func() {
 	It("[P1][Sev1][Observability][Stable] Should have the expected statefulsets (alert/g0)", func() {
 		By("Checking if STS: Alertmanager and observability-thanos-rule exist")
 		for _, name := range statefulset {
-			sts, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(name, metav1.GetOptions{})
+			sts, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(sts.Spec.Template.Spec.Volumes)).Should(BeNumerically(">", 0))
 
@@ -58,7 +59,7 @@ var _ = Describe("Observability:", func() {
 
 	It("[P2][Sev2][Observability][Stable] Should have the expected configmap (alert/g0)", func() {
 		By("Checking if CM: thanos-ruler-default-rules is existed")
-		cm, err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Get(configmap[0], metav1.GetOptions{})
+		cm, err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Get(context.TODO(), configmap[0], metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(cm.ResourceVersion).ShouldNot(BeEmpty())
@@ -67,7 +68,7 @@ var _ = Describe("Observability:", func() {
 
 	It("[P3][Sev3][Observability][Stable] Should not have the CM: thanos-ruler-custom-rules (alert/g0)", func() {
 		By("Checking if CM: thanos-ruler-custom-rules not existed")
-		_, err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Get(configmap[1], metav1.GetOptions{})
+		_, err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Get(context.TODO(), configmap[1], metav1.GetOptions{})
 
 		if err == nil {
 			err = fmt.Errorf("%s exist within the namespace env", configmap[1])
@@ -80,7 +81,7 @@ var _ = Describe("Observability:", func() {
 
 	It("[P1][Sev1][Observability][Stable] Should have the expected secret (alert/g0)", func() {
 		By("Checking if SECRETS: alertmanager-config is existed")
-		secret, err := hubClient.CoreV1().Secrets(MCO_NAMESPACE).Get(secret, metav1.GetOptions{})
+		secret, err := hubClient.CoreV1().Secrets(MCO_NAMESPACE).Get(context.TODO(), secret, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(secret.GetName()).To(Equal("alertmanager-config"))
@@ -90,7 +91,7 @@ var _ = Describe("Observability:", func() {
 	It("[P1][Sev1][Observability][Stable] Should have the alertmanager configured in rule (alert/g0)", func() {
 		By("Checking if --alertmanagers.url or --alertmanager.config or --alertmanagers.config-file is configured in rule")
 		name := MCO_CR_NAME + "-thanos-rule"
-		rule, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(name, metav1.GetOptions{})
+		rule, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 		argList := rule.Spec.Template.Spec.Containers[0].Args
 		exists := false
@@ -187,7 +188,7 @@ var _ = Describe("Observability:", func() {
 		_, oldSts := utils.GetStatefulSet(testOptions, true, ThanosRuleName, MCO_NAMESPACE)
 
 		Eventually(func() error {
-			err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Delete(configmap[1], &metav1.DeleteOptions{})
+			err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Delete(context.TODO(), configmap[1], metav1.DeleteOptions{})
 			return err
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 
@@ -215,13 +216,15 @@ var _ = Describe("Observability:", func() {
 		klog.V(3).Infof("Successfully deleted CM: thanos-ruler-custom-rules")
 	})
 
+	JustAfterEach(func() {
+		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
+	})
+
 	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
 			utils.PrintMCOObject(testOptions)
 			utils.PrintAllMCOPodsStatus(testOptions)
 			utils.PrintAllOBAPodsStatus(testOptions)
-		} else {
-			Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 	})

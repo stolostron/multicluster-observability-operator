@@ -3,9 +3,11 @@
 FROM registry.ci.openshift.org/open-cluster-management/builder:go1.16-linux AS builder
 
 WORKDIR /workspace
-COPY go.sum go.mod ./operators/endpointmetrics ./
+COPY go.sum go.mod ./
+COPY ./operators/endpointmetrics ./operators/endpointmetrics
+COPY ./operators/multiclusterobservability/api ./operators/multiclusterobservability/api
 
-RUN CGO_ENABLED=0 go build -a -installsuffix cgo -o build/_output/bin/endpoint-monitoring-operator main.go
+RUN CGO_ENABLED=0 go build -a -installsuffix cgo -o build/_output/bin/endpoint-monitoring-operator operators/endpointmetrics/main.go
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 

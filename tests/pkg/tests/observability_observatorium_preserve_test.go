@@ -4,6 +4,7 @@
 package tests
 
 import (
+	"context"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -31,18 +32,18 @@ var _ = Describe("Observability:", func() {
 			oldResourceVersion := ""
 			updateRetention := "10d"
 			Eventually(func() error {
-				cr, err := dynClient.Resource(utils.NewMCOMObservatoriumGVR()).Namespace(MCO_NAMESPACE).Get(MCO_CR_NAME, metav1.GetOptions{})
+				cr, err := dynClient.Resource(utils.NewMCOMObservatoriumGVR()).Namespace(MCO_NAMESPACE).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 				if err != nil {
 					return err
 				}
 				cr.Object["spec"].(map[string]interface{})["thanos"].(map[string]interface{})["compact"].(map[string]interface{})["retentionResolution1h"] = updateRetention
 				oldResourceVersion = cr.Object["metadata"].(map[string]interface{})["resourceVersion"].(string)
-				_, err = dynClient.Resource(utils.NewMCOMObservatoriumGVR()).Namespace(MCO_NAMESPACE).Update(cr, metav1.UpdateOptions{})
+				_, err = dynClient.Resource(utils.NewMCOMObservatoriumGVR()).Namespace(MCO_NAMESPACE).Update(context.TODO(), cr, metav1.UpdateOptions{})
 				return err
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 
 			Eventually(func() bool {
-				cr, err := dynClient.Resource(utils.NewMCOMObservatoriumGVR()).Namespace(MCO_NAMESPACE).Get(MCO_CR_NAME, metav1.GetOptions{})
+				cr, err := dynClient.Resource(utils.NewMCOMObservatoriumGVR()).Namespace(MCO_NAMESPACE).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 				if err == nil {
 					replicasNewRetention := cr.Object["spec"].(map[string]interface{})["thanos"].(map[string]interface{})["compact"].(map[string]interface{})["retentionResolution1h"]
 					newResourceVersion := cr.Object["metadata"].(map[string]interface{})["resourceVersion"].(string)
@@ -69,13 +70,15 @@ var _ = Describe("Observability:", func() {
 		})
 	})
 
+	JustAfterEach(func() {
+		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
+	})
+
 	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
 			utils.PrintMCOObject(testOptions)
 			utils.PrintAllMCOPodsStatus(testOptions)
 			utils.PrintAllOBAPodsStatus(testOptions)
-		} else {
-			Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 	})

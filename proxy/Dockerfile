@@ -3,9 +3,10 @@
 FROM registry.ci.openshift.org/open-cluster-management/builder:go1.16-linux-amd64 AS builder
 
 WORKDIR /workspace
-COPY go.sum go.mod ./proxy ./
+COPY go.sum go.mod ./
+COPY ./proxy ./proxy
 
-RUN CGO_ENABLED=0 go build -a -installsuffix cgo -v -i -o main cmd/main.go
+RUN CGO_ENABLED=0 go build -a -installsuffix cgo -v -i -o main proxy/cmd/main.go
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 

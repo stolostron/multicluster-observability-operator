@@ -4,6 +4,7 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -31,9 +32,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-func NewUnversionedRestClient(url, kubeconfig, context string) *rest.RESTClient {
+func NewUnversionedRestClient(url, kubeconfig, ctx string) *rest.RESTClient {
 	klog.V(5).Infof("Create unversionedRestClient for url %s using kubeconfig path %s\n", url, kubeconfig)
-	config, err := LoadConfig(url, kubeconfig, context)
+	config, err := LoadConfig(url, kubeconfig, ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -51,9 +52,9 @@ func NewUnversionedRestClient(url, kubeconfig, context string) *rest.RESTClient 
 	return kubeRESTClient
 }
 
-func NewKubeClient(url, kubeconfig, context string) kubernetes.Interface {
+func NewKubeClient(url, kubeconfig, ctx string) kubernetes.Interface {
 	klog.V(5).Infof("Create kubeclient for url %s using kubeconfig path %s\n", url, kubeconfig)
-	config, err := LoadConfig(url, kubeconfig, context)
+	config, err := LoadConfig(url, kubeconfig, ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -66,9 +67,9 @@ func NewKubeClient(url, kubeconfig, context string) kubernetes.Interface {
 	return clientset
 }
 
-func NewKubeClientDynamic(url, kubeconfig, context string) dynamic.Interface {
+func NewKubeClientDynamic(url, kubeconfig, ctx string) dynamic.Interface {
 	klog.V(5).Infof("Create kubeclient dynamic for url %s using kubeconfig path %s\n", url, kubeconfig)
-	config, err := LoadConfig(url, kubeconfig, context)
+	config, err := LoadConfig(url, kubeconfig, ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -81,9 +82,9 @@ func NewKubeClientDynamic(url, kubeconfig, context string) dynamic.Interface {
 	return clientset
 }
 
-func NewKubeClientAPIExtension(url, kubeconfig, context string) apiextensionsclientset.Interface {
+func NewKubeClientAPIExtension(url, kubeconfig, ctx string) apiextensionsclientset.Interface {
 	klog.V(5).Infof("Create kubeclient apiextension for url %s using kubeconfig path %s\n", url, kubeconfig)
-	config, err := LoadConfig(url, kubeconfig, context)
+	config, err := LoadConfig(url, kubeconfig, ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -96,9 +97,9 @@ func NewKubeClientAPIExtension(url, kubeconfig, context string) apiextensionscli
 	return clientset
 }
 
-// func NewKubeClientDiscovery(url, kubeconfig, context string) *discovery.DiscoveryClient {
+// func NewKubeClientDiscovery(url, kubeconfig, ctx string) *discovery.DiscoveryClient {
 // 	klog.V(5).Infof("Create kubeclient discovery for url %s using kubeconfig path %s\n", url, kubeconfig)
-// 	config, err := LoadConfig(url, kubeconfig, context)
+// 	config, err := LoadConfig(url, kubeconfig, ctx)
 // 	if err != nil {
 // 		panic(err)
 // 	}
@@ -179,7 +180,7 @@ func FetchBearerToken(opt TestOptions) (string, error) {
 	}
 
 	clientKube := NewKubeClient(opt.HubCluster.MasterURL, opt.KubeConfig, opt.HubCluster.KubeContext)
-	secretList, err := clientKube.CoreV1().Secrets(MCO_NAMESPACE).List(metav1.ListOptions{FieldSelector: "type=kubernetes.io/service-account-token"})
+	secretList, err := clientKube.CoreV1().Secrets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{FieldSelector: "type=kubernetes.io/service-account-token"})
 	if err != nil {
 		return "", err
 	}
@@ -199,21 +200,21 @@ func FetchBearerToken(opt TestOptions) (string, error) {
 	return "", fmt.Errorf("failed to get bearer token")
 }
 
-func LoadConfig(url, kubeconfig, context string) (*rest.Config, error) {
+func LoadConfig(url, kubeconfig, ctx string) (*rest.Config, error) {
 	if kubeconfig == "" {
 		kubeconfig = os.Getenv("KUBECONFIG")
 	}
 	klog.V(5).Infof("Kubeconfig path %s\n", kubeconfig)
 	// If we have an explicit indication of where the kubernetes config lives, read that.
 	if kubeconfig != "" {
-		if context == "" {
+		if ctx == "" {
 			// klog.V(5).Infof("clientcmd.BuildConfigFromFlags with %s and %s", url, kubeconfig)
 			return clientcmd.BuildConfigFromFlags(url, kubeconfig)
 		} else {
 			return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 				&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfig},
 				&clientcmd.ConfigOverrides{
-					CurrentContext: context,
+					CurrentContext: ctx,
 				}).ClientConfig()
 		}
 	}
@@ -233,12 +234,12 @@ func LoadConfig(url, kubeconfig, context string) (*rest.Config, error) {
 	return nil, fmt.Errorf("could not create a valid kubeconfig")
 }
 
-//Apply a multi resources file to the cluster described by the url, kubeconfig and context.
+//Apply a multi resources file to the cluster described by the url, kubeconfig and ctx.
 //url of the cluster
-//kubeconfig which contains the context
-//context, the context to use
+//kubeconfig which contains the ctx
+//ctx, the ctx to use
 //yamlB, a byte array containing the resources file
-func Apply(url string, kubeconfig string, context string, yamlB []byte) error {
+func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 	yamls := strings.Split(string(yamlB), "---")
 	// yamlFiles is an []string
 	for _, f := range yamls {
@@ -270,8 +271,8 @@ func Apply(url string, kubeconfig string, context string, yamlB []byte) error {
 		}
 		klog.V(5).Infof("apiVersion: %s\n", apiVersion)
 
-		clientKube := NewKubeClient(url, kubeconfig, context)
-		clientAPIExtension := NewKubeClientAPIExtension(url, kubeconfig, context)
+		clientKube := NewKubeClient(url, kubeconfig, ctx)
+		clientAPIExtension := NewKubeClientAPIExtension(url, kubeconfig, ctx)
 		// now use switch over the type of the object
 		// and match each type-case
 		switch kind {
@@ -282,13 +283,13 @@ func Apply(url string, kubeconfig string, context string, yamlB []byte) error {
 			if err != nil {
 				return err
 			}
-			existingObject, errGet := clientAPIExtension.ApiextensionsV1beta1().CustomResourceDefinitions().Get(obj.Name, metav1.GetOptions{})
+			existingObject, errGet := clientAPIExtension.ApiextensionsV1beta1().CustomResourceDefinitions().Get(context.TODO(), obj.Name, metav1.GetOptions{})
 			if errGet != nil {
-				_, err = clientAPIExtension.ApiextensionsV1beta1().CustomResourceDefinitions().Create(obj)
+				_, err = clientAPIExtension.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), obj, metav1.CreateOptions{})
 			} else {
 				existingObject.Spec = obj.Spec
 				klog.Warningf("CRD %s already exists, updating!", existingObject.Name)
-				_, err = clientAPIExtension.ApiextensionsV1beta1().CustomResourceDefinitions().Update(existingObject)
+				_, err = clientAPIExtension.ApiextensionsV1beta1().CustomResourceDefinitions().Update(context.TODO(), existingObject, metav1.UpdateOptions{})
 			}
 		case "Namespace":
 			klog.V(5).Infof("Install %s: %s\n", kind, f)
@@ -297,13 +298,13 @@ func Apply(url string, kubeconfig string, context string, yamlB []byte) error {
 			if err != nil {
 				return err
 			}
-			existingObject, errGet := clientKube.CoreV1().Namespaces().Get(obj.Name, metav1.GetOptions{})
+			existingObject, errGet := clientKube.CoreV1().Namespaces().Get(context.TODO(), obj.Name, metav1.GetOptions{})
 			if errGet != nil {
-				_, err = clientKube.CoreV1().Namespaces().Create(obj)
+				_, err = clientKube.CoreV1().Namespaces().Create(context.TODO(), obj, metav1.CreateOptions{})
 			} else {
 				obj.ObjectMeta = existingObject.ObjectMeta
 				klog.Warningf("%s %s already exists, updating!", obj.Kind, obj.Name)
-				_, err = clientKube.CoreV1().Namespaces().Update(existingObject)
+				_, err = clientKube.CoreV1().Namespaces().Update(context.TODO(), existingObject, metav1.UpdateOptions{})
 			}
 		case "ServiceAccount":
 			klog.V(5).Infof("Install %s: %s\n", kind, f)
@@ -312,13 +313,13 @@ func Apply(url string, kubeconfig string, context string, yamlB []byte) error {
 			if err != nil {
 				return err
 			}
-			existingObject, errGet := clientKube.CoreV1().ServiceAccounts(obj.Namespace).Get(obj.Name, metav1.GetOptions{})
+			existingObject, errGet := clientKube.CoreV1().ServiceAccounts(obj.Namespace).Get(context.TODO(), obj.Name, metav1.GetOptions{})
 			if errGet != nil {
-				_, err = clientKube.CoreV1().ServiceAccounts(obj.Namespace).Create(obj)
+				_, err = clientKube.CoreV1().ServiceAccounts(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 			} else {
 				obj.ObjectMeta = existingObject.ObjectMeta
 				klog.Warningf("%s %s/%s already exists, updating!", obj.Kind, obj.Namespace, obj.Name)
-				_, err = clientKube.CoreV1().ServiceAccounts(obj.Namespace).Update(obj)
+				_, err = clientKube.CoreV1().ServiceAccounts(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "ClusterRoleBinding":
 			klog.V(5).Infof("Install %s: %s\n", kind, f)
@@ -327,13 +328,13 @@ func Apply(url string, kubeconfig string, context string, yamlB []byte) error {
 			if err != nil {
 				return err
 			}
-			existingObject, errGet := clientKube.RbacV1().ClusterRoleBindings().Get(obj.Name, metav1.GetOptions{})
+			existingObject, errGet := clientKube.RbacV1().ClusterRoleBindings().Get(context.TODO(), obj.Name, metav1.GetOptions{})
 			if errGet != nil {
-				_, err = clientKube.RbacV1().ClusterRoleBindings().Create(obj)
+				_, err = clientKube.RbacV1().ClusterRoleBindings().Create(context.TODO(), obj, metav1.CreateOptions{})
 			} else {
 				obj.ObjectMeta = existingObject.ObjectMeta
 				klog.Warningf("%s %s/%s already exists, updating!", obj.Kind, obj.Namespace, obj.Name)
-				_, err = clientKube.RbacV1().ClusterRoleBindings().Update(obj)
+				_, err = clientKube.RbacV1().ClusterRoleBindings().Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "Secret":
 			klog.V(5).Infof("Install %s: %s\n", kind, f)
@@ -342,13 +343,13 @@ func Apply(url string, kubeconfig string, context string, yamlB []byte) error {
 			if err != nil {
 				return err
 			}
-			existingObject, errGet := clientKube.CoreV1().Secrets(obj.Namespace).Get(obj.Name, metav1.GetOptions{})
+			existingObject, errGet := clientKube.CoreV1().Secrets(obj.Namespace).Get(context.TODO(), obj.Name, metav1.GetOptions{})
 			if errGet != nil {
-				_, err = clientKube.CoreV1().Secrets(obj.Namespace).Create(obj)
+				_, err = clientKube.CoreV1().Secrets(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 			} else {
 				obj.ObjectMeta = existingObject.ObjectMeta
 				klog.Warningf("%s %s/%s already exists, updating!", obj.Kind, obj.Namespace, obj.Name)
-				_, err = clientKube.CoreV1().Secrets(obj.Namespace).Update(obj)
+				_, err = clientKube.CoreV1().Secrets(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "ConfigMap":
 			klog.V(5).Infof("Install %s: %s\n", kind, f)
@@ -357,13 +358,13 @@ func Apply(url string, kubeconfig string, context string, yamlB []byte) error {
 			if err != nil {
 				return err
 			}
-			existingObject, errGet := clientKube.CoreV1().ConfigMaps(obj.Namespace).Get(obj.Name, metav1.GetOptions{})
+			existingObject, errGet := clientKube.CoreV1().ConfigMaps(obj.Namespace).Get(context.TODO(), obj.Name, metav1.GetOptions{})
 			if errGet != nil {
-				_, err = clientKube.CoreV1().ConfigMaps(obj.Namespace).Create(obj)
+				_, err = clientKube.CoreV1().ConfigMaps(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 			} else {
 				obj.ObjectMeta = existingObject.ObjectMeta
 				klog.Warningf("%s %s/%s already exists, updating!", obj.Kind, obj.Namespace, obj.Name)
-				_, err = clientKube.CoreV1().ConfigMaps(obj.Namespace).Update(obj)
+				_, err = clientKube.CoreV1().ConfigMaps(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "Service":
 			klog.V(5).Infof("Install %s: %s\n", kind, f)
@@ -372,13 +373,13 @@ func Apply(url string, kubeconfig string, context string, yamlB []byte) error {
 			if err != nil {
 				return err
 			}
-			existingObject, errGet := clientKube.CoreV1().Services(obj.Namespace).Get(obj.Name, metav1.GetOptions{})
+			existingObject, errGet := clientKube.CoreV1().Services(obj.Namespace).Get(context.TODO(), obj.Name, metav1.GetOptions{})
 			if errGet != nil {
-				_, err = clientKube.CoreV1().Services(obj.Namespace).Create(obj)
+				_, err = clientKube.CoreV1().Services(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 			} else {
 				obj.ObjectMeta = existingObject.ObjectMeta
 				klog.Warningf("%s %s/%s already exists, updating!", obj.Kind, obj.Namespace, obj.Name)
-				_, err = clientKube.CoreV1().Services(obj.Namespace).Update(obj)
+				_, err = clientKube.CoreV1().Services(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "PersistentVolumeClaim":
 			klog.V(5).Infof("Install %s: %s\n", kind, f)
@@ -387,13 +388,13 @@ func Apply(url string, kubeconfig string, context string, yamlB []byte) error {
 			if err != nil {
 				return err
 			}
-			existingObject, errGet := clientKube.CoreV1().PersistentVolumeClaims(obj.Namespace).Get(obj.Name, metav1.GetOptions{})
+			existingObject, errGet := clientKube.CoreV1().PersistentVolumeClaims(obj.Namespace).Get(context.TODO(), obj.Name, metav1.GetOptions{})
 			if errGet != nil {
-				_, err = clientKube.CoreV1().PersistentVolumeClaims(obj.Namespace).Create(obj)
+				_, err = clientKube.CoreV1().PersistentVolumeClaims(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 			} else {
 				obj.ObjectMeta = existingObject.ObjectMeta
 				klog.Warningf("%s %s/%s already exists, updating!", obj.Kind, obj.Namespace, obj.Name)
-				_, err = clientKube.CoreV1().PersistentVolumeClaims(obj.Namespace).Update(obj)
+				_, err = clientKube.CoreV1().PersistentVolumeClaims(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "Deployment":
 			klog.V(5).Infof("Install %s: %s\n", kind, f)
@@ -402,13 +403,13 @@ func Apply(url string, kubeconfig string, context string, yamlB []byte) error {
 			if err != nil {
 				return err
 			}
-			existingObject, errGet := clientKube.AppsV1().Deployments(obj.Namespace).Get(obj.Name, metav1.GetOptions{})
+			existingObject, errGet := clientKube.AppsV1().Deployments(obj.Namespace).Get(context.TODO(), obj.Name, metav1.GetOptions{})
 			if errGet != nil {
-				_, err = clientKube.AppsV1().Deployments(obj.Namespace).Create(obj)
+				_, err = clientKube.AppsV1().Deployments(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 			} else {
 				obj.ObjectMeta = existingObject.ObjectMeta
 				klog.Warningf("%s %s/%s already exists, updating!", obj.Kind, obj.Namespace, obj.Name)
-				_, err = clientKube.AppsV1().Deployments(obj.Namespace).Update(obj)
+				_, err = clientKube.AppsV1().Deployments(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "LimitRange":
 			klog.V(5).Infof("Install %s: %s\n", kind, f)
@@ -417,13 +418,13 @@ func Apply(url string, kubeconfig string, context string, yamlB []byte) error {
 			if err != nil {
 				return err
 			}
-			existingObject, errGet := clientKube.CoreV1().LimitRanges(obj.Namespace).Get(obj.Name, metav1.GetOptions{})
+			existingObject, errGet := clientKube.CoreV1().LimitRanges(obj.Namespace).Get(context.TODO(), obj.Name, metav1.GetOptions{})
 			if errGet != nil {
-				_, err = clientKube.CoreV1().LimitRanges(obj.Namespace).Create(obj)
+				_, err = clientKube.CoreV1().LimitRanges(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 			} else {
 				obj.ObjectMeta = existingObject.ObjectMeta
 				klog.Warningf("%s %s/%s already exists, updating!", obj.Kind, obj.Namespace, obj.Name)
-				_, err = clientKube.CoreV1().LimitRanges(obj.Namespace).Update(obj)
+				_, err = clientKube.CoreV1().LimitRanges(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "ResourceQuota":
 			klog.V(5).Infof("Install %s: %s\n", kind, f)
@@ -432,13 +433,13 @@ func Apply(url string, kubeconfig string, context string, yamlB []byte) error {
 			if err != nil {
 				return err
 			}
-			existingObject, errGet := clientKube.CoreV1().ResourceQuotas(obj.Namespace).Get(obj.Name, metav1.GetOptions{})
+			existingObject, errGet := clientKube.CoreV1().ResourceQuotas(obj.Namespace).Get(context.TODO(), obj.Name, metav1.GetOptions{})
 			if errGet != nil {
-				_, err = clientKube.CoreV1().ResourceQuotas(obj.Namespace).Create(obj)
+				_, err = clientKube.CoreV1().ResourceQuotas(obj.Namespace).Create(context.TODO(), obj, metav1.CreateOptions{})
 			} else {
 				obj.ObjectMeta = existingObject.ObjectMeta
 				klog.Warningf("%s %s/%s already exists, updating!", obj.Kind, obj.Namespace, obj.Name)
-				_, err = clientKube.CoreV1().ResourceQuotas(obj.Namespace).Update(obj)
+				_, err = clientKube.CoreV1().ResourceQuotas(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		default:
 			switch kind {
@@ -453,38 +454,38 @@ func Apply(url string, kubeconfig string, context string, yamlB []byte) error {
 				gvr = NewMCOGVRV1BETA1()
 			}
 
-			// url string, kubeconfig string, context string
+			// url string, kubeconfig string, ctx string
 			opt := TestOptions{
 				HubCluster: Cluster{
 					MasterURL:   url,
-					KubeContext: context,
+					KubeContext: ctx,
 				},
 				KubeConfig: kubeconfig,
 			}
-			clientDynamic := NewKubeClientDynamic(url, kubeconfig, context)
+			clientDynamic := NewKubeClientDynamic(url, kubeconfig, ctx)
 			if ns := obj.GetNamespace(); ns != "" {
-				existingObject, errGet := clientDynamic.Resource(gvr).Namespace(ns).Get(obj.GetName(), metav1.GetOptions{})
+				existingObject, errGet := clientDynamic.Resource(gvr).Namespace(ns).Get(context.TODO(), obj.GetName(), metav1.GetOptions{})
 				if errGet != nil {
 					if ips, err := GetPullSecret(opt); err == nil {
 						obj.Object["spec"].(map[string]interface{})["imagePullSecret"] = ips
 					}
-					_, err = clientDynamic.Resource(gvr).Namespace(ns).Create(obj, metav1.CreateOptions{})
+					_, err = clientDynamic.Resource(gvr).Namespace(ns).Create(context.TODO(), obj, metav1.CreateOptions{})
 				} else {
 					obj.Object["metadata"] = existingObject.Object["metadata"]
 					klog.Warningf("%s %s/%s already exists, updating!", obj.GetKind(), obj.GetNamespace(), obj.GetName())
-					_, err = clientDynamic.Resource(gvr).Namespace(ns).Update(obj, metav1.UpdateOptions{})
+					_, err = clientDynamic.Resource(gvr).Namespace(ns).Update(context.TODO(), obj, metav1.UpdateOptions{})
 				}
 			} else {
-				existingObject, errGet := clientDynamic.Resource(gvr).Get(obj.GetName(), metav1.GetOptions{})
+				existingObject, errGet := clientDynamic.Resource(gvr).Get(context.TODO(), obj.GetName(), metav1.GetOptions{})
 				if errGet != nil {
 					if ips, err := GetPullSecret(opt); err == nil {
 						obj.Object["spec"].(map[string]interface{})["imagePullSecret"] = ips
 					}
-					_, err = clientDynamic.Resource(gvr).Create(obj, metav1.CreateOptions{})
+					_, err = clientDynamic.Resource(gvr).Create(context.TODO(), obj, metav1.CreateOptions{})
 				} else {
 					obj.Object["metadata"] = existingObject.Object["metadata"]
 					klog.Warningf("%s %s already exists, updating!", obj.GetKind(), obj.GetName())
-					_, err = clientDynamic.Resource(gvr).Update(obj, metav1.UpdateOptions{})
+					_, err = clientDynamic.Resource(gvr).Update(context.TODO(), obj, metav1.UpdateOptions{})
 				}
 			}
 		}
@@ -561,7 +562,7 @@ func HaveCRDs(c Cluster, kubeconfig string, expectedCRDs []string) error {
 	clientAPIExtensionV1beta1 := clientAPIExtension.ApiextensionsV1beta1()
 	for _, crd := range expectedCRDs {
 		klog.V(1).Infof("Check if %s exists", crd)
-		_, err := clientAPIExtensionV1beta1.CustomResourceDefinitions().Get(crd, metav1.GetOptions{})
+		_, err := clientAPIExtensionV1beta1.CustomResourceDefinitions().Get(context.TODO(), crd, metav1.GetOptions{})
 		if err != nil {
 			klog.V(1).Infof("Error while retrieving crd %s: %s", crd, err.Error())
 			return err
@@ -583,7 +584,7 @@ func HaveDeploymentsInNamespace(c Cluster, kubeconfig string, namespace string, 
 
 	for _, deploymentName := range expectedDeploymentNames {
 		klog.V(1).Infof("Check if deployment %s exists", deploymentName)
-		deployment, err := deployments.Get(deploymentName, metav1.GetOptions{})
+		deployment, err := deployments.Get(context.TODO(), deploymentName, metav1.GetOptions{})
 		if err != nil {
 			klog.V(1).Infof("Error while retrieving deployment %s: %s", deploymentName, err.Error())
 			return err
@@ -618,7 +619,7 @@ func HaveDeploymentsInNamespace(c Cluster, kubeconfig string, namespace string, 
 func GetKubeVersion(client *rest.RESTClient) version.Info {
 	kubeVersion := version.Info{}
 
-	versionBody, err := client.Get().AbsPath("/version").Do().Raw()
+	versionBody, err := client.Get().AbsPath("/version").Do(context.TODO()).Raw()
 	if err != nil {
 		log.Error(err, "fail to GET /version")
 		return version.Info{}
@@ -635,14 +636,14 @@ func GetKubeVersion(client *rest.RESTClient) version.Info {
 
 func IsOpenshift(client *rest.RESTClient) bool {
 	//check whether the cluster is openshift or not for openshift version 3.11 and before
-	_, err := client.Get().AbsPath("/version/openshift").Do().Raw()
+	_, err := client.Get().AbsPath("/version/openshift").Do(context.TODO()).Raw()
 	if err == nil {
 		klog.V(5).Info("Found openshift version from /version/openshift")
 		return true
 	}
 
 	//check whether the cluster is openshift or not for openshift version 4.1
-	_, err = client.Get().AbsPath("/apis/config.openshift.io/v1/clusterversions").Do().Raw()
+	_, err = client.Get().AbsPath("/apis/config.openshift.io/v1/clusterversions").Do(context.TODO()).Raw()
 	if err == nil {
 		klog.V(5).Info("Found openshift version from /apis/config.openshift.io/v1/clusterversions")
 		return true
@@ -664,7 +665,7 @@ func GetPullSecret(opt TestOptions) (string, error) {
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
-	mchList, err := clientDynamic.Resource(NewOCMMultiClusterHubGVR()).List(metav1.ListOptions{})
+	mchList, err := clientDynamic.Resource(NewOCMMultiClusterHubGVR()).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -676,7 +677,7 @@ func GetPullSecret(opt TestOptions) (string, error) {
 	mchName := mchList.Items[0].GetName()
 	mchNs := mchList.Items[0].GetNamespace()
 
-	getMCH, err := clientDynamic.Resource(NewOCMMultiClusterHubGVR()).Namespace(mchNs).Get(mchName, metav1.GetOptions{})
+	getMCH, err := clientDynamic.Resource(NewOCMMultiClusterHubGVR()).Namespace(mchNs).Get(context.TODO(), mchName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}

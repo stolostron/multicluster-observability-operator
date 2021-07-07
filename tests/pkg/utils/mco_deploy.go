@@ -5,6 +5,7 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	b64 "encoding/base64"
 	"encoding/json"
@@ -114,14 +115,14 @@ func ModifyMCOAvailabilityConfig(opt TestOptions, availabilityConfig string) err
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(MCO_CR_NAME, metav1.GetOptions{})
+	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 	if getErr != nil {
 		return getErr
 	}
 
 	spec := mco.Object["spec"].(map[string]interface{})
 	spec["availabilityConfig"] = availabilityConfig
-	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(mco, metav1.UpdateOptions{})
+	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 	if updateErr != nil {
 		return updateErr
 	}
@@ -134,7 +135,7 @@ func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
-	podList, err := hubClient.CoreV1().Pods(MCO_NAMESPACE).List(metav1.ListOptions{})
+	podList, err := hubClient.CoreV1().Pods(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return []corev1.Pod{}, err
 	}
@@ -186,7 +187,7 @@ func PrintMCOObject(opt TestOptions) {
 		opt.HubCluster.MasterURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(MCO_CR_NAME, metav1.GetOptions{})
+	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 	if getErr != nil {
 		klog.V(1).Infof("Failed to get mco object")
 		return
@@ -200,7 +201,7 @@ func PrintMCOObject(opt TestOptions) {
 
 func PrintManagedClusterOBAObject(opt TestOptions) {
 	clientDynamic := GetKubeClientDynamic(opt, false)
-	oba, getErr := clientDynamic.Resource(NewMCOAddonGVR()).Namespace(MCO_ADDON_NAMESPACE).Get("observability-addon", metav1.GetOptions{})
+	oba, getErr := clientDynamic.Resource(NewMCOAddonGVR()).Namespace(MCO_ADDON_NAMESPACE).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
 	if getErr != nil {
 		klog.V(1).Infof("Failed to get oba object from managedcluster")
 		return
@@ -214,7 +215,7 @@ func PrintManagedClusterOBAObject(opt TestOptions) {
 
 func GetAllOBAPods(opt TestOptions) ([]corev1.Pod, error) {
 	clientKube := getKubeClient(opt, false)
-	obaPods, err := clientKube.CoreV1().Pods(MCO_ADDON_NAMESPACE).List(metav1.ListOptions{})
+	obaPods, err := clientKube.CoreV1().Pods(MCO_ADDON_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return []corev1.Pod{}, err
 	}
@@ -302,7 +303,7 @@ func CheckAllPodsAffinity(opt TestOptions) error {
 func CheckStorageResize(opt TestOptions, stsName string, expectedCapacity string) error {
 	client := getKubeClient(opt, true)
 	statefulsets := client.AppsV1().StatefulSets(MCO_NAMESPACE)
-	statefulset, err := statefulsets.Get(stsName, metav1.GetOptions{})
+	statefulset, err := statefulsets.Get(context.TODO(), stsName, metav1.GetOptions{})
 	if err != nil {
 		klog.V(1).Infof("Error while retrieving statefulset %s: %s", stsName, err.Error())
 		return err
@@ -326,7 +327,7 @@ func CheckOBAComponents(opt TestOptions) error {
 	}
 
 	for _, deploymentName := range expectedDeploymentNames {
-		deployment, err := deployments.Get(deploymentName, metav1.GetOptions{})
+		deployment, err := deployments.Get(context.TODO(), deploymentName, metav1.GetOptions{})
 		if err != nil {
 			klog.Errorf("Error while retrieving deployment %s: %s", deploymentName, err.Error())
 			return err
@@ -361,7 +362,7 @@ func CheckMCOComponentsInBaiscMode(opt TestOptions) error {
 	}
 
 	for _, deploymentName := range expectedDeploymentNames {
-		deployment, err := deployments.Get(deploymentName, metav1.GetOptions{})
+		deployment, err := deployments.Get(context.TODO(), deploymentName, metav1.GetOptions{})
 		if err != nil {
 			klog.Errorf("Error while retrieving deployment %s: %s", deploymentName, err.Error())
 			return err
@@ -387,7 +388,7 @@ func CheckMCOComponentsInBaiscMode(opt TestOptions) error {
 	}
 
 	for _, statefulsetName := range expectedStatefulSetNames {
-		statefulset, err := statefulsets.Get(statefulsetName, metav1.GetOptions{})
+		statefulset, err := statefulsets.Get(context.TODO(), statefulsetName, metav1.GetOptions{})
 		if err != nil {
 			klog.V(1).Infof("Error while retrieving statefulset %s: %s", statefulsetName, err.Error())
 			return err
@@ -411,7 +412,7 @@ func CheckStatefulSetPodReady(opt TestOptions, stsName string) error {
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	statefulsets := client.AppsV1().StatefulSets(MCO_NAMESPACE)
-	statefulset, err := statefulsets.Get(stsName, metav1.GetOptions{})
+	statefulset, err := statefulsets.Get(context.TODO(), stsName, metav1.GetOptions{})
 	if err != nil {
 		klog.V(1).Infof("Error while retrieving statefulset %s: %s", stsName, err.Error())
 		return err
@@ -434,7 +435,7 @@ func CheckDeploymentPodReady(opt TestOptions, deployName string) error {
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	deploys := client.AppsV1().Deployments(MCO_NAMESPACE)
-	deploy, err := deploys.Get(deployName, metav1.GetOptions{})
+	deploy, err := deploys.Get(context.TODO(), deployName, metav1.GetOptions{})
 	if err != nil {
 		klog.V(1).Infof("Error while retrieving deployment %s: %s", deployName, err.Error())
 		return err
@@ -466,7 +467,7 @@ func CheckMCOComponentsInHighMode(opt TestOptions) error {
 	}
 
 	for _, deploymentName := range expectedDeploymentNames {
-		deployment, err := deployments.Get(deploymentName, metav1.GetOptions{})
+		deployment, err := deployments.Get(context.TODO(), deploymentName, metav1.GetOptions{})
 		if err != nil {
 			klog.Errorf("Error while retrieving deployment %s: %s", deploymentName, err.Error())
 			return err
@@ -496,7 +497,7 @@ func CheckMCOComponentsInHighMode(opt TestOptions) error {
 	}
 
 	for _, statefulsetName := range expectedStatefulSetNames {
-		statefulset, err := statefulsets.Get(statefulsetName, metav1.GetOptions{})
+		statefulset, err := statefulsets.Get(context.TODO(), statefulsetName, metav1.GetOptions{})
 		if err != nil {
 			klog.V(1).Infof("Error while retrieving statefulset %s: %s", statefulsetName, err.Error())
 			return err
@@ -575,7 +576,7 @@ func ModifyMCOCR(opt TestOptions) error {
 		opt.HubCluster.MasterURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(MCO_CR_NAME, metav1.GetOptions{})
+	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 	if getErr != nil {
 		return getErr
 	}
@@ -586,7 +587,7 @@ func ModifyMCOCR(opt TestOptions) error {
 	storageConfig := spec["storageConfig"].(map[string]interface{})
 	storageConfig["alertmanagerStorageSize"] = "2Gi"
 
-	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(mco, metav1.UpdateOptions{})
+	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 	if updateErr != nil {
 		return updateErr
 	}
@@ -599,7 +600,7 @@ func RevertMCOCRModification(opt TestOptions) error {
 		opt.HubCluster.MasterURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(MCO_CR_NAME, metav1.GetOptions{})
+	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 	if getErr != nil {
 		return getErr
 	}
@@ -608,7 +609,7 @@ func RevertMCOCRModification(opt TestOptions) error {
 	retentionConfig := advanced["retentionConfig"].(map[string]interface{})
 	retentionConfig["retentionResolutionRaw"] = "5d"
 
-	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(mco, metav1.UpdateOptions{})
+	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 	if updateErr != nil {
 		return updateErr
 	}
@@ -630,7 +631,7 @@ func CheckMCOAddon(opt TestOptions) error {
 		"endpoint-observability-operator",
 		"metrics-collector-deployment",
 	}
-	podList, err := client.CoreV1().Pods(MCO_ADDON_NAMESPACE).List(metav1.ListOptions{})
+	podList, err := client.CoreV1().Pods(MCO_ADDON_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -664,7 +665,7 @@ func CheckMCOAddonResources(opt TestOptions) error {
 			"")
 	}
 
-	deployList, err := client.AppsV1().Deployments(MCO_ADDON_NAMESPACE).List(metav1.ListOptions{})
+	deployList, err := client.AppsV1().Deployments(MCO_ADDON_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -699,14 +700,14 @@ func ModifyMCORetentionResolutionRaw(opt TestOptions) error {
 		opt.HubCluster.MasterURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(MCO_CR_NAME, metav1.GetOptions{})
+	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 	if getErr != nil {
 		return getErr
 	}
 
 	spec := mco.Object["spec"].(map[string]interface{})
 	spec["retentionResolutionRaw"] = "3d"
-	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(mco, metav1.UpdateOptions{})
+	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 	if updateErr != nil {
 		return updateErr
 	}
@@ -718,7 +719,7 @@ func GetMCOAddonSpecMetrics(opt TestOptions) (bool, error) {
 		opt.HubCluster.MasterURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(MCO_CR_NAME, metav1.GetOptions{})
+	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 	if getErr != nil {
 		return false, getErr
 	}
@@ -732,14 +733,14 @@ func ModifyMCOAddonSpecMetrics(opt TestOptions, enable bool) error {
 		opt.HubCluster.MasterURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(MCO_CR_NAME, metav1.GetOptions{})
+	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 	if getErr != nil {
 		return getErr
 	}
 
 	observabilityAddonSpec := mco.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})
 	observabilityAddonSpec["enableMetrics"] = enable
-	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(mco, metav1.UpdateOptions{})
+	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 	if updateErr != nil {
 		return updateErr
 	}
@@ -751,14 +752,14 @@ func ModifyMCOAddonSpecInterval(opt TestOptions, interval int64) error {
 		opt.HubCluster.MasterURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(MCO_CR_NAME, metav1.GetOptions{})
+	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 	if getErr != nil {
 		return getErr
 	}
 
 	observabilityAddonSpec := mco.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})
 	observabilityAddonSpec["interval"] = interval
-	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(mco, metav1.UpdateOptions{})
+	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
 	if updateErr != nil {
 		return updateErr
 	}
@@ -770,7 +771,7 @@ func GetMCOAddonSpecResources(opt TestOptions) (map[string]interface{}, error) {
 		opt.HubCluster.MasterURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(MCO_CR_NAME, metav1.GetOptions{})
+	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 	if getErr != nil {
 		return nil, getErr
 	}
@@ -784,7 +785,7 @@ func DeleteMCOInstance(opt TestOptions) error {
 		opt.HubCluster.MasterURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	return clientDynamic.Resource(NewMCOGVRV1BETA2()).Delete(MCO_CR_NAME, &metav1.DeleteOptions{})
+	return clientDynamic.Resource(NewMCOGVRV1BETA2()).Delete(context.TODO(), MCO_CR_NAME, metav1.DeleteOptions{})
 }
 
 func CheckMCOConversion(opt TestOptions, v1beta1tov1beta2GoldenPath string) error {
@@ -792,7 +793,7 @@ func CheckMCOConversion(opt TestOptions, v1beta1tov1beta2GoldenPath string) erro
 		opt.HubCluster.MasterURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	getMCO, err := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(MCO_CR_NAME, metav1.GetOptions{})
+	getMCO, err := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -835,7 +836,7 @@ func CreatePullSecret(opt TestOptions, mcoNs string) error {
 		return err
 	}
 
-	pullSecret, errGet := clientKube.CoreV1().Secrets(mcoNs).Get(name, metav1.GetOptions{})
+	pullSecret, errGet := clientKube.CoreV1().Secrets(mcoNs).Get(context.TODO(), name, metav1.GetOptions{})
 	if errGet != nil {
 		return errGet
 	}
@@ -845,7 +846,7 @@ func CreatePullSecret(opt TestOptions, mcoNs string) error {
 		Namespace: MCO_NAMESPACE,
 	}
 	klog.V(1).Infof("Create MCO pull secret")
-	_, err = clientKube.CoreV1().Secrets(pullSecret.Namespace).Create(pullSecret)
+	_, err = clientKube.CoreV1().Secrets(pullSecret.Namespace).Create(context.TODO(), pullSecret, metav1.CreateOptions{})
 	return err
 }
 
@@ -927,7 +928,7 @@ func UninstallMCO(opt TestOptions) error {
 		opt.HubCluster.KubeContext)
 
 	klog.V(1).Infof("Delete MCO object storage secret")
-	deleteObjSecretErr := clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(OBJ_SECRET_NAME, &metav1.DeleteOptions{})
+	deleteObjSecretErr := clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(context.TODO(), OBJ_SECRET_NAME, metav1.DeleteOptions{})
 	if deleteObjSecretErr != nil {
 		return deleteObjSecretErr
 	}

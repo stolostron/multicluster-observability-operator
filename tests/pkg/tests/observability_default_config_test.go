@@ -4,6 +4,7 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 
 	. "github.com/onsi/ginkgo"
@@ -28,7 +29,7 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("[P1][Sev1][Observability][Stable] Checking metrics default values on managed cluster (config/g0)", func() {
-		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(MCO_CR_NAME, metav1.GetOptions{})
+		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		if err != nil {
 			panic(err.Error())
 		}
@@ -38,13 +39,13 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("[P1][Sev1][Observability][Stable] Checking default value of PVC and StorageClass (config/g0)", func() {
-		mcoSC, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(MCO_CR_NAME, metav1.GetOptions{})
+		mcoSC, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
 		spec := mcoSC.Object["spec"].(map[string]interface{})
 		scInCR := spec["storageConfig"].(map[string]interface{})["storageClass"].(string)
 
-		scList, err := hubClient.StorageV1().StorageClasses().List(metav1.ListOptions{})
+		scList, err := hubClient.StorageV1().StorageClasses().List(context.TODO(), metav1.ListOptions{})
 		scMatch := false
 		defaultSC := ""
 		for _, sc := range scList.Items {
@@ -61,7 +62,7 @@ var _ = Describe("Observability:", func() {
 		}
 
 		Eventually(func() error {
-			pvcList, err := hubClient.CoreV1().PersistentVolumeClaims(MCO_NAMESPACE).List(metav1.ListOptions{})
+			pvcList, err := hubClient.CoreV1().PersistentVolumeClaims(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				return err
 			}
@@ -79,13 +80,15 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
+	JustAfterEach(func() {
+		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
+	})
+
 	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
 			utils.PrintMCOObject(testOptions)
 			utils.PrintAllMCOPodsStatus(testOptions)
 			utils.PrintAllOBAPodsStatus(testOptions)
-		} else {
-			Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 	})

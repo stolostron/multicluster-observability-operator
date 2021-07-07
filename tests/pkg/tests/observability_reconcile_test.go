@@ -4,6 +4,7 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -55,7 +56,7 @@ var _ = Describe("Observability:", func() {
 		By("Waiting for MCO retentionResolutionRaw filed to take effect")
 		Eventually(func() error {
 			name := MCO_CR_NAME + "-thanos-compact"
-			compact, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(name, metav1.GetOptions{})
+			compact, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -91,7 +92,7 @@ var _ = Describe("Observability:", func() {
 
 	It("[P2][Sev2][Observability][Stable] Checking node selector for all pods (reconcile/g0)", func() {
 		By("Checking node selector spec in MCO CR")
-		mcoSC, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(MCO_CR_NAME, metav1.GetOptions{})
+		mcoSC, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
 		spec := mcoSC.Object["spec"].(map[string]interface{})
@@ -140,7 +141,7 @@ var _ = Describe("Observability:", func() {
 		By("Waiting for MCO retentionResolutionRaw filed to take effect")
 		Eventually(func() error {
 			name := MCO_CR_NAME + "-thanos-compact"
-			compact, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(name, metav1.GetOptions{})
+			compact, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -173,13 +174,15 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*15, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
+	JustAfterEach(func() {
+		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
+	})
+
 	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
 			utils.PrintMCOObject(testOptions)
 			utils.PrintAllMCOPodsStatus(testOptions)
 			utils.PrintAllOBAPodsStatus(testOptions)
-		} else {
-			Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 	})

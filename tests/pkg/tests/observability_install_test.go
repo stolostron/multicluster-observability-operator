@@ -4,6 +4,7 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -32,7 +33,7 @@ func installMCO() {
 		testOptions.HubCluster.KubeContext)
 
 	By("Checking MCO operator is existed")
-	podList, err := hubClient.CoreV1().Pods("").List(metav1.ListOptions{LabelSelector: MCO_LABEL})
+	podList, err := hubClient.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: MCO_LABEL})
 	Expect(len(podList.Items)).To(Equal(1))
 	Expect(err).NotTo(HaveOccurred())
 	var (
@@ -92,7 +93,7 @@ func installMCO() {
 		By("Waiting for MCO ready status")
 		allPodsIsReady := false
 		Eventually(func() error {
-			instance, err := dynClient.Resource(utils.NewMCOGVRV1BETA1()).Get(MCO_CR_NAME, metav1.GetOptions{})
+			instance, err := dynClient.Resource(utils.NewMCOGVRV1BETA1()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 			if err == nil {
 				allPodsIsReady = utils.StatusContainsTypeEqualTo(instance, "Ready")
 				if allPodsIsReady {
@@ -110,7 +111,7 @@ func installMCO() {
 
 		By("Check clustermanagementaddon CR is created")
 		Eventually(func() error {
-			_, err := dynClient.Resource(utils.NewMCOClusterManagementAddonsGVR()).Get("observability-controller", metav1.GetOptions{})
+			_, err := dynClient.Resource(utils.NewMCOClusterManagementAddonsGVR()).Get(context.TODO(), "observability-controller", metav1.GetOptions{})
 			if err != nil {
 				testFailed = true
 				return err
@@ -152,7 +153,7 @@ func installMCO() {
 
 	By("Checking placementrule CR is created")
 	Eventually(func() error {
-		_, err := dynClient.Resource(utils.NewOCMPlacementRuleGVR()).Namespace(utils.MCO_NAMESPACE).Get("observability", metav1.GetOptions{})
+		_, err := dynClient.Resource(utils.NewOCMPlacementRuleGVR()).Namespace(utils.MCO_NAMESPACE).Get(context.TODO(), "observability", metav1.GetOptions{})
 		if err != nil {
 			testFailed = true
 			return err
@@ -191,7 +192,7 @@ func installMCO() {
 
 	By("Check clustermanagementaddon CR is created")
 	Eventually(func() error {
-		_, err := dynClient.Resource(utils.NewMCOClusterManagementAddonsGVR()).Get("observability-controller", metav1.GetOptions{})
+		_, err := dynClient.Resource(utils.NewMCOClusterManagementAddonsGVR()).Get(context.TODO(), "observability-controller", metav1.GetOptions{})
 		if err != nil {
 			testFailed = true
 			return err

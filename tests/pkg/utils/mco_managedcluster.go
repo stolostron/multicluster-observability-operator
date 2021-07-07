@@ -3,13 +3,17 @@
 
 package utils
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	"context"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 func UpdateObservabilityFromManagedCluster(opt TestOptions, enableObservability bool) error {
 	clusterName := GetManagedClusterName(opt)
 	if clusterName != "" {
 		clientDynamic := GetKubeClientDynamic(opt, true)
-		cluster, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).Get(clusterName, metav1.GetOptions{})
+		cluster, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).Get(context.TODO(), clusterName, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
@@ -24,7 +28,7 @@ func UpdateObservabilityFromManagedCluster(opt TestOptions, enableObservability 
 		} else {
 			delete(labels, "observability")
 		}
-		_, updateErr := clientDynamic.Resource(NewOCMManagedClustersGVR()).Update(cluster, metav1.UpdateOptions{})
+		_, updateErr := clientDynamic.Resource(NewOCMManagedClustersGVR()).Update(context.TODO(), cluster, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}

@@ -4,6 +4,7 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -39,7 +40,7 @@ func uninstallMCO() {
 
 	By("Waiting for delete all MCO components")
 	Eventually(func() error {
-		var podList, _ = hubClient.CoreV1().Pods(MCO_NAMESPACE).List(metav1.ListOptions{})
+		var podList, _ = hubClient.CoreV1().Pods(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
 		if len(podList.Items) != 0 {
 			return err
 		}
@@ -51,7 +52,7 @@ func uninstallMCO() {
 		name := MCO_CR_NAME + "-addon"
 		clientDynamic := utils.GetKubeClientDynamic(testOptions, false)
 		// should check oba instance from managedcluster
-		instance, _ := clientDynamic.Resource(utils.NewMCOAddonGVR()).Namespace(MCO_ADDON_NAMESPACE).Get(name, metav1.GetOptions{})
+		instance, _ := clientDynamic.Resource(utils.NewMCOAddonGVR()).Namespace(MCO_ADDON_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
 		if instance != nil {
 			utils.PrintManagedClusterOBAObject(testOptions)
 			return fmt.Errorf("Failed to delete MCO addon instance")
@@ -62,13 +63,13 @@ func uninstallMCO() {
 	By("Waiting for delete manifestwork")
 	Eventually(func() error {
 		name := "endpoint-observability-work"
-		_, err := dynClient.Resource(utils.NewOCMManifestworksGVR()).Namespace("local-cluster").Get(name, metav1.GetOptions{})
+		_, err := dynClient.Resource(utils.NewOCMManifestworksGVR()).Namespace("local-cluster").Get(context.TODO(), name, metav1.GetOptions{})
 		return err
 	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(MatchError(`manifestworks.work.open-cluster-management.io "endpoint-observability-work" not found`))
 
 	By("Waiting for delete all MCO addon components")
 	Eventually(func() error {
-		var podList, _ = hubClient.CoreV1().Pods(MCO_ADDON_NAMESPACE).List(metav1.ListOptions{})
+		var podList, _ = hubClient.CoreV1().Pods(MCO_ADDON_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
 		if len(podList.Items) != 0 {
 			return err
 		}
@@ -77,7 +78,7 @@ func uninstallMCO() {
 
 	By("Waiting for delete MCO namespaces")
 	Eventually(func() error {
-		err := hubClient.CoreV1().Namespaces().Delete(MCO_NAMESPACE, &metav1.DeleteOptions{})
+		err := hubClient.CoreV1().Namespaces().Delete(context.TODO(), MCO_NAMESPACE, metav1.DeleteOptions{})
 		if err != nil {
 			return err
 		}

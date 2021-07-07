@@ -4,6 +4,8 @@
 package utils
 
 import (
+	"context"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
@@ -22,22 +24,22 @@ func DeleteCertSecret(opt TestOptions) error {
 		opt.HubCluster.KubeContext)
 
 	klog.V(1).Infof("Delete certificate secret")
-	err := clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(ServerCACerts, &metav1.DeleteOptions{})
+	err := clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(context.TODO(), ServerCACerts, metav1.DeleteOptions{})
 	if err != nil {
 		klog.Errorf("Failed to delete certificate secret %s due to %v", ServerCACerts, err)
 		return err
 	}
-	err = clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(ClientCACerts, &metav1.DeleteOptions{})
+	err = clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(context.TODO(), ClientCACerts, metav1.DeleteOptions{})
 	if err != nil {
 		klog.Errorf("Failed to delete certificate secret %s due to %v", ClientCACerts, err)
 		return err
 	}
-	err = clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(ServerCerts, &metav1.DeleteOptions{})
+	err = clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(context.TODO(), ServerCerts, metav1.DeleteOptions{})
 	if err != nil {
 		klog.Errorf("Failed to delete certificate secret %s due to %v", ServerCerts, err)
 		return err
 	}
-	err = clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(GrafanaCerts, &metav1.DeleteOptions{})
+	err = clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(context.TODO(), GrafanaCerts, metav1.DeleteOptions{})
 	if err != nil {
 		klog.Errorf("Failed to delete certificate secret %s due to %v", GrafanaCerts, err)
 		return err

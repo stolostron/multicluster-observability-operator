@@ -5,6 +5,7 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"io"
 
 	v1 "k8s.io/api/core/v1"
@@ -18,7 +19,7 @@ func GetPodList(opt TestOptions, isHub bool, namespace string, labelSelector str
 	if labelSelector != "" {
 		listOption.LabelSelector = labelSelector
 	}
-	podList, err := clientKube.CoreV1().Pods(namespace).List(listOption)
+	podList, err := clientKube.CoreV1().Pods(namespace).List(context.TODO(), listOption)
 	if err != nil {
 		klog.Errorf("Failed to get pod list in namespace %s using labelselector %s due to %v", namespace, labelSelector, err)
 		return err, podList
@@ -31,7 +32,7 @@ func GetPodList(opt TestOptions, isHub bool, namespace string, labelSelector str
 
 func DeletePod(opt TestOptions, isHub bool, namespace, name string) error {
 	clientKube := getKubeClient(opt, isHub)
-	err := clientKube.CoreV1().Pods(namespace).Delete(name, &metav1.DeleteOptions{})
+	err := clientKube.CoreV1().Pods(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
 		klog.Errorf("Failed to delete pod %s in namespace %s due to %v", name, namespace, err)
 		return err
@@ -47,7 +48,7 @@ func GetPodLogs(opt TestOptions, isHub bool, namespace, podName, containerName s
 		TailLines: &tailLines,
 	}
 	req := clientKube.CoreV1().Pods(namespace).GetLogs(podName, &podLogOpts)
-	podLogs, err := req.Stream()
+	podLogs, err := req.Stream(context.TODO())
 	if err != nil {
 		klog.Errorf("Failed to get logs for %s/%s in namespace %s due to %v", podName, containerName, namespace, err)
 		return "", err

@@ -18,8 +18,8 @@ type Options struct {
 // Render is used to render the kustomization
 func Render(o Options) ([]byte, error) {
 	fSys := filesys.MakeFsOnDisk()
-	k := krusty.MakeKustomizer(fSys, krusty.MakeDefaultOptions())
-	m, err := k.Run(o.KustomizationPath)
+	k := krusty.MakeKustomizer(krusty.MakeDefaultOptions())
+	m, err := k.Run(fSys, o.KustomizationPath)
 	if err != nil {
 		return nil, err
 	}

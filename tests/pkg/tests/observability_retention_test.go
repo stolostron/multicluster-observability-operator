@@ -4,7 +4,9 @@
 package tests
 
 import (
+	"context"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 
@@ -21,7 +23,7 @@ var _ = Describe("Observability:", func() {
 		deleteDelay              = "48h"
 		retentionInLocal         = "24h"
 		blockDuration            = "2h"
-		ignoreDeletionMarksDelay = ""
+		ignoreDeletionMarksDelay = "24h"
 	)
 
 	BeforeEach(func() {
@@ -34,16 +36,19 @@ var _ = Describe("Observability:", func() {
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
 
-		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(MCO_CR_NAME, metav1.GetOptions{})
+		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		if err != nil {
 			panic(err.Error())
 		}
+
 		if _, adv := mcoRes.Object["spec"].(map[string]interface{})["advanced"]; adv {
 			if _, rec := mcoRes.Object["spec"].(map[string]interface{})["advanced"].(map[string]interface{})["retentionConfig"]; rec {
 				for k, v := range mcoRes.Object["spec"].(map[string]interface{})["advanced"].(map[string]interface{})["retentionConfig"].(map[string]interface{}) {
 					switch k {
 					case "deleteDelay":
 						deleteDelay = reflect.ValueOf(v).String()
+						idmk, _ := strconv.Atoi(deleteDelay[:len(deleteDelay)-1])
+						ignoreDeletionMarksDelay = fmt.Sprintf("%.f", math.Ceil(float64(idmk)/float64(2))) + deleteDelay[len(deleteDelay)-1:]
 					case "retentionInLocal":
 						retentionInLocal = reflect.ValueOf(v).String()
 					case "blockDuration":
@@ -52,17 +57,13 @@ var _ = Describe("Observability:", func() {
 				}
 			}
 		}
-		idmk, err := strconv.Atoi(deleteDelay[:len(deleteDelay)-1])
-		if err != nil {
-			panic(err.Error())
-		}
-		ignoreDeletionMarksDelay = strconv.Itoa(idmk/2) + deleteDelay[len(deleteDelay)-1:]
 	})
 
-	It("[P2][Sev2][Observability][Stable] Check compact args: --delete-delay="+deleteDelay+" (retention/g0)", func() {
+	It("[P2][Sev2][Observability][Stable] Check compact args (retention/g0):", func() {
+		By("--delete-delay=" + deleteDelay)
 		Eventually(func() error {
 			name := MCO_CR_NAME + "-thanos-compact"
-			compact, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(name, metav1.GetOptions{})
+			compact, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -76,10 +77,11 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][Observability][Stable] Check store args: --ignore-deletion-marks-delay="+ignoreDeletionMarksDelay+" (retention/g0)", func() {
+	It("[P2][Sev2][Observability][Stable] Check store args (retention/g0):", func() {
+		By("--ignore-deletion-marks-delay=" + ignoreDeletionMarksDelay)
 		Eventually(func() error {
 			name := MCO_CR_NAME + "-thanos-store-shard-0"
-			store, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(name, metav1.GetOptions{})
+			store, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -89,14 +91,15 @@ var _ = Describe("Observability:", func() {
 					return nil
 				}
 			}
-			return fmt.Errorf("Failed to check store args: --ignore-deletion-marks-delay="+ignoreDeletionMarksDelay+". args is %v", argList)
+			return fmt.Errorf("Failed to check store args: --ignore-deletion-marks-delay="+ignoreDeletionMarksDelay+". The args is: %v", argList)
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][Observability][Stable] Check receive args: --tsdb.retention="+retentionInLocal+" (retention/g0)", func() {
+	It("[P2][Sev2][Observability][Stable] Check receive args (retention/g0):", func() {
+		By("--tsdb.retention=" + retentionInLocal)
 		Eventually(func() error {
 			name := MCO_CR_NAME + "-thanos-receive-default"
-			receive, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(name, metav1.GetOptions{})
+			receive, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -106,14 +109,15 @@ var _ = Describe("Observability:", func() {
 					return nil
 				}
 			}
-			return fmt.Errorf("Failed to check receive args: --tsdb.retention="+retentionInLocal+". args is %v", argList)
+			return fmt.Errorf("Failed to check receive args: --tsdb.retention="+retentionInLocal+". The args is: %v", argList)
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][Observability][Stable] Check rule args: --tsdb.retention="+retentionInLocal+" (retention/g0)", func() {
+	It("[P2][Sev2][Observability][Stable] Check rule args (retention/g0):", func() {
+		By("--tsdb.retention=" + retentionInLocal)
 		Eventually(func() error {
 			name := MCO_CR_NAME + "-thanos-rule"
-			rule, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(name, metav1.GetOptions{})
+			rule, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -123,14 +127,15 @@ var _ = Describe("Observability:", func() {
 					return nil
 				}
 			}
-			return fmt.Errorf("Failed to check rule args: --tsdb.retention="+retentionInLocal+". args is %v", argList)
+			return fmt.Errorf("Failed to check rule args: --tsdb.retention="+retentionInLocal+". The args is: %v", argList)
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][Observability][Stable] Check rule args: --tsdb.block-duration="+blockDuration+" (retention/g0)", func() {
+	It("[P2][Sev2][Observability][Stable] Check rule args (retention/g0):", func() {
+		By("--tsdb.block-duration=" + blockDuration)
 		Eventually(func() error {
 			name := MCO_CR_NAME + "-thanos-rule"
-			rule, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(name, metav1.GetOptions{})
+			rule, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -140,8 +145,12 @@ var _ = Describe("Observability:", func() {
 					return nil
 				}
 			}
-			return fmt.Errorf("Failed to check rule args: --tsdb.block-duration="+blockDuration+". args is %v", argList)
+			return fmt.Errorf("Failed to check rule args: --tsdb.block-duration="+blockDuration+". The args is: %v", argList)
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
+	})
+
+	JustAfterEach(func() {
+		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
@@ -149,8 +158,6 @@ var _ = Describe("Observability:", func() {
 			utils.PrintMCOObject(testOptions)
 			utils.PrintAllMCOPodsStatus(testOptions)
 			utils.PrintAllOBAPodsStatus(testOptions)
-		} else {
-			Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 	})

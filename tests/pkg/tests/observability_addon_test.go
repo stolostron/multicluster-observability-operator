@@ -4,6 +4,7 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -43,14 +44,14 @@ var _ = Describe("Observability:", func() {
 			By("Check ObservabilityAddon is created if there's managed OCP clusters on the hub")
 			if clusterName != "" {
 				Eventually(func() string {
-					mco, err := dynClient.Resource(utils.NewMCOAddonGVR()).Namespace(string(clusterName)).Get("observability-addon", metav1.GetOptions{})
+					mco, err := dynClient.Resource(utils.NewMCOAddonGVR()).Namespace(string(clusterName)).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
 					if err != nil {
 						panic(err.Error())
 					}
 					return fmt.Sprintf("%T", mco.Object["status"])
 				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).ShouldNot(Equal("nil"))
 				Eventually(func() string {
-					mco, err := dynClient.Resource(utils.NewMCOAddonGVR()).Namespace(string(clusterName)).Get("observability-addon", metav1.GetOptions{})
+					mco, err := dynClient.Resource(utils.NewMCOAddonGVR()).Namespace(string(clusterName)).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
 					if err != nil {
 						panic(err.Error())
 					}
@@ -99,7 +100,7 @@ var _ = Describe("Observability:", func() {
 
 			if clusterName != "" {
 				Eventually(func() string {
-					mco, err := dynClient.Resource(utils.NewMCOAddonGVR()).Namespace(string(clusterName)).Get("observability-addon", metav1.GetOptions{})
+					mco, err := dynClient.Resource(utils.NewMCOAddonGVR()).Namespace(string(clusterName)).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
 					if err != nil {
 						panic(err.Error())
 					}
@@ -111,7 +112,7 @@ var _ = Describe("Observability:", func() {
 				}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(Equal(ManagedClusterAddOnMessage))
 
 				Eventually(func() string {
-					mco, err := dynClient.Resource(utils.NewMCOManagedClusterAddonsGVR()).Namespace(string(clusterName)).Get("observability-controller", metav1.GetOptions{})
+					mco, err := dynClient.Resource(utils.NewMCOManagedClusterAddonsGVR()).Namespace(string(clusterName)).Get(context.TODO(), "observability-controller", metav1.GetOptions{})
 					Expect(err).ToNot(HaveOccurred())
 					conditions := mco.Object["status"].(map[string]interface{})["conditions"].([]interface{})
 					for _, condition := range conditions {
@@ -153,7 +154,7 @@ var _ = Describe("Observability:", func() {
 			By("Checking the status in managedclusteraddon reflects the endpoint operator status correctly")
 			if clusterName != "" {
 				Eventually(func() string {
-					mco, err := dynClient.Resource(utils.NewMCOManagedClusterAddonsGVR()).Namespace(string(clusterName)).Get("observability-controller", metav1.GetOptions{})
+					mco, err := dynClient.Resource(utils.NewMCOManagedClusterAddonsGVR()).Namespace(string(clusterName)).Get(context.TODO(), "observability-controller", metav1.GetOptions{})
 					Expect(err).ToNot(HaveOccurred())
 					conditions := mco.Object["status"].(map[string]interface{})["conditions"].([]interface{})
 					for _, condition := range conditions {
@@ -225,14 +226,16 @@ var _ = Describe("Observability:", func() {
 		})
 	})
 
+	JustAfterEach(func() {
+		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
+	})
+
 	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
 			utils.PrintMCOObject(testOptions)
 			utils.PrintAllMCOPodsStatus(testOptions)
 			utils.PrintAllOBAPodsStatus(testOptions)
 			utils.PrintManagedClusterOBAObject(testOptions)
-		} else {
-			Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 	})

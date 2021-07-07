@@ -4,6 +4,7 @@
 package tests
 
 import (
+	"context"
 	"errors"
 
 	. "github.com/onsi/ginkgo"
@@ -39,20 +40,20 @@ var _ = Describe("Observability:", func() {
 			}
 
 			Eventually(func() error {
-				oldManifestWork, err := clientDynamic.Resource(utils.NewOCMManifestworksGVR()).Namespace(clusterName).Get(manifestWorkName, metav1.GetOptions{})
+				oldManifestWork, err := clientDynamic.Resource(utils.NewOCMManifestworksGVR()).Namespace(clusterName).Get(context.TODO(), manifestWorkName, metav1.GetOptions{})
 				oldManifestWorkResourceVersion = oldManifestWork.GetResourceVersion()
 				return err
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 
 			By("Waiting for manifestwork to be deleted")
 			Eventually(func() error {
-				err := clientDynamic.Resource(utils.NewOCMManifestworksGVR()).Namespace(clusterName).Delete(manifestWorkName, &metav1.DeleteOptions{})
+				err := clientDynamic.Resource(utils.NewOCMManifestworksGVR()).Namespace(clusterName).Delete(context.TODO(), manifestWorkName, metav1.DeleteOptions{})
 				return err
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 
 			By("Waiting for manifestwork to be created automatically")
 			Eventually(func() error {
-				newManifestWork, err := clientDynamic.Resource(utils.NewOCMManifestworksGVR()).Namespace(clusterName).Get(manifestWorkName, metav1.GetOptions{})
+				newManifestWork, err := clientDynamic.Resource(utils.NewOCMManifestworksGVR()).Namespace(clusterName).Get(context.TODO(), manifestWorkName, metav1.GetOptions{})
 				if err == nil {
 					if newManifestWork.GetResourceVersion() != oldManifestWorkResourceVersion {
 						return nil
@@ -95,13 +96,15 @@ var _ = Describe("Observability:", func() {
 		}
 	})
 
+	JustAfterEach(func() {
+		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
+	})
+
 	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
 			utils.PrintMCOObject(testOptions)
 			utils.PrintAllMCOPodsStatus(testOptions)
 			utils.PrintAllOBAPodsStatus(testOptions)
-		} else {
-			Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 	})

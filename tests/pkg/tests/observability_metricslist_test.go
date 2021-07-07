@@ -4,6 +4,8 @@
 package tests
 
 import (
+	"context"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,7 +63,7 @@ var _ = Describe("Observability:", func() {
 	It("[P2][Sev2][Observability][Integration] Should have no metrics after custom metrics allowlist deleted (metricslist/g0)", func() {
 		By("Deleting custom metrics allowlist configmap")
 		Eventually(func() error {
-			err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Delete(allowlistCMname, &metav1.DeleteOptions{})
+			err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Delete(context.TODO(), allowlistCMname, metav1.DeleteOptions{})
 			return err
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 
@@ -72,13 +74,15 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
 	})
 
+	JustAfterEach(func() {
+		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
+	})
+
 	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
 			utils.PrintMCOObject(testOptions)
 			utils.PrintAllMCOPodsStatus(testOptions)
 			utils.PrintAllOBAPodsStatus(testOptions)
-		} else {
-			Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 	})

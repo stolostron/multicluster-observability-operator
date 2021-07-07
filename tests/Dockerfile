@@ -1,29 +1,17 @@
-FROM registry.fedoraproject.org/fedora-minimal:32 as build
-
-ENV GOPATH /go
-ENV CGO_ENABLED=0
-
-RUN microdnf -y install --nodocs wget unzip tar git gcc
-
-# install go into build image
-RUN wget --no-check-certificate -O - 'https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz' | tar xz -C /usr/local/
-RUN mkdir -p /go/bin
+FROM registry.ci.openshift.org/open-cluster-management/builder:go1.16-linux AS builder
 
 # install oc into build image
 RUN curl -fksSL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.6.3/openshift-client-linux-4.6.3.tar.gz | tar -xvz -C /usr/local/ oc
 
-ENV PATH usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/go/bin:/go/bin:.
-
+WORKDIR /workspace
 # copy go tests into build image
-RUN mkdir -p /go/src/github.com/open-cluster-management/multicluster-observability-operator/tests/
-COPY go.sum go.mod ./tests /go/src/github.com/open-cluster-management/multicluster-observability-operator/tests/
-
-WORKDIR "/go/src/github.com/open-cluster-management/multicluster-observability-operator/tests/"
+COPY go.sum go.mod ./
+COPY ./tests ./tests
 
 RUN git clone https://github.com/open-cluster-management/observability-gitops.git
 
 # compile go tests in build image
-RUN go get github.com/onsi/ginkgo/ginkgo@v1.14.2 && ginkgo build ./pkg/tests/
+RUN go get github.com/onsi/ginkgo/ginkgo@v1.14.2 && go mod vendor && ginkgo build ./tests/pkg/tests/
 
 # create new docker image to hold built artifacts
 FROM registry.fedoraproject.org/fedora-minimal:32
@@ -45,17 +33,17 @@ ENV SKIP_INTEGRATION_CASES="true"
 ENV IS_CANARY_ENV="true"
 
 # install ginkgo into built image
-COPY --from=build /go/bin/ /usr/local/bin
+COPY --from=builder /go/bin/ /usr/local/bin
 
 # copy oc into built image
-COPY --from=build /usr/local/oc /usr/local/bin/oc
+COPY --from=builder /usr/local/oc /usr/local/bin/oc
 RUN oc version
 
 # copy compiled tests into built image
 RUN mkdir -p /opt/tests
-COPY --from=build /go/src/github.com/open-cluster-management/multicluster-observability-operator/tests/pkg/tests/tests.test /opt/tests/observability-e2e-test.test
-COPY --from=build /go/src/github.com/open-cluster-management/multicluster-observability-operator/tests/observability-gitops /observability-gitops
-COPY --from=build /go/src/github.com/open-cluster-management/multicluster-observability-operator/tests/format-results.sh /opt/tests/
+COPY --from=builder /workspace/tests/pkg/tests/tests.test /opt/tests/observability-e2e-test.test
+COPY --from=builder /workspace/observability-gitops /observability-gitops
+COPY --from=builder /workspace/tests/format-results.sh /opt/tests/
 
 VOLUME /results
 WORKDIR "/opt/tests/"

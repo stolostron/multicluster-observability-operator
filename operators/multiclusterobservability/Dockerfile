@@ -4,9 +4,10 @@ FROM registry.ci.openshift.org/open-cluster-management/builder:go1.16-linux AS b
 
 
 WORKDIR /workspace
-COPY go.sum go.mod ./operators/multiclusterobservability ./
+COPY go.sum go.mod ./
+COPY ./operators/multiclusterobservability ./operators/multiclusterobservability
 
-RUN CGO_ENABLED=0 go build -a -installsuffix cgo -v -i -o bin/manager main.go
+RUN CGO_ENABLED=0 go build -a -installsuffix cgo -v -i -o bin/manager operators/multiclusterobservability/main.go
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
@@ -48,11 +49,10 @@ ENV OPERATOR=/usr/local/bin/mco-operator \
 RUN microdnf update -y && microdnf clean all
 
 # install templates
-COPY manifests /usr/local/manifests
+COPY ./operators/multiclusterobservability/manifests /usr/local/manifests
 
 # install operator binary
 COPY --from=builder /workspace/bin/manager ${OPERATOR}
 USER ${USER_UID}
 
 ENTRYPOINT ["/usr/local/bin/mco-operator"]
-
