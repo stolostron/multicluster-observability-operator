@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/openshift/prom-label-proxy/injectproxy"
+	"github.com/prometheus-community/prom-label-proxy/injectproxy"
 	"github.com/prometheus/prometheus/pkg/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"k8s.io/klog"
@@ -33,13 +33,13 @@ func InjectLabels(query string, label string, values []string) (string, error) {
 	if len(values) == 1 {
 		matchType = labels.MatchEqual
 	}
-	err = injectproxy.SetRecursive(expr, []*labels.Matcher{
+	err = injectproxy.NewEnforcer([]*labels.Matcher{
 		{
 			Name:  label,
 			Type:  matchType,
 			Value: strings.Join(values[:], "|"),
 		},
-	})
+	}...).EnforceNode(expr)
 	if err != nil {
 		klog.Errorf("Failed to inject the label filters: %v", err)
 		return "", err

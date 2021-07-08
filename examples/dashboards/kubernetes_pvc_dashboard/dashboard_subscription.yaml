@@ -1,0 +1,25 @@
+apiVersion: apps.open-cluster-management.io/v1
+kind: Channel
+metadata:
+  name: get-custom-dashboards
+  namespace: open-cluster-management-observability
+spec:
+  type: GitHub
+  pathname: https://github.com/open-cluster-management/observability-gitops.git
+  secretRef:
+    name: github-credentials
+---
+
+apiVersion: apps.open-cluster-management.io/v1
+kind: Subscription
+metadata:
+  name: dashboard-subscription
+  namespace: open-cluster-management-observability
+  annotations:
+    apps.open-cluster-management.io/git-branch: main
+    apps.open-cluster-management.io/git-path: dashboards/kubernetes_pvc_dashboard
+    apps.open-cluster-management.io/reconcile-option: replace
+spec:
+  channel: open-cluster-management-observability/get-custom-dashboards
+  placement:
+    local: true
