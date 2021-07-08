@@ -8,8 +8,6 @@ WORKDIR /workspace
 COPY go.sum go.mod ./
 COPY ./tests ./tests
 
-RUN git clone https://github.com/open-cluster-management/observability-gitops.git
-
 # compile go tests in build image
 RUN go get github.com/onsi/ginkgo/ginkgo@v1.14.2 && go mod vendor && ginkgo build ./tests/pkg/tests/
 
@@ -39,14 +37,14 @@ COPY --from=builder /go/bin/ /usr/local/bin
 COPY --from=builder /usr/local/oc /usr/local/bin/oc
 RUN oc version
 
+WORKDIR /workspace/opt/tests/
 # copy compiled tests into built image
-RUN mkdir -p /opt/tests
-COPY --from=builder /workspace/tests/pkg/tests/tests.test /opt/tests/observability-e2e-test.test
-COPY --from=builder /workspace/observability-gitops /observability-gitops
-COPY --from=builder /workspace/tests/format-results.sh /opt/tests/
+COPY --from=builder /workspace/tests/pkg/tests/tests.test ./observability-e2e-test.test
+COPY ./examples /examples
+COPY --from=builder /workspace/tests/format-results.sh .
 
 VOLUME /results
-WORKDIR "/opt/tests/"
+
 
 # execute compiled ginkgo tests
 CMD ["/bin/bash", "-c", "ginkgo --v --focus=${GINKGO_FOCUS} --skip=${GINKGO_SKIP} -nodes=${GINKGO_NODES} --reportFile=${REPORT_FILE} -x -debug -trace observability-e2e-test.test -- -v=3 ; ./format-results.sh ${REPORT_FILE}"]

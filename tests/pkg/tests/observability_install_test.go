@@ -74,7 +74,7 @@ func installMCO() {
 		Expect(utils.CreateObjSecret(testOptions)).NotTo(HaveOccurred())
 	}
 	//set resource quota and limit range for canary environment to avoid destruct the node
-	yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../observability-gitops/policy"})
+	yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/policy"})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(utils.Apply(testOptions.HubCluster.MasterURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 
@@ -85,7 +85,7 @@ func installMCO() {
 
 	if os.Getenv("SKIP_INTEGRATION_CASES") != "true" {
 		By("Creating MCO instance of v1beta1")
-		v1beta1KustomizationPath := "../../observability-gitops/mco/e2e/v1beta1"
+		v1beta1KustomizationPath := "../../../examples/mco/e2e/v1beta1"
 		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: v1beta1KustomizationPath})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(utils.Apply(testOptions.HubCluster.MasterURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
@@ -121,13 +121,13 @@ func installMCO() {
 		}).Should(Succeed())
 
 		By("Check the api conversion is working as expected")
-		v1beta1Tov1beta2GoldenPath := "../../observability-gitops/mco/e2e/v1beta1/observability-v1beta1-to-v1beta2-golden.yaml"
+		v1beta1Tov1beta2GoldenPath := "../../../examples/mco/e2e/v1beta1/observability-v1beta1-to-v1beta2-golden.yaml"
 		err = utils.CheckMCOConversion(testOptions, v1beta1Tov1beta2GoldenPath)
 		Expect(err).NotTo(HaveOccurred())
 	}
 
 	By("Apply MCO instance of v1beta2")
-	v1beta2KustomizationPath := "../../observability-gitops/mco/e2e/v1beta2"
+	v1beta2KustomizationPath := "../../../examples/mco/e2e/v1beta2"
 	yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: v1beta2KustomizationPath})
 	Expect(err).NotTo(HaveOccurred())
 

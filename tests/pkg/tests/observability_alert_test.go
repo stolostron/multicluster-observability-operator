@@ -117,7 +117,7 @@ var _ = Describe("Observability:", func() {
 		By("Creating custom alert rules")
 		_, oldSts := utils.GetStatefulSet(testOptions, true, ThanosRuleName, MCO_NAMESPACE)
 
-		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../observability-gitops/alerts/custom_rules_valid"})
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/alerts/custom_rules_valid"})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(utils.Apply(testOptions.HubCluster.MasterURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 
@@ -167,7 +167,7 @@ var _ = Describe("Observability:", func() {
 	It("[P2][Sev2][Observability][Stable] Should have custom alert updated (alert/g0)", func() {
 		By("Updating custom alert rules")
 
-		yamlB, _ := kustomize.Render(kustomize.Options{KustomizationPath: "../../observability-gitops/alerts/custom_rules_invalid"})
+		yamlB, _ := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/alerts/custom_rules_invalid"})
 		Expect(utils.Apply(testOptions.HubCluster.MasterURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 
 		var labelName, labelValue string

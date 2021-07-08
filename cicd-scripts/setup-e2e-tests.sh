@@ -6,14 +6,15 @@
 set -e
 
 function usage() {
-  echo "${0} -a ACTION [-i IMAGE]"
+  echo "${0} -a ACTION [-i IMAGES]"
   echo ''
   # shellcheck disable=SC2016
   echo '  -a: Specifies the ACTION name, required, the value could be "install" or "uninstall".'
   # shellcheck disable=SC2016
-  echo '  -i: Specifies the desired IMAGE, optional, the support image includes:
+  echo '  -i: Specifies the desired IMAGES, optional, the support images includes:
         quay.io/open-cluster-management/multicluster-observability-operator:<tag>
         quay.io/open-cluster-management/rbac-query-proxy:<tag>
+        quay.io/open-cluster-management/grafana-dashboard-loader:<tag>
         quay.io/open-cluster-management/metrics-collector:<tag>
         quay.io/open-cluster-management/endpoint-monitoring-operator:<tag>'
   echo ''
@@ -26,7 +27,7 @@ while getopts ":a:i:h" opt; do
       ACTION=${OPTARG}
       ;;
     i)
-      IMAGE=${OPTARG}
+      IMAGES=${OPTARG}
       ;;
     h)
       usage
@@ -201,47 +202,30 @@ delete_csr() {
 }
 
 deploy_mco_operator() {
-    cd ${ROOTDIR}
-    if [ -d "observability-gitops" ]; then
-        rm -rf observability-gitops
-    fi
-    git clone --depth 1 https://github.com/open-cluster-management/observability-gitops.git
+    # default to latest snapshot
+    cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator=${COMPONENT_REPO}/multicluster-observability-operator:${LATEST_SNAPSHOT}
+
+    # Add mco-imageTagSuffix annotation
+    sed -i "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
+    sed -i "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+
     component_name=""
-    if [[ ! -z "${1}" ]]; then
+    for img in ${@}; do
         for comp in ${COMPONENTS}; do
-            if [[ "${1}" == *"$comp"* ]]; then
+            if [[ "${img}" == *"$comp"* ]]; then
                 component_name=${comp}
                 break
             fi
         done
-        if [[ ${component_name} == "multicluster-observability-operator" ]]; then
-            cd ${ROOTDIR}/../../multicluster-observability-operator/
-            cd config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator=${1} && cd ../..
+        if [[ ${img} == *"multicluster-observability-operator"* ]]; then
+            cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator=${img}
         else
-            if [ -d "multicluster-observability-operator" ]; then
-                rm -rf multicluster-observability-operator
-            fi
-            git clone --depth 1 https://github.com/open-cluster-management/multicluster-observability-operator.git
-            cd multicluster-observability-operator/
-            # use latest snapshot for mco operator
-            cd config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator=${COMPONENT_REPO}/multicluster-observability-operator:${LATEST_SNAPSHOT} && cd ../..
-            # test the concrete component
             component_anno_name=$(echo ${component_name} | sed 's/-/_/g')
-            sed -i "/annotations.*/a \ \ \ \ mco-${component_anno_name}-image: ${1}" ${ROOTDIR}/observability-gitops/mco/e2e/v1beta1/observability.yaml
-            sed -i "/annotations.*/a \ \ \ \ mco-${component_anno_name}-image: ${1}" ${ROOTDIR}/observability-gitops/mco/e2e/v1beta2/observability.yaml
+            sed -i "/annotations.*/a \ \ \ \ mco-${component_anno_name}-image: ${img}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
+            sed -i "/annotations.*/a \ \ \ \ mco-${component_anno_name}-image: ${img}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
         fi
-    else
-        if [ -d "multicluster-observability-operator" ]; then
-            rm -rf multicluster-observability-operator
-        fi
-        git clone --depth 1 https://github.com/open-cluster-management/multicluster-observability-operator.git
-        cd multicluster-observability-operator/
-        cd config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator=${COMPONENT_REPO}/multicluster-observability-operator:${LATEST_SNAPSHOT} && cd ../..
-    fi
-    # Add mco-imageTagSuffix annotation
-    sed -i "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/observability-gitops/mco/e2e/v1beta1/observability.yaml
-    sed -i "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/observability-gitops/mco/e2e/v1beta2/observability.yaml
-
+    done
+    cd ${ROOTDIR}
     # create the two CRDs: clustermanagementaddons and managedclusteraddons
     if [ -d "ocm-api" ]; then
         rm -rf ocm-api
@@ -259,7 +243,7 @@ deploy_mco_operator() {
 
     kubectl create ns ${OCM_DEFAULT_NS} || true
     # Install the multicluster-observability-operator
-	kustomize build config/default | kubectl apply -n ${OCM_DEFAULT_NS} -f -
+	kustomize build ${ROOTDIR}/operators/multiclusterobservability/config/default | kubectl apply -n ${OCM_DEFAULT_NS} -f -
     echo "mco operator is deployed successfully."
 
     # wait until mco is ready
@@ -310,11 +294,6 @@ EOF
     kubectl -n ${OBSERVABILITY_NS} apply -f ${temp_route}/grafana-route.yaml
     ${SED_COMMAND} "s~host: observability-thanos-query-frontend$~host: observability-thanos-query-frontend.$app_domain~g" ${temp_route}/observability-thanos-query-frontend-route.yaml
     kubectl -n ${OBSERVABILITY_NS} apply -f ${temp_route}/observability-thanos-query-frontend-route.yaml
-
-    # create the mco CR
-    # kubectl -n ${OBSERVABILITY_NS} apply -f ${ROOTDIR}/observability-gitops/mco/func/observability.yaml
-    # wait_for_observability_ready
-    # echo "mco CR is created successfully."
 }
 
 delete_mco_operator() {
@@ -324,12 +303,6 @@ delete_mco_operator() {
     # delete extra routes if they exist
     kubectl -n ${OBSERVABILITY_NS} delete route --all
 
-    if [[ "${1}" == *"multicluster-observability-operator"* ]]; then
-        cd ${ROOTDIR}/../../multicluster-observability-operator
-    else
-        cd ${ROOTDIR}/multicluster-observability-operator
-    fi
-    # kubectl -n ${OBSERVABILITY_NS} delete -f ${ROOTDIR}/observability-gitops/mco/func/observability.yaml --ignore-not-found
     kubectl -n ${OBSERVABILITY_NS} delete -f ${ROOTDIR}/examples/minio --ignore-not-found
 
     # wait until all resources are deleted before delete the mco
@@ -348,8 +321,8 @@ delete_mco_operator() {
 
     # delete the mco
     # don't delete the ${OCM_DEFAULT_NS} namespace at this step, since ACM is there
-    ${SED_COMMAND} '0,/^---$/d' config/manager/manager.yaml
-    kustomize build config/default | kubectl delete --ignore-not-found -f -
+    ${SED_COMMAND} '0,/^---$/d' ${ROOTDIR}/operators/multiclusterobservability/config/manager/manager.yaml
+    kustomize build ${ROOTDIR}/operators/multiclusterobservability/config/default | kubectl delete --ignore-not-found -f -
     kubectl delete ns ${OBSERVABILITY_NS}
 }
 
@@ -433,7 +406,7 @@ execute() {
         deploy_mco_operator "${IMAGE}"
         echo "OCM and MCO are installed successfuly..."
     elif [[ "${ACTION}" == "uninstall" ]]; then
-        delete_mco_operator "${IMAGE}"
+        delete_mco_operator
         delete_hub_spoke_core
         delete_csr
         echo "OCM and MCO are uninstalled successfuly..."

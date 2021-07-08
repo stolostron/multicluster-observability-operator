@@ -32,7 +32,7 @@ var _ = Describe("Observability:", func() {
 
 	It("[P2][Sev2][Observability][Stable] Should have custom dashboard which defined in configmap (dashboard/g0)", func() {
 		By("Creating custom dashboard configmap")
-		yamlB, _ := kustomize.Render(kustomize.Options{KustomizationPath: "../../observability-gitops/dashboards/sample_custom_dashboard"})
+		yamlB, _ := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/dashboards/sample_custom_dashboard"})
 		Expect(utils.Apply(testOptions.HubCluster.MasterURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 		Eventually(func() bool {
 			_, result := utils.ContainDashboard(testOptions, dashboardTitle)
@@ -42,7 +42,7 @@ var _ = Describe("Observability:", func() {
 
 	It("[P2][Sev2][Observability][Stable] Should have update custom dashboard after configmap updated (dashboard/g0)", func() {
 		By("Updating custom dashboard configmap")
-		yamlB, _ := kustomize.Render(kustomize.Options{KustomizationPath: "../../observability-gitops/dashboards/update_sample_custom_dashboard"})
+		yamlB, _ := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/dashboards/update_sample_custom_dashboard"})
 		Expect(utils.Apply(testOptions.HubCluster.MasterURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 		Eventually(func() bool {
 			_, result := utils.ContainDashboard(testOptions, dashboardTitle)
