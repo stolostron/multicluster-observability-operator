@@ -655,7 +655,7 @@ func IsOpenshift(client *rest.RESTClient) bool {
 
 // IntegrityChecking checks to ensure all required conditions are met when completing the specs
 func IntegrityChecking(opt TestOptions) error {
-	return CheckMCOComponentsInHighMode(opt)
+	return CheckMCOComponents(opt)
 }
 
 // GetPullSecret checks the secret from MCH CR and return the secret name
