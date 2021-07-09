@@ -141,7 +141,7 @@ func installMCO() {
 
 	By("Waiting for MCO ready status")
 	Eventually(func() error {
-		err = utils.CheckMCOComponentsInHighMode(testOptions)
+		err = utils.CheckMCOComponents(testOptions)
 		if err != nil {
 			testFailed = true
 			utils.PrintAllMCOPodsStatus(testOptions)

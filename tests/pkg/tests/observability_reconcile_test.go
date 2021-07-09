@@ -166,7 +166,7 @@ var _ = Describe("Observability:", func() {
 
 		By("Checking MCO components in default HA mode")
 		Eventually(func() error {
-			err = utils.CheckMCOComponentsInHighMode(testOptions)
+			err = utils.CheckMCOComponents(testOptions)
 			if err != nil {
 				return err
 			}
