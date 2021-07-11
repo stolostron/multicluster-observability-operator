@@ -17,17 +17,22 @@ function usage() {
         quay.io/open-cluster-management/grafana-dashboard-loader:<tag>
         quay.io/open-cluster-management/metrics-collector:<tag>
         quay.io/open-cluster-management/endpoint-monitoring-operator:<tag>'
+  # shellcheck disable=SC2016
+  echo '  -p: Specifies the pipeline for the images'
   echo ''
 }
 
 # Allow command-line args to override the defaults.
-while getopts ":a:i:h" opt; do
+while getopts ":a:i:p:h" opt; do
   case ${opt} in
     a)
       ACTION=${OPTARG}
       ;;
     i)
       IMAGES=${OPTARG}
+      ;;
+    p)
+      PIPELINE=${OPTARG}
       ;;
     h)
       usage
@@ -206,8 +211,8 @@ deploy_mco_operator() {
     cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator=${COMPONENT_REPO}/multicluster-observability-operator:${LATEST_SNAPSHOT}
 
     # Add mco-imageTagSuffix annotation
-    sed -i "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
-    sed -i "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
 
     component_name=""
     for img in ${@}; do
@@ -221,8 +226,8 @@ deploy_mco_operator() {
             cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator=${img}
         else
             component_anno_name=$(echo ${component_name} | sed 's/-/_/g')
-            sed -i "/annotations.*/a \ \ \ \ mco-${component_anno_name}-image: ${img}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
-            sed -i "/annotations.*/a \ \ \ \ mco-${component_anno_name}-image: ${img}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+            ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-${component_anno_name}-image: ${img}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
+            ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-${component_anno_name}-image: ${img}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
         fi
     done
     cd ${ROOTDIR}
@@ -403,7 +408,8 @@ execute() {
     if [[ "${ACTION}" == "install" ]]; then
         deploy_hub_spoke_core
         approve_csr_joinrequest
-        deploy_mco_operator "${IMAGE}"
+        get_images "${PIPELINE}"
+        deploy_mco_operator "${IMAGES}"
         echo "OCM and MCO are installed successfuly..."
     elif [[ "${ACTION}" == "uninstall" ]]; then
         delete_mco_operator
@@ -412,6 +418,43 @@ execute() {
         echo "OCM and MCO are uninstalled successfuly..."
     else
         echo "This ACTION ${ACTION} isn't recognized/supported" && exit 1
+    fi
+}
+
+# function get_images is to get the images used to setup the environment
+# get_images is to get the images based on the changes in your PR
+get_images() {
+    if [[ ! -z "${1}" ]]; then
+        IMAGES=""
+        changed_files=`cd $ROOTDIR; git --no-pager diff --name-only main...HEAD`
+        for file in ${changed_files}; do
+            echo $file
+            if [[ $file =~ ^proxy ]]; then
+                IMAGES+=" ${1}:rbac-query-proxy"
+                continue
+            fi
+            if [[ $file =~ ^operators/multiclusterobservability ]]; then
+                IMAGES+=" ${1}:multicluster-observability-operator"
+                continue
+            fi
+            if [[ $file =~ ^operators/endpointmetrics ]]; then
+                IMAGES+=" ${1}:endpoint-monitoring-operator"
+                continue
+            fi
+            if [[ $file =~ ^loaders/dashboards ]]; then
+                IMAGES+=" ${1}:grafana-dashboard-loader"
+                continue
+            fi
+            if [[ $file =~ ^collectors/metrics ]]; then
+                IMAGES+=" ${1}:metrics-collector"
+                continue
+            fi
+            if [[ $file =~ ^pkg ]]; then
+                IMAGES="${1}:multicluster-observability-operator ${1}:rbac-query-proxy ${1}:metrics-collector ${1}:endpoint-monitoring-operator ${1}:grafana-dashboard-loader"
+                break
+            fi
+        done
+        echo "Test images are ${IMAGES}"
     fi
 }
 
