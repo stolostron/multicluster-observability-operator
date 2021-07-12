@@ -207,6 +207,8 @@ delete_csr() {
 }
 
 deploy_mco_operator() {
+    # discard unstaged changes
+    cd ${ROOTDIR} && git checkout -- .
     # default to latest snapshot
     cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator=${COMPONENT_REPO}/multicluster-observability-operator:${LATEST_SNAPSHOT}
 
