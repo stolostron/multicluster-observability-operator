@@ -709,7 +709,7 @@ data:
           "pluginVersion": "7.3.10",
           "targets": [
             {
-              "expr": "(sum(sum(sum(kube_pod_container_resource_requests{resource=\"cpu\"}) by (pod,cluster,namespace,container) * on(pod,namespace,cluster) group_left(phase) max(kube_pod_status_phase{phase=~\"Running\"} >0)by (pod,namespace,cluster,phase)\n) by (pod,namespace,cluster,phase)) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__interval])) by (cluster))",
+              "expr": "(sum(sum(sum(kube_pod_container_resource_requests{resource=\"cpu\"}) by (pod,cluster,namespace,container) * on(pod,namespace,cluster) group_left(phase) max(kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"} >0)by (pod,namespace,cluster,phase)\n) by (pod,namespace,cluster,phase)) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__interval])) by (cluster))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -719,7 +719,7 @@ data:
               "refId": "C"
             },
             {
-              "expr": "sum(sum(sum(kube_pod_container_resource_requests{resource=\"cpu\"}) by (pod,cluster,namespace,container) * on(pod,namespace,cluster) group_left(phase) max(kube_pod_status_phase{phase=~\"Running\"} >0)by (pod,namespace,cluster,phase)\n) by (pod,namespace,cluster,phase)) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)",
+              "expr": "sum(sum(sum(kube_pod_container_resource_requests{resource=\"cpu\"}) by (pod,cluster,namespace,container) * on(pod,namespace,cluster) group_left(phase) max(kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"} >0)by (pod,namespace,cluster,phase)\n) by (pod,namespace,cluster,phase)) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -951,7 +951,7 @@ data:
           "pluginVersion": "7.3.10",
           "targets": [
             {
-              "expr": "(sum(sum(sum(kube_pod_container_resource_requests{resource=\"memory\"}) by (pod,cluster,namespace,container) * on(pod,namespace,cluster) group_left(phase) max(kube_pod_status_phase{phase=~\"Running\"} >0)by (pod,namespace,cluster,phase)\n) by (pod,namespace,cluster,phase)) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)) - (1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster))",
+              "expr": "(sum(sum(sum(kube_pod_container_resource_requests{resource=\"memory\"}) by (pod,cluster,namespace,container) * on(pod,namespace,cluster) group_left(phase) max(kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"} >0)by (pod,namespace,cluster,phase)\n) by (pod,namespace,cluster,phase)) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)) - (1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -961,7 +961,7 @@ data:
               "refId": "C"
             },
             {
-              "expr": "sum(sum(sum(kube_pod_container_resource_requests{resource=\"memory\"}) by (pod,cluster,namespace,container) * on(pod,namespace,cluster) group_left(phase) max(kube_pod_status_phase{phase=~\"Running\"} >0)by (pod,namespace,cluster,phase)\n) by (pod,namespace,cluster,phase)) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)",
+              "expr": "sum(sum(sum(kube_pod_container_resource_requests{resource=\"memory\"}) by (pod,cluster,namespace,container) * on(pod,namespace,cluster) group_left(phase) max(kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"} >0)by (pod,namespace,cluster,phase)\n) by (pod,namespace,cluster,phase)) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1971,7 +1971,7 @@ data:
       "timezone": "browser",
       "title": "ACM - Clusters Overview",
       "uid": "2b679d600f3b9e7676a7c5ac3643d448",
-      "version": 3
+      "version": 4
     }
 kind: ConfigMap
 metadata:
