@@ -159,9 +159,13 @@ e2e-tests: test-e2e-setup
 
 test-e2e-setup:
 	@echo "Seting up E2E Tests environment..."
-ifdef COMPONENT_IMAGE_NAME
+ifdef COMPONENT_IMAGE_PIPELINE
 	# override the image for the e2e test
-	@./cicd-scripts/setup-e2e-tests.sh -a install -i $(COMPONENT_IMAGE_NAME)
+	@./cicd-scripts/setup-e2e-tests.sh -a install -p $(COMPONENT_IMAGE_PIPELINE)
+endif
+ifdef COMPONENT_IMAGE_NAMES
+	# override the image for the e2e test
+	@./cicd-scripts/setup-e2e-tests.sh -a install -i $(COMPONENT_IMAGE_NAMES)
 else
 	# fall back to the latest snapshot image from quay.io for the e2e test
 	@./cicd-scripts/setup-e2e-tests.sh -a install
@@ -169,11 +173,7 @@ endif
 
 test-e2e-clean:
 	@echo "Clean E2E Tests environment..."
-ifdef COMPONENT_IMAGE_NAME
-	@./cicd-scripts/setup-e2e-tests.sh -a uninstall -i $(COMPONENT_IMAGE_NAME)
-else
 	@./cicd-scripts/setup-e2e-tests.sh -a uninstall
-endif
 
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
