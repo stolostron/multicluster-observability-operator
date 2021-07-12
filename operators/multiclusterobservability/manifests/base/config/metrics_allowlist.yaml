@@ -86,7 +86,6 @@ data:
       - kube_pod_container_resource_requests_memory_bytes
       - kube_pod_info
       - kube_pod_owner
-      - kube_pod_status_phase
       - kube_resourcequota
       - kubelet_running_container_count
       - kubelet_runtime_operations
