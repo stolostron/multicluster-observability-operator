@@ -441,6 +441,10 @@ get_images() {
                 IMAGES+=" ${1}:endpoint-monitoring-operator"
                 continue
             fi
+            if [[ $file =~ ^operators/endpointmetrics ]]; then
+                IMAGES+=" ${1}:multicluster-observability-operator ${1}:endpoint-monitoring-operator"
+                continue
+            fi
             if [[ $file =~ ^loaders/dashboards ]]; then
                 IMAGES+=" ${1}:grafana-dashboard-loader"
                 continue
@@ -454,6 +458,8 @@ get_images() {
                 break
             fi
         done
+        # remove duplicates
+        IMAGES=`echo "${IMAGES}" | xargs -n1 | sort -u | xargs`
         echo "Test images are ${IMAGES}"
     fi
 }
