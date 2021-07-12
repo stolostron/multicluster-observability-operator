@@ -38,7 +38,7 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "test",
+			Name: mcoconfig.GetDefaultCRName(),
 			Annotations: map[string]string{
 				mcoconfig.AnnotationKeyImageRepository: "quay.io:443/acm-d",
 				mcoconfig.AnnotationKeyImageTagSuffix:  "tag",
@@ -88,7 +88,6 @@ func TestMergeVolumeClaimTemplate(t *testing.T) {
 
 func TestNoUpdateObservatoriumCR(t *testing.T) {
 	var (
-		name      = "monitoring"
 		namespace = mcoconfig.GetDefaultNamespace()
 	)
 
@@ -96,7 +95,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	mco := &mcov1beta1.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name: mcoconfig.GetDefaultCRName(),
 			Annotations: map[string]string{
 				mcoconfig.AnnotationKeyImageTagSuffix: "tag",
 			},
@@ -123,7 +122,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	cl.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      name + obsPartoOfName,
+			Name:      mcoconfig.GetDefaultCRName(),
 			Namespace: namespace,
 		},
 		observatoriumCRFound,

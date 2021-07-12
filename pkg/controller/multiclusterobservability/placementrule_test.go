@@ -20,7 +20,7 @@ func TestCreatePlacementRule(t *testing.T) {
 	var (
 		name       = "monitoring"
 		namespace  = mcoconfig.GetDefaultNamespace()
-		pName      = mcoconfig.GetPlacementRuleName()
+		pName      = mcoconfig.GetDefaultCRName()
 		testSuffix = "-test"
 	)
 	mco := &mcov1beta1.MultiClusterObservability{

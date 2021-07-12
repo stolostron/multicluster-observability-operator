@@ -159,7 +159,7 @@ func updateProxySpec(spec *corev1.PodSpec, mco *monitoringv1.MultiClusterObserva
 	args := spec.Containers[0].Args
 	for idx := range args {
 		args[idx] = strings.Replace(args[idx], "{{MCO_NAMESPACE}}", mcoconfig.GetDefaultNamespace(), 1)
-		args[idx] = strings.Replace(args[idx], "{{MCO_CR_NAME}}", mco.Name, 1)
+		args[idx] = strings.Replace(args[idx], "{{OBSERVATORIUM_NAME}}", mcoconfig.GetOperandName(mcoconfig.Observatorium), 1)
 	}
 	for idx := range spec.Volumes {
 		if spec.Volumes[idx].Name == "ca-certs" {

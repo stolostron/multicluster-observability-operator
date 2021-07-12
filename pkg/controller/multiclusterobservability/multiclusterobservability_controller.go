@@ -276,6 +276,12 @@ func (r *ReconcileMultiClusterObservability) Reconcile(request reconcile.Request
 		return reconcile.Result{}, err
 	}
 
+	//set operand names to cover the upgrade case since we have name changed in new release
+	err = config.SetOperandNames(r.client)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	//instance.Namespace = config.GetDefaultNamespace()
 	instance.Spec.StorageConfig.StatefulSetStorageClass = storageClassSelected
 	//Render the templates with a specified CR

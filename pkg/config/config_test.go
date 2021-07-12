@@ -589,3 +589,177 @@ func Test_checkIsIBMCloud(t *testing.T) {
 		})
 	}
 }
+
+func TestGetOperandName(t *testing.T) {
+	caseList := []struct {
+		name          string
+		componentName string
+		prepare       func()
+		result        func() bool
+	}{
+		{
+			name:          "No Observatorium CR",
+			componentName: Alertmanager,
+			prepare: func() {
+				SetOperandNames(fake.NewFakeClientWithScheme(runtime.NewScheme()))
+			},
+			result: func() bool {
+				return GetOperandName(Alertmanager) == GetOperandNamePrefix()+"alertmanager"
+			},
+		},
+		{
+			name:          "Have Observatorium CR without ownerreference",
+			componentName: Alertmanager,
+			prepare: func() {
+				//clean the operandNames map
+				for k := range operandNames {
+					delete(operandNames, k)
+				}
+				mco := &mcov1beta1.MultiClusterObservability{
+					TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name: GetDefaultCRName(),
+					},
+					Spec: mcov1beta1.MultiClusterObservabilitySpec{
+						StorageConfig: &mcov1beta1.StorageConfigObject{
+							MetricObjectStorage: &mcov1beta1.PreConfiguredStorage{
+								Key:  "test",
+								Name: "test",
+							},
+						},
+					},
+				}
+
+				observatorium := &observatoriumv1alpha1.Observatorium{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      GetOperandNamePrefix() + "-observatorium",
+						Namespace: GetDefaultNamespace(),
+					},
+				}
+
+				// Register operator types with the runtime scheme.
+				s := scheme.Scheme
+				mcov1beta1.SchemeBuilder.AddToScheme(s)
+				observatoriumv1alpha1.AddToScheme(s)
+				client := fake.NewFakeClientWithScheme(s, []runtime.Object{mco, observatorium}...)
+				SetMonitoringCRName(GetDefaultCRName())
+				SetOperandNames(client)
+			},
+			result: func() bool {
+				return GetOperandName(Alertmanager) == GetOperandNamePrefix()+Alertmanager &&
+					GetOperandName(Grafana) == GetOperandNamePrefix()+Grafana &&
+					GetOperandName(Observatorium) == GetDefaultCRName()
+			},
+		},
+		{
+			name:          "Have Observatorium CR (observability-observatorium) with ownerreference",
+			componentName: Alertmanager,
+			prepare: func() {
+				//clean the operandNames map
+				for k := range operandNames {
+					delete(operandNames, k)
+				}
+				mco := &mcov1beta1.MultiClusterObservability{
+					TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name: GetDefaultCRName(),
+					},
+					Spec: mcov1beta1.MultiClusterObservabilitySpec{
+						StorageConfig: &mcov1beta1.StorageConfigObject{
+							MetricObjectStorage: &mcov1beta1.PreConfiguredStorage{
+								Key:  "test",
+								Name: "test",
+							},
+						},
+					},
+				}
+
+				observatorium := &observatoriumv1alpha1.Observatorium{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      GetOperandNamePrefix() + "observatorium",
+						Namespace: GetDefaultNamespace(),
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								Kind: "MultiClusterObservability",
+								Name: GetDefaultCRName(),
+							},
+						},
+					},
+				}
+
+				// Register operator types with the runtime scheme.
+				s := scheme.Scheme
+				mcov1beta1.SchemeBuilder.AddToScheme(s)
+				observatoriumv1alpha1.AddToScheme(s)
+				client := fake.NewFakeClientWithScheme(s, []runtime.Object{mco, observatorium}...)
+
+				SetMonitoringCRName(GetDefaultCRName())
+				SetOperandNames(client)
+			},
+			result: func() bool {
+				return GetOperandName(Alertmanager) == Alertmanager &&
+					GetOperandName(Grafana) == Grafana &&
+					GetOperandName(Observatorium) == GetOperandNamePrefix()+"observatorium"
+			},
+		},
+		{
+			name:          "Have Observatorium CR (observability) with ownerreference",
+			componentName: Alertmanager,
+			prepare: func() {
+				//clean the operandNames map
+				for k := range operandNames {
+					delete(operandNames, k)
+				}
+				mco := &mcov1beta1.MultiClusterObservability{
+					TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name: GetDefaultCRName(),
+					},
+					Spec: mcov1beta1.MultiClusterObservabilitySpec{
+						StorageConfig: &mcov1beta1.StorageConfigObject{
+							MetricObjectStorage: &mcov1beta1.PreConfiguredStorage{
+								Key:  "test",
+								Name: "test",
+							},
+						},
+					},
+				}
+
+				observatorium := &observatoriumv1alpha1.Observatorium{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      GetDefaultCRName(),
+						Namespace: GetDefaultNamespace(),
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								Kind: "MultiClusterObservability",
+								Name: GetDefaultCRName(),
+							},
+						},
+					},
+				}
+
+				// Register operator types with the runtime scheme.
+				s := scheme.Scheme
+				mcov1beta1.SchemeBuilder.AddToScheme(s)
+				observatoriumv1alpha1.AddToScheme(s)
+				client := fake.NewFakeClientWithScheme(s, []runtime.Object{mco, observatorium}...)
+
+				SetMonitoringCRName(GetDefaultCRName())
+				SetOperandNames(client)
+			},
+			result: func() bool {
+				return GetOperandName(Alertmanager) == GetOperandNamePrefix()+Alertmanager &&
+					GetOperandName(Grafana) == GetOperandNamePrefix()+Grafana &&
+					GetOperandName(Observatorium) == GetDefaultCRName()
+			},
+		},
+	}
+	for _, c := range caseList {
+		t.Run(c.name, func(t *testing.T) {
+			c.prepare()
+			if !c.result() {
+				t.Errorf("case (%v) output is not the expected", c.name)
+			}
+		})
+	}
+}

@@ -85,7 +85,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	name := config.GetPlacementRuleName()
+	name := config.GetDefaultCRName()
 
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
@@ -346,7 +346,11 @@ func createAllRelatedRes(
 	mco.Namespace = watchNamespace
 	// Fetch the PlacementRule instance
 	instance := &appsv1.PlacementRule{}
-	err = client.Get(context.TODO(), request.NamespacedName, instance)
+	err = client.Get(context.TODO(),
+		types.NamespacedName{
+			Name:      config.GetDefaultCRName(),
+			Namespace: config.GetDefaultNamespace()},
+		instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
