@@ -95,8 +95,12 @@ spec:
       storage: 1Gi
   storageClassName: gp2
 EOL
-  PVC_CLASS=$(kubectl get pvc -n "$obs_namespace" alertmanager-db-observability-alertmanager-0 -o yaml|grep "  storageClassName")
-  $sed_command "s~  storageClassName:.*$~${PVC_CLASS}~g" grafana-pvc.yaml
+  storage_class=$(kubectl get pvc -n "$obs_namespace" | awk '{print $6}'| awk 'NR==2')
+  if [ -z "$storage_class" ]; then
+      echo "Failed to get storage class"
+      exit 1
+  fi
+  $sed_command "s~gp2$~${storage_class}~g" grafana-pvc.yaml
   kubectl apply -f grafana-pvc.yaml
 
   # clean all tmp files
