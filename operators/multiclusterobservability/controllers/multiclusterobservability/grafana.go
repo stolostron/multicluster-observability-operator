@@ -27,37 +27,37 @@ const (
 )
 
 type GrafanaDatasources struct {
-	APIVersion  int                  `yaml:"apiVersion"`
-	Datasources []*GrafanaDatasource `yaml:"datasources"`
+	APIVersion  int                  `yaml:"apiVersion,omitempty"`
+	Datasources []*GrafanaDatasource `yaml:"datasources,omitempty"`
 }
 
 type GrafanaDatasource struct {
-	Access            string          `yaml:"access"`
-	BasicAuth         bool            `yaml:"basicAuth"`
-	BasicAuthPassword string          `yaml:"basicAuthPassword"`
-	BasicAuthUser     string          `yaml:"basicAuthUser"`
-	Editable          bool            `yaml:"editable"`
-	IsDefault         bool            `yaml:"isDefault"`
-	Name              string          `yaml:"name"`
-	OrgID             int             `yaml:"orgId"`
-	Type              string          `yaml:"type"`
-	URL               string          `yaml:"url"`
-	Version           int             `yaml:"version"`
-	JSONData          *JsonData       `yaml:"jsonData"`
-	SecureJSONData    *SecureJsonData `yaml:"secureJsonData"`
+	Access            string          `yaml:"access,omitempty"`
+	BasicAuth         bool            `yaml:"basicAuth,omitempty"`
+	BasicAuthPassword string          `yaml:"basicAuthPassword,omitempty"`
+	BasicAuthUser     string          `yaml:"basicAuthUser,omitempty"`
+	Editable          bool            `yaml:"editable,omitempty"`
+	IsDefault         bool            `yaml:"isDefault,omitempty"`
+	Name              string          `yaml:"name,omitempty"`
+	OrgID             int             `yaml:"orgId,omitempty"`
+	Type              string          `yaml:"type,omitempty"`
+	URL               string          `yaml:"url,omitempty"`
+	Version           int             `yaml:"version,omitempty"`
+	JSONData          *JsonData       `yaml:"jsonData,omitempty"`
+	SecureJSONData    *SecureJsonData `yaml:"secureJsonData,omitempty"`
 }
 
 type JsonData struct {
-	TLSAuth      bool   `yaml:"tlsAuth"`
-	TLSAuthCA    bool   `yaml:"tlsAuthWithCACert"`
-	QueryTimeout string `yaml:"queryTimeout"`
-	HttpMethod   string `yaml:"httpMethod"`
+	TLSAuth      bool   `yaml:"tlsAuth,omitempty"`
+	TLSAuthCA    bool   `yaml:"tlsAuthWithCACert,omitempty"`
+	QueryTimeout string `yaml:"queryTimeout,omitempty"`
+	HttpMethod   string `yaml:"httpMethod,omitempty"`
 }
 
 type SecureJsonData struct {
-	TLSCACert     string `yaml:"tlsCACert"`
-	TLSClientCert string `yaml:"tlsClientCert"`
-	TLSClientKey  string `yaml:"tlsClientKey"`
+	TLSCACert     string `yaml:"tlsCACert,omitempty"`
+	TLSClientCert string `yaml:"tlsClientCert,omitempty"`
+	TLSClientKey  string `yaml:"tlsClientKey,omitempty"`
 }
 
 // GenerateGrafanaDataSource is used to generate the GrafanaDatasource as a secret.
