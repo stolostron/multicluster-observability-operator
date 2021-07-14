@@ -35,7 +35,7 @@ var _ = Describe("Observability:", func() {
 				dep *appv1.Deployment
 			)
 			Eventually(func() error {
-				err, dep = utils.GetDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE)
+				dep, err = utils.GetDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE)
 				return err
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 
@@ -45,7 +45,7 @@ var _ = Describe("Observability:", func() {
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 
 			Eventually(func() bool {
-				err, newDep = utils.GetDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE)
+				newDep, err = utils.GetDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE)
 				if err == nil {
 					if dep.ObjectMeta.ResourceVersion != newDep.ObjectMeta.ResourceVersion {
 						return true
@@ -57,17 +57,17 @@ var _ = Describe("Observability:", func() {
 		It("[Stable] Updating metrics-collector deployment", func() {
 			updateSaName := "test-serviceaccount"
 			Eventually(func() error {
-				err, newDep = utils.GetDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE)
+				newDep, err = utils.GetDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE)
 				if err != nil {
 					return err
 				}
 				newDep.Spec.Template.Spec.ServiceAccountName = updateSaName
-				err, newDep = utils.UpdateDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE, newDep)
+				newDep, err = utils.UpdateDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE, newDep)
 				return err
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 
 			Eventually(func() bool {
-				err, revertDep := utils.GetDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE)
+				revertDep, err := utils.GetDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE)
 				if err == nil {
 					if revertDep.ObjectMeta.ResourceVersion != newDep.ObjectMeta.ResourceVersion &&
 						revertDep.Spec.Template.Spec.ServiceAccountName != updateSaName {
