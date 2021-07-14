@@ -134,13 +134,13 @@ func updateAddonSpecStatus(
 
 func getExpectedDeploymentNames(mcoCRName string) []string {
 	return []string{
-		"grafana",
-		mcoCRName + "-observatorium-observatorium-api",
-		mcoCRName + "-observatorium-thanos-query",
-		mcoCRName + "-observatorium-thanos-query-frontend",
-		mcoCRName + "-observatorium-thanos-receive-controller",
-		"observatorium-operator",
-		"rbac-query-proxy",
+		config.Grafana,
+		config.GetOperandNamePrefix() + "observatorium-observatorium-api",
+		config.GetOperandNamePrefix() + "observatorium-thanos-query",
+		config.GetOperandNamePrefix() + "observatorium-thanos-query-frontend",
+		config.GetOperandNamePrefix() + "observatorium-thanos-receive-controller",
+		config.ObservatoriumOperator,
+		config.RBACQueryProxy,
 	}
 }
 
@@ -172,12 +172,12 @@ func checkDeployStatus(
 
 func getExpectedStatefulSetNames(mcoCRName string) []string {
 	return []string{
-		"alertmanager",
-		mcoCRName + "-observatorium-thanos-compact",
-		mcoCRName + "-observatorium-thanos-receive-default",
-		mcoCRName + "-observatorium-thanos-rule",
-		mcoCRName + "-observatorium-thanos-store-memcached",
-		mcoCRName + "-observatorium-thanos-store-shard-0",
+		config.Alertmanager,
+		config.GetOperandNamePrefix() + "observatorium-thanos-compact",
+		config.GetOperandNamePrefix() + "observatorium-thanos-receive-default",
+		config.GetOperandNamePrefix() + "observatorium-thanos-rule",
+		config.GetOperandNamePrefix() + "observatorium-thanos-store-memcached",
+		config.GetOperandNamePrefix() + "observatorium-thanos-store-shard-0",
 	}
 }
 

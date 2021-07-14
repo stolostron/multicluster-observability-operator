@@ -45,7 +45,7 @@ spec:
         imagePullPolicy: Always
         args:
         - "--listen-address=0.0.0.0:8080"
-        - "--metrics-server=https://{{MCO_CR_NAME}}-observatorium-observatorium-api.{{MCO_NAMESPACE}}.svc.cluster.local:8080/api/metrics/v1/default"
+        - "--metrics-server=https://{{OBSERVATORIUM_NAME}}-observatorium-observatorium-api.{{MCO_NAMESPACE}}.svc.cluster.local:8080/api/metrics/v1/default"
         ports:
         - containerPort: 8080
           name: http

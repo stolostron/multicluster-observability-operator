@@ -20,7 +20,7 @@ import (
 
 func createPlacementRule(client client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta1.MultiClusterObservability) error {
-	name := config.GetPlacementRuleName()
+	name := config.GetDefaultCRName()
 	namespace := config.GetDefaultNamespace()
 	p := &appsv1.PlacementRule{
 		ObjectMeta: metav1.ObjectMeta{
