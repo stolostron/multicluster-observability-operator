@@ -103,13 +103,18 @@ var _ = Describe("Observability:", func() {
 			}
 
 			// debug code to check label "cert/time-restarted"
-			err, deployment := utils.GetDeployment(testOptions, true, MCO_CR_NAME+"-observatorium-api", MCO_NAMESPACE)
+			deploys, err := utils.GetDeploymentWithLabel(testOptions, true, OBSERVATORIUM_API_LABEL, MCO_NAMESPACE)
 			if err == nil {
-				klog.V(1).Infof("labels: <%v>", deployment.Spec.Template.ObjectMeta.Labels)
+				for _, deployInfo := range (*deploys).Items {
+					klog.V(1).Infof("labels: <%v>", deployInfo.Spec.Template.ObjectMeta.Labels)
+				}
 			}
-			err, deployment = utils.GetDeployment(testOptions, true, MCO_CR_NAME+"-rbac-query-proxy", MCO_NAMESPACE)
+
+			deploys, err = utils.GetDeploymentWithLabel(testOptions, true, RBAC_QUERY_PROXY_LABEL, MCO_NAMESPACE)
 			if err == nil {
-				klog.V(1).Infof("labels: <%v>", deployment.Spec.Template.ObjectMeta.Labels)
+				for _, deployInfo := range (*deploys).Items {
+					klog.V(1).Infof("labels: <%v>", deployInfo.Spec.Template.ObjectMeta.Labels)
+				}
 			}
 
 			return false
@@ -131,7 +136,7 @@ var _ = Describe("Observability:", func() {
 
 			}
 			// debug code to check label "cert/time-restarted"
-			err, deployment := utils.GetDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE)
+			deployment, err := utils.GetDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE)
 			if err == nil {
 				klog.V(1).Infof("labels: <%v>", deployment.Spec.Template.ObjectMeta.Labels)
 			}

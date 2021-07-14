@@ -254,17 +254,9 @@ func CheckAllPodNodeSelector(opt TestOptions, nodeSelector map[string]interface{
 	if err != nil {
 		return err
 	}
-	//shard-1-0 and shard-2-0 won't be deleted when switch from High to Basic
-	//And cannot apply the nodeSelector to shard-1-0 and shard-2-0
-	//https://github.com/open-cluster-management/backlog/issues/6532
-	ignorePods := MCO_CR_NAME + "-thanos-store-shard-1-0," + MCO_CR_NAME + "-thanos-store-shard-2-0"
 
 	for k, v := range nodeSelector {
 		for _, pod := range podList {
-			if strings.Contains(ignorePods, pod.GetName()) {
-				continue
-			}
-
 			selecterValue, ok := pod.Spec.NodeSelector[k]
 			if !ok || selecterValue != v {
 				return fmt.Errorf("failed to check node selector with %s=%s for pod: %v", k, v, pod.GetName())

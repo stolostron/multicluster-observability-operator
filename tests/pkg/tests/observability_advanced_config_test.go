@@ -31,56 +31,56 @@ var _ = Describe("Observability:", func() {
 
 	componentMap := map[string]struct {
 		// deployment or statefulset
-		Type string
-		Name string
+		Type  string
+		Label string
 	}{
 		"alertmanager": {
-			Type: "Statefulset",
-			Name: MCO_CR_NAME + "-alertmanager",
+			Type:  "Statefulset",
+			Label: ALERTMANAGER_LABEL,
 		},
 		"grafana": {
-			Type: "Deployment",
-			Name: MCO_CR_NAME + "-grafana",
+			Type:  "Deployment",
+			Label: GRAFANA_LABEL,
 		},
 		"observatoriumAPI": {
-			Type: "Deployment",
-			Name: MCO_CR_NAME + "-observatorium-api",
+			Type:  "Deployment",
+			Label: OBSERVATORIUM_API_LABEL,
 		},
 		"rbacQueryProxy": {
-			Type: "Deployment",
-			Name: MCO_CR_NAME + "-rbac-query-proxy",
+			Type:  "Deployment",
+			Label: RBAC_QUERY_PROXY_LABEL,
 		},
 		"compact": {
-			Type: "Statefulset",
-			Name: MCO_CR_NAME + "-thanos-compact",
+			Type:  "Statefulset",
+			Label: THANOS_COMPACT_LABEL,
 		},
 		"query": {
-			Type: "Deployment",
-			Name: MCO_CR_NAME + "-thanos-query",
+			Type:  "Deployment",
+			Label: THANOS_QUERY_LABEL,
 		},
 		"queryFrontend": {
-			Type: "Deployment",
-			Name: MCO_CR_NAME + "-thanos-query-frontend",
+			Type:  "Deployment",
+			Label: THANOS_QUERY_FRONTEND_LABEL,
 		},
 		"queryFrontendMemcached": {
-			Type: "Statefulset",
-			Name: MCO_CR_NAME + "-thanos-query-frontend-memcached",
+			Type:  "Statefulset",
+			Label: THANOS_QUERY_FRONTEND_MEMCACHED_LABEL,
 		},
 		"receive": {
-			Type: "Statefulset",
-			Name: MCO_CR_NAME + "-thanos-receive-default",
+			Type:  "Statefulset",
+			Label: THANOS_RECEIVE_LABEL,
 		},
 		"rule": {
-			Type: "Statefulset",
-			Name: MCO_CR_NAME + "-thanos-rule",
+			Type:  "Statefulset",
+			Label: THANOS_RULE_LABEL,
 		},
 		"storeMemcached": {
-			Type: "Statefulset",
-			Name: MCO_CR_NAME + "-thanos-store-memcached",
+			Type:  "Statefulset",
+			Label: THANOS_STORE_MEMCACHED_LABEL,
 		},
 		"store": {
-			Type: "Statefulset",
-			Name: MCO_CR_NAME + "-thanos-store-shard-0",
+			Type:  "Statefulset",
+			Label: THANOS_STORE_LABEL,
 		},
 	}
 
@@ -90,6 +90,7 @@ var _ = Describe("Observability:", func() {
 		if err != nil {
 			panic(err.Error())
 		}
+
 		advancedSpec := mcoRes.Object["spec"].(map[string]interface{})["advanced"].(map[string]interface{})
 
 		for key, component := range componentMap {
@@ -99,13 +100,17 @@ var _ = Describe("Observability:", func() {
 			klog.V(1).Infof("The component is: %s\n", key)
 			replicas := advancedSpec[key].(map[string]interface{})["replicas"]
 			if component.Type == "Deployment" {
-				err, deploy := utils.GetDeployment(testOptions, true, component.Name, MCO_NAMESPACE)
+				deploys, err := utils.GetDeploymentWithLabel(testOptions, true, component.Label, MCO_NAMESPACE)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(int(replicas.(int64))).To(Equal(int(*deploy.Spec.Replicas)))
+				for _, deployInfo := range (*deploys).Items {
+					Expect(int(replicas.(int64))).To(Equal(int(*deployInfo.Spec.Replicas)))
+				}
 			} else {
-				err, sts := utils.GetStatefulSet(testOptions, true, component.Name, MCO_NAMESPACE)
+				sts, err := utils.GetStatefulSetWithLabel(testOptions, true, component.Label, MCO_NAMESPACE)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(int(replicas.(int64))).To(Equal(int(*sts.Spec.Replicas)))
+				for _, stsInfo := range (*sts).Items {
+					Expect(int(replicas.(int64))).To(Equal(int(*stsInfo.Spec.Replicas)))
+				}
 			}
 		}
 	})
@@ -129,15 +134,19 @@ var _ = Describe("Observability:", func() {
 				cpu = limits["cpu"].(string)
 			}
 			if component.Type == "Deployment" {
-				err, deploy := utils.GetDeployment(testOptions, true, component.Name, MCO_NAMESPACE)
+				deploys, err := utils.GetDeploymentWithLabel(testOptions, true, component.Label, MCO_NAMESPACE)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(cpu).To(Equal(deploy.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().String()))
-				Expect(limits["memory"]).To(Equal(deploy.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()))
+				for _, deployInfo := range (*deploys).Items {
+					Expect(cpu).To(Equal(deployInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().String()))
+					Expect(limits["memory"]).To(Equal(deployInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()))
+				}
 			} else {
-				err, sts := utils.GetStatefulSet(testOptions, true, component.Name, MCO_NAMESPACE)
+				sts, err := utils.GetStatefulSetWithLabel(testOptions, true, component.Label, MCO_NAMESPACE)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(cpu).To(Equal(sts.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().String()))
-				Expect(limits["memory"]).To(Equal(sts.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()))
+				for _, stsInfo := range (*sts).Items {
+					Expect(cpu).To(Equal(stsInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().String()))
+					Expect(limits["memory"]).To(Equal(stsInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()))
+				}
 			}
 		}
 	})

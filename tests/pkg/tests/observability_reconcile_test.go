@@ -17,14 +17,6 @@ import (
 	"github.com/open-cluster-management/multicluster-observability-operator/tests/pkg/utils"
 )
 
-const (
-	MCO_CR_NAME         = "observability"
-	MCO_NAMESPACE       = "open-cluster-management-observability"
-	MCO_ADDON_NAMESPACE = "open-cluster-management-addon-observability"
-	MCO_LABEL           = "name=multicluster-observability-operator"
-	MCO_LABEL_OWNER     = "owner=multicluster-observability-operator"
-)
-
 var (
 	EventuallyTimeoutMinute  time.Duration = 60 * time.Second
 	EventuallyIntervalSecond time.Duration = 1 * time.Second
@@ -59,24 +51,29 @@ var _ = Describe("Observability:", func() {
 			Skip("Skip the case since " + err.Error())
 		}
 		Eventually(func() error {
-			name := MCO_CR_NAME + "-thanos-compact"
-			compact, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
-			if err != nil {
-				return err
-			}
-			argList := compact.Spec.Template.Spec.Containers[0].Args
+			compacts, _ := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
+				LabelSelector: THANOS_COMPACT_LABEL,
+			})
+			Expect(len(compacts.Items)).NotTo(Equal(0))
+
+			argList := (*compacts).Items[0].Spec.Template.Spec.Containers[0].Args
 			for _, arg := range argList {
 				if arg == "--retention.resolution-raw=3d" {
 					return nil
 				}
 			}
-			return fmt.Errorf("Failed to find modified retention field")
+			return fmt.Errorf("Failed to find modified retention field, the current args is: %v", argList)
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
 		By("Wait for thanos compact pods are ready")
+		compacts, _ := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
+			LabelSelector: THANOS_COMPACT_LABEL,
+		})
+		Expect(len(compacts.Items)).NotTo(Equal(0))
+
 		// ensure the thanos rule pods are restarted successfully before processing
 		Eventually(func() error {
-			err = utils.CheckStatefulSetPodReady(testOptions, MCO_CR_NAME+"-thanos-compact")
+			err = utils.CheckStatefulSetPodReady(testOptions, (*compacts).Items[0].Name)
 			if err != nil {
 				return err
 			}
@@ -84,9 +81,14 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 
 		By("Wait for alertmanager pods are ready")
+		alertmans, _ := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
+			LabelSelector: ALERTMANAGER_LABEL,
+		})
+		Expect(len(alertmans.Items)).NotTo(Equal(0))
+
 		// ensure the thanos rule pods are restarted successfully before processing
 		Eventually(func() error {
-			err = utils.CheckStatefulSetPodReady(testOptions, MCO_CR_NAME+"-alertmanager")
+			err = utils.CheckStatefulSetPodReady(testOptions, (*alertmans).Items[0].Name)
 			if err != nil {
 				return err
 			}
@@ -127,8 +129,13 @@ var _ = Describe("Observability:", func() {
 
 	It("[P2][Sev2][Observability][Stable] Checking alertmanager storage resize (reconcile/g0)", func() {
 		By("Resizing alertmanager storage")
+		alertmans, _ := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
+			LabelSelector: ALERTMANAGER_LABEL,
+		})
+		Expect(len(alertmans.Items)).NotTo(Equal(0))
+
 		Eventually(func() error {
-			err := utils.CheckStorageResize(testOptions, MCO_CR_NAME+"-alertmanager", "2Gi")
+			err := utils.CheckStorageResize(testOptions, (*alertmans).Items[0].Name, "2Gi")
 			if err != nil {
 				return err
 			}
@@ -147,24 +154,29 @@ var _ = Describe("Observability:", func() {
 
 		By("Waiting for MCO retentionResolutionRaw filed to take effect")
 		Eventually(func() error {
-			name := MCO_CR_NAME + "-thanos-compact"
-			compact, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
-			if err != nil {
-				return err
-			}
-			argList := compact.Spec.Template.Spec.Containers[0].Args
+			compacts, _ := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
+				LabelSelector: THANOS_COMPACT_LABEL,
+			})
+			Expect(len(compacts.Items)).NotTo(Equal(0))
+
+			argList := (*compacts).Items[0].Spec.Template.Spec.Containers[0].Args
 			for _, arg := range argList {
 				if arg == "--retention.resolution-raw=5d" {
 					return nil
 				}
 			}
-			return fmt.Errorf("Failed to find modified retention field")
+			return fmt.Errorf("Failed to find modified retention field, the current args is: %v", argList)
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
 		By("Wait for thanos compact pods are ready")
 		// ensure the thanos rule pods are restarted successfully before processing
+		compacts, _ := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
+			LabelSelector: THANOS_COMPACT_LABEL,
+		})
+		Expect(len(compacts.Items)).NotTo(Equal(0))
+
 		Eventually(func() error {
-			err = utils.CheckStatefulSetPodReady(testOptions, MCO_CR_NAME+"-thanos-compact")
+			err = utils.CheckStatefulSetPodReady(testOptions, (*compacts).Items[0].Name)
 			if err != nil {
 				return err
 			}

@@ -12,11 +12,24 @@ import (
 )
 
 func GetStatefulSet(opt TestOptions, isHub bool, name string,
-	namespace string) (error, *appv1.StatefulSet) {
+	namespace string) (*appv1.StatefulSet, error) {
 	clientKube := getKubeClient(opt, isHub)
 	sts, err := clientKube.AppsV1().StatefulSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("Failed to get statefulset %s in namespace %s due to %v", name, namespace, err)
 	}
-	return err, sts
+	return sts, err
+}
+
+func GetStatefulSetWithLabel(opt TestOptions, isHub bool, label string,
+	namespace string) (*appv1.StatefulSetList, error) {
+	clientKube := getKubeClient(opt, isHub)
+	sts, err := clientKube.AppsV1().StatefulSets(namespace).List(context.TODO(), metav1.ListOptions{
+		LabelSelector: label,
+	})
+
+	if err != nil {
+		klog.Errorf("Failed to get statefulset with label selector %s in namespace %s due to %v", label, namespace, err)
+	}
+	return sts, err
 }

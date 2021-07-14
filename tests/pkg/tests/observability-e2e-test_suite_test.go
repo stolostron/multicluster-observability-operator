@@ -21,40 +21,49 @@ import (
 	"github.com/open-cluster-management/multicluster-observability-operator/tests/pkg/utils"
 )
 
-//var bareBaseDomain string
-var baseDomain string
-var kubeadminUser string
-var kubeadminCredential string
-var kubeconfig string
-var reportFile string
+var (
+	testHeadless bool
 
-var registry string
-var registryUser string
-var registryPassword string
+	baseDomain              string
+	kubeadminUser           string
+	kubeadminCredential     string
+	kubeconfig              string
+	reportFile              string
+	optionsFile             string
+	ownerPrefix, ocpRelease string
 
-var optionsFile, clusterDeployFile, installConfigFile string
-var testOptions utils.TestOptions
-var clusterDeploy utils.ClusterDeploy
-var installConfig utils.InstallConfig
-var testOptionsContainer utils.TestOptionsContainer
-var testUITimeout time.Duration
-var testHeadless bool
+	testOptions          utils.TestOptions
+	testOptionsContainer utils.TestOptionsContainer
+	testUITimeout        time.Duration
 
-var ownerPrefix string
+	testFailed = false
+)
 
-var hubNamespace string
-var pullSecretName string
-var installConfigAWS, installConfigGCP, installConfigAzure string
-var hiveClusterName, hiveGCPClusterName, hiveAzureClusterName string
+const (
+	OCP_RELEASE_DEFAULT = "4.4.4"
+	charset             = "abcdefghijklmnopqrstuvwxyz" +
+		"0123456789"
 
-var ocpRelease string
+	MCO_CR_NAME         = "observability"
+	MCO_NAMESPACE       = "open-cluster-management-observability"
+	MCO_ADDON_NAMESPACE = "open-cluster-management-addon-observability"
+	MCO_LABEL           = "name=multicluster-observability-operator"
+	MCO_LABEL_OWNER     = "owner=multicluster-observability-operator"
 
-var testFailed = false
+	ALERTMANAGER_LABEL      = "app=multicluster-observability-alertmanager"
+	GRAFANA_LABEL           = "app=multicluster-observability-grafana"
+	OBSERVATORIUM_API_LABEL = "app.kubernetes.io/name=observatorium-api"
+	RBAC_QUERY_PROXY_LABEL  = "app=rbac-query-proxy"
 
-const OCP_RELEASE_DEFAULT = "4.4.4"
-
-const charset = "abcdefghijklmnopqrstuvwxyz" +
-	"0123456789"
+	THANOS_COMPACT_LABEL                  = "app.kubernetes.io/name=thanos-compact"
+	THANOS_STORE_LABEL                    = "app.kubernetes.io/name=thanos-store"
+	THANOS_RECEIVE_LABEL                  = "app.kubernetes.io/name=thanos-receive"
+	THANOS_RULE_LABEL                     = "app.kubernetes.io/name=thanos-rule"
+	THANOS_QUERY_LABEL                    = "app.kubernetes.io/name=thanos-query"
+	THANOS_QUERY_FRONTEND_LABEL           = "app.kubernetes.io/name=thanos-query-frontend"
+	THANOS_QUERY_FRONTEND_MEMCACHED_LABEL = "app.kubernetes.io/component=query-frontend-cache,app.kubernetes.io/name=memcached"
+	THANOS_STORE_MEMCACHED_LABEL          = "app.kubernetes.io/component=store-cache,app.kubernetes.io/name=memcached"
+)
 
 var seededRand *rand.Rand = rand.New(
 	rand.NewSource(time.Now().UnixNano()))

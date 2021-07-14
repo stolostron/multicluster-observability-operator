@@ -18,10 +18,6 @@ import (
 	"github.com/open-cluster-management/multicluster-observability-operator/tests/pkg/utils"
 )
 
-var (
-	ThanosRuleName = MCO_CR_NAME + "-thanos-rule"
-)
-
 var _ = Describe("Observability:", func() {
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
@@ -34,25 +30,33 @@ var _ = Describe("Observability:", func() {
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
 	})
-	statefulset := [...]string{MCO_CR_NAME + "-alertmanager", ThanosRuleName}
-	configmap := [...]string{"thanos-ruler-default-rules", "thanos-ruler-custom-rules"}
+	statefulsetLabels := [...]string{
+		ALERTMANAGER_LABEL,
+		THANOS_RULE_LABEL,
+	}
+	configmap := [...]string{
+		"thanos-ruler-default-rules",
+		"thanos-ruler-custom-rules",
+	}
 	secret := "alertmanager-config"
 
 	It("[P1][Sev1][Observability][Stable] Should have the expected statefulsets (alert/g0)", func() {
 		By("Checking if STS: Alertmanager and observability-thanos-rule exist")
-		for _, name := range statefulset {
-			sts, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
+		for _, label := range statefulsetLabels {
+			sts, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{LabelSelector: label})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(sts.Spec.Template.Spec.Volumes)).Should(BeNumerically(">", 0))
+			for _, stsInfo := range (*sts).Items {
+				Expect(len(stsInfo.Spec.Template.Spec.Volumes)).Should(BeNumerically(">", 0))
 
-			if sts.GetName() == MCO_CR_NAME+"-alertmanager" {
-				By("The statefulset: " + sts.GetName() + " should have the appropriate secret mounted")
-				Expect(sts.Spec.Template.Spec.Volumes[0].Secret.SecretName).To(Equal("alertmanager-config"))
-			}
+				if strings.Contains(stsInfo.Name, "-alertmanager") {
+					By("The statefulset: " + stsInfo.Name + " should have the appropriate secret mounted")
+					Expect(stsInfo.Spec.Template.Spec.Volumes[0].Secret.SecretName).To(Equal("alertmanager-config"))
+				}
 
-			if sts.GetName() == ThanosRuleName {
-				By("The statefulset: " + sts.GetName() + " should have the appropriate configmap mounted")
-				Expect(sts.Spec.Template.Spec.Volumes[0].ConfigMap.Name).To(Equal("thanos-ruler-default-rules"))
+				if strings.Contains(stsInfo.Name, "-thanos-rule") {
+					By("The statefulset: " + stsInfo.Name + " should have the appropriate configmap mounted")
+					Expect(stsInfo.Spec.Template.Spec.Volumes[0].ConfigMap.Name).To(Equal("thanos-ruler-default-rules"))
+				}
 			}
 		}
 	})
@@ -90,10 +94,12 @@ var _ = Describe("Observability:", func() {
 
 	It("[P1][Sev1][Observability][Stable] Should have the alertmanager configured in rule (alert/g0)", func() {
 		By("Checking if --alertmanagers.url or --alertmanager.config or --alertmanagers.config-file is configured in rule")
-		name := MCO_CR_NAME + "-thanos-rule"
-		rule, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
+		rules, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
+			LabelSelector: THANOS_RULE_LABEL,
+		})
 		Expect(err).NotTo(HaveOccurred())
-		argList := rule.Spec.Template.Spec.Containers[0].Args
+		Expect(len(rules.Items)).NotTo(Equal(0))
+		argList := (*rules).Items[0].Spec.Template.Spec.Containers[0].Args
 		exists := false
 		for _, arg := range argList {
 			if arg == "--alertmanagers.url=http://alertmanager:9093" {
@@ -115,7 +121,15 @@ var _ = Describe("Observability:", func() {
 
 	It("[P2][Sev2][Observability][Stable] Should have custom alert generated (alert/g0)", func() {
 		By("Creating custom alert rules")
-		_, oldSts := utils.GetStatefulSet(testOptions, true, ThanosRuleName, MCO_NAMESPACE)
+
+		rules, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
+			LabelSelector: THANOS_RULE_LABEL,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(len(rules.Items)).NotTo(Equal(0))
+
+		stsName := (*rules).Items[0].Name
+		oldSts, _ := utils.GetStatefulSet(testOptions, true, stsName, MCO_NAMESPACE)
 
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/alerts/custom_rules_valid"})
 		Expect(err).NotTo(HaveOccurred())
@@ -126,15 +140,15 @@ var _ = Describe("Observability:", func() {
 		// ensure the thanos rule pods are restarted successfully before processing
 		Eventually(func() error {
 			if !ThanosRuleRestarting {
-				_, newSts := utils.GetStatefulSet(testOptions, true, ThanosRuleName, MCO_NAMESPACE)
+				newSts, _ := utils.GetStatefulSet(testOptions, true, stsName, MCO_NAMESPACE)
 				if oldSts.GetResourceVersion() == newSts.GetResourceVersion() {
-					return fmt.Errorf("The %s is not being restarted in 10 minutes", ThanosRuleName)
+					return fmt.Errorf("The %s is not being restarted in 10 minutes", stsName)
 				} else {
 					ThanosRuleRestarting = true
 				}
 			}
 
-			err = utils.CheckStatefulSetPodReady(testOptions, MCO_CR_NAME+"-thanos-rule")
+			err = utils.CheckStatefulSetPodReady(testOptions, stsName)
 			if err != nil {
 				return err
 			}
@@ -185,8 +199,16 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("[P2][Sev2][Observability][Stable] delete the customized rules (alert/g0)", func() {
-		_, oldSts := utils.GetStatefulSet(testOptions, true, ThanosRuleName, MCO_NAMESPACE)
 
+		rules, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
+			LabelSelector: THANOS_RULE_LABEL,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(len(rules.Items)).NotTo(Equal(0))
+
+		stsName := (*rules).Items[0].Name
+
+		oldSts, _ := utils.GetStatefulSet(testOptions, true, stsName, MCO_NAMESPACE)
 		Eventually(func() error {
 			err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Delete(context.TODO(), configmap[1], metav1.DeleteOptions{})
 			return err
@@ -197,16 +219,15 @@ var _ = Describe("Observability:", func() {
 		// ensure the thanos rule pods are restarted successfully before processing
 		Eventually(func() error {
 			if !ThanosRuleRestarting {
-				_, newSts := utils.GetStatefulSet(testOptions, true, ThanosRuleName, MCO_NAMESPACE)
-
+				newSts, _ := utils.GetStatefulSet(testOptions, true, stsName, MCO_NAMESPACE)
 				if oldSts.GetResourceVersion() == newSts.GetResourceVersion() {
-					return fmt.Errorf("The %s is not being restarted in 10 minutes", ThanosRuleName)
+					return fmt.Errorf("The %s is not being restarted in 10 minutes", stsName)
 				} else {
 					ThanosRuleRestarting = true
 				}
 			}
 
-			err = utils.CheckStatefulSetPodReady(testOptions, MCO_CR_NAME+"-thanos-rule")
+			err = utils.CheckStatefulSetPodReady(testOptions, stsName)
 			if err != nil {
 				return err
 			}
