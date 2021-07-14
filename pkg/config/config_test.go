@@ -648,7 +648,7 @@ func TestGetOperandName(t *testing.T) {
 			result: func() bool {
 				return GetOperandName(Alertmanager) == GetOperandNamePrefix()+Alertmanager &&
 					GetOperandName(Grafana) == GetOperandNamePrefix()+Grafana &&
-					GetOperandName(Observatorium) == GetDefaultCRName()
+					GetOperandName(Observatorium) == GetOperandNamePrefix()+Observatorium
 			},
 		},
 		{
@@ -699,7 +699,7 @@ func TestGetOperandName(t *testing.T) {
 			result: func() bool {
 				return GetOperandName(Alertmanager) == Alertmanager &&
 					GetOperandName(Grafana) == Grafana &&
-					GetOperandName(Observatorium) == GetOperandNamePrefix()+"observatorium"
+					GetOperandName(Observatorium) == GetOperandNamePrefix()+Observatorium
 			},
 		},
 		{
@@ -750,7 +750,7 @@ func TestGetOperandName(t *testing.T) {
 			result: func() bool {
 				return GetOperandName(Alertmanager) == GetOperandNamePrefix()+Alertmanager &&
 					GetOperandName(Grafana) == GetOperandNamePrefix()+Grafana &&
-					GetOperandName(Observatorium) == GetDefaultCRName()
+					GetOperandName(Observatorium) == GetOperandNamePrefix()+Observatorium
 			},
 		},
 	}

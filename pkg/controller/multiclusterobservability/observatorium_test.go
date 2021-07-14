@@ -122,7 +122,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	cl.Get(
 		context.TODO(),
 		types.NamespacedName{
-			Name:      mcoconfig.GetDefaultCRName(),
+			Name:      mcoconfig.GetOperandName(mcoconfig.Observatorium),
 			Namespace: namespace,
 		},
 		observatoriumCRFound,

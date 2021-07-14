@@ -45,11 +45,11 @@ func createObservatoriumAPIService(name, namespace string) *corev1.Service {
 			Kind:       "Service",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      mcoconfig.GetOperandName(mcoconfig.Observatorium) + "-observatorium-observatorium-api",
+			Name:      mcoconfig.GetOperandName(mcoconfig.Observatorium) + "-api",
 			Namespace: namespace,
 			Labels: map[string]string{
 				"app.kubernetes.io/component": "api",
-				"app.kubernetes.io/instance":  mcoconfig.GetOperandName(mcoconfig.Observatorium) + "-observatorium",
+				"app.kubernetes.io/instance":  mcoconfig.GetOperandName(mcoconfig.Observatorium),
 			},
 		},
 		Spec: corev1.ServiceSpec{},
