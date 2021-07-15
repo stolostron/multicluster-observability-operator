@@ -124,3 +124,4 @@ $ kubectl -n open-cluster-management-observability delete -f observability-e2e-t
 ```
 $ kubectl delete ns open-cluster-management-observability
 ```
+
