@@ -363,6 +363,10 @@ func CheckMCOComponents(opt TestOptions) error {
 			return err
 		}
 
+		if len((*deployList).Items) == 0 {
+			return fmt.Errorf("should have deployment created with label %s", deploymentLabel)
+		}
+
 		for _, deployInfo := range (*deployList).Items {
 			if deployInfo.Status.ReadyReplicas != *deployInfo.Spec.Replicas {
 				err = fmt.Errorf("deployment %s should have %d but got %d ready replicas",
@@ -391,6 +395,10 @@ func CheckMCOComponents(opt TestOptions) error {
 		if err != nil {
 			klog.V(1).Infof("Error while listing deployment with label %s due to: %s", statefulsetLabel, err.Error())
 			return err
+		}
+
+		if len((*statefulsetList).Items) == 0 {
+			return fmt.Errorf("should have statefulset created with label %s", statefulsetLabel)
 		}
 
 		for _, statefulsetInfo := range (*statefulsetList).Items {
@@ -743,6 +751,15 @@ func GetMCOAddonSpecResources(opt TestOptions) (map[string]interface{}, error) {
 	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 	if getErr != nil {
 		return nil, getErr
+	}
+
+	spec := mco.Object["spec"].(map[string]interface{})
+	if _, addonSpec := spec["observabilityAddonSpec"]; !addonSpec {
+		return nil, fmt.Errorf("the MCO CR did not have observabilityAddonSpec spec configed")
+	}
+
+	if _, resSpec := mco.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})["resources"]; !resSpec {
+		return nil, fmt.Errorf("the MCO CR did not have observabilityAddonSpec.resources spec configed")
 	}
 
 	res := mco.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})["resources"].(map[string]interface{})
