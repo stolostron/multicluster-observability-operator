@@ -397,6 +397,10 @@ func updateManagedClusterList(obj client.Object) {
 	if !ok && vendor != "OpenShift" {
 		return
 	}
+	openshiftVersion, ok := obj.GetLabels()["openshiftVersion"]
+	if ok && openshiftVersion == "3" {
+		return
+	}
 	obs, ok := obj.GetLabels()["observability"]
 	if ok && obs == "disabled" {
 		return
