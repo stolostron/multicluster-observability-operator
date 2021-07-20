@@ -153,7 +153,7 @@ unit-tests:
 
 .PHONY: e2e-tests
 
-e2e-tests: test-e2e-setup
+e2e-tests:
 	@echo "Running E2E Tests.."
 	@./cicd-scripts/run-e2e-tests.sh
 
