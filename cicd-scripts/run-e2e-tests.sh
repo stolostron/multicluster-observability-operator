@@ -5,19 +5,14 @@ set -e
 
 ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
 
-if [[ -z "${KUBECONFIG}" ]]; then
-  echo "Error: environment variable KUBECONFIG must be specified!"
-  exit 1
-fi
+export KUBECONFIG="${SHARED_DIR}/hub-1.kc" 
 
-app_domain=$(kubectl -n openshift-ingress-operator get ingresscontrollers default -ojsonpath='{.status.domain}')
+app_domain=$(oc -n openshift-ingress-operator get ingresscontrollers default -ojsonpath='{.status.domain}')
 base_domain="${app_domain#apps.}"
 
-kubeconfig_hub_path="${HOME}/.kube/kubeconfig-hub"
-kubectl config view --raw --minify > ${kubeconfig_hub_path}
-
-kubeMasterURL=$(kubectl config view -o jsonpath="{.clusters[0].cluster.server}")
-kubecontext=$(kubectl config current-context)
+kubeconfig_hub_path="${SHARED_DIR}/hub-1.kc"
+kubeMasterURL=$(oc config view -o jsonpath="{.clusters[0].cluster.server}")
+kubecontext=$(oc config current-context)
 
 OPTIONSFILE=${ROOTDIR}/tests/resources/options.yaml
 # remove the options file if it exists
