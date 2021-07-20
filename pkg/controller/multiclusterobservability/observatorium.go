@@ -156,7 +156,7 @@ func GenerateAPIGatewayRoute(
 			},
 			To: routev1.RouteTargetReference{
 				Kind: "Service",
-				Name: mcoconfig.GetOperandNamePrefix() + "-observatorium-observatorium-api",
+				Name: mcoconfig.GetOperandName(mcoconfig.Observatorium) + "-observatorium-api",
 			},
 			TLS: &routev1.TLSConfig{
 				Termination:                   routev1.TLSTerminationPassthrough,

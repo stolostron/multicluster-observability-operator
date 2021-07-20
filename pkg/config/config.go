@@ -468,7 +468,7 @@ func GetTenantUID() string {
 
 // GetObsAPISvc returns observatorium api service
 func GetObsAPISvc(instanceName string) string {
-	return instanceName + "-observatorium" + "-observatorium-api." + defaultNamespace + ".svc.cluster.local"
+	return instanceName + "-observatorium-api." + defaultNamespace + ".svc.cluster.local"
 }
 
 // GenerateMonitoringCR is used to generate monitoring CR with the default values
