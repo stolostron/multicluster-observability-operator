@@ -3,6 +3,8 @@
 
 set -e
 
+./cicd-scripts/customize-mco.sh
+
 ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
 
 export KUBECONFIG="${SHARED_DIR}/hub-1.kc" 
