@@ -445,16 +445,18 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	name := config.GetDefaultCRName()
 	pmPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == name && e.Object.GetNamespace() == watchNamespace {
+			if (e.Object.GetName() == config.GetDefaultCRName() ||
+				e.Object.GetName() == config.Placement311CRName) &&
+				e.Object.GetNamespace() == watchNamespace {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == name &&
+			if (e.ObjectNew.GetName() == config.GetDefaultCRName() ||
+				e.ObjectNew.GetName() == config.Placement311CRName) &&
 				e.ObjectNew.GetNamespace() == watchNamespace &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				return true
@@ -462,7 +464,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetName() == name && e.Object.GetNamespace() == watchNamespace {
+			if (e.Object.GetName() == config.GetDefaultCRName() ||
+				e.Object.GetName() == config.Placement311CRName) &&
+				e.Object.GetNamespace() == watchNamespace {
 				return e.DeleteStateUnknown
 			}
 			return false
