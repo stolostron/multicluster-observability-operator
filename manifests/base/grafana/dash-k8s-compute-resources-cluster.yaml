@@ -2047,7 +2047,7 @@ data:
             "name": "datasource",
             "options": [],
             "query": "prometheus",
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "type": "datasource"
@@ -2073,7 +2073,7 @@ data:
               "query": "label_values(node_cpu_seconds_total, cluster)",
               "refId": "Observatorium-cluster-Variable-Query"
             },
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "sort": 2,
