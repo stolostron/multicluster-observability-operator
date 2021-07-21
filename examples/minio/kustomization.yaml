@@ -1,0 +1,5 @@
+resources:
+- minio-deployment.yaml
+- minio-pvc.yaml
+- minio-secret.yaml
+- minio-service.yaml
