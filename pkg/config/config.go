@@ -36,6 +36,7 @@ const (
 	defaultNamespace                  = "open-cluster-management-observability"
 	defaultTenantName                 = "default"
 	defaultCRName                     = "observability"
+	Placement311CRName                = "observability-311"
 	operandNamePrefix                 = "observability-"
 	OpenshiftIngressOperatorNamespace = "openshift-ingress-operator"
 	OpenshiftIngressNamespace         = "openshift-ingress"
