@@ -35,6 +35,7 @@ const (
 	namespace2   = "test-ns-2"
 	clusterName  = "cluster1"
 	clusterName2 = "cluster2"
+	clusterName3 = "cluster3"
 	mcoName      = "test-mco"
 )
 
@@ -114,6 +115,20 @@ func TestObservabilityAddonController(t *testing.T) {
 			},
 		},
 	}
+	p2 := &placementv1.PlacementRule{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      config.Placement311CRName,
+			Namespace: mcoNamespace,
+		},
+		Status: placementv1.PlacementRuleStatus{
+			Decisions: []placementv1.PlacementDecision{
+				{
+					ClusterName:      clusterName3,
+					ClusterNamespace: namespace,
+				},
+			},
+		},
+	}
 	mco := newTestMCO()
 	pull := newTestPullSecret()
 	deprecatedRole := &rbacv1.Role{
@@ -125,7 +140,7 @@ func TestObservabilityAddonController(t *testing.T) {
 			},
 		},
 	}
-	objs := []runtime.Object{p, mco, pull, newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
+	objs := []runtime.Object{p, p2, mco, pull, newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
 		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newManagedClusterAddon(), deprecatedRole}
 	c := fake.NewFakeClient(objs...)
 	r := &PlacementRuleReconciler{Client: c, Scheme: s, CRDMap: map[string]bool{config.PlacementRuleCrdName: true}}

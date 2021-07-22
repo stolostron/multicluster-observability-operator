@@ -258,6 +258,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+		// create the placementrule
+		err = create311PlacementRule(r.Client, r.Scheme, instance)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	svmCrdExists, _ := r.CRDMap[config.StorageVersionMigrationCrdName]

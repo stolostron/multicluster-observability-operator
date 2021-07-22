@@ -117,6 +117,22 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			}
 		}
 	}
+	placement311 := &placementv1.PlacementRule{}
+	if !deleteAll {
+		// Fetch the PlacementRule instance
+		err = r.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      config.Placement311CRName,
+			Namespace: config.GetDefaultNamespace(),
+		}, placement311)
+		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				deleteAll = true
+			} else {
+				// Error reading the object - requeue the request.
+				return ctrl.Result{}, err
+			}
+		}
+	}
 
 	// Do not reconcile objects if this instance of mch is labeled "paused"
 	if config.IsPaused(mco.GetAnnotations()) {
@@ -165,7 +181,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	if !deleteAll {
-		res, err := createAllRelatedRes(r.Client, r.RESTMapper, req, mco, placement, obsAddonList)
+		res, err := createAllRelatedRes(r.Client, r.RESTMapper, req, mco, placement, placement311, obsAddonList)
 		if err != nil {
 			return res, err
 		}
@@ -250,6 +266,7 @@ func createAllRelatedRes(
 	request ctrl.Request,
 	mco *mcov1beta2.MultiClusterObservability,
 	placement *placementv1.PlacementRule,
+	placement311 *placementv1.PlacementRule,
 	obsAddonList *mcov1beta1.ObservabilityAddonList) (ctrl.Result, error) {
 
 	// create the clusterrole if not there
@@ -278,7 +295,7 @@ func createAllRelatedRes(
 		currentClusters = append(currentClusters, ep.Namespace)
 	}
 
-	works, crdWork, dep, hubInfo, err := getGlobalManifestResources(client, mco)
+	works, crdv1Work, crdv1beta1Work, dep, hubInfo, err := getGlobalManifestResources(client, mco)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -292,7 +309,25 @@ func createAllRelatedRes(
 			log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
 			err = createManagedClusterRes(client, restMapper, mco,
 				decision.ClusterName, decision.ClusterNamespace,
-				works, crdWork, dep, hubInfo)
+				works, crdv1Work, dep, hubInfo)
+			if err != nil {
+				failedCreateManagedClusterRes = true
+				log.Error(err, "Failed to create managedcluster resources", "namespace", decision.ClusterNamespace)
+			}
+			if request.Namespace == decision.ClusterNamespace {
+				break
+			}
+		}
+	}
+	for _, decision := range placement311.Status.Decisions {
+		currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
+		// only handle the request namespace if the request resource is not from observability  namespace
+		if request.Namespace == "" || request.Namespace == config.GetDefaultNamespace() ||
+			request.Namespace == decision.ClusterNamespace {
+			log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
+			err = createManagedClusterRes(client, restMapper, mco,
+				decision.ClusterName, decision.ClusterNamespace,
+				works, crdv1beta1Work, dep, hubInfo)
 			if err != nil {
 				failedCreateManagedClusterRes = true
 				log.Error(err, "Failed to create managedcluster resources", "namespace", decision.ClusterNamespace)
@@ -410,16 +445,18 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	name := config.GetDefaultCRName()
 	pmPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == name && e.Object.GetNamespace() == watchNamespace {
+			if (e.Object.GetName() == config.GetDefaultCRName() ||
+				e.Object.GetName() == config.Placement311CRName) &&
+				e.Object.GetNamespace() == watchNamespace {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == name &&
+			if (e.ObjectNew.GetName() == config.GetDefaultCRName() ||
+				e.ObjectNew.GetName() == config.Placement311CRName) &&
 				e.ObjectNew.GetNamespace() == watchNamespace &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				return true
@@ -427,7 +464,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetName() == name && e.Object.GetNamespace() == watchNamespace {
+			if (e.Object.GetName() == config.GetDefaultCRName() ||
+				e.Object.GetName() == config.Placement311CRName) &&
+				e.Object.GetNamespace() == watchNamespace {
 				return e.DeleteStateUnknown
 			}
 			return false
