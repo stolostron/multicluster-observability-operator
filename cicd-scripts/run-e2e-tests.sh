@@ -29,7 +29,7 @@ printf "\n    kubecontext: ${kubecontext}" >> ${OPTIONSFILE}
 printf "\n    baseDomain: ${base_domain}" >> ${OPTIONSFILE}
 printf "\n    grafanaURL: http://grafana.${app_domain}" >> ${OPTIONSFILE}
 printf "\n  clusters:" >> ${OPTIONSFILE}
-printf "\n    - name: cluster1" >> ${OPTIONSFILE}
+printf "\n    - name: local-cluster" >> ${OPTIONSFILE}
 printf "\n      baseDomain: ${base_domain}" >> ${OPTIONSFILE}
 printf "\n      kubeconfig: ${kubeconfig_hub_path}" >> ${OPTIONSFILE}
 printf "\n      kubecontext: ${kubecontext}" >> ${OPTIONSFILE}
