@@ -27,16 +27,11 @@ printf "\n    masterURL: ${kubeMasterURL}" >> ${OPTIONSFILE}
 printf "\n    kubeconfig: ${kubeconfig_hub_path}" >> ${OPTIONSFILE}
 printf "\n    kubecontext: ${kubecontext}" >> ${OPTIONSFILE}
 printf "\n    baseDomain: ${base_domain}" >> ${OPTIONSFILE}
-printf "\n    grafanaURL: http://grafana.${app_domain}" >> ${OPTIONSFILE}
 printf "\n  clusters:" >> ${OPTIONSFILE}
 printf "\n    - name: local-cluster" >> ${OPTIONSFILE}
 printf "\n      baseDomain: ${base_domain}" >> ${OPTIONSFILE}
 printf "\n      kubeconfig: ${kubeconfig_hub_path}" >> ${OPTIONSFILE}
 printf "\n      kubecontext: ${kubecontext}" >> ${OPTIONSFILE}
-
-# TODO(morvencao): remove the environment variable after accessing metrics from grafana url with bearer token is supported
-export THANOS_QUERY_FRONTEND_URL="http://observability-thanos-query-frontend.${app_domain}"
-# export SKIP_INSTALL_STEP=true
 
 go get -u github.com/onsi/ginkgo/ginkgo
 go mod vendor

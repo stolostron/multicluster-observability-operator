@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 
 	"k8s.io/klog"
@@ -18,11 +17,6 @@ import (
 func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []string) (error, bool) {
 	grafanaConsoleURL := GetGrafanaURL(opt)
 	path := "/api/datasources/proxy/1/api/v1/query?"
-	// TODO(morvencao): remove this after accessing metrics from grafana url with bearer token is supported
-	if os.Getenv("IS_CANARY_ENV") != "true" && os.Getenv("THANOS_QUERY_FRONTEND_URL") != "" {
-		grafanaConsoleURL = os.Getenv("THANOS_QUERY_FRONTEND_URL")
-		path = "/api/v1/query?"
-	}
 	queryParams := url.PathEscape(fmt.Sprintf("query=%s", query))
 	klog.V(5).Infof("request url is: %s\n", grafanaConsoleURL+path+queryParams)
 	req, err := http.NewRequest(

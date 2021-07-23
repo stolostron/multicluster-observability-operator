@@ -85,10 +85,8 @@ func installMCO() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(utils.Apply(testOptions.HubCluster.MasterURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 
-	if os.Getenv("IS_CANARY_ENV") != "true" {
-		By("Creating the MCO testing RBAC resources")
-		Expect(utils.CreateMCOTestingRBAC(testOptions)).NotTo(HaveOccurred())
-	}
+	By("Creating the MCO testing RBAC resources")
+	Expect(utils.CreateMCOTestingRBAC(testOptions)).NotTo(HaveOccurred())
 
 	if os.Getenv("SKIP_INTEGRATION_CASES") != "true" {
 		By("Creating MCO instance of v1beta1")

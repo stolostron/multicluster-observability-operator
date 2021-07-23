@@ -30,10 +30,9 @@ func uninstallMCO() {
 		testOptions.KubeConfig,
 		testOptions.HubCluster.KubeContext)
 
-	if os.Getenv("IS_CANARY_ENV") != "true" {
-		By("Deleteing the MCO testing RBAC resources")
-		Expect(utils.DeleteMCOTestingRBAC(testOptions)).NotTo(HaveOccurred())
-	}
+	By("Deleteing the MCO testing RBAC resources")
+	Expect(utils.DeleteMCOTestingRBAC(testOptions)).NotTo(HaveOccurred())
+
 	By("Uninstall MCO instance")
 	err := utils.UninstallMCO(testOptions)
 	Expect(err).ToNot(HaveOccurred())
