@@ -140,7 +140,10 @@ var _ = Describe("Observability:", func() {
 	})
 
 	JustAfterEach(func() {
-		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
+		Eventually(func() error {
+			return utils.IntegrityChecking(testOptions)
+			// alertmanager takes 4 minutes to start, so we need to set a timeout for IntegrityChecking
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	AfterEach(func() {
