@@ -68,9 +68,9 @@ var _ = Describe("Observability:", func() {
 		It("[Stable] Should have resource requirement defined in CR", func() {
 			By("Check addon resource requirement")
 			res, err := utils.GetMCOAddonSpecResources(testOptions)
+			Expect(err).ToNot(HaveOccurred())
 			limits := res["limits"].(map[string]interface{})
 			requests := res["requests"].(map[string]interface{})
-			Expect(err).ToNot(HaveOccurred())
 			Expect(limits["cpu"]).To(Equal("200m"))
 			Expect(limits["memory"]).To(Equal("700Mi"))
 			Expect(requests["cpu"]).To(Equal("200m"))
