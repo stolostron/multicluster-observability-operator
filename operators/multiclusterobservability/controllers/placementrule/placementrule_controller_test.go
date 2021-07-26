@@ -92,7 +92,10 @@ func TestObservabilityAddonController(t *testing.T) {
 		},
 	}
 
-	managedClusterList = []string{namespace, namespace2}
+	managedClusterList = map[string]string{
+		namespace:  "4",
+		namespace2: "4",
+	}
 	_, err := r.Reconcile(context.TODO(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
@@ -112,7 +115,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("Deprecated role not removed")
 	}
 
-	managedClusterList = []string{namespace}
+	managedClusterList = map[string]string{namespace: "4"}
 	_, err = r.Reconcile(context.TODO(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)

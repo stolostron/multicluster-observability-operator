@@ -191,6 +191,22 @@ func createResourceRole(c client.Client) error {
 					"addon.open-cluster-management.io",
 				},
 			},
+			{
+				Resources: []string{
+					"leases",
+				},
+				Verbs: []string{
+					"watch",
+					"list",
+					"get",
+					"update",
+					"create",
+					"delete",
+				},
+				APIGroups: []string{
+					"coordination.k8s.io",
+				},
+			},
 		},
 	}
 

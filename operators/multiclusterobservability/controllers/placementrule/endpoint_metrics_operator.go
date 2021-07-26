@@ -8,6 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
@@ -28,31 +29,37 @@ var (
 )
 
 func loadTemplates(mco *mcov1beta2.MultiClusterObservability) (
-	[]runtime.RawExtension, *apiextensionsv1.CustomResourceDefinition, *appsv1.Deployment, error) {
+	[]runtime.RawExtension, *apiextensionsv1.CustomResourceDefinition,
+	*apiextensionsv1beta1.CustomResourceDefinition, *appsv1.Deployment, error) {
 	templateRenderer := templates.NewTemplateRenderer(templatePath)
 	resourceList := []*resource.Resource{}
 	err := templateRenderer.AddTemplateFromPath(templatePath, &resourceList)
 	if err != nil {
 		log.Error(err, "Failed to load templates")
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
-	crd := &apiextensionsv1.CustomResourceDefinition{}
+	crdv1 := &apiextensionsv1.CustomResourceDefinition{}
+	crdv1beta1 := &apiextensionsv1beta1.CustomResourceDefinition{}
 	dep := &appsv1.Deployment{}
 	rawExtensionList := []runtime.RawExtension{}
 	for _, r := range resourceList {
 		obj, err := updateRes(r, mco)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		if r.GetKind() == "Deployment" {
 			dep = obj.(*appsv1.Deployment)
 		} else if r.GetKind() == "CustomResourceDefinition" {
-			crd = obj.(*apiextensionsv1.CustomResourceDefinition)
+			if r.GetGvk().Version == "v1" {
+				crdv1 = obj.(*apiextensionsv1.CustomResourceDefinition)
+			} else {
+				crdv1beta1 = obj.(*apiextensionsv1beta1.CustomResourceDefinition)
+			}
 		} else {
 			rawExtensionList = append(rawExtensionList, runtime.RawExtension{Object: obj})
 		}
 	}
-	return rawExtensionList, crd, dep, nil
+	return rawExtensionList, crdv1, crdv1beta1, dep, nil
 }
 
 func updateRes(r *resource.Resource,
@@ -63,6 +70,9 @@ func updateRes(r *resource.Resource,
 		r.SetNamespace(spokeNameSpace)
 	}
 	obj := util.GetK8sObj(kind)
+	if kind == "CustomResourceDefinition" && r.GetGvk().Version == "v1beta1" {
+		obj = &apiextensionsv1beta1.CustomResourceDefinition{}
+	}
 	obj.GetObjectKind()
 	err := runtime.DefaultUnstructuredConverter.FromUnstructured(r.Map(), obj)
 	if err != nil {

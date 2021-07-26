@@ -9,6 +9,7 @@ import (
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/open-cluster-management/addon-framework/pkg/lease"
 )
@@ -18,7 +19,8 @@ const (
 )
 
 var (
-	namespace = os.Getenv("WATCH_NAMESPACE")
+	namespace   = os.Getenv("WATCH_NAMESPACE")
+	clusterName = os.Getenv("HUB_NAMESPACE")
 )
 
 func StartLease() {
@@ -34,7 +36,16 @@ func StartLease() {
 		panic(err.Error())
 	}
 
+	// create the config from the path
+	hubConfig, err := clientcmd.BuildConfigFromFlags("", hubKubeConfigPath)
+	if err != nil {
+		log.Error(err, "Failed to create the hub config")
+		panic(err.Error())
+	}
+
 	actual := lease.CheckAddonPodFunc(c.CoreV1(), namespace, "name=endpoint-observability-operator")
-	leaseController := lease.NewLeaseUpdater(c, leaseName, namespace, actual)
+	leaseController := lease.NewLeaseUpdater(c, leaseName, namespace, actual).
+		WithHubLeaseConfig(hubConfig, clusterName)
+
 	go leaseController.Start(context.TODO())
 }

@@ -176,7 +176,9 @@ func main() {
 		workv1.SchemeGroupVersion.WithKind("ManifestWork"): []filteredcache.Selector{
 			{LabelSelector: "owner==multicluster-observability-operator"},
 		},
-		clusterv1.SchemeGroupVersion.WithKind("ManagedCluster"): []filteredcache.Selector{},
+		clusterv1.SchemeGroupVersion.WithKind("ManagedCluster"): []filteredcache.Selector{
+			{LabelSelector: "vendor==OpenShift,observability!=disabled"},
+		},
 		operatorv1.SchemeGroupVersion.WithKind("IngressController"): []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s,metadata.name==%s", config.OpenshiftIngressOperatorNamespace, config.OpenshiftIngressOperatorCRName)},
 		},

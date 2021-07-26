@@ -38,7 +38,6 @@ require (
 	k8s.io/client-go v13.0.0+incompatible
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.21.0
-	k8s.io/utils v0.0.0-20210527160623-6fdb442a123b
 	sigs.k8s.io/controller-runtime v0.9.2
 	sigs.k8s.io/kube-storage-version-migrator v0.0.3
 	sigs.k8s.io/kustomize/api v0.8.5
@@ -47,10 +46,9 @@ require (
 )
 
 replace (
-	// need to remove it when removing placementrule dep
-	github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.5
 	github.com/go-openapi/analysis => github.com/go-openapi/analysis v0.19.5
 	github.com/go-openapi/loads => github.com/go-openapi/loads v0.19.5
+	github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.5
 	github.com/metal3-io/baremetal-operator => github.com/openshift/baremetal-operator v0.0.0-20200715132148-0f91f62a41fe
 	github.com/metal3-io/cluster-api-provider-baremetal => github.com/openshift/cluster-api-provider-baremetal v0.0.0-20190821174549-a2a477909c1d
 	github.com/open-cluster-management/api => github.com/open-cluster-management/api v0.0.0-20210409125704-06f2aec1a73f

@@ -1,6 +1,8 @@
 # Copyright (c) 2021 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project
 
+-include /opt/build-harness/Makefile.prow
+
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: 
 	cd operators/multiclusterobservability && make deploy
@@ -33,21 +35,12 @@ e2e-tests:
 
 test-e2e-setup:
 	@echo "Seting up E2E Tests environment..."
-<<<<<<< HEAD
 ifdef COMPONENT_IMAGE_NAMES
-=======
-ifdef COMPONENT_IMAGE_PIPELINE
-	# override the image for the e2e test
-	@./cicd-scripts/setup-e2e-tests.sh -a install -p $(COMPONENT_IMAGE_PIPELINE)
-else
-  ifdef COMPONENT_IMAGE_NAMES
->>>>>>> b06056c (Test)
 	# override the image for the e2e test
 	@./cicd-scripts/setup-e2e-tests.sh -a install -i $(COMPONENT_IMAGE_NAMES)
-  else
+else
 	# fall back to the latest snapshot image from quay.io for the e2e test
 	@./cicd-scripts/setup-e2e-tests.sh -a install
-  endif
 endif
 
 test-e2e-clean:

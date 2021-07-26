@@ -65,10 +65,8 @@ get_image() {
 # function get_components is to get the component used to test
 # get_components is to get the component name based on the changes in your PR
 get_components() {
-    changed_files=`cd $ROOTDIR; git --no-pager diff --name-only main...HEAD > /dev/null 2>&1`
-    echo $changed_files
+    changed_files=`cd $ROOTDIR; git diff --name-only HEAD~1`
     for file in ${changed_files}; do
-        echo $file
         if [[ $file =~ ^proxy ]]; then
             COMPONENTS+=" rbac-query-proxy"
             continue

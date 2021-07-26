@@ -159,7 +159,7 @@ func TestManifestWork(t *testing.T) {
 	}
 	templatePath = path.Join(wd, "../../manifests/endpoint-observability")
 
-	works, crdWork, dep, hubInfo, err := getGlobalManifestResources(c, newTestMCO())
+	works, crdWork, _, dep, hubInfo, err := getGlobalManifestResources(c, newTestMCO())
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resourc: (%v)", err)
 	}
@@ -182,7 +182,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create pull secret: (%v)", err)
 	}
-	works, crdWork, dep, hubInfo, err = getGlobalManifestResources(c, newTestMCO())
+	works, crdWork, _, dep, hubInfo, err = getGlobalManifestResources(c, newTestMCO())
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resourc: (%v)", err)
 	}

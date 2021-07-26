@@ -52,7 +52,7 @@ var (
 	isCRoleCreated                  = false
 	isClusterManagementAddonCreated = false
 	isplacementControllerRunnning   = false
-	managedClusterList              = []string{}
+	managedClusterList              = map[string]string{}
 )
 
 // PlacementRuleReconciler reconciles a PlacementRule object
@@ -262,21 +262,27 @@ func createAllRelatedRes(
 		currentClusters = append(currentClusters, ep.Namespace)
 	}
 
-	works, crdWork, dep, hubInfo, err := getGlobalManifestResources(c, mco)
+	works, crdv1Work, crdv1beta1Work, dep, hubInfo, err := getGlobalManifestResources(c, mco)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	failedCreateManagedClusterRes := false
-	for _, managedCluster := range managedClusterList {
+	for managedCluster, openshiftVersion := range managedClusterList {
 		currentClusters = util.Remove(currentClusters, managedCluster)
 		// only handle the request namespace if the request resource is not from observability  namespace
 		if request.Namespace == "" || request.Namespace == config.GetDefaultNamespace() ||
 			request.Namespace == managedCluster {
 			log.Info("Monitoring operator should be installed in cluster", "cluster_name", managedCluster)
-			err = createManagedClusterRes(c, restMapper, mco,
-				managedCluster, managedCluster,
-				works, crdWork, dep, hubInfo)
+			if openshiftVersion == "3" {
+				err = createManagedClusterRes(c, restMapper, mco,
+					managedCluster, managedCluster,
+					works, crdv1beta1Work, dep, hubInfo)
+			} else {
+				err = createManagedClusterRes(c, restMapper, mco,
+					managedCluster, managedCluster,
+					works, crdv1Work, dep, hubInfo)
+			}
 			if err != nil {
 				failedCreateManagedClusterRes = true
 				log.Error(err, "Failed to create managedcluster resources", "namespace", managedCluster)
@@ -393,19 +399,7 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 }
 
 func updateManagedClusterList(obj client.Object) {
-	vendor, ok := obj.GetLabels()["vendor"]
-	if !ok && vendor != "OpenShift" {
-		return
-	}
-	openshiftVersion, ok := obj.GetLabels()["openshiftVersion"]
-	if ok && openshiftVersion == "3" {
-		return
-	}
-	obs, ok := obj.GetLabels()["observability"]
-	if ok && obs == "disabled" {
-		return
-	}
-	managedClusterList = util.RemoveDuplicates(append(managedClusterList, obj.GetName()))
+	managedClusterList[obj.GetName()] = obj.GetLabels()["openshiftVersion"]
 }
 
 // SetupWithManager sets up the controller with the Manager.
