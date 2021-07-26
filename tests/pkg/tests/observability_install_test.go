@@ -72,16 +72,21 @@ func installMCO() {
 	if os.Getenv("IS_CANARY_ENV") == "true" {
 		Expect(utils.CreatePullSecret(testOptions, mcoNs)).NotTo(HaveOccurred())
 		Expect(utils.CreateObjSecret(testOptions)).NotTo(HaveOccurred())
+	} else {
+		By("Creating Minio as object storage")
+		//set resource quota and limit range for canary environment to avoid destruct the node
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/minio"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(utils.Apply(testOptions.HubCluster.MasterURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 	}
+
 	//set resource quota and limit range for canary environment to avoid destruct the node
 	yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/policy"})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(utils.Apply(testOptions.HubCluster.MasterURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 
-	if os.Getenv("IS_CANARY_ENV") != "true" {
-		By("Creating the MCO testing RBAC resources")
-		Expect(utils.CreateMCOTestingRBAC(testOptions)).NotTo(HaveOccurred())
-	}
+	By("Creating the MCO testing RBAC resources")
+	Expect(utils.CreateMCOTestingRBAC(testOptions)).NotTo(HaveOccurred())
 
 	if os.Getenv("SKIP_INTEGRATION_CASES") != "true" {
 		By("Creating MCO instance of v1beta1")

@@ -153,16 +153,12 @@ unit-tests:
 
 .PHONY: e2e-tests
 
-e2e-tests: test-e2e-setup
+e2e-tests:
 	@echo "Running E2E Tests.."
 	@./cicd-scripts/run-e2e-tests.sh
 
 test-e2e-setup:
 	@echo "Seting up E2E Tests environment..."
-ifdef COMPONENT_IMAGE_PIPELINE
-	# override the image for the e2e test
-	@./cicd-scripts/setup-e2e-tests.sh -a install -p $(COMPONENT_IMAGE_PIPELINE)
-endif
 ifdef COMPONENT_IMAGE_NAMES
 	# override the image for the e2e test
 	@./cicd-scripts/setup-e2e-tests.sh -a install -i $(COMPONENT_IMAGE_NAMES)

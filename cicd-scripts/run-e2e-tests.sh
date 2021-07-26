@@ -3,21 +3,18 @@
 
 set -e
 
+./cicd-scripts/customize-mco.sh
+
 ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
 
-if [[ -z "${KUBECONFIG}" ]]; then
-  echo "Error: environment variable KUBECONFIG must be specified!"
-  exit 1
-fi
+export KUBECONFIG="${SHARED_DIR}/hub-1.kc" 
 
-app_domain=$(kubectl -n openshift-ingress-operator get ingresscontrollers default -ojsonpath='{.status.domain}')
+app_domain=$(oc -n openshift-ingress-operator get ingresscontrollers default -ojsonpath='{.status.domain}')
 base_domain="${app_domain#apps.}"
 
-kubeconfig_hub_path="${HOME}/.kube/kubeconfig-hub"
-kubectl config view --raw --minify > ${kubeconfig_hub_path}
-
-kubeMasterURL=$(kubectl config view -o jsonpath="{.clusters[0].cluster.server}")
-kubecontext=$(kubectl config current-context)
+kubeconfig_hub_path="${SHARED_DIR}/hub-1.kc"
+kubeMasterURL=$(oc config view -o jsonpath="{.clusters[0].cluster.server}")
+kubecontext=$(oc config current-context)
 
 OPTIONSFILE=${ROOTDIR}/tests/resources/options.yaml
 # remove the options file if it exists
@@ -30,16 +27,11 @@ printf "\n    masterURL: ${kubeMasterURL}" >> ${OPTIONSFILE}
 printf "\n    kubeconfig: ${kubeconfig_hub_path}" >> ${OPTIONSFILE}
 printf "\n    kubecontext: ${kubecontext}" >> ${OPTIONSFILE}
 printf "\n    baseDomain: ${base_domain}" >> ${OPTIONSFILE}
-printf "\n    grafanaURL: http://grafana.${app_domain}" >> ${OPTIONSFILE}
 printf "\n  clusters:" >> ${OPTIONSFILE}
-printf "\n    - name: cluster1" >> ${OPTIONSFILE}
+printf "\n    - name: local-cluster" >> ${OPTIONSFILE}
 printf "\n      baseDomain: ${base_domain}" >> ${OPTIONSFILE}
 printf "\n      kubeconfig: ${kubeconfig_hub_path}" >> ${OPTIONSFILE}
 printf "\n      kubecontext: ${kubecontext}" >> ${OPTIONSFILE}
-
-# TODO(morvencao): remove the environment variable after accessing metrics from grafana url with bearer token is supported
-export THANOS_QUERY_FRONTEND_URL="http://observability-thanos-query-frontend.${app_domain}"
-# export SKIP_INSTALL_STEP=true
 
 go get -u github.com/onsi/ginkgo/ginkgo
 go mod vendor

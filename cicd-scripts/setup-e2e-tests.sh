@@ -410,7 +410,6 @@ execute() {
     if [[ "${ACTION}" == "install" ]]; then
         deploy_hub_spoke_core
         approve_csr_joinrequest
-        get_images "${PIPELINE}"
         deploy_mco_operator "${IMAGES}"
         echo "OCM and MCO are installed successfuly..."
     elif [[ "${ACTION}" == "uninstall" ]]; then
@@ -420,49 +419,6 @@ execute() {
         echo "OCM and MCO are uninstalled successfuly..."
     else
         echo "This ACTION ${ACTION} isn't recognized/supported" && exit 1
-    fi
-}
-
-# function get_images is to get the images used to setup the environment
-# get_images is to get the images based on the changes in your PR
-get_images() {
-    if [[ ! -z "${1}" ]]; then
-        IMAGES=""
-        changed_files=`cd $ROOTDIR; git --no-pager diff --name-only main...HEAD`
-        for file in ${changed_files}; do
-            echo $file
-            if [[ $file =~ ^proxy ]]; then
-                IMAGES+=" ${1}:rbac-query-proxy"
-                continue
-            fi
-            if [[ $file =~ ^operators/multiclusterobservability ]]; then
-                IMAGES+=" ${1}:multicluster-observability-operator"
-                continue
-            fi
-            if [[ $file =~ ^operators/endpointmetrics ]]; then
-                IMAGES+=" ${1}:endpoint-monitoring-operator"
-                continue
-            fi
-            if [[ $file =~ ^operators/endpointmetrics ]]; then
-                IMAGES+=" ${1}:multicluster-observability-operator ${1}:endpoint-monitoring-operator"
-                continue
-            fi
-            if [[ $file =~ ^loaders/dashboards ]]; then
-                IMAGES+=" ${1}:grafana-dashboard-loader"
-                continue
-            fi
-            if [[ $file =~ ^collectors/metrics ]]; then
-                IMAGES+=" ${1}:metrics-collector"
-                continue
-            fi
-            if [[ $file =~ ^pkg ]]; then
-                IMAGES="${1}:multicluster-observability-operator ${1}:rbac-query-proxy ${1}:metrics-collector ${1}:endpoint-monitoring-operator ${1}:grafana-dashboard-loader"
-                break
-            fi
-        done
-        # remove duplicates
-        IMAGES=`echo "${IMAGES}" | xargs -n1 | sort -u | xargs`
-        echo "Test images are ${IMAGES}"
     fi
 }
 
