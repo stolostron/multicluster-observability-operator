@@ -151,13 +151,13 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 }
 
 func getGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObservability) (
-	[]workv1.Manifest, *workv1.Manifest, *appsv1.Deployment, *corev1.Secret, error) {
+	[]workv1.Manifest, *workv1.Manifest, *workv1.Manifest, *appsv1.Deployment, *corev1.Secret, error) {
 
 	works := []workv1.Manifest{}
 
 	hubInfo, err := newHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, mco)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 
 	// inject namespace
@@ -166,7 +166,7 @@ func getGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObs
 	//create image pull secret
 	pull, err := getPullSecret(c, config.GetImagePullSecret(mco.Spec))
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	if pull != nil {
 		works = injectIntoWork(works, pull)
@@ -175,38 +175,41 @@ func getGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObs
 	// inject the certificates
 	certs, err := getCerts(c)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	works = injectIntoWork(works, certs)
 
 	// inject the metrics allowlist configmap
 	mList, err := getMetricsListCM(c)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	works = injectIntoWork(works, mList)
 
 	// inject the alertmanager accessor bearer token secret
 	amAccessorTokenSecret, err := getAmAccessorTokenSecret(c)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	works = injectIntoWork(works, amAccessorTokenSecret)
 
 	// inject resouces in templates
-	templates, crd, dep, err := loadTemplates(mco)
+	templates, crdv1, crdv1beta1, dep, err := loadTemplates(mco)
 	if err != nil {
 		log.Error(err, "Failed to load templates")
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
-	crdWork := &workv1.Manifest{RawExtension: runtime.RawExtension{
-		Object: crd,
+	crdv1Work := &workv1.Manifest{RawExtension: runtime.RawExtension{
+		Object: crdv1,
+	}}
+	crdv1beta1Work := &workv1.Manifest{RawExtension: runtime.RawExtension{
+		Object: crdv1beta1,
 	}}
 	for _, raw := range templates {
 		works = append(works, workv1.Manifest{RawExtension: raw})
 	}
 
-	return works, crdWork, dep, hubInfo, nil
+	return works, crdv1Work, crdv1beta1Work, dep, hubInfo, nil
 }
 
 func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
