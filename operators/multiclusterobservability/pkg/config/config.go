@@ -102,7 +102,7 @@ const (
 const (
 	ObservatoriumImgRepo           = "quay.io/observatorium"
 	ObservatoriumAPIImgName        = "observatorium"
-	ObservatoriumAPIImgTag         = "2.3.0-SNAPSHOT-2021-06-30-00-51-08"
+	ObservatoriumAPIImgTag         = "2.3.0-SNAPSHOT-2021-07-26-18-43-26"
 	ObservatoriumOperatorImgName   = "observatorium_operator"
 	ThanosReceiveControllerImgName = "thanos-receive-controller"
 	//ThanosReceiveControllerKey is used to get from mch-image-manifest.xxx configmap
@@ -110,7 +110,7 @@ const (
 	ThanosReceiveControllerImgTag = "master-2021-04-28-ee165b6"
 
 	ThanosImgName = "thanos"
-	ThanosImgTag  = "2.3.0-SNAPSHOT-2021-06-30-00-51-08"
+	ThanosImgTag  = "2.3.0-SNAPSHOT-2021-07-26-18-43-26"
 
 	MemcachedImgRepo = "docker.io"
 	MemcachedImgName = "memcached"
@@ -138,17 +138,13 @@ const (
 	OauthProxyImgTagSuffix = "2.0.11-SNAPSHOT-2021-04-29-18-29-17"
 	OauthProxyKey          = "oauth_proxy"
 
-	EndpointControllerImgTagSuffix = "2.2.0-6a5ea47fc39d51fb4fade6157843f2977442996e"
+	EndpointControllerImgTagSuffix = "2.3.0-SNAPSHOT-2021-07-26-18-43-26"
 	EndpointControllerImgName      = "endpoint-monitoring-operator"
 	EndpointControllerKey          = "endpoint_monitoring_operator"
 
-	MetricsCollectorImgTagSuffix = "2.2.0-ff79e6ec8783756b942a77f08b3ab763dfd2dc15"
+	MetricsCollectorImgTagSuffix = "2.3.0-SNAPSHOT-2021-07-26-18-43-26"
 	MetricsCollectorImgName      = "metrics-collector"
 	MetricsCollectorKey          = "metrics_collector"
-
-	LeaseControllerImageTagSuffix = "2.1.0-a2899de5ce144e2c0441063e9ee8c4addf3ecb4a"
-	LeaseControllerImageName      = "klusterlet-addon-lease-controller"
-	LeaseControllerKey            = "klusterlet_addon_lease_controller"
 
 	RBACQueryProxyKey = "rbac_query_proxy"
 

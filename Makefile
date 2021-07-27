@@ -13,11 +13,12 @@ undeploy:
 
 # Build the docker image
 docker-build:
-	cd operators/multiclusterobservability && make docker-build
+	cd operators/multiclusterobservability && make manager
+	docker build -t ${IMG} . -f operators/multiclusterobservability/Dockerfile	
 
 # Push the docker image
 docker-push:
-	cd operators/multiclusterobservability && make docker-push
+	docker push ${IMG}
 
 .PHONY: unit-tests
 unit-tests:
