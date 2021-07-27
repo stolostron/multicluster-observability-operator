@@ -892,9 +892,7 @@ func TestGetOperandName(t *testing.T) {
 			componentName: Alertmanager,
 			prepare: func() {
 				//clean the operandNames map
-				for k := range operandNames {
-					delete(operandNames, k)
-				}
+				CleanUpOperandNames()
 				mco := &mcov1beta2.MultiClusterObservability{
 					TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 					ObjectMeta: metav1.ObjectMeta{
@@ -936,9 +934,7 @@ func TestGetOperandName(t *testing.T) {
 			componentName: Alertmanager,
 			prepare: func() {
 				//clean the operandNames map
-				for k := range operandNames {
-					delete(operandNames, k)
-				}
+				CleanUpOperandNames()
 				mco := &mcov1beta2.MultiClusterObservability{
 					TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 					ObjectMeta: metav1.ObjectMeta{
@@ -987,9 +983,7 @@ func TestGetOperandName(t *testing.T) {
 			componentName: Alertmanager,
 			prepare: func() {
 				//clean the operandNames map
-				for k := range operandNames {
-					delete(operandNames, k)
-				}
+				CleanUpOperandNames()
 				mco := &mcov1beta2.MultiClusterObservability{
 					TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 					ObjectMeta: metav1.ObjectMeta{
