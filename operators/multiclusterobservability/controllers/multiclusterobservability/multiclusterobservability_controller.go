@@ -283,8 +283,9 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 			return false, err
 		}
 
-		// clean up operand names map
+		// clean up operand names and image manifests map
 		config.CleanUpOperandNames()
+		config.CleanUpImageManifests()
 
 		mco.SetFinalizers(util.Remove(mco.GetFinalizers(), resFinalizer))
 		err := r.Client.Update(context.TODO(), mco)
