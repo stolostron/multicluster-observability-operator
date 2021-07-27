@@ -22,13 +22,13 @@ import (
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	oashared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
 )
 
 const (
 	name            = "observability-addon"
 	testNamespace   = "test-ns"
 	testHubNamspace = "test-hub-ns"
-	hubInfoName     = "hub-info-secret"
 	testBearerToken = "test-bearer-token"
 )
 
@@ -57,12 +57,12 @@ func newPromSvc() *corev1.Service {
 func newHubInfoSecret(data []byte) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      hubConfigName,
+			Name:      operatorconfig.HubInfoSecretName,
 			Namespace: testNamespace,
 		},
 		Data: map[string][]byte{
-			hubInfoKey:     data,
-			clusterNameKey: []byte("test-cluster"),
+			operatorconfig.HubInfoSecretKey: data,
+			operatorconfig.ClusterNameKey:   []byte("test-cluster"),
 		},
 	}
 }

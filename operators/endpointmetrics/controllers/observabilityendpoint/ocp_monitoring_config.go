@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/ghodss/yaml"
+	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
 	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 )
 
@@ -30,7 +31,7 @@ const (
 )
 
 // createHubAmRouterCASecret creates the secret that contains CA of the Hub's Alertmanager Route
-func createHubAmRouterCASecret(ctx context.Context, hubInfo *HubInfo, client client.Client) error {
+func createHubAmRouterCASecret(ctx context.Context, hubInfo *operatorconfig.HubInfo, client client.Client) error {
 	hubAmRouterCA := hubInfo.AlertmanagerRouterCA
 	dataMap := map[string][]byte{hubAmRouterCASecretKey: []byte(hubAmRouterCA)}
 	hubAmRouterCASecret := &corev1.Secret{
@@ -185,7 +186,7 @@ func getAmAccessorToken(ctx context.Context, client client.Client) (string, erro
 
 // createOrUpdateClusterMonitoringConfig creates or updates the configmap cluster-monitoring-config and relevant resources
 // (observability-alertmanager-accessor and hub-alertmanager-router-ca) for the openshift cluster monitoring stack
-func createOrUpdateClusterMonitoringConfig(ctx context.Context, hubInfo *HubInfo, clusterID string, client client.Client) error {
+func createOrUpdateClusterMonitoringConfig(ctx context.Context, hubInfo *operatorconfig.HubInfo, clusterID string, client client.Client) error {
 	// create the hub-alertmanager-router-ca secret if it doesn't exist or update it if needed
 	if err := createHubAmRouterCASecret(ctx, hubInfo, client); err != nil {
 		log.Error(err, "failed to create or update the hub-alertmanager-router-ca secret")

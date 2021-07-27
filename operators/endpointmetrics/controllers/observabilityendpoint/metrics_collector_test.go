@@ -14,6 +14,7 @@ import (
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	oashared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
 )
 
 func getAllowlistCM() *corev1.ConfigMap {
@@ -46,9 +47,9 @@ func init() {
 }
 
 func TestMetricsCollector(t *testing.T) {
-	hubInfo := &HubInfo{
-		ClusterName: "test-cluster",
-		Endpoint:    "http://test-endpoint",
+	hubInfo := &operatorconfig.HubInfo{
+		ClusterName:              "test-cluster",
+		ObservatoriumAPIEndpoint: "http://test-endpoint",
 	}
 	allowlistCM := getAllowlistCM()
 	obsAddon := oashared.ObservabilityAddonSpec{

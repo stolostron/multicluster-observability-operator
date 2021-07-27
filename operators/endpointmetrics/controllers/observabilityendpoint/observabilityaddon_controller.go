@@ -21,6 +21,7 @@ import (
 
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
 )
 
 var (
@@ -28,7 +29,6 @@ var (
 )
 
 const (
-	hubConfigName     = "hub-info-secret"
 	obAddonName       = "observability-addon"
 	mcoCRName         = "observability"
 	ownerLabelKey     = "owner"
@@ -131,17 +131,17 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	hubSecret := &corev1.Secret{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: hubConfigName, Namespace: namespace}, hubSecret)
+	err = r.Client.Get(ctx, types.NamespacedName{Name: operatorconfig.HubInfoSecretName, Namespace: namespace}, hubSecret)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	hubInfo := &HubInfo{}
-	err = yaml.Unmarshal(hubSecret.Data[hubInfoKey], &hubInfo)
+	hubInfo := &operatorconfig.HubInfo{}
+	err = yaml.Unmarshal(hubSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
 	if err != nil {
 		log.Error(err, "Failed to unmarshal hub info")
 		return ctrl.Result{}, err
 	}
-	hubInfo.ClusterName = string(hubSecret.Data[clusterNameKey])
+	hubInfo.ClusterName = string(hubSecret.Data[operatorconfig.ClusterNameKey])
 
 	// create or update the cluster-monitoring-config configmap and relevant resources
 	if err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, clusterID, r.Client); err != nil {
@@ -227,7 +227,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&oav1beta1.ObservabilityAddon{}, builder.WithPredicates(getPred(obAddonName, namespace, true, true, true))).
-		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(hubConfigName, namespace, true, true, false))).
+		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(operatorconfig.HubInfoSecretName, namespace, true, true, false))).
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(mtlsCertName, namespace, true, true, false))).
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(mtlsCaName, namespace, true, true, false))).
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(hubAmAccessorSecretName, namespace, true, true, false))).

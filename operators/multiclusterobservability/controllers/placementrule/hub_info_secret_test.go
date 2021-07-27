@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
 )
 
 const (
@@ -115,13 +116,13 @@ func TestNewSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to initial the hub info secret: (%v)", err)
 	}
-	hub := &HubInfo{}
-	err = yaml.Unmarshal(hubInfo.Data[hubInfoKey], &hub)
+	hub := &operatorconfig.HubInfo{}
+	err = yaml.Unmarshal(hubInfo.Data[operatorconfig.HubInfoSecretKey], &hub)
 	if err != nil {
 		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
 	}
-	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://test-host") || !strings.HasPrefix(hub.AlertmanagerEndpoint, "https://test-host") || hub.AlertmanagerRouterCA != routerCA {
-		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA, clusterName+" "+"https://test-host"+" "+"https://test-host"+" "+routerCA)
+	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://test-host") || hub.AlertmanagerEndpoint != routeHost || hub.AlertmanagerRouterCA != routerCA {
+		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA, clusterName+" "+"https://test-host"+" "+"test-host"+" "+routerCA)
 	}
 }
 
@@ -135,12 +136,12 @@ func TestNewBYOSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to initial the hub info secret: (%v)", err)
 	}
-	hub := &HubInfo{}
-	err = yaml.Unmarshal(hubInfo.Data[hubInfoKey], &hub)
+	hub := &operatorconfig.HubInfo{}
+	err = yaml.Unmarshal(hubInfo.Data[operatorconfig.HubInfoSecretKey], &hub)
 	if err != nil {
 		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
 	}
-	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://test-host") || !strings.HasPrefix(hub.AlertmanagerEndpoint, "https://test-host") || hub.AlertmanagerRouterCA != routerBYOCA {
-		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA, clusterName+" "+"https://test-host"+" "+"https://test-host"+" "+routerBYOCA)
+	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://test-host") || hub.AlertmanagerEndpoint != routeHost || hub.AlertmanagerRouterCA != routerBYOCA {
+		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA, clusterName+" "+"https://test-host"+" "+"test-host"+" "+routerBYOCA)
 	}
 }
