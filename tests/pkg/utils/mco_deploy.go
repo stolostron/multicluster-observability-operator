@@ -101,7 +101,7 @@ func NewOCMMultiClusterHubGVR() schema.GroupVersionResource {
 
 func ModifyMCOAvailabilityConfig(opt TestOptions, availabilityConfig string) error {
 	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
@@ -121,7 +121,7 @@ func ModifyMCOAvailabilityConfig(opt TestOptions, availabilityConfig string) err
 
 func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
 	hubClient := NewKubeClient(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
@@ -174,7 +174,7 @@ func PrintAllMCOPodsStatus(opt TestOptions) {
 
 func PrintMCOObject(opt TestOptions) {
 	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -329,7 +329,7 @@ func CheckOBAComponents(opt TestOptions) error {
 
 func CheckMCOComponents(opt TestOptions) error {
 	client := NewKubeClient(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	deployments := client.AppsV1().Deployments(MCO_NAMESPACE)
@@ -407,7 +407,7 @@ func CheckMCOComponents(opt TestOptions) error {
 
 func CheckStatefulSetPodReady(opt TestOptions, stsName string) error {
 	client := NewKubeClient(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	statefulsets := client.AppsV1().StatefulSets(MCO_NAMESPACE)
@@ -430,7 +430,7 @@ func CheckStatefulSetPodReady(opt TestOptions, stsName string) error {
 
 func CheckDeploymentPodReady(opt TestOptions, deployName string) error {
 	client := NewKubeClient(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	deploys := client.AppsV1().Deployments(MCO_NAMESPACE)
@@ -454,7 +454,7 @@ func CheckDeploymentPodReady(opt TestOptions, deployName string) error {
 // ModifyMCOCR modifies the MCO CR for reconciling. modify multiple parameter to save running time
 func ModifyMCOCR(opt TestOptions) error {
 	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -480,7 +480,7 @@ func ModifyMCOCR(opt TestOptions) error {
 
 func CheckAdvRetentionConfig(opt TestOptions) (bool, error) {
 	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -504,7 +504,7 @@ func CheckAdvRetentionConfig(opt TestOptions) (bool, error) {
 // RevertMCOCRModification revert the previous changes
 func RevertMCOCRModification(opt TestOptions) error {
 	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -526,12 +526,12 @@ func RevertMCOCRModification(opt TestOptions) error {
 
 func CheckMCOAddon(opt TestOptions) error {
 	client := NewKubeClient(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	if len(opt.ManagedClusters) > 0 {
 		client = NewKubeClient(
-			opt.ManagedClusters[0].MasterURL,
+			opt.ManagedClusters[0].ClusterServerURL,
 			opt.ManagedClusters[0].KubeConfig,
 			"")
 	}
@@ -563,12 +563,12 @@ func CheckMCOAddon(opt TestOptions) error {
 
 func CheckMCOAddonResources(opt TestOptions) error {
 	client := NewKubeClient(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	if len(opt.ManagedClusters) > 0 {
 		client = NewKubeClient(
-			opt.ManagedClusters[0].MasterURL,
+			opt.ManagedClusters[0].ClusterServerURL,
 			opt.ManagedClusters[0].KubeConfig,
 			"")
 	}
@@ -605,7 +605,7 @@ func CheckMCOAddonResources(opt TestOptions) error {
 
 func ModifyMCORetentionResolutionRaw(opt TestOptions) error {
 	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -628,7 +628,7 @@ func ModifyMCORetentionResolutionRaw(opt TestOptions) error {
 
 func GetMCOAddonSpecMetrics(opt TestOptions) (bool, error) {
 	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -642,7 +642,7 @@ func GetMCOAddonSpecMetrics(opt TestOptions) (bool, error) {
 
 func ModifyMCOAddonSpecMetrics(opt TestOptions, enable bool) error {
 	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -661,7 +661,7 @@ func ModifyMCOAddonSpecMetrics(opt TestOptions, enable bool) error {
 
 func ModifyMCOAddonSpecInterval(opt TestOptions, interval int64) error {
 	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -680,7 +680,7 @@ func ModifyMCOAddonSpecInterval(opt TestOptions, interval int64) error {
 
 func GetMCOAddonSpecResources(opt TestOptions) (map[string]interface{}, error) {
 	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -703,7 +703,7 @@ func GetMCOAddonSpecResources(opt TestOptions) (map[string]interface{}, error) {
 
 func DeleteMCOInstance(opt TestOptions) error {
 	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	return clientDynamic.Resource(NewMCOGVRV1BETA2()).Delete(context.TODO(), MCO_CR_NAME, metav1.DeleteOptions{})
@@ -711,7 +711,7 @@ func DeleteMCOInstance(opt TestOptions) error {
 
 func CheckMCOConversion(opt TestOptions, v1beta1tov1beta2GoldenPath string) error {
 	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	getMCO, err := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -748,7 +748,7 @@ func CheckMCOConversion(opt TestOptions, v1beta1tov1beta2GoldenPath string) erro
 
 func CreatePullSecret(opt TestOptions, mcoNs string) error {
 	clientKube := NewKubeClient(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
@@ -779,7 +779,7 @@ metadata:
 		MCO_NAMESPACE)
 	klog.V(1).Infof("Create %s namespaces", MCO_NAMESPACE)
 	return Apply(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext,
 		[]byte(ns))
@@ -830,7 +830,7 @@ type: Opaque`,
 		secretKey)
 	klog.V(1).Infof("Create MCO object storage secret")
 	return Apply(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext,
 		[]byte(objSecret))
@@ -844,7 +844,7 @@ func UninstallMCO(opt TestOptions) error {
 	}
 
 	clientKube := NewKubeClient(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 

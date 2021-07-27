@@ -20,17 +20,17 @@ type TestOptions struct {
 
 // Define the shape of clusters that may be added under management
 type Cluster struct {
-	Name        string          `yaml:"name,omitempty"`
-	Namespace   string          `yaml:"namespace,omitempty"`
-	Tags        map[string]bool `yaml:"tags,omitempty"`
-	BaseDomain  string          `yaml:"baseDomain"`
-	User        string          `yaml:"user,omitempty"`
-	Password    string          `yaml:"password,omitempty"`
-	KubeContext string          `yaml:"kubecontext,omitempty"`
-	MasterURL   string          `yaml:"masterURL,omitempty"`
-	GrafanaURL  string          `yaml:"grafanaURL,omitempty"`
-	GrafanaHost string          `yaml:"grafanaHost,omitempty"`
-	KubeConfig  string          `yaml:"kubeconfig,omitempty"`
+	Name             string          `yaml:"name,omitempty"`
+	Namespace        string          `yaml:"namespace,omitempty"`
+	Tags             map[string]bool `yaml:"tags,omitempty"`
+	BaseDomain       string          `yaml:"baseDomain"`
+	User             string          `yaml:"user,omitempty"`
+	Password         string          `yaml:"password,omitempty"`
+	KubeContext      string          `yaml:"kubecontext,omitempty"`
+	ClusterServerURL string          `yaml:"clusterServerURL,omitempty"`
+	GrafanaURL       string          `yaml:"grafanaURL,omitempty"`
+	GrafanaHost      string          `yaml:"grafanaHost,omitempty"`
+	KubeConfig       string          `yaml:"kubeconfig,omitempty"`
 }
 
 // Define the image registry

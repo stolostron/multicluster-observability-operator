@@ -168,7 +168,7 @@ func DeleteMCOTestingRBAC(opt TestOptions) error {
 
 func FetchBearerToken(opt TestOptions) (string, error) {
 	config, err := LoadConfig(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	if err != nil {
@@ -179,7 +179,7 @@ func FetchBearerToken(opt TestOptions) (string, error) {
 		return config.BearerToken, nil
 	}
 
-	clientKube := NewKubeClient(opt.HubCluster.MasterURL, opt.KubeConfig, opt.HubCluster.KubeContext)
+	clientKube := NewKubeClient(opt.HubCluster.ClusterServerURL, opt.KubeConfig, opt.HubCluster.KubeContext)
 	secretList, err := clientKube.CoreV1().Secrets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{FieldSelector: "type=kubernetes.io/service-account-token"})
 	if err != nil {
 		return "", err
@@ -457,8 +457,8 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 			// url string, kubeconfig string, ctx string
 			opt := TestOptions{
 				HubCluster: Cluster{
-					MasterURL:   url,
-					KubeContext: ctx,
+					ClusterServerURL: url,
+					KubeContext:      ctx,
 				},
 				KubeConfig: kubeconfig,
 			}
@@ -544,7 +544,7 @@ func GetClusters(tag string, clusters []Cluster) []*Cluster {
 }
 
 func HaveServerResources(c Cluster, kubeconfig string, expectedAPIGroups []string) error {
-	clientAPIExtension := NewKubeClientAPIExtension(c.MasterURL, kubeconfig, c.KubeContext)
+	clientAPIExtension := NewKubeClientAPIExtension(c.ClusterServerURL, kubeconfig, c.KubeContext)
 	clientDiscovery := clientAPIExtension.Discovery()
 	for _, apiGroup := range expectedAPIGroups {
 		klog.V(1).Infof("Check if %s exists", apiGroup)
@@ -558,7 +558,7 @@ func HaveServerResources(c Cluster, kubeconfig string, expectedAPIGroups []strin
 }
 
 func HaveCRDs(c Cluster, kubeconfig string, expectedCRDs []string) error {
-	clientAPIExtension := NewKubeClientAPIExtension(c.MasterURL, kubeconfig, c.KubeContext)
+	clientAPIExtension := NewKubeClientAPIExtension(c.ClusterServerURL, kubeconfig, c.KubeContext)
 	clientAPIExtensionV1beta1 := clientAPIExtension.ApiextensionsV1beta1()
 	for _, crd := range expectedCRDs {
 		klog.V(1).Infof("Check if %s exists", crd)
@@ -573,7 +573,7 @@ func HaveCRDs(c Cluster, kubeconfig string, expectedCRDs []string) error {
 
 func HaveDeploymentsInNamespace(c Cluster, kubeconfig string, namespace string, expectedDeploymentNames []string) error {
 
-	client := NewKubeClient(c.MasterURL, kubeconfig, c.KubeContext)
+	client := NewKubeClient(c.ClusterServerURL, kubeconfig, c.KubeContext)
 	versionInfo, err := client.Discovery().ServerVersion()
 	if err != nil {
 		return err
@@ -661,7 +661,7 @@ func IntegrityChecking(opt TestOptions) error {
 // GetPullSecret checks the secret from MCH CR and return the secret name
 func GetPullSecret(opt TestOptions) (string, error) {
 	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 

@@ -13,7 +13,7 @@ app_domain=$(oc -n openshift-ingress-operator get ingresscontrollers default -oj
 base_domain="${app_domain#apps.}"
 
 kubeconfig_hub_path="${SHARED_DIR}/hub-1.kc"
-kubeMasterURL=$(oc config view -o jsonpath="{.clusters[0].cluster.server}")
+clusterServerURL=$(oc config view -o jsonpath="{.clusters[0].cluster.server}")
 kubecontext=$(oc config current-context)
 
 OPTIONSFILE=${ROOTDIR}/tests/resources/options.yaml
@@ -23,7 +23,7 @@ rm -f ${OPTIONSFILE}
 printf "options:" >> ${OPTIONSFILE}
 printf "\n  kubeconfig: ${kubeconfig_hub_path}" >> ${OPTIONSFILE}
 printf "\n  hub:" >> ${OPTIONSFILE}
-printf "\n    masterURL: ${kubeMasterURL}" >> ${OPTIONSFILE}
+printf "\n    clusterServerURL: ${clusterServerURL}" >> ${OPTIONSFILE}
 printf "\n    kubeconfig: ${kubeconfig_hub_path}" >> ${OPTIONSFILE}
 printf "\n    kubecontext: ${kubecontext}" >> ${OPTIONSFILE}
 printf "\n    baseDomain: ${base_domain}" >> ${OPTIONSFILE}

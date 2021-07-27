@@ -169,8 +169,8 @@ func getClusterID(ctx context.Context, c client.Client) (string, error) {
 func isSNO(ctx context.Context, c client.Client) (bool, error) {
 	infraConfig := &ocinfrav1.Infrastructure{}
 	if err := c.Get(ctx, types.NamespacedName{Name: "cluster"}, infraConfig); err != nil {
-		log.Info("No OCP infrastructure found, determine SNO by checking master size")
-		return isSingleMaster(ctx, c)
+		log.Info("No OCP infrastructure found, determine SNO by checking node size")
+		return isSingleNode(ctx, c)
 	}
 	if infraConfig.Status.ControlPlaneTopology == ocinfrav1.SingleReplicaTopologyMode {
 		return true, nil
@@ -179,7 +179,7 @@ func isSNO(ctx context.Context, c client.Client) (bool, error) {
 	return false, nil
 }
 
-func isSingleMaster(ctx context.Context, c client.Client) (bool, error) {
+func isSingleNode(ctx context.Context, c client.Client) (bool, error) {
 	nodes := &corev1.NodeList{}
 	opts := &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{"node-role.kubernetes.io/master": ""}),

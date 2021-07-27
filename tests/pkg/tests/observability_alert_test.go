@@ -21,12 +21,12 @@ import (
 var _ = Describe("Observability:", func() {
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
-			testOptions.HubCluster.MasterURL,
+			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
 
 		dynClient = utils.NewKubeClientDynamic(
-			testOptions.HubCluster.MasterURL,
+			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
 	})
@@ -133,7 +133,7 @@ var _ = Describe("Observability:", func() {
 
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/alerts/custom_rules_valid"})
 		Expect(err).NotTo(HaveOccurred())
-		Expect(utils.Apply(testOptions.HubCluster.MasterURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
+		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 
 		ThanosRuleRestarting := false
 		By("Wait for thanos rule pods are restarted and ready")
@@ -174,7 +174,7 @@ var _ = Describe("Observability:", func() {
 		By("Editing the secret, we should be able to add the third partying tools integrations")
 		secret := utils.CreateCustomAlertConfigYaml(testOptions.HubCluster.BaseDomain)
 
-		Expect(utils.Apply(testOptions.HubCluster.MasterURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, secret)).NotTo(HaveOccurred())
+		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, secret)).NotTo(HaveOccurred())
 		klog.V(3).Infof("Successfully modified the secret: alertmanager-config")
 	})
 
@@ -182,7 +182,7 @@ var _ = Describe("Observability:", func() {
 		By("Updating custom alert rules")
 
 		yamlB, _ := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/alerts/custom_rules_invalid"})
-		Expect(utils.Apply(testOptions.HubCluster.MasterURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
+		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 
 		var labelName, labelValue string
 		labels, _ := kustomize.GetLabels(yamlB)

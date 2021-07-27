@@ -10,12 +10,12 @@ import (
 
 func getKubeClient(opt TestOptions, isHub bool) kubernetes.Interface {
 	clientKube := NewKubeClient(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 	if !isHub && len(opt.ManagedClusters) > 0 {
 		clientKube = NewKubeClient(
-			opt.ManagedClusters[0].MasterURL,
+			opt.ManagedClusters[0].ClusterServerURL,
 			opt.ManagedClusters[0].KubeConfig,
 			"")
 		// use the default context as workaround
@@ -25,11 +25,11 @@ func getKubeClient(opt TestOptions, isHub bool) kubernetes.Interface {
 }
 
 func GetKubeClientDynamic(opt TestOptions, isHub bool) dynamic.Interface {
-	url := opt.HubCluster.MasterURL
+	url := opt.HubCluster.ClusterServerURL
 	kubeConfig := opt.KubeConfig
 	kubeContext := opt.HubCluster.KubeContext
 	if !isHub && len(opt.ManagedClusters) > 0 {
-		url = opt.ManagedClusters[0].MasterURL
+		url = opt.ManagedClusters[0].ClusterServerURL
 		kubeConfig = opt.ManagedClusters[0].KubeConfig
 		kubeContext = ""
 	}

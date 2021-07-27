@@ -19,7 +19,7 @@ const (
 
 func DeleteCertSecret(opt TestOptions) error {
 	clientKube := NewKubeClient(
-		opt.HubCluster.MasterURL,
+		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
