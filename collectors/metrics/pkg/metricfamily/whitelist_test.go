@@ -33,7 +33,7 @@ func setNilMetric(family *clientmodel.MetricFamily, positions ...int) *clientmod
 	return f
 }
 
-func TestWhitelist(t *testing.T) {
+func TestAllowlist(t *testing.T) {
 	type checkFunc func(family *clientmodel.MetricFamily, ok bool, err error) error
 
 	isOK := func(want bool) checkFunc {
@@ -128,66 +128,66 @@ func TestWhitelist(t *testing.T) {
 		name        string
 		checks      []checkFunc
 		family      *clientmodel.MetricFamily
-		whitelister Transformer
+		allowlister Transformer
 	}{
 		{
 			name:        "accept A",
 			family:      a,
 			checks:      []checkFunc{isOK(true), hasErr(nil), deepEqual(a)},
-			whitelister: mustMakeWhitelist(t, []string{"{__name__=\"A\"}"}),
+			allowlister: mustMakeAllowlist(t, []string{"{__name__=\"A\"}"}),
 		},
 		{
 			name:        "reject B",
 			family:      b,
 			checks:      []checkFunc{isOK(false), hasErr(nil), deepEqual(setNilMetric(b, 0))},
-			whitelister: mustMakeWhitelist(t, []string{"{__name__=\"A\"}"}),
+			allowlister: mustMakeAllowlist(t, []string{"{__name__=\"A\"}"}),
 		},
 		{
 			name:        "accept C",
 			family:      c,
 			checks:      []checkFunc{isOK(true), hasErr(nil), deepEqual(c)},
-			whitelister: mustMakeWhitelist(t, []string{"{__name__=\"C\"}"}),
+			allowlister: mustMakeAllowlist(t, []string{"{__name__=\"C\"}"}),
 		},
 		{
 			name:        "reject C",
 			family:      c,
 			checks:      []checkFunc{isOK(false), hasErr(nil), deepEqual(setNilMetric(c, 0, 1, 2, 3))},
-			whitelister: mustMakeWhitelist(t, []string{"{method=\"PUT\"}"}),
+			allowlister: mustMakeAllowlist(t, []string{"{method=\"PUT\"}"}),
 		},
 		{
 			name:        "reject parts of C",
 			family:      c,
 			checks:      []checkFunc{isOK(true), hasErr(nil), deepEqual(setNilMetric(c, 0, 2, 3))},
-			whitelister: mustMakeWhitelist(t, []string{"{__name__=\"C\",method=\"GET\"}"}),
+			allowlister: mustMakeAllowlist(t, []string{"{__name__=\"C\",method=\"GET\"}"}),
 		},
 		{
 			name:        "reject different parts of C",
 			family:      c,
 			checks:      []checkFunc{isOK(true), hasErr(nil), deepEqual(setNilMetric(c, 2))},
-			whitelister: mustMakeWhitelist(t, []string{"{status=\"200\"}"}),
+			allowlister: mustMakeAllowlist(t, []string{"{status=\"200\"}"}),
 		},
 		{
 			name:        "multiple rules",
 			family:      c,
 			checks:      []checkFunc{isOK(true), hasErr(nil), deepEqual(setNilMetric(c, 0, 3))},
-			whitelister: mustMakeWhitelist(t, []string{"{method=\"GET\"}", "{status=\"500\"}"}),
+			allowlister: mustMakeAllowlist(t, []string{"{method=\"GET\"}", "{status=\"500\"}"}),
 		},
 		{
 			name:        "multiple rules complex",
 			family:      c,
 			checks:      []checkFunc{isOK(true), hasErr(nil), deepEqual(setNilMetric(c, 0, 1, 3))},
-			whitelister: mustMakeWhitelist(t, []string{"{method=\"GET\",status=\"400\"}", "{status=\"500\"}"}),
+			allowlister: mustMakeAllowlist(t, []string{"{method=\"GET\",status=\"400\"}", "{status=\"500\"}"}),
 		},
 		{
 			name:        "multiple rules complex with rejection",
 			family:      c,
 			checks:      []checkFunc{isOK(true), hasErr(nil), deepEqual(setNilMetric(c, 1, 2))},
-			whitelister: mustMakeWhitelist(t, []string{"{method=\"POST\",status=\"200\"}", "{method=\"DELETE\"}"}),
+			allowlister: mustMakeAllowlist(t, []string{"{method=\"POST\",status=\"200\"}", "{method=\"DELETE\"}"}),
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := copyMetric(tc.family)
-			ok, err := tc.whitelister.Transform(f)
+			ok, err := tc.allowlister.Transform(f)
 			for _, check := range tc.checks {
 				if err := check(f, ok, err); err != nil {
 					t.Error(err)
@@ -197,10 +197,10 @@ func TestWhitelist(t *testing.T) {
 	}
 }
 
-func mustMakeWhitelist(t *testing.T, rules []string) Transformer {
-	w, err := NewWhitelist(rules)
+func mustMakeAllowlist(t *testing.T, rules []string) Transformer {
+	w, err := NewAllowlist(rules)
 	if err != nil {
-		t.Fatalf("failed to create new whitelist transformer: %v", err)
+		t.Fatalf("failed to create new allowlist transformer: %v", err)
 	}
 	return w
 }
