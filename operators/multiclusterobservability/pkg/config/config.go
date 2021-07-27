@@ -989,3 +989,11 @@ func SetOperandNames(c client.Client) error {
 
 	return nil
 }
+
+// CleanUpOperandNames delete all the operand name items
+// should be called when the MCO CR is deleted
+func CleanUpOperandNames() {
+	for k := range operandNames {
+		delete(operandNames, k)
+	}
+}
