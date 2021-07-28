@@ -52,6 +52,10 @@ func newHubInfoSecret(client client.Client, obsNamespace string,
 	configYamlMap := map[string][]byte{}
 	configYamlMap[operatorconfig.HubInfoSecretKey] = configYaml
 	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "Secret",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      operatorconfig.HubInfoSecretName,
 			Namespace: namespace,
