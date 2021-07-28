@@ -19,11 +19,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	oashared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
 )
 
 const (
-	hubInfoKey           = "hub-info.yaml"
-	clusterNameKey       = "clusterName"
 	metricsConfigMapName = "observability-metrics-allowlist"
 	metricsConfigMapKey  = "metrics_list.yaml"
 	metricsCollectorName = "metrics-collector-deployment"
@@ -62,17 +61,9 @@ type Rule struct {
 	Expr   string `yaml:"expr"`
 }
 
-// HubInfo is the struct for hub info
-type HubInfo struct {
-	ClusterName          string `yaml:"cluster-name"`
-	Endpoint             string `yaml:"endpoint"`
-	AlertmanagerEndpoint string `yaml:"alertmanager-endpoint"`
-	AlertmanagerRouterCA string `yaml:"alertmanager-router-ca"`
-}
-
 func createDeployment(clusterID string, clusterType string,
 	obsAddonSpec oashared.ObservabilityAddonSpec,
-	hubInfo HubInfo, allowlist MetricsAllowlist, replicaCount int32) *appsv1.Deployment {
+	hubInfo operatorconfig.HubInfo, allowlist MetricsAllowlist, replicaCount int32) *appsv1.Deployment {
 	interval := fmt.Sprint(obsAddonSpec.Interval) + "s"
 	if fmt.Sprint(obsAddonSpec.Interval) == "" {
 		interval = defaultInterval
@@ -200,7 +191,7 @@ func createDeployment(clusterID string, clusterType string,
 								},
 								{
 									Name:  "TO",
-									Value: hubInfo.Endpoint,
+									Value: hubInfo.ObservatoriumAPIEndpoint,
 								},
 							},
 							VolumeMounts:    mounts,
@@ -219,7 +210,7 @@ func createDeployment(clusterID string, clusterType string,
 }
 
 func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonSpec oashared.ObservabilityAddonSpec,
-	hubInfo HubInfo, clusterID string, clusterType string,
+	hubInfo operatorconfig.HubInfo, clusterID string, clusterType string,
 	replicaCount int32, forceRestart bool) (bool, error) {
 
 	list := getMetricsAllowlist(ctx, client)

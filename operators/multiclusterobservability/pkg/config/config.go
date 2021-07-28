@@ -440,8 +440,8 @@ func GetDefaultTenantName() string {
 	return defaultTenantName
 }
 
-// GetObsAPIUrl is used to get the URL for observartium api gateway
-func GetObsAPIUrl(client client.Client, namespace string) (string, error) {
+// GetObsAPIHost is used to get the URL for observartium api gateway
+func GetObsAPIHost(client client.Client, namespace string) (string, error) {
 	found := &routev1.Route{}
 
 	err := client.Get(context.TODO(), types.NamespacedName{Name: obsAPIGateway, Namespace: namespace}, found)

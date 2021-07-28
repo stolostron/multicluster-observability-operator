@@ -251,7 +251,7 @@ func TestGetClusterIDFailed(t *testing.T) {
 	}
 }
 
-func TestGetObsAPIUrl(t *testing.T) {
+func TestGetObsAPIHost(t *testing.T) {
 	route := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obsAPIGateway,
@@ -265,11 +265,11 @@ func TestGetObsAPIUrl(t *testing.T) {
 	scheme.AddKnownTypes(routev1.GroupVersion, route)
 	client := fake.NewFakeClientWithScheme(scheme, route)
 
-	host, _ := GetObsAPIUrl(client, "default")
+	host, _ := GetObsAPIHost(client, "default")
 	if host == apiServerURL {
 		t.Errorf("Should not get route host in default namespace")
 	}
-	host, _ = GetObsAPIUrl(client, "test")
+	host, _ = GetObsAPIHost(client, "test")
 	if host != apiServerURL {
 		t.Errorf("Observatorium api (%v) is not the expected (%v)", host, apiServerURL)
 	}

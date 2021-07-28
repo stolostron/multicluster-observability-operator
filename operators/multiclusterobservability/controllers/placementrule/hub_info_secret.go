@@ -4,7 +4,7 @@
 package placementrule
 
 import (
-	"strings"
+	"net/url"
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -13,50 +13,35 @@ import (
 
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
 )
-
-const (
-	hubInfoName = "hub-info-secret"
-	hubInfoKey  = "hub-info.yaml"
-	urlSubPath  = "/api/metrics/v1/default/api/v1/receive"
-	protocol    = "https://"
-)
-
-// HubInfo is the struct that contains the observatorium api gateway URL, hub alertmanager URl and hub router CA
-type HubInfo struct {
-	ClusterName              string `yaml:"cluster-name"`
-	Endpoint                 string `yaml:"endpoint"` // deprecated, keep it for back compatibility, use 'ObservatoriumAPIEndpoint' to replace 'Endpoint'
-	ObservatoriumAPIEndpoint string `yaml:"observatorium-api-endpoint"`
-	AlertmanagerEndpoint     string `yaml:"alertmanager-endpoint"`
-	AlertmanagerRouterCA     string `yaml:"alertmanager-router-ca"`
-}
 
 func newHubInfoSecret(client client.Client, obsNamespace string,
 	namespace string, mco *mcov1beta2.MultiClusterObservability) (*corev1.Secret, error) {
-	obsApiEp, err := config.GetObsAPIUrl(client, obsNamespace)
+	obsApiRouteHost, err := config.GetObsAPIHost(client, obsNamespace)
 	if err != nil {
-		log.Error(err, "Failed to get api gateway")
+		log.Error(err, "Failed to get the host for observatorium API route")
 		return nil, err
 	}
-	if !strings.HasPrefix(obsApiEp, "http") {
-		obsApiEp = protocol + obsApiEp
+	obsApiURL := url.URL{
+		Host: obsApiRouteHost,
+		Path: operatorconfig.ObservatoriumAPIRemoteWritePath,
+	}
+	if !obsApiURL.IsAbs() {
+		obsApiURL.Scheme = "https"
 	}
 	alertmanagerEndpoint, err := config.GetAlertmanagerEndpoint(client, obsNamespace)
 	if err != nil {
 		log.Error(err, "Failed to get alertmanager endpoint")
 		return nil, err
 	}
-	if !strings.HasPrefix(alertmanagerEndpoint, "http") {
-		alertmanagerEndpoint = protocol + alertmanagerEndpoint
-	}
 	alertmanagerRouterCA, err := config.GetAlertmanagerRouterCA(client)
 	if err != nil {
 		log.Error(err, "Failed to CA of openshift Route")
 		return nil, err
 	}
-	hubInfo := &HubInfo{
-		Endpoint:                 obsApiEp + urlSubPath,
-		ObservatoriumAPIEndpoint: obsApiEp + urlSubPath,
+	hubInfo := &operatorconfig.HubInfo{
+		ObservatoriumAPIEndpoint: obsApiURL.String(),
 		AlertmanagerEndpoint:     alertmanagerEndpoint,
 		AlertmanagerRouterCA:     alertmanagerRouterCA,
 	}
@@ -65,14 +50,14 @@ func newHubInfoSecret(client client.Client, obsNamespace string,
 		return nil, err
 	}
 	configYamlMap := map[string][]byte{}
-	configYamlMap[hubInfoKey] = configYaml
+	configYamlMap[operatorconfig.HubInfoSecretKey] = configYaml
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
 			Kind:       "Secret",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      hubInfoName,
+			Name:      operatorconfig.HubInfoSecretName,
 			Namespace: namespace,
 		},
 		Data: configYamlMap,

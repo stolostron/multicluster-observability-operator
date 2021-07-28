@@ -423,7 +423,7 @@ func pemEncode(cert []byte, key []byte) (*bytes.Buffer, *bytes.Buffer) {
 
 func getHosts(c client.Client) ([]string, error) {
 	hosts := []string{config.GetObsAPISvc(config.GetOperandName(config.Observatorium))}
-	url, err := config.GetObsAPIUrl(c, config.GetDefaultNamespace())
+	url, err := config.GetObsAPIHost(c, config.GetDefaultNamespace())
 	if err != nil {
 		log.Error(err, "Failed to get api route address")
 		return nil, err
