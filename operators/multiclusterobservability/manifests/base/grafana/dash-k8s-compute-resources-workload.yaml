@@ -695,7 +695,7 @@ data:
             "name": "datasource",
             "options": [],
             "query": "prometheus",
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "type": "datasource"
@@ -721,7 +721,7 @@ data:
               "query": "label_values(kube_pod_info, cluster)",
               "refId": "Prometheus-cluster-Variable-Query"
             },
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "sort": 1,
@@ -752,7 +752,7 @@ data:
               "query": "label_values(kube_pod_info{cluster=\"$cluster\"}, namespace)",
               "refId": "Prometheus-namespace-Variable-Query"
             },
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "sort": 1,
@@ -783,7 +783,7 @@ data:
               "query": "label_values(namespace_workload_pod:kube_pod_owner:relabel{cluster=\"$cluster\", namespace=\"$namespace\"}, workload)",
               "refId": "StandardVariableQuery"
             },
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "sort": 1,
@@ -814,7 +814,7 @@ data:
               "query": "label_values(namespace_workload_pod:kube_pod_owner:relabel{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\"}, workload_type)",
               "refId": "StandardVariableQuery"
             },
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "sort": 1,
@@ -865,4 +865,4 @@ metadata:
   name: grafana-dashboard-k8s-compute-resources-workload
   namespace: open-cluster-management-observability
   labels:
-    general-folder: "true"
+    general-folder: 'true'

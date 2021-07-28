@@ -1945,7 +1945,7 @@ data:
             "name": "datasource",
             "options": [],
             "query": "prometheus",
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "type": "datasource"
