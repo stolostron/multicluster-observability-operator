@@ -362,7 +362,8 @@ func deleteDeprecatedRoles(c client.Client) {
 		log.Error(err, "Failed to list deprecated roles")
 		return
 	}
-	for _, role := range roleList.Items {
+	for idx := range roleList.Items {
+		role := roleList.Items[idx]
 		if role.Name == "endpoint-observability-role" {
 			err = c.Delete(context.TODO(), &role)
 			if err != nil && !errors.IsNotFound(err) {

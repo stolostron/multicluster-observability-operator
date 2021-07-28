@@ -28,7 +28,7 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 	}
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec
 	}
 
 	client := &http.Client{Transport: tr}

@@ -226,15 +226,50 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		namespace = os.Getenv("NAMESPACE")
 	}
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&oav1beta1.ObservabilityAddon{}, builder.WithPredicates(getPred(obAddonName, namespace, true, true, true))).
-		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(operatorconfig.HubInfoSecretName, namespace, true, true, false))).
-		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(mtlsCertName, namespace, true, true, false))).
-		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(mtlsCaName, namespace, true, true, false))).
-		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(hubAmAccessorSecretName, namespace, true, true, false))).
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(metricsConfigMapName, namespace, true, true, false))).
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(caConfigmapName, namespace, false, true, true))).
-		Watches(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(metricsCollectorName, namespace, true, true, true))).
-		Watches(&source.Kind{Type: &rbacv1.ClusterRoleBinding{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(getPred(clusterRoleBindingName, "", false, true, true))).
+		For(
+			&oav1beta1.ObservabilityAddon{},
+			builder.WithPredicates(getPred(obAddonName, namespace, true, true, true)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.Secret{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(operatorconfig.HubInfoSecretName, namespace, true, true, false)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.Secret{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(mtlsCertName, namespace, true, true, false)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.Secret{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(mtlsCaName, namespace, true, true, false)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.Secret{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(hubAmAccessorSecretName, namespace, true, true, false)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.ConfigMap{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(metricsConfigMapName, namespace, true, true, false)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.ConfigMap{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(caConfigmapName, namespace, false, true, true)),
+		).
+		Watches(
+			&source.Kind{Type: &appsv1.Deployment{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(metricsCollectorName, namespace, true, true, true)),
+		).
+		Watches(
+			&source.Kind{Type: &rbacv1.ClusterRoleBinding{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(clusterRoleBindingName, "", false, true, true)),
+		).
 		Complete(r)
 }
 

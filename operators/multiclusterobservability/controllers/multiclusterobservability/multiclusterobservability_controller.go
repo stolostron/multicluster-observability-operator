@@ -113,7 +113,10 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	if os.Getenv("UNIT_TEST") != "true" {
 		// start placement controller
-		placemengctrl.StartPlacementController(r.Manager, r.CRDMap)
+		err := placemengctrl.StartPlacementController(r.Manager, r.CRDMap)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 		// setup ocm addon manager
 		certctrl.Start(r.Client)
 	}
@@ -272,10 +275,10 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 	mco *mcov1beta2.MultiClusterObservability) (bool, error) {
 	if mco.GetDeletionTimestamp() != nil && util.Contains(mco.GetFinalizers(), resFinalizer) {
 		log.Info("To delete resources across namespaces")
-		svmCrdExists, _ := r.CRDMap[config.StorageVersionMigrationCrdName]
+		svmCrdExists := r.CRDMap[config.StorageVersionMigrationCrdName]
 		if svmCrdExists {
 			// remove the StorageVersionMigration resource and ignore error
-			cleanObservabilityStorageVersionMigrationResource(r.Client, mco)
+			cleanObservabilityStorageVersionMigrationResource(r.Client, mco) // #nosec
 		}
 		// clean up the cluster resources, eg. clusterrole, clusterrolebinding, etc
 		if err := cleanUpClusterScopedResources(r.Client, mco); err != nil {
@@ -761,8 +764,8 @@ func cleanUpClusterScopedResources(cl client.Client, mco *mcov1beta2.MultiCluste
 	if err != nil {
 		return err
 	}
-	for _, clusterRoleRes := range clusterRoleList.Items {
-		err := cl.Delete(context.TODO(), &clusterRoleRes, &client.DeleteOptions{})
+	for idx := range clusterRoleList.Items {
+		err := cl.Delete(context.TODO(), &clusterRoleList.Items[idx], &client.DeleteOptions{})
 		if err != nil {
 			return err
 		}
@@ -773,8 +776,8 @@ func cleanUpClusterScopedResources(cl client.Client, mco *mcov1beta2.MultiCluste
 	if err != nil {
 		return err
 	}
-	for _, clusterRoleBindingRes := range clusterRoleBindingList.Items {
-		err := cl.Delete(context.TODO(), &clusterRoleBindingRes, &client.DeleteOptions{})
+	for idx := range clusterRoleBindingList.Items {
+		err := cl.Delete(context.TODO(), &clusterRoleBindingList.Items[idx], &client.DeleteOptions{})
 		if err != nil {
 			return err
 		}

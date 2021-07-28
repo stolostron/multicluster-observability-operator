@@ -44,7 +44,10 @@ func deleteObsAddon(c client.Client, namespace string) error {
 
 	// forcely remove observabilityaddon if it's already stuck in Terminating more than 5 minutes
 	time.AfterFunc(time.Duration(5)*time.Minute, func() {
-		deleteStaleObsAddon(c, namespace, false)
+		err := deleteStaleObsAddon(c, namespace, false)
+		if err != nil {
+			log.Error(err, "Failed to forcely remove observabilityaddon", "namespace", namespace)
+		}
 	})
 
 	log.Info("observabilityaddon is deleted", "namespace", namespace)

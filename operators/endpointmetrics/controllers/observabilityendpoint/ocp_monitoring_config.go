@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	hubAmAccessorSecretName        = "observability-alertmanager-accessor"
+	hubAmAccessorSecretName        = "observability-alertmanager-accessor" // #nosec
 	hubAmAccessorSecretKey         = "token"
 	hubAmRouterCASecretName        = "hub-alertmanager-router-ca"
 	hubAmRouterCASecretKey         = "service-ca.crt"
@@ -184,24 +184,8 @@ func getAmAccessorToken(ctx context.Context, client client.Client) (string, erro
 	return string(amAccessorToken), nil
 }
 
-// createOrUpdateClusterMonitoringConfig creates or updates the configmap cluster-monitoring-config and relevant resources
-// (observability-alertmanager-accessor and hub-alertmanager-router-ca) for the openshift cluster monitoring stack
-func createOrUpdateClusterMonitoringConfig(ctx context.Context, hubInfo *operatorconfig.HubInfo, clusterID string, client client.Client) error {
-	// create the hub-alertmanager-router-ca secret if it doesn't exist or update it if needed
-	if err := createHubAmRouterCASecret(ctx, hubInfo, client); err != nil {
-		log.Error(err, "failed to create or update the hub-alertmanager-router-ca secret")
-		return err
-	}
-
-	// create the observability-alertmanager-accessor secret if it doesn't exist or update it if needed
-	if err := createHubAmAccessorTokenSecret(ctx, client); err != nil {
-		log.Error(err, "failed to create or update the observability-alertmanager-accessor secret")
-		return err
-	}
-
-	// init the prometheus k8s config
-	newExternalLabels := map[string]string{clusterLabelKeyForAlerts: clusterID}
-	newAdditionalAlertmanagerConfig := cmomanifests.AdditionalAlertmanagerConfig{
+func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifests.AdditionalAlertmanagerConfig {
+	return cmomanifests.AdditionalAlertmanagerConfig{
 		Scheme:     "https",
 		PathPrefix: "/",
 		APIVersion: "v2",
@@ -222,7 +206,31 @@ func createOrUpdateClusterMonitoringConfig(ctx context.Context, hubInfo *operato
 		},
 		StaticConfigs: []string{strings.TrimLeft(hubInfo.AlertmanagerEndpoint, "https://")},
 	}
-	newAlertmanagerConfigs := []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig}
+}
+
+// createOrUpdateClusterMonitoringConfig creates or updates the configmap
+// cluster-monitoring-config and relevant resources (observability-alertmanager-accessor
+// and hub-alertmanager-router-ca) for the openshift cluster monitoring stack
+func createOrUpdateClusterMonitoringConfig(
+	ctx context.Context,
+	hubInfo *operatorconfig.HubInfo,
+	clusterID string,
+	client client.Client) error {
+	// create the hub-alertmanager-router-ca secret if it doesn't exist or update it if needed
+	if err := createHubAmRouterCASecret(ctx, hubInfo, client); err != nil {
+		log.Error(err, "failed to create or update the hub-alertmanager-router-ca secret")
+		return err
+	}
+
+	// create the observability-alertmanager-accessor secret if it doesn't exist or update it if needed
+	if err := createHubAmAccessorTokenSecret(ctx, client); err != nil {
+		log.Error(err, "failed to create or update the observability-alertmanager-accessor secret")
+		return err
+	}
+
+	// init the prometheus k8s config
+	newExternalLabels := map[string]string{clusterLabelKeyForAlerts: clusterID}
+	newAlertmanagerConfigs := []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig(hubInfo)}
 	newPmK8sConfig := &cmomanifests.PrometheusK8sConfig{
 		// add cluster label for alerts from managed cluster
 		ExternalLabels: newExternalLabels,
@@ -290,7 +298,9 @@ func createOrUpdateClusterMonitoringConfig(ctx context.Context, hubInfo *operato
 		return nil
 	}
 
-	log.Info("configmap already exists and key config.yaml exists, check if the value needs update", "name", clusterMonitoringConfigName, "key", clusterMonitoringConfigDataKey)
+	log.Info("configmap already exists and key config.yaml exists, check if the value needs update",
+		"name", clusterMonitoringConfigName,
+		"key", clusterMonitoringConfigDataKey)
 	foundClusterMonitoringConfigurationJSONBytes, err := yaml.YAMLToJSON([]byte(foundClusterMonitoringConfigurationYAMLString))
 	if err != nil {
 		log.Error(err, "failed to transform YAML to JSON", "YAML", foundClusterMonitoringConfigurationYAMLString)
@@ -327,7 +337,9 @@ func createOrUpdateClusterMonitoringConfig(ctx context.Context, hubInfo *operato
 				}
 			}
 			if !additionalAlertmanagerConfigExists {
-				foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs = append(foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs, newAdditionalAlertmanagerConfig)
+				foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs = append(
+					foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs,
+					newAdditionalAlertmanagerConfig(hubInfo))
 			}
 		}
 	}

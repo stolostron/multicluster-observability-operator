@@ -27,7 +27,7 @@ func ContainDashboard(opt TestOptions, title string) (error, bool) {
 	}
 
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec
 	}
 
 	client := &http.Client{Transport: tr}
@@ -48,7 +48,7 @@ func ContainDashboard(opt TestOptions, title string) (error, bool) {
 
 	if resp.StatusCode != http.StatusOK {
 		klog.Errorf("resp.StatusCode: %v\n", resp.StatusCode)
-		return fmt.Errorf("Failed to access grafana api"), false
+		return fmt.Errorf("failed to access grafana api"), false
 	}
 
 	result, err := ioutil.ReadAll(resp.Body)
@@ -58,7 +58,7 @@ func ContainDashboard(opt TestOptions, title string) (error, bool) {
 	}
 
 	if !strings.Contains(string(result), fmt.Sprintf(`"title":"%s"`, title)) {
-		return fmt.Errorf("Failed to find the dashboard"), false
+		return fmt.Errorf("failed to find the dashboard"), false
 	} else {
 		return nil, true
 	}
