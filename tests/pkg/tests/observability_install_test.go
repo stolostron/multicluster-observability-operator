@@ -23,12 +23,12 @@ func installMCO() {
 	}
 
 	hubClient := utils.NewKubeClient(
-		testOptions.HubCluster.MasterURL,
+		testOptions.HubCluster.ClusterServerURL,
 		testOptions.KubeConfig,
 		testOptions.HubCluster.KubeContext)
 
 	dynClient := utils.NewKubeClientDynamic(
-		testOptions.HubCluster.MasterURL,
+		testOptions.HubCluster.ClusterServerURL,
 		testOptions.KubeConfig,
 		testOptions.HubCluster.KubeContext)
 
@@ -77,13 +77,13 @@ func installMCO() {
 		//set resource quota and limit range for canary environment to avoid destruct the node
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/minio"})
 		Expect(err).NotTo(HaveOccurred())
-		Expect(utils.Apply(testOptions.HubCluster.MasterURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
+		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 	}
 
 	//set resource quota and limit range for canary environment to avoid destruct the node
 	yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/policy"})
 	Expect(err).NotTo(HaveOccurred())
-	Expect(utils.Apply(testOptions.HubCluster.MasterURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
+	Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 
 	By("Creating the MCO testing RBAC resources")
 	Expect(utils.CreateMCOTestingRBAC(testOptions)).NotTo(HaveOccurred())
@@ -93,7 +93,7 @@ func installMCO() {
 		v1beta1KustomizationPath := "../../../examples/mco/e2e/v1beta1"
 		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: v1beta1KustomizationPath})
 		Expect(err).NotTo(HaveOccurred())
-		Expect(utils.Apply(testOptions.HubCluster.MasterURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
+		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 
 		By("Waiting for MCO ready status")
 		allPodsIsReady := false
@@ -138,7 +138,7 @@ func installMCO() {
 
 	// add retry for update mco object failure
 	Eventually(func() error {
-		return utils.Apply(testOptions.HubCluster.MasterURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)
+		return utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)
 	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
 	// wait for pod restarting

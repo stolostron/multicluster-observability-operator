@@ -21,12 +21,12 @@ const (
 var _ = Describe("Observability:", func() {
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
-			testOptions.HubCluster.MasterURL,
+			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
 
 		dynClient = utils.NewKubeClientDynamic(
-			testOptions.HubCluster.MasterURL,
+			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
 	})
@@ -35,7 +35,7 @@ var _ = Describe("Observability:", func() {
 		By("Adding custom metrics allowlist configmap")
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/metrics/allowlist"})
 		Expect(err).ToNot(HaveOccurred())
-		Expect(utils.Apply(testOptions.HubCluster.MasterURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
+		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 
 		By("Waiting for new added metrics on grafana console")
 		Eventually(func() error {

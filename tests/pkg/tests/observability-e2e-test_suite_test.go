@@ -183,13 +183,13 @@ func initVars() {
 	if testOptions.HubCluster.BaseDomain != "" {
 		baseDomain = testOptions.HubCluster.BaseDomain
 
-		if testOptions.HubCluster.MasterURL == "" {
-			testOptions.HubCluster.MasterURL = fmt.Sprintf("https://api.%s:6443", testOptions.HubCluster.BaseDomain)
+		if testOptions.HubCluster.ClusterServerURL == "" {
+			testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:6443", testOptions.HubCluster.BaseDomain)
 		}
 	} else {
 		Expect(baseDomain).NotTo(BeEmpty(), "The `baseDomain` is required.")
 		testOptions.HubCluster.BaseDomain = baseDomain
-		testOptions.HubCluster.MasterURL = fmt.Sprintf("https://api.%s:6443", baseDomain)
+		testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:6443", baseDomain)
 	}
 
 	if testOptions.HubCluster.User != "" {
@@ -201,8 +201,8 @@ func initVars() {
 
 	if testOptions.ManagedClusters != nil && len(testOptions.ManagedClusters) > 0 {
 		for i, mc := range testOptions.ManagedClusters {
-			if mc.MasterURL == "" {
-				testOptions.ManagedClusters[i].MasterURL = fmt.Sprintf("https://api.%s:6443", mc.BaseDomain)
+			if mc.ClusterServerURL == "" {
+				testOptions.ManagedClusters[i].ClusterServerURL = fmt.Sprintf("https://api.%s:6443", mc.BaseDomain)
 			}
 			if mc.KubeConfig == "" {
 				testOptions.ManagedClusters[i].KubeConfig = os.Getenv("IMPORT_KUBECONFIG")

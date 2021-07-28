@@ -6,14 +6,14 @@ import (
 	"github.com/prometheus/prometheus/promql/parser"
 )
 
-type whitelist [][]*labels.Matcher
+type allowlist [][]*labels.Matcher
 
-// NewWhitelist returns a Transformer that checks if at least one
-// rule in the whitelist is true.
+// NewAllowlist returns a Transformer that checks if at least one
+// rule in the allowlist is true.
 // This Transformer will nil metrics within a metric family that do not match a rule.
 // Each given rule is transformed into a matchset. Matchsets are OR-ed.
 // Individual matchers within a matchset are AND-ed, as in PromQL.
-func NewWhitelist(rules []string) (Transformer, error) {
+func NewAllowlist(rules []string) (Transformer, error) {
 	var ms [][]*labels.Matcher
 	for i := range rules {
 		matchers, err := parser.ParseMetricSelector(rules[i])
@@ -22,11 +22,11 @@ func NewWhitelist(rules []string) (Transformer, error) {
 		}
 		ms = append(ms, matchers)
 	}
-	return whitelist(ms), nil
+	return allowlist(ms), nil
 }
 
 // Transform implements the Transformer interface.
-func (t whitelist) Transform(family *clientmodel.MetricFamily) (bool, error) {
+func (t allowlist) Transform(family *clientmodel.MetricFamily) (bool, error) {
 	var ok bool
 Metric:
 	for i, m := range family.Metric {

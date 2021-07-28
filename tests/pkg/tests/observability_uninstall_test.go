@@ -21,12 +21,12 @@ func uninstallMCO() {
 	}
 
 	hubClient := utils.NewKubeClient(
-		testOptions.HubCluster.MasterURL,
+		testOptions.HubCluster.ClusterServerURL,
 		testOptions.KubeConfig,
 		testOptions.HubCluster.KubeContext)
 
 	dynClient := utils.NewKubeClientDynamic(
-		testOptions.HubCluster.MasterURL,
+		testOptions.HubCluster.ClusterServerURL,
 		testOptions.KubeConfig,
 		testOptions.HubCluster.KubeContext)
 
