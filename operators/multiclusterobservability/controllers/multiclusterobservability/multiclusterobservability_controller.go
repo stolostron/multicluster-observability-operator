@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"time"
 
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
@@ -24,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/wait"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -572,6 +574,7 @@ func updateStorageSizeChange(c client.Client, matchLabels map[string]string, com
 		return err
 	}
 
+	updatedPVCNamespaceNameList := []types.NamespacedName{}
 	// update pvc directly
 	for index, pvc := range pvcList {
 		if !pvc.Spec.Resources.Requests.Storage().Equal(resource.MustParse(storageSize)) {
@@ -584,13 +587,42 @@ func updateStorageSizeChange(c client.Client, matchLabels map[string]string, com
 					// pvc is forbidden to resize, need to rollback the storage size change in observatorium
 					log.Info("PVC is forbidden to resize, try to rollback the storage size change of obserbatorium", "pvc", pvc.Name)
 					resizeForbiddenMap[component] = true
+					// should return if one pvc is forbidden to resize for the component
 					return nil
 				}
 				return err
 			}
+			updatedPVCNamespaceNameList = append(updatedPVCNamespaceNameList, types.NamespacedName{Name: pvc.GetName(), Namespace: pvc.GetNamespace()})
 			log.Info("Update storage size for PVC", "pvc", pvc.Name)
 		}
 	}
+
+	// wait FileSystemResizePending condition for all the updated PVC
+	err = wait.Poll(6*time.Second, 120*time.Second, func() (done bool, err error) {
+		isThereNotReady := false
+		for _, pvcNamespaceName := range updatedPVCNamespaceNameList {
+			pvc := &corev1.PersistentVolumeClaim{}
+			err := c.Get(context.TODO(), pvcNamespaceName, pvc)
+			if err != nil {
+				return false, err
+			}
+			isResizePending := false
+			for _, condition := range pvc.Status.Conditions {
+				if condition.Type == corev1.PersistentVolumeClaimFileSystemResizePending {
+					isResizePending = true
+					break
+				}
+			}
+			if !isResizePending {
+				isThereNotReady = true
+			}
+		}
+		return !isThereNotReady, nil
+	})
+	if err != nil {
+		return err
+	}
+
 	// update sts
 	for index, sts := range stsList {
 		err := c.Delete(context.TODO(), &stsList[index], &client.DeleteOptions{})
