@@ -996,7 +996,7 @@ data:
             "options": [],
             "query": "prometheus",
             "queryValue": "",
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "type": "datasource"
@@ -1022,7 +1022,7 @@ data:
               "query": "label_values(process_resident_memory_bytes, cluster)",
               "refId": "Observatorium-cluster-Variable-Query"
             },
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "sort": 1,
@@ -1053,7 +1053,7 @@ data:
               "query": "label_values(process_resident_memory_bytes{cluster=\"$cluster\"}, instance)",
               "refId": "Observatorium-instance-Variable-Query"
             },
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "sort": 1,
@@ -1083,4 +1083,4 @@ metadata:
   name: grafana-dashboard-k8s-apiserver
   namespace: open-cluster-management-observability
   labels:
-    general-folder: "true"
+    general-folder: 'true'

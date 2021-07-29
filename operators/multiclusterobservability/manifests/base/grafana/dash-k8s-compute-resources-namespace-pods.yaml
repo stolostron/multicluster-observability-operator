@@ -1388,7 +1388,7 @@ data:
             "name": "datasource",
             "options": [],
             "query": "prometheus",
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "type": "datasource"
@@ -1414,7 +1414,7 @@ data:
               "query": "label_values(kube_pod_info, cluster)",
               "refId": "Observatorium-cluster-Variable-Query"
             },
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "sort": 1,
@@ -1445,7 +1445,7 @@ data:
               "query": "label_values(kube_pod_info{cluster=\"$cluster\"}, namespace)",
               "refId": "Observatorium-namespace-Variable-Query"
             },
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "sort": 1,
@@ -1475,4 +1475,4 @@ metadata:
   name: grafana-dashboard-k8s-compute-resources-namespace-pods
   namespace: open-cluster-management-observability
   labels:
-    general-folder: "true"
+    general-folder: 'true'

@@ -1307,7 +1307,7 @@ data:
             "name": "datasource",
             "options": [],
             "query": "prometheus",
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "type": "datasource"
@@ -1333,7 +1333,7 @@ data:
               "query": "label_values(node_cpu_seconds_total,cluster)",
               "refId": "StandardVariableQuery"
             },
-            "refresh": 1,
+            "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "sort": 2,
@@ -1364,4 +1364,4 @@ metadata:
   name: grafana-dashboard-k8s-etcd-cluster
   namespace: open-cluster-management-observability
   labels:
-    general-folder: "true"
+    general-folder: 'true'
