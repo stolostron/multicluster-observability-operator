@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"time"
 
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
@@ -24,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/wait"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -62,6 +64,7 @@ var (
 	isRuleStorageSizeChanged         = false
 	isReceiveStorageSizeChanged      = false
 	isStoreStorageSizeChanged        = false
+	resizeForbiddenMap               = map[string]bool{}
 )
 
 // MultiClusterObservabilityReconciler reconciles a MultiClusterObservability object
@@ -514,7 +517,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"observability.open-cluster-management.io/name": mco.GetName(),
 				"alertmanager": "observability",
-			}, mco.Spec.StorageConfig.AlertmanagerStorageSize)
+			}, config.Alertmanager, mco.Spec.StorageConfig.AlertmanagerStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -526,7 +529,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-receive",
-			}, mco.Spec.StorageConfig.ReceiveStorageSize)
+			}, config.ThanosReceive, mco.Spec.StorageConfig.ReceiveStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -538,7 +541,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-compact",
-			}, mco.Spec.StorageConfig.CompactStorageSize)
+			}, config.ThanosCompact, mco.Spec.StorageConfig.CompactStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -550,7 +553,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-rule",
-			}, mco.Spec.StorageConfig.RuleStorageSize)
+			}, config.ThanosRule, mco.Spec.StorageConfig.RuleStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -562,7 +565,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 			map[string]string{
 				"app.kubernetes.io/instance": mco.GetName(),
 				"app.kubernetes.io/name":     "thanos-store",
-			}, mco.Spec.StorageConfig.StoreStorageSize)
+			}, config.ThanosStoreShard, mco.Spec.StorageConfig.StoreStorageSize)
 		if err != nil {
 			return &reconcile.Result{}, err
 		}
@@ -570,7 +573,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 	return nil, nil
 }
 
-func updateStorageSizeChange(c client.Client, matchLabels map[string]string, storageSize string) error {
+func updateStorageSizeChange(c client.Client, matchLabels map[string]string, component, storageSize string) error {
 
 	pvcList := []corev1.PersistentVolumeClaim{}
 	stsList := []appsv1.StatefulSet{}
@@ -585,6 +588,7 @@ func updateStorageSizeChange(c client.Client, matchLabels map[string]string, sto
 		return err
 	}
 
+	updatedPVCNamespaceNameList := []types.NamespacedName{}
 	// update pvc directly
 	for index, pvc := range pvcList {
 		if !pvc.Spec.Resources.Requests.Storage().Equal(resource.MustParse(storageSize)) {
@@ -593,11 +597,48 @@ func updateStorageSizeChange(c client.Client, matchLabels map[string]string, sto
 			}
 			err := c.Update(context.TODO(), &pvcList[index])
 			if err != nil {
+				if errors.IsForbidden(err) {
+					// pvc is forbidden to resize, need to rollback the storage size change in observatorium
+					log.Info("PVC is forbidden to resize, try to rollback the storage size change of obserbatorium", "pvc", pvc.Name)
+					resizeForbiddenMap[component] = true
+					// should return if one pvc is forbidden to resize for the component
+					return nil
+				}
 				return err
 			}
+			updatedPVCNamespaceNameList = append(updatedPVCNamespaceNameList, types.NamespacedName{Name: pvc.GetName(), Namespace: pvc.GetNamespace()})
 			log.Info("Update storage size for PVC", "pvc", pvc.Name)
 		}
 	}
+
+	if os.Getenv("UNIT_TEST") != "true" {
+		// wait FileSystemResizePending condition for all the updated PVC
+		err = wait.Poll(6*time.Second, 120*time.Second, func() (done bool, err error) {
+			isThereNotReady := false
+			for _, pvcNamespaceName := range updatedPVCNamespaceNameList {
+				pvc := &corev1.PersistentVolumeClaim{}
+				err := c.Get(context.TODO(), pvcNamespaceName, pvc)
+				if err != nil {
+					return false, err
+				}
+				isResizePending := false
+				for _, condition := range pvc.Status.Conditions {
+					if condition.Type == corev1.PersistentVolumeClaimFileSystemResizePending {
+						isResizePending = true
+						break
+					}
+				}
+				if !isResizePending {
+					isThereNotReady = true
+				}
+			}
+			return !isThereNotReady, nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	// update sts
 	for index, sts := range stsList {
 		err := c.Delete(context.TODO(), &stsList[index], &client.DeleteOptions{})

@@ -157,3 +157,251 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 		t.Errorf("Failed to update observatorium due to %v", err)
 	}
 }
+
+func TestHandleStorageResizeForObservatorium(t *testing.T) {
+	cases := []struct {
+		name               string
+		newSpec            *observatoriumv1alpha1.ObservatoriumSpec
+		oldSpec            *observatoriumv1alpha1.ObservatoriumSpec
+		expectedSpec       *observatoriumv1alpha1.ObservatoriumSpec
+		resizeForbiddenMap map[string]bool
+	}{
+		{
+			name: "empty resize forbidden map",
+			newSpec: &observatoriumv1alpha1.ObservatoriumSpec{
+				Thanos: observatoriumv1alpha1.ThanosSpec{
+					Compact: observatoriumv1alpha1.CompactSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("10Gi", "foo2"),
+					},
+					Rule: observatoriumv1alpha1.RuleSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("20Gi", "bar2"),
+					},
+					Receivers: observatoriumv1alpha1.ReceiversSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("30Gi", "baz2"),
+					},
+					Store: observatoriumv1alpha1.StoreSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("40Gi", "qux2"),
+					},
+				},
+			},
+			oldSpec: &observatoriumv1alpha1.ObservatoriumSpec{
+				Thanos: observatoriumv1alpha1.ThanosSpec{
+					Compact: observatoriumv1alpha1.CompactSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("1Gi", "foo1"),
+					},
+					Rule: observatoriumv1alpha1.RuleSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("2Gi", "bar1"),
+					},
+					Receivers: observatoriumv1alpha1.ReceiversSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("3Gi", "baz1"),
+					},
+					Store: observatoriumv1alpha1.StoreSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("4Gi", "qux1"),
+					},
+				},
+			},
+			expectedSpec: &observatoriumv1alpha1.ObservatoriumSpec{
+				Thanos: observatoriumv1alpha1.ThanosSpec{
+					Compact: observatoriumv1alpha1.CompactSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("10Gi", "foo2"),
+					},
+					Rule: observatoriumv1alpha1.RuleSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("20Gi", "bar2"),
+					},
+					Receivers: observatoriumv1alpha1.ReceiversSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("30Gi", "baz2"),
+					},
+					Store: observatoriumv1alpha1.StoreSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("40Gi", "qux2"),
+					},
+				},
+			},
+			resizeForbiddenMap: map[string]bool{},
+		},
+		{
+			name: "non empty resize forbidden map with the same size",
+			newSpec: &observatoriumv1alpha1.ObservatoriumSpec{
+				Thanos: observatoriumv1alpha1.ThanosSpec{
+					Compact: observatoriumv1alpha1.CompactSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("1Gi", "foo2"),
+					},
+					Rule: observatoriumv1alpha1.RuleSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("2Gi", "bar2"),
+					},
+					Receivers: observatoriumv1alpha1.ReceiversSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("3Gi", "baz2"),
+					},
+					Store: observatoriumv1alpha1.StoreSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("4Gi", "qux2"),
+					},
+				},
+			},
+			oldSpec: &observatoriumv1alpha1.ObservatoriumSpec{
+				Thanos: observatoriumv1alpha1.ThanosSpec{
+					Compact: observatoriumv1alpha1.CompactSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("1Gi", "foo1"),
+					},
+					Rule: observatoriumv1alpha1.RuleSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("2Gi", "bar1"),
+					},
+					Receivers: observatoriumv1alpha1.ReceiversSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("3Gi", "baz1"),
+					},
+					Store: observatoriumv1alpha1.StoreSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("4Gi", "qux1"),
+					},
+				},
+			},
+			expectedSpec: &observatoriumv1alpha1.ObservatoriumSpec{
+				Thanos: observatoriumv1alpha1.ThanosSpec{
+					Compact: observatoriumv1alpha1.CompactSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("1Gi", "foo2"),
+					},
+					Rule: observatoriumv1alpha1.RuleSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("2Gi", "bar2"),
+					},
+					Receivers: observatoriumv1alpha1.ReceiversSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("3Gi", "baz2"),
+					},
+					Store: observatoriumv1alpha1.StoreSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("4Gi", "qux2"),
+					},
+				},
+			},
+			resizeForbiddenMap: map[string]bool{
+				mcoconfig.ThanosCompact:    true,
+				mcoconfig.ThanosRule:       true,
+				mcoconfig.ThanosReceive:    true,
+				mcoconfig.ThanosStoreShard: true,
+			},
+		},
+		{
+			name: "non empty resize forbidden map with the different sizes",
+			newSpec: &observatoriumv1alpha1.ObservatoriumSpec{
+				Thanos: observatoriumv1alpha1.ThanosSpec{
+					Compact: observatoriumv1alpha1.CompactSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("10Gi", "foo2"),
+					},
+					Rule: observatoriumv1alpha1.RuleSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("20Gi", "bar2"),
+					},
+					Receivers: observatoriumv1alpha1.ReceiversSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("30Gi", "baz2"),
+					},
+					Store: observatoriumv1alpha1.StoreSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("40Gi", "qux2"),
+					},
+				},
+			},
+			oldSpec: &observatoriumv1alpha1.ObservatoriumSpec{
+				Thanos: observatoriumv1alpha1.ThanosSpec{
+					Compact: observatoriumv1alpha1.CompactSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("1Gi", "foo1"),
+					},
+					Rule: observatoriumv1alpha1.RuleSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("2Gi", "bar1"),
+					},
+					Receivers: observatoriumv1alpha1.ReceiversSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("3Gi", "baz1"),
+					},
+					Store: observatoriumv1alpha1.StoreSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("4Gi", "qux1"),
+					},
+				},
+			},
+			expectedSpec: &observatoriumv1alpha1.ObservatoriumSpec{
+				Thanos: observatoriumv1alpha1.ThanosSpec{
+					Compact: observatoriumv1alpha1.CompactSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("1Gi", "foo2"),
+					},
+					Rule: observatoriumv1alpha1.RuleSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("2Gi", "bar2"),
+					},
+					Receivers: observatoriumv1alpha1.ReceiversSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("3Gi", "baz2"),
+					},
+					Store: observatoriumv1alpha1.StoreSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("4Gi", "qux2"),
+					},
+				},
+			},
+			resizeForbiddenMap: map[string]bool{
+				mcoconfig.ThanosCompact:    true,
+				mcoconfig.ThanosRule:       true,
+				mcoconfig.ThanosReceive:    true,
+				mcoconfig.ThanosStoreShard: true,
+			},
+		},
+		{
+			name: "no entry resize forbidden map with the different sizes",
+			newSpec: &observatoriumv1alpha1.ObservatoriumSpec{
+				Thanos: observatoriumv1alpha1.ThanosSpec{
+					Compact: observatoriumv1alpha1.CompactSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("10Gi", "foo2"),
+					},
+					Rule: observatoriumv1alpha1.RuleSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("20Gi", "bar2"),
+					},
+					Receivers: observatoriumv1alpha1.ReceiversSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("30Gi", "baz2"),
+					},
+					Store: observatoriumv1alpha1.StoreSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("40Gi", "qux2"),
+					},
+				},
+			},
+			oldSpec: &observatoriumv1alpha1.ObservatoriumSpec{
+				Thanos: observatoriumv1alpha1.ThanosSpec{
+					Compact: observatoriumv1alpha1.CompactSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("1Gi", "foo1"),
+					},
+					Rule: observatoriumv1alpha1.RuleSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("2Gi", "bar1"),
+					},
+					Receivers: observatoriumv1alpha1.ReceiversSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("3Gi", "baz1"),
+					},
+					Store: observatoriumv1alpha1.StoreSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("4Gi", "qux1"),
+					},
+				},
+			},
+			expectedSpec: &observatoriumv1alpha1.ObservatoriumSpec{
+				Thanos: observatoriumv1alpha1.ThanosSpec{
+					Compact: observatoriumv1alpha1.CompactSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("1Gi", "foo2"),
+					},
+					Rule: observatoriumv1alpha1.RuleSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("2Gi", "bar2"),
+					},
+					Receivers: observatoriumv1alpha1.ReceiversSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("30Gi", "baz2"),
+					},
+					Store: observatoriumv1alpha1.StoreSpec{
+						VolumeClaimTemplate: newVolumeClaimTemplate("40Gi", "qux2"),
+					},
+				},
+			},
+			resizeForbiddenMap: map[string]bool{
+				mcoconfig.ThanosCompact: true,
+				mcoconfig.ThanosRule:    true,
+			},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			handleStorageResizeForObservatorium(c.oldSpec, c.newSpec, c.resizeForbiddenMap)
+			expectedSpecBytes, err := yaml.Marshal(c.expectedSpec)
+			if err != nil {
+				t.Errorf("failed to marshal observatorium CR Spec: %v", err)
+			}
+			newSpecBytes, err := yaml.Marshal(c.newSpec)
+			if err != nil {
+				t.Errorf("failed to marshal observatorium CR Spec: %v", err)
+			}
+			if !bytes.Equal(newSpecBytes, expectedSpecBytes) {
+				t.Errorf("case (%v) different ObservatoriumSpec, got:\n%s\n want:\n%s\n", c.name, newSpecBytes, expectedSpecBytes)
+			}
+		})
+	}
+}

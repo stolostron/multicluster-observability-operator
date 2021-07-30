@@ -96,6 +96,9 @@ func GenerateObservatoriumCR(
 	newSpec := observatoriumCR.Spec
 	oldSpecBytes, _ := yaml.Marshal(oldSpec)
 	newSpecBytes, _ := yaml.Marshal(newSpec)
+
+	handleStorageResizeForObservatorium(&oldSpec, &newSpec, resizeForbiddenMap)
+
 	if bytes.Equal(newSpecBytes, oldSpecBytes) {
 		return nil, nil
 	}
@@ -672,4 +675,54 @@ func deleteStoreSts(cl client.Client, name string, oldNum int32, newNum int32) e
 		}
 	}
 	return nil
+}
+
+// handleStorageResizeForObservatorium rollback the storage size change for each thanos component if the pvc is forbidden to resize
+func handleStorageResizeForObservatorium(oldSpec, newSpec *obsv1alpha1.ObservatoriumSpec, resizeForbiddenMap map[string]bool) {
+	for c, isForbidden := range resizeForbiddenMap {
+		if isForbidden {
+			rollbackStorageChangeForComponent(oldSpec, newSpec, c)
+		}
+	}
+
+	// clean the resizeForbiddenMap
+	for k := range resizeForbiddenMap {
+		delete(resizeForbiddenMap, k)
+	}
+}
+
+// rollbackStorageChangeForComponent rollback the storage size change for the specified component
+func rollbackStorageChangeForComponent(oldSpec, newSpec *obsv1alpha1.ObservatoriumSpec, component string) {
+	if component == config.ThanosCompact {
+		// the Compact and its VolumeClaimTemplate are supposed not to be empty
+		oldStorageQuantity := oldSpec.Thanos.Compact.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
+		newStorageQuantity := newSpec.Thanos.Compact.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
+		if !oldStorageQuantity.Equal(newStorageQuantity) {
+			newSpec.Thanos.Compact.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage] = oldStorageQuantity
+		}
+	}
+	if component == config.ThanosRule {
+		// the Rule and its VolumeClaimTemplate are supposed not to be empty
+		oldStorageQuantity := oldSpec.Thanos.Rule.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
+		newStorageQuantity := newSpec.Thanos.Rule.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
+		if !oldStorageQuantity.Equal(newStorageQuantity) {
+			newSpec.Thanos.Rule.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage] = oldStorageQuantity
+		}
+	}
+	if component == config.ThanosReceive {
+		// the Receivers and its VolumeClaimTemplate are supposed not to be empty
+		oldStorageQuantity := oldSpec.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
+		newStorageQuantity := newSpec.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
+		if !oldStorageQuantity.Equal(newStorageQuantity) {
+			newSpec.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage] = oldStorageQuantity
+		}
+	}
+	if component == config.ThanosStoreShard {
+		// the Store and its VolumeClaimTemplate are supposed not to be empty
+		oldStorageQuantity := oldSpec.Thanos.Store.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
+		newStorageQuantity := newSpec.Thanos.Store.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
+		if !oldStorageQuantity.Equal(newStorageQuantity) {
+			newSpec.Thanos.Store.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage] = oldStorageQuantity
+		}
+	}
 }
