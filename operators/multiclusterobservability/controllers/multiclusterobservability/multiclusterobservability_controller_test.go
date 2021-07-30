@@ -17,6 +17,7 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	storev1 "k8s.io/api/storage/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -310,6 +311,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	addonv1alpha1.AddToScheme(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 
+	sc := createStorageClass("gp2", true, true)
 	svc := createObservatoriumAPIService(name, namespace)
 	serverCACerts := newTestCert(config.ServerCACerts, namespace)
 	clientCACerts := newTestCert(config.ClientCACerts, namespace)
@@ -320,7 +322,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	testAmRouteBYOCertSecret := newTestCert(config.AlertmanagerRouteBYOCERTName, namespace)
 	clustermgmtAddon := newClusterManagementAddon()
 
-	objs := []runtime.Object{mco, svc, serverCACerts, clientCACerts, grafanaCert, serverCert,
+	objs := []runtime.Object{mco, sc, svc, serverCACerts, clientCACerts, grafanaCert, serverCert,
 		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon}
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
@@ -637,6 +639,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	mchv1.SchemeBuilder.AddToScheme(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 
+	sc := createStorageClass("gp2", true, true)
 	observatoriumAPIsvc := createObservatoriumAPIService(name, namespace)
 	serverCACerts := newTestCert(config.ServerCACerts, namespace)
 	clientCACerts := newTestCert(config.ClientCACerts, namespace)
@@ -649,7 +652,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	testAmRouteBYOCertSecret := newTestCert(config.AlertmanagerRouteBYOCERTName, namespace)
 	clustermgmtAddon := newClusterManagementAddon()
 
-	objs := []runtime.Object{mco, observatoriumAPIsvc, serverCACerts, clientCACerts, grafanaCert, serverCert,
+	objs := []runtime.Object{mco, sc, observatoriumAPIsvc, serverCACerts, clientCACerts, grafanaCert, serverCert,
 		imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon}
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
@@ -875,7 +878,8 @@ func TestCheckObjStorageStatus(t *testing.T) {
 
 	s := scheme.Scheme
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
-	objs := []runtime.Object{mco}
+	sc := createStorageClass("gp2", true, true)
+	objs := []runtime.Object{mco, sc}
 	c := fake.NewFakeClient(objs...)
 	mcoCondition := checkObjStorageStatus(c, mco)
 	if mcoCondition == nil {
@@ -934,6 +938,7 @@ func TestHandleStorageSizeChange(t *testing.T) {
 	s := scheme.Scheme
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
+	sc := createStorageClass("gp2", true, true)
 	alertmanagerLabels := map[string]string{
 		"observability.open-cluster-management.io/name": mconame,
 		alertmanagerName: "observability",
@@ -944,6 +949,7 @@ func TestHandleStorageSizeChange(t *testing.T) {
 	}
 	objs := []runtime.Object{
 		mco,
+		sc,
 		createStatefulSet(alertmanagerName, namespace, alertmanagerLabels),
 		createStatefulSet(thanosReceiveName, namespace, thanosReceiveLabels),
 		createPersistentVolumeClaim(alertmanagerName, namespace, storageClassName, "1Gi", alertmanagerLabels),
@@ -1030,8 +1036,7 @@ func TestHandleStorageSizeChange(t *testing.T) {
 
 	// isAlertmanagerStorageSizeChanged = true
 	// isReceiveStorageSizeChanged = true
-	resizeForbiddenMap[config.Alertmanager] = true
-	resizeForbiddenMap[config.ThanosReceive] = true
+	isResizeForbidden = true
 	GenerateObservatoriumCR(c, s, mco)
 
 	err = c.Get(context.TODO(), types.NamespacedName{
@@ -1078,4 +1083,17 @@ func createPersistentVolumeClaim(name, namespace, storageClassName, storageSize 
 			},
 		},
 	}
+}
+
+func createStorageClass(name string, isDefault, allowVolumeExpansion bool) *storev1.StorageClass {
+	sc := &storev1.StorageClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		AllowVolumeExpansion: &allowVolumeExpansion,
+	}
+	if isDefault {
+		sc.SetAnnotations(map[string]string{"storageclass.kubernetes.io/is-default-class": "true"})
+	}
+	return sc
 }
