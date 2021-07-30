@@ -64,7 +64,7 @@ var (
 	isRuleStorageSizeChanged         = false
 	isReceiveStorageSizeChanged      = false
 	isStoreStorageSizeChanged        = false
-	resizeForbiddenMap               = map[string]bool{}
+	isResizeForbidden                = false
 )
 
 // MultiClusterObservabilityReconciler reconciles a MultiClusterObservability object
@@ -354,6 +354,20 @@ func getStorageClass(mco *mcov1beta2.MultiClusterObservability, cl client.Client
 	return storageClassSelected, nil
 }
 
+// storageClassAllowVolumeExpansion check if the storageclass allow volume expansion
+func storageClassAllowVolumeExpansion(name string, cl client.Client) (bool, error) {
+	found := &storev1.StorageClass{}
+	err := cl.Get(context.TODO(), types.NamespacedName{Name: name}, found)
+	if err != nil {
+		return false, err
+	}
+
+	if found.AllowVolumeExpansion == nil {
+		return false, nil
+	}
+	return *found.AllowVolumeExpansion, nil
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	mcoPred := predicate.Funcs{
@@ -600,7 +614,7 @@ func updateStorageSizeChange(c client.Client, matchLabels map[string]string, com
 				if errors.IsForbidden(err) {
 					// pvc is forbidden to resize, need to rollback the storage size change in observatorium
 					log.Info("PVC is forbidden to resize, try to rollback the storage size change of obserbatorium", "pvc", pvc.Name)
-					resizeForbiddenMap[component] = true
+					isResizeForbidden = true
 					// should return if one pvc is forbidden to resize for the component
 					return nil
 				}

@@ -52,7 +52,12 @@ func GenerateObservatoriumCR(
 		return &ctrl.Result{}, err
 	}
 
-	log.Info("storageClassSelected", "storageClassSelected", storageClassSelected)
+	scAllowVolumeExpansion, err := storageClassAllowVolumeExpansion(storageClassSelected, cl)
+	if err != nil {
+		return &ctrl.Result{}, err
+	}
+
+	log.Info("storageClassSelected", "storageClassSelected", storageClassSelected, "allowVolumeExpansion", scAllowVolumeExpansion)
 
 	observatoriumCR := &obsv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
@@ -97,7 +102,12 @@ func GenerateObservatoriumCR(
 	oldSpecBytes, _ := yaml.Marshal(oldSpec)
 	newSpecBytes, _ := yaml.Marshal(newSpec)
 
-	handleStorageResizeForObservatorium(&oldSpec, &newSpec, resizeForbiddenMap)
+	log.Info("handling storage resize for observatorium", "isResizeForbidden", isResizeForbidden)
+	// isResizeForbidden will reset after operator restart, double check with scAllowVolumeExpansion
+	if isResizeForbidden || !scAllowVolumeExpansion {
+		rollbackStorageResizeForObservatorium(&oldSpec, &newSpec)
+		isResizeForbidden = false
+	}
 
 	if bytes.Equal(newSpecBytes, oldSpecBytes) {
 		return nil, nil
@@ -677,52 +687,33 @@ func deleteStoreSts(cl client.Client, name string, oldNum int32, newNum int32) e
 	return nil
 }
 
-// handleStorageResizeForObservatorium rollback the storage size change for each thanos component if the pvc is forbidden to resize
-func handleStorageResizeForObservatorium(oldSpec, newSpec *obsv1alpha1.ObservatoriumSpec, resizeForbiddenMap map[string]bool) {
-	for c, isForbidden := range resizeForbiddenMap {
-		if isForbidden {
-			rollbackStorageChangeForComponent(oldSpec, newSpec, c)
-		}
+// rollbackStorageResizeForObservatorium rollback the storage size change for each thanos component
+func rollbackStorageResizeForObservatorium(oldSpec, newSpec *obsv1alpha1.ObservatoriumSpec) {
+	// the Compact and its VolumeClaimTemplate are supposed not to be empty
+	oldCompactStorageQuantity := oldSpec.Thanos.Compact.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
+	newCompactStorageQuantity := newSpec.Thanos.Compact.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
+	if !oldCompactStorageQuantity.Equal(newCompactStorageQuantity) {
+		newSpec.Thanos.Compact.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage] = oldCompactStorageQuantity
 	}
 
-	// clean the resizeForbiddenMap
-	for k := range resizeForbiddenMap {
-		delete(resizeForbiddenMap, k)
+	// the Rule and its VolumeClaimTemplate are supposed not to be empty
+	oldRuleStorageQuantity := oldSpec.Thanos.Rule.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
+	newRuleStorageQuantity := newSpec.Thanos.Rule.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
+	if !oldRuleStorageQuantity.Equal(newRuleStorageQuantity) {
+		newSpec.Thanos.Rule.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage] = oldRuleStorageQuantity
 	}
-}
 
-// rollbackStorageChangeForComponent rollback the storage size change for the specified component
-func rollbackStorageChangeForComponent(oldSpec, newSpec *obsv1alpha1.ObservatoriumSpec, component string) {
-	if component == config.ThanosCompact {
-		// the Compact and its VolumeClaimTemplate are supposed not to be empty
-		oldStorageQuantity := oldSpec.Thanos.Compact.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
-		newStorageQuantity := newSpec.Thanos.Compact.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
-		if !oldStorageQuantity.Equal(newStorageQuantity) {
-			newSpec.Thanos.Compact.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage] = oldStorageQuantity
-		}
+	// the Receivers and its VolumeClaimTemplate are supposed not to be empty
+	oldReceiverStorageQuantity := oldSpec.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
+	newReceiverStorageQuantity := newSpec.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
+	if !oldReceiverStorageQuantity.Equal(newReceiverStorageQuantity) {
+		newSpec.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage] = oldReceiverStorageQuantity
 	}
-	if component == config.ThanosRule {
-		// the Rule and its VolumeClaimTemplate are supposed not to be empty
-		oldStorageQuantity := oldSpec.Thanos.Rule.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
-		newStorageQuantity := newSpec.Thanos.Rule.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
-		if !oldStorageQuantity.Equal(newStorageQuantity) {
-			newSpec.Thanos.Rule.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage] = oldStorageQuantity
-		}
-	}
-	if component == config.ThanosReceive {
-		// the Receivers and its VolumeClaimTemplate are supposed not to be empty
-		oldStorageQuantity := oldSpec.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
-		newStorageQuantity := newSpec.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
-		if !oldStorageQuantity.Equal(newStorageQuantity) {
-			newSpec.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage] = oldStorageQuantity
-		}
-	}
-	if component == config.ThanosStoreShard {
-		// the Store and its VolumeClaimTemplate are supposed not to be empty
-		oldStorageQuantity := oldSpec.Thanos.Store.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
-		newStorageQuantity := newSpec.Thanos.Store.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
-		if !oldStorageQuantity.Equal(newStorageQuantity) {
-			newSpec.Thanos.Store.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage] = oldStorageQuantity
-		}
+
+	// the Store and its VolumeClaimTemplate are supposed not to be empty
+	oldStoreStorageQuantity := oldSpec.Thanos.Store.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
+	newStoreStorageQuantity := newSpec.Thanos.Store.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage]
+	if !oldStoreStorageQuantity.Equal(newStoreStorageQuantity) {
+		newSpec.Thanos.Store.VolumeClaimTemplate.Spec.Resources.Requests[v1.ResourceStorage] = oldStoreStorageQuantity
 	}
 }

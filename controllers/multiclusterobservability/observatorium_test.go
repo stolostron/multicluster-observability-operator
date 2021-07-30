@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	storageClassName = ""
+	storageClassName = "gp2"
 )
 
 func TestNewVolumeClaimTemplate(t *testing.T) {
@@ -126,7 +126,8 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
 
-	objs := []runtime.Object{mco}
+	sc := createStorageClass("gp2", true, true)
+	objs := []runtime.Object{mco, sc}
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
 
@@ -158,68 +159,15 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	}
 }
 
-func TestHandleStorageResizeForObservatorium(t *testing.T) {
+func TestRollbackStorageResizeForObservatorium(t *testing.T) {
 	cases := []struct {
-		name               string
-		newSpec            *observatoriumv1alpha1.ObservatoriumSpec
-		oldSpec            *observatoriumv1alpha1.ObservatoriumSpec
-		expectedSpec       *observatoriumv1alpha1.ObservatoriumSpec
-		resizeForbiddenMap map[string]bool
+		name         string
+		newSpec      *observatoriumv1alpha1.ObservatoriumSpec
+		oldSpec      *observatoriumv1alpha1.ObservatoriumSpec
+		expectedSpec *observatoriumv1alpha1.ObservatoriumSpec
 	}{
 		{
-			name: "empty resize forbidden map",
-			newSpec: &observatoriumv1alpha1.ObservatoriumSpec{
-				Thanos: observatoriumv1alpha1.ThanosSpec{
-					Compact: observatoriumv1alpha1.CompactSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("10Gi", "foo2"),
-					},
-					Rule: observatoriumv1alpha1.RuleSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("20Gi", "bar2"),
-					},
-					Receivers: observatoriumv1alpha1.ReceiversSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("30Gi", "baz2"),
-					},
-					Store: observatoriumv1alpha1.StoreSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("40Gi", "qux2"),
-					},
-				},
-			},
-			oldSpec: &observatoriumv1alpha1.ObservatoriumSpec{
-				Thanos: observatoriumv1alpha1.ThanosSpec{
-					Compact: observatoriumv1alpha1.CompactSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("1Gi", "foo1"),
-					},
-					Rule: observatoriumv1alpha1.RuleSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("2Gi", "bar1"),
-					},
-					Receivers: observatoriumv1alpha1.ReceiversSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("3Gi", "baz1"),
-					},
-					Store: observatoriumv1alpha1.StoreSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("4Gi", "qux1"),
-					},
-				},
-			},
-			expectedSpec: &observatoriumv1alpha1.ObservatoriumSpec{
-				Thanos: observatoriumv1alpha1.ThanosSpec{
-					Compact: observatoriumv1alpha1.CompactSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("10Gi", "foo2"),
-					},
-					Rule: observatoriumv1alpha1.RuleSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("20Gi", "bar2"),
-					},
-					Receivers: observatoriumv1alpha1.ReceiversSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("30Gi", "baz2"),
-					},
-					Store: observatoriumv1alpha1.StoreSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("40Gi", "qux2"),
-					},
-				},
-			},
-			resizeForbiddenMap: map[string]bool{},
-		},
-		{
-			name: "non empty resize forbidden map with the same size",
+			name: "rollback with the same size",
 			newSpec: &observatoriumv1alpha1.ObservatoriumSpec{
 				Thanos: observatoriumv1alpha1.ThanosSpec{
 					Compact: observatoriumv1alpha1.CompactSpec{
@@ -268,15 +216,9 @@ func TestHandleStorageResizeForObservatorium(t *testing.T) {
 					},
 				},
 			},
-			resizeForbiddenMap: map[string]bool{
-				mcoconfig.ThanosCompact:    true,
-				mcoconfig.ThanosRule:       true,
-				mcoconfig.ThanosReceive:    true,
-				mcoconfig.ThanosStoreShard: true,
-			},
 		},
 		{
-			name: "non empty resize forbidden map with the different sizes",
+			name: "rollback with the different sizes",
 			newSpec: &observatoriumv1alpha1.ObservatoriumSpec{
 				Thanos: observatoriumv1alpha1.ThanosSpec{
 					Compact: observatoriumv1alpha1.CompactSpec{
@@ -324,73 +266,12 @@ func TestHandleStorageResizeForObservatorium(t *testing.T) {
 						VolumeClaimTemplate: newVolumeClaimTemplate("4Gi", "qux2"),
 					},
 				},
-			},
-			resizeForbiddenMap: map[string]bool{
-				mcoconfig.ThanosCompact:    true,
-				mcoconfig.ThanosRule:       true,
-				mcoconfig.ThanosReceive:    true,
-				mcoconfig.ThanosStoreShard: true,
-			},
-		},
-		{
-			name: "no entry resize forbidden map with the different sizes",
-			newSpec: &observatoriumv1alpha1.ObservatoriumSpec{
-				Thanos: observatoriumv1alpha1.ThanosSpec{
-					Compact: observatoriumv1alpha1.CompactSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("10Gi", "foo2"),
-					},
-					Rule: observatoriumv1alpha1.RuleSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("20Gi", "bar2"),
-					},
-					Receivers: observatoriumv1alpha1.ReceiversSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("30Gi", "baz2"),
-					},
-					Store: observatoriumv1alpha1.StoreSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("40Gi", "qux2"),
-					},
-				},
-			},
-			oldSpec: &observatoriumv1alpha1.ObservatoriumSpec{
-				Thanos: observatoriumv1alpha1.ThanosSpec{
-					Compact: observatoriumv1alpha1.CompactSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("1Gi", "foo1"),
-					},
-					Rule: observatoriumv1alpha1.RuleSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("2Gi", "bar1"),
-					},
-					Receivers: observatoriumv1alpha1.ReceiversSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("3Gi", "baz1"),
-					},
-					Store: observatoriumv1alpha1.StoreSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("4Gi", "qux1"),
-					},
-				},
-			},
-			expectedSpec: &observatoriumv1alpha1.ObservatoriumSpec{
-				Thanos: observatoriumv1alpha1.ThanosSpec{
-					Compact: observatoriumv1alpha1.CompactSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("1Gi", "foo2"),
-					},
-					Rule: observatoriumv1alpha1.RuleSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("2Gi", "bar2"),
-					},
-					Receivers: observatoriumv1alpha1.ReceiversSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("30Gi", "baz2"),
-					},
-					Store: observatoriumv1alpha1.StoreSpec{
-						VolumeClaimTemplate: newVolumeClaimTemplate("40Gi", "qux2"),
-					},
-				},
-			},
-			resizeForbiddenMap: map[string]bool{
-				mcoconfig.ThanosCompact: true,
-				mcoconfig.ThanosRule:    true,
 			},
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			handleStorageResizeForObservatorium(c.oldSpec, c.newSpec, c.resizeForbiddenMap)
+			rollbackStorageResizeForObservatorium(c.oldSpec, c.newSpec)
 			expectedSpecBytes, err := yaml.Marshal(c.expectedSpec)
 			if err != nil {
 				t.Errorf("failed to marshal observatorium CR Spec: %v", err)
