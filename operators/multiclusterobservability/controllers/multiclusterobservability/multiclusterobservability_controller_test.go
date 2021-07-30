@@ -906,82 +906,174 @@ func TestCheckObjStorageStatus(t *testing.T) {
 }
 
 func TestHandleStorageSizeChange(t *testing.T) {
+	var (
+		mconame           = "test"
+		storageClassName  = "test"
+		alertmanagerName  = "alertmanager"
+		thanosReceiveName = "thanos-receive"
+		namespace         = config.GetDefaultNamespace()
+	)
 	mco := &mcov1beta2.MultiClusterObservability{
-		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Name: "test"},
+		ObjectMeta: metav1.ObjectMeta{Name: mconame},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			StorageConfig: &mcov1beta2.StorageConfig{
 				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
 					Key:  "test",
 					Name: "test",
 				},
+				StorageClass:            storageClassName,
 				AlertmanagerStorageSize: "2Gi",
+				ReceiveStorageSize:      "110Gi",
+				CompactStorageSize:      "1Gi",
+				RuleStorageSize:         "1Gi",
+				StoreStorageSize:        "1Gi",
 			},
 		},
 	}
 
 	s := scheme.Scheme
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	observatoriumv1alpha1.AddToScheme(s)
+	alertmanagerLabels := map[string]string{
+		"observability.open-cluster-management.io/name": mconame,
+		alertmanagerName: "observability",
+	}
+	thanosReceiveLabels := map[string]string{
+		"app.kubernetes.io/instance": mconame,
+		"app.kubernetes.io/name":     thanosReceiveName,
+	}
 	objs := []runtime.Object{
 		mco,
-		createStatefulSet(mco.Name, config.GetDefaultNamespace(), "test"),
-		createPersistentVolumeClaim(mco.Name, config.GetDefaultNamespace(), "test"),
+		createStatefulSet(alertmanagerName, namespace, alertmanagerLabels),
+		createStatefulSet(thanosReceiveName, namespace, thanosReceiveLabels),
+		createPersistentVolumeClaim(alertmanagerName, namespace, storageClassName, "1Gi", alertmanagerLabels),
+		createPersistentVolumeClaim(thanosReceiveName, namespace, storageClassName, "100Gi", thanosReceiveLabels),
 	}
 	c := fake.NewFakeClient(objs...)
 	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
 	isAlertmanagerStorageSizeChanged = true
+	isReceiveStorageSizeChanged = true
 	r.HandleStorageSizeChange(mco)
+	err := config.SetOperandNames(c)
+	if err != nil {
+		t.Fatalf("Failed to set operand namess: (%v)", err)
+	}
+	GenerateObservatoriumCR(c, s, mco)
 
 	pvc := &corev1.PersistentVolumeClaim{}
-	err := c.Get(context.TODO(), types.NamespacedName{
-		Name:      "test",
-		Namespace: config.GetDefaultNamespace(),
+	err = c.Get(context.TODO(), types.NamespacedName{
+		Name:      alertmanagerName,
+		Namespace: namespace,
 	}, pvc)
-
-	if err == nil {
-		if !pvc.Spec.Resources.Requests.Storage().Equal(resource.MustParse("2Gi")) {
-			t.Errorf("update pvc failed: got %v, expected 2Gi", pvc.Spec.Resources.Requests.Storage())
-		}
-	} else {
-		t.Errorf("update pvc failed: %v", err)
+	if err != nil {
+		t.Fatalf("Failed to get pvc: (%v)", err)
 	}
 
+	if !pvc.Spec.Resources.Requests.Storage().Equal(resource.MustParse("2Gi")) {
+		t.Errorf("update pvc for %s failed: got %v, expected 2Gi", alertmanagerName, pvc.Spec.Resources.Requests.Storage())
+	}
+
+	err = c.Get(context.TODO(), types.NamespacedName{
+		Name:      thanosReceiveName,
+		Namespace: namespace,
+	}, pvc)
+	if err != nil {
+		t.Fatalf("Failed to get pvc: (%v)", err)
+	}
+
+	if !pvc.Spec.Resources.Requests.Storage().Equal(resource.MustParse("110Gi")) {
+		t.Errorf("update pvc for %s failed: got %v, expected 110Gi", thanosReceiveName, pvc.Spec.Resources.Requests.Storage())
+	}
+
+	observatorium := &observatoriumv1alpha1.Observatorium{}
+	err = c.Get(context.TODO(), types.NamespacedName{
+		Name:      config.GetOperandName(config.Observatorium),
+		Namespace: namespace,
+	}, observatorium)
+
+	if err != nil {
+		t.Fatalf("Failed to get observatorium: (%v)", err)
+	}
+
+	if !observatorium.Spec.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests.Storage().Equal(resource.MustParse("110Gi")) {
+		t.Errorf("update observatorium failed: got %v, expected 110Gi", observatorium.Spec.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests.Storage())
+	}
+
+	// update the MCO cr to update the storage size, but this time the volumes are forbidden to resize
+	mco = &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{Name: mconame},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
+					Key:  "test",
+					Name: "test",
+				},
+				StorageClass:            storageClassName,
+				AlertmanagerStorageSize: "3Gi",
+				ReceiveStorageSize:      "120Gi",
+				CompactStorageSize:      "1Gi",
+				RuleStorageSize:         "1Gi",
+				StoreStorageSize:        "1Gi",
+			},
+		},
+	}
+
+	err = c.Delete(context.TODO(), mco)
+	if err != nil {
+		t.Fatalf("Failed to delete mco: (%v)", err)
+	}
+
+	err = c.Create(context.TODO(), mco)
+	if err != nil {
+		t.Fatalf("Failed to create mco cr: (%v)", err)
+	}
+
+	// isAlertmanagerStorageSizeChanged = true
+	// isReceiveStorageSizeChanged = true
+	resizeForbiddenMap[config.Alertmanager] = true
+	resizeForbiddenMap[config.ThanosReceive] = true
+	GenerateObservatoriumCR(c, s, mco)
+
+	err = c.Get(context.TODO(), types.NamespacedName{
+		Name:      config.GetOperandName(config.Observatorium),
+		Namespace: namespace,
+	}, observatorium)
+
+	if err != nil {
+		t.Fatalf("Failed to get observatorium: (%v)", err)
+	}
+	if !observatorium.Spec.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests.Storage().Equal(resource.MustParse("110Gi")) {
+		t.Errorf("update observatorium failed: got %v, expected 110Gi", observatorium.Spec.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests.Storage())
+	}
 }
 
-func createStatefulSet(name, namespace, statefulSetName string) *appsv1.StatefulSet {
+func createStatefulSet(name, namespace string, labels map[string]string) *appsv1.StatefulSet {
 	return &appsv1.StatefulSet{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "apps/v1",
 			Kind:       "StatefulSet",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      statefulSetName,
+			Name:      name,
 			Namespace: namespace,
-			Labels: map[string]string{
-				"observability.open-cluster-management.io/name": name,
-				"alertmanager": "observability",
-			},
+			Labels:    labels,
 		},
 	}
 }
 
-func createPersistentVolumeClaim(name, namespace, pvcName string) *corev1.PersistentVolumeClaim {
-	storage := "gp2"
+func createPersistentVolumeClaim(name, namespace, storageClassName, storageSize string, labels map[string]string) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      pvcName,
+			Name:      name,
 			Namespace: namespace,
-			Labels: map[string]string{
-				"observability.open-cluster-management.io/name": name,
-				"alertmanager": "observability",
-			},
+			Labels:    labels,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-			StorageClassName: &storage,
+			StorageClassName: &storageClassName,
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
-					corev1.ResourceName(corev1.ResourceStorage): resource.MustParse("1Gi"),
+					corev1.ResourceName(corev1.ResourceStorage): resource.MustParse(storageSize),
 				},
 			},
 		},
