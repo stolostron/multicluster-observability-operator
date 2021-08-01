@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"time"
+	//"time"
 
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/apimachinery/pkg/util/wait"
+	//"k8s.io/apimachinery/pkg/util/wait"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -622,34 +622,6 @@ func updateStorageSizeChange(c client.Client, matchLabels map[string]string, com
 			}
 			updatedPVCNamespaceNameList = append(updatedPVCNamespaceNameList, types.NamespacedName{Name: pvc.GetName(), Namespace: pvc.GetNamespace()})
 			log.Info("Update storage size for PVC", "pvc", pvc.Name)
-		}
-	}
-
-	if os.Getenv("UNIT_TEST") != "true" {
-		// wait FileSystemResizePending condition for all the updated PVC
-		err = wait.Poll(6*time.Second, 120*time.Second, func() (done bool, err error) {
-			isThereNotReady := false
-			for _, pvcNamespaceName := range updatedPVCNamespaceNameList {
-				pvc := &corev1.PersistentVolumeClaim{}
-				err := c.Get(context.TODO(), pvcNamespaceName, pvc)
-				if err != nil {
-					return false, err
-				}
-				isResizePending := false
-				for _, condition := range pvc.Status.Conditions {
-					if condition.Type == corev1.PersistentVolumeClaimFileSystemResizePending {
-						isResizePending = true
-						break
-					}
-				}
-				if !isResizePending {
-					isThereNotReady = true
-				}
-			}
-			return !isThereNotReady, nil
-		})
-		if err != nil {
-			return err
 		}
 	}
 
