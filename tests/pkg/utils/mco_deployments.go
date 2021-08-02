@@ -44,7 +44,11 @@ func DeleteDeployment(opt TestOptions, isHub bool, name string, namespace string
 	return err
 }
 
-func UpdateDeployment(opt TestOptions, isHub bool, name string, namespace string,
+func UpdateDeployment(
+	opt TestOptions,
+	isHub bool,
+	name string,
+	namespace string,
 	dep *appv1.Deployment) (*appv1.Deployment, error) {
 	clientKube := getKubeClient(opt, isHub)
 	updateDep, err := clientKube.AppsV1().Deployments(namespace).Update(context.TODO(), dep, metav1.UpdateOptions{})
@@ -61,7 +65,10 @@ func UpdateDeploymentReplicas(opt TestOptions, deployName, crProperty string, de
 		return err
 	}
 	deploy.Spec.Replicas = &desiredReplicas
-	UpdateDeployment(opt, true, deployName, MCO_NAMESPACE, deploy)
+	_, err = UpdateDeployment(opt, true, deployName, MCO_NAMESPACE, deploy)
+	if err != nil {
+		return err
+	}
 
 	obs, err := clientDynamic.Resource(NewMCOMObservatoriumGVR()).Namespace(MCO_NAMESPACE).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 	if err != nil {
