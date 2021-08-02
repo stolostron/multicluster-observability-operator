@@ -611,36 +611,6 @@ func updateStorageSizeChange(c client.Client, matchLabels map[string]string, com
 		}
 	}
 
-	/*
-		if os.Getenv("UNIT_TEST") != "true" {
-			// wait FileSystemResizePending condition for all the updated PVC
-			err = wait.Poll(6*time.Second, 120*time.Second, func() (done bool, err error) {
-				isThereNotReady := false
-				for _, pvcNamespaceName := range updatedPVCNamespaceNameList {
-					pvc := &corev1.PersistentVolumeClaim{}
-					err := c.Get(context.TODO(), pvcNamespaceName, pvc)
-					if err != nil {
-						return false, err
-					}
-					isResizePending := false
-					for _, condition := range pvc.Status.Conditions {
-						if condition.Type == corev1.PersistentVolumeClaimFileSystemResizePending {
-							isResizePending = true
-							break
-						}
-					}
-					if !isResizePending {
-						isThereNotReady = true
-					}
-				}
-				return !isThereNotReady, nil
-			})
-			if err != nil {
-				return err
-			}
-		}
-	*/
-
 	// update sts
 	for index, sts := range stsList {
 		err := c.Delete(context.TODO(), &stsList[index], &client.DeleteOptions{})
