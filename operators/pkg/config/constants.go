@@ -6,15 +6,17 @@ package config
 const (
 	ClusterNameKey                  = "cluster-name"
 	HubInfoSecretName               = "hub-info-secret"
-	HubInfoSecretKey                = "hub-info.yaml"
+	HubInfoSecretKey                = "hub-info.yaml" // #nosec
 	ObservatoriumAPIRemoteWritePath = "/api/metrics/v1/default/api/v1/receive"
 
 	CollectorImage    = "COLLECTOR_IMAGE"
 	InstallPrometheus = "INSTALL_PROM"
 )
 
-// HubInfo is the struct that contains the common information about the hub cluster, for example
-// the name of managed cluster on the hub, the URL of observatorium api gateway, the URL of hub alertmanager and the CA for the hub router
+// HubInfo is the struct that contains the common information about the hub
+// cluster, for example the name of managed cluster on the hub, the URL of
+// observatorium api gateway, the URL of hub alertmanager and the CA for the
+// hub router
 type HubInfo struct {
 	ClusterName              string `yaml:"cluster-name"`
 	ObservatoriumAPIEndpoint string `yaml:"observatorium-api-endpoint"`

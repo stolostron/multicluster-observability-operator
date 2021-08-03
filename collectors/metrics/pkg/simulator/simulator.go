@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -88,7 +89,7 @@ func randFloat64() float64 {
 func FetchSimulatedTimeseries(timeseriesFile string) ([]*clientmodel.MetricFamily, error) {
 	timestamp := time.Now().UnixNano() / int64(time.Millisecond)
 
-	reader, err := os.Open(timeseriesFile)
+	reader, err := os.Open(filepath.Clean(timeseriesFile))
 	if err != nil {
 		return nil, err
 	}

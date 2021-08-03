@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -29,7 +30,7 @@ const (
 	MCO_NAMESPACE                 = "open-cluster-management-observability"
 	MCO_ADDON_NAMESPACE           = "open-cluster-management-addon-observability"
 	MCO_PULL_SECRET_NAME          = "multiclusterhub-operator-pull-secret"
-	OBJ_SECRET_NAME               = "thanos-object-storage"
+	OBJ_SECRET_NAME               = "thanos-object-storage" // #nosec
 	MCO_GROUP                     = "observability.open-cluster-management.io"
 	OCM_WORK_GROUP                = "work.open-cluster-management.io"
 	OCM_CLUSTER_GROUP             = "cluster.open-cluster-management.io"
@@ -720,7 +721,7 @@ func CheckMCOConversion(opt TestOptions, v1beta1tov1beta2GoldenPath string) erro
 	}
 
 	decUnstructured := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
-	yamlB, err := ioutil.ReadFile(v1beta1tov1beta2GoldenPath)
+	yamlB, err := ioutil.ReadFile(filepath.Clean(v1beta1tov1beta2GoldenPath))
 	if err != nil {
 		return err
 	}

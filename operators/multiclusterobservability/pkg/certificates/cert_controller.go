@@ -50,8 +50,17 @@ func Start(c client.Client) {
 		os.Exit(1)
 	}
 	agent := &ObservabilityAgent{}
-	addonMgr.AddAgent(agent)
-	addonMgr.Start(context.TODO())
+	err = addonMgr.AddAgent(agent)
+	if err != nil {
+		log.Error(err, "Failed to add agent for addon manager")
+		os.Exit(1)
+	}
+
+	err = addonMgr.Start(context.TODO())
+	if err != nil {
+		log.Error(err, "Failed to start addon manager")
+		os.Exit(1)
+	}
 
 	kubeClient, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
 	if err != nil {

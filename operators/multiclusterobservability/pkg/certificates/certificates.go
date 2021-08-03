@@ -407,16 +407,22 @@ func removeExpiredCA(c client.Client, name string) {
 
 func pemEncode(cert []byte, key []byte) (*bytes.Buffer, *bytes.Buffer) {
 	certPEM := new(bytes.Buffer)
-	pem.Encode(certPEM, &pem.Block{
+	err := pem.Encode(certPEM, &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: cert,
 	})
+	if err != nil {
+		log.Error(err, "Failed to encode cert")
+	}
 
 	keyPEM := new(bytes.Buffer)
-	pem.Encode(keyPEM, &pem.Block{
+	err = pem.Encode(keyPEM, &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: key,
 	})
+	if err != nil {
+		log.Error(err, "Failed to encode key")
+	}
 
 	return certPEM, keyPEM
 }
