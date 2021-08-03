@@ -257,7 +257,7 @@ func main() {
 	}
 
 	if err = (&observabilityv1beta2.MultiClusterObservability{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook", "webhook", "Captain")
+		setupLog.Error(err, "unable to create webhook", "webhook", "MultiClusterObservability")
 		os.Exit(1)
 	}
 
