@@ -6,12 +6,13 @@ metadata:
 webhooks:
 - admissionReviewVersions:
   - v1
+  - v1beta1
   clientConfig:
     service:
       name: multicluster-observability-webhook-service
       namespace: open-cluster-management
       port: 443
-      path: /validate
+      path: /validate-observability-open-cluster-management-io-v1beta2-multiclusterobservability
     caBundle: XG4=
   failurePolicy: Fail
   name: vmulticlusterobservability.observability.open-cluster-management.io
@@ -19,11 +20,10 @@ webhooks:
   - apiGroups:
     - observability.open-cluster-management.io
     apiVersions:
-    - v1
+    - v1beta2
     operations:
     - CREATE
     - UPDATE
-    - DELETE
     resources:
     - multiclusterobservabilities
   sideEffects: None

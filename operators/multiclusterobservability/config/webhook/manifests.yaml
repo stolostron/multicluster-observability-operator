@@ -13,7 +13,7 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate
+      path: /validate-observability-open-cluster-management-io-v1beta2-multiclusterobservability
   failurePolicy: Fail
   name: vmulticlusterobservability.observability.open-cluster-management.io
   rules:

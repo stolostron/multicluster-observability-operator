@@ -491,6 +491,7 @@ spec:
   webhookdefinitions:
   - admissionReviewVersions:
     - v1
+    - v1beta1
     containerPort: 443
     deploymentName: multicluster-observability-operator
     failurePolicy: Fail
@@ -499,14 +500,13 @@ spec:
     - apiGroups:
       - observability.open-cluster-management.io
       apiVersions:
-      - v1
+      - v1beta2
       operations:
       - CREATE
       - UPDATE
-      - DELETE
       resources:
       - multiclusterobservabilities
     sideEffects: None
     targetPort: 9443
     type: ValidatingAdmissionWebhook
-    webhookPath: /validate
+    webhookPath: /validate-observability-open-cluster-management-io-v1beta2-multiclusterobservability
