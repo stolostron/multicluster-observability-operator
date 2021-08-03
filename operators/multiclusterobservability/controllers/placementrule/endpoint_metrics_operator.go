@@ -16,6 +16,7 @@ import (
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
 )
 
 const (
@@ -25,7 +26,8 @@ const (
 )
 
 var (
-	templatePath = "/usr/local/manifests/endpoint-observability"
+	templatePath     = "/usr/local/manifests/endpoint-observability"
+	promTemplatePath = "/usr/local/manifests/prometheus"
 )
 
 func loadTemplates(mco *mcov1beta2.MultiClusterObservability) (
@@ -113,7 +115,7 @@ func updateEndpointOperator(mco *mcov1beta2.MultiClusterObservability,
 		mcoconfig.EndpointControllerImgTagSuffix, mcoconfig.EndpointControllerKey)
 	container.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 	for i, env := range container.Env {
-		if env.Name == "COLLECTOR_IMAGE" {
+		if env.Name == operatorconfig.CollectorImage {
 			container.Env[i].Value = getImage(mco, mcoconfig.MetricsCollectorImgName,
 				mcoconfig.MetricsCollectorImgTagSuffix, mcoconfig.MetricsCollectorKey)
 		}
@@ -130,4 +132,24 @@ func getImage(mco *mcov1beta2.MultiClusterObservability,
 		return replacedImage
 	}
 	return image
+}
+
+func loadPromTemplates(mco *mcov1beta2.MultiClusterObservability) (
+	[]runtime.RawExtension, error) {
+	templateRenderer := templates.NewTemplateRenderer(promTemplatePath)
+	resourceList := []*resource.Resource{}
+	err := templateRenderer.AddTemplateFromPath(promTemplatePath, &resourceList)
+	if err != nil {
+		log.Error(err, "Failed to load templates")
+		return nil, err
+	}
+	rawExtensionList := []runtime.RawExtension{}
+	for _, r := range resourceList {
+		obj, err := updateRes(r, mco)
+		if err != nil {
+			return nil, err
+		}
+		rawExtensionList = append(rawExtensionList, runtime.RawExtension{Object: obj})
+	}
+	return rawExtensionList, nil
 }

@@ -8,6 +8,9 @@ const (
 	HubInfoSecretName               = "hub-info-secret"
 	HubInfoSecretKey                = "hub-info.yaml" // #nosec
 	ObservatoriumAPIRemoteWritePath = "/api/metrics/v1/default/api/v1/receive"
+
+	CollectorImage    = "COLLECTOR_IMAGE"
+	InstallPrometheus = "INSTALL_PROM"
 )
 
 // HubInfo is the struct that contains the common information about the hub

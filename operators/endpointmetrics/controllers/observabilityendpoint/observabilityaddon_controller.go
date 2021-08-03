@@ -5,6 +5,7 @@ package observabilityendpoint
 import (
 	"context"
 	"os"
+	"strconv"
 
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -25,7 +26,8 @@ import (
 )
 
 var (
-	log = ctrl.Log.WithName("controllers").WithName("ObservabilityAddon")
+	log                  = ctrl.Log.WithName("controllers").WithName("ObservabilityAddon")
+	installPrometheus, _ = strconv.ParseBool(os.Getenv(operatorconfig.InstallPrometheus))
 )
 
 const (
@@ -95,39 +97,41 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, nil
 	}
 
-	// If no prometheus service found, set status as NotSupported
-	promSvc := &corev1.Service{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: promSvcName,
-		Namespace: promNamespace}, promSvc)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Error(err, "OCP prometheus service does not exist")
-			util.ReportStatus(ctx, r.Client, obsAddon, "NotSupported")
-			return ctrl.Result{}, nil
-		}
-		log.Error(err, "Failed to check prometheus resource")
-		return ctrl.Result{}, err
-	}
-
-	clusterID, err := getClusterID(ctx, r.Client)
-	if err != nil {
-		// OCP 3.11 has no cluster id, set it as empty string
-		clusterID = ""
-	}
-
 	clusterType := ""
-	isSNO, err := isSNO(ctx, r.Client)
-	if err == nil && isSNO {
-		clusterType = "SNO"
-	}
+	clusterID := ""
 
-	err = createMonitoringClusterRoleBinding(ctx, r.Client)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	err = createCAConfigmap(ctx, r.Client)
-	if err != nil {
-		return ctrl.Result{}, err
+	if !installPrometheus {
+		// If no prometheus service found, set status as NotSupported
+		promSvc := &corev1.Service{}
+		err = r.Client.Get(ctx, types.NamespacedName{Name: promSvcName,
+			Namespace: promNamespace}, promSvc)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				log.Error(err, "OCP prometheus service does not exist")
+				util.ReportStatus(ctx, r.Client, obsAddon, "NotSupported")
+				return ctrl.Result{}, nil
+			}
+			log.Error(err, "Failed to check prometheus resource")
+			return ctrl.Result{}, err
+		}
+
+		clusterID, err = getClusterID(ctx, r.Client)
+		if err != nil {
+			// OCP 3.11 has no cluster id, set it as empty string
+			clusterID = ""
+		}
+		isSNO, err := isSNO(ctx, r.Client)
+		if err == nil && isSNO {
+			clusterType = "SNO"
+		}
+		err = createMonitoringClusterRoleBinding(ctx, r.Client)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		err = createCAConfigmap(ctx, r.Client)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	hubSecret := &corev1.Secret{}
@@ -143,9 +147,11 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 	hubInfo.ClusterName = string(hubSecret.Data[operatorconfig.ClusterNameKey])
 
-	// create or update the cluster-monitoring-config configmap and relevant resources
-	if err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, clusterID, r.Client); err != nil {
-		return ctrl.Result{}, err
+	if !installPrometheus {
+		// create or update the cluster-monitoring-config configmap and relevant resources
+		if err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, clusterID, r.Client); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	if obsAddon.Spec.EnableMetrics {
@@ -186,18 +192,20 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		// Should we return bool from the delete functions for crb and cm? What is it used for? Should we use the bool before removing finalizer?
 		// SHould we return true if metricscollector is not found as that means  metrics collector is not present?
 		// Moved this part up as we need to clean up cm and crb before we remove the finalizer - is that the right way to do it?
-		err = deleteMonitoringClusterRoleBinding(ctx, r.Client)
-		if err != nil {
-			return false, err
-		}
-		err = deleteCAConfigmap(ctx, r.Client)
-		if err != nil {
-			return false, err
-		}
-		// revert the change to openshift cluster monitoring stack
-		err = revertClusterMonitoringConfig(ctx, r.Client)
-		if err != nil {
-			return false, err
+		if !installPrometheus {
+			err = deleteMonitoringClusterRoleBinding(ctx, r.Client)
+			if err != nil {
+				return false, err
+			}
+			err = deleteCAConfigmap(ctx, r.Client)
+			if err != nil {
+				return false, err
+			}
+			// revert the change to openshift cluster monitoring stack
+			err = revertClusterMonitoringConfig(ctx, r.Client)
+			if err != nil {
+				return false, err
+			}
 		}
 		hubObsAddon.SetFinalizers(remove(hubObsAddon.GetFinalizers(), obsAddonFinalizer))
 		err = r.HubClient.Update(ctx, hubObsAddon)

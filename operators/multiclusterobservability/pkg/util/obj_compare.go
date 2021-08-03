@@ -27,6 +27,7 @@ var compFns = map[string]compFn{
 	"ClusterRole":              compareClusterRoles,
 	"ClusterRoleBinding":       compareClusterRoleBindings,
 	"Secret":                   compareSecrets,
+	"Service":                  compareServices,
 	"ConfigMap":                compareConfigMap,
 	"CustomResourceDefinition": compareCRD,
 	"ObservabilityAddon":       compareObsAddon,
@@ -44,6 +45,7 @@ func GetK8sObj(kind string) runtime.Object {
 		"PersistentVolumeClaim":    &corev1.PersistentVolumeClaim{},
 		"Secret":                   &corev1.Secret{},
 		"ConfigMap":                &corev1.ConfigMap{},
+		"Service":                  &corev1.Service{},
 		"CustomResourceDefinition": &apiextensionsv1.CustomResourceDefinition{},
 		"ObservabilityAddon":       &mcov1beta1.ObservabilityAddon{},
 	}
@@ -165,6 +167,20 @@ func compareSecrets(obj1 runtime.Object, obj2 runtime.Object) bool {
 	}
 	if !reflect.DeepEqual(s1.Data, s2.Data) {
 		log.Info("Find updated data in secret", "secret", s1.Name)
+		return false
+	}
+	return true
+}
+
+func compareServices(obj1 runtime.Object, obj2 runtime.Object) bool {
+	s1 := obj1.(*corev1.Service)
+	s2 := obj2.(*corev1.Service)
+	if s1.Name != s2.Name || s1.Namespace != s2.Namespace {
+		log.Info("Find updated name/namespace for service", "service", s1.Name)
+		return false
+	}
+	if !reflect.DeepEqual(s1.Spec, s2.Spec) {
+		log.Info("Find updated data in service", "service", s1.Name)
 		return false
 	}
 	return true

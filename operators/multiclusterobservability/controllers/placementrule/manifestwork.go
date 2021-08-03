@@ -25,6 +25,7 @@ import (
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
 )
 
 const (
@@ -151,13 +152,13 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 }
 
 func getGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObservability) (
-	[]workv1.Manifest, *workv1.Manifest, *workv1.Manifest, *appsv1.Deployment, *corev1.Secret, error) {
+	[]workv1.Manifest, []workv1.Manifest, *workv1.Manifest, *workv1.Manifest, *appsv1.Deployment, *corev1.Secret, error) {
 
 	works := []workv1.Manifest{}
 
 	hubInfo, err := newHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, mco)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 
 	// inject namespace
@@ -166,7 +167,7 @@ func getGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObs
 	//create image pull secret
 	pull, err := getPullSecret(c, config.GetImagePullSecret(mco.Spec))
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 	if pull != nil {
 		works = injectIntoWork(works, pull)
@@ -175,21 +176,21 @@ func getGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObs
 	// inject the certificates
 	certs, err := getCerts(c)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 	works = injectIntoWork(works, certs)
 
 	// inject the metrics allowlist configmap
 	mList, err := getMetricsListCM(c)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 	works = injectIntoWork(works, mList)
 
 	// inject the alertmanager accessor bearer token secret
 	amAccessorTokenSecret, err := getAmAccessorTokenSecret(c)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 	works = injectIntoWork(works, amAccessorTokenSecret)
 
@@ -197,7 +198,7 @@ func getGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObs
 	templates, crdv1, crdv1beta1, dep, err := loadTemplates(mco)
 	if err != nil {
 		log.Error(err, "Failed to load templates")
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 	crdv1Work := &workv1.Manifest{RawExtension: runtime.RawExtension{
 		Object: crdv1,
@@ -209,13 +210,20 @@ func getGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObs
 		works = append(works, workv1.Manifest{RawExtension: raw})
 	}
 
-	return works, crdv1Work, crdv1beta1Work, dep, hubInfo, nil
+	// inject resources in prometheus templates
+	promTemplates, err := loadPromTemplates(mco)
+	promWorks := []workv1.Manifest{}
+	for _, raw := range promTemplates {
+		promWorks = append(promWorks, workv1.Manifest{RawExtension: raw})
+	}
+
+	return works, promWorks, crdv1Work, crdv1beta1Work, dep, hubInfo, nil
 }
 
 func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	clusterNamespace string, clusterName string,
 	mco *mcov1beta2.MultiClusterObservability,
-	works []workv1.Manifest, crdWork *workv1.Manifest, dep *appsv1.Deployment, hubInfo *corev1.Secret) error {
+	works []workv1.Manifest, promWorks []workv1.Manifest, crdWork *workv1.Manifest, dep *appsv1.Deployment, hubInfo *corev1.Secret) error {
 
 	work := newManifestwork(clusterNamespace+workNameSuffix, clusterNamespace)
 
@@ -243,6 +251,9 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 				if env.Name == "HUB_NAMESPACE" {
 					container.Env[j].Value = clusterNamespace
 				}
+				if env.Name == operatorconfig.InstallPrometheus && promWorks != nil {
+					container.Env[j].Value = "true"
+				}
 			}
 		}
 	}
@@ -251,6 +262,10 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	// inject the hub info secret
 	hubInfo.Data["clusterName"] = []byte(clusterName)
 	manifests = injectIntoWork(manifests, hubInfo)
+
+	if promWorks != nil {
+		manifests = append(manifests, promWorks...)
+	}
 
 	work.Spec.Workload.Manifests = manifests
 

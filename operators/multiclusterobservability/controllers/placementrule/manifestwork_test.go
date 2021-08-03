@@ -25,7 +25,7 @@ import (
 
 const (
 	pullSecretName = "test-pull-secret"
-	workSize       = 12
+	workSize       = 13
 )
 
 func newTestMCO() *mcov1beta2.MultiClusterObservability {
@@ -158,13 +158,14 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to get work dir: (%v)", err)
 	}
 	templatePath = path.Join(wd, "../../manifests/endpoint-observability")
+	promTemplatePath = path.Join(wd, "../../manifests/prometheus")
 
-	works, crdWork, _, dep, hubInfo, err := getGlobalManifestResources(c, newTestMCO())
+	works, promWorks, crdWork, _, dep, hubInfo, err := getGlobalManifestResources(c, newTestMCO())
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resourc: (%v)", err)
 	}
-
-	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, crdWork, dep, hubInfo)
+	t.Logf("work size is %d and %d", len(works), len(promWorks))
+	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, promWorks, crdWork, dep, hubInfo)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
@@ -182,11 +183,11 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create pull secret: (%v)", err)
 	}
-	works, crdWork, _, dep, hubInfo, err = getGlobalManifestResources(c, newTestMCO())
+	works, promWorks, crdWork, _, dep, hubInfo, err = getGlobalManifestResources(c, newTestMCO())
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resourc: (%v)", err)
 	}
-	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, crdWork, dep, hubInfo)
+	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, promWorks, crdWork, dep, hubInfo)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
@@ -199,7 +200,7 @@ func TestManifestWork(t *testing.T) {
 	}
 
 	spokeNameSpace = "spoke-ns"
-	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, crdWork, dep, hubInfo)
+	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, promWorks, crdWork, dep, hubInfo)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks with updated namespace: (%v)", err)
 	}
