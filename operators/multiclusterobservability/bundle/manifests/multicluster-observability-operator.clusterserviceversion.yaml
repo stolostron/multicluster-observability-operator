@@ -51,7 +51,6 @@ metadata:
     capabilities: Basic Install
     operators.operatorframework.io/builder: operator-sdk-v1.4.2
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
-    operators.operatorframework.io/internal-objects: '["observatoria.core.observatorium.io","observabilityaddons.observability.open-cluster-management.io"]'
   name: multicluster-observability-operator.v0.1.0
   namespace: placeholder
 spec:
@@ -489,3 +488,25 @@ spec:
     name: Red Hat, Inc
     url: https://github.com/open-cluster-management/multicluster-observability-operator
   version: 0.1.0
+  webhookdefinitions:
+  - admissionReviewVersions:
+    - v1
+    containerPort: 443
+    deploymentName: multicluster-observability-operator
+    failurePolicy: Fail
+    generateName: vmulticlusterobservability.observability.open-cluster-management.io
+    rules:
+    - apiGroups:
+      - observability.open-cluster-management.io
+      apiVersions:
+      - v1
+      operations:
+      - CREATE
+      - UPDATE
+      - DELETE
+      resources:
+      - multiclusterobservabilities
+    sideEffects: None
+    targetPort: 9443
+    type: ValidatingAdmissionWebhook
+    webhookPath: /validate

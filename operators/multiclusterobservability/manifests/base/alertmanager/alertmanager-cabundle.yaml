@@ -4,7 +4,7 @@ data:
 kind: ConfigMap
 metadata:
   annotations:
-    service.alpha.openshift.io/inject-cabundle: "true"
+    service.beta.openshift.io/inject-cabundle: "true"
   labels:
     alertmanager: observability
   name: alertmanager-ca-bundle
