@@ -3,6 +3,9 @@
 
 -include /opt/build-harness/Makefile.prow
 
+# Image URL to use all building/pushing image targets
+IMG ?= quay.io/open-cluster-management/multicluster-observability-operator:latest
+
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: 
 	cd operators/multiclusterobservability && make deploy
@@ -21,12 +24,19 @@ docker-push:
 	docker push ${IMG}
 
 .PHONY: unit-tests
-unit-tests:
-	cd loaders/dashboards; go test `go list ./... | grep -v test`
-	cd operators/endpointmetrics; go test `go list ./... | grep -v test`
-	cd operators/multiclusterobservability; go test `go list ./... | grep -v test`
-	cd proxy; go test `go list ./... | grep -v test`
-	cd collectors/metrics; go test `go list ./... | grep -v test`
+unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors
+
+unit-tests-operators:
+	go test `go list ./operators/... | grep -v test`
+
+unit-tests-loaders:
+	go test `go list ./loaders/... | grep -v test`
+
+unit-tests-proxy:
+	go test `go list ./proxy/... | grep -v test`
+
+unit-tests-collectors:
+	go test `go list ./collectors/... | grep -v test`
 
 .PHONY: e2e-tests
 
