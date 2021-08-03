@@ -8,7 +8,7 @@ COPY go.sum go.mod ./
 COPY ./operators/multiclusterobservability ./operators/multiclusterobservability
 COPY ./operators/pkg ./operators/pkg
 
-RUN CGO_ENABLED=0 go build -a -installsuffix cgo -v -i -o bin/manager operators/multiclusterobservability/main.go
+RUN CGO_ENABLED=0 go build -a -installsuffix cgo -o bin/manager operators/multiclusterobservability/main.go
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
