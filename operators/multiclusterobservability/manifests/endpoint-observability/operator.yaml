@@ -45,6 +45,8 @@ spec:
               value: "endpoint-monitoring-operator"
             - name: HUB_KUBECONFIG
               value: "/spoke/hub-kubeconfig/kubeconfig"
+            - name: INSTALL_PROM
+              value: "false"
           volumeMounts:
             - name: hub-kubeconfig-secret
               mountPath: "/spoke/hub-kubeconfig"

@@ -44,8 +44,9 @@ const (
 )
 
 var (
-	collectorImage = os.Getenv("COLLECTOR_IMAGE")
+	collectorImage = os.Getenv(operatorconfig.CollectorImage)
 	ocpPromURL     = "https://prometheus-k8s.openshift-monitoring.svc:9091"
+	promURL        = "http://prometheus-k8s.open-cluster-management-addon-observability.svc:9090"
 )
 
 type MetricsAllowlist struct {
@@ -133,12 +134,13 @@ func createDeployment(clusterID string, clusterType string,
 		"/usr/bin/metrics-collector",
 		"--from=$(FROM)",
 		"--to-upload=$(TO)",
-		"--from-ca-file=" + caFile,
-		"--from-token-file=/var/run/secrets/kubernetes.io/serviceaccount/token",
 		"--interval=" + interval,
 		"--limit-bytes=" + strconv.Itoa(limitBytes),
 		fmt.Sprintf("--label=\"cluster=%s\"", hubInfo.ClusterName),
 		fmt.Sprintf("--label=\"clusterID=%s\"", clusterID),
+	}
+	if !installPrometheus {
+		commands = append(commands, "--from-ca-file="+caFile, "--from-token-file=/var/run/secrets/kubernetes.io/serviceaccount/token")
 	}
 	if clusterType != "" {
 		commands = append(commands, fmt.Sprintf("--label=\"clusterType=%s\"", clusterType))
@@ -154,6 +156,10 @@ func createDeployment(clusterID string, clusterType string,
 	}
 	for _, rule := range allowlist.RuleList {
 		commands = append(commands, fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr))
+	}
+	from := promURL
+	if !installPrometheus {
+		from = ocpPromURL
 	}
 	metricsCollectorDep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -187,7 +193,7 @@ func createDeployment(clusterID string, clusterType string,
 							Env: []corev1.EnvVar{
 								{
 									Name:  "FROM",
-									Value: ocpPromURL,
+									Value: from,
 								},
 								{
 									Name:  "TO",
