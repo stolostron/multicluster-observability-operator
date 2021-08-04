@@ -70,7 +70,8 @@ const (
 	GrafanaCN        = "grafana"
 	ManagedClusterOU = "acm"
 
-	AlertmanagerAccessorSAName     = "observability-alertmanager-accessor" // #nosec
+	AlertmanagerAccessorSAName = "observability-alertmanager-accessor"
+	/* #nosec */
 	AlertmanagerAccessorSecretName = "observability-alertmanager-accessor"
 	AlertmanagerServiceName        = "alertmanager"
 	AlertmanagerRouteName          = "alertmanager"
