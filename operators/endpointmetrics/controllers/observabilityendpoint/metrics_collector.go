@@ -37,10 +37,7 @@ const (
 )
 
 const (
-	kindClusterID   = "kind-cluster-id"
-	kindClusterHost = "observatorium.hub"
-	kindClusterIP   = "172.17.0.2"
-	restartLabel    = "cert/time-restarted"
+	restartLabel = "cert/time-restarted"
 )
 
 var (
@@ -120,16 +117,6 @@ func createDeployment(clusterID string, clusterType string,
 		})
 	}
 
-	hostAlias := []corev1.HostAlias{}
-	// patch for e2e test using kind cluster
-	if clusterID == kindClusterID {
-		ocpPromURL = "http://prometheus-k8s.openshift-monitoring.svc:9090"
-		hostAlias = append(hostAlias, corev1.HostAlias{
-			IP:        kindClusterIP,
-			Hostnames: []string{kindClusterHost},
-		})
-	}
-
 	commands := []string{
 		"/usr/bin/metrics-collector",
 		"--from=$(FROM)",
@@ -183,7 +170,6 @@ func createDeployment(clusterID string, clusterType string,
 					},
 				},
 				Spec: corev1.PodSpec{
-					HostAliases:        hostAlias,
 					ServiceAccountName: serviceAccountName,
 					Containers: []corev1.Container{
 						{
