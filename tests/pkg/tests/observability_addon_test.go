@@ -194,6 +194,7 @@ var _ = Describe("Observability:", func() {
 
 	Context("[P2][Sev2][Observability] Should not have the expected MCO addon pods when disable observability from managedcluster (addon/g0) -", func() {
 		It("[Stable] Modifying managedcluster cr to disable observability", func() {
+			Skip("Modifying managedcluster cr to disable observability")
 			Eventually(func() error {
 				return utils.UpdateObservabilityFromManagedCluster(testOptions, false)
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
@@ -209,6 +210,7 @@ var _ = Describe("Observability:", func() {
 		})
 
 		It("[Integration] Modifying managedcluster cr to enable observability", func() {
+			Skip("Modifying managedcluster cr to enable observability")
 			Eventually(func() error {
 				return utils.UpdateObservabilityFromManagedCluster(testOptions, true)
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
