@@ -29,6 +29,7 @@ import (
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/version"
 	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	operatorsutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/util"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -126,6 +127,10 @@ func main() {
 
 	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
+		os.Exit(1)
+	}
+	if err := operatorsutil.RegisterDebugEndpoint(mgr.AddMetricsExtraHandler); err != nil {
+		setupLog.Error(err, "unable to set up debug handler")
 		os.Exit(1)
 	}
 
