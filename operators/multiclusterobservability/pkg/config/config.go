@@ -194,7 +194,7 @@ const (
 	ThanosStoreCPURequets    = "100m"
 	ThanosStoreMemoryRequets = "1Gi"
 
-	MetricsCollectorCPURequets    = "100m"
+	MetricsCollectorCPURequets    = "10m"
 	MetricsCollectorMemoryRequets = "100Mi"
 	MetricsCollectorCPULimits     = ""
 	MetricsCollectorMemoryLimits  = ""

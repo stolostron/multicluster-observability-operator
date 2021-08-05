@@ -73,8 +73,8 @@ var _ = Describe("Observability:", func() {
 			requests := res["requests"].(map[string]interface{})
 			Expect(limits["cpu"]).To(Equal("200m"))
 			Expect(limits["memory"]).To(Equal("700Mi"))
-			Expect(requests["cpu"]).To(Equal("200m"))
-			Expect(requests["memory"]).To(Equal("200Mi"))
+			Expect(requests["cpu"]).To(Equal("10m"))
+			Expect(requests["memory"]).To(Equal("100Mi"))
 		})
 
 		It("[Stable] Should have resource requirement in metrics-collector", func() {
