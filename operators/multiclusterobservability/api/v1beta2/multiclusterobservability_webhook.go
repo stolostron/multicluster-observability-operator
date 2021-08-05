@@ -10,7 +10,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	validationutils "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -85,13 +84,6 @@ func (mco *MultiClusterObservability) validateMultiClusterObservability(old runt
 // But the `ObjectMeta.Name` field is defined in a shared package under the apimachinery repo,
 // so we can't declaratively validate it using the validation schema.
 func (mco *MultiClusterObservability) validateMultiClusterObservabilityName() *field.Error {
-	if len(mco.ObjectMeta.Name) > validationutils.DNS1035LabelMaxLength-43 {
-		// The MCO CR name length is 63 character like all Kubernetes objects (which must fit in a DNS subdomain).
-		// The observatorium controller appends at most a 43-character suffix to the MCO CR (`-thanos-receive-controller-6b446c5576-hj6xl`)
-		// when creating thanos-receive-controller pod. The thanos-receive-controller pod length limit is 63 characters. Therefore MCO CR
-		// names must have length <= 63-43=20. If we don't validate this here, then pod creation will fail later.
-		return field.Invalid(field.NewPath("metadata").Child("name"), mco.Name, "must be no more than 20 characters")
-	}
 	return nil
 }
 
@@ -147,6 +139,9 @@ func (mco *MultiClusterObservability) validateUpdateMultiClusterObservabilitySto
 		}
 		if mcoOldConfig.StoreStorageSize != mcoNewConfig.StoreStorageSize {
 			errs = append(errs, field.Forbidden(storageConfigFieldPath.Child("storeStorageSize"), storageForbiddenResize))
+		}
+		if mcoOldConfig.RuleStorageSize != mcoNewConfig.RuleStorageSize {
+			errs = append(errs, field.Forbidden(storageConfigFieldPath.Child("ruleStorageSize"), storageForbiddenResize))
 		}
 		return errs
 	}
