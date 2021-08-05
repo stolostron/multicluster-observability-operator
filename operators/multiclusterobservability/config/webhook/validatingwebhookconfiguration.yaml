@@ -1,0 +1,29 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: multicluster-observability-operator
+  creationTimestamp: null
+webhooks:
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: multicluster-observability-webhook-service
+      namespace: open-cluster-management
+      port: 443
+      path: /validate-observability-open-cluster-management-io-v1beta2-multiclusterobservability
+    caBundle: XG4=
+  failurePolicy: Fail
+  name: vmulticlusterobservability.observability.open-cluster-management.io
+  rules:
+  - apiGroups:
+    - observability.open-cluster-management.io
+    apiVersions:
+    - v1beta2
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - multiclusterobservabilities
+  sideEffects: None

@@ -489,3 +489,25 @@ spec:
     name: Red Hat, Inc
     url: https://github.com/open-cluster-management/multicluster-observability-operator
   version: 0.1.0
+  webhookdefinitions:
+  - admissionReviewVersions:
+    - v1
+    - v1beta1
+    containerPort: 443
+    deploymentName: multicluster-observability-operator
+    failurePolicy: Fail
+    generateName: vmulticlusterobservability.observability.open-cluster-management.io
+    rules:
+    - apiGroups:
+      - observability.open-cluster-management.io
+      apiVersions:
+      - v1beta2
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - multiclusterobservabilities
+    sideEffects: None
+    targetPort: 9443
+    type: ValidatingAdmissionWebhook
+    webhookPath: /validate-observability-open-cluster-management-io-v1beta2-multiclusterobservability

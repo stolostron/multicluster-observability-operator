@@ -7,6 +7,7 @@ resources:
   group: observability
   kind: MultiClusterObservability
   version: v1beta2
+  webhookVersion: v1
 - crdVersion: v1
   group: observability
   kind: ObservabilityAddon

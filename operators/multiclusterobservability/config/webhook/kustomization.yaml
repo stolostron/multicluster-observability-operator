@@ -1,7 +1,7 @@
 resources:
 - service.yaml
+- validatingwebhookconfiguration.yaml
 
 patchesStrategicMerge:
-# [OCP-SSC] To enable ocp service serving certificate for webhook, uncomment all the sections with [OCP-SSC] prefix.
-# patches here are for enabling the ocp service serving certificate for webhook service.
-- ocp_ssc_in_webhook_service.yaml
+- webhook_service_cert_patch.yaml
+- webhook_cainjection_patch.yaml

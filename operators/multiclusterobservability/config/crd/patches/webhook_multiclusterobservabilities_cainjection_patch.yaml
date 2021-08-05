@@ -12,8 +12,8 @@ spec:
       conversionReviewVersions: ["v1","v1beta1"]
       clientConfig:
         service:
-          namespace: $(SERVICE_NAMESPACE)
           name: multicluster-observability-webhook-service
+          namespace: open-cluster-management
           port: 443
           path: /convert
         caBundle: XG4=
