@@ -396,14 +396,6 @@ func SetImageManifests(images map[string]string) {
 	imageManifests = images
 }
 
-// CleanUpImageManifests reset imageManifests
-// Should be called when the MCO CR is deleted
-func CleanUpImageManifests() {
-	for k := range imageManifests {
-		delete(imageManifests, k)
-	}
-}
-
 // ReplaceImage is used to replace the image with specified annotation or imagemanifest configmap
 func ReplaceImage(annotations map[string]string, imageRepo, componentName string) (bool, string) {
 	if annotations != nil {
