@@ -702,12 +702,12 @@ func GetMCOAddonSpecResources(opt TestOptions) (map[string]interface{}, error) {
 	return res, nil
 }
 
-func DeleteMCOInstance(opt TestOptions) error {
+func DeleteMCOInstance(opt TestOptions, name string) error {
 	clientDynamic := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	return clientDynamic.Resource(NewMCOGVRV1BETA2()).Delete(context.TODO(), MCO_CR_NAME, metav1.DeleteOptions{})
+	return clientDynamic.Resource(NewMCOGVRV1BETA2()).Delete(context.TODO(), name, metav1.DeleteOptions{})
 }
 
 func CheckMCOConversion(opt TestOptions, v1beta1tov1beta2GoldenPath string) error {
@@ -839,7 +839,7 @@ type: Opaque`,
 
 func UninstallMCO(opt TestOptions) error {
 	klog.V(1).Infof("Delete MCO instance")
-	deleteMCOErr := DeleteMCOInstance(opt)
+	deleteMCOErr := DeleteMCOInstance(opt, MCO_CR_NAME)
 	if deleteMCOErr != nil {
 		return deleteMCOErr
 	}
