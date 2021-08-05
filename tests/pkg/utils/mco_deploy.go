@@ -590,8 +590,8 @@ func CheckMCOAddonResources(opt TestOptions) error {
 			"memory": resource.MustParse("700Mi"),
 		},
 		Requests: corev1.ResourceList{
-			"cpu":    resource.MustParse("200m"),
-			"memory": resource.MustParse("200Mi"),
+			"cpu":    resource.MustParse("10m"),
+			"memory": resource.MustParse("100Mi"),
 		},
 	}
 

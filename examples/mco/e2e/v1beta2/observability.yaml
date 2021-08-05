@@ -100,8 +100,8 @@ spec:
         cpu: 200m
         memory: 700Mi
       requests:
-        cpu: 200m
-        memory: 200Mi
+        cpu: 10m
+        memory: 100Mi
   storageConfig:
     alertmanagerStorageSize: 1Gi
     compactStorageSize: 1Gi

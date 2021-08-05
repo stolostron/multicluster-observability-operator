@@ -52,8 +52,8 @@ spec:
             cpu: 100m
             memory: 600Mi
           requests:
-            cpu: 100m
-            memory: 100Mi
+            cpu: 10m
+            memory: 50Mi
       imagePullSecrets:
       - name: "{{MULTICLUSTEROBSERVABILITY_IMAGE_PULL_SECRET}}"
       serviceAccountName: observatorium

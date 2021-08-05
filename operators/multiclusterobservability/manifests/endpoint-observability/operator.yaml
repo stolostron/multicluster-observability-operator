@@ -21,8 +21,8 @@ spec:
           - endpoint-monitoring-operator
           resources:
             requests:
-              cpu: 100m
-              memory: 100Mi
+              cpu: 2m
+              memory: 50Mi
           imagePullPolicy: Always
           ports:
           - containerPort: 8383
