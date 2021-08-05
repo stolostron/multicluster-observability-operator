@@ -24,6 +24,10 @@ spec:
               cpu: 100m
               memory: 100Mi
           imagePullPolicy: Always
+          ports:
+          - containerPort: 8383
+            name: metrics
+            protocol: TCP
           env:
             - name: HUB_NAMESPACE
               value: REPLACE_WITH_HUB_CLUSTER_NAMESPACE

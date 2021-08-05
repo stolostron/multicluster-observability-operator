@@ -34,6 +34,13 @@ spec:
         imagePullPolicy: Always
         securityContext:
           allowPrivilegeEscalation: false
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
+        - containerPort: 8383
+          name: metrics
+          protocol: TCP
         livenessProbe:
           httpGet:
             path: /healthz

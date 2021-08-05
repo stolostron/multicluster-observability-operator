@@ -52,15 +52,15 @@ import (
 	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	operatorsutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/util"
 	mchv1 "github.com/open-cluster-management/multiclusterhub-operator/pkg/apis/operator/v1"
 	observatoriumAPIs "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
 
 var (
-	metricsHost               = "0.0.0.0"
-	metricsPort         int32 = 8383
-	operatorMetricsPort int32 = 8686
+	metricsHost       = "0.0.0.0"
+	metricsPort int32 = 8383
 
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
@@ -240,6 +240,10 @@ func main() {
 	}
 	if err := mgr.AddReadyzCheck("check", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
+	if err := operatorsutil.RegisterDebugEndpoint(mgr.AddMetricsExtraHandler); err != nil {
+		setupLog.Error(err, "unable to set up debug handler")
 		os.Exit(1)
 	}
 
