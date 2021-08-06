@@ -6,6 +6,7 @@ package tests
 import (
 	"context"
 	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -60,9 +61,11 @@ spec:
     storeStorageSize: 1Gi
     metricObjectStorage:
       key: thanos.yaml
-      name: thanos-object-storage`, testStorageClassName, testStorageClassName)
+      name: thanos-object-storage`, testMCOCRName, testStorageClassName)
 		err = utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, []byte(testMCOCRWithStorageClassForbiddenVolumeExpansionYaml))
 		Expect(err).ToNot(HaveOccurred())
+
+		time.Sleep(10 * time.Second)
 
 		By("Updating the storage size for the test MCO CR")
 		testUpdatedMCOCRWithStorageClassForbiddenVolumeExpansionYaml := fmt.Sprintf(`
@@ -70,6 +73,8 @@ apiVersion: observability.open-cluster-management.io/v1beta2
 kind: MultiClusterObservability
 metadata:
   name: %s
+  annotations:
+    mco-pause: "true"
 spec:
   observabilityAddonSpec: {}
   storageConfig:
@@ -81,14 +86,14 @@ spec:
     storeStorageSize: 2Gi
     metricObjectStorage:
       key: thanos.yaml
-      name: thanos-object-storage`, testStorageClassName, testStorageClassName)
+      name: thanos-object-storage`, testMCOCRName, testStorageClassName)
 		err = utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, []byte(testUpdatedMCOCRWithStorageClassForbiddenVolumeExpansionYaml))
 		forbiddenUpdateMsg := ": Forbidden: is forbidden to update."
-		Expect(err).Should(MatchError("spec.storageConfig.alertmanagerStorageSize" + forbiddenUpdateMsg))
-		Expect(err).Should(MatchError("spec.storageConfig.compactStorageSize" + forbiddenUpdateMsg))
-		Expect(err).Should(MatchError("spec.storageConfig.receiveStorageSize" + forbiddenUpdateMsg))
-		Expect(err).Should(MatchError("spec.storageConfig.storeStorageSize" + forbiddenUpdateMsg))
-		Expect(err).Should(MatchError("spec.storageConfig.ruleStorageSize" + forbiddenUpdateMsg))
+		Expect(fmt.Sprintf("%s", err)).To(ContainSubstring("spec.storageConfig.alertmanagerStorageSize" + forbiddenUpdateMsg))
+		Expect(fmt.Sprintf("%s", err)).To(ContainSubstring("spec.storageConfig.compactStorageSize" + forbiddenUpdateMsg))
+		Expect(fmt.Sprintf("%s", err)).To(ContainSubstring("spec.storageConfig.receiveStorageSize" + forbiddenUpdateMsg))
+		Expect(fmt.Sprintf("%s", err)).To(ContainSubstring("spec.storageConfig.storeStorageSize" + forbiddenUpdateMsg))
+		Expect(fmt.Sprintf("%s", err)).To(ContainSubstring("spec.storageConfig.ruleStorageSize" + forbiddenUpdateMsg))
 
 		By("Deleting the testing MCO CR")
 		Expect(utils.DeleteMCOInstance(testOptions, testMCOCRName)).ToNot(HaveOccurred())

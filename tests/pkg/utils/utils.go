@@ -18,6 +18,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -440,6 +441,21 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				obj.ObjectMeta = existingObject.ObjectMeta
 				klog.Warningf("%s %s/%s already exists, updating!", obj.Kind, obj.Namespace, obj.Name)
 				_, err = clientKube.CoreV1().ResourceQuotas(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
+			}
+		case "StorageClass":
+			klog.V(5).Infof("Install %s: %s\n", kind, f)
+			obj := &storagev1.StorageClass{}
+			err = yaml.Unmarshal([]byte(f), obj)
+			if err != nil {
+				return err
+			}
+			existingObject, errGet := clientKube.StorageV1().StorageClasses().Get(context.TODO(), obj.Name, metav1.GetOptions{})
+			if errGet != nil {
+				_, err = clientKube.StorageV1().StorageClasses().Create(context.TODO(), obj, metav1.CreateOptions{})
+			} else {
+				obj.ObjectMeta = existingObject.ObjectMeta
+				klog.Warningf("%s %s/%s already exists, updating!", obj.Kind, obj.Namespace, obj.Name)
+				_, err = clientKube.StorageV1().StorageClasses().Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		default:
 			switch kind {
