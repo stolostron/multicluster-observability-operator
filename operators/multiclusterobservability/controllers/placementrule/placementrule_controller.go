@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"time"
 
 	"github.com/go-logr/logr"
 	operatorv1 "github.com/openshift/api/operator/v1"
@@ -110,9 +111,9 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
-	//read image manifest configmap to be used to replace the image for each component.
+	// check if the MCH CRD exists
 	mchCrdExists, _ := r.CRDMap[config.MCHCrdName]
-	if req.Name == config.MCHUpdatedRequestName && mchCrdExists {
+	if mchCrdExists {
 		mchList := &mchv1.MultiClusterHubList{}
 		mchistOpts := []client.ListOption{
 			client.InNamespace(config.GetMCONamespace()),
@@ -122,15 +123,23 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			return ctrl.Result{}, err
 		}
 
+		// if the mch CR is not created, then requeue the request after 10s
+		if len(mchList.Items) == 0 {
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		}
+
 		// normally there should only one MCH CR in the cluster
 		if len(mchList.Items) == 1 {
 			mch := mchList.Items[0]
-			if mch.Status.CurrentVersion == mch.Status.DesiredVersion && mch.Status.CurrentVersion != "" {
-				mchVer := mch.Status.CurrentVersion
-				//read image manifest configmap to be used to replace the image for each component.
-				if _, err = config.ReadImageManifestConfigMap(r.Client, mchVer); err != nil {
-					return ctrl.Result{}, err
-				}
+			// if the mch CR is not ready, then requeue the request after 10s
+			if mch.Status.CurrentVersion == "" || mch.Status.DesiredVersion == "" || mch.Status.CurrentVersion != mch.Status.DesiredVersion {
+				return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+			}
+
+			mchVer := mch.Status.CurrentVersion
+			// read image manifest configmap to be used to replace the image for each component.
+			if _, err = config.ReadImageManifestConfigMap(r.Client, mchVer); err != nil {
+				return ctrl.Result{}, err
 			}
 		}
 	}

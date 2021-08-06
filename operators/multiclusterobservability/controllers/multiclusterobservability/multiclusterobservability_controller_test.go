@@ -643,6 +643,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	grafanaCert := newTestCert(config.GrafanaCerts, namespace)
 	serverCert := newTestCert(config.ServerCerts, namespace)
 	// create the image manifest configmap
+	testMCHInstance := newMCHInstanceWithVersion(config.GetMCONamespace(), version)
 	imageManifestsCM := newTestImageManifestsConfigMap(config.GetMCONamespace(), version)
 	// byo case for the alertmanager route
 	testAmRouteBYOCaSecret := newTestCert(config.AlertmanagerRouteBYOCAName, namespace)
@@ -650,15 +651,15 @@ func TestImageReplaceForMCO(t *testing.T) {
 	clustermgmtAddon := newClusterManagementAddon()
 
 	objs := []runtime.Object{mco, observatoriumAPIsvc, serverCACerts, clientCACerts, grafanaCert, serverCert,
-		imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon}
+		testMCHInstance, imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon}
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
 	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.MCHCrdName: true}}
 	config.SetMonitoringCRName(name)
-	// Mock request to simulate Reconcile() being called on an event for a
-	// watched resource .
+
+	// Mock request to simulate Reconcile() being called on an event for a watched resource .
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      name,
@@ -666,11 +667,12 @@ func TestImageReplaceForMCO(t *testing.T) {
 		},
 	}
 
-	// Create empty client
+	// trigger another reconcile for MCH update event
 	_, err = r.Reconcile(context.TODO(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
+
 	//wait for update status
 	time.Sleep(1 * time.Second)
 
@@ -701,96 +703,15 @@ func TestImageReplaceForMCO(t *testing.T) {
 			if !exists {
 				t.Fatalf("The image key(%s) for the container(%s) doesn't exist in the deployment(%s)", imageKey, container.Name, deployName)
 			}
-			if imageValue == container.Image {
-				t.Fatalf("The image(%s) for the container(%s) in the deployment(%s) should not replace with the one in the image manifests", imageValue, container.Name, deployName)
-			}
-		}
-
-	}
-
-	expectedStatefulSetNames := []string{
-		config.GetOperandNamePrefix() + config.Alertmanager,
-	}
-	for _, statefulName := range expectedStatefulSetNames {
-		sts := &appsv1.StatefulSet{}
-		err = cl.Get(context.TODO(), types.NamespacedName{
-			Name:      statefulName,
-			Namespace: namespace,
-		}, sts)
-		if err != nil {
-			t.Fatalf("Failed to get statefulset %s: %v", statefulName, err)
-		}
-		for _, container := range sts.Spec.Template.Spec.Containers {
-			imageKey := strings.ReplaceAll(container.Name, "-", "_")
-			switch container.Name {
-			case "oauth-proxy", "alertmanager-proxy":
-				// TODO: add oauth-proxy image to image manifests
-				continue
-			case "alertmanager":
-				imageKey = "prometheus_alertmanager"
-			case "config-reloader":
-				imageKey = "prometheus-config-reloader"
-			}
-			imageValue, exists := testImagemanifestsMap[imageKey]
-			if !exists {
-				t.Fatalf("The image key(%s) for the container(%s) doesn't exist in the statefulset(%s)", imageKey, container.Name, statefulName)
-			}
-			if imageValue == container.Image {
-				t.Fatalf("The image(%s) for the container(%s) in the statefulset(%s) should not replace with the one in the image manifests", imageValue, container.Name, statefulName)
-			}
-		}
-	}
-
-	err = cl.Create(context.TODO(), newMCHInstanceWithVersion(config.GetMCONamespace(), version))
-	if err != nil {
-		t.Fatalf("Failed to create mch instance: (%v)", err)
-	}
-
-	// create reconcile request for MCH update event
-	req = ctrl.Request{
-		NamespacedName: types.NamespacedName{
-			Name:      config.MCHUpdatedRequestName,
-			Namespace: config.GetMCONamespace(),
-		},
-	}
-
-	// trigger another reconcile for MCH update event
-	_, err = r.Reconcile(context.TODO(), req)
-	if err != nil {
-		t.Fatalf("reconcile: (%v)", err)
-	}
-
-	//wait for update status
-	time.Sleep(1 * time.Second)
-
-	for _, deployName := range expectedDeploymentNames {
-		deploy := &appsv1.Deployment{}
-		err = cl.Get(context.TODO(), types.NamespacedName{
-			Name:      deployName,
-			Namespace: namespace,
-		}, deploy)
-		if err != nil {
-			t.Fatalf("Failed to get deployment %s: %v", deployName, err)
-		}
-		for _, container := range deploy.Spec.Template.Spec.Containers {
-			imageKey := strings.ReplaceAll(container.Name, "-", "_")
-			switch container.Name {
-			case "oauth-proxy":
-				// TODO: add oauth-proxy image to image manifests
-				continue
-			case "config-reloader":
-				imageKey = "prometheus-config-reloader"
-			}
-			imageValue, exists := testImagemanifestsMap[imageKey]
-			if !exists {
-				t.Fatalf("The image key(%s) for the container(%s) doesn't exist in the deployment(%s)", imageKey, container.Name, deployName)
-			}
 			if imageValue != container.Image {
 				t.Fatalf("The image(%s) for the container(%s) in the deployment(%s) should not replace with the one in the image manifests", imageValue, container.Name, deployName)
 			}
 		}
 	}
 
+	expectedStatefulSetNames := []string{
+		config.GetOperandNamePrefix() + config.Alertmanager,
+	}
 	for _, statefulName := range expectedStatefulSetNames {
 		sts := &appsv1.StatefulSet{}
 		err = cl.Get(context.TODO(), types.NamespacedName{
