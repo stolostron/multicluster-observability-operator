@@ -7,12 +7,23 @@ set -e
 
 ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
 
-export KUBECONFIG="${SHARED_DIR}/hub-1.kc" 
+kubeconfig_hub_path=""
+if [ ! -z "${SHARED_DIR}" ]; then
+    export KUBECONFIG="${SHARED_DIR}/hub-1.kc"
+    kubeconfig_hub_path="${SHARED_DIR}/hub-1.kc"
+else
+    # for local testing
+    if [ -z "${KUBECONFIG}" ]; then
+        echo "Error: environment variable KUBECONFIG must be specified!"
+        exit 1
+    fi
+    kubeconfig_hub_path="${HOME}/.kube/kubeconfig-hub"
+    oc config view --raw --minify > ${kubeconfig_hub_path}
+fi
 
 app_domain=$(oc -n openshift-ingress-operator get ingresscontrollers default -ojsonpath='{.status.domain}')
 base_domain="${app_domain#apps.}"
 
-kubeconfig_hub_path="${SHARED_DIR}/hub-1.kc"
 clusterServerURL=$(oc config view -o jsonpath="{.clusters[0].cluster.server}")
 kubecontext=$(oc config current-context)
 
