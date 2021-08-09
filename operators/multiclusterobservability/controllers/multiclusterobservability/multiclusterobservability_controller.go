@@ -133,7 +133,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	// check if the MCH CRD exists
 	mchCrdExists, _ := r.CRDMap[config.MCHCrdName]
-	if mchCrdExists {
+	// read the image manifests from configmap if the mch crd exists and image image manifests map is empty
+	if mchCrdExists && len(config.GetImageManifests()) == 0 {
 		mchList := &mchv1.MultiClusterHubList{}
 		mchistOpts := []client.ListOption{
 			client.InNamespace(config.GetMCONamespace()),
