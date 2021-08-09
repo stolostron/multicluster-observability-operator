@@ -448,7 +448,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.SchemeGroupVersion.Version); err == nil {
 		mchPred := predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
-				return true
+				return false
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
