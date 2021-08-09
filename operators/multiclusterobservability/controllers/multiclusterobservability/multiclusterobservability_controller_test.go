@@ -662,8 +662,8 @@ func TestImageReplaceForMCO(t *testing.T) {
 	// Mock request to simulate Reconcile() being called on an event for a watched resource .
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
-			Name:      name,
-			Namespace: namespace,
+			Name:      config.MCHUpdatedRequestName,
+			Namespace: config.GetMCONamespace(),
 		},
 	}
 
