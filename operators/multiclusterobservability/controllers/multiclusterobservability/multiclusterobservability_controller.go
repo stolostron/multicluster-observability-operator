@@ -452,7 +452,9 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
-					e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
+					e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
+					e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
+					e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion == e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion {
 					// only enqueue the request when the MCH is installed/upgraded successfully
 					return true
 				}
