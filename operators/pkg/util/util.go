@@ -9,7 +9,11 @@ import (
 )
 
 func RegisterDebugEndpoint(register func(string, http.Handler) error) error {
-	err := register("/debug/pprof", http.HandlerFunc(pprof.Index))
+	err := register("/debug/", http.Handler(http.DefaultServeMux))
+	if err != nil {
+		return err
+	}
+	err = register("/debug/pprof/", http.HandlerFunc(pprof.Index))
 	if err != nil {
 		return err
 	}
