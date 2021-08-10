@@ -667,6 +667,9 @@ func TestImageReplaceForMCO(t *testing.T) {
 		},
 	}
 
+	// set the image manifests map for testing
+	config.SetImageManifests(testImagemanifestsMap)
+
 	// trigger another reconcile for MCH update event
 	_, err = r.Reconcile(context.TODO(), req)
 	if err != nil {
