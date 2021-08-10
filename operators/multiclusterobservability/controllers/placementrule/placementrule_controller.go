@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"time"
 
 	"github.com/go-logr/logr"
 	operatorv1 "github.com/openshift/api/operator/v1"
@@ -110,29 +111,12 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
-	//read image manifest configmap to be used to replace the image for each component.
+	// check if the MCH CRD exists
 	mchCrdExists, _ := r.CRDMap[config.MCHCrdName]
-	if req.Name == config.MCHUpdatedRequestName && mchCrdExists {
-		mchList := &mchv1.MultiClusterHubList{}
-		mchistOpts := []client.ListOption{
-			client.InNamespace(config.GetMCONamespace()),
-		}
-		err := r.Client.List(context.TODO(), mchList, mchistOpts...)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		// normally there should only one MCH CR in the cluster
-		if len(mchList.Items) == 1 {
-			mch := mchList.Items[0]
-			if mch.Status.CurrentVersion == mch.Status.DesiredVersion && mch.Status.CurrentVersion != "" {
-				mchVer := mch.Status.CurrentVersion
-				//read image manifest configmap to be used to replace the image for each component.
-				if _, err = config.ReadImageManifestConfigMap(r.Client, mchVer); err != nil {
-					return ctrl.Result{}, err
-				}
-			}
-		}
+	// requeue after 10 seconds if the mch crd exists and image image manifests map is empty
+	if mchCrdExists && len(config.GetImageManifests()) == 0 {
+		// if the mch CR is not ready, then requeue the request after 10s
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
 	opts := &client.ListOptions{
@@ -413,6 +397,7 @@ func updateManagedClusterList(obj client.Object) {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	c := mgr.GetClient()
 	clusterPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			updateManagedClusterList(e.Object)
@@ -662,13 +647,29 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.SchemeGroupVersion.Version); err == nil {
 		mchPred := predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
-				return true
+				// this is for operator restart, the mch CREATE event will be caught and the mch should be ready
+				if e.Object.GetNamespace() == config.GetMCONamespace() &&
+					e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
+					e.Object.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion {
+					// only read the image manifests configmap and enqueue the request when the MCH is installed/upgraded successfully
+					ok, err := config.ReadImageManifestConfigMap(c, e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion)
+					if err != nil {
+						return false
+					}
+					return ok
+				}
+				return false
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
+					e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
 					e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
-					// only enqueue the request when the MCH is installed/upgraded successfully
-					return true
+					/// only read the image manifests configmap and enqueue the request when the MCH is installed/upgraded successfully
+					ok, err := config.ReadImageManifestConfigMap(c, e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion)
+					if err != nil {
+						return false
+					}
+					return ok
 				}
 				return false
 			},
