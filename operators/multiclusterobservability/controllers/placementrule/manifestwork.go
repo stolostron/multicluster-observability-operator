@@ -260,7 +260,7 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	manifests = injectIntoWork(manifests, dep)
 
 	// inject the hub info secret
-	hubInfo.Data["clusterName"] = []byte(clusterName)
+	hubInfo.Data[operatorconfig.ClusterNameKey] = []byte(clusterName)
 	manifests = injectIntoWork(manifests, hubInfo)
 
 	if promWorks != nil {
