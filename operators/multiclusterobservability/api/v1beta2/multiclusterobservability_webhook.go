@@ -5,14 +5,11 @@ package v1beta2
 
 import (
 	"context"
-	"reflect"
 
-	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -27,76 +24,7 @@ var multiclusterobservabilitylog = logf.Log.WithName("multiclusterobservability-
 
 var kubeClient kubernetes.Interface
 
-func (mco *MultiClusterObservability) SetupWebhookWithManager(mgr ctrl.Manager, namespace string) error {
-	client := mgr.GetClient()
-	vwcName := "multicluster-observability-operator"
-	webhookServiceName := "multicluster-observability-webhook-service"
-	vwPath := "/validate-observability-open-cluster-management-io-v1beta2-multiclusterobservability"
-
-	vwc := &admissionregistrationv1.ValidatingWebhookConfiguration{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: vwcName,
-			Labels: map[string]string{
-				"name": vwcName,
-			},
-			Annotations: map[string]string{
-				"service.beta.openshift.io/inject-cabundle": "true",
-			},
-		},
-		Webhooks: []admissionregistrationv1.ValidatingWebhook{
-			{
-				Name: "vmulticlusterobservability.observability.open-cluster-management.io",
-				ClientConfig: admissionregistrationv1.WebhookClientConfig{
-					Service: &admissionregistrationv1.ServiceReference{
-						Name:      webhookServiceName,
-						Namespace: namespace,
-						Path:      &vwPath,
-					},
-					CABundle: []byte(""),
-				},
-				Rules: []admissionregistrationv1.RuleWithOperations{
-					{
-						Operations: []admissionregistrationv1.OperationType{
-							admissionregistrationv1.Create,
-							admissionregistrationv1.Update,
-						},
-						Rule: admissionregistrationv1.Rule{
-							APIGroups:   []string{"observability.open-cluster-management.io"},
-							APIVersions: []string{"v1beta2"},
-							Resources:   []string{"multiclusterobservabilities"},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	found := &admissionregistrationv1.ValidatingWebhookConfiguration{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: vwcName}, found)
-	if err != nil && apierrors.IsNotFound(err) {
-		multiclusterobservabilitylog.Info("Creating ValidatingWebhookConfiguration", "name", vwcName)
-		err = client.Create(context.TODO(), vwc)
-		if err != nil {
-			multiclusterobservabilitylog.Error(err, "Failed to create ValidatingWebhookConfiguration", "name", vwcName)
-			return err
-		}
-	} else if err != nil {
-		multiclusterobservabilitylog.Error(err, "Failed to check ValidatingWebhookConfiguration", "name", vwcName)
-		return err
-	}
-
-	if !(found.Webhooks[0].Name == vwc.Webhooks[0].Name &&
-		reflect.DeepEqual(found.Webhooks[0].Rules, vwc.Webhooks[0].Rules) &&
-		reflect.DeepEqual(found.Webhooks[0].ClientConfig.Service, vwc.Webhooks[0].ClientConfig.Service)) {
-		multiclusterobservabilitylog.Info("Updating ValidatingWebhookConfiguration", "name", vwcName)
-		err = client.Update(context.TODO(), vwc)
-		if err != nil {
-			multiclusterobservabilitylog.Error(err, "Failed to update ValidatingWebhookConfiguration", "name", vwcName)
-			return err
-		}
-	}
-	multiclusterobservabilitylog.Info("ValidatingWebhookConfiguration is created or updated", "name", vwcName)
-
+func (mco *MultiClusterObservability) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(mco).
 		Complete()

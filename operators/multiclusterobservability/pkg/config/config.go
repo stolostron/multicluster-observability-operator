@@ -15,6 +15,7 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -99,6 +100,9 @@ const (
 	ProxyRouteName        = "rbac-query-proxy"
 	ProxyRouteBYOCAName   = "proxy-byo-ca"
 	ProxyRouteBYOCERTName = "proxy-byo-cert"
+
+	ValidatingWebhookConfigurationName = "multicluster-observability-operator"
+	WebhookServiceName                 = "multicluster-observability-webhook-service"
 )
 
 const (
@@ -1037,5 +1041,55 @@ func SetOperandNames(c client.Client) error {
 func CleanUpOperandNames() {
 	for k := range operandNames {
 		delete(operandNames, k)
+	}
+}
+
+// GetValidatingWebhookConfigurationForMCO return the ValidatingWebhookConfiguration for the MCO validaing webhook
+func GetValidatingWebhookConfigurationForMCO() *admissionregistrationv1.ValidatingWebhookConfiguration {
+	validatingWebhookPath := "/validate-observability-open-cluster-management-io-v1beta2-multiclusterobservability"
+	noSideEffects := admissionregistrationv1.SideEffectClassNone
+	allScopeType := admissionregistrationv1.AllScopes
+	webhookServiceNamespace := GetMCONamespace()
+	webhookServicePort := int32(443)
+	return &admissionregistrationv1.ValidatingWebhookConfiguration{
+		ObjectMeta: v1.ObjectMeta{
+			Name: ValidatingWebhookConfigurationName,
+			Labels: map[string]string{
+				"name": ValidatingWebhookConfigurationName,
+			},
+			Annotations: map[string]string{
+				"service.beta.openshift.io/inject-cabundle": "true",
+			},
+		},
+		Webhooks: []admissionregistrationv1.ValidatingWebhook{
+			{
+				AdmissionReviewVersions: []string{"v1", "v1beta1"},
+				Name:                    "vmulticlusterobservability.observability.open-cluster-management.io",
+				ClientConfig: admissionregistrationv1.WebhookClientConfig{
+					Service: &admissionregistrationv1.ServiceReference{
+						Name:      WebhookServiceName,
+						Namespace: webhookServiceNamespace,
+						Path:      &validatingWebhookPath,
+						Port:      &webhookServicePort,
+					},
+					CABundle: []byte(""),
+				},
+				SideEffects: &noSideEffects,
+				Rules: []admissionregistrationv1.RuleWithOperations{
+					{
+						Operations: []admissionregistrationv1.OperationType{
+							admissionregistrationv1.Create,
+							admissionregistrationv1.Update,
+						},
+						Rule: admissionregistrationv1.Rule{
+							APIGroups:   []string{"observability.open-cluster-management.io"},
+							APIVersions: []string{"v1beta2"},
+							Resources:   []string{"multiclusterobservabilities"},
+							Scope:       &allScopeType,
+						},
+					},
+				},
+			},
+		},
 	}
 }
