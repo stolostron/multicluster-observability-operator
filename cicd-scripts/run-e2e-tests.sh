@@ -5,6 +5,7 @@ set -e
 
 ./cicd-scripts/customize-mco.sh
 
+GINKGO_FOCUS="$(cat /tmp/ginkgo_focus)"
 ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
 
 export KUBECONFIG="${SHARED_DIR}/hub-1.kc" 
@@ -35,7 +36,7 @@ printf "\n      kubecontext: ${kubecontext}" >> ${OPTIONSFILE}
 
 go get -u github.com/onsi/ginkgo/ginkgo
 go mod vendor
-ginkgo -debug -trace -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=3
+ginkgo -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=3
 
 cat ${ROOTDIR}/tests/pkg/tests/results.xml | grep failures=\"0\" | grep errors=\"0\"
 if [ $? -ne 0 ]; then
