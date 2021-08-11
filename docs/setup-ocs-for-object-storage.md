@@ -25,7 +25,7 @@ WZIfOGYLx1DvlyKC9BII99VnSzDDJwymMZR3vAtL
 - endpoint
 
 ```
-$ k get noobaa -n openshift-storage -o yaml
+$ kubectl get noobaa -n openshift-storage -o yaml
 
 ...
       serviceS3:
