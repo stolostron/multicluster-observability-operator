@@ -290,7 +290,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&observabilityv1beta2.MultiClusterObservability{}).SetupWebhookWithManager(mgr); err != nil {
+	if err = (&observabilityv1beta2.MultiClusterObservability{}).SetupWebhookWithManager(mgr, mcoNamespace); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "MultiClusterObservability")
 		os.Exit(1)
 	}
