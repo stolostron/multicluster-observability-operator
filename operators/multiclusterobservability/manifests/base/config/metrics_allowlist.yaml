@@ -7,6 +7,8 @@ data:
     names:
       - :node_memory_MemAvailable_bytes:sum
       - ALERTS
+      - apiserver_request_duration_seconds_bucket
+      - apiserver_request_duration_seconds_count
       - authenticated_user_requests
       - authentication_attempts
       - assisted_installer_cluster_creations  # counter
