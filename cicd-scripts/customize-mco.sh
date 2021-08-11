@@ -72,7 +72,7 @@ get_components() {
             COMPONENTS+=" rbac-query-proxy"
             continue
         fi
-        if [[ $file =~ ^operators/endpointmetrics ]]; then
+        if [[ $file =~ ^operators/endpointmetrics || $file =~ ^operators/pkg ]]; then
             COMPONENTS+=" endpoint-monitoring-operator"
             continue
         fi
@@ -98,25 +98,34 @@ get_components() {
 get_ginkgo_focus() {
     changed_files=`cd $ROOTDIR; git diff --name-only HEAD~1`
     for file in ${changed_files}; do
-        if [[ $file =~ ^rbac-query-proxy ]]; then
+        if [[ $file =~ ^proxy ]]; then
             GINKGO_FOCUS+=" --focus grafana/g0 --focus metrics/g0"
             continue
         fi
-        if [[ $file =~ ^metrics-collector ]]; then
+        if [[ $file =~ ^collectors/metrics ]]; then
             GINKGO_FOCUS+=" --focus grafana/g0 --focus metrics/g0 --focus addon/g0"
             continue
         fi
-        if [[ $file =~ ^endpoint-monitoring-operator ]]; then
+        if [[ $file =~ ^operators/endpointmetrics ]]; then
             GINKGO_FOCUS+=" --focus grafana/g0 --focus metrics/g0 --focus addon/g0 --focus endpoint_preserve/g0"
             continue
         fi
-        if [[ $file =~ ^grafana-dashboard-loader ]]; then
+        if [[ $file =~ ^loaders/dashboards ]]; then
             GINKGO_FOCUS+=" --focus grafana/g0 --focus metrics/g0 --focus addon/g0"
             continue
         fi
-        if [[ $file =~ ^multicluster-observability-operator ]]; then
+        if [[ $file =~ ^operators/multiclusterobservability ]]; then
             GINKGO_FOCUS+=" --focus addon/g0 --focus config/g0 --focus alert/g0 --focus certrenew/g0 --focus grafana/g0 --focus grafana_dev/g0 --focus dashboard/g0 --focus manifestwork/g0 --focus metrics/g0 --focus observatorium_preserve/g0 --focus reconcile/g0 --focus retention/g0"
             continue
+        fi
+        if [[ $file =~ ^operators/pkg ]]; then
+            GINKGO_FOCUS+=" --focus addon/g0 --focus config/g0 --focus alert/g0 --focus certrenew/g0 --focus grafana/g0 --focus grafana_dev/g0 --focus dashboard/g0 --focus manifestwork/g0 --focus metrics/g0 --focus observatorium_preserve/g0 --focus reconcile/g0 --focus retention/g0 --focus endpoint_preserve/g0"
+            continue
+        fi
+        if [[ $file =~ ^pkg ]]; then
+            # test all cases
+            GINKGO_FOCUS=""
+            break
         fi
         if [[ $file =~ ^examples/alerts ]]; then
             GINKGO_FOCUS+=" --focus alert/g0"
@@ -135,7 +144,7 @@ get_ginkgo_focus() {
             continue
         fi
         if [[ $file =~ ^tools ]]; then
-           GINKGO_FOCUS+=" --focus grafana-dev/g0"
+           GINKGO_FOCUS+=" --focus grafana_dev/g0"
            continue
         fi
     done
