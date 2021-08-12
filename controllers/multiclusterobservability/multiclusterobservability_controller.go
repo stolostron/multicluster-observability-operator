@@ -301,6 +301,9 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 			return false, err
 		}
 
+		// clean up operand names
+		config.CleanUpOperandNames()
+
 		mco.SetFinalizers(util.Remove(mco.GetFinalizers(), resFinalizer))
 		err := r.Client.Update(context.TODO(), mco)
 		if err != nil {
