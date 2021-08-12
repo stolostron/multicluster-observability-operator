@@ -156,6 +156,13 @@ func createClients(cfg Config, interval time.Duration,
 			rlogger.Log(logger, rlogger.Warn, "msg", "no certs found in from-ca-file")
 		}
 		fromTransport.TLSClientConfig.RootCAs = pool
+	} else {
+		if fromTransport.TLSClientConfig == nil {
+			fromTransport.TLSClientConfig = &tls.Config{
+				MinVersion:         tls.VersionTLS12,
+				InsecureSkipVerify: true,
+			}
+		}
 	}
 
 	// Create the `fromClient`.

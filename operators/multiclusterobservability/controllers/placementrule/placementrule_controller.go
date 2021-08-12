@@ -247,7 +247,7 @@ func createAllRelatedRes(
 		currentClusters = append(currentClusters, ep.Namespace)
 	}
 
-	works, promworks, crdv1Work, crdv1beta1Work, dep, hubInfo, err := getGlobalManifestResources(c, mco)
+	works, crdv1Work, crdv1beta1Work, dep, hubInfo, err := getGlobalManifestResources(c, mco)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -262,15 +262,15 @@ func createAllRelatedRes(
 			if openshiftVersion == "3" {
 				err = createManagedClusterRes(c, restMapper, mco,
 					managedCluster, managedCluster,
-					works, nil, crdv1beta1Work, dep, hubInfo)
+					works, crdv1beta1Work, dep, hubInfo, false)
 			} else if openshiftVersion == nonOCP {
 				err = createManagedClusterRes(c, restMapper, mco,
 					managedCluster, managedCluster,
-					works, promworks, crdv1Work, dep, hubInfo)
+					works, crdv1Work, dep, hubInfo, true)
 			} else {
 				err = createManagedClusterRes(c, restMapper, mco,
 					managedCluster, managedCluster,
-					works, nil, crdv1Work, dep, hubInfo)
+					works, crdv1Work, dep, hubInfo, false)
 			}
 			if err != nil {
 				failedCreateManagedClusterRes = true
@@ -334,7 +334,8 @@ func deleteGlobalResource(c client.Client) error {
 
 func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 	mco *mcov1beta2.MultiClusterObservability, name string, namespace string,
-	works []workv1.Manifest, promWorks []workv1.Manifest, crdWork *workv1.Manifest, dep *appsv1.Deployment, hubInfo *corev1.Secret) error {
+	works []workv1.Manifest, crdWork *workv1.Manifest, dep *appsv1.Deployment,
+	hubInfo *corev1.Secret, installProm bool) error {
 	err := createObsAddon(client, namespace)
 	if err != nil {
 		log.Error(err, "Failed to create observabilityaddon")
@@ -346,7 +347,7 @@ func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 		return err
 	}
 
-	err = createManifestWorks(client, restMapper, namespace, name, mco, works, promWorks, crdWork, dep, hubInfo)
+	err = createManifestWorks(client, restMapper, namespace, name, mco, works, crdWork, dep, hubInfo, installProm)
 	if err != nil {
 		log.Error(err, "Failed to create manifestwork")
 		return err

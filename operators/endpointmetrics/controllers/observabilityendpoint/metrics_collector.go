@@ -43,7 +43,7 @@ const (
 var (
 	collectorImage = os.Getenv(operatorconfig.CollectorImage)
 	ocpPromURL     = "https://prometheus-k8s.openshift-monitoring.svc:9091"
-	promURL        = "http://prometheus-k8s.open-cluster-management-addon-observability.svc:9090"
+	promURL        = "https://prometheus-k8s-0:9091"
 )
 
 type MetricsAllowlist struct {
@@ -99,7 +99,7 @@ func createDeployment(clusterID string, clusterType string,
 	if clusterID == "" {
 		clusterID = hubInfo.ClusterName
 		// deprecated ca bundle, only used for ocp 3.11 env
-		caFile = "//run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
+		caFile = "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
 	} else {
 		volumes = append(volumes, corev1.Volume{
 			Name: caVolName,
@@ -126,8 +126,9 @@ func createDeployment(clusterID string, clusterType string,
 		fmt.Sprintf("--label=\"cluster=%s\"", hubInfo.ClusterName),
 		fmt.Sprintf("--label=\"clusterID=%s\"", clusterID),
 	}
+	commands = append(commands, "--from-token-file=/var/run/secrets/kubernetes.io/serviceaccount/token")
 	if !installPrometheus {
-		commands = append(commands, "--from-ca-file="+caFile, "--from-token-file=/var/run/secrets/kubernetes.io/serviceaccount/token")
+		commands = append(commands, "--from-ca-file="+caFile)
 	}
 	if clusterType != "" {
 		commands = append(commands, fmt.Sprintf("--label=\"clusterType=%s\"", clusterType))

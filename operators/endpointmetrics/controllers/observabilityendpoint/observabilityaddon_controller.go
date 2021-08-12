@@ -4,6 +4,7 @@ package observabilityendpoint
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strconv"
 
@@ -12,14 +13,18 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/deploying"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
@@ -28,6 +33,7 @@ import (
 var (
 	log                  = ctrl.Log.WithName("controllers").WithName("ObservabilityAddon")
 	installPrometheus, _ = strconv.ParseBool(os.Getenv(operatorconfig.InstallPrometheus))
+	globalRes            = []*unstructured.Unstructured{}
 )
 
 const (
@@ -131,6 +137,26 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		err = createCAConfigmap(ctx, r.Client)
 		if err != nil {
 			return ctrl.Result{}, err
+		}
+	} else {
+		//Render the prometheus templates
+		renderer := rendering.NewRenderer()
+		toDeploy, err := renderer.Render(r.Client)
+		if err != nil {
+			log.Error(err, "Failed to render prometheus templates")
+			return ctrl.Result{}, err
+		}
+		deployer := deploying.NewDeployer(r.Client)
+		for _, res := range toDeploy {
+			if err := controllerutil.SetControllerReference(obsAddon, res, r.Scheme); err != nil {
+				log.Error(err, "Failed to set controller reference", "resource", res.GetName())
+				globalRes = append(globalRes, res)
+			}
+			if err := deployer.Deploy(res); err != nil {
+				log.Error(err, fmt.Sprintf("Failed to deploy %s %s/%s",
+					res.GetKind(), namespace, res.GetName()))
+				return ctrl.Result{}, err
+			}
 		}
 	}
 
