@@ -140,7 +140,7 @@ get_ginkgo_focus() {
             continue
         fi
         if [[ $file =~ ^tests ]]; then
-            GINKGO_FOCUS+=" --focus $(echo $file | cut -d '/' -f4 | cut -d '_' -f2)/g0"
+            GINKGO_FOCUS+=" --focus $(echo $file | cut -d '/' -f4 | sed -En 's/observability_(.*)_test.go/\1/p')/g0"
             continue
         fi
         if [[ $file =~ ^tools ]]; then
