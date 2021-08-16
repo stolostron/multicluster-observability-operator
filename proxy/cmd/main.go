@@ -64,8 +64,7 @@ func main() {
 	go util.CleanExpiredProjectInfo(24 * 60 * 60)
 
 	http.HandleFunc("/", proxy.HandleRequestAndRedirect)
-	if err := http.ListenAndServeTLS(cfg.listenAddress, "/var/rbac_proxy/serving_certs/tls.crt",
-		"/var/rbac_proxy/serving_certs/tls.key", nil); err != nil {
+	if err := http.ListenAndServe(cfg.listenAddress, nil); err != nil {
 		klog.Fatalf("failed to ListenAndServe: %v", err)
 	}
 }

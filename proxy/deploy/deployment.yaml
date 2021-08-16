@@ -17,22 +17,17 @@ spec:
       - name: rbac-query-proxy
         image: blue0/rbac-query-proxy:latest
         args:
-        - "--listen-address=0.0.0.0:8443"
+        - "--listen-address=0.0.0.0:8080"
         - "--metrics-server=https://observability-observatorium-observatorium-api.open-cluster-management-observability.svc.cluster.local:8080"
         ports:
-        - containerPort: 8443
-          name: https
+        - containerPort: 8080
+          name: http
         volumeMounts:
-        - name: certs
-          mountPath: /var/rbac_proxy/serving_certs
         - name: ca-certs
           mountPath: /var/rbac_proxy/ca
         - name: client-certs
           mountPath: /var/rbac_proxy/certs
       volumes:
-      - name: certs
-        secret:
-          secretName: rbac-proxy-certs
       - name: ca-certs
         secret:
           secretName: observability-server-certs

@@ -51,10 +51,11 @@ func getTLSTransport() (*http.Transport, error) {
 	return &http.Transport{
 		Dial: (&net.Dialer{
 			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
+			KeepAlive: 300 * time.Second,
 		}).Dial,
-		TLSHandshakeTimeout: 10 * time.Second,
-		DisableKeepAlives:   true,
-		TLSClientConfig:     tlsConfig,
+		TLSHandshakeTimeout:   30 * time.Second,
+		ResponseHeaderTimeout: 300 * time.Second,
+		DisableKeepAlives:     true,
+		TLSClientConfig:       tlsConfig,
 	}, nil
 }
