@@ -46,6 +46,7 @@ require (
 )
 
 replace (
+	github.com/IBM/controller-filtered-cache => github.com/morvencao/controller-filtered-cache v0.2.3-0.20210819035548-68e97f281f58
 	github.com/go-openapi/analysis => github.com/go-openapi/analysis v0.19.5
 	github.com/go-openapi/loads => github.com/go-openapi/loads v0.19.5
 	github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.5
