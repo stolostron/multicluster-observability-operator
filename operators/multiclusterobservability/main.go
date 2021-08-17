@@ -192,7 +192,7 @@ func main() {
 		}
 	}
 
-	// The following RBAC resources will not be weatched by MCO, the selector will not impact the mco behaviour, which means
+	// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behaviour, which means
 	// MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
 	// Adding selector will reduce the cache size when the managedcluster scale.
 	gvkLabelsMap[rbacv1.SchemeGroupVersion.WithKind("ClusterRole")] = []filteredcache.Selector{
@@ -205,6 +205,11 @@ func main() {
 		{LabelSelector: "owner==multicluster-observability-operator"},
 	}
 	gvkLabelsMap[rbacv1.SchemeGroupVersion.WithKind("RoleBinding")] = []filteredcache.Selector{
+		{LabelSelector: "owner==multicluster-observability-operator"},
+	}
+
+	// Add filter for ManagedClusterAddOn to reduce the cache size when the managedclusters scale.
+	gvkLabelsMap[addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn")] = []filteredcache.Selector{
 		{LabelSelector: "owner==multicluster-observability-operator"},
 	}
 

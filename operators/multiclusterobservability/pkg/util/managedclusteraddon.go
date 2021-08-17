@@ -24,7 +24,7 @@ var (
 	spokeNameSpace = os.Getenv("SPOKE_NAMESPACE")
 )
 
-func CreateManagedClusterAddonCR(c client.Client, namespace string) error {
+func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValue string) error {
 	newManagedClusterAddon := &addonv1alpha1.ManagedClusterAddOn{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
@@ -33,6 +33,9 @@ func CreateManagedClusterAddonCR(c client.Client, namespace string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ManagedClusterAddonName,
 			Namespace: namespace,
+			Labels: map[string]string{
+				labelKey: labelValue,
+			},
 		},
 		Spec: addonv1alpha1.ManagedClusterAddOnSpec{
 			InstallNamespace: spokeNameSpace,
