@@ -59,7 +59,7 @@ fi
 
 TARGET_OS="$(uname)"
 XARGS_FLAGS="-r"
-SED_COMMAND='sed -i-e -e'
+SED_COMMAND='sed -i -e'
 if [[ "$(uname)" == "Linux" ]]; then
     TARGET_OS=linux
 elif [[ "$(uname)" == "Darwin" ]]; then
@@ -164,6 +164,7 @@ delete_hub_spoke_core() {
 }
 
 approve_csr_joinrequest() {
+    echo "wait for CSR for cluster join reqest is created..."
     for i in {1..60}; do
         # TODO(morvencao): remove the hard-coded cluster label
         csrs=$(kubectl get csr -lopen-cluster-management.io/cluster-name=${MANAGED_CLUSTER})
@@ -234,7 +235,7 @@ deploy_mco_operator() {
         fi
     done
 
-    kubectl create ns ${OCM_DEFAULT_NS} || true
+    # kubectl create ns ${OCM_DEFAULT_NS} || true
     # Install the multicluster-observability-operator
 	kustomize build ${ROOTDIR}/operators/multiclusterobservability/config/default | kubectl apply -n ${OCM_DEFAULT_NS} -f -
     echo "mco operator is deployed successfully."
@@ -245,11 +246,11 @@ deploy_mco_operator() {
     # install minio service
     kubectl create ns ${OBSERVABILITY_NS} || true
 
-    kubectl -n ${OBSERVABILITY_NS} apply -f ${ROOTDIR}/examples/minio
-    echo "minio is deployed successfully."
+    # kubectl -n ${OBSERVABILITY_NS} apply -k ${ROOTDIR}/examples/minio
+    # echo "minio is deployed successfully."
 
     # wait until minio is ready
-    wait_for_deployment_ready 10 60s ${OBSERVABILITY_NS} minio
+    # wait_for_deployment_ready 10 60s ${OBSERVABILITY_NS} minio
 
     # TODO(morvencao): remove the following two extra routes after after accessing metrics from grafana url with bearer token is supported
     temp_route=$(mktemp -d /tmp/grafana.XXXXXXXXXX)
@@ -296,7 +297,7 @@ delete_mco_operator() {
     # delete extra routes if they exist
     kubectl -n ${OBSERVABILITY_NS} delete route --all
 
-    kubectl -n ${OBSERVABILITY_NS} delete -f ${ROOTDIR}/examples/minio --ignore-not-found
+    kubectl -n ${OBSERVABILITY_NS} delete -k ${ROOTDIR}/examples/minio --ignore-not-found
 
     # wait until all resources are deleted before delete the mco
     for i in {1..20}; do
