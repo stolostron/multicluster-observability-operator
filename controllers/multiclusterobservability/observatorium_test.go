@@ -129,8 +129,12 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	objs := []runtime.Object{mco}
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
+	mcoconfig.SetOperandNames(cl)
 
-	GenerateObservatoriumCR(cl, s, mco)
+	_, err := GenerateObservatoriumCR(cl, s, mco)
+	if err != nil {
+		t.Errorf("Failed to create observatorium due to %v", err)
+	}
 
 	// Check if this Observatorium CR already exists
 	observatoriumCRFound := &observatoriumv1alpha1.Observatorium{}
@@ -152,7 +156,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 		t.Errorf("%v should be equal to %v", string(oldSpecBytes), string(newSpecBytes))
 	}
 
-	_, err := GenerateObservatoriumCR(cl, s, mco)
+	_, err = GenerateObservatoriumCR(cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to update observatorium due to %v", err)
 	}
