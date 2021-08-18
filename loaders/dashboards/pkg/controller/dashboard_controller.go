@@ -112,6 +112,9 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) cache.SharedIndexI
 			updateDashboard(nil, obj, false)
 		},
 		UpdateFunc: func(old, new interface{}) {
+			if old.(*corev1.ConfigMap).ObjectMeta.ResourceVersion == new.(*corev1.ConfigMap).ObjectMeta.ResourceVersion {
+				return
+			}
 			if !isDesiredDashboardConfigmap(new) {
 				return
 			}
