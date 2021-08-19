@@ -18,14 +18,15 @@ import (
 	"sigs.k8s.io/kustomize/v3/pkg/resmap"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 	"sigs.k8s.io/kustomize/v3/pkg/target"
-
-	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 )
 
 const TemplatesPathEnvVar = "TEMPLATES_PATH"
 
 var loadTemplateRendererOnce sync.Once
 var templateRenderer *TemplateRenderer
+
+// *Templates contains all kustomize resources
+var genericTemplates, grafanaTemplates, alertManagerTemplates, thanosTemplates, proxyTemplates, endpointObservabilityTemplates, prometheusTemplates []*resource.Resource
 
 type TemplateRenderer struct {
 	templatesPath string
@@ -53,80 +54,117 @@ func GetTemplateRenderer() *TemplateRenderer {
 	return templateRenderer
 }
 
-// GetGrafanaTemplates reads the grafana manifests
-func (r *TemplateRenderer) GetGrafanaTemplates(
-	mco *mcov1beta2.MultiClusterObservability) ([]*resource.Resource, error) {
-	basePath := path.Join(r.templatesPath, "base")
-	// resourceList contains all kustomize resources
-	resourceList := []*resource.Resource{}
-
-	// add grafana template
-	if err := r.AddTemplateFromPath(basePath+"/grafana", &resourceList); err != nil {
-		return resourceList, err
+// GetOrLoadGenericTemplates reads base manifest
+func (r *TemplateRenderer) GetOrLoadGenericTemplates() ([]*resource.Resource, error) {
+	if len(genericTemplates) > 0 {
+		return genericTemplates, nil
 	}
-	return resourceList, nil
-}
 
-// GetAlertManagerTemplates reads the alertmanager manifests
-func (r *TemplateRenderer) GetAlertManagerTemplates(
-	mco *mcov1beta2.MultiClusterObservability) ([]*resource.Resource, error) {
 	basePath := path.Join(r.templatesPath, "base")
-	// resourceList contains all kustomize resources
-	resourceList := []*resource.Resource{}
-
-	// add alertmanager template
-	if err := r.AddTemplateFromPath(basePath+"/alertmanager", &resourceList); err != nil {
-		return resourceList, err
-	}
-	return resourceList, nil
-}
-
-// GetThanosTemplates reads the thanos manifests
-func (r *TemplateRenderer) GetThanosTemplates(
-	mco *mcov1beta2.MultiClusterObservability) ([]*resource.Resource, error) {
-	basePath := path.Join(r.templatesPath, "base")
-	// resourceList contains all kustomize resources
-	resourceList := []*resource.Resource{}
-
-	// add thanos template
-	if err := r.AddTemplateFromPath(basePath+"/thanos", &resourceList); err != nil {
-		return resourceList, err
-	}
-	return resourceList, nil
-}
-
-// GetProxyTemplates reads the rbac-query-proxy manifests
-func (r *TemplateRenderer) GetProxyTemplates(
-	mco *mcov1beta2.MultiClusterObservability) ([]*resource.Resource, error) {
-	basePath := path.Join(r.templatesPath, "base")
-	// resourceList contains all kustomize resources
-	resourceList := []*resource.Resource{}
-
-	// add rbac-query-proxy template
-	if err := r.AddTemplateFromPath(basePath+"/proxy", &resourceList); err != nil {
-		return resourceList, err
-	}
-	return resourceList, nil
-}
-
-// GetTemplates reads base manifest
-func (r *TemplateRenderer) GetTemplates(
-	mco *mcov1beta2.MultiClusterObservability) ([]*resource.Resource, error) {
-	basePath := path.Join(r.templatesPath, "base")
-	// resourceList contains all kustomize resources
-	resourceList := []*resource.Resource{}
 
 	// add observatorium template
-	if err := r.AddTemplateFromPath(basePath+"/observatorium", &resourceList); err != nil {
-		return resourceList, err
+	if err := r.AddTemplateFromPath(basePath+"/observatorium", &genericTemplates); err != nil {
+		return genericTemplates, err
 	}
 
 	// add config template
-	if err := r.AddTemplateFromPath(basePath+"/config", &resourceList); err != nil {
-		return resourceList, err
+	if err := r.AddTemplateFromPath(basePath+"/config", &genericTemplates); err != nil {
+		return genericTemplates, err
 	}
 
-	return resourceList, nil
+	return genericTemplates, nil
+}
+
+// GetOrLoadGrafanaTemplates reads the grafana manifests
+func (r *TemplateRenderer) GetOrLoadGrafanaTemplates() ([]*resource.Resource, error) {
+	if len(grafanaTemplates) > 0 {
+		return grafanaTemplates, nil
+	}
+
+	basePath := path.Join(r.templatesPath, "base")
+
+	// add grafana template
+	if err := r.AddTemplateFromPath(basePath+"/grafana", &grafanaTemplates); err != nil {
+		return grafanaTemplates, err
+	}
+	return grafanaTemplates, nil
+}
+
+// GetOrLoadAlertManagerTemplates reads the alertmanager manifests
+func (r *TemplateRenderer) GetOrLoadAlertManagerTemplates() ([]*resource.Resource, error) {
+	if len(alertManagerTemplates) > 0 {
+		return alertManagerTemplates, nil
+	}
+
+	basePath := path.Join(r.templatesPath, "base")
+
+	// add alertmanager template
+	if err := r.AddTemplateFromPath(basePath+"/alertmanager", &alertManagerTemplates); err != nil {
+		return alertManagerTemplates, err
+	}
+	return alertManagerTemplates, nil
+}
+
+// GetOrLoadThanosTemplates reads the thanos manifests
+func (r *TemplateRenderer) GetOrLoadThanosTemplates() ([]*resource.Resource, error) {
+	if len(thanosTemplates) > 0 {
+		return thanosTemplates, nil
+	}
+
+	basePath := path.Join(r.templatesPath, "base")
+
+	// add thanos template
+	if err := r.AddTemplateFromPath(basePath+"/thanos", &thanosTemplates); err != nil {
+		return thanosTemplates, err
+	}
+	return thanosTemplates, nil
+}
+
+// GetOrLoadProxyTemplates reads the rbac-query-proxy manifests
+func (r *TemplateRenderer) GetOrLoadProxyTemplates() ([]*resource.Resource, error) {
+	if len(proxyTemplates) > 0 {
+		return proxyTemplates, nil
+	}
+
+	basePath := path.Join(r.templatesPath, "base")
+
+	// add rbac-query-proxy template
+	if err := r.AddTemplateFromPath(basePath+"/proxy", &proxyTemplates); err != nil {
+		return proxyTemplates, err
+	}
+	return proxyTemplates, nil
+}
+
+// GetEndpointObservabilityTemplates reads endpoint-observability manifest
+func (r *TemplateRenderer) GetOrLoadEndpointObservabilityTemplates() ([]*resource.Resource, error) {
+	if len(endpointObservabilityTemplates) > 0 {
+		return endpointObservabilityTemplates, nil
+	}
+
+	basePath := path.Join(r.templatesPath, "endpoint-observability")
+
+	// add endpoint ovservability template
+	if err := r.AddTemplateFromPath(basePath, &endpointObservabilityTemplates); err != nil {
+		return endpointObservabilityTemplates, err
+	}
+
+	return endpointObservabilityTemplates, nil
+}
+
+// GetOrLoadPrometheusTemplates reads endpoint-observability manifest
+func (r *TemplateRenderer) GetOrLoadPrometheusTemplates() ([]*resource.Resource, error) {
+	if len(prometheusTemplates) > 0 {
+		return prometheusTemplates, nil
+	}
+
+	basePath := path.Join(r.templatesPath, "prometheus")
+
+	// add endpoint ovservability template
+	if err := r.AddTemplateFromPath(basePath, &prometheusTemplates); err != nil {
+		return prometheusTemplates, err
+	}
+
+	return prometheusTemplates, nil
 }
 
 func (r *TemplateRenderer) AddTemplateFromPath(kustomizationPath string, resourceList *[]*resource.Resource) error {
@@ -168,4 +206,14 @@ func (r *TemplateRenderer) render(kustomizationPath string) (resmap.ResMap, erro
 		return nil, err
 	}
 	return kt.MakeCustomizedResMap()
+}
+
+// ResetTemplates reset all the loaded templates
+func (r *TemplateRenderer) ResetTemplates() {
+	genericTemplates = nil
+	grafanaTemplates = nil
+	alertManagerTemplates = nil
+	thanosTemplates = nil
+	proxyTemplates = nil
+	endpointObservabilityTemplates = nil
 }
