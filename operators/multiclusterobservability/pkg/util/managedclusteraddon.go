@@ -68,6 +68,7 @@ func CreateManagedClusterAddonCR(c client.Client, namespace string) error {
 		managedClusterAddon,
 	); err != nil && errors.IsNotFound(err) {
 		// create new managedClusterAddon
+		log.Info("Creating managedClusterAddon", "name", ManagedClusterAddonName, "namespace", namespace)
 		if err := c.Create(context.TODO(), newManagedClusterAddon); err != nil {
 			log.Error(err, "Cannot create observability-controller  ManagedClusterAddOn")
 			return err
@@ -79,20 +80,20 @@ func CreateManagedClusterAddonCR(c client.Client, namespace string) error {
 	} else if err != nil {
 		log.Error(err, "Failed to get ManagedClusterAddOn ", "namespace", namespace)
 		return err
-	}
-
-	if !reflect.DeepEqual(managedClusterAddon.Spec, newManagedClusterAddon.Spec) {
-		log.Info("Updating observability-controller managedClusterAddon")
-		newManagedClusterAddon.ObjectMeta.ResourceVersion = managedClusterAddon.ObjectMeta.ResourceVersion
-		err := c.Update(context.TODO(), newManagedClusterAddon)
-		if err != nil {
-			log.Error(err, "Failed to update observability-controller managedClusterAddon")
-			return err
+	} else {
+		if !reflect.DeepEqual(managedClusterAddon.Spec, newManagedClusterAddon.Spec) {
+			log.Info("Updating managedClusterAddon", "name", ManagedClusterAddonName, "namespace", namespace)
+			newManagedClusterAddon.ObjectMeta.ResourceVersion = managedClusterAddon.ObjectMeta.ResourceVersion
+			err := c.Update(context.TODO(), newManagedClusterAddon)
+			if err != nil {
+				log.Error(err, "Failed to update observability-controller managedClusterAddon")
+				return err
+			}
+			return nil
 		}
-		return nil
 	}
 
-	log.Info("ManagedClusterAddOn already present", "namespace", namespace)
+	log.Info("ManagedClusterAddOn is created or updated successfully", "name", ManagedClusterAddonName, "namespace", namespace)
 
 	return nil
 }
