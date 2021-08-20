@@ -7,6 +7,8 @@ import (
 	"os"
 	"path"
 	"testing"
+
+	templatesutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering/templates"
 )
 
 func TestGetCoreTemplates(t *testing.T) {
@@ -15,10 +17,10 @@ func TestGetCoreTemplates(t *testing.T) {
 		t.Fatalf("failed to get working dir %v", err)
 	}
 	templatesPath := path.Join(path.Dir(path.Dir(path.Dir(wd))), "manifests")
-	os.Setenv(TemplatesPathEnvVar, templatesPath)
-	defer os.Unsetenv(TemplatesPathEnvVar)
+	os.Setenv(templatesutil.TemplatesPathEnvVar, templatesPath)
+	defer os.Unsetenv(templatesutil.TemplatesPathEnvVar)
 
-	_, err = GetTemplateRenderer().GetTemplates()
+	_, err = GetTemplates(templatesutil.GetTemplateRenderer())
 
 	if err != nil {
 		t.Fatalf("failed to render core template %v", err)

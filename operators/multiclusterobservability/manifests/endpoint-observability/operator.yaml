@@ -51,6 +51,8 @@ spec:
               value: "/spoke/hub-kubeconfig/kubeconfig"
             - name: INSTALL_PROM
               value: "false"
+            - name: PULL_SECRET
+              value: "REPLACE_WITH_IMAGEPULLSECRET"
           volumeMounts:
             - name: hub-kubeconfig-secret
               mountPath: "/spoke/hub-kubeconfig"

@@ -13,7 +13,7 @@ import (
 
 	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
+	templatesutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering/templates"
 )
 
 func TestRender(t *testing.T) {
@@ -22,8 +22,8 @@ func TestRender(t *testing.T) {
 		t.Fatalf("failed to get working dir %v", err)
 	}
 	templatesPath := path.Join(path.Dir(path.Dir(wd)), "manifests")
-	os.Setenv(templates.TemplatesPathEnvVar, templatesPath)
-	defer os.Unsetenv(templates.TemplatesPathEnvVar)
+	os.Setenv(templatesutil.TemplatesPathEnvVar, templatesPath)
+	defer os.Unsetenv(templatesutil.TemplatesPathEnvVar)
 
 	mchcr := &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
@@ -46,7 +46,7 @@ func TestRender(t *testing.T) {
 		},
 	}
 
-	renderer := NewRenderer(mchcr)
+	renderer := NewMCORenderer(mchcr)
 	objs, err := renderer.Render(nil)
 	if err != nil {
 		t.Fatalf("failed to render MultiClusterObservability: %v", err)

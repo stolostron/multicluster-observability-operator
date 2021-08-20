@@ -10,16 +10,14 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: prometheus
+      app.kubernetes.io/component: prometheus
       app.kubernetes.io/name: prometheus
   serviceName: prometheus-operated
   template:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: prometheus
-      creationTimestamp: null
       labels:
-        app: prometheus
         app.kubernetes.io/component: prometheus
         app.kubernetes.io/name: prometheus
     spec:

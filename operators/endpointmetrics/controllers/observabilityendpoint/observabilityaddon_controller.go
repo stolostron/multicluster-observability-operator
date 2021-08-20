@@ -28,6 +28,7 @@ import (
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
+	rendererutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering"
 )
 
 var (
@@ -139,9 +140,18 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, err
 		}
 	} else {
+		//read the image configmap
+		imagesCM := &corev1.ConfigMap{}
+		err = r.Client.Get(ctx, types.NamespacedName{Name: operatorconfig.ImageConfigMap,
+			Namespace: namespace}, imagesCM)
+		if err != nil {
+			log.Error(err, "Failed to get images configmap")
+			return ctrl.Result{}, err
+		}
+		rendering.Images = imagesCM.Data
 		//Render the prometheus templates
-		renderer := rendering.NewRenderer()
-		toDeploy, err := renderer.Render(r.Client)
+		renderer := rendererutil.NewRenderer()
+		toDeploy, err := rendering.Render(renderer, r.Client)
 		if err != nil {
 			log.Error(err, "Failed to render prometheus templates")
 			return ctrl.Result{}, err
@@ -149,7 +159,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		deployer := deploying.NewDeployer(r.Client)
 		for _, res := range toDeploy {
 			if err := controllerutil.SetControllerReference(obsAddon, res, r.Scheme); err != nil {
-				log.Error(err, "Failed to set controller reference", "resource", res.GetName())
+				log.Info("Failed to set controller reference", "resource", res.GetName())
 				globalRes = append(globalRes, res)
 			}
 			if err := deployer.Deploy(res); err != nil {
@@ -231,6 +241,14 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 			err = revertClusterMonitoringConfig(ctx, r.Client)
 			if err != nil {
 				return false, err
+			}
+		} else {
+			// delete resources which is not namespace scoped or located in other namespaces
+			for _, res := range globalRes {
+				err = r.Client.Delete(context.TODO(), res)
+				if err != nil {
+					return false, err
+				}
 			}
 		}
 		hubObsAddon.SetFinalizers(remove(hubObsAddon.GetFinalizers(), obsAddonFinalizer))

@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	templatesutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering/templates"
 )
 
 func TestGetCoreTemplates(t *testing.T) {
@@ -19,8 +20,8 @@ func TestGetCoreTemplates(t *testing.T) {
 		t.Fatalf("failed to get working dir %v", err)
 	}
 	templatesPath := path.Join(path.Dir(path.Dir(path.Dir(wd))), "manifests")
-	os.Setenv(TemplatesPathEnvVar, templatesPath)
-	defer os.Unsetenv(TemplatesPathEnvVar)
+	os.Setenv(templatesutil.TemplatesPathEnvVar, templatesPath)
+	defer os.Unsetenv(templatesutil.TemplatesPathEnvVar)
 
 	mchcr := &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
@@ -33,7 +34,7 @@ func TestGetCoreTemplates(t *testing.T) {
 			},
 		},
 	}
-	_, err = GetTemplateRenderer().GetTemplates(mchcr)
+	_, err = GetTemplates(templatesutil.GetTemplateRenderer(), mchcr)
 
 	if err != nil {
 		t.Fatalf("failed to render core template %v", err)

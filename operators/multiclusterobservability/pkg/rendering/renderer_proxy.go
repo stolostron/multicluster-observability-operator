@@ -15,26 +15,28 @@ import (
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	rendererutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering"
 )
 
-func (r *Renderer) newProxyRenderer() {
-	r.renderProxyFns = map[string]renderFn{
+func (r *MCORenderer) newProxyRenderer() {
+	r.renderProxyFns = map[string]rendererutil.RenderFn{
 		"Deployment":            r.renderProxyDeployment,
-		"Service":               r.renderNamespace,
-		"ServiceAccount":        r.renderNamespace,
-		"ConfigMap":             r.renderNamespace,
-		"ClusterRole":           r.renderClusterRole,
-		"ClusterRoleBinding":    r.renderClusterRoleBinding,
+		"Service":               r.renderer.RenderNamespace,
+		"ServiceAccount":        r.renderer.RenderNamespace,
+		"ConfigMap":             r.renderer.RenderNamespace,
+		"ClusterRole":           r.renderer.RenderClusterRole,
+		"ClusterRoleBinding":    r.renderer.RenderClusterRoleBinding,
 		"Secret":                r.renderProxySecret,
-		"Role":                  r.renderNamespace,
-		"RoleBinding":           r.renderNamespace,
-		"Ingress":               r.renderNamespace,
-		"PersistentVolumeClaim": r.renderNamespace,
+		"Role":                  r.renderer.RenderNamespace,
+		"RoleBinding":           r.renderer.RenderNamespace,
+		"Ingress":               r.renderer.RenderNamespace,
+		"PersistentVolumeClaim": r.renderer.RenderNamespace,
 	}
 }
 
-func (r *Renderer) renderProxyDeployment(res *resource.Resource) (*unstructured.Unstructured, error) {
-	u, err := r.renderDeployments(res)
+func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
+	namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+	u, err := r.renderer.RenderDeployments(res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -108,8 +110,9 @@ func (r *Renderer) renderProxyDeployment(res *resource.Resource) (*unstructured.
 	return &unstructured.Unstructured{Object: unstructuredObj}, nil
 }
 
-func (r *Renderer) renderProxySecret(res *resource.Resource) (*unstructured.Unstructured, error) {
-	u, err := r.renderNamespace(res)
+func (r *MCORenderer) renderProxySecret(res *resource.Resource,
+	namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+	u, err := r.renderer.RenderNamespace(res, namespace, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +139,8 @@ func (r *Renderer) renderProxySecret(res *resource.Resource) (*unstructured.Unst
 	return u, nil
 }
 
-func (r *Renderer) renderProxyTemplates(templates []*resource.Resource) ([]*unstructured.Unstructured, error) {
+func (r *MCORenderer) renderProxyTemplates(templates []*resource.Resource,
+	namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
 	for _, template := range templates {
 		render, ok := r.renderProxyFns[template.GetKind()]
@@ -144,7 +148,7 @@ func (r *Renderer) renderProxyTemplates(templates []*resource.Resource) ([]*unst
 			uobjs = append(uobjs, &unstructured.Unstructured{Object: template.Map()})
 			continue
 		}
-		uobj, err := render(template.DeepCopy())
+		uobj, err := render(template.DeepCopy(), namespace, labels)
 		if err != nil {
 			return []*unstructured.Unstructured{}, err
 		}

@@ -10,7 +10,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
+	rendererutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering"
+	templatesutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering/templates"
 )
 
 func TestRender(t *testing.T) {
@@ -19,13 +20,13 @@ func TestRender(t *testing.T) {
 		t.Fatalf("failed to get working dir %v", err)
 	}
 	templatesPath := path.Join(path.Dir(path.Dir(wd)), "manifests")
-	os.Setenv(templates.TemplatesPathEnvVar, templatesPath)
-	defer os.Unsetenv(templates.TemplatesPathEnvVar)
+	os.Setenv(templatesutil.TemplatesPathEnvVar, templatesPath)
+	defer os.Unsetenv(templatesutil.TemplatesPathEnvVar)
 
-	renderer := NewRenderer()
-	objs, err := renderer.Render(nil)
+	renderer := rendererutil.NewRenderer()
+	objs, err := Render(renderer, nil)
 	if err != nil {
-		t.Fatalf("failed to render MultiClusterObservability: %v", err)
+		t.Fatalf("failed to render endpoint templates: %v", err)
 	}
 
 	printObjs(t, objs)

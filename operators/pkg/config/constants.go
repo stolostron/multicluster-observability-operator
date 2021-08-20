@@ -11,6 +11,17 @@ const (
 
 	CollectorImage    = "COLLECTOR_IMAGE"
 	InstallPrometheus = "INSTALL_PROM"
+	PullSecret        = "PUll_SECRET"
+	ImageConfigMap    = "images-list"
+)
+
+var (
+	ImageKeyNameMap = map[string]string{
+		"prometheus":         "prometheus",
+		"kube_state_metrics": "kube-state-metrics",
+		"node_exporter":      "node-exporter",
+		"kube_rbac_proxy":    "kube-rbac-proxy",
+	}
 )
 
 // HubInfo is the struct that contains the common information about the hub

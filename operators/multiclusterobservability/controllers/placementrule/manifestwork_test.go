@@ -25,7 +25,7 @@ import (
 
 const (
 	pullSecretName = "test-pull-secret"
-	workSize       = 12
+	workSize       = 13
 )
 
 func newTestMCO() *mcov1beta2.MultiClusterObservability {
