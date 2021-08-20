@@ -3,7 +3,7 @@ module github.com/open-cluster-management/multicluster-observability-operator
 go 1.16
 
 require (
-	github.com/IBM/controller-filtered-cache v0.3.2
+	github.com/IBM/controller-filtered-cache v0.3.3
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cloudflare/cfssl v1.6.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
