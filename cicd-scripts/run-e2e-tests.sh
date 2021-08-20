@@ -5,14 +5,26 @@ set -e
 
 ./cicd-scripts/customize-mco.sh
 
+GINKGO_FOCUS="$(cat /tmp/ginkgo_focus)"
 ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
 
-export KUBECONFIG="${SHARED_DIR}/hub-1.kc" 
+kubeconfig_hub_path=""
+if [ ! -z "${SHARED_DIR}" ]; then
+    export KUBECONFIG="${SHARED_DIR}/hub-1.kc"
+    kubeconfig_hub_path="${SHARED_DIR}/hub-1.kc"
+else
+    # for local testing
+    if [ -z "${KUBECONFIG}" ]; then
+        echo "Error: environment variable KUBECONFIG must be specified!"
+        exit 1
+    fi
+    kubeconfig_hub_path="${HOME}/.kube/kubeconfig-hub"
+    oc config view --raw --minify > ${kubeconfig_hub_path}
+fi
 
 app_domain=$(oc -n openshift-ingress-operator get ingresscontrollers default -ojsonpath='{.status.domain}')
 base_domain="${app_domain#apps.}"
 
-kubeconfig_hub_path="${SHARED_DIR}/hub-1.kc"
 clusterServerURL=$(oc config view -o jsonpath="{.clusters[0].cluster.server}")
 kubecontext=$(oc config current-context)
 
@@ -35,7 +47,7 @@ printf "\n      kubecontext: ${kubecontext}" >> ${OPTIONSFILE}
 
 go get -u github.com/onsi/ginkgo/ginkgo
 go mod vendor
-ginkgo -debug -trace -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=3
+ginkgo -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=3
 
 cat ${ROOTDIR}/tests/pkg/tests/results.xml | grep failures=\"0\" | grep errors=\"0\"
 if [ $? -ne 0 ]; then

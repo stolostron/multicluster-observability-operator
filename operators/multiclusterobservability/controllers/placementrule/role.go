@@ -56,7 +56,7 @@ func createClusterRole(c client.Client) error {
 	}
 
 	found := &rbacv1.ClusterRole{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: mcoRoleName, Namespace: ""}, found)
+	err := c.Get(context.TODO(), types.NamespacedName{Name: mcoRoleName}, found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating mco clusterRole")
 		err = c.Create(context.TODO(), role)
@@ -108,7 +108,7 @@ func createClusterRoleBinding(c client.Client, namespace string, name string) er
 	}
 	found := &rbacv1.ClusterRoleBinding{}
 	err := c.Get(context.TODO(), types.NamespacedName{Name: namespace + "-" +
-		mcoRoleBindingName, Namespace: ""}, found)
+		mcoRoleBindingName}, found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating endpoint-observability-mco-rolebinding clusterrolebinding")
 		err = c.Create(context.TODO(), rb)
@@ -211,7 +211,7 @@ func createResourceRole(c client.Client) error {
 	}
 
 	found := &rbacv1.ClusterRole{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: resRoleName, Namespace: ""}, found)
+	err := c.Get(context.TODO(), types.NamespacedName{Name: resRoleName}, found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating endpoint-observability-res-role clusterrole")
 		err = c.Create(context.TODO(), role)

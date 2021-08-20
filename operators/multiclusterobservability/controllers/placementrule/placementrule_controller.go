@@ -63,7 +63,6 @@ type PlacementRuleReconciler struct {
 	Log        logr.Logger
 	Scheme     *runtime.Scheme
 	CRDMap     map[string]bool
-	APIReader  client.Reader
 	RESTMapper meta.RESTMapper
 }
 
@@ -353,7 +352,7 @@ func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
 		return err
 	}
 
-	err = util.CreateManagedClusterAddonCR(client, namespace)
+	err = util.CreateManagedClusterAddonCR(client, namespace, ownerLabelKey, ownerLabelValue)
 	if err != nil {
 		log.Error(err, "Failed to create ManagedClusterAddon")
 		return err
@@ -401,10 +400,12 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	c := mgr.GetClient()
 	clusterPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
+			log.Info("CreateFunc", "managedCluster", e.Object.GetName())
 			updateManagedClusterList(e.Object)
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
+			log.Info("UpdateFunc", "managedCluster", e.ObjectNew.GetName())
 			if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				updateManagedClusterList(e.ObjectNew)
 				return true
@@ -412,8 +413,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			updateManagedClusterList(e.Object)
-			return e.DeleteStateUnknown
+			log.Info("DeleteFunc", "managedCluster", e.Object.GetName())
+			delete(managedClusterList, e.Object.GetName())
+			return true
 		},
 	}
 
@@ -707,7 +709,6 @@ func StartPlacementController(mgr manager.Manager, crdMap map[string]bool) error
 		Client:     mgr.GetClient(),
 		Log:        ctrl.Log.WithName("controllers").WithName("PlacementRule"),
 		Scheme:     mgr.GetScheme(),
-		APIReader:  mgr.GetAPIReader(),
 		CRDMap:     crdMap,
 		RESTMapper: mgr.GetRESTMapper(),
 	}).SetupWithManager(mgr); err != nil {

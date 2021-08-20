@@ -10,7 +10,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
@@ -46,9 +45,9 @@ func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservabili
 	return mcoRenderer
 }
 
-func (r *MCORenderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured, error) {
-
-	genericTemplates, err := templates.GetTemplates(templatesutil.GetTemplateRenderer(), r.cr)
+func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
+	// load and render generic templates
+	genericTemplates, err := templates.GetOrLoadGenericTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
 		return nil, err
 	}
@@ -61,8 +60,8 @@ func (r *MCORenderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructur
 		return nil, err
 	}
 
-	// render grafana templates
-	grafanaTemplates, err := templates.GetGrafanaTemplates(templatesutil.GetTemplateRenderer(), r.cr)
+	// load and render grafana templates
+	grafanaTemplates, err := templates.GetOrLoadGrafanaTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
 		return nil, err
 	}
@@ -72,8 +71,8 @@ func (r *MCORenderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructur
 	}
 	resources = append(resources, grafanaResources...)
 
-	//render alertmanager templates
-	alertTemplates, err := templates.GetAlertManagerTemplates(templatesutil.GetTemplateRenderer(), r.cr)
+	//load and render alertmanager templates
+	alertTemplates, err := templates.GetOrLoadAlertManagerTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
 		return nil, err
 	}
@@ -83,8 +82,8 @@ func (r *MCORenderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructur
 	}
 	resources = append(resources, alertResources...)
 
-	//render thanos templates
-	thanosTemplates, err := templates.GetThanosTemplates(templatesutil.GetTemplateRenderer(), r.cr)
+	// load and render thanos templates
+	thanosTemplates, err := templates.GetOrLoadThanosTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
 		return nil, err
 	}
@@ -94,8 +93,8 @@ func (r *MCORenderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructur
 	}
 	resources = append(resources, thanosResources...)
 
-	//render proxy templates
-	proxyTemplates, err := templates.GetProxyTemplates(templatesutil.GetTemplateRenderer(), r.cr)
+	// load and render proxy templates
+	proxyTemplates, err := templates.GetOrLoadProxyTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
 		return nil, err
 	}

@@ -393,7 +393,7 @@ func MTLSTransport(logger log.Logger) (*http.Transport, error) {
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{cert},
 		RootCAs:      caCertPool,
-		MinVersion:   tls.VersionTLS12,
+		MinVersion:   tls.VersionTLS13,
 	}
 	return &http.Transport{
 		Dial: (&net.Dialer{

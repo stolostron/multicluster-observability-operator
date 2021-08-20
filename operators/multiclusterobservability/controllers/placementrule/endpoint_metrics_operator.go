@@ -14,6 +14,7 @@ import (
 
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
 	templatesutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering/templates"
@@ -25,17 +26,12 @@ const (
 	rolebindingName = "open-cluster-management:endpoint-observability-operator-rb"
 )
 
-var (
-	templatePath     = "/usr/local/manifests/endpoint-observability"
-	promTemplatePath = "/usr/local/manifests/prometheus"
-)
-
+// loadTemplates load manifests from manifests directory
 func loadTemplates(mco *mcov1beta2.MultiClusterObservability) (
 	[]runtime.RawExtension, *apiextensionsv1.CustomResourceDefinition,
 	*apiextensionsv1beta1.CustomResourceDefinition, *appsv1.Deployment, error) {
-	templateRenderer := templatesutil.NewTemplateRenderer(templatePath)
-	resourceList := []*resource.Resource{}
-	err := templateRenderer.AddTemplateFromPath(templatePath, &resourceList)
+	// render endpoint-observability templates
+	endpointObsTemplates, err := templates.GetOrLoadEndpointObservabilityTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
 		log.Error(err, "Failed to load templates")
 		return nil, nil, nil, nil, err
@@ -44,7 +40,7 @@ func loadTemplates(mco *mcov1beta2.MultiClusterObservability) (
 	crdv1beta1 := &apiextensionsv1beta1.CustomResourceDefinition{}
 	dep := &appsv1.Deployment{}
 	rawExtensionList := []runtime.RawExtension{}
-	for _, r := range resourceList {
+	for _, r := range endpointObsTemplates {
 		obj, err := updateRes(r, mco)
 		if err != nil {
 			return nil, nil, nil, nil, err
@@ -152,15 +148,14 @@ func getImage(mco *mcov1beta2.MultiClusterObservability,
 
 func loadPromTemplates(mco *mcov1beta2.MultiClusterObservability) (
 	[]runtime.RawExtension, error) {
-	templateRenderer := templatesutil.NewTemplateRenderer(promTemplatePath)
-	resourceList := []*resource.Resource{}
-	err := templateRenderer.AddTemplateFromPath(promTemplatePath, &resourceList)
+	// load and render promTemplates
+	promTemplates, err := templates.GetOrLoadPrometheusTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
 		log.Error(err, "Failed to load templates")
 		return nil, err
 	}
 	rawExtensionList := []runtime.RawExtension{}
-	for _, r := range resourceList {
+	for _, r := range promTemplates {
 		obj, err := updateRes(r, mco)
 		if err != nil {
 			return nil, err

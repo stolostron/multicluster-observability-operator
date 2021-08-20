@@ -157,8 +157,15 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get work dir: (%v)", err)
 	}
-	templatePath = path.Join(wd, "../../manifests/endpoint-observability")
-	promTemplatePath = path.Join(wd, "../../manifests/prometheus")
+
+	os.MkdirAll(path.Join(wd, "../../tests"), 0755)
+	testManifestsPath := path.Join(wd, "../../tests/manifests")
+	manifestsPath := path.Join(wd, "../../manifests")
+	os.Setenv("TEMPLATES_PATH", testManifestsPath)
+	err = os.Symlink(manifestsPath, testManifestsPath)
+	if err != nil {
+		t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
+	}
 
 	works, crdWork, _, dep, hubInfo, err := getGlobalManifestResources(c, newTestMCO())
 	if err != nil {
@@ -213,6 +220,11 @@ func TestManifestWork(t *testing.T) {
 	if err == nil || !errors.IsNotFound(err) {
 		t.Fatalf("Manifestwork not deleted: (%v)", err)
 	}
+
+	if err = os.Remove(testManifestsPath); err != nil {
+		t.Fatalf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
+	}
+	os.Remove(path.Join(wd, "../../tests"))
 }
 
 func TestMergeMetrics(t *testing.T) {

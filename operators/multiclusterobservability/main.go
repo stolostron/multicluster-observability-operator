@@ -33,7 +33,8 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -153,18 +154,18 @@ func main() {
 
 	mcoNamespace := config.GetMCONamespace()
 	gvkLabelsMap := map[schema.GroupVersionKind][]filteredcache.Selector{
-		v1.SchemeGroupVersion.WithKind("Secret"): []filteredcache.Selector{
+		corev1.SchemeGroupVersion.WithKind("Secret"): []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.OpenshiftIngressOperatorNamespace)},
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.OpenshiftIngressNamespace)},
 		},
-		v1.SchemeGroupVersion.WithKind("ConfigMap"): []filteredcache.Selector{
+		corev1.SchemeGroupVersion.WithKind("ConfigMap"): []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
-		v1.SchemeGroupVersion.WithKind("Service"): []filteredcache.Selector{
+		corev1.SchemeGroupVersion.WithKind("Service"): []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
-		v1.SchemeGroupVersion.WithKind("ServiceAccount"): []filteredcache.Selector{
+		corev1.SchemeGroupVersion.WithKind("ServiceAccount"): []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
 		appsv1.SchemeGroupVersion.WithKind("Deployment"): []filteredcache.Selector{
@@ -189,6 +190,27 @@ func main() {
 		gvkLabelsMap[mchv1.SchemeGroupVersion.WithKind("MultiClusterHub")] = []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", mcoNamespace)},
 		}
+	}
+
+	// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behaviour, which means
+	// MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
+	// Adding selector will reduce the cache size when the managedcluster scale.
+	gvkLabelsMap[rbacv1.SchemeGroupVersion.WithKind("ClusterRole")] = []filteredcache.Selector{
+		{LabelSelector: "owner==multicluster-observability-operator"},
+	}
+	gvkLabelsMap[rbacv1.SchemeGroupVersion.WithKind("ClusterRoleBinding")] = []filteredcache.Selector{
+		{LabelSelector: "owner==multicluster-observability-operator"},
+	}
+	gvkLabelsMap[rbacv1.SchemeGroupVersion.WithKind("Role")] = []filteredcache.Selector{
+		{LabelSelector: "owner==multicluster-observability-operator"},
+	}
+	gvkLabelsMap[rbacv1.SchemeGroupVersion.WithKind("RoleBinding")] = []filteredcache.Selector{
+		{LabelSelector: "owner==multicluster-observability-operator"},
+	}
+
+	// Add filter for ManagedClusterAddOn to reduce the cache size when the managedclusters scale.
+	gvkLabelsMap[addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn")] = []filteredcache.Selector{
+		{LabelSelector: "owner==multicluster-observability-operator"},
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
