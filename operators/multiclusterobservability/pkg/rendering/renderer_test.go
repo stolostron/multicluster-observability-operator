@@ -47,7 +47,7 @@ func TestRender(t *testing.T) {
 	}
 
 	renderer := NewRenderer(mchcr)
-	objs, err := renderer.Render(nil)
+	objs, err := renderer.Render()
 	if err != nil {
 		t.Fatalf("failed to render MultiClusterObservability: %v", err)
 	}

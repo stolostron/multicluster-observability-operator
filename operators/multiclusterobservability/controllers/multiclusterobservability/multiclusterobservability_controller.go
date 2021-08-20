@@ -38,7 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	placemengctrl "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
+	placementctrl "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	certctrl "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -114,7 +114,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 	if os.Getenv("UNIT_TEST") != "true" {
 		// start placement controller
-		err := placemengctrl.StartPlacementController(r.Manager, r.CRDMap)
+		err := placementctrl.StartPlacementController(r.Manager, r.CRDMap)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -165,7 +165,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	instance.Spec.StorageConfig.StorageClass = storageClassSelected
 	//Render the templates with a specified CR
 	renderer := rendering.NewRenderer(instance)
-	toDeploy, err := renderer.Render(r.Client)
+	toDeploy, err := renderer.Render()
 	if err != nil {
 		reqLogger.Error(err, "Failed to render multiClusterMonitoring templates")
 		return ctrl.Result{}, err

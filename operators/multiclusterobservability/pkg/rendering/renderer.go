@@ -11,14 +11,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
 	obv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/patching"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 )
@@ -64,19 +62,19 @@ func NewRenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability)
 	return renderer
 }
 
-func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured, error) {
-
-	genericTemplates, err := templates.GetTemplateRenderer().GetTemplates(r.cr)
+func (r *Renderer) Render() ([]*unstructured.Unstructured, error) {
+	// load and render generic templates
+	genericTemplates, err := templates.GetTemplateRenderer().GetOrLoadGenericTemplates()
 	if err != nil {
 		return nil, err
 	}
-	resources, err := r.renderTemplates(genericTemplates)
+	resources, err := r.renderGenericTemplates(genericTemplates)
 	if err != nil {
 		return nil, err
 	}
 
-	// render grafana templates
-	grafanaTemplates, err := templates.GetTemplateRenderer().GetGrafanaTemplates(r.cr)
+	// load and render grafana templates
+	grafanaTemplates, err := templates.GetTemplateRenderer().GetOrLoadGrafanaTemplates()
 	if err != nil {
 		return nil, err
 	}
@@ -86,8 +84,8 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 	}
 	resources = append(resources, grafanaResources...)
 
-	//render alertmanager templates
-	alertTemplates, err := templates.GetTemplateRenderer().GetAlertManagerTemplates(r.cr)
+	//load and render alertmanager templates
+	alertTemplates, err := templates.GetTemplateRenderer().GetOrLoadAlertManagerTemplates()
 	if err != nil {
 		return nil, err
 	}
@@ -97,8 +95,8 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 	}
 	resources = append(resources, alertResources...)
 
-	//render thanos templates
-	thanosTemplates, err := templates.GetTemplateRenderer().GetThanosTemplates(r.cr)
+	// load and render thanos templates
+	thanosTemplates, err := templates.GetTemplateRenderer().GetOrLoadThanosTemplates()
 	if err != nil {
 		return nil, err
 	}
@@ -108,8 +106,8 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 	}
 	resources = append(resources, thanosResources...)
 
-	//render proxy templates
-	proxyTemplates, err := templates.GetTemplateRenderer().GetProxyTemplates(r.cr)
+	// load and render proxy templates
+	proxyTemplates, err := templates.GetTemplateRenderer().GetOrLoadProxyTemplates()
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +162,7 @@ func (r *Renderer) Render(c runtimeclient.Client) ([]*unstructured.Unstructured,
 	return resources, nil
 }
 
-func (r *Renderer) renderTemplates(templates []*resource.Resource) ([]*unstructured.Unstructured, error) {
+func (r *Renderer) renderGenericTemplates(templates []*resource.Resource) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
 	for _, template := range templates {
 		render, ok := r.renderFns[template.GetKind()]
@@ -187,11 +185,6 @@ func (r *Renderer) renderTemplates(templates []*resource.Resource) ([]*unstructu
 }
 
 func (r *Renderer) renderDeployments(res *resource.Resource) (*unstructured.Unstructured, error) {
-	err := patching.ApplyGlobalPatches(res, r.cr)
-	if err != nil {
-		return nil, err
-	}
-
 	res.SetNamespace(mcoconfig.GetDefaultNamespace())
 	u := &unstructured.Unstructured{Object: res.Map()}
 	return u, nil
