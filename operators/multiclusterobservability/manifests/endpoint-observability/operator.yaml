@@ -43,8 +43,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.serviceAccountName
-            - name: COLLECTOR_IMAGE
-              value: REPLACE_WITH_METRICS_COLLECTOR_IMAGE
             - name: OPERATOR_NAME
               value: "endpoint-monitoring-operator"
             - name: HUB_KUBECONFIG

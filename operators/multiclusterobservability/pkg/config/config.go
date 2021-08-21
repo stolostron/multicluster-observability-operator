@@ -47,7 +47,6 @@ const (
 	AnnotationKeyImageTagSuffix           = "mco-imageTagSuffix"
 	AnnotationMCOPause                    = "mco-pause"
 	AnnotationMCOWithoutResourcesRequests = "mco-thanos-without-resources-requests"
-	AnnotationSkipCreation                = "skip-creation-if-exist"
 	AnnotationCertDuration                = "mco-cert-duration"
 
 	DefaultImgRepository   = "quay.io/open-cluster-management"
@@ -142,10 +141,6 @@ const (
 	EndpointControllerImgTagSuffix = "2.3.0-SNAPSHOT-2021-07-26-18-43-26"
 	EndpointControllerImgName      = "endpoint-monitoring-operator"
 	EndpointControllerKey          = "endpoint_monitoring_operator"
-
-	MetricsCollectorImgTagSuffix = "2.3.0-SNAPSHOT-2021-07-26-18-43-26"
-	MetricsCollectorImgName      = "metrics-collector"
-	MetricsCollectorKey          = "metrics_collector"
 
 	RBACQueryProxyKey = "rbac_query_proxy"
 

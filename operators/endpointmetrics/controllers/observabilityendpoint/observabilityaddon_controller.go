@@ -23,11 +23,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/deploying"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/deploying"
 	rendererutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering"
 )
 
@@ -107,6 +107,16 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	clusterType := ""
 	clusterID := ""
 
+	//read the image configmap
+	imagesCM := &corev1.ConfigMap{}
+	err = r.Client.Get(ctx, types.NamespacedName{Name: operatorconfig.ImageConfigMap,
+		Namespace: namespace}, imagesCM)
+	if err != nil {
+		log.Error(err, "Failed to get images configmap")
+		return ctrl.Result{}, err
+	}
+	rendering.Images = imagesCM.Data
+
 	if !installPrometheus {
 		// If no prometheus service found, set status as NotSupported
 		promSvc := &corev1.Service{}
@@ -140,15 +150,6 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, err
 		}
 	} else {
-		//read the image configmap
-		imagesCM := &corev1.ConfigMap{}
-		err = r.Client.Get(ctx, types.NamespacedName{Name: operatorconfig.ImageConfigMap,
-			Namespace: namespace}, imagesCM)
-		if err != nil {
-			log.Error(err, "Failed to get images configmap")
-			return ctrl.Result{}, err
-		}
-		rendering.Images = imagesCM.Data
 		//Render the prometheus templates
 		renderer := rendererutil.NewRenderer()
 		toDeploy, err := rendering.Render(renderer, r.Client)
@@ -246,7 +247,7 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 			// delete resources which is not namespace scoped or located in other namespaces
 			for _, res := range globalRes {
 				err = r.Client.Delete(context.TODO(), res)
-				if err != nil {
+				if err != nil && !errors.IsNotFound(err) {
 					return false, err
 				}
 			}
@@ -321,6 +322,11 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			&source.Kind{Type: &rbacv1.ClusterRoleBinding{}},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(clusterRoleBindingName, "", false, true, true)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.ConfigMap{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(operatorconfig.ImageConfigMap, namespace, true, true, false)),
 		).
 		Complete(r)
 }

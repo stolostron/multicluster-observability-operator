@@ -5,7 +5,6 @@ package observabilityendpoint
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"strconv"
 	"time"
@@ -18,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
 	oashared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
 )
@@ -41,9 +41,8 @@ const (
 )
 
 var (
-	collectorImage = os.Getenv(operatorconfig.CollectorImage)
-	ocpPromURL     = "https://prometheus-k8s.openshift-monitoring.svc:9091"
-	promURL        = "https://prometheus-k8s-0:9091"
+	ocpPromURL = "https://prometheus-k8s.openshift-monitoring.svc:9091"
+	promURL    = "https://prometheus-k8s:9091"
 )
 
 type MetricsAllowlist struct {
@@ -175,7 +174,7 @@ func createDeployment(clusterID string, clusterType string,
 					Containers: []corev1.Container{
 						{
 							Name:    "metrics-collector",
-							Image:   collectorImage,
+							Image:   rendering.Images[operatorconfig.MetricsCollectorKey],
 							Command: commands,
 							Env: []corev1.EnvVar{
 								{

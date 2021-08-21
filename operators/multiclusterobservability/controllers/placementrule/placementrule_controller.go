@@ -407,7 +407,11 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			log.Info("UpdateFunc", "managedCluster", e.ObjectNew.GetName())
 			if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				updateManagedClusterList(e.ObjectNew)
+				if e.ObjectNew.GetDeletionTimestamp() != nil {
+					log.Info("DeleteFunc", "managedCluster", e.ObjectNew.GetName())
+				} else {
+					updateManagedClusterList(e.ObjectNew)
+				}
 				return true
 			}
 			return false

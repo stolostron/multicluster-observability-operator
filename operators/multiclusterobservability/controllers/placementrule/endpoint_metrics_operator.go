@@ -124,10 +124,6 @@ func updateEndpointOperator(mco *mcov1beta2.MultiClusterObservability,
 		mcoconfig.EndpointControllerImgTagSuffix, mcoconfig.EndpointControllerKey)
 	container.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 	for i, env := range container.Env {
-		if env.Name == operatorconfig.CollectorImage {
-			container.Env[i].Value = getImage(mco, mcoconfig.MetricsCollectorImgName,
-				mcoconfig.MetricsCollectorImgTagSuffix, mcoconfig.MetricsCollectorKey)
-		}
 		if env.Name == operatorconfig.PullSecret {
 			container.Env[i].Value = mcoconfig.GetImagePullSecret(mco.Spec)
 		}

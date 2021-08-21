@@ -5,7 +5,7 @@ metadata:
   labels:
     app.kubernetes.io/component: prometheus
     app.kubernetes.io/name: prometheus
-  name: prometheus-k8s-0
+  name: prometheus-k8s
   namespace: open-cluster-management-addon-observability
 spec:
   ports:
