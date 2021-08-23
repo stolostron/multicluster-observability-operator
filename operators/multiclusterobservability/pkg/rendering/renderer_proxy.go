@@ -14,8 +14,8 @@ import (
 
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	rendererutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/util"
 )
 
 func (r *MCORenderer) newProxyRenderer() {

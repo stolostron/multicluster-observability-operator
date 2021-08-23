@@ -14,11 +14,14 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
 
 type compFn func(runtime.Object, runtime.Object) bool
+
+var log = logf.Log.WithName("obj_compare")
 
 var compFns = map[string]compFn{
 	"Namespace":                compareNamespaces,

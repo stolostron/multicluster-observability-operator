@@ -13,7 +13,10 @@ import (
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	crdClientSet "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/tools/clientcmd"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var log = logf.Log.WithName("util")
 
 var (
 	crdClient crdClientSet.Interface

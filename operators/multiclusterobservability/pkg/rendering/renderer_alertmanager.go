@@ -14,8 +14,8 @@ import (
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
 	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	rendererutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/util"
 )
 
 func (r *MCORenderer) newAlertManagerRenderer() {
