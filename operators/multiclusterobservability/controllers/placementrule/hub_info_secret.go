@@ -11,13 +11,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
 )
 
-func newHubInfoSecret(client client.Client, obsNamespace string,
-	namespace string, mco *mcov1beta2.MultiClusterObservability) (*corev1.Secret, error) {
+// generateHubInfoSecret generates the secret that contains hubInfo.
+// this function should only called when the watched resources are created/updated
+func generateHubInfoSecret(client client.Client, obsNamespace string,
+	namespace string) (*corev1.Secret, error) {
 	obsApiRouteHost, err := config.GetObsAPIHost(client, obsNamespace)
 	if err != nil {
 		log.Error(err, "Failed to get the host for observatorium API route")
