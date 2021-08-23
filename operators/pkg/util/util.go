@@ -4,17 +4,11 @@
 package util
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"net/http"
 	"net/http/pprof"
 	"os"
-
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Remove is used to remove string from a string array
@@ -44,36 +38,6 @@ func GetAnnotation(annotations map[string]string, key string) string {
 		return ""
 	}
 	return annotations[key]
-}
-
-// GetPVCList get pvc with matched labels
-func GetPVCList(c client.Client, matchLabels map[string]string) ([]corev1.PersistentVolumeClaim, error) {
-	pvcList := &corev1.PersistentVolumeClaimList{}
-	pvcListOpts := []client.ListOption{
-		client.InNamespace(config.GetDefaultNamespace()),
-		client.MatchingLabels(matchLabels),
-	}
-
-	err := c.List(context.TODO(), pvcList, pvcListOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return pvcList.Items, nil
-}
-
-// GetStatefulSetList get sts with matched labels
-func GetStatefulSetList(c client.Client, matchLabels map[string]string) ([]appsv1.StatefulSet, error) {
-	stsList := &appsv1.StatefulSetList{}
-	stsListOpts := []client.ListOption{
-		client.InNamespace(config.GetDefaultNamespace()),
-		client.MatchingLabels(matchLabels),
-	}
-
-	err := c.List(context.TODO(), stsList, stsListOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return stsList.Items, nil
 }
 
 // GeneratePassword returns a base64 encoded securely random bytes.

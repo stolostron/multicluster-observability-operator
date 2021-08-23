@@ -43,8 +43,9 @@ import (
 	certctrl "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/deploying"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/util"
+	commonutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/util"
 	mchv1 "github.com/open-cluster-management/multiclusterhub-operator/pkg/apis/operator/v1"
 	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 )
@@ -258,7 +259,7 @@ func labelsForMultiClusterMonitoring(name string) map[string]string {
 
 func (r *MultiClusterObservabilityReconciler) initFinalization(
 	mco *mcov1beta2.MultiClusterObservability) (bool, error) {
-	if mco.GetDeletionTimestamp() != nil && util.Contains(mco.GetFinalizers(), resFinalizer) {
+	if mco.GetDeletionTimestamp() != nil && commonutil.Contains(mco.GetFinalizers(), resFinalizer) {
 		log.Info("To delete resources across namespaces")
 		svmCrdExists := r.CRDMap[config.StorageVersionMigrationCrdName]
 		if svmCrdExists {
@@ -274,7 +275,7 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 		// clean up operand names
 		config.CleanUpOperandNames()
 
-		mco.SetFinalizers(util.Remove(mco.GetFinalizers(), resFinalizer))
+		mco.SetFinalizers(commonutil.Remove(mco.GetFinalizers(), resFinalizer))
 		err := r.Client.Update(context.TODO(), mco)
 		if err != nil {
 			log.Error(err, "Failed to remove finalizer from mco resource")
@@ -287,8 +288,8 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 
 		return true, nil
 	}
-	if !util.Contains(mco.GetFinalizers(), resFinalizer) {
-		mco.SetFinalizers(util.Remove(mco.GetFinalizers(), certFinalizer))
+	if !commonutil.Contains(mco.GetFinalizers(), resFinalizer) {
+		mco.SetFinalizers(commonutil.Remove(mco.GetFinalizers(), certFinalizer))
 		mco.SetFinalizers(append(mco.GetFinalizers(), resFinalizer))
 		err := r.Client.Update(context.TODO(), mco)
 		if err != nil {
