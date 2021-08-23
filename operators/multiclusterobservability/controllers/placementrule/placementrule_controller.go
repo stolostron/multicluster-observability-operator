@@ -146,7 +146,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	if !deleteAll {
-		res, err := createAllRelatedRes(r.Client, r.RESTMapper, req, mco, obsAddonList)
+		res, err := createAllRelatedRes(r.Client, r.RESTMapper, req, mco, obsAddonList, r.CRDMap[config.IngressControllerCRD])
 		if err != nil {
 			return res, err
 		}
@@ -230,7 +230,8 @@ func createAllRelatedRes(
 	restMapper meta.RESTMapper,
 	request ctrl.Request,
 	mco *mcov1beta2.MultiClusterObservability,
-	obsAddonList *mcov1beta1.ObservabilityAddonList) (ctrl.Result, error) {
+	obsAddonList *mcov1beta1.ObservabilityAddonList,
+	ingressCtlCrdExists bool) (ctrl.Result, error) {
 
 	// create the clusterrole if not there
 	if !isCRoleCreated {
@@ -266,7 +267,7 @@ func createAllRelatedRes(
 	// regenerate the hubinfo secret if empty
 	if hubInfoSecret == nil {
 		var err error
-		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace); err != nil {
+		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -694,12 +695,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(customAllowlistPred)).
 		// secondary watch for certificate secrets
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(certSecretPred)).
-		// secondary watch for default ingresscontroller
-		Watches(&source.Kind{Type: &operatorv1.IngressController{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(ingressControllerPred)).
-		// secondary watch for alertmanager route byo cert secrets
-		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amRouterCertSecretPred)).
-		// secondary watch for openshift route ca secret
-		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(routeCASecretPred)).
 		// secondary watch for alertmanager accessor serviceaccount
 		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred))
 
@@ -755,6 +750,16 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			DeleteFunc: func(e event.DeleteEvent) bool {
 				return false
 			},
+		}
+
+		ingressCtlCrdExists, _ := r.CRDMap[config.IngressControllerCRD]
+		if ingressCtlCrdExists {
+			// secondary watch for default ingresscontroller
+			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &operatorv1.IngressController{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(ingressControllerPred)).
+				// secondary watch for alertmanager route byo cert secrets
+				Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amRouterCertSecretPred)).
+				// secondary watch for openshift route ca secret
+				Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(routeCASecretPred))
 		}
 
 		mchCrdExists, _ := r.CRDMap[config.MCHCrdName]

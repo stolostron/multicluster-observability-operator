@@ -327,7 +327,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	cl := fake.NewFakeClient(objs...)
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{}}
+	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
 	config.SetMonitoringCRName(name)
 	// Mock request to simulate Reconcile() being called on an event for a
 	// watched resource .
@@ -658,7 +658,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	cl := fake.NewFakeClient(objs...)
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.MCHCrdName: true}}
+	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.MCHCrdName: true, config.IngressControllerCRD: true}}
 	config.SetMonitoringCRName(name)
 
 	// Mock request to simulate Reconcile() being called on an event for a watched resource .

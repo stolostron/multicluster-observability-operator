@@ -18,12 +18,43 @@ import (
 // generateHubInfoSecret generates the secret that contains hubInfo.
 // this function should only called when the watched resources are created/updated
 func generateHubInfoSecret(client client.Client, obsNamespace string,
-	namespace string) (*corev1.Secret, error) {
-	obsApiRouteHost, err := config.GetObsAPIHost(client, obsNamespace)
-	if err != nil {
-		log.Error(err, "Failed to get the host for observatorium API route")
-		return nil, err
+	namespace string, ingressCtlCrdExists bool) (*corev1.Secret, error) {
+
+	obsApiRouteHost := ""
+	alertmanagerEndpoint := ""
+	alertmanagerRouterCA := ""
+
+	if ingressCtlCrdExists {
+		var err error
+		obsApiRouteHost, err = config.GetObsAPIHost(client, obsNamespace)
+		if err != nil {
+			log.Error(err, "Failed to get the host for observatorium API route")
+			return nil, err
+		}
+
+		alertmanagerEndpoint, err = config.GetAlertmanagerEndpoint(client, obsNamespace)
+		if err != nil {
+			log.Error(err, "Failed to get alertmanager endpoint")
+			return nil, err
+		}
+
+		alertmanagerRouterCA, err = config.GetAlertmanagerRouterCA(client)
+		if err != nil {
+			log.Error(err, "Failed to CA of openshift Route")
+			return nil, err
+		}
+	} else {
+		// for KinD support, the managedcluster and hub cluster are assumed in the same cluster, the observatorium-api will be accessed through k8s service FQDN + port
+		obsApiRouteHost = config.GetOperandNamePrefix() + "observatorium-api" + "." + config.GetDefaultNamespace() + ".svc.cluster.local:8080"
+		alertmanagerEndpoint = config.AlertmanagerServiceName + "." + config.GetDefaultNamespace() + ".svc.cluster.local:9095"
+		var err error
+		alertmanagerRouterCA, err = config.GetAlertmanagerCA(client)
+		if err != nil {
+			log.Error(err, "Failed to CA of the Alertmanager")
+			return nil, err
+		}
 	}
+
 	obsApiURL := url.URL{
 		Host: obsApiRouteHost,
 		Path: operatorconfig.ObservatoriumAPIRemoteWritePath,
@@ -31,16 +62,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 	if !obsApiURL.IsAbs() {
 		obsApiURL.Scheme = "https"
 	}
-	alertmanagerEndpoint, err := config.GetAlertmanagerEndpoint(client, obsNamespace)
-	if err != nil {
-		log.Error(err, "Failed to get alertmanager endpoint")
-		return nil, err
-	}
-	alertmanagerRouterCA, err := config.GetAlertmanagerRouterCA(client)
-	if err != nil {
-		log.Error(err, "Failed to CA of openshift Route")
-		return nil, err
-	}
+
 	hubInfo := &operatorconfig.HubInfo{
 		ObservatoriumAPIEndpoint: obsApiURL.String(),
 		AlertmanagerEndpoint:     alertmanagerEndpoint,

@@ -200,22 +200,28 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	// expose alertmanager through route
-	result, err = GenerateAlertmanagerRoute(r.Client, r.Scheme, instance)
-	if result != nil {
-		return *result, err
-	}
+	// the route resource won't be created in testing env, for instance, KinD
+	// in the testing env, the service can be accessed via service name, we assume that
+	// in testing env, the local-cluster is the only allowed managedcluster
+	ingressCtlCrdExists, _ := r.CRDMap[config.IngressControllerCRD]
+	if ingressCtlCrdExists {
+		// expose alertmanager through route
+		result, err = GenerateAlertmanagerRoute(r.Client, r.Scheme, instance)
+		if result != nil {
+			return *result, err
+		}
 
-	// expose observatorium api gateway
-	result, err = GenerateAPIGatewayRoute(r.Client, r.Scheme, instance)
-	if result != nil {
-		return *result, err
-	}
+		// expose observatorium api gateway
+		result, err = GenerateAPIGatewayRoute(r.Client, r.Scheme, instance)
+		if result != nil {
+			return *result, err
+		}
 
-	// expose rbac proxy through route
-	result, err = GenerateProxyRoute(r.Client, r.Scheme, instance)
-	if result != nil {
-		return *result, err
+		// expose rbac proxy through route
+		result, err = GenerateProxyRoute(r.Client, r.Scheme, instance)
+		if result != nil {
+			return *result, err
+		}
 	}
 
 	// create the certificates

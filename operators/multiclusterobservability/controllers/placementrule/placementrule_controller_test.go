@@ -83,7 +83,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	objs := []runtime.Object{mco, pull, newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
 		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newManagedClusterAddon(), deprecatedRole}
 	c := fake.NewFakeClient(objs...)
-	r := &PlacementRuleReconciler{Client: c, Scheme: s, CRDMap: map[string]bool{}}
+	r := &PlacementRuleReconciler{Client: c, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
 
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{

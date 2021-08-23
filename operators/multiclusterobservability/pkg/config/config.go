@@ -232,6 +232,7 @@ const (
 )
 
 const (
+	IngressControllerCRD           = "ingresscontrollers.operator.openshift.io"
 	MCHCrdName                     = "multiclusterhubs.operator.open-cluster-management.io"
 	MCOCrdName                     = "multiclusterobservabilities.observability.open-cluster-management.io"
 	StorageVersionMigrationCrdName = "storageversionmigrations.migration.k8s.io"
@@ -519,6 +520,16 @@ func GetAlertmanagerRouterCA(client client.Client) (string, error) {
 		return "", err
 	}
 	return string(routerCASecret.Data["tls.crt"]), nil
+}
+
+// GetAlertmanagerCA is used to get the CA of Alertmanager
+func GetAlertmanagerCA(client client.Client) (string, error) {
+	amCAConfigmap := &corev1.ConfigMap{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: AlertmanagersDefaultCaBundleName, Namespace: GetDefaultNamespace()}, amCAConfigmap)
+	if err != nil {
+		return "", err
+	}
+	return string(amCAConfigmap.Data["service-ca.crt"]), nil
 }
 
 func GetDefaultNamespace() string {
