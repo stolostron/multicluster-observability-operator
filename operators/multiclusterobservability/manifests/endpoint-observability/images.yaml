@@ -1,0 +1,10 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: images-list
+data:
+    prometheus: "quay.io/open-cluster-management/prometheus:2.4.0-SNAPSHOT-2021-08-19-08-22-43"
+    kube_state_metrics: "quay.io/open-cluster-management/kube-state-metrics:2.4.0-SNAPSHOT-2021-08-19-08-22-43"
+    node_exporter: "quay.io/open-cluster-management/node-exporter:2.4.0-SNAPSHOT-2021-08-19-08-22-43"
+    kube_rbac_proxy: "quay.io/open-cluster-management/kube-rbac-proxy:2.4.0-SNAPSHOT-2021-08-19-08-22-43"
+    metrics_collector: "quay.io/open-cluster-management/metrics-collector:2.4.0-SNAPSHOT-2021-08-19-08-22-43"

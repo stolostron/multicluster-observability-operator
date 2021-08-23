@@ -5,20 +5,14 @@ metadata:
   labels:
     app.kubernetes.io/component: prometheus
     app.kubernetes.io/name: prometheus
-    app.kubernetes.io/part-of: kube-prometheus
-    app.kubernetes.io/version: 2.26.0
-    prometheus: k8s
   name: prometheus-k8s
-  namespace: monitoring
+  namespace: open-cluster-management-addon-observability
 spec:
   ports:
-  - name: web
-    port: 9090
-    targetPort: web
+  - name: https
+    port: 9091
+    targetPort: https
   selector:
-    app: prometheus
     app.kubernetes.io/component: prometheus
     app.kubernetes.io/name: prometheus
-    app.kubernetes.io/part-of: kube-prometheus
-    prometheus: k8s
   sessionAffinity: ClientIP

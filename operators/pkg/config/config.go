@@ -8,9 +8,39 @@ const (
 	HubInfoSecretName               = "hub-info-secret"
 	HubInfoSecretKey                = "hub-info.yaml" // #nosec
 	ObservatoriumAPIRemoteWritePath = "/api/metrics/v1/default/api/v1/receive"
+	AnnotationSkipCreation          = "skip-creation-if-exist"
 
 	CollectorImage    = "COLLECTOR_IMAGE"
 	InstallPrometheus = "INSTALL_PROM"
+	PullSecret        = "PULL_SECRET"
+	ImageConfigMap    = "images-list"
+)
+
+const (
+	MetricsCollectorImgName = "metrics-collector"
+	MetricsCollectorKey     = "metrics_collector"
+
+	PrometheusImgName = "prometheus"
+	PrometheusKey     = "prometheus"
+
+	KubeStateMetricsImgName = "kube-state-metrics"
+	KubeStateMetricsKey     = "kube_state_metrics"
+
+	NodeExporterImgName = "node-exporter"
+	NodeExporterKey     = "node_exporter"
+
+	KubeRbacProxyImgName = "kube-rbac-proxy"
+	KubeRbacProxyKey     = "kube_rbac_proxy"
+)
+
+var (
+	ImageKeyNameMap = map[string]string{
+		PrometheusKey:       PrometheusKey,
+		KubeStateMetricsKey: KubeStateMetricsImgName,
+		NodeExporterKey:     NodeExporterImgName,
+		KubeRbacProxyKey:    KubeRbacProxyImgName,
+		MetricsCollectorKey: MetricsCollectorImgName,
+	}
 )
 
 // HubInfo is the struct that contains the common information about the hub

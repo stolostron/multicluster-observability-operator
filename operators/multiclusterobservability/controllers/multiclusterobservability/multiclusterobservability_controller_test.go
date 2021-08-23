@@ -598,7 +598,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	testManifestsPath := path.Join(wd, "../../tests/manifests")
 	manifestsPath := path.Join(wd, "../../manifests")
 	os.Setenv("TEMPLATES_PATH", testManifestsPath)
-	templates.GetTemplateRenderer().ResetTemplates()
+	templates.ResetTemplates()
 	err = os.Symlink(manifestsPath, testManifestsPath)
 	if err != nil {
 		t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)

@@ -91,6 +91,18 @@ func newClusterMonitoringConfigCM(configDataStr string) *corev1.ConfigMap {
 	}
 }
 
+func newImagesCM() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      operatorconfig.ImageConfigMap,
+			Namespace: testNamespace,
+		},
+		Data: map[string]string{
+			operatorconfig.MetricsCollectorKey: "metrics-collector-image",
+		},
+	}
+}
+
 func init() {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
@@ -115,7 +127,8 @@ alertmanager-router-ca: |
 	hubInfo := newHubInfoSecret(hubInfoData)
 	amAccessSrt := newAMAccessorSecret()
 	allowList := getAllowlistCM()
-	objs := []runtime.Object{hubInfo, amAccessSrt, allowList, cv, infra}
+	images := newImagesCM()
+	objs := []runtime.Object{hubInfo, amAccessSrt, allowList, images, cv, infra}
 
 	hubClient := fake.NewFakeClient(hubObjs...)
 	c := fake.NewFakeClient(objs...)

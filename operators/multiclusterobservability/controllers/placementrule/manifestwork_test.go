@@ -167,12 +167,12 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
 	}
 
-	works, promWorks, crdWork, _, dep, hubInfo, err := getGlobalManifestResources(c, newTestMCO())
+	works, crdWork, _, dep, hubInfo, err := getGlobalManifestResources(c, newTestMCO())
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resourc: (%v)", err)
 	}
-	t.Logf("work size is %d and %d", len(works), len(promWorks))
-	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, promWorks, crdWork, dep, hubInfo)
+	t.Logf("work size is %d", len(works))
+	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, crdWork, dep, hubInfo, false)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
@@ -190,11 +190,11 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create pull secret: (%v)", err)
 	}
-	works, promWorks, crdWork, _, dep, hubInfo, err = getGlobalManifestResources(c, newTestMCO())
+	works, crdWork, _, dep, hubInfo, err = getGlobalManifestResources(c, newTestMCO())
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resourc: (%v)", err)
 	}
-	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, promWorks, crdWork, dep, hubInfo)
+	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, crdWork, dep, hubInfo, false)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
@@ -207,7 +207,7 @@ func TestManifestWork(t *testing.T) {
 	}
 
 	spokeNameSpace = "spoke-ns"
-	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, promWorks, crdWork, dep, hubInfo)
+	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, crdWork, dep, hubInfo, false)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks with updated namespace: (%v)", err)
 	}

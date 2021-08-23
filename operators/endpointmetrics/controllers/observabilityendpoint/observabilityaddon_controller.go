@@ -4,6 +4,7 @@ package observabilityendpoint
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strconv"
 
@@ -12,22 +13,28 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/deploying"
+	rendererutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering"
 )
 
 var (
 	log                  = ctrl.Log.WithName("controllers").WithName("ObservabilityAddon")
 	installPrometheus, _ = strconv.ParseBool(os.Getenv(operatorconfig.InstallPrometheus))
+	globalRes            = []*unstructured.Unstructured{}
 )
 
 const (
@@ -100,6 +107,16 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	clusterType := ""
 	clusterID := ""
 
+	//read the image configmap
+	imagesCM := &corev1.ConfigMap{}
+	err = r.Client.Get(ctx, types.NamespacedName{Name: operatorconfig.ImageConfigMap,
+		Namespace: namespace}, imagesCM)
+	if err != nil {
+		log.Error(err, "Failed to get images configmap")
+		return ctrl.Result{}, err
+	}
+	rendering.Images = imagesCM.Data
+
 	if !installPrometheus {
 		// If no prometheus service found, set status as NotSupported
 		promSvc := &corev1.Service{}
@@ -131,6 +148,26 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		err = createCAConfigmap(ctx, r.Client)
 		if err != nil {
 			return ctrl.Result{}, err
+		}
+	} else {
+		//Render the prometheus templates
+		renderer := rendererutil.NewRenderer()
+		toDeploy, err := rendering.Render(renderer, r.Client)
+		if err != nil {
+			log.Error(err, "Failed to render prometheus templates")
+			return ctrl.Result{}, err
+		}
+		deployer := deploying.NewDeployer(r.Client)
+		for _, res := range toDeploy {
+			if err := controllerutil.SetControllerReference(obsAddon, res, r.Scheme); err != nil {
+				log.Info("Failed to set controller reference", "resource", res.GetName())
+				globalRes = append(globalRes, res)
+			}
+			if err := deployer.Deploy(res); err != nil {
+				log.Error(err, fmt.Sprintf("Failed to deploy %s %s/%s",
+					res.GetKind(), namespace, res.GetName()))
+				return ctrl.Result{}, err
+			}
 		}
 	}
 
@@ -206,6 +243,14 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 			if err != nil {
 				return false, err
 			}
+		} else {
+			// delete resources which is not namespace scoped or located in other namespaces
+			for _, res := range globalRes {
+				err = r.Client.Delete(context.TODO(), res)
+				if err != nil && !errors.IsNotFound(err) {
+					return false, err
+				}
+			}
 		}
 		hubObsAddon.SetFinalizers(remove(hubObsAddon.GetFinalizers(), obsAddonFinalizer))
 		err = r.HubClient.Update(ctx, hubObsAddon)
@@ -277,6 +322,11 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			&source.Kind{Type: &rbacv1.ClusterRoleBinding{}},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(clusterRoleBindingName, "", false, true, true)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.ConfigMap{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(operatorconfig.ImageConfigMap, namespace, true, true, false)),
 		).
 		Complete(r)
 }

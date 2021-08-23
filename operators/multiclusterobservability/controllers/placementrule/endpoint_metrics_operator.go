@@ -17,6 +17,7 @@ import (
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
+	templatesutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering/templates"
 )
 
 const (
@@ -30,7 +31,7 @@ func loadTemplates(mco *mcov1beta2.MultiClusterObservability) (
 	[]runtime.RawExtension, *apiextensionsv1.CustomResourceDefinition,
 	*apiextensionsv1beta1.CustomResourceDefinition, *appsv1.Deployment, error) {
 	// render endpoint-observability templates
-	endpointObsTemplates, err := templates.GetTemplateRenderer().GetOrLoadEndpointObservabilityTemplates()
+	endpointObsTemplates, err := templates.GetOrLoadEndpointObservabilityTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
 		log.Error(err, "Failed to load templates")
 		return nil, nil, nil, nil, err
@@ -100,6 +101,19 @@ func updateRes(r *resource.Resource,
 		binding := obj.(*rbacv1.ClusterRoleBinding)
 		binding.Subjects[0].Namespace = spokeNameSpace
 	}
+	// set images for components in managed clusters
+	if r.GetKind() == "ConfigMap" && r.GetName() == operatorconfig.ImageConfigMap {
+		images := obj.(*corev1.ConfigMap).Data
+		for key, _ := range images {
+			found, image := mcoconfig.ReplaceImage(
+				mco.Annotations,
+				mcoconfig.DefaultImgRepository+"/"+operatorconfig.ImageKeyNameMap[key],
+				key)
+			if found {
+				obj.(*corev1.ConfigMap).Data[key] = image
+			}
+		}
+	}
 
 	return obj, nil
 }
@@ -110,9 +124,8 @@ func updateEndpointOperator(mco *mcov1beta2.MultiClusterObservability,
 		mcoconfig.EndpointControllerImgTagSuffix, mcoconfig.EndpointControllerKey)
 	container.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 	for i, env := range container.Env {
-		if env.Name == operatorconfig.CollectorImage {
-			container.Env[i].Value = getImage(mco, mcoconfig.MetricsCollectorImgName,
-				mcoconfig.MetricsCollectorImgTagSuffix, mcoconfig.MetricsCollectorKey)
+		if env.Name == operatorconfig.PullSecret {
+			container.Env[i].Value = mcoconfig.GetImagePullSecret(mco.Spec)
 		}
 	}
 	return container
@@ -132,7 +145,7 @@ func getImage(mco *mcov1beta2.MultiClusterObservability,
 func loadPromTemplates(mco *mcov1beta2.MultiClusterObservability) (
 	[]runtime.RawExtension, error) {
 	// load and render promTemplates
-	promTemplates, err := templates.GetTemplateRenderer().GetOrLoadPrometheusTemplates()
+	promTemplates, err := templates.GetOrLoadPrometheusTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
 		log.Error(err, "Failed to load templates")
 		return nil, err

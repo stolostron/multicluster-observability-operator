@@ -48,6 +48,9 @@ ENV OPERATOR=/usr/local/bin/endpoint-monitoring-operator \
     USER_NAME=endpoint-monitoring-operator
 
 RUN microdnf update -y && microdnf clean all
+
+COPY ./operators/endpointmetrics/manifests /usr/local/manifests
+
 # install operator binary
 COPY --from=builder /workspace/build/_output/bin/endpoint-monitoring-operator ${OPERATOR}
 USER ${USER_UID}

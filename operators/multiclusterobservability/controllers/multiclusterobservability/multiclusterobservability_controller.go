@@ -42,9 +42,9 @@ import (
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	certctrl "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/deploying"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/deploying"
 	mchv1 "github.com/open-cluster-management/multiclusterhub-operator/pkg/apis/operator/v1"
 	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 )
@@ -164,7 +164,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	//instance.Namespace = config.GetDefaultNamespace()
 	instance.Spec.StorageConfig.StorageClass = storageClassSelected
 	//Render the templates with a specified CR
-	renderer := rendering.NewRenderer(instance)
+	renderer := rendering.NewMCORenderer(instance)
 	toDeploy, err := renderer.Render()
 	if err != nil {
 		reqLogger.Error(err, "Failed to render multiClusterMonitoring templates")
