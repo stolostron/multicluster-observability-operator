@@ -3,9 +3,13 @@
 # Copyright (c) 2021 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project
 
-set -e
+set -exo pipefail
 
 ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
+
+# Create bin directory and add it to PATH
+mkdir -p ${ROOTDIR}/bin
+export PATH=${PATH}:${ROOTDIR}/bin
 
 if [[ "$(uname)" == "Linux" ]]; then
     SED_COMMAND='sed -i-e -e'
@@ -42,12 +46,32 @@ update_mco_cr() {
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
 
+    # we need to change the mco operator img in Prow KinD cluster
+    if [[ -n "${IS_KIND_ENV}" ]]; then
+        cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator=${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF}
+        ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-thanos-without-resources-requests: true" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
+        ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-thanos-without-resources-requests: true" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    fi
+
     for component_name in ${@}; do
         component_anno_name=$(echo ${component_name} | sed 's/-/_/g')
         get_image ${component_name}
         ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-${component_anno_name}-image: ${IMAGE}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
         ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-${component_anno_name}-image: ${IMAGE}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
     done
+}
+
+setup_kustomize() {
+    if ! command -v kustomize &> /dev/null; then
+        echo "This script will install kustomize (sigs.k8s.io/kustomize/kustomize) on your machine"
+        if [[ "$(uname)" == "Linux" ]]; then
+            curl -o kustomize_v3.8.7.tar.gz -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv3.8.7/kustomize_v3.8.7_linux_amd64.tar.gz
+        elif [[ "$(uname)" == "Darwin" ]]; then
+            curl -o kustomize_v3.8.7.tar.gz -L  https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv3.8.7/kustomize_v3.8.7_darwin_amd64.tar.gz
+        fi
+        tar xzvf kustomize_v3.8.7.tar.gz
+        chmod +x ./kustomize && mv ./kustomize ${ROOTDIR}/bin/kustomize
+    fi
 }
 
 get_image() {
@@ -150,9 +174,16 @@ get_ginkgo_focus() {
            continue
         fi
     done
-    GINKGO_FOCUS=`echo "${GINKGO_FOCUS}" | xargs -n2 | sort -u | xargs`
+    # For KinD cluster, do not need to run all test cases
+    if [[ -n "${IS_KIND_ENV}" ]]; then
+        GINKGO_FOCUS=" --focus manifestwork/g0 --focus endpoint_preserve/g0 --focus grafana/g0 --focus metrics/g0 --focus addon/g0 --focus alert/g0 --focus dashboard/g0"
+    else
+        GINKGO_FOCUS=`echo "${GINKGO_FOCUS}" | xargs -n2 | sort -u | xargs`
+    fi
     echo "Test focuses are ${GINKGO_FOCUS}"
 }
+
+setup_kustomize
 # start executing the ACTION
 get_components
 update_mco_cr "${COMPONENTS}"

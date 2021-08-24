@@ -5,7 +5,29 @@
 
 # Required KUBECONFIG environment variable to run this script:
 
-set -e
+set -exo pipefail
+
+OBSERVABILITY_NS="open-cluster-management-observability"
+OCM_DEFAULT_NS="open-cluster-management"
+AGENT_NS="open-cluster-management-agent"
+HUB_NS="open-cluster-management-hub"
+MANAGED_CLUSTER="local-cluster"
+COMPONENT_REPO="quay.io/open-cluster-management"
+
+ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
+
+# Create bin directory and add it to PATH
+mkdir -p ${ROOTDIR}/bin
+export PATH=${PATH}:${ROOTDIR}/bin
+
+if ! command -v jq &> /dev/null; then
+    if [[ "$(uname)" == "Linux" ]]; then
+        curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
+    elif [[ "$(uname)" == "Darwin" ]]; then
+        curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64
+    fi
+    chmod +x ./jq && mv ./jq ${ROOTDIR}/bin/jq
+fi
 
 function usage() {
   echo "${0} -a ACTION [-i IMAGES]"
@@ -72,21 +94,6 @@ else
     echo "This system's OS $(TARGET_OS) isn't recognized/supported" && exit 1
 fi
 
-ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
-
-# Create bin directory and add it to PATH
-mkdir -p ${ROOTDIR}/bin
-export PATH=${PATH}:${ROOTDIR}/bin
-
-OBSERVABILITY_NS="open-cluster-management-observability"
-OCM_DEFAULT_NS="open-cluster-management"
-AGENT_NS="open-cluster-management-agent"
-HUB_NS="open-cluster-management-hub"
-MANAGED_CLUSTER="cluster1"
-
-COMPONENTS="multicluster-observability-operator rbac-query-proxy metrics-collector endpoint-monitoring-operator grafana-dashboard-loader"
-COMPONENT_REPO="quay.io/open-cluster-management"
-
 # Use snapshot for target release. Use latest one if no branch info detected, or not a release branch
 BRANCH=""
 LATEST_SNAPSHOT=""
@@ -128,25 +135,14 @@ setup_kustomize() {
     fi
 }
 
-setup_jq() {
-    if ! command -v jq &> /dev/null; then
-        if [[ "$(uname)" == "Linux" ]]; then
-            curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
-        elif [[ "$(uname)" == "Darwin" ]]; then
-            curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64
-        fi
-        chmod +x ./jq && mv ./jq ${ROOTDIR}/bin/jq
-    fi
-}
-
 deploy_hub_spoke_core() {
     cd ${ROOTDIR}
     if [ -d "registration-operator" ]; then
         rm -rf registration-operator
     fi
-    latest_release_branch=$(git ls-remote --heads https://github.com/open-cluster-management/registration-operator.git release\* | tail -1 | cut -f 2 | cut -d '/' -f 3)
-    git clone --depth 1 -b ${latest_release_branch} https://github.com/open-cluster-management/registration-operator.git && cd registration-operator
-
+    # git clone --depth 1 -b release-2.3 https://github.com/open-cluster-management/registration-operator.git && cd registration-operator
+    git clone --depth 1 -b release-2.4 https://github.com/open-cluster-management/registration-operator.git && cd registration-operator
+    $SED_COMMAND "s~clusterName: cluster1$~clusterName: $MANAGED_CLUSTER~g" deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
     export HUB_KUBECONFIG=${KUBECONFIG}
     # deploy hub and spoke via OLM
     make deploy
@@ -193,7 +189,7 @@ approve_csr_joinrequest() {
             for clustername in ${clusternames}; do
                 echo "approve joinrequest for ${clustername}"
                 kubectl patch managedcluster ${clustername} --patch '{"spec":{"hubAcceptsClient":true}}' --type=merge
-                kubectl label managedcluster ${clustername} vendor=OpenShift --overwrite
+                kubectl label managedcluster ${clustername} vendor=GKE --overwrite
             done
             break
         fi
@@ -210,54 +206,34 @@ delete_csr() {
     kubectl delete csr -lopen-cluster-management.io/cluster-name=${MANAGED_CLUSTER} --ignore-not-found
 }
 
+# deploy the new grafana to check the dashboards from browsers
+deploy_grafana_test() {
+    cd ${ROOTDIR}/operators/multiclusterobservability/
+    $SED_COMMAND "s~name: grafana$~name: grafana-test~g; s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-test~g; s~secretName: grafana-config$~secretName: grafana-config-test~g; s~secretName: grafana-datasources$~secretName: grafana-datasources-test~g; /MULTICLUSTEROBSERVABILITY_CR_NAME/d" manifests/base/grafana/deployment.yaml
+    $SED_COMMAND "s~image: quay.io/open-cluster-management/grafana-dashboard-loader.*$~image: $COMPONENT_REPO/grafana-dashboard-loader:$LATEST_SNAPSHOT~g" manifests/base/grafana/deployment.yaml
+    $SED_COMMAND "s~replicas: 2$~replicas: 1~g" manifests/base/grafana/deployment.yaml
+    $SED_COMMAND "s~name: grafana$~name: grafana-test~g; s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-test~g" manifests/base/grafana/service.yaml
+    kubectl apply -f manifests/base/grafana/deployment.yaml
+    kubectl apply -f ${ROOTDIR}/tests/run-in-kind/grafana
+}
+
 deploy_mco_operator() {
-    # discard unstaged changes
-    cd ${ROOTDIR} && git checkout -- .
-    # default to latest snapshot
-    cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator=${COMPONENT_REPO}/multicluster-observability-operator:${LATEST_SNAPSHOT}
-
-    # Add mco-imageTagSuffix annotation
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
-    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
-
-    component_name=""
-    for img in ${@}; do
-        for comp in ${COMPONENTS}; do
-            if [[ "${img}" == *"$comp"* ]]; then
-                component_name=${comp}
-                break
-            fi
-        done
-        if [[ ${img} == *"multicluster-observability-operator"* ]]; then
-            cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator=${img}
-        else
-            component_anno_name=$(echo ${component_name} | sed 's/-/_/g')
-            ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-${component_anno_name}-image: ${img}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
-            ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-${component_anno_name}-image: ${img}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
-        fi
-    done
-
-    # kubectl create ns ${OCM_DEFAULT_NS} || true
     # Install the multicluster-observability-operator
-	kustomize build ${ROOTDIR}/operators/multiclusterobservability/config/default | kubectl apply -n ${OCM_DEFAULT_NS} -f -
+    ${ROOTDIR}/cicd-scripts/customize-mco.sh
+    kustomize build ${ROOTDIR}/operators/multiclusterobservability/config/default | kubectl apply -n ${OCM_DEFAULT_NS} -f -
     echo "mco operator is deployed successfully."
 
     # wait until mco is ready
     wait_for_deployment_ready 10 60s ${OCM_DEFAULT_NS} multicluster-observability-operator
 
-    # install minio service
+    $SED_COMMAND "s~gp2$~standard~g"  ${ROOTDIR}/examples/minio/minio-pvc.yaml
     kubectl create ns ${OBSERVABILITY_NS} || true
 
-    # kubectl -n ${OBSERVABILITY_NS} apply -k ${ROOTDIR}/examples/minio
-    # echo "minio is deployed successfully."
-
-    # wait until minio is ready
-    # wait_for_deployment_ready 10 60s ${OBSERVABILITY_NS} minio
-
-    # TODO(morvencao): remove the following two extra routes after after accessing metrics from grafana url with bearer token is supported
-    temp_route=$(mktemp -d /tmp/grafana.XXXXXXXXXX)
-    # install grafana route
-    cat << EOF > ${temp_route}/grafana-route.yaml
+    if [[ -z "${IS_KIND_ENV}" ]]; then
+        # TODO(morvencao): remove the following two extra routes after after accessing metrics from grafana url with bearer token is supported
+        temp_route=$(mktemp -d /tmp/grafana.XXXXXXXXXX)
+        # install grafana route
+        cat << EOF > ${temp_route}/grafana-route.yaml
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
@@ -269,9 +245,8 @@ spec:
     kind: Service
     name: grafana
 EOF
-
-    # install observability-thanos-query-frontend route
-    cat << EOF > ${temp_route}/observability-thanos-query-frontend-route.yaml
+        # install observability-thanos-query-frontend route
+        cat << EOF > ${temp_route}/observability-thanos-query-frontend-route.yaml
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
@@ -285,11 +260,12 @@ spec:
     name: observability-thanos-query-frontend
   wildcardPolicy: None
 EOF
-    app_domain=$(kubectl -n openshift-ingress-operator get ingresscontrollers default -o jsonpath='{.status.domain}')
-    ${SED_COMMAND} "s~host: grafana$~host: grafana.$app_domain~g" ${temp_route}/grafana-route.yaml
-    kubectl -n ${OBSERVABILITY_NS} apply -f ${temp_route}/grafana-route.yaml
-    ${SED_COMMAND} "s~host: observability-thanos-query-frontend$~host: observability-thanos-query-frontend.$app_domain~g" ${temp_route}/observability-thanos-query-frontend-route.yaml
-    kubectl -n ${OBSERVABILITY_NS} apply -f ${temp_route}/observability-thanos-query-frontend-route.yaml
+        app_domain=$(kubectl -n openshift-ingress-operator get ingresscontrollers default -o jsonpath='{.status.domain}')
+        ${SED_COMMAND} "s~host: grafana$~host: grafana.$app_domain~g" ${temp_route}/grafana-route.yaml
+        kubectl -n ${OBSERVABILITY_NS} apply -f ${temp_route}/grafana-route.yaml
+        ${SED_COMMAND} "s~host: observability-thanos-query-frontend$~host: observability-thanos-query-frontend.$app_domain~g" ${temp_route}/observability-thanos-query-frontend-route.yaml
+        kubectl -n ${OBSERVABILITY_NS} apply -f ${temp_route}/observability-thanos-query-frontend-route.yaml
+    fi
 }
 
 delete_mco_operator() {
@@ -395,11 +371,11 @@ wait_for_deployment_ready() {
 execute() {
     setup_kubectl
     setup_kustomize
-    setup_jq
     if [[ "${ACTION}" == "install" ]]; then
         deploy_hub_spoke_core
         approve_csr_joinrequest
-        deploy_mco_operator "${IMAGES}"
+        deploy_mco_operator
+        deploy_grafana_test
         echo "OCM and MCO are installed successfuly..."
     elif [[ "${ACTION}" == "uninstall" ]]; then
         delete_mco_operator

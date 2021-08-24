@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"k8s.io/klog"
@@ -27,20 +28,23 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 		return err, false
 	}
 
-	tr := &http.Transport{
-		/* #nosec */
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
+	client := &http.Client{}
+	if os.Getenv("IS_KIND_ENV") != "true" {
+		tr := &http.Transport{
+			/* #nosec */
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
 
-	client := &http.Client{Transport: tr}
-	token, err := FetchBearerToken(opt)
-	if err != nil {
-		return err, false
+		client = &http.Client{Transport: tr}
+		token, err := FetchBearerToken(opt)
+		if err != nil {
+			return err, false
+		}
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		req.Host = opt.HubCluster.GrafanaHost
 	}
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-	req.Host = opt.HubCluster.GrafanaHost
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -48,7 +52,8 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		klog.Errorf("resp.StatusCode: %v\n", resp.StatusCode)
+		klog.Errorf("resp: %+v\n", resp)
+		klog.Errorf("err: %+v\n", err)
 		return fmt.Errorf("Failed to access managed cluster metrics via grafana console"), false
 	}
 
