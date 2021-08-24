@@ -1,9 +1,6 @@
 apiVersion: observability.open-cluster-management.io/v1beta2
 kind: MultiClusterObservability
 metadata:
-  annotations:
-    mco-endpoint_monitoring_operator-image: blue0/endpoint-monitoring-operator:2.4.0
-    mco-metrics_collector-image: blue0/metrics-collector:2.4.0
   name: observability
 spec:
   observabilityAddonSpec: {}
