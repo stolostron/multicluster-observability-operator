@@ -84,7 +84,7 @@ var _ = Describe("Observability:", func() {
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 
-		It("[Integration] Should not have the expected MCO addon pods when disable observabilityaddon", func() {
+		It("[Stable] Should not have the expected MCO addon pods when disable observabilityaddon", func() {
 			Eventually(func() error {
 				return utils.ModifyMCOAddonSpecMetrics(testOptions, false)
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
@@ -137,7 +137,7 @@ var _ = Describe("Observability:", func() {
 			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 
-		It("[Integration] Modifying MCO cr to enable observabilityaddon", func() {
+		It("[Stable] Modifying MCO cr to enable observabilityaddon", func() {
 			Eventually(func() error {
 				return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
@@ -208,7 +208,7 @@ var _ = Describe("Observability:", func() {
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
 		})
 
-		It("[Integration] Remove disable observability label from the managed cluster", func() {
+		It("[Stable] Remove disable observability label from the managed cluster", func() {
 			Eventually(func() error {
 				return utils.UpdateObservabilityFromManagedCluster(testOptions, true)
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
