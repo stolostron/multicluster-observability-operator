@@ -104,6 +104,20 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, nil
 	}
 
+	// retrieve the hubInfo
+	hubSecret := &corev1.Secret{}
+	err = r.Client.Get(ctx, types.NamespacedName{Name: operatorconfig.HubInfoSecretName, Namespace: namespace}, hubSecret)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	hubInfo := &operatorconfig.HubInfo{}
+	err = yaml.Unmarshal(hubSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
+	if err != nil {
+		log.Error(err, "Failed to unmarshal hub info")
+		return ctrl.Result{}, err
+	}
+	hubInfo.ClusterName = string(hubSecret.Data[operatorconfig.ClusterNameKey])
+
 	clusterType := ""
 	clusterID := ""
 
@@ -152,7 +166,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	} else {
 		//Render the prometheus templates
 		renderer := rendererutil.NewRenderer()
-		toDeploy, err := rendering.Render(renderer, r.Client)
+		toDeploy, err := rendering.Render(renderer, r.Client, hubInfo)
 		if err != nil {
 			log.Error(err, "Failed to render prometheus templates")
 			return ctrl.Result{}, err
@@ -171,24 +185,9 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
-	hubSecret := &corev1.Secret{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: operatorconfig.HubInfoSecretName, Namespace: namespace}, hubSecret)
-	if err != nil {
+	// create or update the cluster-monitoring-config configmap and relevant resources
+	if err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, clusterID, r.Client, installPrometheus); err != nil {
 		return ctrl.Result{}, err
-	}
-	hubInfo := &operatorconfig.HubInfo{}
-	err = yaml.Unmarshal(hubSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
-	if err != nil {
-		log.Error(err, "Failed to unmarshal hub info")
-		return ctrl.Result{}, err
-	}
-	hubInfo.ClusterName = string(hubSecret.Data[operatorconfig.ClusterNameKey])
-
-	if !installPrometheus {
-		// create or update the cluster-monitoring-config configmap and relevant resources
-		if err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, clusterID, r.Client); err != nil {
-			return ctrl.Result{}, err
-		}
 	}
 
 	if obsAddon.Spec.EnableMetrics {
@@ -226,6 +225,13 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		if err != nil {
 			return false, err
 		}
+
+		// revert the change to cluster monitoring stack
+		err = revertClusterMonitoringConfig(ctx, r.Client, installPrometheus)
+		if err != nil {
+			return false, err
+		}
+
 		// Should we return bool from the delete functions for crb and cm? What is it used for? Should we use the bool before removing finalizer?
 		// SHould we return true if metricscollector is not found as that means  metrics collector is not present?
 		// Moved this part up as we need to clean up cm and crb before we remove the finalizer - is that the right way to do it?
@@ -235,11 +241,6 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 				return false, err
 			}
 			err = deleteCAConfigmap(ctx, r.Client)
-			if err != nil {
-				return false, err
-			}
-			// revert the change to openshift cluster monitoring stack
-			err = revertClusterMonitoringConfig(ctx, r.Client)
 			if err != nil {
 				return false, err
 			}

@@ -6,6 +6,7 @@ resources:
 - kube-state-metrics-service.yaml
 - kube-state-metrics-serviceAccount.yaml
 - kubernetes-monitoring-rules.yaml
+- kubernetes-monitoring-alertingrules.yaml
 - node-exporter-clusterRole.yaml
 - node-exporter-clusterRoleBinding.yaml
 - node-exporter-daemonset.yaml

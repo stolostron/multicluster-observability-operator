@@ -62,6 +62,15 @@ spec:
         - name: kube-prometheus-rules
           mountPath: etc/prometheus/rules/prometheus-k8s-rulefiles-0/kube-prometheus-rules.yaml
           subPath: kube-prometheus-rules.yaml
+        - name: kubernetes-monitoring-alertingrules
+          mountPath: etc/prometheus/rules/prometheus-k8s-rulefiles-0/kubernetes-monitoring-alertingrules.yaml
+          subPath: kubernetes-monitoring-alertingrules.yaml
+        - name: observability-alertmanager-accessor
+          mountPath: /etc/prometheus/secrets/observability-alertmanager-accessor
+          readOnly: true
+        - name: hub-alertmanager-router-ca
+          mountPath: /etc/prometheus/secrets/hub-alertmanager-router-ca
+          readOnly: true
       - args:
         - --logtostderr
         - --secure-listen-address=[$(IP)]:9091
@@ -120,4 +129,15 @@ spec:
           defaultMode: 420
           name: kube-prometheus-rules
         name: kube-prometheus-rules
-
+      - configMap:
+          defaultMode: 420
+          name: kubernetes-monitoring-alertingrules
+        name: kubernetes-monitoring-alertingrules
+      - secret:
+          defaultMode: 420
+          secretName: observability-alertmanager-accessor
+        name: observability-alertmanager-accessor
+      - secret:
+          defaultMode: 420
+          secretName: hub-alertmanager-router-ca
+        name: hub-alertmanager-router-ca

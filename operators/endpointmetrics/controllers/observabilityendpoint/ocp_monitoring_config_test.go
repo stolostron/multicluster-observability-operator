@@ -45,15 +45,15 @@ func TestCreateDeleteHubAmRouterCASecret(t *testing.T) {
 
 	ctx := context.TODO()
 	c := fake.NewFakeClient(objs...)
-	err = createHubAmRouterCASecret(ctx, hubInfo, c)
+	err = createHubAmRouterCASecret(ctx, hubInfo, c, promNamespace)
 	if err != nil {
 		t.Fatalf("Failed to create the hub-alertmanager-router-ca secret: (%v)", err)
 	}
-	err = deleteHubAmRouterCASecret(ctx, c)
+	err = deleteHubAmRouterCASecret(ctx, c, promNamespace)
 	if err != nil {
 		t.Fatalf("Failed to delete the hub-alertmanager-router-ca secret: (%v)", err)
 	}
-	err = deleteHubAmRouterCASecret(ctx, c)
+	err = deleteHubAmRouterCASecret(ctx, c, promNamespace)
 	if err != nil {
 		t.Fatalf("Run into error when try to delete hub-alertmanager-router-ca secret twice: (%v)", err)
 	}
@@ -65,15 +65,15 @@ func TestCreateDeleteHubAmAccessorTokenSecret(t *testing.T) {
 
 	ctx := context.TODO()
 	c := fake.NewFakeClient(objs...)
-	err := createHubAmAccessorTokenSecret(ctx, c)
+	err := createHubAmAccessorTokenSecret(ctx, c, promNamespace)
 	if err != nil {
 		t.Fatalf("Failed to create the observability-alertmanager-accessor secret: (%v)", err)
 	}
-	err = deleteHubAmAccessorTokenSecret(ctx, c)
+	err = deleteHubAmAccessorTokenSecret(ctx, c, promNamespace)
 	if err != nil {
 		t.Fatalf("Failed to delete the observability-alertmanager-accessor secret: (%v)", err)
 	}
-	err = deleteHubAmAccessorTokenSecret(ctx, c)
+	err = deleteHubAmAccessorTokenSecret(ctx, c, promNamespace)
 	if err != nil {
 		t.Fatalf("Run into error when try to delete observability-alertmanager-accessor secret twice: (%v)", err)
 	}
@@ -153,7 +153,7 @@ prometheusK8s:
 
 func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorconfig.HubInfo, c client.Client, expectedCMDelete bool) {
 	ctx := context.TODO()
-	err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c)
+	err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false)
 	if err != nil {
 		t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
 	}
@@ -217,7 +217,7 @@ func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorco
 		t.Fatalf("no AlertmanagerConfig for OCM in ClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs: %v", foundClusterMonitoringConfiguration)
 	}
 
-	err = revertClusterMonitoringConfig(ctx, c)
+	err = revertClusterMonitoringConfig(ctx, c, false)
 	if err != nil {
 		t.Fatalf("Failed to revert cluster-monitoring-config configmap: (%v)", err)
 	}
@@ -244,7 +244,7 @@ func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorco
 		t.Fatalf("the secret %s should be deleted", hubAmRouterCASecretName)
 	}
 
-	err = revertClusterMonitoringConfig(ctx, c)
+	err = revertClusterMonitoringConfig(ctx, c, false)
 	if err != nil {
 		t.Fatalf("Run into error when try to revert cluster-monitoring-config configmap twice: (%v)", err)
 	}
