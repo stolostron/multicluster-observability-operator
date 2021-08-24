@@ -7,13 +7,20 @@ import (
 	"context"
 	"fmt"
 
+	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	crdClientSet "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
-	crdClientSet "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
+
+var log = logf.Log.WithName("util")
 
 var (
 	crdClient crdClientSet.Interface
@@ -97,4 +104,34 @@ func UpdateCRDWebhookNS(crdClient crdClientSet.Interface, namespace, crdName str
 		}
 	}
 	return nil
+}
+
+// GetPVCList get pvc with matched labels
+func GetPVCList(c client.Client, matchLabels map[string]string) ([]corev1.PersistentVolumeClaim, error) {
+	pvcList := &corev1.PersistentVolumeClaimList{}
+	pvcListOpts := []client.ListOption{
+		client.InNamespace(config.GetDefaultNamespace()),
+		client.MatchingLabels(matchLabels),
+	}
+
+	err := c.List(context.TODO(), pvcList, pvcListOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return pvcList.Items, nil
+}
+
+// GetStatefulSetList get sts with matched labels
+func GetStatefulSetList(c client.Client, matchLabels map[string]string) ([]appsv1.StatefulSet, error) {
+	stsList := &appsv1.StatefulSetList{}
+	stsListOpts := []client.ListOption{
+		client.InNamespace(config.GetDefaultNamespace()),
+		client.MatchingLabels(matchLabels),
+	}
+
+	err := c.List(context.TODO(), stsList, stsListOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return stsList.Items, nil
 }

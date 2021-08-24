@@ -14,10 +14,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering/templates"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
 	rendererutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering"
 	templatesutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering/templates"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/util"
 )
 
 var (

@@ -38,6 +38,7 @@ import (
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	commonutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/util"
 	mchv1 "github.com/open-cluster-management/multiclusterhub-operator/pkg/apis/operator/v1"
 )
 
@@ -171,14 +172,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				return ctrl.Result{}, err
 			}
 		}
-		if !util.Contains(latestClusters, work.Namespace) {
+		if !commonutil.Contains(latestClusters, work.Namespace) {
 			reqLogger.Info("To delete manifestwork", "namespace", work.Namespace)
 			err = deleteManagedClusterRes(r.Client, work.Namespace)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 		} else {
-			staleAddons = util.Remove(staleAddons, work.Namespace)
+			staleAddons = commonutil.Remove(staleAddons, work.Namespace)
 		}
 	}
 
@@ -253,7 +254,7 @@ func createAllRelatedRes(
 
 	failedCreateManagedClusterRes := false
 	for managedCluster, openshiftVersion := range managedClusterList {
-		currentClusters = util.Remove(currentClusters, managedCluster)
+		currentClusters = commonutil.Remove(currentClusters, managedCluster)
 		// only handle the request namespace if the request resource is not from observability  namespace
 		if request.Namespace == "" || request.Namespace == config.GetDefaultNamespace() ||
 			request.Namespace == managedCluster {
