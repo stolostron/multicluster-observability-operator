@@ -138,8 +138,8 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 
 	if updated {
 		log.Info("Updating manifestwork", namespace, namespace, "name", name)
-		work.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-		err = c.Update(context.TODO(), work)
+		found.Spec.Workload.Manifests = manifests
+		err = c.Update(context.TODO(), found)
 		if err != nil {
 			log.Error(err, "Failed to update monitoring-endpoint-monitoring-work work")
 			return err
