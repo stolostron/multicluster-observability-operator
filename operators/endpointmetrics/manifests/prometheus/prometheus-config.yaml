@@ -8,6 +8,30 @@ data:
     global:
       evaluation_interval: 30s
       scrape_interval: 30s
+      external_labels:
+        cluster: _CLUSTERID_
+    alerting:
+      alert_relabel_configs:
+      - separator: ;
+        regex: prometheus_replica
+        replacement: $1
+        action: labeldrop
+      alertmanagers:
+      - authorization:
+          type: Bearer
+          credentials_file: /etc/prometheus/secrets/observability-alertmanager-accessor/token
+        tls_config:
+          ca_file: /etc/prometheus/secrets/hub-alertmanager-router-ca/service-ca.crt
+          server_name: ""
+          insecure_skip_verify: false
+        follow_redirects: true
+        scheme: https
+        path_prefix: /
+        timeout: 10s
+        api_version: v2
+        static_configs:
+        - targets:
+          - _ALERTMANAGER_ENDPOINT_
     rule_files:
     - /etc/prometheus/rules/prometheus-k8s-rulefiles-0/*.yaml
     scrape_configs:

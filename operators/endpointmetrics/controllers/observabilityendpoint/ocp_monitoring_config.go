@@ -31,20 +31,20 @@ const (
 )
 
 // createHubAmRouterCASecret creates the secret that contains CA of the Hub's Alertmanager Route
-func createHubAmRouterCASecret(ctx context.Context, hubInfo *operatorconfig.HubInfo, client client.Client) error {
+func createHubAmRouterCASecret(ctx context.Context, hubInfo *operatorconfig.HubInfo, client client.Client, targetNamespace string) error {
 	hubAmRouterCA := hubInfo.AlertmanagerRouterCA
 	dataMap := map[string][]byte{hubAmRouterCASecretKey: []byte(hubAmRouterCA)}
 	hubAmRouterCASecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      hubAmRouterCASecretName,
-			Namespace: promNamespace,
+			Namespace: targetNamespace,
 		},
 		Data: dataMap,
 	}
 
 	found := &corev1.Secret{}
 	err := client.Get(ctx, types.NamespacedName{Name: hubAmRouterCASecretName,
-		Namespace: promNamespace}, found)
+		Namespace: targetNamespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			err = client.Create(ctx, hubAmRouterCASecret)
@@ -76,10 +76,10 @@ func createHubAmRouterCASecret(ctx context.Context, hubInfo *operatorconfig.HubI
 }
 
 // deleteHubAmRouterCASecret deletes the secret that contains CA of the Hub's Alertmanager Route
-func deleteHubAmRouterCASecret(ctx context.Context, client client.Client) error {
+func deleteHubAmRouterCASecret(ctx context.Context, client client.Client, targetNamespace string) error {
 	found := &corev1.Secret{}
 	err := client.Get(ctx, types.NamespacedName{Name: hubAmRouterCASecretName,
-		Namespace: promNamespace}, found)
+		Namespace: targetNamespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("the hub-alertmanager-router-ca secret is already deleted")
@@ -98,7 +98,7 @@ func deleteHubAmRouterCASecret(ctx context.Context, client client.Client) error 
 }
 
 // createHubAmAccessorTokenSecret creates the secret that contains access token of the Hub's Alertmanager
-func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client) error {
+func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, targetNamespace string) error {
 	amAccessorToken, err := getAmAccessorToken(ctx, client)
 	if err != nil {
 		return fmt.Errorf("fail to get the alertmanager accessor token %v", err)
@@ -108,14 +108,14 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client) e
 	hubAmAccessorTokenSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      hubAmAccessorSecretName,
-			Namespace: promNamespace,
+			Namespace: targetNamespace,
 		},
 		Data: dataMap,
 	}
 
 	found := &corev1.Secret{}
 	err = client.Get(ctx, types.NamespacedName{Name: hubAmAccessorSecretName,
-		Namespace: promNamespace}, found)
+		Namespace: targetNamespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			err = client.Create(ctx, hubAmAccessorTokenSecret)
@@ -147,10 +147,10 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client) e
 }
 
 // deleteHubAmAccessorTokenSecret deletes the secret that contains access token of the Hub's Alertmanager
-func deleteHubAmAccessorTokenSecret(ctx context.Context, client client.Client) error {
+func deleteHubAmAccessorTokenSecret(ctx context.Context, client client.Client, targetNamespace string) error {
 	found := &corev1.Secret{}
 	err := client.Get(ctx, types.NamespacedName{Name: hubAmAccessorSecretName,
-		Namespace: promNamespace}, found)
+		Namespace: targetNamespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("the observability-alertmanager-accessor secret is already deleted")
@@ -215,17 +215,29 @@ func createOrUpdateClusterMonitoringConfig(
 	ctx context.Context,
 	hubInfo *operatorconfig.HubInfo,
 	clusterID string,
-	client client.Client) error {
+	client client.Client,
+	installProm bool) error {
+	targetNamespace := promNamespace
+	if installProm {
+		// for *KS, the hub CA and alertmanager access token should be created in namespace: open-cluster-management-addon-observability
+		targetNamespace = namespace
+	}
+
 	// create the hub-alertmanager-router-ca secret if it doesn't exist or update it if needed
-	if err := createHubAmRouterCASecret(ctx, hubInfo, client); err != nil {
+	if err := createHubAmRouterCASecret(ctx, hubInfo, client, targetNamespace); err != nil {
 		log.Error(err, "failed to create or update the hub-alertmanager-router-ca secret")
 		return err
 	}
 
 	// create the observability-alertmanager-accessor secret if it doesn't exist or update it if needed
-	if err := createHubAmAccessorTokenSecret(ctx, client); err != nil {
+	if err := createHubAmAccessorTokenSecret(ctx, client, targetNamespace); err != nil {
 		log.Error(err, "failed to create or update the observability-alertmanager-accessor secret")
 		return err
+	}
+
+	if installProm {
+		// no need to create configmap cluster-monitoring-config for *KS
+		return nil
 	}
 
 	// init the prometheus k8s config
@@ -367,15 +379,21 @@ func createOrUpdateClusterMonitoringConfig(
 
 // revertClusterMonitoringConfig reverts the configmap cluster-monitoring-config and relevant resources
 // (observability-alertmanager-accessor and hub-alertmanager-router-ca) for the openshift cluster monitoring stack
-func revertClusterMonitoringConfig(ctx context.Context, client client.Client) error {
+func revertClusterMonitoringConfig(ctx context.Context, client client.Client, installProm bool) error {
+	targetNamespace := promNamespace
+	if installProm {
+		// for *KS, the hub CA and alertmanager access token are not created in namespace: open-cluster-management-addon-observability
+		targetNamespace = namespace
+	}
+
 	// delete the hub-alertmanager-router-ca secret
-	if err := deleteHubAmRouterCASecret(ctx, client); err != nil {
+	if err := deleteHubAmRouterCASecret(ctx, client, targetNamespace); err != nil {
 		log.Error(err, "failed to delete the hub-alertmanager-router-ca secret")
 		return err
 	}
 
 	// delete the observability-alertmanager-accessor secret
-	if err := deleteHubAmAccessorTokenSecret(ctx, client); err != nil {
+	if err := deleteHubAmAccessorTokenSecret(ctx, client, targetNamespace); err != nil {
 		log.Error(err, "failed to delete the observability-alertmanager-accessor secret")
 		return err
 	}

@@ -4,7 +4,9 @@
 package rendering
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,7 +29,7 @@ var (
 
 var Images = map[string]string{}
 
-func Render(r *rendererutil.Renderer, c runtimeclient.Client) ([]*unstructured.Unstructured, error) {
+func Render(r *rendererutil.Renderer, c runtimeclient.Client, hubInfo *operatorconfig.HubInfo) ([]*unstructured.Unstructured, error) {
 
 	genericTemplates, err := templates.GetTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
@@ -92,6 +94,29 @@ func Render(r *rendererutil.Renderer, c runtimeclient.Client) ([]*unstructured.U
 			spec.ImagePullSecrets = []corev1.LocalObjectReference{
 				{Name: os.Getenv(operatorconfig.PullSecret)},
 			}
+
+			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+			if err != nil {
+				return nil, err
+			}
+			resources[idx].Object = unstructuredObj
+		}
+		if resources[idx].GetKind() == "ConfigMap" && resources[idx].GetName() == "prometheus-k8s-config" {
+			obj := util.GetK8sObj(resources[idx].GetKind())
+			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
+			if err != nil {
+				return nil, err
+			}
+			cm := obj.(*corev1.ConfigMap)
+			promConfig, exists := cm.Data["prometheus.yaml"]
+			if !exists {
+				return nil, fmt.Errorf("no key 'prometheus.yaml' found in the configmap: %s/%s", cm.GetNamespace(), cm.GetName())
+			}
+			// replace the hub alertmanager address
+			hubAmEp := strings.TrimLeft(hubInfo.AlertmanagerEndpoint, "https://")
+			promConfig = strings.ReplaceAll(promConfig, "_ALERTMANAGER_ENDPOINT_", hubAmEp)
+			// replace the cluster ID with clusterName in hubInfo
+			cm.Data["prometheus.yaml"] = strings.ReplaceAll(promConfig, "_CLUSTERID_", hubInfo.ClusterName)
 
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 			if err != nil {
