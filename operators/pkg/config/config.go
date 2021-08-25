@@ -31,15 +31,19 @@ const (
 
 	KubeRbacProxyImgName = "kube-rbac-proxy"
 	KubeRbacProxyKey     = "kube_rbac_proxy"
+
+	ConfigmapReloaderImgName = "origin-configmap-reloader"
+	ConfigmapReloaderKey     = "prometheus-config-reloader"
 )
 
 var (
 	ImageKeyNameMap = map[string]string{
-		PrometheusKey:       PrometheusKey,
-		KubeStateMetricsKey: KubeStateMetricsImgName,
-		NodeExporterKey:     NodeExporterImgName,
-		KubeRbacProxyKey:    KubeRbacProxyImgName,
-		MetricsCollectorKey: MetricsCollectorImgName,
+		PrometheusKey:        PrometheusKey,
+		KubeStateMetricsKey:  KubeStateMetricsImgName,
+		NodeExporterKey:      NodeExporterImgName,
+		KubeRbacProxyKey:     KubeRbacProxyImgName,
+		MetricsCollectorKey:  MetricsCollectorImgName,
+		ConfigmapReloaderKey: ConfigmapReloaderImgName,
 	}
 )
 

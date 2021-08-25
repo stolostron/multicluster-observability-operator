@@ -98,6 +98,24 @@ spec:
           runAsGroup: 65532
           runAsNonRoot: true
           runAsUser: 65532
+      - args:
+        - -webhook-url=http://localhost:9090/-/reload
+        - -volume-dir=/etc/prometheus/secrets/hub-alertmanager-router-ca
+        - -volume-dir=/etc/prometheus/secrets/observability-alertmanager-accessor
+        image: quay.io/openshift/origin-configmap-reloader:4.5.0
+        imagePullPolicy: IfNotPresent
+        name: config-reloader
+        resources:
+          requests:
+            cpu: 4m
+            memory: 25Mi
+        volumeMounts:
+        - name: observability-alertmanager-accessor
+          mountPath: /etc/prometheus/secrets/observability-alertmanager-accessor
+          readOnly: true
+        - name: hub-alertmanager-router-ca
+          mountPath: /etc/prometheus/secrets/hub-alertmanager-router-ca
+          readOnly: true
       dnsPolicy: ClusterFirst
       nodeSelector:
         kubernetes.io/os: linux
