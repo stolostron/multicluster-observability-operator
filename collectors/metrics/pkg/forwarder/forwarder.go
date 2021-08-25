@@ -159,7 +159,8 @@ func createClients(cfg Config, interval time.Duration,
 	} else {
 		if fromTransport.TLSClientConfig == nil {
 			fromTransport.TLSClientConfig = &tls.Config{
-				MinVersion:         tls.VersionTLS12,
+				MinVersion: tls.VersionTLS12,
+				/* #nosec */
 				InsecureSkipVerify: true,
 			}
 		}
