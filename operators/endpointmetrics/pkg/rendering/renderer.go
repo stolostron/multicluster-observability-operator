@@ -71,6 +71,7 @@ func Render(r *rendererutil.Renderer, c runtimeclient.Client, hubInfo *operatorc
 			spec := &sts.Spec.Template.Spec
 			spec.Containers[0].Image = Images[operatorconfig.PrometheusKey]
 			spec.Containers[1].Image = Images[operatorconfig.KubeRbacProxyKey]
+			spec.Containers[2].Image = Images[operatorconfig.ConfigmapReloaderKey]
 			spec.ImagePullSecrets = []corev1.LocalObjectReference{
 				{Name: os.Getenv(operatorconfig.PullSecret)},
 			}
