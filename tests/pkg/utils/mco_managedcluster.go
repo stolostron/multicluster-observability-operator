@@ -49,7 +49,7 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 		labels := metadata["labels"].(map[string]interface{})
 		if labels != nil {
 			vendor := labels["vendor"].(string)
-			if vendor == "OpenShift" || vendor == "GKE" {
+			if vendor == "OpenShift" || vendor == "GKE" || vendor == "EKS" {
 				clusterNames = append(clusterNames, name)
 			}
 		}
