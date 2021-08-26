@@ -321,33 +321,33 @@ data:
           severity: warning
     - name: kubernetes-storage
       rules:
-      - alert: KubePersistentVolumeFillingUp
-        annotations:
-          description: The PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} is only {{ $value | humanizePercentage }} free.
-          summary: PersistentVolume is filling up.
-        expr: |
-          kubelet_volume_stats_available_bytes{namespace=~"(kube-.*|default|logging)",job="kubelet", metrics_path="/metrics"}
-            /
-          kubelet_volume_stats_capacity_bytes{namespace=~"(kube-.*|default|logging)",job="kubelet", metrics_path="/metrics"}
-            < 0.03
-        for: 1m
-        labels:
-          severity: critical
-      - alert: KubePersistentVolumeFillingUp
-        annotations:
-          description: Based on recent sampling, the PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} is expected to fill up within four days. Currently {{ $value | humanizePercentage }} is available.
-          summary: PersistentVolume is filling up.
-        expr: |
-          (
-            kubelet_volume_stats_available_bytes{namespace=~"(kube-.*|default|logging)",job="kubelet", metrics_path="/metrics"}
-              /
-            kubelet_volume_stats_capacity_bytes{namespace=~"(kube-.*|default|logging)",job="kubelet", metrics_path="/metrics"}
-          ) < 0.15
-          and
-          predict_linear(kubelet_volume_stats_available_bytes{namespace=~"(kube-.*|default|logging)",job="kubelet", metrics_path="/metrics"}[6h], 4 * 24 * 3600) < 0
-        for: 1h
-        labels:
-          severity: warning
+      # - alert: KubePersistentVolumeFillingUp
+      #   annotations:
+      #     description: The PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} is only {{ $value | humanizePercentage }} free.
+      #     summary: PersistentVolume is filling up.
+      #   expr: |
+      #     kubelet_volume_stats_available_bytes{namespace=~"(kube-.*|default|logging)",job="kubelet", metrics_path="/metrics"}
+      #       /
+      #     kubelet_volume_stats_capacity_bytes{namespace=~"(kube-.*|default|logging)",job="kubelet", metrics_path="/metrics"}
+      #       < 0.03
+      #   for: 1m
+      #   labels:
+      #     severity: critical
+      # - alert: KubePersistentVolumeFillingUp
+      #   annotations:
+      #     description: Based on recent sampling, the PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} is expected to fill up within four days. Currently {{ $value | humanizePercentage }} is available.
+      #     summary: PersistentVolume is filling up.
+      #   expr: |
+      #     (
+      #       kubelet_volume_stats_available_bytes{namespace=~"(kube-.*|default|logging)",job="kubelet", metrics_path="/metrics"}
+      #         /
+      #       kubelet_volume_stats_capacity_bytes{namespace=~"(kube-.*|default|logging)",job="kubelet", metrics_path="/metrics"}
+      #     ) < 0.15
+      #     and
+      #     predict_linear(kubelet_volume_stats_available_bytes{namespace=~"(kube-.*|default|logging)",job="kubelet", metrics_path="/metrics"}[6h], 4 * 24 * 3600) < 0
+      #   for: 1h
+      #   labels:
+      #     severity: warning
       - alert: KubePersistentVolumeErrors
         annotations:
           description: The persistent volume {{ $labels.persistentvolume }} has status {{ $labels.phase }}.
@@ -515,15 +515,15 @@ data:
         for: 5m
         labels:
           severity: warning
-      - alert: KubeletPodStartUpLatencyHigh
-        annotations:
-          description: Kubelet Pod startup 99th percentile latency is {{ $value }} seconds on node {{ $labels.node }}.
-          summary: Kubelet Pod startup latency is too high.
-        expr: |
-          histogram_quantile(0.99, sum(rate(kubelet_pod_worker_duration_seconds_bucket{job="kubelet", metrics_path="/metrics"}[5m])) by (instance, le)) * on(instance) group_left(node) kubelet_node_name{job="kubelet", metrics_path="/metrics"} > 60
-        for: 15m
-        labels:
-          severity: warning
+      # - alert: KubeletPodStartUpLatencyHigh
+      #   annotations:
+      #     description: Kubelet Pod startup 99th percentile latency is {{ $value }} seconds on node {{ $labels.node }}.
+      #     summary: Kubelet Pod startup latency is too high.
+      #   expr: |
+      #     histogram_quantile(0.99, sum(rate(kubelet_pod_worker_duration_seconds_bucket{job="kubelet", metrics_path="/metrics"}[5m])) by (instance, le)) * on(instance) group_left(node) kubelet_node_name{job="kubelet", metrics_path="/metrics"} > 60
+      #   for: 15m
+      #   labels:
+      #     severity: warning
       - alert: KubeletClientCertificateRenewalErrors
         annotations:
           description: Kubelet on node {{ $labels.node }} has failed to renew its client certificate ({{ $value | humanize }} errors in the last 5 minutes).
@@ -542,15 +542,15 @@ data:
         for: 15m
         labels:
           severity: warning
-      - alert: KubeletDown
-        annotations:
-          description: Kubelet has disappeared from Prometheus target discovery.
-          summary: Target disappeared from Prometheus target discovery.
-        expr: |
-          absent(up{job="kubelet", metrics_path="/metrics"} == 1)
-        for: 15m
-        labels:
-          severity: critical
+      # - alert: KubeletDown
+      #   annotations:
+      #     description: Kubelet has disappeared from Prometheus target discovery.
+      #     summary: Target disappeared from Prometheus target discovery.
+      #   expr: |
+      #     absent(up{job="kubelet", metrics_path="/metrics"} == 1)
+      #   for: 15m
+      #   labels:
+      #     severity: critical
     - name: node-exporter
       rules:
       - alert: NodeFilesystemSpaceFillingUp
