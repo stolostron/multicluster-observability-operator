@@ -107,13 +107,13 @@ func TestOnUpdate(t *testing.T) {
 	certSecret := getExpiredCertSecret()
 	oldCertLength := len(certSecret.Data["tls.crt"])
 	c := fake.NewFakeClient(certSecret)
-	onUpdate(c)(certSecret, certSecret)
+	onUpdate(c, true)(certSecret, certSecret)
 	certSecret.Name = clientCACerts
-	onUpdate(c)(certSecret, certSecret)
+	onUpdate(c, true)(certSecret, certSecret)
 	certSecret.Name = grafanaCerts
-	onUpdate(c)(certSecret, certSecret)
+	onUpdate(c, true)(certSecret, certSecret)
 	certSecret.Name = serverCerts
-	onUpdate(c)(certSecret, certSecret)
+	onUpdate(c, true)(certSecret, certSecret)
 	c.Get(context.TODO(), types.NamespacedName{Name: serverCACerts, Namespace: namespace}, certSecret)
 	if len(certSecret.Data["tls.crt"]) <= oldCertLength {
 		t.Fatal("certificate not renewed correctly")

@@ -113,6 +113,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// start to update mco status
 	StartStatusUpdate(r.Client, instance)
 
+	ingressCtlCrdExists, _ := r.CRDMap[config.IngressControllerCRD]
 	if os.Getenv("UNIT_TEST") != "true" {
 		// start placement controller
 		err := placementctrl.StartPlacementController(r.Manager, r.CRDMap)
@@ -120,7 +121,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			return ctrl.Result{}, err
 		}
 		// setup ocm addon manager
-		certctrl.Start(r.Client)
+		certctrl.Start(r.Client, ingressCtlCrdExists)
 	}
 
 	// Init finalizers
@@ -203,7 +204,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// the route resource won't be created in testing env, for instance, KinD
 	// in the testing env, the service can be accessed via service name, we assume that
 	// in testing env, the local-cluster is the only allowed managedcluster
-	ingressCtlCrdExists, _ := r.CRDMap[config.IngressControllerCRD]
 	if ingressCtlCrdExists {
 		// expose alertmanager through route
 		result, err = GenerateAlertmanagerRoute(r.Client, r.Scheme, instance)
@@ -225,7 +225,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// create the certificates
-	err = certificates.CreateObservabilityCerts(r.Client, r.Scheme, instance)
+	err = certificates.CreateObservabilityCerts(r.Client, r.Scheme, instance, ingressCtlCrdExists)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
