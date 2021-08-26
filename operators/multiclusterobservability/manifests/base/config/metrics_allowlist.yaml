@@ -158,6 +158,6 @@ data:
       - record: cluster:kube_pod_container_resource_requests:memory:sum
         expr: sum(sum(sum(kube_pod_container_resource_requests{resource=\"memory\"}) by (pod,namespace,container) * on(pod,namespace) group_left(phase) max(kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"} >0) by (pod,namespace,phase)) by (pod,namespace,phase))
       - record: sli:apiserver_request_duration_seconds:trend:5m
-        expr: sum(increase(apiserver_request_duration_seconds_bucket{apiserver=\"kube-apiserver\",le=\"1\",verb=~\"POST|PUT|DELETE|PATCH\"}[5m])) by (cluster) / sum(increase(apiserver_request_duration_seconds_count{apiserver=\"kube-apiserver\",verb=~\"POST|PUT|DELETE|PATCH\"}[5m])) by (cluster)
+        expr: sum(increase(apiserver_request_duration_seconds_bucket{apiserver=\"kube-apiserver\",le=\"1\",verb=~\"POST|PUT|DELETE|PATCH\"}[5m])) / sum(increase(apiserver_request_duration_seconds_count{apiserver=\"kube-apiserver\",verb=~\"POST|PUT|DELETE|PATCH\"}[5m]))
       - record: sli:apiserver_request_duration_seconds:binary:trend:5m
-        expr: sli:apiserver_request_duration_seconds:trend:5m >= bool 0.9900
+        expr: (sum(increase(apiserver_request_duration_seconds_bucket{apiserver=\"kube-apiserver\",le=\"1\",verb=~\"POST|PUT|DELETE|PATCH\"}[5m])) / sum(increase(apiserver_request_duration_seconds_count{apiserver=\"kube-apiserver\",verb=~\"POST|PUT|DELETE|PATCH\"}[5m]))) >= bool 0.9900
