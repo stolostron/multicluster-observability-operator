@@ -41,11 +41,16 @@ unit-tests-collectors:
 .PHONY: e2e-tests
 
 e2e-tests:
-	@echo "Running E2E Tests.."
+	@echo "Running e2e test ..."
 	@./cicd-scripts/run-e2e-tests.sh
 
+.PHONY: e2e-tests-in-kind
+e2e-tests-in-kind:
+	@echo "Running e2e test in KinD ..."
+	@./cicd-scripts/run-e2e-in-kind-via-prow.sh
+
 test-e2e-setup:
-	@echo "Seting up E2E Tests environment..."
+	@echo "Seting up e2e test environment ..."
 ifdef COMPONENT_IMAGE_NAMES
 	# override the image for the e2e test
 	@./cicd-scripts/setup-e2e-tests.sh -a install -i $(COMPONENT_IMAGE_NAMES)
@@ -55,7 +60,7 @@ else
 endif
 
 test-e2e-clean:
-	@echo "Clean E2E Tests environment..."
+	@echo "Clean e2e test environment ..."
 	@./cicd-scripts/setup-e2e-tests.sh -a uninstall
 
 # Generate bundle manifests and metadata, then validate generated files.
