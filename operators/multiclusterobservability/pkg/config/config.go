@@ -124,6 +124,7 @@ const (
 
 	GrafanaImgRepo            = "quay.io/openshift"
 	GrafanaImgName            = "origin-grafana"
+	GrafanaImgKey             = "grafana"
 	GrafanaImgTagSuffix       = "4.8.0"
 	GrafanaDashboardLoaderKey = "grafana_dashboard_loader"
 
