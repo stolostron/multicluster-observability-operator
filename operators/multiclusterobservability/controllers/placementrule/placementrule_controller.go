@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,10 +44,10 @@ import (
 )
 
 const (
-	ownerLabelKey   = "owner"
-	ownerLabelValue = "multicluster-observability-operator"
-	certsName       = "observability-managed-cluster-certs"
-	nonOCP          = "N/A"
+	ownerLabelKey             = "owner"
+	ownerLabelValue           = "multicluster-observability-operator"
+	managedClusterObsCertName = "observability-managed-cluster-certs"
+	nonOCP                    = "N/A"
 )
 
 var (
@@ -247,9 +248,17 @@ func createAllRelatedRes(
 		currentClusters = append(currentClusters, ep.Namespace)
 	}
 
-	works, crdv1Work, crdv1beta1Work, dep, hubInfo, err := getGlobalManifestResources(c, mco)
+	works, crdv1Work, crdv1beta1Work, err := generateGlobalManifestResources(c, mco)
 	if err != nil {
 		return ctrl.Result{}, err
+	}
+
+	// regenerate the hubinfo secret if empty
+	if hubInfoSecret == nil {
+		var err error
+		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	failedCreateManagedClusterRes := false
@@ -262,15 +271,15 @@ func createAllRelatedRes(
 			if openshiftVersion == "3" {
 				err = createManagedClusterRes(c, restMapper, mco,
 					managedCluster, managedCluster,
-					works, crdv1beta1Work, dep, hubInfo, false)
+					works, crdv1beta1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
 			} else if openshiftVersion == nonOCP {
 				err = createManagedClusterRes(c, restMapper, mco,
 					managedCluster, managedCluster,
-					works, crdv1Work, dep, hubInfo, true)
+					works, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, true)
 			} else {
 				err = createManagedClusterRes(c, restMapper, mco,
 					managedCluster, managedCluster,
-					works, crdv1Work, dep, hubInfo, false)
+					works, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
 			}
 			if err != nil {
 				failedCreateManagedClusterRes = true
@@ -448,6 +457,11 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	mcoPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
+			// generate the image pull secret
+			pullSecret, _ = generatePullSecret(c, config.GetImagePullSecret(e.Object.(*mcov1beta2.MultiClusterObservability).Spec))
+			// load and render the templates for manifestwork
+			log.Info("oad template for MCO CREATE")
+			rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1, endpointMetricsOperatorDeploy, _ = loadTemplates(e.Object.(*mcov1beta2.MultiClusterObservability))
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -455,6 +469,13 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
 				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.ObservabilityAddonSpec,
 					e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.ObservabilityAddonSpec) {
+				if e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.ImagePullSecret != e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.ImagePullSecret {
+					// regenerate the image pull secret
+					pullSecret, _ = generatePullSecret(c, config.GetImagePullSecret(e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec))
+				}
+				// reload and rerender the templates for manifestwork
+				log.Info("load template for MCO UPDATE")
+				rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1, endpointMetricsOperatorDeploy, _ = loadTemplates(e.ObjectNew.(*mcov1beta2.MultiClusterObservability))
 				return true
 			}
 			return false
@@ -468,6 +489,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.AllowlistCustomConfigMapName &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				// generate the metrics allowlist configmap
+				log.Info("generate metric allow list configmap for custom configmap CREATE")
+				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
 			return false
@@ -476,6 +500,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.ObjectNew.GetName() == config.AllowlistCustomConfigMapName &&
 				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+				// regenerate the metrics allowlist configmap
+				log.Info("generate metric allow list configmap for custom configmap UPDATE")
+				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
 			return false
@@ -483,6 +510,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if e.Object.GetName() == config.AllowlistCustomConfigMapName &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				// regenerate the metrics allowlist configmap
+				log.Info("generate metric allow list configmap for custom configmap UPDATE")
+				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
 			return false
@@ -493,6 +523,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.ServerCACerts &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				// generate the certificate for managed cluster
+				log.Info("generate managedcluster observability certificate for server certificate CREATE")
+				managedClusterObsCert, _ = generateObservabilityServerCACerts(c)
 				return true
 			}
 			return false
@@ -501,6 +534,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if (e.ObjectNew.GetName() == config.ServerCACerts &&
 				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace()) &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+				// regenerate the certificate for managed cluster
+				log.Info("generate managedcluster observability certificate for server certificate UPDATE")
+				managedClusterObsCert, _ = generateObservabilityServerCACerts(c)
 				return true
 			}
 			return false
@@ -514,13 +550,18 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.OpenshiftIngressOperatorCRName &&
 				e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
+				// generate the hubInfo secret
+				hubInfoSecret, _ = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace)
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.ObjectNew.GetName() == config.OpenshiftIngressOperatorCRName &&
+				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
 				e.ObjectNew.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
+				// regenerate the hubInfo secret
+				hubInfoSecret, _ = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace)
 				return true
 			}
 			return false
@@ -528,6 +569,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if e.Object.GetName() == config.OpenshiftIngressOperatorCRName &&
 				e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
+				// regenerate the hubInfo secret
+				hubInfoSecret, _ = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace)
 				return true
 			}
 			return false
@@ -539,14 +582,19 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
 				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
 					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
+				// generate the hubInfo secret
+				hubInfoSecret, _ = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace)
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() &&
+				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
 				(e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
 					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName) {
+				// regenerate the hubInfo secret
+				hubInfoSecret, _ = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace)
 				return true
 			}
 			return false
@@ -555,6 +603,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
 				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
 					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
+				// regenerate the hubInfo secret
+				hubInfoSecret, _ = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace)
 				return true
 			}
 			return false
@@ -567,6 +617,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.Object.GetName() == config.OpenshiftIngressRouteCAName) ||
 				(e.Object.GetNamespace() == config.OpenshiftIngressNamespace &&
 					e.Object.GetName() == config.OpenshiftIngressDefaultCertName) {
+				// generate the hubInfo secret
+				hubInfoSecret, _ = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace)
 				return true
 			}
 			return false
@@ -577,6 +629,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				(e.ObjectNew.GetNamespace() == config.OpenshiftIngressNamespace &&
 					e.ObjectNew.GetName() == config.OpenshiftIngressDefaultCertName)) &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+				// regenerate the hubInfo secret
+				hubInfoSecret, _ = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace)
 				return true
 			}
 			return false
@@ -590,6 +644,15 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.AlertmanagerAccessorSAName &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				// wait 10s for access_token of alertmanager and generate the secret that contains the access_token
+				wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
+					var err error
+					log.Info("generate amAccessorTokenSecret for alertmanager access serviceaccount CREATE")
+					if amAccessorTokenSecret, err = generateAmAccessorTokenSecret(c); err == nil {
+						return true, nil
+					}
+					return false, err
+				})
 				return true
 			}
 			return false
@@ -598,6 +661,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if (e.ObjectNew.GetName() == config.AlertmanagerAccessorSAName &&
 				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace()) &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+				// regenerate the secret that contains the access_token for the Alertmanager in the Hub cluster
+				amAccessorTokenSecret, _ = generateAmAccessorTokenSecret(c)
 				return true
 			}
 			return false
@@ -670,6 +735,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
+					e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
 					e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
 					e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
 					/// only read the image manifests configmap and enqueue the request when the MCH is installed/upgraded successfully

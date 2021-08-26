@@ -12,6 +12,8 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,6 +33,22 @@ import (
 const (
 	workNameSuffix   = "-observability"
 	localClusterName = "local-cluster"
+)
+
+// intermidiate resources for the manifest work
+var (
+	hubInfoSecret             *corev1.Secret
+	pullSecret                *corev1.Secret
+	managedClusterObsCert     *corev1.Secret
+	metricsAllowlistConfigMap *corev1.ConfigMap
+	amAccessorTokenSecret     *corev1.Secret
+
+	obsAddonCRDv1                 *apiextensionsv1.CustomResourceDefinition
+	obsAddonCRDv1beta1            *apiextensionsv1beta1.CustomResourceDefinition
+	endpointMetricsOperatorDeploy *appsv1.Deployment
+
+	rawExtensionList     []runtime.RawExtension
+	promRawExtensionList []runtime.RawExtension
 )
 
 type MetricsAllowlist struct {
@@ -151,66 +169,74 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 	return nil
 }
 
-func getGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObservability) (
-	[]workv1.Manifest, *workv1.Manifest, *workv1.Manifest, *appsv1.Deployment, *corev1.Secret, error) {
+// generateGlobalManifestResources generates global resources, eg. manifestwork,
+// endpoint-metrics-operator deploy and hubInfo Secret...
+// this function is expensive and should not be called for each reconcile loop.
+func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObservability) (
+	[]workv1.Manifest, *workv1.Manifest, *workv1.Manifest, error) {
 
 	works := []workv1.Manifest{}
 
-	hubInfo, err := newHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, mco)
-	if err != nil {
-		return nil, nil, nil, nil, nil, err
-	}
+	// inject the namespace
+	works = injectIntoWork(works, generateNamespace())
 
-	// inject namespace
-	works = injectIntoWork(works, createNameSpace())
-
-	//create image pull secret
-	pull, err := getPullSecret(c, config.GetImagePullSecret(mco.Spec))
-	if err != nil {
-		return nil, nil, nil, nil, nil, err
+	// inject the image pull secret
+	if pullSecret == nil {
+		var err error
+		if pullSecret, err = generatePullSecret(c, config.GetImagePullSecret(mco.Spec)); err != nil {
+			return nil, nil, nil, err
+		}
 	}
-	if pull != nil {
-		works = injectIntoWork(works, pull)
+	if pullSecret != nil {
+		works = injectIntoWork(works, pullSecret)
 	}
 
 	// inject the certificates
-	certs, err := getCerts(c)
-	if err != nil {
-		return nil, nil, nil, nil, nil, err
+	if managedClusterObsCert == nil {
+		var err error
+		if managedClusterObsCert, err = generateObservabilityServerCACerts(c); err != nil {
+			return nil, nil, nil, err
+		}
 	}
-	works = injectIntoWork(works, certs)
+	works = injectIntoWork(works, managedClusterObsCert)
 
 	// inject the metrics allowlist configmap
-	mList, err := getMetricsListCM(c)
-	if err != nil {
-		return nil, nil, nil, nil, nil, err
+	if metricsAllowlistConfigMap == nil {
+		var err error
+		if metricsAllowlistConfigMap, err = generateMetricsListCM(c); err != nil {
+			return nil, nil, nil, err
+		}
 	}
-	works = injectIntoWork(works, mList)
+	works = injectIntoWork(works, metricsAllowlistConfigMap)
 
 	// inject the alertmanager accessor bearer token secret
-	amAccessorTokenSecret, err := getAmAccessorTokenSecret(c)
-	if err != nil {
-		return nil, nil, nil, nil, nil, err
+	if amAccessorTokenSecret == nil {
+		var err error
+		if amAccessorTokenSecret, err = generateAmAccessorTokenSecret(c); err != nil {
+			return nil, nil, nil, err
+		}
 	}
 	works = injectIntoWork(works, amAccessorTokenSecret)
 
-	// inject resouces in templates
-	templates, crdv1, crdv1beta1, dep, err := loadTemplates(mco)
-	if err != nil {
-		log.Error(err, "Failed to load templates")
-		return nil, nil, nil, nil, nil, err
+	// reload resources if empty
+	if len(rawExtensionList) == 0 || obsAddonCRDv1 == nil || obsAddonCRDv1beta1 == nil {
+		var err error
+		if rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1, endpointMetricsOperatorDeploy, err = loadTemplates(mco); err != nil {
+			return nil, nil, nil, err
+		}
 	}
+	// inject resouces in templates
 	crdv1Work := &workv1.Manifest{RawExtension: runtime.RawExtension{
-		Object: crdv1,
+		Object: obsAddonCRDv1,
 	}}
 	crdv1beta1Work := &workv1.Manifest{RawExtension: runtime.RawExtension{
-		Object: crdv1beta1,
+		Object: obsAddonCRDv1beta1,
 	}}
-	for _, raw := range templates {
+	for _, raw := range rawExtensionList {
 		works = append(works, workv1.Manifest{RawExtension: raw})
 	}
 
-	return works, crdv1Work, crdv1beta1Work, dep, hubInfo, nil
+	return works, crdv1Work, crdv1beta1Work, nil
 }
 
 func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
@@ -263,7 +289,8 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	return err
 }
 
-func getAmAccessorTokenSecret(client client.Client) (*corev1.Secret, error) {
+// generateAmAccessorTokenSecret generates the secret that contains the access_token for the Alertmanager in the Hub cluster
+func generateAmAccessorTokenSecret(client client.Client) (*corev1.Secret, error) {
 	amAccessorSA := &corev1.ServiceAccount{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: config.AlertmanagerAccessorSAName,
 		Namespace: config.GetDefaultNamespace()}, amAccessorSA)
@@ -308,7 +335,8 @@ func getAmAccessorTokenSecret(client client.Client) (*corev1.Secret, error) {
 	}, nil
 }
 
-func getPullSecret(c client.Client, name string) (*corev1.Secret, error) {
+// generatePullSecret generates the image pull secret for mco
+func generatePullSecret(c client.Client, name string) (*corev1.Secret, error) {
 	imagePullSecret := &corev1.Secret{}
 	err := c.Get(context.TODO(),
 		types.NamespacedName{
@@ -339,14 +367,13 @@ func getPullSecret(c client.Client, name string) (*corev1.Secret, error) {
 	}, nil
 }
 
-func getCerts(client client.Client) (*corev1.Secret, error) {
-
+// generateObservabilityServerCACerts generates the certificate for managed cluster
+func generateObservabilityServerCACerts(client client.Client) (*corev1.Secret, error) {
 	ca := &corev1.Secret{}
-	caName := config.ServerCACerts
-	err := client.Get(context.TODO(), types.NamespacedName{Name: caName,
+	err := client.Get(context.TODO(), types.NamespacedName{Name: config.ServerCACerts,
 		Namespace: config.GetDefaultNamespace()}, ca)
 	if err != nil {
-		log.Error(err, "Failed to get ca cert secret", "name", caName)
+		log.Error(err, "Failed to get ca cert secret", "name", config.ServerCACerts)
 		return nil, err
 	}
 
@@ -356,7 +383,7 @@ func getCerts(client client.Client) (*corev1.Secret, error) {
 			Kind:       "Secret",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      certsName,
+			Name:      managedClusterObsCertName,
 			Namespace: spokeNameSpace,
 		},
 		Data: map[string][]byte{
@@ -365,7 +392,8 @@ func getCerts(client client.Client) (*corev1.Secret, error) {
 	}, nil
 }
 
-func getMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
+// generateMetricsListCM generates the configmap that contains the metrics allowlist
+func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 	metricsAllowlist := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
