@@ -47,3 +47,4 @@ data:
           record: sli:apiserver_request_duration_seconds:bin:trend:5m
           labels:
             slo: "API Server Request Duration"
+            target: 0.9900
