@@ -373,7 +373,6 @@ func generateObservabilityServerCACerts(client client.Client) (*corev1.Secret, e
 	err := client.Get(context.TODO(), types.NamespacedName{Name: config.ServerCACerts,
 		Namespace: config.GetDefaultNamespace()}, ca)
 	if err != nil {
-		log.Error(err, "Failed to get ca cert secret", "name", config.ServerCACerts)
 		return nil, err
 	}
 

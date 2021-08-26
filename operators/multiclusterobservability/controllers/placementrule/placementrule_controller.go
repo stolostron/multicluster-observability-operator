@@ -120,6 +120,16 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
+	// check if the server certificate for managedcluster
+	if managedClusterObsCert == nil {
+		var err error
+		managedClusterObsCert, err = generateObservabilityServerCACerts(r.Client)
+		if err != nil && k8serrors.IsNotFound(err) {
+			// if the servser certificate for managedcluster is not ready, then requeue the request after 10s to avoid useless reconcile loop.
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		}
+	}
+
 	opts := &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{ownerLabelKey: ownerLabelValue}),
 	}
