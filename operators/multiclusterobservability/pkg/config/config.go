@@ -113,25 +113,25 @@ const (
 	ThanosImgName = "thanos"
 	ThanosImgTag  = "2.3.0-SNAPSHOT-2021-07-26-18-43-26"
 
-	MemcachedImgRepo = "docker.io"
+	MemcachedImgRepo = "quay.io/songleo"
 	MemcachedImgName = "memcached"
 	MemcachedImgTag  = "1.6.3-alpine"
 
-	MemcachedExporterImgRepo = "prom"
+	MemcachedExporterImgRepo = "quay.io/prometheus"
 	MemcachedExporterImgName = "memcached-exporter"
 	MemcachedExporterKey     = "memcached_exporter"
 	MemcachedExporterImgTag  = "v0.9.0"
 
-	GrafanaImgRepo            = "grafana"
-	GrafanaImgName            = "grafana"
-	GrafanaImgTagSuffix       = "7.4.2"
+	GrafanaImgRepo            = "quay.io/openshift"
+	GrafanaImgName            = "origin-grafana"
+	GrafanaImgTagSuffix       = "4.8.0"
 	GrafanaDashboardLoaderKey = "grafana_dashboard_loader"
 
 	AlertManagerImgName           = "prometheus-alertmanager"
 	AlertManagerImgKey            = "prometheus_alertmanager"
 	ConfigmapReloaderImgRepo      = "quay.io/openshift"
 	ConfigmapReloaderImgName      = "origin-configmap-reloader"
-	ConfigmapReloaderImgTagSuffix = "4.5.0"
+	ConfigmapReloaderImgTagSuffix = "4.8.0"
 	ConfigmapReloaderKey          = "prometheus-config-reloader"
 
 	OauthProxyImgRepo      = "quay.io/open-cluster-management"
