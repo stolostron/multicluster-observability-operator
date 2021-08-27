@@ -1,5 +1,7 @@
-#!/bin/bash
-# Copyright (c) 2020 Red Hat, Inc.
+#!/usr/bin/env bash
+
+# Copyright (c) 2021 Red Hat, Inc.
+# Copyright Contributors to the Open Cluster Management project
 
 # Required KUBECONFIG environment variable to run this script:
 
