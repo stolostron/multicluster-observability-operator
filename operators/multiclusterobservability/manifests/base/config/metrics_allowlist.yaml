@@ -36,6 +36,7 @@ data:
       - coredns_dns_request_type_count_total
       - coredns_dns_response_rcode_count_total
       - etcd_debugging_mvcc_db_total_size_in_bytes
+      - etcd_mvcc_db_total_size_in_bytes
       - etcd_debugging_snap_save_total_duration_seconds_sum
       - etcd_disk_backend_commit_duration_seconds_bucket
       - etcd_disk_backend_commit_duration_seconds_sum
@@ -115,6 +116,7 @@ data:
       - node_filesystem_size_bytes
       - node_memory_MemAvailable_bytes
       - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate
+      - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate
       - node_netstat_Tcp_OutSegs
       - node_netstat_Tcp_RetransSegs
       - node_netstat_TcpExt_TCPSynRetrans
@@ -138,6 +140,8 @@ data:
     renames:
       mixin_pod_workload: namespace_workload_pod:kube_pod_owner:relabel
       namespace:kube_pod_container_resource_requests_cpu_cores:sum: namespace_cpu:kube_pod_container_resource_requests:sum
+      node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate: node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate
+      etcd_mvcc_db_total_size_in_bytes: etcd_debugging_mvcc_db_total_size_in_bytes
     rules:
       - record: apiserver_request_duration_seconds:histogram_quantile_99
         expr: histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (verb,le))
