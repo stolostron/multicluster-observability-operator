@@ -39,19 +39,22 @@ func StartStatusUpdate(c client.Client, instance *mcov1beta2.MultiClusterObserva
 				select {
 				case <-stopStatusUpdate:
 					updateStatusIsRunnning = false
-					stopCheckReady <- struct{}{}
+					close(stopCheckReady)
 					log.V(1).Info("status update goroutine is stopped.")
 					return
 				case <-requeueStatusUpdate:
 					log.V(1).Info("status update goroutine is triggered.")
 					updateStatus(c)
 					if updateReadyStatusIsRunnning && checkReadyStatus(c, instance) {
+						log.V(1).Info("send singal to stop status check ready goroutine because MCO status is ready")
 						stopCheckReady <- struct{}{}
 					}
 				}
 			}
 		}()
 		if !updateReadyStatusIsRunnning {
+			// init the stop ready chaek channel
+			stopCheckReady = make(chan struct{})
 			go func() {
 				updateReadyStatusIsRunnning = true
 				// defer close(stopCheckReady)
