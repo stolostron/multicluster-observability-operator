@@ -55,6 +55,7 @@ const (
 	DefaultImgTagSuffix    = "latest"
 
 	MCHUpdatedRequestName               = "mch-updated-request"
+	MCOUpdatedRequestName               = "mco-updated-request"
 	ImageManifestConfigMapNamePrefix    = "mch-image-manifest-"
 	OCMManifestConfigMapTypeLabelKey    = "ocm-configmap-type"
 	OCMManifestConfigMapTypeLabelValue  = "image-manifest"

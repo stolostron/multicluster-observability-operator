@@ -274,10 +274,16 @@ func createAllRelatedRes(
 	failedCreateManagedClusterRes := false
 	for managedCluster, openshiftVersion := range managedClusterList {
 		currentClusters = commonutil.Remove(currentClusters, managedCluster)
-		// only handle the request namespace if the request resource is not from observability  namespace
-		if request.Namespace == "" || request.Namespace == config.GetDefaultNamespace() ||
+		// enter the loop for the following reconcile requests:
+		// 1. MCO CR change(request namespace is emprt string and request name is "mco-updated-request")
+		// 2. configmap/secret... resource change from observability namespace
+		// 3. managedcluster change(request namespace is emprt string and request name is managedcluster name)
+		// 4. manifestwork/observabilityaddon/managedclusteraddon/rolebinding... change from managedcluster namespace
+		if (request.Namespace == "" && request.Name == config.MCOUpdatedRequestName) ||
+			request.Namespace == config.GetDefaultNamespace() ||
+			(request.Namespace == "" && request.Name == managedCluster) ||
 			request.Namespace == managedCluster {
-			log.Info("Monitoring operator should be installed in cluster", "cluster_name", managedCluster)
+			log.Info("Monitoring operator should be installed in cluster", "cluster_name", managedCluster, "request.name", request.Name, "request.namespace", request.Namespace)
 			if openshiftVersion == "3" {
 				err = createManagedClusterRes(c, restMapper, mco,
 					managedCluster, managedCluster,
@@ -689,7 +695,13 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// secondary watch for observabilityaddon
 		Watches(&source.Kind{Type: &mcov1beta1.ObservabilityAddon{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(obsAddonPred)).
 		// secondary watch for MCO
-		Watches(&source.Kind{Type: &mcov1beta2.MultiClusterObservability{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(mcoPred)).
+		Watches(&source.Kind{Type: &mcov1beta2.MultiClusterObservability{}}, handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+			return []reconcile.Request{
+				{NamespacedName: types.NamespacedName{
+					Name: config.MCOUpdatedRequestName,
+				}},
+			}
+		}), builder.WithPredicates(mcoPred)).
 		// secondary watch for custom allowlist configmap
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(customAllowlistPred)).
 		// secondary watch for certificate secrets
@@ -760,11 +772,11 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		mchCrdExists, _ := r.CRDMap[config.MCHCrdName]
 		if mchCrdExists {
 			// secondary watch for MCH
-			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &mchv1.MultiClusterHub{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &mchv1.MultiClusterHub{}}, handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
 				return []reconcile.Request{
 					{NamespacedName: types.NamespacedName{
 						Name:      config.MCHUpdatedRequestName,
-						Namespace: a.GetNamespace(),
+						Namespace: obj.GetNamespace(),
 					}},
 				}
 			}), builder.WithPredicates(mchPred))
