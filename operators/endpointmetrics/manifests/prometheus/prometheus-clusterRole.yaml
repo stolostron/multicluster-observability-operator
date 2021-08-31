@@ -14,6 +14,15 @@ rules:
   verbs:
   - get
 - apiGroups:
+  - ""
+  resources:
+  - nodes
+  - nodes/proxy
+  verbs:
+  - list
+  - watch
+  - get
+- apiGroups:
   - authentication.k8s.io
   resources:
   - tokenreviews
