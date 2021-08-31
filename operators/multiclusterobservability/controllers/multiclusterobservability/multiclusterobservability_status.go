@@ -53,7 +53,7 @@ func StartStatusUpdate(c client.Client, instance *mcov1beta2.MultiClusterObserva
 			}
 		}()
 		if !updateReadyStatusIsRunnning {
-			// init the stop ready chaek channel
+			// init the stop ready check channel
 			stopCheckReady = make(chan struct{})
 			go func() {
 				updateReadyStatusIsRunnning = true
