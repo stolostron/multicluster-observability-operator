@@ -35,3 +35,24 @@ func UpdateObservabilityFromManagedCluster(opt TestOptions, enableObservability 
 	}
 	return nil
 }
+
+func ListManagedClusters(opt TestOptions) ([]string, error) {
+	clientDynamic := GetKubeClientDynamic(opt, true)
+	objs, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	clusterNames := []string{}
+	for _, obj := range objs.Items {
+		metadata := obj.Object["metadata"].(map[string]interface{})
+		name := metadata["name"].(string)
+		labels := metadata["labels"].(map[string]interface{})
+		if labels != nil {
+			vendor := labels["vendor"].(string)
+			if vendor == "OpenShift" || vendor == "GKE" || vendor == "EKS" {
+				clusterNames = append(clusterNames, name)
+			}
+		}
+	}
+	return clusterNames, nil
+}

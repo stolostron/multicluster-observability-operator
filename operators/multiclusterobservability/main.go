@@ -180,6 +180,7 @@ func main() {
 		clusterv1.SchemeGroupVersion.WithKind("ManagedCluster"): []filteredcache.Selector{
 			{LabelSelector: "vendor==OpenShift,observability!=disabled"},
 			{LabelSelector: "vendor==GKE,observability!=disabled"},
+			{LabelSelector: "vendor==EKS,observability!=disabled"},
 		},
 		operatorv1.SchemeGroupVersion.WithKind("IngressController"): []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s,metadata.name==%s", config.OpenshiftIngressOperatorNamespace, config.OpenshiftIngressOperatorCRName)},

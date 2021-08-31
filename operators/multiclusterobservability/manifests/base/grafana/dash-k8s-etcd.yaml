@@ -1289,7 +1289,7 @@ data:
       "refresh": "10s",
       "schemaVersion": 27,
       "style": "dark",
-      "tags": ["kubernetes-mixin"],
+      "tags": ["OpenShift", "kubernetes-mixin"],
       "templating": {
         "list": [
           {
@@ -1320,7 +1320,7 @@ data:
               "value": ""
             },
             "datasource": "$datasource",
-            "definition": "label_values(node_cpu_seconds_total,cluster)",
+            "definition": "label_values(etcd_server_has_leader,cluster)",
             "description": null,
             "error": null,
             "hide": 0,
@@ -1330,7 +1330,7 @@ data:
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(node_cpu_seconds_total,cluster)",
+              "query": "label_values(etcd_server_has_leader,cluster)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,

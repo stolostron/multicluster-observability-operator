@@ -10,6 +10,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
+	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
 	rendererutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering"
 	templatesutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering/templates"
 )
@@ -24,7 +25,13 @@ func TestRender(t *testing.T) {
 	defer os.Unsetenv(templatesutil.TemplatesPathEnvVar)
 
 	renderer := rendererutil.NewRenderer()
-	objs, err := Render(renderer, nil)
+	hubInfo := &operatorconfig.HubInfo{
+		ClusterName:              "foo",
+		ObservatoriumAPIEndpoint: "testing.com",
+		AlertmanagerEndpoint:     "testing.com",
+		AlertmanagerRouterCA:     "testing",
+	}
+	objs, err := Render(renderer, nil, hubInfo)
 	if err != nil {
 		t.Fatalf("failed to render endpoint templates: %v", err)
 	}

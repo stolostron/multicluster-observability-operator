@@ -11,9 +11,9 @@ const (
 	name = "test-ns"
 )
 
-func TestCreateNameSpace(t *testing.T) {
+func TestGenerateNamespace(t *testing.T) {
 	spokeNameSpace = name
-	namespace := createNameSpace()
+	namespace := generateNamespace()
 	if namespace.Name != name {
 		t.Fatal("Wrong namespace created")
 	}
