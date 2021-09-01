@@ -48,7 +48,7 @@ func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
 
 	spec := &dep.Spec.Template.Spec
 
-	found, image := config.ReplaceImage(r.cr.Annotations, config.GrafanaImgRepo, config.GrafanaImgName)
+	found, image := config.ReplaceImage(r.cr.Annotations, config.GrafanaImgRepo, config.GrafanaImgKey)
 	if found {
 		spec.Containers[0].Image = image
 	}

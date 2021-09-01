@@ -129,6 +129,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	ingressCtlCrdExists, err := util.CheckCRDExist(crdClient, config.IngressControllerCRD)
+	if err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
 	mchCrdExists, err := util.CheckCRDExist(crdClient, config.MCHCrdName)
 	if err != nil {
 		setupLog.Error(err, "")
@@ -182,11 +188,13 @@ func main() {
 			{LabelSelector: "vendor==GKE,observability!=disabled"},
 			{LabelSelector: "vendor==EKS,observability!=disabled"},
 		},
-		operatorv1.SchemeGroupVersion.WithKind("IngressController"): []filteredcache.Selector{
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s,metadata.name==%s", config.OpenshiftIngressOperatorNamespace, config.OpenshiftIngressOperatorCRName)},
-		},
 	}
 
+	if ingressCtlCrdExists {
+		gvkLabelsMap[operatorv1.SchemeGroupVersion.WithKind("IngressController")] = []filteredcache.Selector{
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s,metadata.name==%s", config.OpenshiftIngressOperatorNamespace, config.OpenshiftIngressOperatorCRName)},
+		}
+	}
 	if mchCrdExists {
 		gvkLabelsMap[mchv1.SchemeGroupVersion.WithKind("MultiClusterHub")] = []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", mcoNamespace)},
@@ -241,6 +249,7 @@ func main() {
 	crdMaps := map[string]bool{
 		config.MCHCrdName:                     mchCrdExists,
 		config.StorageVersionMigrationCrdName: svmCrdExists,
+		config.IngressControllerCRD:           ingressCtlCrdExists,
 	}
 
 	if err = (&mcoctrl.MultiClusterObservabilityReconciler{

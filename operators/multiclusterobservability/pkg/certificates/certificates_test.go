@@ -83,12 +83,12 @@ func TestCreateCertificates(t *testing.T) {
 
 	c := fake.NewFakeClient(route)
 
-	err := CreateObservabilityCerts(c, s, mco)
+	err := CreateObservabilityCerts(c, s, mco, true)
 	if err != nil {
 		t.Fatalf("CreateObservabilityCerts: (%v)", err)
 	}
 
-	err = CreateObservabilityCerts(c, s, mco)
+	err = CreateObservabilityCerts(c, s, mco, true)
 	if err != nil {
 		t.Fatalf("Rerun CreateObservabilityCerts: (%v)", err)
 	}

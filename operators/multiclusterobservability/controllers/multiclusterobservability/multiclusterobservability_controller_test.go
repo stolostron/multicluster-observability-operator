@@ -59,7 +59,7 @@ func newTestCert(name string, namespace string) *corev1.Secret {
 
 var testImagemanifestsMap = map[string]string{
 	"endpoint_monitoring_operator": "test.io/endpoint-monitoring:test",
-	"grafana":                      "test.io/grafana:test",
+	"grafana":                      "test.io/origin-grafana:test",
 	"grafana_dashboard_loader":     "test.io/grafana-dashboard-loader:test",
 	"management_ingress":           "test.io/management-ingress:test",
 	"observatorium":                "test.io/observatorium:test",
@@ -327,7 +327,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	cl := fake.NewFakeClient(objs...)
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{}}
+	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
 	config.SetMonitoringCRName(name)
 	// Mock request to simulate Reconcile() being called on an event for a
 	// watched resource .
@@ -658,7 +658,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	cl := fake.NewFakeClient(objs...)
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.MCHCrdName: true}}
+	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.MCHCrdName: true, config.IngressControllerCRD: true}}
 	config.SetMonitoringCRName(name)
 
 	// Mock request to simulate Reconcile() being called on an event for a watched resource .
@@ -709,7 +709,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 				t.Fatalf("The image key(%s) for the container(%s) doesn't exist in the deployment(%s)", imageKey, container.Name, deployName)
 			}
 			if imageValue != container.Image {
-				t.Fatalf("The image(%s) for the container(%s) in the deployment(%s) should not replace with the one in the image manifests", imageValue, container.Name, deployName)
+				t.Fatalf("The image(%s) for the container(%s) in the deployment(%s) should be replaced with the one(%s) in the image manifests", container.Image, container.Name, deployName, imageValue)
 			}
 		}
 	}

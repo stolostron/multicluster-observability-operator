@@ -46,7 +46,7 @@ var (
 	serialNumberLimit = new(big.Int).Lsh(big.NewInt(1), 128)
 )
 
-func CreateObservabilityCerts(c client.Client, scheme *runtime.Scheme, mco *mcov1beta2.MultiClusterObservability) error {
+func CreateObservabilityCerts(c client.Client, scheme *runtime.Scheme, mco *mcov1beta2.MultiClusterObservability, ingressCtlCrdExists bool) error {
 
 	config.SetCertDuration(mco.Annotations)
 
@@ -58,7 +58,7 @@ func CreateObservabilityCerts(c client.Client, scheme *runtime.Scheme, mco *mcov
 	if err != nil {
 		return err
 	}
-	hosts, err := getHosts(c)
+	hosts, err := getHosts(c, ingressCtlCrdExists)
 	if err != nil {
 		return err
 	}
@@ -427,14 +427,16 @@ func pemEncode(cert []byte, key []byte) (*bytes.Buffer, *bytes.Buffer) {
 	return certPEM, keyPEM
 }
 
-func getHosts(c client.Client) ([]string, error) {
+func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
 	hosts := []string{config.GetObsAPISvc(config.GetOperandName(config.Observatorium))}
-	url, err := config.GetObsAPIHost(c, config.GetDefaultNamespace())
-	if err != nil {
-		log.Error(err, "Failed to get api route address")
-		return nil, err
-	} else {
-		hosts = append(hosts, url)
+	if ingressCtlCrdExists {
+		url, err := config.GetObsAPIHost(c, config.GetDefaultNamespace())
+		if err != nil {
+			log.Error(err, "Failed to get api route address")
+			return nil, err
+		} else {
+			hosts = append(hosts, url)
+		}
 	}
 	return hosts, nil
 }

@@ -114,25 +114,26 @@ const (
 	ThanosImgName = "thanos"
 	ThanosImgTag  = "2.3.0-SNAPSHOT-2021-07-26-18-43-26"
 
-	MemcachedImgRepo = "docker.io"
+	MemcachedImgRepo = "quay.io/songleo"
 	MemcachedImgName = "memcached"
 	MemcachedImgTag  = "1.6.3-alpine"
 
-	MemcachedExporterImgRepo = "prom"
+	MemcachedExporterImgRepo = "quay.io/prometheus"
 	MemcachedExporterImgName = "memcached-exporter"
 	MemcachedExporterKey     = "memcached_exporter"
 	MemcachedExporterImgTag  = "v0.9.0"
 
-	GrafanaImgRepo            = "grafana"
-	GrafanaImgName            = "grafana"
-	GrafanaImgTagSuffix       = "7.4.2"
+	GrafanaImgRepo            = "quay.io/openshift"
+	GrafanaImgName            = "origin-grafana"
+	GrafanaImgKey             = "grafana"
+	GrafanaImgTagSuffix       = "4.8.0"
 	GrafanaDashboardLoaderKey = "grafana_dashboard_loader"
 
 	AlertManagerImgName           = "prometheus-alertmanager"
 	AlertManagerImgKey            = "prometheus_alertmanager"
 	ConfigmapReloaderImgRepo      = "quay.io/openshift"
 	ConfigmapReloaderImgName      = "origin-configmap-reloader"
-	ConfigmapReloaderImgTagSuffix = "4.5.0"
+	ConfigmapReloaderImgTagSuffix = "4.8.0"
 	ConfigmapReloaderKey          = "prometheus-config-reloader"
 
 	OauthProxyImgRepo      = "quay.io/open-cluster-management"
@@ -233,6 +234,7 @@ const (
 )
 
 const (
+	IngressControllerCRD           = "ingresscontrollers.operator.openshift.io"
 	MCHCrdName                     = "multiclusterhubs.operator.open-cluster-management.io"
 	MCOCrdName                     = "multiclusterobservabilities.observability.open-cluster-management.io"
 	StorageVersionMigrationCrdName = "storageversionmigrations.migration.k8s.io"
@@ -520,6 +522,16 @@ func GetAlertmanagerRouterCA(client client.Client) (string, error) {
 		return "", err
 	}
 	return string(routerCASecret.Data["tls.crt"]), nil
+}
+
+// GetAlertmanagerCA is used to get the CA of Alertmanager
+func GetAlertmanagerCA(client client.Client) (string, error) {
+	amCAConfigmap := &corev1.ConfigMap{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: AlertmanagersDefaultCaBundleName, Namespace: GetDefaultNamespace()}, amCAConfigmap)
+	if err != nil {
+		return "", err
+	}
+	return string(amCAConfigmap.Data["service-ca.crt"]), nil
 }
 
 func GetDefaultNamespace() string {

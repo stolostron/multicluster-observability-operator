@@ -36,7 +36,7 @@ var (
 	isCertControllerRunnning = false
 )
 
-func Start(c client.Client) {
+func Start(c client.Client, ingressCtlCrdExists bool) {
 
 	if isCertControllerRunnning {
 		return
@@ -78,7 +78,7 @@ func Start(c client.Client) {
 
 			DeleteFunc: onDelete(c),
 
-			UpdateFunc: onUpdate(c),
+			UpdateFunc: onUpdate(c, ingressCtlCrdExists),
 		},
 	)
 
@@ -197,7 +197,7 @@ func onDelete(c client.Client) func(obj interface{}) {
 	}
 }
 
-func onUpdate(c client.Client) func(oldObj, newObj interface{}) {
+func onUpdate(c client.Client, ingressCtlCrdExists bool) func(oldObj, newObj interface{}) {
 	return func(oldObj, newObj interface{}) {
 		oldS := *oldObj.(*v1.Secret)
 		newS := *newObj.(*v1.Secret)
@@ -218,7 +218,7 @@ func onUpdate(c client.Client) func(oldObj, newObj interface{}) {
 				case name == grafanaCerts:
 					err = createCertSecret(c, nil, nil, true, grafanaCerts, false, grafanaCertificateCN, nil, nil, nil)
 				case name == serverCerts:
-					hosts, err = getHosts(c)
+					hosts, err = getHosts(c, ingressCtlCrdExists)
 					if err == nil {
 						err = createCertSecret(c, nil, nil, true, serverCerts, true, serverCertificateCN, nil, hosts, nil)
 					}
