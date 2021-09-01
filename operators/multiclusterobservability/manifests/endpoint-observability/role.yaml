@@ -13,9 +13,11 @@ rules:
   - ""
   resources:
   - nodes
+  - nodes/proxy
   verbs:
   - list
   - watch
+  - get
 - apiGroups:
   - ""
   resources:
