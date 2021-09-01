@@ -69,6 +69,13 @@ do
         --argjson metricsdir '{"mountPath": "/metrics-volume","name": "metrics-volume"}' \
         '.spec.template.spec += $init | .spec.template.spec.volumes += [$emptydir] | .spec.template.spec.containers[0].volumeMounts += [$metricsdir]' $deploy_yaml_file > $deploy_yaml_file.tmp && mv $deploy_yaml_file.tmp $deploy_yaml_file
 
+	if [ "$ALLOW_SCHEDULED_TO_MASTER" == "true" ]; then
+		# insert tolerations
+		jq \
+		--argjson tolerations '{"tolerations": [{"key":"node-role.kubernetes.io/master","operator":"Exists","effect":"NoSchedule"}]}' \
+		'.spec.template.spec += $tolerations' $deploy_yaml_file > $deploy_yaml_file.tmp && mv $deploy_yaml_file.tmp $deploy_yaml_file
+	fi
+
 	cat "$deploy_yaml_file" | kubectl -n ${cluster_name} apply -f -
 	rm -rf "$deploy_yaml_file" "$deploy_yaml_file".tmp
 	kubectl -n ${cluster_name} patch deploy metrics-collector-deployment --type='json' -p='[{"op": "replace", "path": "/metadata/ownerReferences", "value": []}]'

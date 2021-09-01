@@ -39,6 +39,9 @@ simulate-managed-cluster7                          metrics-collector-deployment-
 simulate-managed-cluster8                          metrics-collector-deployment-6c8794b786-jm52h                    1/1     Running            0          22h
 simulate-managed-cluster9                          metrics-collector-deployment-5fdcc96d99-gqwqf                    1/1     Running            0          22h
 ```
+
+> Note: if you want the simulated metrics-collector be scheduled to master node, so that more simulated metrics-collectors can be deployed, you can set the environment variable `ALLOW_SCHEDULED_TO_MASTER` to be `true` before executing the setup script.
+
 ### Clean metrics collector
 Use `clean-metrics-collector.sh` to remove all metrics collector you created.
 ```
