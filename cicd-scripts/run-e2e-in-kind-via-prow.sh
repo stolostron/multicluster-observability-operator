@@ -18,6 +18,7 @@ ssh "${OPT[@]}" "$HOST" kubectl cluster-info --kubeconfig /tmp/kind-kubeconfig >
 ssh "${OPT[@]}" "$HOST" export MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF="$MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF" > >(tee "$ARTIFACT_DIR/run-e2e-in-kind.log") 2>&1
 ssh "${OPT[@]}" "$HOST" export ENDPOINT_MONITORING_OPERATOR_IMAGE_REF="$ENDPOINT_MONITORING_OPERATOR_IMAGE_REF" > >(tee "$ARTIFACT_DIR/run-e2e-in-kind.log") 2>&1
 ssh "${OPT[@]}" "$HOST" env
+ssh "${OPT[@]}" "$HOST" sleep 100000
 
 # scp "${OPT[@]}" tests/run-in-kind/run-e2e-in-kind.sh "$HOST:/tmp/run-e2e-in-kind.sh"
 # ssh "${OPT[@]}" "$HOST" /tmp/run-e2e-in-kind.sh > >(tee "$ARTIFACT_DIR/run-e2e-in-kind.log") 2>&1
