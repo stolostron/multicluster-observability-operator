@@ -5,10 +5,27 @@
 
 set -exo pipefail
 
-./cicd-scripts/customize-mco.sh
+TARGET_OS="$(uname)"
+XARGS_FLAGS="-r"
+SED_COMMAND='sed -i -e'
+if [[ "$(uname)" == "Linux" ]]; then
+    TARGET_OS=linux
+elif [[ "$(uname)" == "Darwin" ]]; then
+    TARGET_OS=darwin
+    XARGS_FLAGS=
+    SED_COMMAND='sed -i '-e' -e'
+else
+    echo "This system's OS $(TARGET_OS) isn't recognized/supported" && exit 1
+fi
 
-GINKGO_FOCUS="$(cat /tmp/ginkgo_focus)"
 ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
+${ROOTDIR}/cicd-scripts/customize-mco.sh
+GINKGO_FOCUS="$(cat /tmp/ginkgo_focus)"
+
+# need to modify sc for KinD
+if [[ -n "${IS_KIND_ENV}" ]]; then
+    $SED_COMMAND "s~gp2$~standard~g"  ${ROOTDIR}/examples/minio/minio-pvc.yaml
+fi
 
 kubeconfig_hub_path=""
 if [ ! -z "${SHARED_DIR}" ]; then

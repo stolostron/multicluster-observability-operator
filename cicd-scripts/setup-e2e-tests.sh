@@ -227,7 +227,6 @@ deploy_mco_operator() {
     # wait until mco is ready
     wait_for_deployment_ready 10 60s ${OCM_DEFAULT_NS} multicluster-observability-operator
 
-    $SED_COMMAND "s~gp2$~standard~g"  ${ROOTDIR}/examples/minio/minio-pvc.yaml
     kubectl create ns ${OBSERVABILITY_NS} || true
 
     if [[ -z "${IS_KIND_ENV}" ]]; then
