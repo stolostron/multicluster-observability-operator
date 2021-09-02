@@ -140,7 +140,6 @@ deploy_hub_spoke_core() {
     if [ -d "registration-operator" ]; then
         rm -rf registration-operator
     fi
-    # git clone --depth 1 -b release-2.3 https://github.com/open-cluster-management/registration-operator.git && cd registration-operator
     git clone --depth 1 -b release-2.4 https://github.com/open-cluster-management/registration-operator.git && cd registration-operator
     $SED_COMMAND "s~clusterName: cluster1$~clusterName: $MANAGED_CLUSTER~g" deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
     export HUB_KUBECONFIG=${KUBECONFIG}
@@ -218,8 +217,10 @@ deploy_grafana_test() {
 }
 
 deploy_mco_operator() {
-    # Install the multicluster-observability-operator
-    ${ROOTDIR}/cicd-scripts/customize-mco.sh
+    # we need to change the mco operator img in Prow KinD cluster
+    if [[ -n "${IS_KIND_ENV}" ]]; then
+        cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator=${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF}
+    fi
     kustomize build ${ROOTDIR}/operators/multiclusterobservability/config/default | kubectl apply -n ${OCM_DEFAULT_NS} -f -
     echo "mco operator is deployed successfully."
 

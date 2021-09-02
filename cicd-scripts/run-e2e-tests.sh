@@ -5,9 +5,7 @@
 
 set -exo pipefail
 
-if [[ -z "${IS_KIND_ENV}" ]]; then
-    ./cicd-scripts/customize-mco.sh
-fi
+./cicd-scripts/customize-mco.sh
 
 GINKGO_FOCUS="$(cat /tmp/ginkgo_focus)"
 ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"

@@ -38,14 +38,7 @@ create_kind_cluster() {
 
 deploy_service_ca_operator() {
     kubectl create ns openshift-config-managed
-    kubectl apply -f service-ca/00_roles.yaml
-    kubectl apply -f service-ca/01_namespace.yaml
-    kubectl apply -f service-ca/02_service.yaml
-    kubectl apply -f service-ca/03_cm.yaml
-    kubectl apply -f service-ca/03_operator.cr.yaml
-    kubectl apply -f service-ca/04_sa.yaml
-    kubectl apply -f service-ca/05_deploy.yaml
-    kubectl apply -f service-ca/07_clusteroperator.yaml
+    kubectl apply -f service-ca/
 }
 
 deploy_crds() {
