@@ -3,50 +3,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     include.release.openshift.io/self-managed-high-availability: "true"
-  creationTimestamp: "2021-08-19T07:47:48Z"
-  generation: 1
-  managedFields:
-  - apiVersion: apiextensions.k8s.io/v1
-    fieldsType: FieldsV1
-    fieldsV1:
-      f:metadata:
-        f:annotations:
-          .: {}
-          f:include.release.openshift.io/self-managed-high-availability: {}
-      f:spec:
-        f:conversion:
-          .: {}
-          f:strategy: {}
-        f:group: {}
-        f:names:
-          f:kind: {}
-          f:listKind: {}
-          f:plural: {}
-          f:singular: {}
-        f:scope: {}
-        f:versions: {}
-      f:status:
-        f:storedVersions: {}
-    manager: cluster-version-operator
-    operation: Update
-    time: "2021-08-19T07:47:48Z"
-  - apiVersion: apiextensions.k8s.io/v1
-    fieldsType: FieldsV1
-    fieldsV1:
-      f:status:
-        f:acceptedNames:
-          f:kind: {}
-          f:listKind: {}
-          f:plural: {}
-          f:singular: {}
-        f:conditions: {}
-    manager: kube-apiserver
-    operation: Update
-    time: "2021-08-19T07:47:49Z"
   name: servicecas.operator.openshift.io
-  resourceVersion: "905"
-  selfLink: /apis/apiextensions.k8s.io/v1/customresourcedefinitions/servicecas.operator.openshift.io
-  uid: 11bc24df-eb3b-47a9-817a-ccbf3ff72e29
 spec:
   conversion:
     strategy: None
@@ -203,22 +160,3 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ServiceCA
-    listKind: ServiceCAList
-    plural: servicecas
-    singular: serviceca
-  conditions:
-  - lastTransitionTime: "2021-08-19T07:47:49Z"
-    message: no conflicts found
-    reason: NoConflicts
-    status: "True"
-    type: NamesAccepted
-  - lastTransitionTime: "2021-08-19T07:47:49Z"
-    message: the initial names have been accepted
-    reason: InitialNamesAccepted
-    status: "True"
-    type: Established
-  storedVersions:
-  - v1
