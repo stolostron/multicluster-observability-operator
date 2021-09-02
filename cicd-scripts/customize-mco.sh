@@ -6,6 +6,7 @@
 set -exo pipefail
 
 ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
+export PATH=${PATH}:${ROOTDIR}/bin
 
 if [[ "$(uname)" == "Linux" ]]; then
     SED_COMMAND='sed -i-e -e'
