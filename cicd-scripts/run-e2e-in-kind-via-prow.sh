@@ -17,8 +17,9 @@ ssh "${OPT[@]}" "$HOST" kind version > >(tee "$ARTIFACT_DIR/run-e2e-in-kind.log"
 ssh "${OPT[@]}" "$HOST" kubectl cluster-info --kubeconfig /tmp/kind-kubeconfig > >(tee "$ARTIFACT_DIR/run-e2e-in-kind.log") 2>&1
 ssh "${OPT[@]}" "$HOST" env
 ssh "${OPT[@]}" "$HOST" "go get -u github.com/onsi/ginkgo/ginkgo"
+ssh "${OPT[@]}" "$HOST" "echo $HOME/go/bin/ginkgo"
+ssh "${OPT[@]}" "$HOST" "$HOME/go/bin/ginkgo version"
 ssh "${OPT[@]}" "$HOST" sleep 100000
-ssh "${OPT[@]}" "$HOST" "$(go env GOPATH)/bin/ginkgo version"
 
 
 # scp "${OPT[@]}" tests/run-in-kind/run-e2e-in-kind.sh "$HOST:/tmp/run-e2e-in-kind.sh"
