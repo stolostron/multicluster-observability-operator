@@ -35,10 +35,10 @@ type PreConfiguredStorage struct {
 	// The key of the secret to select from. Must be a valid secret key.
 	// Refer to https://thanos.io/storage.md/#configuration for a valid content of key.
 	// +required
-	Key string `json:"key,omitempty"`
+	Key string `json:"key"`
 	// Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 	// +required
-	Name string `json:"name,omitempty"`
+	Name string `json:"name"`
 }
 
 // Condition is from metav1.Condition.

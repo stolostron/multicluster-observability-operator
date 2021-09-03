@@ -130,6 +130,9 @@ spec:
                       name:
                         description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
                         type: string
+                    required:
+                    - key
+                    - name
                     type: object
                   statefulSetSize:
                     default: 10Gi
@@ -708,6 +711,9 @@ spec:
                       name:
                         description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
                         type: string
+                    required:
+                    - key
+                    - name
                     type: object
                   receiveStorageSize:
                     default: 100Gi
@@ -725,6 +731,8 @@ spec:
                     default: 10Gi
                     description: The amount of storage applied to thanos store stateful sets,
                     type: string
+                required:
+                - metricObjectStorage
                 type: object
               tolerations:
                 description: Tolerations causes all components to tolerate any taints.
@@ -749,6 +757,9 @@ spec:
                       type: string
                   type: object
                 type: array
+            required:
+            - observabilityAddonSpec
+            - storageConfig
             type: object
           status:
             description: MultiClusterObservabilityStatus defines the observed state of MultiClusterObservability
