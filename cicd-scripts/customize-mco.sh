@@ -3,9 +3,10 @@
 # Copyright (c) 2021 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project
 
-set -e
+set -exo pipefail
 
 ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
+export PATH=${PATH}:${ROOTDIR}/bin
 
 if [[ "$(uname)" == "Linux" ]]; then
     SED_COMMAND='sed -i-e -e'
@@ -41,6 +42,12 @@ update_mco_cr() {
     # Add mco-imageTagSuffix annotation
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
     ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-imageTagSuffix: ${LATEST_SNAPSHOT}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+
+    # need to add this annotation due to KinD cluster resources are insufficient
+    if [[ -n "${IS_KIND_ENV}" ]]; then
+        ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-thanos-without-resources-requests: true" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
+        ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-thanos-without-resources-requests: true" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+    fi
 
     for component_name in ${@}; do
         component_anno_name=$(echo ${component_name} | sed 's/-/_/g')
@@ -150,9 +157,15 @@ get_ginkgo_focus() {
            continue
         fi
     done
-    GINKGO_FOCUS=`echo "${GINKGO_FOCUS}" | xargs -n2 | sort -u | xargs`
+    # For KinD cluster, do not need to run all test cases
+    if [[ -n "${IS_KIND_ENV}" ]]; then
+        GINKGO_FOCUS=" --focus manifestwork/g0 --focus endpoint_preserve/g0 --focus grafana/g0 --focus metrics/g0 --focus addon/g0 --focus alert/g0 --focus dashboard/g0"
+    else
+        GINKGO_FOCUS=`echo "${GINKGO_FOCUS}" | xargs -n2 | sort -u | xargs`
+    fi
     echo "Test focuses are ${GINKGO_FOCUS}"
 }
+
 # start executing the ACTION
 get_components
 update_mco_cr "${COMPONENTS}"

@@ -4,6 +4,8 @@
 package tests
 
 import (
+	"os"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -80,6 +82,10 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("[P2][Sev2][Observability][Stable] Should revert any manual changes on metrics-collector-view clusterolebinding (endpoint_preserve/g0)", func() {
+		if os.Getenv("IS_KIND_ENV") == "true" {
+			Skip("Skip the case due to run in KinD")
+		}
+
 		By("Deleting metrics-collector-view clusterolebinding")
 		err, crb := utils.GetCRB(testOptions, false, "metrics-collector-view")
 		Expect(err).ToNot(HaveOccurred())
@@ -114,6 +120,10 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("[P2][Sev2][Observability][Stable] Should recreate on metrics-collector-serving-certs-ca-bundle configmap if deleted (endpoint_preserve/g0)", func() {
+		if os.Getenv("IS_KIND_ENV") == "true" {
+			Skip("Skip the case due to run in KinD")
+		}
+
 		By("Deleting metrics-collector-serving-certs-ca-bundle configmap")
 		var (
 			err error

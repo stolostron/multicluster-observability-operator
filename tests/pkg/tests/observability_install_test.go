@@ -165,7 +165,8 @@ func installMCO() {
 		}
 		testFailed = false
 		return nil
-	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+		// TODO: need to figure out why metrics-collector start slowly
+	}, EventuallyTimeoutMinute*15, EventuallyIntervalSecond*5).Should(Succeed())
 
 	By("Check clustermanagementaddon CR is created")
 	Eventually(func() error {
