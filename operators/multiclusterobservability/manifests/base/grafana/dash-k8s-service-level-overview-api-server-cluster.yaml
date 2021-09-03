@@ -1,0 +1,616 @@
+apiVersion: v1
+data:
+  k8s-service-level-overview-api-server-cluster.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "gnetId": null,
+      "graphTooltip": 0,
+      "id": 16,
+      "iteration": 1630704932030,
+      "links": [],
+      "panels": [
+        {
+          "collapsed": false,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "id": 12,
+          "panels": [],
+          "title": "Cluster SLO Overview - API Server Request Duration",
+          "type": "row"
+        },
+        {
+          "datasource": null,
+          "description": "The service level target for the API server request duration SLO.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {},
+              "decimals": 2,
+              "mappings": [
+                {
+                  "from": "",
+                  "id": 1,
+                  "text": "N/A",
+                  "to": "",
+                  "type": 1,
+                  "value": "null"
+                }
+              ],
+              "noValue": "-",
+              "thresholds": {
+                "mode": "percentage",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 5,
+            "x": 0,
+            "y": 1
+          },
+          "id": 51,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "/^Target$/",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "7.4.2",
+          "targets": [
+            {
+              "expr": "sli:apiserver_request_duration_seconds:bin:trend:5m",
+              "format": "table",
+              "instant": true,
+              "interval": "5m",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Target",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "indexByName": {},
+                "renameByName": {
+                  "target": "Target"
+                }
+              }
+            }
+          ],
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "SLO status from over a 7 days period. (The SLO is calculated from # of request duration >= target / total count of request durations)",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {},
+              "mappings": [
+                {
+                  "from": "",
+                  "id": 1,
+                  "text": "N/A",
+                  "to": "",
+                  "type": 1,
+                  "value": "null"
+                }
+              ],
+              "noValue": "-",
+              "thresholds": {
+                "mode": "percentage",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "#EAB839",
+                    "value": 95
+                  },
+                  {
+                    "color": "green",
+                    "value": 99
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 5,
+            "x": 5,
+            "y": 1
+          },
+          "id": 35,
+          "interval": "5m",
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "value"
+          },
+          "pluginVersion": "7.4.2",
+          "targets": [
+            {
+              "expr": "floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:5m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:5m{cluster=\"$cluster\"}[$__range])",
+              "format": "table",
+              "instant": true,
+              "interval": "5m",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "timeFrom": "7d",
+          "timeShift": null,
+          "title": "Past 7 Days",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Value": false
+                },
+                "indexByName": {},
+                "renameByName": {
+                  "Value": ""
+                }
+              }
+            }
+          ],
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "SLO status from over a 30 days period. (The SLO is calculated from # of request duration >= target / total count of request durations)",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {},
+              "mappings": [
+                {
+                  "from": "",
+                  "id": 1,
+                  "text": "N/A",
+                  "to": "",
+                  "type": 1,
+                  "value": "null"
+                }
+              ],
+              "thresholds": {
+                "mode": "percentage",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "#EAB839",
+                    "value": 95
+                  },
+                  {
+                    "color": "green",
+                    "value": 99
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 5,
+            "x": 10,
+            "y": 1
+          },
+          "id": 32,
+          "interval": "5m",
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "/^Value$/",
+              "values": false
+            },
+            "text": {},
+            "textMode": "value"
+          },
+          "pluginVersion": "7.4.2",
+          "targets": [
+            {
+              "expr": "floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:5m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:5m{cluster=\"$cluster\"}[$__range])",
+              "format": "table",
+              "instant": true,
+              "interval": "5m",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "timeFrom": "30d",
+          "timeShift": null,
+          "title": "Past 30 Days",
+          "transformations": [],
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "The amount of error budget that has been consumed for the API server request duration SLO.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {},
+              "mappings": [],
+              "thresholds": {
+                "mode": "percentage",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 9,
+            "x": 15,
+            "y": 1
+          },
+          "id": 60,
+          "interval": null,
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "/^Consumed$/",
+              "values": false
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true,
+            "text": {}
+          },
+          "pluginVersion": "7.4.2",
+          "targets": [
+            {
+              "expr": "floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:5m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:5m{cluster=\"$cluster\"}[$__range])",
+              "format": "table",
+              "instant": false,
+              "interval": "5m",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "timeFrom": "30d",
+          "timeShift": null,
+          "title": "Consumed Error Budget",
+          "transformations": [
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "",
+                "binary": {
+                  "left": "target",
+                  "operator": "-",
+                  "reducer": "sum",
+                  "right": "Value"
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "binary": {
+                  "left": "1",
+                  "operator": "-",
+                  "reducer": "sum",
+                  "right": "target"
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            },
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "Consumed",
+                "binary": {
+                  "left": "target - Value",
+                  "operator": "/",
+                  "reducer": "sum",
+                  "right": "1 - target"
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            }
+          ],
+          "type": "gauge"
+        },
+        {
+          "collapsed": false,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 8
+          },
+          "id": 21,
+          "panels": [],
+          "title": "Trend",
+          "type": "row"
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": null,
+          "description": "Trending graph of the service level indicators (SLI) over relative time period used to compute the service level objective (SLO).",
+          "fieldConfig": {
+            "defaults": {
+              "color": {},
+              "custom": {},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": []
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "fill": 0,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 9
+          },
+          "hiddenSeries": false,
+          "id": 8,
+          "interval": "5m",
+          "legend": {
+            "alignAsTable": false,
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "rightSide": false,
+            "show": true,
+            "sideWidth": null,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.4.2",
+          "pointradius": 1,
+          "points": true,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sli:apiserver_request_duration_seconds:trend:5m{cluster=\"$cluster\"}",
+              "hide": false,
+              "interval": "5m",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "API Server - Request Duration - SLI",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "transformations": [
+            {
+              "id": "calculateField",
+              "options": {
+                "alias": "Target",
+                "binary": {
+                  "left": "0.9900",
+                  "operator": "+",
+                  "reducer": "sum",
+                  "right": "0"
+                },
+                "mode": "binary",
+                "reduce": {
+                  "reducer": "sum"
+                }
+              }
+            }
+          ],
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "$$hashKey": "object:2055",
+              "format": "percentunit",
+              "label": null,
+              "logBase": 1,
+              "max": "1",
+              "min": "0.8",
+              "show": true
+            },
+            {
+              "$$hashKey": "object:2056",
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        }
+      ],
+      "refresh": "5m",
+      "schemaVersion": 27,
+      "style": "dark",
+      "tags": [
+        "kubernetes-mixin",
+        "SLO"
+      ],
+      "templating": {
+        "list": [
+          {
+            "allValue": null,
+            "current": {
+              "selected": true,
+              "text": "local-cluster",
+              "value": "local-cluster"
+            },
+            "datasource": null,
+            "definition": "label_values(cluster)",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": false,
+            "label": "Cluster",
+            "multi": false,
+            "name": "cluster",
+            "options": [],
+            "query": {
+              "query": "label_values(cluster)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "tagValuesQuery": "",
+            "tags": [],
+            "tagsQuery": "",
+            "type": "query",
+            "useTags": false
+          }
+        ]
+      },
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "Kubernetes / Service Level Overview / API Server / Cluster",
+      "uid": "3TwB9bRnnz",
+      "version": 9
+    }
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-k8s-slo
+  namespace: open-cluster-management-observability
+  labels:
+    general-folder: 'true'
