@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/instance: observability-observatorium
     app.kubernetes.io/name: thanos-receive
     app.kubernetes.io/part-of: observatorium
-    app.kubernetes.io/version: 2.3.0-SNAPSHOT-2021-07-26-18-43-26
+    app.kubernetes.io/version: 2.4.0-SNAPSHOT-2021-09-03-00-46-45
     controller.receive.thanos.io/hashring: default
   name: observability-observatorium-thanos-receive-default
   namespace: open-cluster-management-observability
