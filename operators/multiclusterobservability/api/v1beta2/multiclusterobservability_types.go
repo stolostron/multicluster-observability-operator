@@ -33,11 +33,11 @@ type MultiClusterObservabilitySpec struct {
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 	// Specifies the storage to be used by Observability
 	// +required
-	StorageConfig *StorageConfig `json:"storageConfig,omitempty"`
+	StorageConfig *StorageConfig `json:"storageConfig"`
 	// The ObservabilityAddonSpec defines the global settings for all managed
 	// clusters which have observability add-on enabled.
 	// +required
-	ObservabilityAddonSpec *observabilityshared.ObservabilityAddonSpec `json:"observabilityAddonSpec,omitempty"`
+	ObservabilityAddonSpec *observabilityshared.ObservabilityAddonSpec `json:"observabilityAddonSpec"`
 }
 
 type AdvancedConfig struct {
@@ -145,7 +145,7 @@ type RetentionConfig struct {
 type StorageConfig struct {
 	// Object store config secret for metrics
 	// +required
-	MetricObjectStorage *observabilityshared.PreConfiguredStorage `json:"metricObjectStorage,omitempty"`
+	MetricObjectStorage *observabilityshared.PreConfiguredStorage `json:"metricObjectStorage"`
 	// Specify the storageClass Stateful Sets. This storage class will also
 	// be used for Object Storage if MetricObjectStorage was configured for
 	// the system to create the storage.
