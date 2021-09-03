@@ -17,5 +17,7 @@ resources:
 - dash-k8s-compute-resources-workload.yaml
 - dash-k8s-compute-resources-node-pods.yaml
 - dash-k8s-compute-resources-pod.yaml
+- dash-k8s-service-level-overview.yaml
+- dash-k8s-service-level-overview-cluster.yaml
 - dash-cluster-rsrc-use.yaml
 - dash-node-rsrc-use.yaml
