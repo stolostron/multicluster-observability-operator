@@ -24,6 +24,8 @@ require (
 	github.com/openshift/cluster-monitoring-operator v0.1.1-0.20210611103744-7168290cd660
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus-community/prom-label-proxy v0.3.0
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.48.1
+	github.com/prometheus-operator/prometheus-operator/pkg/client v0.47.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.26.0

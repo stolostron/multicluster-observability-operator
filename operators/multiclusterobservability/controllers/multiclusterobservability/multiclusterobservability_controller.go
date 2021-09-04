@@ -43,6 +43,7 @@ import (
 	certctrl "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
+	smctrl "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/servicemonitor"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/deploying"
 	commonutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/util"
@@ -122,6 +123,9 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 		// setup ocm addon manager
 		certctrl.Start(r.Client, ingressCtlCrdExists)
+
+		// start servicemonitor controller
+		smctrl.Start()
 	}
 
 	// Init finalizers
