@@ -184,9 +184,7 @@ func main() {
 			{LabelSelector: "owner==multicluster-observability-operator"},
 		},
 		clusterv1.SchemeGroupVersion.WithKind("ManagedCluster"): []filteredcache.Selector{
-			{LabelSelector: "vendor==OpenShift,observability!=disabled"},
-			{LabelSelector: "vendor==GKE,observability!=disabled"},
-			{LabelSelector: "vendor==EKS,observability!=disabled"},
+			{LabelSelector: "vendor!=auto-detect,observability!=disabled"},
 		},
 	}
 

@@ -1,0 +1,15 @@
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: open-cluster-management-observability:observatorium-monitoring
+rules:
+  - verbs:
+      - get
+      - list
+      - watch
+    apiGroups:
+      - ''
+    resources:
+      - pods
+      - services
+      - endpoints
