@@ -19,7 +19,7 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 16,
-      "iteration": 1630704932030,
+      "iteration": 1630898180085,
       "links": [],
       "panels": [
         {
@@ -498,7 +498,7 @@ data:
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "API Server - Request Duration - SLI",
+          "title": "API Server Request Duration - SLI",
           "tooltip": {
             "shared": true,
             "sort": 0,
@@ -568,7 +568,7 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": true,
+              "selected": false,
               "text": "local-cluster",
               "value": "local-cluster"
             },
@@ -599,14 +599,14 @@ data:
         ]
       },
       "time": {
-        "from": "now-6h",
+        "from": "now-12h",
         "to": "now"
       },
       "timepicker": {},
       "timezone": "",
       "title": "Kubernetes / Service Level Overview / API Server / Cluster",
       "uid": "3TwB9bRnnz",
-      "version": 9
+      "version": 11
     }
 kind: ConfigMap
 metadata:
