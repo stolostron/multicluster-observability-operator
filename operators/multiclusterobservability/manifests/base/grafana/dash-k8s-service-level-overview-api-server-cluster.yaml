@@ -19,7 +19,7 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 16,
-      "iteration": 1630898180085,
+      "iteration": 1630941876175,
       "links": [],
       "panels": [
         {
@@ -72,7 +72,7 @@ data:
           },
           "gridPos": {
             "h": 7,
-            "w": 5,
+            "w": 4,
             "x": 0,
             "y": 1
           },
@@ -167,8 +167,8 @@ data:
           },
           "gridPos": {
             "h": 7,
-            "w": 5,
-            "x": 5,
+            "w": 4,
+            "x": 4,
             "y": 1
           },
           "id": 35,
@@ -264,8 +264,8 @@ data:
           },
           "gridPos": {
             "h": 7,
-            "w": 5,
-            "x": 10,
+            "w": 4,
+            "x": 8,
             "y": 1
           },
           "id": 32,
@@ -331,8 +331,8 @@ data:
           },
           "gridPos": {
             "h": 7,
-            "w": 9,
-            "x": 15,
+            "w": 12,
+            "x": 12,
             "y": 1
           },
           "id": 60,
@@ -554,6 +554,103 @@ data:
             "align": false,
             "alignLevel": null
           }
+        },
+        {
+          "datasource": null,
+          "description": "Collected SLI values for the API server request duration SLO, over the relative time range. (# of data points are subjected to change based upon the interval set by Grafana)",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": null,
+                "filterable": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "percentage",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "#EAB839",
+                    "value": 99
+                  },
+                  {
+                    "color": "green",
+                    "value": 99.5
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value"
+                },
+                "properties": [
+                  {
+                    "id": "custom.displayMode",
+                    "value": "color-background"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 19
+          },
+          "id": 62,
+          "interval": "5m",
+          "options": {
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": false,
+                "displayName": "Value"
+              }
+            ]
+          },
+          "pluginVersion": "7.4.2",
+          "targets": [
+            {
+              "expr": "sli:apiserver_request_duration_seconds:trend:5m{cluster=\"$cluster\"}",
+              "format": "table",
+              "interval": "5m",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "API Server Request Duration - SLI",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "__name__": true,
+                  "receive": true,
+                  "tenant_id": true
+                },
+                "indexByName": {},
+                "renameByName": {
+                  "cluster": "Cluster"
+                }
+              }
+            }
+          ],
+          "type": "table"
         }
       ],
       "refresh": "5m",
@@ -606,7 +703,7 @@ data:
       "timezone": "",
       "title": "Kubernetes / Service Level Overview / API Server / Cluster",
       "uid": "3TwB9bRnnz",
-      "version": 11
+      "version": 20
     }
 kind: ConfigMap
 metadata:
