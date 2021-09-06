@@ -29,7 +29,7 @@ func TestRewriteLabels(t *testing.T) {
 	if len(updated.Spec.NamespaceSelector.MatchNames) == 0 || updated.Spec.NamespaceSelector.MatchNames[0] != config.GetDefaultNamespace() {
 		t.Errorf("Wrong NamespaceSelector: %v", updated.Spec.NamespaceSelector)
 	}
-	if len(updated.Spec.Endpoints[0].MetricRelabelConfigs) != 2 {
+	if len(updated.Spec.Endpoints[0].MetricRelabelConfigs) != 1 {
 		t.Errorf("Wrong MetricRelabelConfigs: %v", updated.Spec.Endpoints[0].MetricRelabelConfigs)
 	}
 }

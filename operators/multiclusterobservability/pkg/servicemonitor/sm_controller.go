@@ -22,10 +22,8 @@ import (
 )
 
 const (
-	ocpMonitoringNamespace      = "openshift-monitoring"
-	acmServiceMonitorLabelKey   = "product"
-	acmServiceMonitorLabelValue = "acm"
-	metricsNamePrefix           = "acm_"
+	ocpMonitoringNamespace = "openshift-monitoring"
+	metricsNamePrefix      = "acm_"
 )
 
 var (
@@ -79,7 +77,7 @@ func onDelete(promClient promclientset.Interface) func(obj interface{}) {
 			if err != nil {
 				log.Error(err, "Failed to delete ServiceMonitor", "namespace", ocpMonitoringNamespace, "name", sm.Name)
 			} else {
-				log.Error(err, "ServiceMonitor Deleted", "namespace", ocpMonitoringNamespace, "name", sm.Name)
+				log.Info("ServiceMonitor Deleted", "namespace", ocpMonitoringNamespace, "name", sm.Name)
 			}
 		}
 	}
@@ -97,7 +95,7 @@ func onUpdate(promClient promclientset.Interface) func(newObj interface{}, oldOb
 }
 
 func updateServiceMonitor(promClient promclientset.Interface, sm *promv1.ServiceMonitor) {
-	found, err := promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Get(context.TODO(), sm.Name, metav1.GetOptions{})
+	_, err := promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Get(context.TODO(), sm.Name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			_, err := promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Create(context.TODO(), rewriteLabels(sm), metav1.CreateOptions{})
@@ -110,9 +108,8 @@ func updateServiceMonitor(promClient promclientset.Interface, sm *promv1.Service
 			log.Error(err, "Failed to check ServiceMonitor", "namespace", ocpMonitoringNamespace, "name", sm.Name)
 		}
 	}
-	update := rewriteLabels(sm)
-	update.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-	_, err = promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Update(context.TODO(), update, metav1.UpdateOptions{})
+	sm = rewriteLabels(sm)
+	_, err = promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Update(context.TODO(), sm, metav1.UpdateOptions{})
 	if err != nil {
 		log.Error(err, "Failed to update ServiceMonitor", "namespace", ocpMonitoringNamespace, "name", sm.Name)
 	} else {
@@ -132,11 +129,6 @@ func rewriteLabels(sm *promv1.ServiceMonitor) *promv1.ServiceMonitor {
 			Regex:        "(.+)",
 			TargetLabel:  "__name__",
 			Replacement:  metricsNamePrefix + "${1}",
-		}, &promv1.RelabelConfig{
-			SourceLabels: []string{"__name__"},
-			Regex:        "(.+)",
-			TargetLabel:  acmServiceMonitorLabelKey,
-			Replacement:  acmServiceMonitorLabelValue,
 		})
 		endpoint.MetricRelabelConfigs = metricsRelabels
 		endpoints = append(endpoints, endpoint)
@@ -145,11 +137,5 @@ func rewriteLabels(sm *promv1.ServiceMonitor) *promv1.ServiceMonitor {
 	sm.Spec.NamespaceSelector = promv1.NamespaceSelector{
 		MatchNames: []string{config.GetDefaultNamespace()},
 	}
-	return &promv1.ServiceMonitor{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      sm.Name,
-			Namespace: ocpMonitoringNamespace,
-		},
-		Spec: sm.Spec,
-	}
+	return sm
 }
