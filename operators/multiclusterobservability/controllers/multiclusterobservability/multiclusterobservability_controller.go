@@ -347,7 +347,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			checkStorageChanged(e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig,
 				e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig)
-			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
+			return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return !e.DeleteStateUnknown
