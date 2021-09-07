@@ -411,7 +411,7 @@ data:
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Queue Latency by Requestor",
+          "title": "Work Queue Latency by Requestor",
           "tooltip": {
             "shared": false,
             "sort": 0,
@@ -1104,7 +1104,7 @@ data:
       "timezone": "browser",
       "title": "Kubernetes / API server",
       "uid": "09ec8aa1e996d6ffcd6817bbaff4db1b",
-      "version": 43
+      "version": 44
     }
 kind: ConfigMap
 metadata:
