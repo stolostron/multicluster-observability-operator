@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -271,8 +272,8 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 				if env.Name == "HUB_NAMESPACE" {
 					container.Env[j].Value = clusterNamespace
 				}
-				if env.Name == operatorconfig.InstallPrometheus && installProm {
-					container.Env[j].Value = "true"
+				if env.Name == operatorconfig.InstallPrometheus {
+					container.Env[j].Value = strconv.FormatBool(installProm)
 				}
 			}
 		}

@@ -227,7 +227,7 @@ func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonS
 			!reflect.DeepEqual(deployment.Spec.Replicas, found.Spec.Replicas) ||
 			forceRestart {
 			deployment.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-			if forceRestart {
+			if forceRestart && found.Status.ReadyReplicas != 0 {
 				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
 			}
 			err = client.Update(ctx, deployment)

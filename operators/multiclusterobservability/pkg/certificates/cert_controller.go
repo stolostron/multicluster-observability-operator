@@ -14,6 +14,7 @@ import (
 
 	appv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -98,21 +99,23 @@ func restartPods(c client.Client, s v1.Secret, isUpdate bool) {
 		dName = config.GetOperandName(config.ObservatoriumAPI)
 	}
 	if dName != "" {
-		updateDeployLabel(c, dName, s.ObjectMeta.CreationTimestamp.Time, isUpdate)
+		updateDeployLabel(c, dName, isUpdate)
 	}
 }
 
-func updateDeployLabel(c client.Client, dName string, sTime time.Time, isUpdate bool) {
+func updateDeployLabel(c client.Client, dName string, isUpdate bool) {
 	dep := &appv1.Deployment{}
 	err := c.Get(context.TODO(), types.NamespacedName{
 		Name:      dName,
 		Namespace: config.GetDefaultNamespace(),
 	}, dep)
 	if err != nil {
-		log.Error(err, "Failed to get the deployment", "name", dName)
+		if !errors.IsNotFound(err) {
+			log.Error(err, "Failed to check the deployment", "name", dName)
+		}
 		return
 	}
-	if isUpdate || sTime.After(dep.ObjectMeta.CreationTimestamp.Time) {
+	if isUpdate || dep.Status.ReadyReplicas != 0 {
 		dep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
 		err = c.Update(context.TODO(), dep)
 		if err != nil {
