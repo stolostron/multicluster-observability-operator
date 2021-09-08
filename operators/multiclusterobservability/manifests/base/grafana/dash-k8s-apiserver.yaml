@@ -186,7 +186,6 @@ data:
           },
           "yaxes": [
             {
-              "$$hashKey": "object:95",
               "format": "s",
               "label": null,
               "logBase": 1,
@@ -195,7 +194,6 @@ data:
               "show": true
             },
             {
-              "$$hashKey": "object:96",
               "format": "s",
               "label": null,
               "logBase": 1,
@@ -427,7 +425,6 @@ data:
           },
           "yaxes": [
             {
-              "$$hashKey": "object:258",
               "format": "s",
               "label": null,
               "logBase": 1,
@@ -436,7 +433,6 @@ data:
               "show": true
             },
             {
-              "$$hashKey": "object:259",
               "format": "s",
               "label": null,
               "logBase": 1,
@@ -993,8 +989,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "Observatorium",
-              "value": "Observatorium"
+              "text": "",
+              "value": ""
             },
             "description": null,
             "error": null,
@@ -1015,8 +1011,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "acm-201-managed",
-              "value": "acm-201-managed"
+              "text": "",
+              "value": ""
             },
             "datasource": "$datasource",
             "definition": "",
