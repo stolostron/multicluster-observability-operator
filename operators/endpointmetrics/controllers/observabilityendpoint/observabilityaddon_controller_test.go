@@ -241,6 +241,17 @@ alertmanager-router-ca: |
 	}
 
 	// test reconcile metrics collector deployment updated if cert secret updated
+	found := &appv1.Deployment{}
+	err = c.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
+		Namespace: namespace}, found)
+	if err != nil {
+		t.Fatalf("Metrics collector deployment not found: (%v)", err)
+	}
+	found.Status.ReadyReplicas = 1
+	err = c.Update(ctx, found)
+	if err != nil {
+		t.Fatalf("Failed to update metrics collector deployment: (%v)", err)
+	}
 	req = ctrl.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      mtlsCertName,
