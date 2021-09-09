@@ -41,6 +41,9 @@ func newDeployment(name string) *appv1.Deployment {
 				},
 			},
 		},
+		Status: appv1.DeploymentStatus{
+			ReadyReplicas: 1,
+		},
 	}
 }
 
