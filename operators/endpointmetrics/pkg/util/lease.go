@@ -11,7 +11,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/open-cluster-management/addon-framework/pkg/lease"
+	"open-cluster-management.io/addon-framework/pkg/lease"
 )
 
 const (

@@ -15,7 +15,6 @@ require (
 	github.com/oklog/run v1.1.0
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.13.0
-	github.com/open-cluster-management/addon-framework v0.0.0-20210621074027-a81f712c10c2
 	github.com/open-cluster-management/api v0.0.0-20210513122330-d76f10481f05
 	github.com/open-cluster-management/multiclusterhub-operator v0.0.0-20210622185704-40982c42385e
 	github.com/open-cluster-management/observatorium-operator v0.0.0-20210630101922-5eab9bc11b82
@@ -40,6 +39,7 @@ require (
 	k8s.io/client-go v13.0.0+incompatible
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.21.0
+	open-cluster-management.io/addon-framework v0.0.0-20210909134218-e6e993872bb1
 	sigs.k8s.io/controller-runtime v0.9.2
 	sigs.k8s.io/kube-storage-version-migrator v0.0.3
 	sigs.k8s.io/kustomize/api v0.8.5
@@ -85,7 +85,6 @@ require (
 	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/go-openapi/validate v0.20.2 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
-	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/gobuffalo/flect v0.2.2 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/google/certificate-transparency-go v1.0.21 // indirect
@@ -108,7 +107,7 @@ require (
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
-	github.com/openshift/library-go v0.0.0-20210330121802-ebbc677c82a5 // indirect
+	github.com/openshift/library-go v0.0.0-20210609150209-1c980926414c // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/alertmanager v0.21.1-0.20201106142418-c39b78780054 // indirect
@@ -150,6 +149,7 @@ require (
 	k8s.io/kube-aggregator v0.20.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7 // indirect
 	k8s.io/utils v0.0.0-20210527160623-6fdb442a123b // indirect
+	open-cluster-management.io/api v0.0.0-20210607023841-cd164385e2bb // indirect
 	sigs.k8s.io/kustomize/kyaml v0.10.15 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.0 // indirect
 )
