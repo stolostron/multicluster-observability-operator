@@ -853,7 +853,7 @@ data:
           "type": "table"
         }
       ],
-      "refresh": "10s",
+      "refresh": "1m",
       "schemaVersion": 27,
       "style": "dark",
       "tags": [
@@ -924,7 +924,7 @@ data:
               "value": ""
             },
             "datasource": "$datasource",
-            "definition": "label_values(kube_pod_info, cluster)",
+            "definition": "label_values(cluster)",
             "description": null,
             "error": null,
             "hide": 0,
@@ -934,7 +934,7 @@ data:
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(kube_pod_info, cluster)",
+              "query": "label_values(cluster)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
