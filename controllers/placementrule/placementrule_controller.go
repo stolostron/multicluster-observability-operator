@@ -288,7 +288,7 @@ func createAllRelatedRes(
 	for _, decision := range placement.Status.Decisions {
 		currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
 		// only handle the request namespace if the request resource is not from observability  namespace
-		if request.Namespace == "" || request.Namespace == config.GetDefaultNamespace() ||
+		if request.Name == config.MCHUpdatedRequestName || request.Namespace == "" || request.Namespace == config.GetDefaultNamespace() ||
 			request.Namespace == decision.ClusterNamespace {
 			log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
 			err = createManagedClusterRes(client, restMapper, mco,
