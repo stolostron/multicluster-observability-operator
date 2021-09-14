@@ -276,11 +276,13 @@ func createAllRelatedRes(
 	for managedCluster, openshiftVersion := range managedClusterList {
 		currentClusters = commonutil.Remove(currentClusters, managedCluster)
 		// enter the loop for the following reconcile requests:
-		// 1. MCO CR change(request namespace is emprt string and request name is "mco-updated-request")
-		// 2. configmap/secret... resource change from observability namespace
-		// 3. managedcluster change(request namespace is emprt string and request name is managedcluster name)
-		// 4. manifestwork/observabilityaddon/managedclusteraddon/rolebinding... change from managedcluster namespace
-		if (request.Namespace == "" && request.Name == config.MCOUpdatedRequestName) ||
+		// 1. MCO CR change(request name is "mco-updated-request")
+		// 2. MCH resource change(request name is "mch-updated-request"), to handle image replacement in upgrade case.
+		// 3. configmap/secret... resource change from observability namespace
+		// 4. managedcluster change(request namespace is emprt string and request name is managedcluster name)
+		// 5. manifestwork/observabilityaddon/managedclusteraddon/rolebinding... change from managedcluster namespace
+		if request.Name == config.MCOUpdatedRequestName ||
+			request.Name == config.MCHUpdatedRequestName ||
 			request.Namespace == config.GetDefaultNamespace() ||
 			(request.Namespace == "" && request.Name == managedCluster) ||
 			request.Namespace == managedCluster {
