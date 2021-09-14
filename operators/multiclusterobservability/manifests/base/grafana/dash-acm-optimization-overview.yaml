@@ -1570,7 +1570,7 @@ data:
               "value": ""
             },
             "datasource": "$datasource",
-            "definition": "label_values(node_cpu_seconds_total,cluster)",
+            "definition": "label_values(cluster)",
             "description": null,
             "error": null,
             "hide": 0,
@@ -1580,7 +1580,7 @@ data:
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(node_cpu_seconds_total,cluster)",
+              "query": "label_values(cluster)",
               "refId": "Observatorium-cluster-Variable-Query"
             },
             "refresh": 2,
