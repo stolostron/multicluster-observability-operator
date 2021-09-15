@@ -12,9 +12,9 @@ import (
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	clusterclientset "github.com/open-cluster-management/api/client/cluster/clientset/versioned"
 	"github.com/open-cluster-management/multicluster-observability-operator/proxy/pkg/proxy"
 	"github.com/open-cluster-management/multicluster-observability-operator/proxy/pkg/util"
+	clusterclientset "open-cluster-management.io/api/client/cluster/clientset/versioned"
 )
 
 const (
