@@ -239,7 +239,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to workload",
-                        "url": "./d/a164a7f0339f99e89cea5cb47e9be617/k8s-resources-workload?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-workload=${__data.fields[workload]}&var-type=$type"
+                        "url": "/d/a164a7f0339f99e89cea5cb47e9be617/k8s-resources-workload?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-workload=${__data.fields[workload]}&var-type=$type"
                       }
                     ]
                   }
@@ -636,7 +636,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to workload",
-                        "url": "./d/a164a7f0339f99e89cea5cb47e9be617/k8s-resources-workload?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-workload=${__data.fields[workload]}&var-type=$type"
+                        "url": "/d/a164a7f0339f99e89cea5cb47e9be617/k8s-resources-workload?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-workload=${__data.fields[workload]}&var-type=$type"
                       }
                     ]
                   }
