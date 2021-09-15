@@ -259,6 +259,13 @@ func createAllRelatedRes(
 		currentClusters = append(currentClusters, ep.Namespace)
 	}
 
+	// need to reload the template for mch update request, because the images for managedclusteraddon may change
+	if request.Name == config.MCHUpdatedRequestName {
+		// reload and rerender the templates for manifestwork
+		log.Info("load template for MCH UPDATE")
+		rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1, endpointMetricsOperatorDeploy, _ = loadTemplates(mco)
+	}
+
 	works, crdv1Work, crdv1beta1Work, err := generateGlobalManifestResources(c, mco)
 	if err != nil {
 		return ctrl.Result{}, err
