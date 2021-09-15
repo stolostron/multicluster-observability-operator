@@ -400,15 +400,15 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 			Kind:       "ConfigMap",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.AllowlistConfigMapName,
+			Name:      operatorconfig.AllowlistConfigMapName,
 			Namespace: spokeNameSpace,
 		},
 		Data: map[string]string{},
 	}
 
-	allowlist, err := getAllowList(client, config.AllowlistConfigMapName)
+	allowlist, err := getAllowList(client, operatorconfig.AllowlistConfigMapName)
 	if err != nil {
-		log.Error(err, "Failed to get metrics allowlist configmap "+config.AllowlistConfigMapName)
+		log.Error(err, "Failed to get metrics allowlist configmap "+operatorconfig.AllowlistConfigMapName)
 		return nil, err
 	}
 

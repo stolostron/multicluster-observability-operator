@@ -8,12 +8,30 @@ import (
 	"path"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
 	rendererutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering"
 	templatesutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering/templates"
 )
+
+func getAllowlistCM() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      operatorconfig.AllowlistConfigMapName,
+			Namespace: namespace,
+		},
+		Data: map[string]string{
+			metricsConfigMapKey: `
+names:
+  - apiserver_watch_events_sizes_bucket
+`},
+	}
+}
 
 func TestRender(t *testing.T) {
 	wd, err := os.Getwd()
@@ -31,7 +49,10 @@ func TestRender(t *testing.T) {
 		AlertmanagerEndpoint:     "testing.com",
 		AlertmanagerRouterCA:     "testing",
 	}
-	objs, err := Render(renderer, nil, hubInfo)
+
+	c := fake.NewFakeClient([]runtime.Object{getAllowlistCM()}...)
+
+	objs, err := Render(renderer, c, hubInfo)
 	if err != nil {
 		t.Fatalf("failed to render endpoint templates: %v", err)
 	}

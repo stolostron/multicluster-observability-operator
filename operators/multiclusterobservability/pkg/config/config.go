@@ -92,7 +92,6 @@ const (
 	AlertmanagersDefaultCaBundleName      = "alertmanager-ca-bundle"
 	AlertmanagersDefaultCaBundleKey       = "service-ca.crt"
 
-	AllowlistConfigMapName       = "observability-metrics-allowlist"
 	AllowlistCustomConfigMapName = "observability-metrics-custom-allowlist"
 
 	ProxyServiceName      = "rbac-query-proxy"
