@@ -4,8 +4,6 @@
 package tests
 
 import (
-	"fmt"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -27,18 +25,8 @@ var _ = Describe("Observability:", func() {
 
 	It("[P1][Sev1][Observability][Stable] Should have metric data in grafana console (grafana/g0)", func() {
 		Eventually(func() error {
-			clusters, err := utils.ListManagedClusters(testOptions)
-			if err != nil {
-				return err
-			}
-			for _, cluster := range clusters {
-				query := fmt.Sprintf("node_memory_MemAvailable_bytes{cluster=\"%s\"}", cluster)
-				err, _ = utils.ContainManagedClusterMetric(testOptions, query, []string{`"__name__":"node_memory_MemAvailable_bytes"`})
-				if err != nil {
-					return err
-				}
-			}
-			return nil
+			err, _ = utils.ContainManagedClusterMetric(testOptions, "node_memory_MemAvailable_bytes", []string{`"__name__":"node_memory_MemAvailable_bytes"`})
+			return err
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 

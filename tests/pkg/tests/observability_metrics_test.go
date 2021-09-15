@@ -5,7 +5,6 @@ package tests
 
 import (
 	"context"
-	"fmt"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -51,44 +50,24 @@ var _ = Describe("Observability:", func() {
 
 		By("Waiting for new added metrics on grafana console")
 		Eventually(func() error {
-			for _, cluster := range clusters {
-				query := fmt.Sprintf("node_memory_Active_bytes{cluster=\"%s\"} offset 1m", cluster)
-				err, _ := utils.ContainManagedClusterMetric(testOptions, query, []string{`"__name__":"node_memory_Active_bytes"`})
-				if err != nil {
-					return err
-				}
-			}
-			return nil
+			err, _ := utils.ContainManagedClusterMetric(testOptions, "node_memory_Active_bytes offset 1m", []string{`"__name__":"node_memory_Active_bytes"`})
+			return err
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	It("[P2][Sev2][Observability][Integration] Should have no metrics which have been marked for deletion in names section (metrics/g0)", func() {
 		By("Waiting for deleted metrics disappear on grafana console")
 		Eventually(func() error {
-			for _, cluster := range clusters {
-				query := fmt.Sprintf("timestamp(instance:node_num_cpu:sum{cluster=\"%s\"}) - timestamp(instance:node_num_cpu:sum{cluster=\"%s\"} offset 1m) > 59",
-					cluster, cluster)
-				metricslistError, _ = utils.ContainManagedClusterMetric(testOptions, query, []string{})
-				if metricslistError == nil {
-					return nil
-				}
-			}
-			return metricslistError
+			err, _ := utils.ContainManagedClusterMetric(testOptions, "timestamp(cluster_version_payload) - timestamp(cluster_version_payload offset 1m) > 59", []string{})
+			return err
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
 	})
 
 	It("[P2][Sev2][Observability][Integration] Should have no metrics which have been marked for deletion in matches section (metrics/g0)", func() {
 		By("Waiting for deleted metrics disappear on grafana console")
 		Eventually(func() error {
-			for _, cluster := range clusters {
-				query := fmt.Sprintf("timestamp(go_goroutines{cluster=\"%s\"}) - timestamp(go_goroutines{cluster=\"%s\"} offset 1m) > 59",
-					cluster, cluster)
-				metricslistError, _ = utils.ContainManagedClusterMetric(testOptions, query, []string{})
-				if metricslistError == nil {
-					return nil
-				}
-			}
-			return metricslistError
+			err, _ := utils.ContainManagedClusterMetric(testOptions, "timestamp(go_goroutines) - timestamp(go_goroutines offset 1m) > 59", []string{})
+			return err
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
 	})
 
@@ -101,15 +80,8 @@ var _ = Describe("Observability:", func() {
 
 		By("Waiting for new added metrics disappear on grafana console")
 		Eventually(func() error {
-			for _, cluster := range clusters {
-				query := fmt.Sprintf("timestamp(node_memory_Active_bytes{cluster=\"%s\"}) - timestamp(node_memory_Active_bytes{cluster=\"%s\"} offset 1m) > 59",
-					cluster, cluster)
-				metricslistError, _ = utils.ContainManagedClusterMetric(testOptions, query, []string{})
-				if metricslistError == nil {
-					return nil
-				}
-			}
-			return metricslistError
+			err, _ := utils.ContainManagedClusterMetric(testOptions, "timestamp(node_memory_Active_bytes) - timestamp(node_memory_Active_bytes offset 1m) > 59", []string{})
+			return err
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
 	})
 
