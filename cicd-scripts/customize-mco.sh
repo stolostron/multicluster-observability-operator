@@ -124,11 +124,11 @@ get_ginkgo_focus() {
             continue
         fi
         if [[ $file =~ ^operators/multiclusterobservability ]]; then
-            GINKGO_FOCUS+=" --focus addon/g0 --focus config/g0 --focus alert/g0 --focus certrenew/g0 --focus grafana/g0 --focus grafana_dev/g0 --focus dashboard/g0 --focus manifestwork/g0 --focus metrics/g0 --focus observatorium_preserve/g0 --focus reconcile/g0 --focus retention/g0 --focus webhook/g0"
+            GINKGO_FOCUS+=" --focus addon/g0 --focus config/g0 --focus alert/g0 --focus certrenew/g0 --focus grafana/g0 --focus grafana_dev/g0 --focus dashboard/g0 --focus manifestwork/g0 --focus metrics/g0 --focus observatorium_preserve/g0 --focus reconcile/g0 --focus retention/g0"
             continue
         fi
         if [[ $file =~ ^operators/pkg ]]; then
-            GINKGO_FOCUS+=" --focus addon/g0 --focus config/g0 --focus alert/g0 --focus certrenew/g0 --focus grafana/g0 --focus grafana_dev/g0 --focus dashboard/g0 --focus manifestwork/g0 --focus metrics/g0 --focus observatorium_preserve/g0 --focus reconcile/g0 --focus retention/g0 --focus endpoint_preserve/g0 --focus webhook/g0"
+            GINKGO_FOCUS+=" --focus addon/g0 --focus config/g0 --focus alert/g0 --focus certrenew/g0 --focus grafana/g0 --focus grafana_dev/g0 --focus dashboard/g0 --focus manifestwork/g0 --focus metrics/g0 --focus observatorium_preserve/g0 --focus reconcile/g0 --focus retention/g0 --focus endpoint_preserve/g0"
             continue
         fi
         if [[ $file =~ ^pkg ]]; then
