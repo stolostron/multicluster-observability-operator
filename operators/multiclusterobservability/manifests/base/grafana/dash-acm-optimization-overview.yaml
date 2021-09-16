@@ -114,6 +114,7 @@ data:
           "timeFrom": null,
           "timeShift": null,
           "title": "Overestimation",
+          "description": "Highlights % differences between CPU requests commitments vs utilization.  When this difference is large ( >20%), it means that resources are reserved but unused.",
           "type": "stat"
         },
         {
@@ -735,6 +736,7 @@ data:
           "timeFrom": null,
           "timeShift": null,
           "title": "Overestimation",
+          "description": "Highlights % differences between Memory requests commitments vs utilization.  When this difference is large ( >20%), it means that resources are reserved but unused.",
           "type": "stat"
         },
         {
