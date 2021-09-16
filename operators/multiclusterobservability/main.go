@@ -46,6 +46,7 @@ import (
 	ctrlruntimescheme "sigs.k8s.io/controller-runtime/pkg/scheme"
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
 
+	imageregistryv1alpha1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/imageregistry/v1alpha1"
 	observabilityv1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	observabilityv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability"
@@ -123,6 +124,11 @@ func main() {
 	}
 
 	if err := operatorv1.AddToScheme(scheme); err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
+	if err := imageregistryv1alpha1.AddToScheme(scheme); err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}

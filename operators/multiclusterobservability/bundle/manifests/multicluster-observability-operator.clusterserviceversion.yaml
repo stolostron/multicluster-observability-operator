@@ -408,6 +408,14 @@ spec:
           - patch
           - update
           - watch
+        - apiGroups:
+          - imageregistry.open-cluster-management.io
+          resources:
+          - managedclusterimageregistries
+          verbs:
+          - get
+          - list
+          - watch
         serviceAccountName: multicluster-observability-operator
       deployments:
       - name: multicluster-observability-operator

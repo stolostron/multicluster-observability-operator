@@ -28,25 +28,32 @@ const (
 
 // loadTemplates load manifests from manifests directory
 func loadTemplates(mco *mcov1beta2.MultiClusterObservability) (
-	[]runtime.RawExtension, *apiextensionsv1.CustomResourceDefinition,
-	*apiextensionsv1beta1.CustomResourceDefinition, *appsv1.Deployment, error) {
+	[]runtime.RawExtension,
+	*apiextensionsv1.CustomResourceDefinition,
+	*apiextensionsv1beta1.CustomResourceDefinition,
+	*appsv1.Deployment,
+	*corev1.ConfigMap,
+	error) {
 	// render endpoint-observability templates
 	endpointObsTemplates, err := templates.GetOrLoadEndpointObservabilityTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
 		log.Error(err, "Failed to load templates")
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	crdv1 := &apiextensionsv1.CustomResourceDefinition{}
 	crdv1beta1 := &apiextensionsv1beta1.CustomResourceDefinition{}
 	dep := &appsv1.Deployment{}
+	imageListCM := &corev1.ConfigMap{}
 	rawExtensionList := []runtime.RawExtension{}
 	for _, r := range endpointObsTemplates {
 		obj, err := updateRes(r, mco)
 		if err != nil {
-			return nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, err
 		}
 		if r.GetKind() == "Deployment" {
 			dep = obj.(*appsv1.Deployment)
+		} else if r.GetKind() == "ConfigMap" && r.GetName() == operatorconfig.ImageConfigMap {
+			imageListCM = obj.(*corev1.ConfigMap)
 		} else if r.GetKind() == "CustomResourceDefinition" {
 			if r.GetGvk().Version == "v1" {
 				crdv1 = obj.(*apiextensionsv1.CustomResourceDefinition)
@@ -57,7 +64,7 @@ func loadTemplates(mco *mcov1beta2.MultiClusterObservability) (
 			rawExtensionList = append(rawExtensionList, runtime.RawExtension{Object: obj})
 		}
 	}
-	return rawExtensionList, crdv1, crdv1beta1, dep, nil
+	return rawExtensionList, crdv1, crdv1beta1, dep, imageListCM, nil
 }
 
 func updateRes(r *resource.Resource,

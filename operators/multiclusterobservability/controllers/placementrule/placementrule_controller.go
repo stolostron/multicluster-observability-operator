@@ -262,7 +262,8 @@ func createAllRelatedRes(
 	// need to reload the template and update the the corresponding resources
 	// the loadTemplates method is now lightweight operations as we have cache the templates in memory.
 	log.Info("load and update templates for managedcluster resources")
-	rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1, endpointMetricsOperatorDeploy, _ = loadTemplates(mco)
+	rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1,
+		endpointMetricsOperatorDeploy, imageListConfigMap, _ = loadTemplates(mco)
 
 	works, crdv1Work, crdv1beta1Work, err := generateGlobalManifestResources(c, mco)
 	if err != nil {
@@ -437,6 +438,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		CreateFunc: func(e event.CreateEvent) bool {
 			log.Info("CreateFunc", "managedCluster", e.Object.GetName())
 			updateManagedClusterList(e.Object)
+			updateManagedClusterImageRegistry(e.Object)
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -446,6 +448,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					log.Info("DeleteFunc", "managedCluster", e.ObjectNew.GetName())
 				} else {
 					updateManagedClusterList(e.ObjectNew)
+					updateManagedClusterImageRegistry(e.ObjectNew)
 				}
 				return true
 			}
@@ -454,6 +457,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			log.Info("DeleteFunc", "managedCluster", e.Object.GetName())
 			delete(managedClusterList, e.Object.GetName())
+			delete(managedClusterImageRegistry, e.Object.GetName())
 			return true
 		},
 	}
