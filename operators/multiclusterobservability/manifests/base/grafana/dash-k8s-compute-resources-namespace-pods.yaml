@@ -1367,7 +1367,7 @@ data:
           "type": "table"
         }
       ],
-      "refresh": "1m",
+      "refresh": "5m",
       "schemaVersion": 27,
       "style": "dark",
       "tags": ["kubernetes-mixin"],

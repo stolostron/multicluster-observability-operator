@@ -106,7 +106,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\", cluster=\"$cluster\"}[$__interval]))",
+              "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\", cluster=\"$cluster\"}[$__rate_interval]))",
               "format": "time_series",
               "instant": true,
               "intervalFactor": 1,
@@ -2024,7 +2024,7 @@ data:
           }
         }
       ],
-      "refresh": "1m",
+      "refresh": "5m",
       "schemaVersion": 27,
       "style": "dark",
       "tags": [

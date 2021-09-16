@@ -148,7 +148,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(grpc_server_started_total{cluster=\"$cluster\",job=\"etcd\",grpc_type=\"unary\"}[5m]))",
+              "expr": "sum(rate(grpc_server_started_total{cluster=\"$cluster\",job=\"etcd\",grpc_type=\"unary\"}[$__rate_interval]))",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -478,7 +478,7 @@ data:
           "steppedLine": true,
           "targets": [
             {
-              "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket{cluster=\"$cluster\",job=\"etcd\"}[5m])) by (instance, le))",
+              "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket{cluster=\"$cluster\",job=\"etcd\"}[$__rate_interval])) by (instance, le))",
               "hide": false,
               "interval": "",
               "intervalFactor": 2,
@@ -488,7 +488,7 @@ data:
               "step": 4
             },
             {
-              "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_backend_commit_duration_seconds_bucket{cluster=\"$cluster\",job=\"etcd\"}[5m])) by (instance, le))",
+              "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_backend_commit_duration_seconds_bucket{cluster=\"$cluster\",job=\"etcd\"}[$__rate_interval])) by (instance, le))",
               "interval": "",
               "intervalFactor": 2,
               "legendFormat": "{{instance}} DB fsync",
@@ -692,7 +692,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "rate(etcd_network_client_grpc_received_bytes_total{cluster=\"$cluster\", job=\"etcd\"}[5m])",
+              "expr": "rate(etcd_network_client_grpc_received_bytes_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval])",
               "interval": "",
               "intervalFactor": 2,
               "legendFormat": "{{instance}} Client Traffic In",
@@ -795,7 +795,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "rate(etcd_network_client_grpc_sent_bytes_total{cluster=\"$cluster\", job=\"etcd\"}[5m])",
+              "expr": "rate(etcd_network_client_grpc_sent_bytes_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval])",
               "interval": "",
               "intervalFactor": 2,
               "legendFormat": "{{instance}} Client Traffic Out",
@@ -898,7 +898,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(etcd_network_peer_received_bytes_total{cluster=\"$cluster\", job=\"etcd\"}[5m])) by (instance)",
+              "expr": "sum(rate(etcd_network_peer_received_bytes_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval])) by (instance)",
               "interval": "",
               "intervalFactor": 2,
               "legendFormat": "{{instance}} Peer Traffic In",
@@ -1002,7 +1002,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(etcd_network_peer_sent_bytes_total{cluster=\"$cluster\", job=\"etcd\"}[5m])) by (instance)",
+              "expr": "sum(rate(etcd_network_peer_sent_bytes_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval])) by (instance)",
               "hide": false,
               "interval": "",
               "intervalFactor": 2,
@@ -1104,7 +1104,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(rate(etcd_server_proposals_failed_total{cluster=\"$cluster\", job=\"etcd\"}[5m]))",
+              "expr": "sum(rate(etcd_server_proposals_failed_total{cluster=\"$cluster\", job=\"etcd\"}[$__rate_interval]))",
               "interval": "",
               "intervalFactor": 2,
               "legendFormat": "Proposal Failure Rate",
@@ -1122,7 +1122,7 @@ data:
               "step": 2
             },
             {
-              "expr": "sum(rate(etcd_server_proposals_committed_total{job=\"$cluster\"}[5m]))",
+              "expr": "sum(rate(etcd_server_proposals_committed_total{job=\"$cluster\"}[$__rate_interval]))",
               "intervalFactor": 2,
               "legendFormat": "Proposal Commit Rate",
               "metric": "etcd_server_proposals_committed_total",
@@ -1130,7 +1130,7 @@ data:
               "step": 2
             },
             {
-              "expr": "sum(rate(etcd_server_proposals_applied_total{job=\"$cluster\"}[5m]))",
+              "expr": "sum(rate(etcd_server_proposals_applied_total{job=\"$cluster\"}[$__rate_interval]))",
               "intervalFactor": 2,
               "legendFormat": "Proposal Apply Rate",
               "refId": "D",

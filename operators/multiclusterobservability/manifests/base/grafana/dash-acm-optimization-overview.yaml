@@ -102,7 +102,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "(sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"cpu\"}) / sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"cpu\"})) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\",cluster=\"$cluster\"}[$__interval])))",
+              "expr": "(sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"cpu\"}) / sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"cpu\"})) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\",cluster=\"$cluster\"}[$__rate_interval])))",
               "format": "time_series",
               "instant": true,
               "interval": "",
@@ -356,7 +356,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\", cluster=\"$cluster\"}[$__interval]))",
+              "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\", cluster=\"$cluster\"}[$__rate_interval]))",
               "format": "time_series",
               "instant": true,
               "intervalFactor": 1,
@@ -1535,7 +1535,7 @@ data:
           "type": "table"
         }
       ],
-      "refresh": "1m",
+      "refresh": "5m",
       "schemaVersion": 27,
       "style": "dark",
       "tags": [
