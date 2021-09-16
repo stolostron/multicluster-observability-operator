@@ -106,18 +106,18 @@ const (
 	ThanosImgName = "thanos"
 	ThanosImgTag  = "2.2.0-07de623d1f9a049e184dbec3716a3de05b270a1f"
 
-	MemcachedImgRepo = "docker.io"
+	MemcachedImgRepo = "quay.io/songleo"
 	MemcachedImgName = "memcached"
 	MemcachedImgTag  = "1.6.3-alpine"
 
-	MemcachedExporterImgRepo = "prom"
+	MemcachedExporterImgRepo = "quay.io/prometheus"
 	MemcachedExporterImgName = "memcached-exporter"
 	MemcachedExporterKey     = "memcached_exporter"
 	MemcachedExporterImgTag  = "v0.8.0"
 
-	GrafanaImgRepo            = "grafana"
-	GrafanaImgName            = "grafana"
-	GrafanaImgTagSuffix       = "6.5.3"
+	GrafanaImgRepo            = "quay.io/openshift"
+	GrafanaImgName            = "origin-grafana"
+	GrafanaImgTagSuffix       = "4.6.0"
 	GrafanaDashboardLoaderKey = "grafana_dashboard_loader"
 
 	AlertManagerImgRepo           = "quay.io/openshift"
