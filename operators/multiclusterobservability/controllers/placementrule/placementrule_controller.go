@@ -259,12 +259,10 @@ func createAllRelatedRes(
 		currentClusters = append(currentClusters, ep.Namespace)
 	}
 
-	// need to reload the template for mch update request, because the images for managedclusteraddon may change
-	if request.Name == config.MCHUpdatedRequestName {
-		// reload and rerender the templates for manifestwork
-		log.Info("load template for MCH UPDATE")
-		rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1, endpointMetricsOperatorDeploy, _ = loadTemplates(mco)
-	}
+	// need to reload the template and update the the corresponding resources
+	// the loadTemplates method is now lightweight operations as we have cache the templates in memory.
+	log.Info("load and update templates for managedcluster resources")
+	rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1, endpointMetricsOperatorDeploy, _ = loadTemplates(mco)
 
 	works, crdv1Work, crdv1beta1Work, err := generateGlobalManifestResources(c, mco)
 	if err != nil {
@@ -486,9 +484,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		CreateFunc: func(e event.CreateEvent) bool {
 			// generate the image pull secret
 			pullSecret, _ = generatePullSecret(c, config.GetImagePullSecret(e.Object.(*mcov1beta2.MultiClusterObservability).Spec))
-			// load and render the templates for manifestwork
-			log.Info("oad template for MCO CREATE")
-			rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1, endpointMetricsOperatorDeploy, _ = loadTemplates(e.Object.(*mcov1beta2.MultiClusterObservability))
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -500,9 +495,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					// regenerate the image pull secret
 					pullSecret, _ = generatePullSecret(c, config.GetImagePullSecret(e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec))
 				}
-				// reload and rerender the templates for manifestwork
-				log.Info("load template for MCO UPDATE")
-				rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1, endpointMetricsOperatorDeploy, _ = loadTemplates(e.ObjectNew.(*mcov1beta2.MultiClusterObservability))
 				return true
 			}
 			return false
