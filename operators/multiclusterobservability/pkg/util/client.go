@@ -13,6 +13,7 @@ import (
 	crdClientSet "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -23,9 +24,32 @@ import (
 var log = logf.Log.WithName("util")
 
 var (
-	crdClient crdClientSet.Interface
-	ocpClient ocpClientSet.Interface
+	kubeClient kubernetes.Interface
+	crdClient  crdClientSet.Interface
+	ocpClient  ocpClientSet.Interface
 )
+
+// GetOrCreateKubeClient gets existing kubeclient or creates new one if it doesn't exist
+func GetOrCreateKubeClient() (kubernetes.Interface, error) {
+	if kubeClient != nil {
+		return kubeClient, nil
+	}
+	// create the config from the path
+	config, err := clientcmd.BuildConfigFromFlags("", "")
+	if err != nil {
+		log.Error(err, "Failed to create the config")
+		return nil, err
+	}
+
+	// generate the client based off of the config
+	kubeClient, err = kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Error(err, "Failed to create kube client")
+		return nil, err
+	}
+
+	return kubeClient, nil
+}
 
 // GetOrCreateOCPClient creates ocp client
 func GetOrCreateOCPClient() (ocpClientSet.Interface, error) {
