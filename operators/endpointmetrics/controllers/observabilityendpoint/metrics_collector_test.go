@@ -20,7 +20,7 @@ import (
 func getAllowlistCM() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      metricsConfigMapName,
+			Name:      operatorconfig.AllowlistConfigMapName,
 			Namespace: namespace,
 		},
 		Data: map[string]string{

@@ -307,7 +307,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(metricsConfigMapName, namespace, true, true, false)),
+			builder.WithPredicates(getPred(operatorconfig.AllowlistConfigMapName, namespace, true, true, false)),
 		).
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
