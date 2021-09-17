@@ -558,71 +558,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #A"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Requested"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #B"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Utilized"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "rgba(50, 172, 45, 0.97)",
-                          "value": null
-                        },
-                        {
-                          "color": "rgba(237, 129, 40, 0.89)",
-                          "value": null
-                        }
-                      ]
-                    }
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #C"
+                  "options": "Value"
                 },
                 "properties": [
                   {
@@ -660,6 +596,46 @@ data:
                         }
                       ]
                     }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "cpu_requested"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Requested"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "cpu_utilized"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Utilized"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
                   }
                 ]
               },
@@ -708,62 +684,40 @@ data:
           "id": 151,
           "interval": "4m",
           "options": {
-            "showHeader": true
+            "showHeader": true,
+            "sortBy": []
           },
           "pluginVersion": "7.3.10",
           "targets": [
             {
-              "expr": "(sum(cluster:kube_pod_container_resource_requests:cpu:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval])) by (cluster))",
-              "format": "table",
-              "hide": false,
+              "exemplar": true,
+              "expr": "topk(50, sum(cluster:kube_pod_container_resource_requests:cpu:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__interval])) by (cluster)))\n* on(cluster) group_left(cpu_requested) count_values without() (\"cpu_requested\", sum(cluster:kube_pod_container_resource_requests:cpu:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster))\n* on(cluster) group_left(cpu_utilized) count_values without() (\"cpu_utilized\", (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__interval])) by (cluster)))",
               "instant": true,
               "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "",
-              "refId": "C"
-            },
-            {
-              "expr": "sum(cluster:kube_pod_container_resource_requests:cpu:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
               "legendFormat": "",
               "refId": "A"
-            },
-            {
-              "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval])) by (cluster)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "",
-              "refId": "B"
             }
           ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "CPU",
+          "title": "Top 50 CPU Overestimation Clusters",
           "transformations": [
             {
-              "id": "merge",
-              "options": {
-                "reducers": []
-              }
+              "id": "labelsToFields",
+              "options": {}
             },
             {
-              "id": "filterFieldsByName",
+              "id": "organize",
               "options": {
-                "include": {
-                  "names": [
-                    "cluster",
-                    "Value #C",
-                    "Value #A",
-                    "Value #B"
-                  ]
-                }
+                "excludeByName": {
+                  "Time": true
+                },
+                "indexByName": {
+                  "Time": 0,
+                  "Value": 2,
+                  "cluster": 1,
+                  "cpu_requested": 3,
+                  "cpu_utilized": 4
+                },
+                "renameByName": {}
               }
             }
           ],
@@ -800,71 +754,41 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #A"
+                  "options": "cluster"
                 },
                 "properties": [
                   {
-                    "id": "displayName",
-                    "value": "Requested"
-                  },
-                  {
                     "id": "unit",
-                    "value": "percentunit"
+                    "value": "short"
                   },
                   {
                     "id": "decimals",
                     "value": 2
                   },
                   {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": false,
+                        "title": "Drill down to cluster",
+                        "url": "/d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=${__data.fields.cluster}"
+                      }
+                    ]
+                  },
+                  {
                     "id": "custom.align",
                     "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #B"
-                },
-                "properties": [
+                  },
                   {
                     "id": "displayName",
-                    "value": "Utilized"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "rgba(50, 172, 45, 0.97)",
-                          "value": null
-                        },
-                        {
-                          "color": "rgba(237, 129, 40, 0.89)",
-                          "value": null
-                        }
-                      ]
-                    }
+                    "value": "Cluster"
                   }
                 ]
               },
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #C"
+                  "options": "Value"
                 },
                 "properties": [
                   {
@@ -908,34 +832,40 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "cluster"
+                  "options": "memory_requested"
                 },
                 "properties": [
                   {
+                    "id": "displayName",
+                    "value": "Requested"
+                  },
+                  {
                     "id": "unit",
-                    "value": "short"
+                    "value": "percentunit"
                   },
                   {
                     "id": "decimals",
                     "value": 2
-                  },
-                  {
-                    "id": "links",
-                    "value": [
-                      {
-                        "targetBlank": false,
-                        "title": "Drill down to cluster",
-                        "url": "/d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=${__data.fields.cluster}"
-                      }
-                    ]
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  },
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "memory_utilized"
+                },
+                "properties": [
                   {
                     "id": "displayName",
-                    "value": "Cluster"
+                    "value": "Utilized"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
                   }
                 ]
               }
@@ -950,62 +880,40 @@ data:
           "id": 153,
           "interval": "4m",
           "options": {
-            "showHeader": true
+            "showHeader": true,
+            "sortBy": []
           },
           "pluginVersion": "7.3.10",
           "targets": [
             {
-              "expr": "(sum(cluster:kube_pod_container_resource_requests:memory:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)) - (1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster))",
-              "format": "table",
-              "hide": false,
+              "exemplar": true,
+              "expr": "topk(50, (sum(cluster:kube_pod_container_resource_requests:memory:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)) - (1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)))\n* on(cluster) group_left(memory_requested) count_values without() (\"memory_requested\", sum(cluster:kube_pod_container_resource_requests:memory:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster))\n* on(cluster) group_left(memory_utilized) count_values without() (\"memory_utilized\", (1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)))",
               "instant": true,
               "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "",
-              "refId": "C"
-            },
-            {
-              "expr": "sum(cluster:kube_pod_container_resource_requests:memory:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
               "legendFormat": "",
               "refId": "A"
-            },
-            {
-              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "",
-              "refId": "B"
             }
           ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Memory",
+          "title": "Top 50 Memory Overestimation Clusters",
           "transformations": [
             {
-              "id": "merge",
-              "options": {
-                "reducers": []
-              }
+              "id": "labelsToFields",
+              "options": {}
             },
             {
-              "id": "filterFieldsByName",
+              "id": "organize",
               "options": {
-                "include": {
-                  "names": [
-                    "cluster",
-                    "Value #C",
-                    "Value #A",
-                    "Value #B"
-                  ]
-                }
+                "excludeByName": {
+                  "Time": true
+                },
+                "indexByName": {
+                  "Time": 0,
+                  "Value": 2,
+                  "cluster": 1,
+                  "memory_requested": 3,
+                  "memory_utilized": 4
+                },
+                "renameByName": {}
               }
             }
           ],
@@ -1056,104 +964,12 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #F"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Total Cores"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #B"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Allocatable Cores"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #A"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Requested"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #G"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Utilized"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
                   "options": "cluster"
                 },
                 "properties": [
                   {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
+                    "id": "displayName",
+                    "value": "Cluster"
                   },
                   {
                     "id": "links",
@@ -1174,6 +990,74 @@ data:
                     "value": "Cluster"
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "machine_cpu_cores_sum"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Total Cores"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "node_allocatable_cpu_cores_sum"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Allocatable Cores"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "cpu_requested"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Requested"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Utilized"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  }
+                ]
               }
             ]
           },
@@ -1191,87 +1075,35 @@ data:
           "pluginVersion": "7.3.10",
           "targets": [
             {
-              "expr": "sum(machine_cpu_cores) by (cluster)",
-              "format": "table",
+              "exemplar": true,
+              "expr": "topk(50, 1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) by (cluster))\n* on(cluster) group_left(machine_cpu_cores_sum) count_values without() (\"machine_cpu_cores_sum\", sum(machine_cpu_cores) by (cluster))\n* on(cluster) group_left(node_allocatable_cpu_cores_sum) count_values without() (\"node_allocatable_cpu_cores_sum\", sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster))\n* on(cluster) group_left(cpu_requested) count_values without() (\"cpu_requested\", sum(cluster:kube_pod_container_resource_requests:cpu:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster))",
               "instant": true,
               "interval": "",
-              "legendFormat": "",
-              "refId": "F"
-            },
-            {
-              "expr": "sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)",
-              "format": "table",
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "B"
-            },
-            {
-              "expr": "sum(cluster:kube_pod_container_resource_requests:cpu:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"cpu\"}) by (cluster)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
               "legendFormat": "",
               "refId": "A"
-            },
-            {
-              "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval])) by (cluster)",
-              "format": "table",
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "G"
             }
           ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "CPU",
+          "title": "Top 50 CPU Utilized Clusters",
           "transformations": [
             {
-              "id": "seriesToColumns",
-              "options": {
-                "byField": "cluster"
-              }
+              "id": "labelsToFields",
+              "options": {}
             },
             {
               "id": "organize",
               "options": {
                 "excludeByName": {
-                  "Time": true,
-                  "Time 1": false
+                  "Time": true
                 },
-                "indexByName": {},
-                "renameByName": {
-                  "Value #A": "Usage %",
-                  "Value #C": "Disk",
-                  "Value #D": "Memory",
-                  "Value #E": "Network",
-                  "Value #F": "Total Cores",
-                  "Value #G": "Requests %",
-                  "cluster": "Cluster"
-                }
-              }
-            },
-            {
-              "id": "merge",
-              "options": {
-                "reducers": []
-              }
-            },
-            {
-              "id": "filterFieldsByName",
-              "options": {
-                "include": {
-                  "names": [
-                    "cluster",
-                    "Value #F",
-                    "Value #B",
-                    "Value #A",
-                    "Value #G"
-                  ]
-                }
+                "indexByName": {
+                  "Time": 0,
+                  "Value": 5,
+                  "cluster": 1,
+                  "cpu_requested": 4,
+                  "machine_cpu_cores_sum": 2,
+                  "node_allocatable_cpu_cores_sum": 3
+                },
+                "renameByName": {}
               }
             }
           ],
@@ -1378,6 +1210,7 @@ data:
         },
         {
           "datasource": "$datasource",
+          "description": "",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1406,88 +1239,12 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #F"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Available Memory"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "bytes"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #A"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Requested"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #G"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Utilized"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "percentunit"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
                   "options": "cluster"
                 },
                 "properties": [
                   {
-                    "id": "unit",
-                    "value": "short"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
+                    "id": "displayName",
+                    "value": "Cluster"
                   },
                   {
                     "id": "links",
@@ -1508,6 +1265,70 @@ data:
                     "value": "Cluster"
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "machine_memory_sum"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Available Memory"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "bytes"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "machine_memory_requested"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Requested"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Utilized"
+                  },
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 2
+                  },
+                  {
+                    "id": "custom.align",
+                    "value": "left"
+                  }
+                ]
               }
             ]
           },
@@ -1518,50 +1339,26 @@ data:
             "y": 25
           },
           "id": 60,
+          "interval": "4m",
           "options": {
             "showHeader": true
           },
           "pluginVersion": "7.3.10",
           "targets": [
             {
-              "expr": "sum(machine_memory_bytes) by (cluster)",
-              "format": "table",
-              "hide": false,
+              "exemplar": true,
+              "expr": "topk(50, 1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster))\n* on(cluster) group_left(machine_memory_sum) count_values without() (\"machine_memory_sum\", sum(machine_memory_bytes) by (cluster))\n* on(cluster) group_left(machine_memory_requested) count_values without() (\"machine_memory_requested\", sum(cluster:kube_pod_container_resource_requests:memory:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster))",
               "instant": true,
               "interval": "",
-              "intervalFactor": 1,
-              "legendFormat": "",
-              "refId": "F"
-            },
-            {
-              "expr": "sum(cluster:kube_pod_container_resource_requests:memory:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "intervalFactor": 1,
               "legendFormat": "",
               "refId": "A"
-            },
-            {
-              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "G"
             }
           ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "Memory",
+          "title": "Top 50 Memory Utilized Clusters",
           "transformations": [
             {
-              "id": "seriesToColumns",
-              "options": {
-                "byField": "cluster"
-              }
+              "id": "labelsToFields",
+              "options": {}
             },
             {
               "id": "organize",
@@ -1569,35 +1366,14 @@ data:
                 "excludeByName": {
                   "Time": true
                 },
-                "indexByName": {},
-                "renameByName": {
-                  "Value #A": "Usage %",
-                  "Value #C": "Disk",
-                  "Value #D": "Memory",
-                  "Value #E": "Network",
-                  "Value #F": "Total Memory",
-                  "Value #G": "Requests %",
-                  "cluster": "Cluster"
-                }
-              }
-            },
-            {
-              "id": "merge",
-              "options": {
-                "reducers": []
-              }
-            },
-            {
-              "id": "filterFieldsByName",
-              "options": {
-                "include": {
-                  "names": [
-                    "cluster",
-                    "Value #F",
-                    "Value #A",
-                    "Value #G"
-                  ]
-                }
+                "indexByName": {
+                  "Time": 0,
+                  "Value": 4,
+                  "cluster": 1,
+                  "machine_memory_requested": 3,
+                  "machine_memory_sum": 2
+                },
+                "renameByName": {}
               }
             }
           ],
