@@ -117,7 +117,7 @@ const (
 	ThanosImgName = "thanos"
 	ThanosImgTag  = "2.3.0-SNAPSHOT-2021-07-26-18-43-26"
 
-	MemcachedImgRepo = "quay.io/songleo"
+	MemcachedImgRepo = "quay.io/ocm-observability"
 	MemcachedImgName = "memcached"
 	MemcachedImgTag  = "1.6.3-alpine"
 
