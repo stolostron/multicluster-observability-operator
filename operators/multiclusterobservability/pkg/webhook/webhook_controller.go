@@ -11,7 +11,10 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var log = logf.Log.WithName("webhook-controller")
 
 // WebhookController define the controller that manages(create, update and delete) the webhook configurations.
 type WebhookController struct {
@@ -86,12 +89,16 @@ func (wc *WebhookController) Start(ctx context.Context) error {
 	<-ctx.Done()
 
 	if wc.mutatingWebhook != nil {
-		// delete the mutatingwenhookconfiguration and ignore error
-		wc.client.AdmissionregistrationV1().MutatingWebhookConfigurations().Delete(context.TODO(), wc.mutatingWebhook.GetName(), metav1.DeleteOptions{})
+		// delete the mutatingwebhookconfiguration and ignore error
+		if err := wc.client.AdmissionregistrationV1().MutatingWebhookConfigurations().Delete(context.TODO(), wc.mutatingWebhook.GetName(), metav1.DeleteOptions{}); err != nil {
+			log.V(1).Info("error to delete the mutatingwebhookconfiguration", "mutatingwebhookconfiguration", wc.mutatingWebhook.GetName())
+		}
 	}
 	if wc.validatingWebhook != nil {
-		// delete the validatingwenhookconfiguration and ignore error
-		wc.client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Delete(context.TODO(), wc.validatingWebhook.GetName(), metav1.DeleteOptions{})
+		// delete the validatingwebhookconfiguration and ignore error
+		if err := wc.client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Delete(context.TODO(), wc.validatingWebhook.GetName(), metav1.DeleteOptions{}); err != nil {
+			log.V(1).Info("error to delete the validatingwebhookconfiguration", "validatingwebhookconfiguration", wc.validatingWebhook.GetName(), "message", err)
+		}
 	}
 
 	return nil
