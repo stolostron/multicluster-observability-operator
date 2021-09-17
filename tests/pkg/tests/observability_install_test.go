@@ -156,16 +156,16 @@ func installMCO() {
 		return nil
 	}, EventuallyTimeoutMinute*25, EventuallyIntervalSecond*10).Should(Succeed())
 
-	By("Check endpoint-operator and metrics-collector pods are created")
+	By("Check endpoint-operator and metrics-collector pods are ready")
 	Eventually(func() error {
-		err = utils.CheckMCOAddon(testOptions)
+		err = utils.CheckAllOBAsEnabled(testOptions)
 		if err != nil {
 			testFailed = true
 			return err
 		}
 		testFailed = false
 		return nil
-	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+	}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*10).Should(Succeed())
 
 	By("Check clustermanagementaddon CR is created")
 	Eventually(func() error {

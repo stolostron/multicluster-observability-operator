@@ -99,8 +99,9 @@ BRANCH=""
 LATEST_SNAPSHOT=""
 if [[ "${PULL_BASE_REF}" == "release-"* ]]; then
     BRANCH=${PULL_BASE_REF#"release-"}
-    BRANCH=${BRANCH}".0"
-    LATEST_SNAPSHOT=$(curl https://quay.io/api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'-SNAPSHOT")))|keys[length-1]')
+    BRANCH=`curl https://quay.io//api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'")))|keys[length-1]' | awk -F '-' '{print $1}'`
+    BRANCH="${BRANCH#\"}"
+    LATEST_SNAPSHOT=`curl https://quay.io//api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'-SNAPSHOT")))|keys[length-1]'`
 fi
 if [[ "${LATEST_SNAPSHOT}" == "null" ]] || [[ "${LATEST_SNAPSHOT}" == "" ]]; then
     LATEST_SNAPSHOT=$(curl https://quay.io/api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("SNAPSHOT")))|keys[length-1]')
