@@ -1390,6 +1390,10 @@ github.com/mailru/easyjson v0.7.6 h1:8yTIVnZgCoiM1TgqoeTl+LfU5Jg6/xL3QhGQnimLYnA
 github.com/mailru/easyjson v0.7.6/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=
 github.com/maorfr/helm-plugin-utils v0.0.0-20200216074820-36d2fcf6ae86/go.mod h1:p3gwmRSFqbWw6plBpR0sKl3n3vpu8kX70gvCJKMvvCA=
 github.com/maratori/testpackage v1.0.1/go.mod h1:ddKdw+XG0Phzhx8BFDTKgpWP4i7MpApTE5fXSKAqwDU=
+github.com/marcolan018/observatorium-operator v0.0.0-20210918063319-435c43e3baaf h1:G8jldTt9gvtIzaBN+eGaoIWjtfaTzygIHGiZJv0ali8=
+github.com/marcolan018/observatorium-operator v0.0.0-20210918063319-435c43e3baaf/go.mod h1:+WGDwga4Fsdmuj/eMVfqEzpvTZ7yKkq1mqVSRuUzAT4=
+github.com/marcolan018/observatorium-operator v0.0.0-20210918065132-6d86510d83bf h1:dEi2jTt/GY6LamITrIOA0AgvvSJOtLgFelokqvmdgOM=
+github.com/marcolan018/observatorium-operator v0.0.0-20210918065132-6d86510d83bf/go.mod h1:+WGDwga4Fsdmuj/eMVfqEzpvTZ7yKkq1mqVSRuUzAT4=
 github.com/markbates/inflect v1.0.4/go.mod h1:1fR9+pO2KHEO9ZRtto13gDwwZaAKstQzferVeWqbgNs=
 github.com/markbates/oncer v0.0.0-20181203154359-bf2de49a0be2/go.mod h1:Ld9puTsIW75CHf65OeIOkyKbteujpZVXDpWK6YGZbxE=
 github.com/markbates/pkger v0.17.1/go.mod h1:0JoVlrol20BSywW79rN3kdFFsE5xYM+rSCQDXbLhiuI=

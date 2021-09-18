@@ -154,6 +154,7 @@ require (
 )
 
 replace (
+	github.com/open-cluster-management/observatorium-operator => github.com/marcolan018/observatorium-operator v0.0.0-20210918065132-6d86510d83bf
 	github.com/go-openapi/analysis => github.com/go-openapi/analysis v0.19.5
 	github.com/go-openapi/loads => github.com/go-openapi/loads v0.19.5
 	github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.5
