@@ -19,14 +19,15 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": 17,
-      "iteration": 1632176069647,
+      "id": 15,
+      "iteration": 1632264737387,
       "links": [
         {
           "icon": "dashboard",
           "includeVars": false,
           "keepTime": false,
           "tags": [],
+          "targetBlank": true,
           "title": "Kubernetes / Service-Level Overview /  API Server / Cluster",
           "type": "link",
           "url": "./d/3TwB9bRnnz/kubernetes-service-level-overview-api-server-cluster?orgId=1&refresh=5m"
@@ -49,7 +50,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "A total number of the clusters that have exceeded their SLO target.",
+          "description": "A total number of the clusters that have exceeded their service-level objective (SLO) target.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -130,7 +131,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "A total number of clusters that haven't breached the SLO target.",
+          "description": "A total number of clusters that haven't breached the service-level objective (SLO) target.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -185,7 +186,7 @@ data:
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "/^Value$/",
+              "fields": "",
               "values": false
             },
             "text": {},
@@ -267,8 +268,9 @@ data:
                     "id": "links",
                     "value": [
                       {
-                        "title": "",
-                        "url": "./d/3TwB9bRnnz/kubernetes-service-level-overview-api-server-cluster?orgId=1&var-cluster=﻿${__data.fields.cluster}﻿﻿﻿﻿&var-slo=﻿﻿﻿${slo}﻿﻿﻿&${__url_time_range}"
+                        "targetBlank": true,
+                        "title": "Kubernetes / Service-Level Overview  / API Server / Cluster",
+                        "url": "./d/3TwB9bRnnz/kubernetes-service-level-overview-api-server-cluster?orgId=1&var-cluster=﻿${__data.fields.cluster}﻿﻿﻿﻿&${__url_time_range}"
                       }
                     ]
                   }
@@ -277,7 +279,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value"
+                  "options": "SLO"
                 },
                 "properties": [
                   {
@@ -317,28 +319,48 @@ data:
               "interval": "1m",
               "legendFormat": "",
               "refId": "A"
+            },
+            {
+              "expr": "(0.99 - sort_desc(bottomk($top, floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=~\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=~\"$cluster\"}[$__range]))))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
             }
           ],
           "timeFrom": "$window",
           "timeShift": null,
-          "title": "Topk Clusters ($top)",
+          "title": "Top Clusters ($top)",
           "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
             {
               "id": "organize",
               "options": {
                 "excludeByName": {
-                  "clusterID": false,
-                  "clusterType": true,
+                  "clusterID": true,
                   "receive": true,
-                  "slo": true,
-                  "target": true,
                   "tenant_id": true
                 },
-                "indexByName": {},
+                "indexByName": {
+                  "Time": 0,
+                  "Value #A": 7,
+                  "Value #B": 6,
+                  "cluster": 1,
+                  "clusterID": 2,
+                  "receive": 3,
+                  "target": 4,
+                  "tenant_id": 5
+                },
                 "renameByName": {
+                  "Value #A": "SLO",
+                  "Value #B": "Error Budget",
                   "cluster": "Cluster",
-                  "clusterID": "ClusterID",
-                  "clusterType": "ClusterType"
+                  "target": "Target"
                 }
               }
             }
@@ -365,7 +387,7 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": null,
-          "description": "The service level indicator (SLI) trend of the topk clusters over a relative time. The results are sorted from worst offending clusters to passing clusters.",
+          "description": "The service-level indicator (SLI) trend of the topk clusters over a relative time. The results are sorted from worst offending clusters to passing clusters.",
           "fieldConfig": {
             "defaults": {
               "color": {},
@@ -435,7 +457,7 @@ data:
           "timeFrom": null,
           "timeRegions": [],
           "timeShift": null,
-          "title": "Topk Cluster's SLI Trend ($top)",
+          "title": "Top Cluster's SLI Trend ($top)",
           "tooltip": {
             "shared": true,
             "sort": 0,
@@ -521,14 +543,14 @@ data:
             "name": "cluster",
             "options": [
               {
-                "selected": true,
+                "selected": false,
                 "text": "All",
                 "value": "$__all"
               },
               {
-                "selected": false,
-                "text": "",
-                "value": ""
+                "selected": true,
+                "text": "local-cluster",
+                "value": "local-cluster"
               }
             ],
             "query": {
@@ -638,7 +660,7 @@ data:
       "timezone": "browser",
       "title": "Kubernetes / Service-Level Overview / API Server",
       "uid": "L8KwmaR7nz",
-      "version": 67
+      "version": 7
     }
 kind: ConfigMap
 metadata:

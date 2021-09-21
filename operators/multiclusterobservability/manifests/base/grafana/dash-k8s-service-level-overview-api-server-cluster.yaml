@@ -20,13 +20,14 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 13,
-      "iteration": 1632253235489,
+      "iteration": 1632264932705,
       "links": [
         {
           "icon": "dashboard",
           "includeVars": false,
           "keepTime": false,
           "tags": [],
+          "targetBlank": true,
           "title": "Kubernetes / Service-Level Overview / API Server",
           "tooltip": "",
           "type": "link",
@@ -107,18 +108,7 @@ data:
           "timeFrom": null,
           "timeShift": null,
           "title": "Target",
-          "transformations": [
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {},
-                "indexByName": {},
-                "renameByName": {
-                  "target": "Target"
-                }
-              }
-            }
-          ],
+          "transformations": [],
           "type": "stat"
         },
         {
@@ -374,7 +364,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "The amount of error budget that has been consumed for the API server request duration SLO.",
+          "description": "The amount of error budget that has been consumed for the API server request duration service-level objective (SLO).",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -417,7 +407,7 @@ data:
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "/^Value$/",
+              "fields": "",
               "values": false
             },
             "showThresholdLabels": false,
@@ -587,7 +577,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "The amount of error budget that has been consumed for the API server request duration SLO.",
+          "description": "The amount of error budget that has been consumed for the API server request duration service-level objective (SLO).",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -630,7 +620,7 @@ data:
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "/^Value$/",
+              "fields": "",
               "values": false
             },
             "showThresholdLabels": false,
@@ -875,7 +865,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "Collected SLI values for the API server request duration SLO, over the relative time range. (# of data points are subjected to change based upon the interval set by Grafana)",
+          "description": "The collected service-level indicator (SLI) values for the API server request duration service-level objective (SLO), over the relative time range. (# of data points are subjected to change based upon the interval set by Grafana)",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1004,9 +994,8 @@ data:
           {
             "allValue": null,
             "current": {
-              "isNone": true,
               "selected": false,
-              "text": "None",
+              "text": "",
               "value": ""
             },
             "datasource": null,
@@ -1043,7 +1032,7 @@ data:
       "timezone": "",
       "title": "Kubernetes / Service-Level Overview / API Server / Cluster",
       "uid": "3TwB9bRnnz",
-      "version": 3
+      "version": 4
     }
 kind: ConfigMap
 metadata:
