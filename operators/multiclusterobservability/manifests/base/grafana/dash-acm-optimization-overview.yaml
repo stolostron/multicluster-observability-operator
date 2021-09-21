@@ -114,6 +114,7 @@ data:
           "timeFrom": null,
           "timeShift": null,
           "title": "Overestimation",
+          "description": "Highlights % differences between CPU requests commitments vs utilization.  When this difference is large ( >20%), it means that resources are reserved but unused.",
           "type": "stat"
         },
         {
@@ -415,7 +416,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to pods",
-                        "url": "./d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
+                        "url": "/d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
@@ -551,7 +552,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to pods",
-                        "url": "./d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
+                        "url": "/d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
@@ -735,6 +736,7 @@ data:
           "timeFrom": null,
           "timeShift": null,
           "title": "Overestimation",
+          "description": "Highlights % differences between Memory requests commitments vs utilization.  When this difference is large ( >20%), it means that resources are reserved but unused.",
           "type": "stat"
         },
         {
@@ -1116,7 +1118,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to pods",
-                        "url": "./d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
+                        "url": "/d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
@@ -1150,7 +1152,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to pods",
-                        "url": "./d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
+                        "url": "/d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
@@ -1183,7 +1185,7 @@ data:
                     "value": [
                       {
                         "title": "Drill down to pods",
-                        "url": "./d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
+                        "url": "/d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   }
@@ -1570,7 +1572,7 @@ data:
               "value": ""
             },
             "datasource": "$datasource",
-            "definition": "label_values(node_cpu_seconds_total,cluster)",
+            "definition": "label_values(cluster)",
             "description": null,
             "error": null,
             "hide": 0,
@@ -1580,7 +1582,7 @@ data:
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(node_cpu_seconds_total,cluster)",
+              "query": "label_values(cluster)",
               "refId": "Observatorium-cluster-Variable-Query"
             },
             "refresh": 2,

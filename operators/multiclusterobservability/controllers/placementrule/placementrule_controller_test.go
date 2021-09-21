@@ -5,11 +5,15 @@ package placementrule
 
 import (
 	"context"
+	"os"
+	"path"
+	"strings"
 	"testing"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,12 +23,14 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
-	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
-	workv1 "github.com/open-cluster-management/api/work/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
+	mchv1 "github.com/open-cluster-management/multiclusterhub-operator/pkg/apis/operator/v1"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	workv1 "open-cluster-management.io/api/work/v1"
 )
 
 const (
@@ -62,6 +68,42 @@ func initSchema(t *testing.T) {
 	if err := workv1.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add workv1 scheme: (%v)", err)
 	}
+	if err := mchv1.SchemeBuilder.AddToScheme(s); err != nil {
+		t.Fatalf("Unable to add mchv1 scheme: (%v)", err)
+	}
+}
+
+var testImagemanifestsMap = map[string]string{
+	"endpoint_monitoring_operator": "test.io/endpoint-monitoring:test",
+	"metrics_collector":            "test.io/metrics-collector:test",
+}
+
+func newTestImageManifestsConfigMap(namespace, version string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.ImageManifestConfigMapNamePrefix + version,
+			Namespace: namespace,
+			Labels: map[string]string{
+				config.OCMManifestConfigMapTypeLabelKey:    config.OCMManifestConfigMapTypeLabelValue,
+				config.OCMManifestConfigMapVersionLabelKey: version,
+			},
+		},
+		Data: testImagemanifestsMap,
+	}
+}
+
+func newMCHInstanceWithVersion(namespace, version string) *mchv1.MultiClusterHub {
+	return &mchv1.MultiClusterHub{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: namespace,
+		},
+		Spec: mchv1.MultiClusterHubSpec{},
+		Status: mchv1.MultiClusterHubStatus{
+			CurrentVersion: version,
+			DesiredVersion: version,
+		},
+	}
 }
 
 func TestObservabilityAddonController(t *testing.T) {
@@ -85,6 +127,20 @@ func TestObservabilityAddonController(t *testing.T) {
 	c := fake.NewFakeClient(objs...)
 	r := &PlacementRuleReconciler{Client: c, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
 
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get work dir: (%v)", err)
+	}
+	os.MkdirAll(path.Join(wd, "../../placementrule-tests"), 0755)
+	testManifestsPath := path.Join(wd, "../../placementrule-tests/manifests")
+	manifestsPath := path.Join(wd, "../../manifests")
+	os.Setenv("TEMPLATES_PATH", testManifestsPath)
+	templates.ResetTemplates()
+	err = os.Symlink(manifestsPath, testManifestsPath)
+	if err != nil {
+		t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
+	}
+
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      config.GetDefaultCRName(),
@@ -96,7 +152,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		namespace:  "4",
 		namespace2: "4",
 	}
-	_, err := r.Reconcile(context.TODO(), req)
+	_, err = r.Reconcile(context.TODO(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
@@ -190,7 +246,74 @@ func TestObservabilityAddonController(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Invalid manifestwork not removed")
 	}
+
+	// test mch update and image replacement
+	version := "2.4.0"
+	imageManifestsCM := newTestImageManifestsConfigMap(config.GetMCONamespace(), version)
+	err = c.Create(context.TODO(), imageManifestsCM)
+	if err != nil {
+		t.Fatalf("Failed to create the testing image manifest configmap: (%v)", err)
+	}
+
+	testMCHInstance := newMCHInstanceWithVersion(config.GetMCONamespace(), version)
+	err = c.Create(context.TODO(), testMCHInstance)
+	if err != nil {
+		t.Fatalf("Failed to create the testing mch instance: (%v)", err)
+	}
+
+	req = ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Name: config.MCHUpdatedRequestName,
+		},
+	}
+
+	ok, err := config.ReadImageManifestConfigMap(c, testMCHInstance.Status.CurrentVersion)
+	if err != nil || !ok {
+		t.Fatalf("Failed to read image manifest configmap: (%T,%v)", ok, err)
+	}
+
+	// set the MCHCrdName for the reconciler
+	r.CRDMap[config.MCHCrdName] = true
+	_, err = r.Reconcile(context.TODO(), req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+
+	foundManifestwork := &workv1.ManifestWork{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + workNameSuffix, Namespace: namespace}, foundManifestwork)
+	if err != nil {
+		t.Fatalf("Failed to get manifestwork %s: (%v)", namespace, err)
+	}
+	for _, w := range foundManifestwork.Spec.Workload.Manifests {
+		var rawBytes []byte
+		rawBytes, err := w.RawExtension.Marshal()
+		if err != nil {
+			t.Fatalf("Failed to marshal RawExtension: (%v)", err)
+		}
+		rawStr := string(rawBytes)
+		// make sure the image for endpoint-metrics-operator is updated
+		if strings.Contains(rawStr, "Deployment") {
+			t.Logf("raw string: \n%s\n", rawStr)
+			if !strings.Contains(rawStr, "test.io/endpoint-monitoring:test") {
+				t.Fatalf("the image for endpoint-metrics-operator should be replaced with: test.io/endpoint-monitoring:test")
+			}
+		}
+		// make sure the images-list configmap is updated
+		if strings.Contains(rawStr, "images-list") {
+			t.Logf("raw string: \n%s\n", rawStr)
+			if !strings.Contains(rawStr, "test.io/metrics-collector:test") {
+				t.Fatalf("the image for endpoint-metrics-operator should be replaced with: test.io/endpoint-monitoring:test")
+			}
+		}
+	}
+
+	// remove the testing manifests directory
+	if err = os.Remove(testManifestsPath); err != nil {
+		t.Fatalf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
+	}
+	os.Remove(path.Join(wd, "../../placementrule-tests"))
 }
+
 func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
 	return &addonv1alpha1.ManagedClusterAddOn{
 		TypeMeta: metav1.TypeMeta{

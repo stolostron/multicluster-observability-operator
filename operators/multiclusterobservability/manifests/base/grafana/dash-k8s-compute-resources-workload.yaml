@@ -196,7 +196,7 @@ data:
                       {
                         "targetBlank": true,
                         "title": "Drill down to pod",
-                        "url": "./d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=${__data.fields[pod]}"
+                        "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=${__data.fields[pod]}"
                       }
                     ]
                   }
@@ -521,7 +521,7 @@ data:
                       {
                         "targetBlank": true,
                         "title": "Drill down to pod",
-                        "url": "./d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=${__data.fields[pod]}"
+                        "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=${__data.fields[pod]}"
                       }
                     ]
                   }
@@ -672,7 +672,7 @@ data:
           "type": "table"
         }
       ],
-      "refresh": "10s",
+      "refresh": "1m",
       "schemaVersion": 27,
       "style": "dark",
       "tags": [
@@ -718,7 +718,7 @@ data:
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(kube_pod_info, cluster)",
+              "query": "label_values(cluster)",
               "refId": "Prometheus-cluster-Variable-Query"
             },
             "refresh": 2,
@@ -832,9 +832,6 @@ data:
       },
       "timepicker": {
         "refresh_intervals": [
-          "5s",
-          "10s",
-          "30s",
           "1m",
           "5m",
           "15m",

@@ -32,15 +32,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
-	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
-	workv1 "github.com/open-cluster-management/api/work/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	commonutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/util"
 	mchv1 "github.com/open-cluster-management/multiclusterhub-operator/pkg/apis/operator/v1"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	workv1 "open-cluster-management.io/api/work/v1"
 )
 
 const (
@@ -259,6 +259,11 @@ func createAllRelatedRes(
 		currentClusters = append(currentClusters, ep.Namespace)
 	}
 
+	// need to reload the template and update the the corresponding resources
+	// the loadTemplates method is now lightweight operations as we have cache the templates in memory.
+	log.Info("load and update templates for managedcluster resources")
+	rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1, endpointMetricsOperatorDeploy, _ = loadTemplates(mco)
+
 	works, crdv1Work, crdv1beta1Work, err := generateGlobalManifestResources(c, mco)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -276,11 +281,13 @@ func createAllRelatedRes(
 	for managedCluster, openshiftVersion := range managedClusterList {
 		currentClusters = commonutil.Remove(currentClusters, managedCluster)
 		// enter the loop for the following reconcile requests:
-		// 1. MCO CR change(request namespace is emprt string and request name is "mco-updated-request")
-		// 2. configmap/secret... resource change from observability namespace
-		// 3. managedcluster change(request namespace is emprt string and request name is managedcluster name)
-		// 4. manifestwork/observabilityaddon/managedclusteraddon/rolebinding... change from managedcluster namespace
-		if (request.Namespace == "" && request.Name == config.MCOUpdatedRequestName) ||
+		// 1. MCO CR change(request name is "mco-updated-request")
+		// 2. MCH resource change(request name is "mch-updated-request"), to handle image replacement in upgrade case.
+		// 3. configmap/secret... resource change from observability namespace
+		// 4. managedcluster change(request namespace is emprt string and request name is managedcluster name)
+		// 5. manifestwork/observabilityaddon/managedclusteraddon/rolebinding... change from managedcluster namespace
+		if request.Name == config.MCOUpdatedRequestName ||
+			request.Name == config.MCHUpdatedRequestName ||
 			request.Namespace == config.GetDefaultNamespace() ||
 			(request.Namespace == "" && request.Name == managedCluster) ||
 			request.Namespace == managedCluster {
@@ -477,9 +484,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		CreateFunc: func(e event.CreateEvent) bool {
 			// generate the image pull secret
 			pullSecret, _ = generatePullSecret(c, config.GetImagePullSecret(e.Object.(*mcov1beta2.MultiClusterObservability).Spec))
-			// load and render the templates for manifestwork
-			log.Info("oad template for MCO CREATE")
-			rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1, endpointMetricsOperatorDeploy, _ = loadTemplates(e.Object.(*mcov1beta2.MultiClusterObservability))
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -491,9 +495,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					// regenerate the image pull secret
 					pullSecret, _ = generatePullSecret(c, config.GetImagePullSecret(e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec))
 				}
-				// reload and rerender the templates for manifestwork
-				log.Info("load template for MCO UPDATE")
-				rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1, endpointMetricsOperatorDeploy, _ = loadTemplates(e.ObjectNew.(*mcov1beta2.MultiClusterObservability))
 				return true
 			}
 			return false
@@ -740,7 +741,10 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		mchPred := predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
 				// this is for operator restart, the mch CREATE event will be caught and the mch should be ready
-				if e.Object.GetNamespace() == config.GetMCONamespace() {
+				if e.Object.GetNamespace() == config.GetMCONamespace() &&
+					e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
+					e.Object.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion {
+					// only read the image manifests configmap and enqueue the request when the MCH is installed/upgraded successfully
 					ok, err := config.ReadImageManifestConfigMap(c, e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion)
 					if err != nil {
 						return false
@@ -751,7 +755,10 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
-					e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+					e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
+					e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
+					e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
+					/// only read the image manifests configmap and enqueue the request when the MCH is installed/upgraded successfully
 					ok, err := config.ReadImageManifestConfigMap(c, e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion)
 					if err != nil {
 						return false

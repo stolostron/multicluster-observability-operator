@@ -17,10 +17,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	workv1 "github.com/open-cluster-management/api/work/v1"
 	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
+	workv1 "open-cluster-management.io/api/work/v1"
 )
 
 const (
@@ -87,7 +88,7 @@ func newCertSecret(namespaces ...string) *corev1.Secret {
 func NewMetricsAllowListCM() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.AllowlistConfigMapName,
+			Name:      operatorconfig.AllowlistConfigMapName,
 			Namespace: mcoNamespace,
 		},
 		Data: map[string]string{"metrics_list.yaml": `

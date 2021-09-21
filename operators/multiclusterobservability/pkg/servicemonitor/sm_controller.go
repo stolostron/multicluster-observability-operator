@@ -95,10 +95,11 @@ func onUpdate(promClient promclientset.Interface) func(newObj interface{}, oldOb
 }
 
 func updateServiceMonitor(promClient promclientset.Interface, sm *promv1.ServiceMonitor) {
-	_, err := promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Get(context.TODO(), sm.Name, metav1.GetOptions{})
+	found, err := promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Get(context.TODO(), sm.Name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			_, err := promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Create(context.TODO(), rewriteLabels(sm), metav1.CreateOptions{})
+			_, err := promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Create(context.TODO(),
+				rewriteLabels(sm, ""), metav1.CreateOptions{})
 			if err != nil {
 				log.Error(err, "Failed to create ServiceMonitor", "namespace", ocpMonitoringNamespace, "name", sm.Name)
 			} else {
@@ -107,9 +108,10 @@ func updateServiceMonitor(promClient promclientset.Interface, sm *promv1.Service
 		} else {
 			log.Error(err, "Failed to check ServiceMonitor", "namespace", ocpMonitoringNamespace, "name", sm.Name)
 		}
+		return
 	}
-	sm = rewriteLabels(sm)
-	_, err = promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Update(context.TODO(), sm, metav1.UpdateOptions{})
+	_, err = promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Update(context.TODO(),
+		rewriteLabels(sm, found.ResourceVersion), metav1.UpdateOptions{})
 	if err != nil {
 		log.Error(err, "Failed to update ServiceMonitor", "namespace", ocpMonitoringNamespace, "name", sm.Name)
 	} else {
@@ -117,7 +119,13 @@ func updateServiceMonitor(promClient promclientset.Interface, sm *promv1.Service
 	}
 }
 
-func rewriteLabels(sm *promv1.ServiceMonitor) *promv1.ServiceMonitor {
+func rewriteLabels(sm *promv1.ServiceMonitor, resourceVersion string) *promv1.ServiceMonitor {
+	update := &promv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      sm.Name,
+			Namespace: ocpMonitoringNamespace,
+		},
+	}
 	endpoints := []promv1.Endpoint{}
 	for _, endpoint := range sm.Spec.Endpoints {
 		metricsRelabels := endpoint.MetricRelabelConfigs
@@ -137,5 +145,7 @@ func rewriteLabels(sm *promv1.ServiceMonitor) *promv1.ServiceMonitor {
 	sm.Spec.NamespaceSelector = promv1.NamespaceSelector{
 		MatchNames: []string{config.GetDefaultNamespace()},
 	}
-	return sm
+	update.Spec = sm.Spec
+	update.ResourceVersion = resourceVersion
+	return update
 }

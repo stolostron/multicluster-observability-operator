@@ -23,7 +23,6 @@ import (
 )
 
 const (
-	metricsConfigMapName = "observability-metrics-allowlist"
 	metricsConfigMapKey  = "metrics_list.yaml"
 	metricsCollectorName = "metrics-collector-deployment"
 	selectorKey          = "component"
@@ -227,7 +226,7 @@ func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonS
 			!reflect.DeepEqual(deployment.Spec.Replicas, found.Spec.Replicas) ||
 			forceRestart {
 			deployment.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-			if forceRestart {
+			if forceRestart && found.Status.ReadyReplicas != 0 {
 				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
 			}
 			err = client.Update(ctx, deployment)
@@ -267,7 +266,7 @@ func int32Ptr(i int32) *int32 { return &i }
 func getMetricsAllowlist(ctx context.Context, client client.Client) MetricsAllowlist {
 	l := &MetricsAllowlist{}
 	cm := &corev1.ConfigMap{}
-	err := client.Get(ctx, types.NamespacedName{Name: metricsConfigMapName,
+	err := client.Get(ctx, types.NamespacedName{Name: operatorconfig.AllowlistConfigMapName,
 		Namespace: namespace}, cm)
 	if err != nil {
 		log.Error(err, "Failed to get configmap")

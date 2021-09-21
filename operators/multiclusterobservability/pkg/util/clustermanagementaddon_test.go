@@ -12,7 +12,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
 
 func TestClusterManagmentAddon(t *testing.T) {

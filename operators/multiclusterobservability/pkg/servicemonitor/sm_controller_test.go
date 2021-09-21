@@ -25,7 +25,7 @@ func TestRewriteLabels(t *testing.T) {
 			},
 		},
 	}
-	updated := rewriteLabels(sm)
+	updated := rewriteLabels(sm, "")
 	if len(updated.Spec.NamespaceSelector.MatchNames) == 0 || updated.Spec.NamespaceSelector.MatchNames[0] != config.GetDefaultNamespace() {
 		t.Errorf("Wrong NamespaceSelector: %v", updated.Spec.NamespaceSelector)
 	}

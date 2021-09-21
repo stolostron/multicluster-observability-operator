@@ -395,6 +395,19 @@ spec:
           - signers
           verbs:
           - sign
+        - apiGroups:
+          - admissionregistration.k8s.io
+          resources:
+          - mutatingwebhookconfigurations
+          - validatingwebhookconfigurations
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
         serviceAccountName: multicluster-observability-operator
       deployments:
       - name: multicluster-observability-operator

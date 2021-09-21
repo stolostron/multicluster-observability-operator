@@ -8,8 +8,8 @@ import (
 
 	certificatesv1 "k8s.io/api/certificates/v1"
 
-	addonapiv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
-	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
+	addonapiv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
 func approve(cluster *clusterv1.ManagedCluster, addon *addonapiv1alpha1.ManagedClusterAddOn,

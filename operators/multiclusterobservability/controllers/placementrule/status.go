@@ -12,9 +12,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
 
 var (

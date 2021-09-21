@@ -19,10 +19,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	oashared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
 
 const (
@@ -241,6 +241,17 @@ alertmanager-router-ca: |
 	}
 
 	// test reconcile metrics collector deployment updated if cert secret updated
+	found := &appv1.Deployment{}
+	err = c.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
+		Namespace: namespace}, found)
+	if err != nil {
+		t.Fatalf("Metrics collector deployment not found: (%v)", err)
+	}
+	found.Status.ReadyReplicas = 1
+	err = c.Update(ctx, found)
+	if err != nil {
+		t.Fatalf("Failed to update metrics collector deployment: (%v)", err)
+	}
 	req = ctrl.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      mtlsCertName,

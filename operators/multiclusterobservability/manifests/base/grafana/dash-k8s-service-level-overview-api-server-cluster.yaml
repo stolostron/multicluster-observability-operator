@@ -15,6 +15,7 @@ data:
           }
         ]
       },
+      "description": "Service-level overview for the Kubernetes API server for an individual cluster within the fleet.",
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
@@ -44,12 +45,12 @@ data:
           },
           "id": 12,
           "panels": [],
-          "title": "Cluster SLO Overview - API Server Request Duration",
+          "title": "Service-Level Overview - Kubernetes API Server Request Duration",
           "type": "row"
         },
         {
           "datasource": null,
-          "description": "The service level target for the API server request duration SLO.",
+          "description": "The service-level target for the API server request duration service-level objective (SLO).",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -122,7 +123,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "SLO status from over a 7 days period. (The SLO is calculated from # of request duration >= target / total count of request durations)",
+          "description": "Service-level objective (SLO) status from over a 7 days period. (The SLO is calculated from # of request duration >= target / total count of request durations)",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -221,7 +222,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "SLO status from over a 30 days period. (The SLO is calculated from # of request duration >= target / total count of request durations)",
+          "description": "Service-level objective (SLO) status from over a 30 days period. (The SLO is calculated from # of request duration >= target / total count of request durations)",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -386,7 +387,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "The amount of error budget that has been consumed for the API server request duration SLO.",
+          "description": "The amount of error budget that has been consumed for the API server request duration service-level objective (SLO).",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -763,7 +764,7 @@ data:
           "dashLength": 10,
           "dashes": false,
           "datasource": null,
-          "description": "Trending graph of the service level indicators (SLI) over relative time period used to compute the service level objective (SLO).",
+          "description": "Trending graph of the service-level indicators (SLI) over relative time period used to compute the service-level objective (SLO).",
           "fieldConfig": {
             "defaults": {
               "color": {},
@@ -890,7 +891,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "Collected SLI values for the API server request duration SLO, over the relative time range. (# of data points are subjected to change based upon the interval set by Grafana)",
+          "description": "Collected service-level indicator (SLI) values for the API server request duration service-level objective (SLO), over the relative time range. (# of data points are subjected to change based upon the interval set by Grafana)",
           "fieldConfig": {
             "defaults": {
               "color": {

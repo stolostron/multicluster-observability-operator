@@ -11,16 +11,16 @@ import (
 	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	oashared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
 
 func getAllowlistCM() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      metricsConfigMapName,
+			Name:      operatorconfig.AllowlistConfigMapName,
 			Namespace: namespace,
 		},
 		Data: map[string]string{

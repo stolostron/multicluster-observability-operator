@@ -977,7 +977,7 @@ data:
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(kube_pod_info, cluster)",
+              "query": "label_values(cluster)",
               "refId": "Observatorium-cluster-Variable-Query"
             },
             "refresh": 2,

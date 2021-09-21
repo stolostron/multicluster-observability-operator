@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -21,13 +22,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	workv1 "github.com/open-cluster-management/api/work/v1"
 	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/util"
+	workv1 "open-cluster-management.io/api/work/v1"
 )
 
 const (
@@ -271,8 +272,8 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 				if env.Name == "HUB_NAMESPACE" {
 					container.Env[j].Value = clusterNamespace
 				}
-				if env.Name == operatorconfig.InstallPrometheus && installProm {
-					container.Env[j].Value = "true"
+				if env.Name == operatorconfig.InstallPrometheus {
+					container.Env[j].Value = strconv.FormatBool(installProm)
 				}
 			}
 		}
@@ -399,15 +400,15 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 			Kind:       "ConfigMap",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.AllowlistConfigMapName,
+			Name:      operatorconfig.AllowlistConfigMapName,
 			Namespace: spokeNameSpace,
 		},
 		Data: map[string]string{},
 	}
 
-	allowlist, err := getAllowList(client, config.AllowlistConfigMapName)
+	allowlist, err := getAllowList(client, operatorconfig.AllowlistConfigMapName)
 	if err != nil {
-		log.Error(err, "Failed to get metrics allowlist configmap "+config.AllowlistConfigMapName)
+		log.Error(err, "Failed to get metrics allowlist configmap "+operatorconfig.AllowlistConfigMapName)
 		return nil, err
 	}
 

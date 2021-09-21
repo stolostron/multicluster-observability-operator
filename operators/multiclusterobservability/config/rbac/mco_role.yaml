@@ -314,3 +314,16 @@ rules:
   - signers
   resourceNames:
   - open-cluster-management.io/observability-signer
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch

@@ -19,6 +19,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -45,17 +46,18 @@ import (
 	ctrlruntimescheme "sigs.k8s.io/controller-runtime/pkg/scheme"
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
 
-	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
-	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
-	workv1 "github.com/open-cluster-management/api/work/v1"
 	observabilityv1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	observabilityv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/webhook"
 	operatorsutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/util"
 	mchv1 "github.com/open-cluster-management/multiclusterhub-operator/pkg/apis/operator/v1"
 	observatoriumAPIs "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	workv1 "open-cluster-management.io/api/work/v1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -96,6 +98,12 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	kubeClient, err := util.GetOrCreateKubeClient()
+	if err != nil {
+		setupLog.Error(err, "Failed to create the kube client")
+		os.Exit(1)
+	}
 
 	crdClient, err := util.GetOrCreateCRDClient()
 	if err != nil {
@@ -295,8 +303,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	rootCtx := ctrl.SetupSignalHandler()
+	internalCtx, internalCancel := context.WithCancel(rootCtx)
+	defer internalCancel()
+
+	whcontroller := webhook.NewWebhookController(kubeClient, nil, config.GetValidatingWebhookConfigurationForMCO())
+	setupLog.Info("starting webhook controller")
+	// start the webhook controller in new go rountine
+	go func() {
+		if err := whcontroller.Start(internalCtx); err != nil {
+			setupLog.Error(err, "problem running webhook controller")
+			os.Exit(1)
+		}
+	}()
+
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(rootCtx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
