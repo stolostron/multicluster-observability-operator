@@ -15,6 +15,7 @@ data:
           }
         ]
       },
+      "description": "Service-level overview for the Kubernetes API server at the fleet level.",
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,

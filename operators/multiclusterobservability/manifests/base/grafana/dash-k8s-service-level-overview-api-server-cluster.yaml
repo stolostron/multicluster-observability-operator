@@ -19,8 +19,8 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": 16,
-      "iteration": 1632192801357,
+      "id": 13,
+      "iteration": 1632253235489,
       "links": [
         {
           "icon": "dashboard",
@@ -188,7 +188,7 @@ data:
               "values": false
             },
             "text": {},
-            "textMode": "value"
+            "textMode": "auto"
           },
           "pluginVersion": "7.4.2",
           "targets": [
@@ -204,20 +204,7 @@ data:
           "timeFrom": "7d",
           "timeShift": null,
           "title": "Past 7 Days",
-          "transformations": [
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {
-                  "Value": false
-                },
-                "indexByName": {},
-                "renameByName": {
-                  "Value": ""
-                }
-              }
-            }
-          ],
+          "transformations": [],
           "type": "stat"
         },
         {
@@ -282,11 +269,11 @@ data:
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "/^Value$/",
+              "fields": "",
               "values": false
             },
             "text": {},
-            "textMode": "value"
+            "textMode": "auto"
           },
           "pluginVersion": "7.4.2",
           "targets": [
@@ -387,7 +374,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "The amount of error budget that has been consumed for the API server request duration service-level objective (SLO).",
+          "description": "The amount of error budget that has been consumed for the API server request duration SLO.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -467,9 +454,10 @@ data:
                 {
                   "from": "",
                   "id": 1,
-                  "text": "",
+                  "text": "N/A",
                   "to": "0",
-                  "type": 2
+                  "type": 1,
+                  "value": "null"
                 }
               ],
               "thresholds": {
@@ -506,9 +494,7 @@ data:
               "fields": "",
               "values": false
             },
-            "text": {
-              "valueSize": 90
-            },
+            "text": {},
             "textMode": "auto"
           },
           "pluginVersion": "7.4.2",
@@ -524,7 +510,7 @@ data:
           ],
           "timeFrom": "7d",
           "timeShift": null,
-          "title": "Time Remaining (Past 7-days)",
+          "title": "Downtime Remaining (Past 7-days)",
           "transformations": [],
           "type": "stat"
         },
@@ -681,10 +667,10 @@ data:
                 {
                   "from": "",
                   "id": 1,
-                  "text": "43829.1",
+                  "text": "N/A",
                   "to": "",
-                  "type": 2,
-                  "value": "-"
+                  "type": 1,
+                  "value": "null"
                 }
               ],
               "thresholds": {
@@ -721,15 +707,13 @@ data:
               "fields": "",
               "values": false
             },
-            "text": {
-              "valueSize": 90
-            },
+            "text": {},
             "textMode": "auto"
           },
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "(0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) * (7 * 24 * 60)",
+              "expr": "(0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) * (30 * 24 * 60)",
               "format": "table",
               "hide": false,
               "instant": false,
@@ -891,7 +875,7 @@ data:
         },
         {
           "datasource": null,
-          "description": "Collected service-level indicator (SLI) values for the API server request duration service-level objective (SLO), over the relative time range. (# of data points are subjected to change based upon the interval set by Grafana)",
+          "description": "Collected SLI values for the API server request duration SLO, over the relative time range. (# of data points are subjected to change based upon the interval set by Grafana)",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1020,8 +1004,9 @@ data:
           {
             "allValue": null,
             "current": {
+              "isNone": true,
               "selected": false,
-              "text": "",
+              "text": "None",
               "value": ""
             },
             "datasource": null,
@@ -1058,7 +1043,7 @@ data:
       "timezone": "",
       "title": "Kubernetes / Service-Level Overview / API Server / Cluster",
       "uid": "3TwB9bRnnz",
-      "version": 68
+      "version": 3
     }
 kind: ConfigMap
 metadata:
