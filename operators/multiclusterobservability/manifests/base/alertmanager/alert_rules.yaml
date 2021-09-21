@@ -43,8 +43,8 @@ data:
             severity: critical
       - name: slo-sli-trends
         rules:
-        - expr: sli:apiserver_request_duration_seconds:trend:5m >= bool 0.9900
-          record: sli:apiserver_request_duration_seconds:bin:trend:5m
+        - expr: sli:apiserver_request_duration_seconds:trend:1m >= bool 0.9900
+          record: sli:apiserver_request_duration_seconds:bin:trend:1m
           labels:
             slo: "API Server Request Duration"
             target: 0.9900

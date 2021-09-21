@@ -19,8 +19,19 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 16,
-      "iteration": 1630941876175,
-      "links": [],
+      "iteration": 1632192801357,
+      "links": [
+        {
+          "icon": "dashboard",
+          "includeVars": false,
+          "keepTime": false,
+          "tags": [],
+          "title": "Kubernetes / Service-Level Overview / API Server",
+          "tooltip": "",
+          "type": "link",
+          "url": "./d/L8KwmaR7nz/kubernetes-service-level-overview-api-server?orgId=1&refresh=5m"
+        }
+      ],
       "panels": [
         {
           "collapsed": false,
@@ -45,23 +56,12 @@ data:
                 "mode": "thresholds"
               },
               "custom": {},
-              "decimals": 2,
-              "mappings": [
-                {
-                  "from": "",
-                  "id": 1,
-                  "text": "N/A",
-                  "to": "",
-                  "type": 1,
-                  "value": "null"
-                }
-              ],
-              "noValue": "-",
+              "mappings": [],
               "thresholds": {
-                "mode": "percentage",
+                "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
+                    "color": "rgb(204, 204, 220)",
                     "value": null
                   }
                 ]
@@ -71,8 +71,8 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 7,
-            "w": 4,
+            "h": 4,
+            "w": 8,
             "x": 0,
             "y": 1
           },
@@ -86,7 +86,7 @@ data:
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "/^Target$/",
+              "fields": "",
               "values": false
             },
             "text": {},
@@ -95,7 +95,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "sli:apiserver_request_duration_seconds:bin:trend:5m",
+              "expr": "0.9900",
               "format": "table",
               "instant": true,
               "interval": "5m",
@@ -166,11 +166,12 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 7,
-            "w": 4,
-            "x": 4,
+            "h": 4,
+            "w": 8,
+            "x": 8,
             "y": 1
           },
+          "hideTimeOverride": true,
           "id": 35,
           "interval": "5m",
           "options": {
@@ -191,7 +192,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:5m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:5m{cluster=\"$cluster\"}[$__range])",
+              "expr": "floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])",
               "format": "table",
               "instant": true,
               "interval": "5m",
@@ -263,11 +264,12 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 7,
-            "w": 4,
-            "x": 8,
+            "h": 4,
+            "w": 8,
+            "x": 16,
             "y": 1
           },
+          "hideTimeOverride": true,
           "id": 32,
           "interval": "5m",
           "options": {
@@ -288,7 +290,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:5m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:5m{cluster=\"$cluster\"}[$__range])",
+              "expr": "floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])",
               "format": "table",
               "instant": true,
               "interval": "5m",
@@ -301,6 +303,86 @@ data:
           "title": "Past 30 Days",
           "transformations": [],
           "type": "stat"
+        },
+        {
+          "collapsed": false,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 5
+          },
+          "id": 73,
+          "panels": [],
+          "title": "Error Budget for 7 Days",
+          "type": "row"
+        },
+        {
+          "datasource": null,
+          "description": "The current day within the week period.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {},
+              "mappings": [
+                {
+                  "from": "",
+                  "id": 1,
+                  "text": "",
+                  "to": "",
+                  "type": 1,
+                  "value": ""
+                }
+              ],
+              "max": 7,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "orange",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 8,
+            "x": 0,
+            "y": 6
+          },
+          "id": 87,
+          "options": {
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdLabels": true,
+            "showThresholdMarkers": true,
+            "text": {}
+          },
+          "pluginVersion": "7.4.2",
+          "targets": [
+            {
+              "expr": "day_of_week()",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Day of the week",
+          "type": "gauge"
         },
         {
           "datasource": null,
@@ -320,29 +402,34 @@ data:
                     "value": null
                   },
                   {
+                    "color": "#EAB839",
+                    "value": 50
+                  },
+                  {
                     "color": "red",
-                    "value": 1
+                    "value": 80
                   }
                 ]
               },
-              "unit": "percent"
+              "unit": "percentunit"
             },
             "overrides": []
           },
           "gridPos": {
-            "h": 7,
-            "w": 12,
-            "x": 12,
-            "y": 1
+            "h": 5,
+            "w": 8,
+            "x": 8,
+            "y": 6
           },
-          "id": 60,
-          "interval": null,
+          "hideTimeOverride": true,
+          "id": 89,
+          "interval": "1m",
           "options": {
             "reduceOptions": {
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "/^Consumed$/",
+              "fields": "/^Value$/",
               "values": false
             },
             "showThresholdLabels": false,
@@ -352,67 +439,93 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:5m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:5m{cluster=\"$cluster\"}[$__range])",
+              "expr": "((0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / 1)",
               "format": "table",
-              "instant": false,
-              "interval": "5m",
+              "instant": true,
+              "interval": "1m",
               "legendFormat": "",
               "refId": "A"
             }
           ],
-          "timeFrom": "30d",
-          "timeShift": null,
-          "title": "Consumed Error Budget",
-          "transformations": [
-            {
-              "id": "calculateField",
-              "options": {
-                "alias": "",
-                "binary": {
-                  "left": "target",
-                  "operator": "-",
-                  "reducer": "sum",
-                  "right": "Value"
-                },
-                "mode": "binary",
-                "reduce": {
-                  "reducer": "sum"
+          "timeFrom": "7d",
+          "timeShift": "0M/M",
+          "title": "Error Budget (Past 7 Days)",
+          "transformations": [],
+          "type": "gauge"
+        },
+        {
+          "datasource": null,
+          "description": "The time remaining within the 7d period in which the cluster can afford downtime.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {},
+              "mappings": [
+                {
+                  "from": "",
+                  "id": 1,
+                  "text": "",
+                  "to": "0",
+                  "type": 2
                 }
-              }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "m"
             },
-            {
-              "id": "calculateField",
-              "options": {
-                "binary": {
-                  "left": "1",
-                  "operator": "-",
-                  "reducer": "sum",
-                  "right": "target"
-                },
-                "mode": "binary",
-                "reduce": {
-                  "reducer": "sum"
-                }
-              }
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 8,
+            "x": 16,
+            "y": 6
+          },
+          "hideTimeOverride": true,
+          "id": 84,
+          "interval": "1m",
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
             },
+            "text": {
+              "valueSize": 90
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "7.4.2",
+          "targets": [
             {
-              "id": "calculateField",
-              "options": {
-                "alias": "Consumed",
-                "binary": {
-                  "left": "target - Value",
-                  "operator": "/",
-                  "reducer": "sum",
-                  "right": "1 - target"
-                },
-                "mode": "binary",
-                "reduce": {
-                  "reducer": "sum"
-                }
-              }
+              "expr": "(0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) * (7 * 24 * 60)",
+              "format": "table",
+              "instant": false,
+              "interval": "1m",
+              "legendFormat": "",
+              "refId": "A"
             }
           ],
-          "type": "gauge"
+          "timeFrom": "7d",
+          "timeShift": null,
+          "title": "Time Remaining (Past 7-days)",
+          "transformations": [],
+          "type": "stat"
         },
         {
           "collapsed": false,
@@ -421,7 +534,223 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 8
+            "y": 11
+          },
+          "id": 92,
+          "panels": [],
+          "title": "Error Budget for 30 Days",
+          "type": "row"
+        },
+        {
+          "datasource": null,
+          "description": "The current day within the month period.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {},
+              "mappings": [],
+              "max": 31,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "orange",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 8,
+            "x": 0,
+            "y": 12
+          },
+          "id": 88,
+          "options": {
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdLabels": true,
+            "showThresholdMarkers": true,
+            "text": {}
+          },
+          "pluginVersion": "7.4.2",
+          "targets": [
+            {
+              "expr": "day_of_month()",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Day of the month",
+          "type": "gauge"
+        },
+        {
+          "datasource": null,
+          "description": "The amount of error budget that has been consumed for the API server request duration SLO.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {},
+              "mappings": [],
+              "thresholds": {
+                "mode": "percentage",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "#EAB839",
+                    "value": 50
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 8,
+            "x": 8,
+            "y": 12
+          },
+          "hideTimeOverride": true,
+          "id": 90,
+          "interval": "1m",
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "/^Value$/",
+              "values": false
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true,
+            "text": {}
+          },
+          "pluginVersion": "7.4.2",
+          "targets": [
+            {
+              "expr": "((0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / 1)",
+              "format": "table",
+              "instant": true,
+              "interval": "1m",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "timeFrom": "30d",
+          "timeShift": "0M/M",
+          "title": "Error Budget (Past 30 Days)",
+          "transformations": [],
+          "type": "gauge"
+        },
+        {
+          "datasource": null,
+          "description": "The time remaining within the 30d period in which the cluster can afford downtime.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {},
+              "mappings": [
+                {
+                  "from": "",
+                  "id": 1,
+                  "text": "43829.1",
+                  "to": "",
+                  "type": 2,
+                  "value": "-"
+                }
+              ],
+              "thresholds": {
+                "mode": "percentage",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "m"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 8,
+            "x": 16,
+            "y": 12
+          },
+          "hideTimeOverride": true,
+          "id": 85,
+          "interval": "1m",
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {
+              "valueSize": 90
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "7.4.2",
+          "targets": [
+            {
+              "expr": "(0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) * (7 * 24 * 60)",
+              "format": "table",
+              "hide": false,
+              "instant": false,
+              "interval": "1m",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "timeFrom": "30d",
+          "timeShift": null,
+          "title": "Downtime Remaining (Past 30-days)",
+          "transformations": [],
+          "type": "stat"
+        },
+        {
+          "collapsed": false,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 17
           },
           "id": 21,
           "panels": [],
@@ -445,19 +774,33 @@ data:
               },
               "unit": "percentunit"
             },
-            "overrides": []
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "0.9900"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Target Threshold"
+                  }
+                ]
+              }
+            ]
           },
           "fill": 0,
           "fillGradient": 0,
           "gridPos": {
-            "h": 10,
+            "h": 8,
             "w": 24,
             "x": 0,
-            "y": 9
+            "y": 18
           },
           "hiddenSeries": false,
+          "hideTimeOverride": false,
           "id": 8,
-          "interval": "5m",
+          "interval": "1m",
           "legend": {
             "alignAsTable": false,
             "avg": false,
@@ -487,11 +830,18 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sli:apiserver_request_duration_seconds:trend:5m{cluster=\"$cluster\"}",
+              "expr": "sli:apiserver_request_duration_seconds:trend:1m{cluster=\"$cluster\"}",
               "hide": false,
-              "interval": "5m",
+              "interval": "1m",
               "legendFormat": "",
               "refId": "A"
+            },
+            {
+              "expr": "0.9900",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
             }
           ],
           "thresholds": [],
@@ -504,24 +854,7 @@ data:
             "sort": 0,
             "value_type": "individual"
           },
-          "transformations": [
-            {
-              "id": "calculateField",
-              "options": {
-                "alias": "Target",
-                "binary": {
-                  "left": "0.9900",
-                  "operator": "+",
-                  "reducer": "sum",
-                  "right": "0"
-                },
-                "mode": "binary",
-                "reduce": {
-                  "reducer": "sum"
-                }
-              }
-            }
-          ],
+          "transformations": [],
           "type": "graph",
           "xaxis": {
             "buckets": null,
@@ -564,7 +897,7 @@ data:
                 "mode": "thresholds"
               },
               "custom": {
-                "align": null,
+                "align": "left",
                 "filterable": false
               },
               "mappings": [],
@@ -607,45 +940,66 @@ data:
             ]
           },
           "gridPos": {
-            "h": 7,
+            "h": 6,
             "w": 24,
             "x": 0,
-            "y": 19
+            "y": 26
           },
           "id": 62,
-          "interval": "5m",
+          "interval": "1m",
           "options": {
             "showHeader": true,
             "sortBy": [
               {
-                "desc": false,
-                "displayName": "Value"
+                "desc": true,
+                "displayName": "Time"
               }
             ]
           },
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "sli:apiserver_request_duration_seconds:trend:5m{cluster=\"$cluster\"}",
+              "expr": "sli:apiserver_request_duration_seconds:trend:1m{cluster=\"$cluster\"}",
               "format": "table",
-              "interval": "5m",
+              "interval": "1m",
               "legendFormat": "",
               "refId": "A"
             }
           ],
+          "timeShift": null,
           "title": "API Server Request Duration - SLI",
           "transformations": [
             {
+              "id": "groupBy",
+              "options": {
+                "fields": {
+                  "Time": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "Value": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "cluster": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  },
+                  "clusterID": {
+                    "aggregations": [],
+                    "operation": "groupby"
+                  }
+                }
+              }
+            },
+            {
               "id": "organize",
               "options": {
-                "excludeByName": {
-                  "__name__": true,
-                  "receive": true,
-                  "tenant_id": true
-                },
+                "excludeByName": {},
                 "indexByName": {},
                 "renameByName": {
-                  "cluster": "Cluster"
+                  "cluster": "Cluster",
+                  "clusterID": "ClusterID"
                 }
               }
             }
@@ -666,11 +1020,11 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "local-cluster",
-              "value": "local-cluster"
+              "text": "",
+              "value": ""
             },
             "datasource": null,
-            "definition": "label_values(cluster)",
+            "definition": "label_values(sli:apiserver_request_duration_seconds:trend:1m, cluster)",
             "description": null,
             "error": null,
             "hide": 0,
@@ -680,7 +1034,7 @@ data:
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(cluster)",
+              "query": "label_values(sli:apiserver_request_duration_seconds:trend:1m, cluster)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 1,
@@ -696,14 +1050,14 @@ data:
         ]
       },
       "time": {
-        "from": "now-12h",
+        "from": "now-5m",
         "to": "now"
       },
       "timepicker": {},
       "timezone": "",
-      "title": "Kubernetes / Service Level Overview / API Server / Cluster",
+      "title": "Kubernetes / Service-Level Overview / API Server / Cluster",
       "uid": "3TwB9bRnnz",
-      "version": 20
+      "version": 68
     }
 kind: ConfigMap
 metadata:
