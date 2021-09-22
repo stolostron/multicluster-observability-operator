@@ -7,8 +7,10 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	"gopkg.in/yaml.v2"
+	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,6 +26,7 @@ import (
 
 const (
 	defaultReplicas int32 = 1
+	restartLabel          = "datasource/time-restarted"
 )
 
 type GrafanaDatasources struct {
@@ -52,6 +55,7 @@ type JsonData struct {
 	TLSAuthCA    bool   `yaml:"tlsAuthWithCACert,omitempty"`
 	QueryTimeout string `yaml:"queryTimeout,omitempty"`
 	HttpMethod   string `yaml:"httpMethod,omitempty"`
+	TimeInterval string `yaml:"timeInterval,omitempty"`
 }
 
 type SecureJsonData struct {
@@ -78,6 +82,7 @@ func GenerateGrafanaDataSource(
 				URL:       fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", config.ProxyServiceName, config.GetDefaultNamespace()),
 				JSONData: &JsonData{
 					QueryTimeout: "300s",
+					TimeInterval: fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval),
 				},
 			},
 		},
@@ -138,7 +143,37 @@ func GenerateGrafanaDataSource(
 			log.Error(err, "Failed to update grafana datasource secret")
 			return &ctrl.Result{}, err
 		}
+		err = updateDeployLabel(c)
+		if err != nil {
+			return &ctrl.Result{}, err
+		}
 	}
 
 	return nil, nil
+}
+
+func updateDeployLabel(c client.Client) error {
+	name := config.GetOperandName(config.Grafana)
+	dep := &appv1.Deployment{}
+	err := c.Get(context.TODO(), types.NamespacedName{
+		Name:      name,
+		Namespace: config.GetDefaultNamespace(),
+	}, dep)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			log.Error(err, "Failed to check the deployment", "name", name)
+		}
+		return err
+	}
+	if dep.Status.ReadyReplicas != 0 {
+		dep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
+		err = c.Update(context.TODO(), dep)
+		if err != nil {
+			log.Error(err, "Failed to update the deployment", "name", name)
+			return err
+		} else {
+			log.Info("Update deployment datasource/restart label", "name", name)
+		}
+	}
+	return nil
 }

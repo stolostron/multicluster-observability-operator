@@ -59,6 +59,10 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 				ReceiveStorageSize:      "1Gi",
 				StoreStorageSize:        "1Gi",
 			},
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: true,
+				Interval:      300,
+			},
 		},
 	}
 
@@ -78,7 +82,8 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 		storeStorage.String() != statefulSetSize ||
 		compactStorage.String() != statefulSetSize ||
 		obs.ObjectStorageConfig.Thanos.Key != "key" ||
-		obs.ObjectStorageConfig.Thanos.Name != "name" {
+		obs.ObjectStorageConfig.Thanos.Name != "name" ||
+		obs.Thanos.Query.LookbackDelta != "600s" {
 		t.Errorf("Failed to newDefaultObservatorium")
 	}
 }
@@ -118,6 +123,10 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 				RuleStorageSize:         "1Gi",
 				ReceiveStorageSize:      "1Gi",
 				StoreStorageSize:        "1Gi",
+			},
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: true,
+				Interval:      300,
 			},
 		},
 	}
