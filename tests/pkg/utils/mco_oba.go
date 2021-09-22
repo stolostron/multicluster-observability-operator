@@ -21,7 +21,7 @@ func CheckOBAStatus(opt TestOptions, namespace, status string) error {
 
 	oba, err := dynClient.Resource(NewMCOAddonGVR()).Namespace(namespace).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
 	if err != nil {
-		panic(err.Error())
+		return err
 	}
 	if oba.Object["status"] != nil && strings.Contains(fmt.Sprint(oba.Object["status"]), status) {
 		return nil
@@ -38,7 +38,7 @@ func CheckManagedClusterAddonsStatus(opt TestOptions, namespace, status string) 
 
 	mca, err := dynClient.Resource(NewMCOManagedClusterAddonsGVR()).Namespace(namespace).Get(context.TODO(), "observability-controller", metav1.GetOptions{})
 	if err != nil {
-		panic(err.Error())
+		return err
 	}
 	if mca.Object["status"] != nil && strings.Contains(fmt.Sprint(mca.Object["status"]), status) {
 		return nil
