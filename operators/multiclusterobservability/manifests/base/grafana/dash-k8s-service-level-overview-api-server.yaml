@@ -1,0 +1,670 @@
+apiVersion: v1
+data:
+  k8s-service-level-overview.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "description": "Service-level overview for the Kubernetes API server at the fleet level.",
+      "editable": true,
+      "gnetId": null,
+      "graphTooltip": 0,
+      "id": 15,
+      "iteration": 1632264737387,
+      "links": [
+        {
+          "icon": "dashboard",
+          "includeVars": false,
+          "keepTime": false,
+          "tags": [],
+          "targetBlank": true,
+          "title": "Kubernetes / Service-Level Overview /  API Server / Cluster",
+          "type": "link",
+          "url": "./d/3TwB9bRnnz/kubernetes-service-level-overview-api-server-cluster?orgId=1&refresh=5m"
+        }
+      ],
+      "panels": [
+        {
+          "collapsed": false,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "id": 35,
+          "panels": [],
+          "title": "Fleet Overview ($cluster) - $window",
+          "type": "row"
+        },
+        {
+          "datasource": null,
+          "description": "A total number of the clusters that have exceeded their service-level objective (SLO) target.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {},
+              "mappings": [
+                {
+                  "from": "",
+                  "id": 1,
+                  "text": "N/A",
+                  "to": "",
+                  "type": 1,
+                  "value": "null"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "rgb(255, 255, 255)",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 12,
+            "x": 0,
+            "y": 1
+          },
+          "hideTimeOverride": true,
+          "id": 39,
+          "interval": null,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "7.4.2",
+          "targets": [
+            {
+              "expr": "sum(floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=~\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=~\"$cluster\"}[$__range]) < bool 0.99)",
+              "format": "table",
+              "instant": true,
+              "interval": "1m",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "timeFrom": "$window",
+          "timeShift": null,
+          "title": "# of cluster that has exceeded the SLO",
+          "transformations": [],
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "A total number of clusters that haven't breached the service-level objective (SLO) target.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {},
+              "mappings": [
+                {
+                  "from": "",
+                  "id": 1,
+                  "text": "N/A",
+                  "to": "",
+                  "type": 1,
+                  "value": "null"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "rgb(255, 255, 255)",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 12,
+            "x": 12,
+            "y": 1
+          },
+          "hideTimeOverride": true,
+          "id": 42,
+          "interval": null,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "7.4.2",
+          "targets": [
+            {
+              "expr": "(sum(floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=~\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=~\"$cluster\"}[$__range]) >= bool 0.99))",
+              "format": "table",
+              "instant": true,
+              "interval": "1m",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "timeFrom": "$window",
+          "timeShift": null,
+          "title": "# of clusters that are meeting the SLO",
+          "transformations": [],
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "List of the topk cluster over a $window period. The results are sorted from worst offending clusters to passing clusters.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "left",
+                "displayMode": "auto",
+                "filterable": false
+              },
+              "decimals": 2,
+              "mappings": [
+                {
+                  "from": "",
+                  "id": 1,
+                  "text": "-",
+                  "to": "",
+                  "type": 1,
+                  "value": "null"
+                }
+              ],
+              "noValue": "-",
+              "thresholds": {
+                "mode": "percentage",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 95
+                  },
+                  {
+                    "color": "green",
+                    "value": 99.5
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Cluster"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "targetBlank": true,
+                        "title": "Kubernetes / Service-Level Overview  / API Server / Cluster",
+                        "url": "./d/3TwB9bRnnz/kubernetes-service-level-overview-api-server-cluster?orgId=1&var-cluster=﻿${__data.fields.cluster}﻿﻿﻿﻿&${__url_time_range}"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "SLO"
+                },
+                "properties": [
+                  {
+                    "id": "custom.displayMode",
+                    "value": "color-background"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 6
+          },
+          "id": 44,
+          "interval": "1m",
+          "options": {
+            "frameIndex": 0,
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Time"
+              }
+            ]
+          },
+          "pluginVersion": "7.4.2",
+          "targets": [
+            {
+              "exemplar": false,
+              "expr": "sort_desc(bottomk($top, floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=~\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=~\"$cluster\"}[$__range])))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "1m",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "expr": "(0.99 - sort_desc(bottomk($top, floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=~\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=~\"$cluster\"}[$__range]))))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            }
+          ],
+          "timeFrom": "$window",
+          "timeShift": null,
+          "title": "Top Clusters ($top)",
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "clusterID": true,
+                  "receive": true,
+                  "tenant_id": true
+                },
+                "indexByName": {
+                  "Time": 0,
+                  "Value #A": 7,
+                  "Value #B": 6,
+                  "cluster": 1,
+                  "clusterID": 2,
+                  "receive": 3,
+                  "target": 4,
+                  "tenant_id": 5
+                },
+                "renameByName": {
+                  "Value #A": "SLO",
+                  "Value #B": "Error Budget",
+                  "cluster": "Cluster",
+                  "target": "Target"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "collapsed": false,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 13
+          },
+          "id": 41,
+          "panels": [],
+          "title": "API Server Request Duration - Status ($cluster)",
+          "type": "row"
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": null,
+          "description": "The service-level indicator (SLI) trend of the topk clusters over a relative time. The results are sorted from worst offending clusters to passing clusters.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {},
+              "custom": {},
+              "thresholds": {
+                "mode": "absolute",
+                "steps": []
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "fill": 0,
+          "fillGradient": 0,
+          "gridPos": {
+            "h": 9,
+            "w": 24,
+            "x": 0,
+            "y": 14
+          },
+          "hiddenSeries": false,
+          "id": 24,
+          "interval": "1m",
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
+          "percentage": false,
+          "pluginVersion": "7.4.2",
+          "pointradius": 1,
+          "points": true,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "bottomk($top, sli:apiserver_request_duration_seconds:trend:1m{cluster=~\"$cluster\"})",
+              "format": "time_series",
+              "hide": false,
+              "instant": false,
+              "interval": "1m",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "expr": "0.9900",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeRegions": [],
+          "timeShift": null,
+          "title": "Top Cluster's SLI Trend ($top)",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Target": true
+                },
+                "indexByName": {},
+                "renameByName": {
+                  "0.9900": "Target Threshold",
+                  "Target": ""
+                }
+              }
+            }
+          ],
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "$$hashKey": "object:942",
+              "format": "percentunit",
+              "label": null,
+              "logBase": 1,
+              "max": "1",
+              "min": "0.8",
+              "show": true
+            },
+            {
+              "$$hashKey": "object:943",
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ],
+          "yaxis": {
+            "align": false,
+            "alignLevel": null
+          }
+        }
+      ],
+      "refresh": "5m",
+      "schemaVersion": 27,
+      "style": "dark",
+      "tags": [
+        "kubernetes-mixin",
+        "SLO"
+      ],
+      "templating": {
+        "list": [
+          {
+            "allValue": null,
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "label_values(sli:apiserver_request_duration_seconds:trend:1m, cluster)",
+            "description": "Clusters within the fleet.",
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Cluster",
+            "multi": true,
+            "name": "cluster",
+            "options": [
+              {
+                "selected": false,
+                "text": "All",
+                "value": "$__all"
+              },
+              {
+                "selected": true,
+                "text": "local-cluster",
+                "value": "local-cluster"
+              }
+            ],
+            "query": {
+              "query": "label_values(sli:apiserver_request_duration_seconds:trend:1m, cluster)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 0,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "tagValuesQuery": "",
+            "tags": [],
+            "tagsQuery": "",
+            "type": "query",
+            "useTags": false
+          },
+          {
+            "auto": false,
+            "auto_count": 30,
+            "auto_min": "10s",
+            "current": {
+              "selected": false,
+              "text": "7d",
+              "value": "7d"
+            },
+            "description": "Time window for which the service level objective (SLO) is evaluated over.",
+            "error": null,
+            "hide": 0,
+            "label": "Window",
+            "name": "window",
+            "options": [
+              {
+                "selected": true,
+                "text": "7d",
+                "value": "7d"
+              },
+              {
+                "selected": false,
+                "text": "30d",
+                "value": "30d"
+              }
+            ],
+            "query": "7d,30d",
+            "queryValue": "",
+            "refresh": 2,
+            "skipUrlSync": false,
+            "type": "interval"
+          },
+          {
+            "allValue": "100000",
+            "current": {
+              "selected": true,
+              "text": "20",
+              "value": "20"
+            },
+            "description": "Top (n) number of clusters that have exceeded the SLO.",
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Top",
+            "multi": false,
+            "name": "top",
+            "options": [
+              {
+                "selected": false,
+                "text": "All",
+                "value": "$__all"
+              },
+              {
+                "selected": false,
+                "text": "5",
+                "value": "5"
+              },
+              {
+                "selected": false,
+                "text": "10",
+                "value": "10"
+              },
+              {
+                "selected": true,
+                "text": "20",
+                "value": "20"
+              },
+              {
+                "selected": false,
+                "text": "50",
+                "value": "50"
+              },
+              {
+                "selected": false,
+                "text": "100",
+                "value": "100"
+              }
+            ],
+            "query": "5, 10, 20, 50, 100",
+            "queryValue": "",
+            "skipUrlSync": false,
+            "type": "custom"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-5m",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "Kubernetes / Service-Level Overview / API Server",
+      "uid": "L8KwmaR7nz",
+      "version": 7
+    }
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-k8s-service-level-overview
+  namespace: open-cluster-management-observability
+  labels:
+    general-folder: 'true'
