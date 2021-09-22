@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	ManagedClusterAddOnMessage = "enableMetrics is set to False"
+	ManagedClusterAddOnDisabledMessage = "enableMetrics is set to False"
+	ManagedClusterAddOnEnabledMessage  = "Cluster metrics sent successfully"
 )
 
 func CheckOBAStatus(opt TestOptions, namespace, status string) error {
@@ -52,11 +53,11 @@ func CheckAllOBAsEnabled(opt TestOptions) error {
 		return err
 	}
 	for _, cluster := range clusters {
-		err = CheckOBAStatus(opt, cluster, "reason: Available")
+		err = CheckOBAStatus(opt, cluster, ManagedClusterAddOnEnabledMessage)
 		if err != nil {
 			return err
 		}
-		err = CheckManagedClusterAddonsStatus(opt, cluster, "Send metrics successfully")
+		err = CheckManagedClusterAddonsStatus(opt, cluster, ManagedClusterAddOnEnabledMessage)
 		if err != nil {
 			return err
 		}
@@ -70,11 +71,11 @@ func CheckAllOBADisabled(opt TestOptions) error {
 		return err
 	}
 	for _, cluster := range clusters {
-		err = CheckOBAStatus(opt, cluster, ManagedClusterAddOnMessage)
+		err = CheckOBAStatus(opt, cluster, ManagedClusterAddOnDisabledMessage)
 		if err != nil {
 			return err
 		}
-		err = CheckManagedClusterAddonsStatus(opt, cluster, ManagedClusterAddOnMessage)
+		err = CheckManagedClusterAddonsStatus(opt, cluster, ManagedClusterAddOnDisabledMessage)
 		if err != nil {
 			return err
 		}
