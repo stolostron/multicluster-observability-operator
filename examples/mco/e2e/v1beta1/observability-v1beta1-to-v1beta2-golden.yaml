@@ -15,7 +15,7 @@ spec:
     kubernetes.io/os: linux
   observabilityAddonSpec:
     enableMetrics: true
-    interval: 60
+    interval: 300
   storageConfig:
     alertmanagerStorageSize: 1Gi
     compactStorageSize: 1Gi

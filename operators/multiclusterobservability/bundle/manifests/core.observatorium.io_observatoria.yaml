@@ -977,6 +977,9 @@ spec:
                   query:
                     description: Query
                     properties:
+                      lookbackDelta:
+                        description: The maximum lookback duration for retrieving metrics during expression evaluations.
+                        type: string
                       replicas:
                         description: Number of Query replicas.
                         format: int32

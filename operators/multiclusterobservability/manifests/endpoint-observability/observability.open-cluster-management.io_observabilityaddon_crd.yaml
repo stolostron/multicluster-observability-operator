@@ -43,7 +43,7 @@ spec:
                   metrics to hub server.
                 type: boolean
               interval:
-                default: 60
+                default: 300
                 description: Interval for the observability addon push metrics to
                   hub server.
                 format: int32
