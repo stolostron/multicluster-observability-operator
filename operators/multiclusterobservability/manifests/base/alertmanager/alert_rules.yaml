@@ -48,3 +48,33 @@ data:
           labels:
             slo: "API Server Request Duration"
             target: 0.9900
+      - name: grafana-dashboard
+        rules:
+        - expr: sum(cluster:kube_pod_container_resource_requests:cpu:sum) by (cluster) / sum(kube_node_status_allocatable{resource="cpu"}) by (cluster)
+          record: cluster:cpu_requested:ratio
+          labels:
+            usage: grafana-dashboard
+        - expr: 1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) by (cluster)
+          record: cluster:cpu_utilized:ratio:5m
+          labels:
+            usage: grafana-dashboard
+        - expr: sum(cluster:kube_pod_container_resource_requests:memory:sum) by (cluster) / sum(kube_node_status_allocatable{resource="memory"}) by (cluster)
+          record: cluster:memory_requested:ratio
+          labels:
+            usage: grafana-dashboard
+        - expr: 1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource="memory"}) by (cluster)
+          record: cluster:memory_utilized:ratio
+          labels:
+            usage: grafana-dashboard
+        - expr: sum(machine_cpu_cores) by (cluster)
+          record: cluster:cpu_cores:sum
+          labels:
+            usage: grafana-dashboard
+        - expr: sum(kube_node_status_allocatable{resource="cpu"}) by (cluster)
+          record: cluster:cpu_allocatable:sum
+          labels:
+            usage: grafana-dashboard
+        - expr: sum(machine_memory_bytes) by (cluster)
+          record: cluster:machine_memory:sum
+          labels:
+            usage: grafana-dashboard
