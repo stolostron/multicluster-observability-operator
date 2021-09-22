@@ -47,6 +47,7 @@ var (
 	obsAddonCRDv1                 *apiextensionsv1.CustomResourceDefinition
 	obsAddonCRDv1beta1            *apiextensionsv1beta1.CustomResourceDefinition
 	endpointMetricsOperatorDeploy *appsv1.Deployment
+	imageListConfigMap            *corev1.ConfigMap
 
 	rawExtensionList     []runtime.RawExtension
 	promRawExtensionList []runtime.RawExtension
@@ -188,9 +189,6 @@ func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClust
 			return nil, nil, nil, err
 		}
 	}
-	if pullSecret != nil {
-		works = injectIntoWork(works, pullSecret)
-	}
 
 	// inject the certificates
 	if managedClusterObsCert == nil {
@@ -222,7 +220,9 @@ func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClust
 	// reload resources if empty
 	if len(rawExtensionList) == 0 || obsAddonCRDv1 == nil || obsAddonCRDv1beta1 == nil {
 		var err error
-		if rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1, endpointMetricsOperatorDeploy, err = loadTemplates(mco); err != nil {
+		rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1,
+			endpointMetricsOperatorDeploy, imageListConfigMap, err = loadTemplates(mco)
+		if err != nil {
 			return nil, nil, nil, err
 		}
 	}
@@ -264,9 +264,13 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 		manifests = append(manifests, *crdWork)
 	}
 
+	// replace the managedcluster image with the custom registry
+	_, hasCustomRegistry := managedClusterImageRegistry[clusterName]
+	imageRegistryClient := NewImageRegistryClient(c)
+
 	// inject the endpoint operator deployment
 	spec := dep.Spec.Template.Spec
-	for _, container := range spec.Containers {
+	for i, container := range spec.Containers {
 		if container.Name == "endpoint-observability-operator" {
 			for j, env := range container.Env {
 				if env.Name == "HUB_NAMESPACE" {
@@ -276,9 +280,43 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 					container.Env[j].Value = strconv.FormatBool(installProm)
 				}
 			}
+
+			if hasCustomRegistry {
+				oldImage := container.Image
+				newImage, err := imageRegistryClient.Cluster(clusterName).ImageOverride(oldImage)
+				if err == nil {
+					spec.Containers[i].Image = newImage
+				}
+			}
 		}
 	}
+
 	manifests = injectIntoWork(manifests, dep)
+	// replace the pull secret and addon components image
+	if hasCustomRegistry {
+		log.Info("Using the custom registry", "cluster", clusterName)
+		customPullSecret, err := imageRegistryClient.Cluster(clusterName).PullSecret()
+		if err == nil && customPullSecret != nil {
+			customPullSecret.ResourceVersion = ""
+			customPullSecret.Name = pullSecret.Name
+			customPullSecret.Namespace = pullSecret.Namespace
+			manifests = injectIntoWork(manifests, customPullSecret)
+		}
+
+		images := imageListConfigMap.Data
+		for key, oldImage := range images {
+			newImage, err := imageRegistryClient.Cluster(clusterName).ImageOverride(oldImage)
+			if err == nil {
+				imageListConfigMap.Data[key] = newImage
+			}
+		}
+	}
+
+	if pullSecret != nil && !hasCustomRegistry {
+		manifests = injectIntoWork(manifests, pullSecret)
+	}
+
+	manifests = injectIntoWork(manifests, imageListConfigMap)
 
 	// inject the hub info secret
 	hubInfo.Data[operatorconfig.ClusterNameKey] = []byte(clusterName)

@@ -327,3 +327,11 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - imageregistry.open-cluster-management.io
+  resources:
+  - managedclusterimageregistries
+  verbs:
+  - get
+  - list
+  - watch

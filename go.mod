@@ -15,6 +15,7 @@ require (
 	github.com/oklog/run v1.1.0
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.13.0
+	github.com/open-cluster-management/multicloud-operators-foundation v1.0.0-2021-09-15-06-57-52
 	github.com/open-cluster-management/multiclusterhub-operator v0.0.0-20210622185704-40982c42385e
 	github.com/open-cluster-management/observatorium-operator v0.0.0-20210922021200-67aa09a88236
 	github.com/openshift/api v3.9.1-0.20191111211345-a27ff30ebf09+incompatible
@@ -37,12 +38,12 @@ require (
 	k8s.io/apimachinery v0.21.2
 	k8s.io/client-go v13.0.0+incompatible
 	k8s.io/klog v1.0.0
-	k8s.io/kubectl v0.21.0
+	k8s.io/kubectl v0.21.2
 	open-cluster-management.io/addon-framework v0.0.0-20210909134218-e6e993872bb1
-	open-cluster-management.io/api v0.0.0-20210607023841-cd164385e2bb
-	sigs.k8s.io/controller-runtime v0.9.2
+	open-cluster-management.io/api v0.0.0-20210908005819-815ac23c7308
+	sigs.k8s.io/controller-runtime v0.9.3-0.20210709165254-650ea59f19cc
 	sigs.k8s.io/kube-storage-version-migrator v0.0.3
-	sigs.k8s.io/kustomize/api v0.8.5
+	sigs.k8s.io/kustomize/api v0.8.8
 	sigs.k8s.io/kustomize/v3 v3.3.1
 	sigs.k8s.io/yaml v1.2.0
 )
@@ -67,7 +68,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
 	github.com/efficientgo/tools/core v0.0.0-20210201224146-3d78f4d30648 // indirect
-	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
+	github.com/emicklei/go-restful v2.14.2+incompatible // indirect
 	github.com/evanphx/json-patch v4.11.0+incompatible // indirect
 	github.com/form3tech-oss/jwt-go v3.2.2+incompatible // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
@@ -77,7 +78,7 @@ require (
 	github.com/go-openapi/analysis v0.20.0 // indirect
 	github.com/go-openapi/errors v0.19.9 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
-	github.com/go-openapi/jsonreference v0.19.3 // indirect
+	github.com/go-openapi/jsonreference v0.19.4 // indirect
 	github.com/go-openapi/loads v0.20.2 // indirect
 	github.com/go-openapi/runtime v0.19.24 // indirect
 	github.com/go-openapi/spec v0.20.3 // indirect
@@ -89,7 +90,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/google/certificate-transparency-go v1.0.21 // indirect
 	github.com/google/go-cmp v0.5.5 // indirect
-	github.com/google/gofuzz v1.1.0 // indirect
+	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect
@@ -145,11 +146,11 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	k8s.io/apiserver v0.21.2 // indirect
 	k8s.io/component-base v0.21.2 // indirect
-	k8s.io/klog/v2 v2.8.0 // indirect
-	k8s.io/kube-aggregator v0.20.0 // indirect
+	k8s.io/klog/v2 v2.9.0 // indirect
+	k8s.io/kube-aggregator v0.21.2 // indirect
 	k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7 // indirect
 	k8s.io/utils v0.0.0-20210527160623-6fdb442a123b // indirect
-	sigs.k8s.io/kustomize/kyaml v0.10.15 // indirect
+	sigs.k8s.io/kustomize/kyaml v0.10.17 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.0 // indirect
 )
 
@@ -157,15 +158,18 @@ replace (
 	github.com/go-openapi/analysis => github.com/go-openapi/analysis v0.19.5
 	github.com/go-openapi/loads => github.com/go-openapi/loads v0.19.5
 	github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.5
+	github.com/kubevirt/terraform-provider-kubevirt => github.com/nirarg/terraform-provider-kubevirt v0.0.0-20201222125919-101cee051ed3
 	github.com/metal3-io/baremetal-operator => github.com/openshift/baremetal-operator v0.0.0-20200715132148-0f91f62a41fe
 	github.com/metal3-io/cluster-api-provider-baremetal => github.com/openshift/cluster-api-provider-baremetal v0.0.0-20190821174549-a2a477909c1d
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20210331193751-3acddb19d360
+	github.com/openshift/hive/apis => github.com/openshift/hive/apis v0.0.0-20210802140536-4d8d83dcd464
 	github.com/prometheus/prometheus => github.com/prometheus/prometheus v1.8.2-0.20210518124745-6eeded0fdf76
 	github.com/terraform-providers/terraform-provider-aws => github.com/openshift/terraform-provider-aws v1.60.1-0.20200630224953-76d1fb4e5699
 	github.com/terraform-providers/terraform-provider-azurerm => github.com/openshift/terraform-provider-azurerm v1.40.1-0.20200707062554-97ea089cc12a
 	github.com/terraform-providers/terraform-provider-ignition/v2 => github.com/community-terraform-providers/terraform-provider-ignition/v2 v2.1.0
 	golang.org/x/text => golang.org/x/text v0.3.5
 	k8s.io/client-go => k8s.io/client-go v0.21.0
+	kubevirt.io/client-go => kubevirt.io/client-go v0.29.0
 	// HiveConfig import dependancies
 	sigs.k8s.io/cluster-api-provider-aws => github.com/openshift/cluster-api-provider-aws v0.2.1-0.20200506073438-9d49428ff837
 	sigs.k8s.io/cluster-api-provider-azure => github.com/openshift/cluster-api-provider-azure v0.1.0-alpha.3.0.20200120114645-8a9592f1f87b
