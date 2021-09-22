@@ -1228,7 +1228,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "topk(5, (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__interval])) by (cluster)))",
+              "expr": "topk(5, (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval])) by (cluster)))",
               "hide": false,
               "interval": "",
               "intervalFactor": 1,
