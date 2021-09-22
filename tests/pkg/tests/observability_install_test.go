@@ -165,7 +165,7 @@ func installMCO() {
 		}
 		testFailed = false
 		return nil
-	}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*10).Should(Succeed())
+	}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*10).Should(Succeed())
 
 	By("Check clustermanagementaddon CR is created")
 	Eventually(func() error {

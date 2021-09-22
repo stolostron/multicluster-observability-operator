@@ -72,7 +72,7 @@ var _ = Describe("Observability:", func() {
 					return err
 				}
 				return nil
-			}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
+			}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 		// it takes Prometheus 5m to notice a metric is not available - https://github.com/prometheus/prometheus/issues/1810
 		// the corret way is use timestamp, for example:
@@ -110,7 +110,7 @@ var _ = Describe("Observability:", func() {
 					return err
 				}
 				return nil
-			}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(Equal("True"))
+			}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 	})
 
