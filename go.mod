@@ -16,7 +16,7 @@ require (
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.13.0
 	github.com/open-cluster-management/multiclusterhub-operator v0.0.0-20210622185704-40982c42385e
-	github.com/open-cluster-management/observatorium-operator v0.0.0-20210630101922-5eab9bc11b82
+	github.com/open-cluster-management/observatorium-operator v0.0.0-20210922021200-67aa09a88236
 	github.com/openshift/api v3.9.1-0.20191111211345-a27ff30ebf09+incompatible
 	github.com/openshift/client-go v0.0.0-20201214125552-e615e336eb49
 	github.com/openshift/cluster-monitoring-operator v0.1.1-0.20210611103744-7168290cd660
@@ -154,7 +154,6 @@ require (
 )
 
 replace (
-	github.com/open-cluster-management/observatorium-operator => github.com/marcolan018/observatorium-operator v0.0.0-20210918065132-6d86510d83bf
 	github.com/go-openapi/analysis => github.com/go-openapi/analysis v0.19.5
 	github.com/go-openapi/loads => github.com/go-openapi/loads v0.19.5
 	github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.5
