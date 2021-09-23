@@ -193,7 +193,7 @@ func newImageRegistry(name, namespace, registryAddress, pullSecret string) *v1al
 	}
 }
 
-func TestManifestWorkForCustomRegistry(t *testing.T) {
+func TestManifestWork(t *testing.T) {
 	initSchema(t)
 	objs := []runtime.Object{
 		newTestObsApiRoute(),
@@ -223,82 +223,6 @@ func TestManifestWorkForCustomRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
 	}
-
-	// set the default pull secret
-	pullSecret = newPullSecret("multiclusterhub-operator-pull-secret", namespace, []byte("default"))
-	// config the managedcluster to use the custom registry
-	managedClusterImageRegistry[clusterName] = "open-cluster-management.io/image-registry=" + namespace + ".image_registry"
-
-	works, crdWork, _, err := generateGlobalManifestResources(c, newTestMCO())
-	if err != nil {
-		t.Fatalf("Failed to get global manifestwork resourc: (%v)", err)
-	}
-
-	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true); err != nil {
-		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
-	}
-
-	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, false)
-	if err != nil {
-		t.Fatalf("Failed to create manifestworks: (%v)", err)
-	}
-	found := &workv1.ManifestWork{}
-	workName := namespace + workNameSuffix
-	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
-	if err != nil {
-		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
-	}
-
-	// To check pullsecret, endpoint-observability-operator and image list configmap
-	for _, manifest := range found.Spec.Workload.Manifests {
-		obj := &unstructured.Unstructured{}
-		obj.UnmarshalJSON(manifest.Raw)
-		if obj.GetKind() == "Secret" && obj.GetName() == "multiclusterhub-operator-pull-secret" {
-			if !strings.Contains(string(manifest.Raw), base64.StdEncoding.EncodeToString([]byte("custorm"))) {
-				t.Errorf("multiclusterhub-operator-pull-secret should use the custom pull secret")
-			}
-		}
-
-		if obj.GetKind() == "ConfigMap" && obj.GetName() == "images-list" {
-			if !strings.Contains(string(manifest.Raw), "registry_server") {
-				t.Errorf("images-list should use the custom registry image")
-			}
-		}
-
-		if obj.GetKind() == "Deployment" && obj.GetName() == "endpoint-observability-operator" {
-			if !strings.Contains(string(manifest.Raw), "registry_server") {
-				t.Errorf("endpoint-observability-operator should use the custom registry image")
-			}
-		}
-	}
-
-	if err = os.Remove(testManifestsPath); err != nil {
-		t.Fatalf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
-	}
-	os.Remove(path.Join(wd, "../../tests"))
-}
-
-func TestManifestWork(t *testing.T) {
-
-	initSchema(t)
-
-	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(), NewMetricsCustomAllowListCM(), NewAmAccessorSA(), NewAmAccessorTokenSecret()}
-	c := fake.NewFakeClient(objs...)
-
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get work dir: (%v)", err)
-	}
-
-	os.MkdirAll(path.Join(wd, "../../tests"), 0755)
-	testManifestsPath := path.Join(wd, "../../tests/manifests")
-	manifestsPath := path.Join(wd, "../../manifests")
-	os.Setenv("TEMPLATES_PATH", testManifestsPath)
-	err = os.Symlink(manifestsPath, testManifestsPath)
-	if err != nil {
-		t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
-	}
-
 	works, crdWork, _, err := generateGlobalManifestResources(c, newTestMCO())
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resourc: (%v)", err)
@@ -356,6 +280,54 @@ func TestManifestWork(t *testing.T) {
 	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + workNameSuffix, Namespace: namespace}, found)
 	if err == nil || !errors.IsNotFound(err) {
 		t.Fatalf("Manifestwork not deleted: (%v)", err)
+	}
+
+	// set the default pull secret
+	pullSecret = newPullSecret("multiclusterhub-operator-pull-secret", namespace, []byte("default"))
+	// config the managedcluster to use the custom registry
+	managedClusterImageRegistry[clusterName] = "open-cluster-management.io/image-registry=" + namespace + ".image_registry"
+
+	works, crdWork, _, err = generateGlobalManifestResources(c, newTestMCO())
+	if err != nil {
+		t.Fatalf("Failed to get global manifestwork resourc: (%v)", err)
+	}
+
+	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true); err != nil {
+		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
+	}
+
+	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, false)
+	if err != nil {
+		t.Fatalf("Failed to create manifestworks: (%v)", err)
+	}
+	found = &workv1.ManifestWork{}
+	workName = namespace + workNameSuffix
+	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
+	if err != nil {
+		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)
+	}
+
+	// To check pullsecret, endpoint-observability-operator and image list configmap
+	for _, manifest := range found.Spec.Workload.Manifests {
+		obj := &unstructured.Unstructured{}
+		obj.UnmarshalJSON(manifest.Raw)
+		if obj.GetKind() == "Secret" && obj.GetName() == "multiclusterhub-operator-pull-secret" {
+			if !strings.Contains(string(manifest.Raw), base64.StdEncoding.EncodeToString([]byte("custorm"))) {
+				t.Errorf("multiclusterhub-operator-pull-secret should use the custom pull secret")
+			}
+		}
+
+		if obj.GetKind() == "ConfigMap" && obj.GetName() == "images-list" {
+			if !strings.Contains(string(manifest.Raw), "registry_server") {
+				t.Errorf("images-list should use the custom registry image")
+			}
+		}
+
+		if obj.GetKind() == "Deployment" && obj.GetName() == "endpoint-observability-operator" {
+			if !strings.Contains(string(manifest.Raw), "registry_server") {
+				t.Errorf("endpoint-observability-operator should use the custom registry image")
+			}
+		}
 	}
 
 	if err = os.Remove(testManifestsPath); err != nil {
