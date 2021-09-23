@@ -54,10 +54,6 @@ data:
           record: cluster:cpu_requested:ratio
           labels:
             usage: grafana-dashboard
-        - expr: 1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) by (cluster)
-          record: cluster:cpu_utilized:ratio:5m
-          labels:
-            usage: grafana-dashboard
         - expr: sum(cluster:kube_pod_container_resource_requests:memory:sum) by (cluster) / sum(kube_node_status_allocatable{resource="memory"}) by (cluster)
           record: cluster:memory_requested:ratio
           labels:

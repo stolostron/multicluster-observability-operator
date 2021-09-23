@@ -711,7 +711,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "topk(50, cluster:cpu_requested:ratio - ignoring(usage) cluster:cpu_utilized:ratio:5m)\n* on(cluster) group_left(cpu_requested) count_values without() (\"cpu_requested\", cluster:cpu_requested:ratio)\n* on(cluster) group_left(cpu_utilized) count_values without() (\"cpu_utilized\", cluster:cpu_utilized:ratio:5m)",
+              "expr": "topk(50, cluster:cpu_requested:ratio - ignoring(usage) (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[$__rate_interval])) by (cluster)))\n* on(cluster) group_left(cpu_requested) count_values without() (\"cpu_requested\", cluster:cpu_requested:ratio)\n* on(cluster) group_left(cpu_utilized) count_values without() (\"cpu_utilized\", (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[$__rate_interval])) by (cluster)))",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -1144,7 +1144,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "topk(50, cluster:cpu_utilized:ratio:5m)\n* on(cluster) group_left(machine_cpu_cores_sum) count_values without() (\"machine_cpu_cores_sum\", cluster:cpu_cores:sum)\n* on(cluster) group_left(node_allocatable_cpu_cores_sum) count_values without() (\"node_allocatable_cpu_cores_sum\", cluster:cpu_allocatable:sum)\n* on(cluster) group_left(cpu_requested) count_values without() (\"cpu_requested\", cluster:cpu_requested:ratio)",
+              "expr": "topk(50, (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[$__rate_interval])) by (cluster)))\n* on(cluster) group_left(machine_cpu_cores_sum) count_values without() (\"machine_cpu_cores_sum\", cluster:cpu_cores:sum)\n* on(cluster) group_left(node_allocatable_cpu_cores_sum) count_values without() (\"node_allocatable_cpu_cores_sum\", cluster:cpu_allocatable:sum)\n* on(cluster) group_left(cpu_requested) count_values without() (\"cpu_requested\", cluster:cpu_requested:ratio)",
               "instant": true,
               "interval": "",
               "legendFormat": "",
