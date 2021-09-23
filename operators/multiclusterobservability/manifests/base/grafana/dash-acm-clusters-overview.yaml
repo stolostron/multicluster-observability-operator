@@ -40,14 +40,10 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
               "custom": {
                 "align": null,
                 "filterable": false
               },
-              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -60,13 +56,17 @@ data:
                     "value": 80
                   }
                 ]
+              },
+              "mappings": [],
+              "color": {
+                "mode": "thresholds"
               }
             },
             "overrides": [
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #A"
+                  "options": "Value"
                 },
                 "properties": [
                   {
@@ -110,7 +110,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #B"
+                  "options": "api_errors"
                 },
                 "properties": [
                   {
@@ -158,7 +158,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #C"
+                  "options": "api_up"
                 },
                 "properties": [
                   {
@@ -246,30 +246,19 @@ data:
           "options": {
             "showHeader": true
           },
-          "pluginVersion": "7.3.10",
+          "pluginVersion": "7.5.5",
           "targets": [
             {
-              "expr": "max(apiserver_request_duration_seconds:histogram_quantile_99) by (cluster)",
+              "expr": "topk(50,  max(apiserver_request_duration_seconds:histogram_quantile_99) by (cluster))\n* on(cluster) group_left(api_up) count_values without() (\"api_up\", (sum(up{job=\"apiserver\"} == 1) by (cluster) / count(up{job=\"apiserver\"}) by (cluster)))\n* on(cluster) group_left(api_errors) count_values without() (\"api_errors\", (sum by (cluster)(sum:apiserver_request_total:1h{code=~\"5..\"})))",
+              "legendFormat": "",
+              "interval": "",
+              "exemplar": true,
               "format": "table",
               "instant": true,
               "refId": "A"
-            },
-            {
-              "expr": "(sum(up{job=\"apiserver\"} == 1) by (cluster) / count(up{job=\"apiserver\"}) by (cluster))",
-              "format": "table",
-              "instant": true,
-              "refId": "C"
-            },
-            {
-              "expr": "sum by (cluster)(sum:apiserver_request_total:1h{code=~\"5..\"})",
-              "format": "table",
-              "instant": true,
-              "refId": "B"
             }
           ],
-          "timeFrom": null,
-          "timeShift": null,
-          "title": "API Server",
+          "title": "Top 50 Max Latency API Server",
           "transformations": [
             {
               "id": "merge",
@@ -282,33 +271,49 @@ data:
               "options": {
                 "include": {
                   "names": [
+                    "Time",
+                    "api_up",
                     "cluster",
-                    "Value #A",
-                    "Value #C",
-                    "Value #B"
+                    "Value",
+                    "api_errors"
                   ]
                 }
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "indexByName": {
+                  "cluster": 0,
+                  "Value": 1,
+                  "api_up": 2,
+                  "api_errors": 3,
+                  "Time": 4
+                },
+                "renameByName": {}
               }
             }
           ],
           "type": "table"
         },
         {
-          "datasource": null,
           "description": "Leader election changes per cluster over the time range selected for dashboard.",
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
               "custom": {
                 "align": null,
                 "filterable": false
               },
-              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": []
+              },
+              "mappings": [],
+              "color": {
+                "mode": "thresholds"
               }
             },
             "overrides": [
@@ -336,7 +341,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #A"
+                  "options": "Value"
                 },
                 "properties": [
                   {
@@ -376,7 +381,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #B"
+                  "options": "db_size"
                 },
                 "properties": [
                   {
@@ -400,7 +405,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #C"
+                  "options": "has_leader"
                 },
                 "properties": [
                   {
@@ -445,37 +450,20 @@ data:
           "id": 150,
           "interval": "1m",
           "options": {
-            "frameIndex": 2,
             "showHeader": true,
+            "frameIndex": 2,
             "sortBy": []
           },
-          "pluginVersion": "7.3.10",
+          "pluginVersion": "7.5.5",
           "targets": [
             {
-              "expr": "sum(changes(etcd_server_leader_changes_seen_total{job=\"etcd\"}[$__range])) by (cluster)",
+              "expr": "sum(changes(etcd_server_leader_changes_seen_total{job=\"etcd\"}[$__range])) by (cluster)\n* on(cluster) group_left(db_size) count_values without() (\"db_size\", max(etcd_debugging_mvcc_db_total_size_in_bytes{job=\"etcd\"}) by (cluster))\n* on(cluster) group_left(has_leader) count_values without() (\"has_leader\", max(etcd_server_has_leader{job=\"etcd\"}) by (cluster))",
+              "legendFormat": "",
+              "interval": "",
+              "exemplar": true,
               "format": "table",
               "instant": true,
-              "interval": "",
-              "legendFormat": "",
               "refId": "A"
-            },
-            {
-              "expr": "max(etcd_debugging_mvcc_db_total_size_in_bytes{job=\"etcd\"}) by (cluster)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "B"
-            },
-            {
-              "expr": "max(etcd_server_has_leader{job=\"etcd\"}) by (cluster)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "C"
             }
           ],
           "title": "etcd",
@@ -486,9 +474,9 @@ data:
                 "include": {
                   "names": [
                     "cluster",
-                    "Value #B",
-                    "Value #A",
-                    "Value #C"
+                    "db_size",
+                    "has_leader",
+                    "Value"
                   ]
                 }
               }
@@ -502,16 +490,17 @@ data:
               "options": {
                 "excludeByName": {},
                 "indexByName": {
-                  "Value #A": 2,
-                  "Value #B": 3,
-                  "Value #C": 1,
-                  "cluster": 0
+                  "cluster": 0,
+                  "has_leader": 1,
+                  "Value": 2,
+                  "db_size": 3
                 },
                 "renameByName": {}
               }
             }
           ],
-          "type": "table"
+          "type": "table",
+          "datasource": null
         },
         {
           "collapsed": false,
@@ -1565,18 +1554,12 @@ data:
           }
         },
         {
-          "datasource": null,
-          "description": "",
           "fieldConfig": {
             "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
               "custom": {
                 "align": null,
                 "filterable": false
               },
-              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -1589,13 +1572,17 @@ data:
                     "value": 80
                   }
                 ]
+              },
+              "mappings": [],
+              "color": {
+                "mode": "thresholds"
               }
             },
             "overrides": [
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #A"
+                  "options": "Value"
                 },
                 "properties": [
                   {
@@ -1619,7 +1606,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #B"
+                  "options": "node_transmit"
                 },
                 "properties": [
                   {
@@ -1664,7 +1651,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #D"
+                  "options": "node_transmit_drop"
                 },
                 "properties": [
                   {
@@ -1680,7 +1667,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #C"
+                  "options": "node_receive_drop"
                 },
                 "properties": [
                   {
@@ -1711,42 +1698,16 @@ data:
               }
             ]
           },
-          "pluginVersion": "7.3.10",
+          "pluginVersion": "7.5.5",
           "targets": [
             {
-              "expr": "sum(instance:node_network_receive_bytes_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster)",
+              "expr": "sum(instance:node_network_receive_bytes_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster)\n* on(cluster) group_left(node_transmit) count_values without() (\"node_transmit\", sum(instance:node_network_transmit_bytes_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster))\n* on(cluster) group_left(node_receive_drop) count_values without() (\"node_receive_drop\", sum(instance:node_network_receive_drop_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster))\n* on(cluster) group_left(node_transmit_drop) count_values without() (\"node_transmit_drop\", sum(instance:node_network_transmit_drop_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster))",
+              "legendFormat": "",
+              "interval": "",
+              "exemplar": true,
               "format": "table",
               "instant": true,
-              "interval": "",
-              "legendFormat": "",
               "refId": "A"
-            },
-            {
-              "expr": "sum(instance:node_network_transmit_bytes_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "B"
-            },
-            {
-              "expr": "sum(instance:node_network_receive_drop_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "C"
-            },
-            {
-              "expr": "sum(instance:node_network_transmit_drop_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "D"
             }
           ],
           "title": "Bandwidth Utilization",
@@ -1757,10 +1718,10 @@ data:
                 "include": {
                   "names": [
                     "cluster",
-                    "Value #A",
-                    "Value #B",
-                    "Value #C",
-                    "Value #D"
+                    "node_receive_drop",
+                    "node_transmit",
+                    "node_transmit_drop",
+                    "Value"
                   ]
                 }
               }
@@ -1779,9 +1740,25 @@ data:
                   }
                 ]
               }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "indexByName": {
+                  "cluster": 0,
+                  "Value": 1,
+                  "node_transmit": 2,
+                  "node_receive_drop": 3,
+                  "node_transmit_drop": 4
+                },
+                "renameByName": {}
+              }
             }
           ],
-          "type": "table"
+          "type": "table",
+          "description": "",
+          "datasource": null
         }
       ],
       "refresh": "5m",
