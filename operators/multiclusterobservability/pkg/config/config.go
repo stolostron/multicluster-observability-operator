@@ -104,6 +104,7 @@ const (
 	DefaultImgRepository = "quay.io/open-cluster-management"
 	DefaultImgTagSuffix  = "2.4.0-SNAPSHOT-2021-09-23-07-02-14"
 
+	ObservatoriumImgRepo           = "quay.io/observatorium"
 	ObservatoriumAPIImgName        = "observatorium"
 	ObservatoriumOperatorImgName   = "observatorium-operator"
 	ObservatoriumOperatorImgKey    = "observatorium_operator"
