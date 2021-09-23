@@ -138,7 +138,7 @@ func updateRes(r *resource.Resource,
 func updateEndpointOperator(mco *mcov1beta2.MultiClusterObservability,
 	container corev1.Container) corev1.Container {
 	container.Image = getImage(mco, mcoconfig.EndpointControllerImgName,
-		mcoconfig.EndpointControllerImgTagSuffix, mcoconfig.EndpointControllerKey)
+		mcoconfig.DefaultImgTagSuffix, mcoconfig.EndpointControllerKey)
 	container.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 	for i, env := range container.Env {
 		if env.Name == operatorconfig.PullSecret {

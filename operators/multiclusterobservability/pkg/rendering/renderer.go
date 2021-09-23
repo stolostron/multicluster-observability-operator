@@ -128,8 +128,11 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 			switch resources[idx].GetName() {
 
 			case "observatorium-operator":
+				spec.Containers[0].Image = mcoconfig.DefaultImgRepository + "/" +
+					mcoconfig.ObservatoriumOperatorImgName + ":" + mcoconfig.DefaultImgTagSuffix
+
 				found, image := mcoconfig.ReplaceImage(r.cr.Annotations, spec.Containers[0].Image,
-					mcoconfig.ObservatoriumOperatorImgName)
+					mcoconfig.ObservatoriumOperatorImgKey)
 				if found {
 					spec.Containers[0].Image = image
 				}

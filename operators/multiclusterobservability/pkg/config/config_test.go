@@ -26,9 +26,10 @@ import (
 )
 
 var (
-	apiServerURL = "http://example.com"
-	clusterID    = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-	version      = "2.1.1"
+	apiServerURL           = "http://example.com"
+	clusterID              = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+	version                = "2.1.1"
+	DefaultDSImgRepository = "quay.io:443/acm-d"
 )
 
 func TestGetClusterNameLabelKey(t *testing.T) {

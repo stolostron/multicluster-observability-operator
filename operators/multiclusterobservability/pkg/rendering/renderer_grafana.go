@@ -48,11 +48,16 @@ func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
 
 	spec := &dep.Spec.Template.Spec
 
-	found, image := config.ReplaceImage(r.cr.Annotations, config.GrafanaImgRepo, config.GrafanaImgKey)
+	spec.Containers[0].Image = config.DefaultImgRepository + "/" + config.GrafanaImgKey +
+		":" + config.DefaultImgTagSuffix
+	found, image := config.ReplaceImage(r.cr.Annotations, spec.Containers[0].Image, config.GrafanaImgKey)
 	if found {
 		spec.Containers[0].Image = image
 	}
 	spec.Containers[0].Resources = config.GetResources(config.Grafana, r.cr.Spec.AdvancedConfig)
+
+	spec.Containers[1].Image = config.DefaultImgRepository + "/" + config.GrafanaDashboardLoaderName +
+		":" + config.DefaultImgTagSuffix
 	found, image = config.ReplaceImage(r.cr.Annotations, spec.Containers[1].Image,
 		config.GrafanaDashboardLoaderKey)
 	if found {

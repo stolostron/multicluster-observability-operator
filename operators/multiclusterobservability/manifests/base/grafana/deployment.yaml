@@ -42,7 +42,7 @@ spec:
       containers:
       - args:
         - -config=/etc/grafana/grafana.ini
-        image:  quay.io/openshift/origin-grafana:4.8.0
+        image: quay.io/open-cluster-management/grafana:2.4.0-SNAPSHOT-2021-09-23-07-02-14
         imagePullPolicy: Always
         name: grafana
         ports:
