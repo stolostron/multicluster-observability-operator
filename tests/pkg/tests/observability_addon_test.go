@@ -4,20 +4,14 @@
 package tests
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 
 	"github.com/open-cluster-management/multicluster-observability-operator/tests/pkg/utils"
-)
-
-const (
-	ManagedClusterAddOnMessage = "enableMetrics is set to False"
 )
 
 var _ = Describe("Observability:", func() {
@@ -33,38 +27,12 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
+	JustBeforeEach(func() {
+		clusters, clusterError = utils.ListManagedClusters(testOptions)
+		Expect(clusterError).NotTo(HaveOccurred())
+	})
+
 	Context("[P2][Sev2][Observability] Modifying MCO cr to disable observabilityaddon (addon/g0) -", func() {
-		clusterName := utils.GetManagedClusterName(testOptions)
-		It("[Stable] Should have endpoint-operator and metrics-collector being deployed", func() {
-			By("Check enableMetrics is true")
-			enable, err := utils.GetMCOAddonSpecMetrics(testOptions)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(enable).To(Equal(true))
-
-			By("Check ObservabilityAddon is created if there's managed OCP clusters on the hub")
-			if clusterName != "" {
-				Eventually(func() string {
-					mco, err := dynClient.Resource(utils.NewMCOAddonGVR()).Namespace(string(clusterName)).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
-					if err != nil {
-						panic(err.Error())
-					}
-					return fmt.Sprintf("%T", mco.Object["status"])
-				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).ShouldNot(Equal("nil"))
-				Eventually(func() string {
-					mco, err := dynClient.Resource(utils.NewMCOAddonGVR()).Namespace(string(clusterName)).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
-					if err != nil {
-						panic(err.Error())
-					}
-					return mco.Object["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["message"].(string)
-				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Equal("Metrics collector deployed and functional"))
-			}
-
-			By("Check endpoint-operator and metrics-collector pods are created")
-			Eventually(func() error {
-				return utils.CheckMCOAddon(testOptions)
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
-		})
-
 		It("[Stable] Should have resource requirement defined in CR", func() {
 			By("Check addon resource requirement")
 			res, err := utils.GetMCOAddonSpecResources(testOptions)
@@ -98,40 +66,24 @@ var _ = Describe("Observability:", func() {
 				return nil
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
-			if clusterName != "" {
-				Eventually(func() string {
-					mco, err := dynClient.Resource(utils.NewMCOAddonGVR()).Namespace(string(clusterName)).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
-					if err != nil {
-						panic(err.Error())
-					}
-					if mco.Object["status"] != nil {
-						return mco.Object["status"].(map[string]interface{})["conditions"].([]interface{})[0].(map[string]interface{})["message"].(string)
-					} else {
-						return ""
-					}
-				}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(Equal(ManagedClusterAddOnMessage))
-
-				Eventually(func() string {
-					mco, err := dynClient.Resource(utils.NewMCOManagedClusterAddonsGVR()).Namespace(string(clusterName)).Get(context.TODO(), "observability-controller", metav1.GetOptions{})
-					Expect(err).ToNot(HaveOccurred())
-					conditions := mco.Object["status"].(map[string]interface{})["conditions"].([]interface{})
-					for _, condition := range conditions {
-						if condition.(map[string]interface{})["message"].(string) == ManagedClusterAddOnMessage {
-							return condition.(map[string]interface{})["status"].(string)
-						}
-					}
-					return ""
-				}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Equal("True"))
-			}
+			Eventually(func() error {
+				err = utils.CheckAllOBADisabled(testOptions)
+				if err != nil {
+					return err
+				}
+				return nil
+			}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 		// it takes Prometheus 5m to notice a metric is not available - https://github.com/prometheus/prometheus/issues/1810
 		// the corret way is use timestamp, for example:
 		// timestamp(node_memory_MemAvailable_bytes{cluster="local-cluster"}) - timestamp(node_memory_MemAvailable_bytes{cluster="local-cluster"} offset 1m) > 59
 		It("[Stable] Waiting for check no metric data in grafana console", func() {
 			Eventually(func() error {
-				err, hasMetric := utils.ContainManagedClusterMetric(testOptions, `timestamp(node_memory_MemAvailable_bytes{cluster="`+clusterName+`}) - timestamp(node_memory_MemAvailable_bytes{cluster=`+clusterName+`"} offset 1m) > 59`, []string{`"__name__":"node_memory_MemAvailable_bytes"`})
-				if err != nil && !hasMetric && strings.Contains(err.Error(), "Failed to find metric name from response") {
-					return nil
+				for _, cluster := range clusters {
+					err, hasMetric := utils.ContainManagedClusterMetric(testOptions, `timestamp(node_memory_MemAvailable_bytes{cluster="`+cluster+`}) - timestamp(node_memory_MemAvailable_bytes{cluster=`+cluster+`"} offset 1m) > 59`, []string{`"__name__":"node_memory_MemAvailable_bytes"`})
+					if err != nil && !hasMetric && strings.Contains(err.Error(), "Failed to find metric name from response") {
+						return nil
+					}
 				}
 				return fmt.Errorf("Check no metric data in grafana console error: %v", err)
 			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
@@ -152,19 +104,13 @@ var _ = Describe("Observability:", func() {
 			}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(BeTrue())
 
 			By("Checking the status in managedclusteraddon reflects the endpoint operator status correctly")
-			if clusterName != "" {
-				Eventually(func() string {
-					mco, err := dynClient.Resource(utils.NewMCOManagedClusterAddonsGVR()).Namespace(string(clusterName)).Get(context.TODO(), "observability-controller", metav1.GetOptions{})
-					Expect(err).ToNot(HaveOccurred())
-					conditions := mco.Object["status"].(map[string]interface{})["conditions"].([]interface{})
-					for _, condition := range conditions {
-						if condition.(map[string]interface{})["message"].(string) == "Send metrics successfully" {
-							return condition.(map[string]interface{})["status"].(string)
-						}
-					}
-					return ""
-				}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(Equal("True"))
-			}
+			Eventually(func() error {
+				err = utils.CheckAllOBAsEnabled(testOptions)
+				if err != nil {
+					return err
+				}
+				return nil
+			}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 	})
 
