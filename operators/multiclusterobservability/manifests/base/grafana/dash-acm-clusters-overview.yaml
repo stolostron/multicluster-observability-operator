@@ -261,12 +261,6 @@ data:
           "title": "Top 50 Max Latency API Server",
           "transformations": [
             {
-              "id": "merge",
-              "options": {
-                "reducers": []
-              }
-            },
-            {
               "id": "filterFieldsByName",
               "options": {
                 "include": {
@@ -480,10 +474,6 @@ data:
                   ]
                 }
               }
-            },
-            {
-              "id": "merge",
-              "options": {}
             },
             {
               "id": "organize",
@@ -1725,10 +1715,6 @@ data:
                   ]
                 }
               }
-            },
-            {
-              "id": "merge",
-              "options": {}
             },
             {
               "id": "sortBy",
