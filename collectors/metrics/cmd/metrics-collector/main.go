@@ -34,6 +34,7 @@ func main() {
 		LimitBytes: 200 * 1024,
 		Rules:      []string{`{__name__="up"}`},
 		Interval:   4*time.Minute + 30*time.Second,
+		ThreadNum:  1,
 	}
 	cmd := &cobra.Command{
 		Short:         "Federate Prometheus via push",
@@ -44,6 +45,7 @@ func main() {
 		},
 	}
 
+	cmd.Flags().Int64Var(&opt.ThreadNum, "thread-number", opt.ThreadNum, "The number of client runs in the simulate environment.").MarkHidden()
 	cmd.Flags().StringVar(&opt.Listen, "listen", opt.Listen, "A host:port to listen on for health and metrics.")
 	cmd.Flags().StringVar(&opt.From, "from", opt.From, "The Prometheus server to federate from.")
 	cmd.Flags().StringVar(&opt.FromToken, "from-token", opt.FromToken, "A bearer token to use when authenticating to the source Prometheus server.")
@@ -131,6 +133,10 @@ type Options struct {
 
 	// simulation file
 	SimulatedTimeseriesFile string
+
+	// how many threads are running
+	// for production, it is always 1
+	ThreadNum int64
 }
 
 func (o *Options) Run() error {
@@ -245,12 +251,14 @@ func (o *Options) Run() error {
 	{
 		// Execute the worker's `Run` func.
 		ctx, cancel := context.WithCancel(context.Background())
-		g.Add(func() error {
-			worker.Run(ctx)
-			return nil
-		}, func(error) {
-			cancel()
-		})
+		for i := 0; i < int(o.ThreadNum); i++ {
+			g.Add(func() error {
+				worker.Run(ctx)
+				return nil
+			}, func(error) {
+				cancel()
+			})
+		}
 	}
 
 	{
