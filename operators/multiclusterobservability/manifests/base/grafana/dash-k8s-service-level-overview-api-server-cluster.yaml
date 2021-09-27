@@ -20,7 +20,7 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 13,
-      "iteration": 1632264932705,
+      "iteration": 1632761729352,
       "links": [
         {
           "icon": "dashboard",
@@ -903,7 +903,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value"
+                  "options": "SLI"
                 },
                 "properties": [
                   {
@@ -973,6 +973,7 @@ data:
                 "excludeByName": {},
                 "indexByName": {},
                 "renameByName": {
+                  "Value": "SLI",
                   "cluster": "Cluster",
                   "clusterID": "ClusterID"
                 }
