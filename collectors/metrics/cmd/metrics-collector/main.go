@@ -15,12 +15,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/oklog/run"
 	"github.com/prometheus/common/expfmt"
 	"github.com/spf13/cobra"
-
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"k8s.io/apimachinery/pkg/util/uuid"
 
 	"github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/forwarder"
 	collectorhttp "github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/http"
@@ -45,7 +45,7 @@ func main() {
 		},
 	}
 
-	cmd.Flags().Int64Var(&opt.ThreadNum, "thread-number", opt.ThreadNum, "The number of client runs in the simulate environment.").MarkHidden()
+	cmd.Flags().Int64Var(&opt.ThreadNum, "thread-number", opt.ThreadNum, "The number of client runs in the simulate environment.")
 	cmd.Flags().StringVar(&opt.Listen, "listen", opt.Listen, "A host:port to listen on for health and metrics.")
 	cmd.Flags().StringVar(&opt.From, "from", opt.From, "The Prometheus server to federate from.")
 	cmd.Flags().StringVar(&opt.FromToken, "from-token", opt.FromToken, "A bearer token to use when authenticating to the source Prometheus server.")
@@ -192,7 +192,7 @@ func (o *Options) Run() error {
 
 	var transformer metricfamily.MultiTransformer
 
-	if len(o.Labels) > 0 {
+	if len(o.Labels) > 0 && o.ThreadNum == 1 {
 		transformer.WithFunc(func() metricfamily.Transformer {
 			return metricfamily.NewLabel(o.Labels, nil)
 		})
@@ -252,6 +252,22 @@ func (o *Options) Run() error {
 		// Execute the worker's `Run` func.
 		ctx, cancel := context.WithCancel(context.Background())
 		for i := 0; i < int(o.ThreadNum); i++ {
+			if i > 0 && len(o.Labels) > 0 {
+				for _, flag := range o.LabelFlag {
+					values := strings.SplitN(flag, "=", 2)
+					if values[0] == "cluster" {
+						values[1] += "-" + fmt.Sprint(i)
+					}
+					if values[0] == "clusterID" {
+						values[1] = string(uuid.NewUUID())
+					}
+					o.Labels[values[0]] = values[1]
+				}
+				transformer.WithFunc(func() metricfamily.Transformer {
+					return metricfamily.NewLabel(o.Labels, nil)
+				})
+			}
+
 			g.Add(func() error {
 				worker.Run(ctx)
 				return nil
