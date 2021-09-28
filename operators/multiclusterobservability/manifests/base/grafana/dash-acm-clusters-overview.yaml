@@ -66,7 +66,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value"
+                  "options": "Value #A"
                 },
                 "properties": [
                   {
@@ -110,7 +110,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "api_errors"
+                  "options": "Value #B"
                 },
                 "properties": [
                   {
@@ -249,30 +249,30 @@ data:
           "pluginVersion": "7.5.5",
           "targets": [
             {
-              "expr": "topk(50,  max(apiserver_request_duration_seconds:histogram_quantile_99) by (cluster))\n* on(cluster) group_left(api_up) count_values without() (\"api_up\", (sum(up{job=\"apiserver\"} == 1) by (cluster) / count(up{job=\"apiserver\"}) by (cluster)))\n* on(cluster) group_left(api_errors) count_values without() (\"api_errors\", (sum by (cluster)(sum:apiserver_request_total:1h{code=~\"5..\"})))",
-              "legendFormat": "",
-              "interval": "",
               "exemplar": true,
+              "expr": "topk(50,  max(apiserver_request_duration_seconds:histogram_quantile_99) by (cluster))\n* on(cluster) group_left(api_up) count_values without() (\"api_up\", (sum(up{job=\"apiserver\"} == 1) by (cluster) / count(up{job=\"apiserver\"}) by (cluster)))",
               "format": "table",
               "instant": true,
+              "interval": "",
+              "legendFormat": "",
               "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum by (cluster)(sum:apiserver_request_total:1h{code=~\"5..\"})",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
             }
           ],
           "title": "Top 50 Max Latency API Server",
           "transformations": [
             {
-              "id": "filterFieldsByName",
-              "options": {
-                "include": {
-                  "names": [
-                    "Time",
-                    "api_up",
-                    "cluster",
-                    "Value",
-                    "api_errors"
-                  ]
-                }
-              }
+              "id": "labelsToFields",
+              "options": {}
             },
             {
               "id": "organize",
@@ -281,11 +281,11 @@ data:
                   "Time": true
                 },
                 "indexByName": {
-                  "cluster": 0,
-                  "Value": 1,
-                  "api_up": 2,
-                  "api_errors": 3,
-                  "Time": 4
+                  "Time": 0,
+                  "Value #A": 2,
+                  "Value #B": 4,
+                  "api_up": 3,
+                  "cluster": 1
                 },
                 "renameByName": {}
               }
