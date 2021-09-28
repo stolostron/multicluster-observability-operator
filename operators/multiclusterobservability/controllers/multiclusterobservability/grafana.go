@@ -27,6 +27,7 @@ import (
 const (
 	defaultReplicas int32 = 1
 	restartLabel          = "datasource/time-restarted"
+	datasourceKey         = "datasources.yaml"
 )
 
 type GrafanaDatasources struct {
@@ -98,7 +99,7 @@ func GenerateGrafanaDataSource(
 		},
 		Type: "Opaque",
 		StringData: map[string]string{
-			"datasources.yaml": string(grafanaDatasources),
+			datasourceKey: string(grafanaDatasources),
 		},
 	}
 
@@ -134,10 +135,8 @@ func GenerateGrafanaDataSource(
 	} else if err != nil {
 		return &ctrl.Result{}, err
 	}
-
-	if !reflect.DeepEqual(grafanaDSFound.Data, dsSecret.Data) {
+	if (grafanaDSFound.Data[datasourceKey] != nil && !reflect.DeepEqual(string(grafanaDSFound.Data[datasourceKey]), dsSecret.StringData[datasourceKey])) || grafanaDSFound.Data[datasourceKey] == nil {
 		log.Info("Updating grafana datasource secret")
-		dsSecret.ObjectMeta.ResourceVersion = grafanaDSFound.ObjectMeta.ResourceVersion
 		err = c.Update(context.TODO(), dsSecret)
 		if err != nil {
 			log.Error(err, "Failed to update grafana datasource secret")
