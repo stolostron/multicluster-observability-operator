@@ -446,6 +446,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				if e.ObjectNew.GetDeletionTimestamp() != nil {
 					log.Info("DeleteFunc", "managedCluster", e.ObjectNew.GetName())
+					return false
 				} else {
 					updateManagedClusterList(e.ObjectNew)
 					updateManagedClusterImageRegistry(e.ObjectNew)
