@@ -4,9 +4,9 @@
 package multiclusterobservability
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -135,7 +135,9 @@ func GenerateGrafanaDataSource(
 	} else if err != nil {
 		return &ctrl.Result{}, err
 	}
-	if (grafanaDSFound.Data[datasourceKey] != nil && !reflect.DeepEqual(string(grafanaDSFound.Data[datasourceKey]), string(dsSecret.Data[datasourceKey]))) || grafanaDSFound.Data[datasourceKey] == nil {
+	if (grafanaDSFound.Data[datasourceKey] != nil &&
+		!bytes.Equal(grafanaDSFound.Data[datasourceKey], dsSecret.Data[datasourceKey])) ||
+		grafanaDSFound.Data[datasourceKey] == nil {
 		log.Info("Updating grafana datasource secret")
 		err = c.Update(context.TODO(), dsSecret)
 		if err != nil {
