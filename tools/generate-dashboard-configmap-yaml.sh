@@ -44,6 +44,7 @@ start() {
   if [ $# -ge 2 ]; then
     savePath=$2
   fi
+  org_dashboard_name=$1
   dashboard_name=`echo ${1// /-} | tr '[:upper:]' '[:lower:]'`
 
   while [[ $# -gt 0 ]]
@@ -82,18 +83,21 @@ start() {
 
   curlCMD="kubectl exec -it -n "$obs_namespace" $podName -c grafana-dashboard-loader -- /usr/bin/curl"
   XForwardedUser="WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000"
-  dashboard=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User: $XForwardedUser" 127.0.0.1:3001/api/dashboards/db/$dashboard_name`
+  dashboards=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User: $XForwardedUser" 127.0.0.1:3001/api/search`
   if [ $? -ne 0 ]; then
       echo "Failed to fetch dashboard UID, please check your dashboard name"
       exit 1
   fi
-  dashboardUID=`echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['dashboard']['uid'])" 2>/dev/null`
-  dashboardFolderId=`echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['meta']['folderId'])" 2>/dev/null`
-  dashboardFolderTitle=`echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['meta']['folderTitle'])" 2>/dev/null`
+
+  dashboard=`echo $dashboards | python -c "import sys, json;[sys.stdout.write(json.dumps(dash)) for dash in json.load(sys.stdin) if dash['title'] == '$org_dashboard_name']"`
+
+  dashboardUID=`echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['uid'])" 2>/dev/null`
+  dashboardFolderId=`echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['folderId'])" 2>/dev/null`
+  dashboardFolderTitle=`echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['folderTitle'])" 2>/dev/null`
   
   dashboardJson=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User:$XForwardedUser" 127.0.0.1:3001/api/dashboards/uid/$dashboardUID | $PYTHON_CMD -c "import sys, json; print(json.dumps(json.load(sys.stdin)['dashboard']))" 2>/dev/null`
   if [ $? -ne 0 ]; then
-      echo "Failed to fetch dashboard json data, please check your dashboard name <$1>"
+      echo "Failed to fetch dashboard json data, please check your dashboard name <$org_dashboard_name>"
       exit 1
   fi
 
