@@ -98,8 +98,8 @@ func GenerateGrafanaDataSource(
 			Namespace: config.GetDefaultNamespace(),
 		},
 		Type: "Opaque",
-		StringData: map[string]string{
-			datasourceKey: string(grafanaDatasources),
+		Data: map[string][]byte{
+			datasourceKey: grafanaDatasources,
 		},
 	}
 
@@ -135,7 +135,7 @@ func GenerateGrafanaDataSource(
 	} else if err != nil {
 		return &ctrl.Result{}, err
 	}
-	if (grafanaDSFound.Data[datasourceKey] != nil && !reflect.DeepEqual(string(grafanaDSFound.Data[datasourceKey]), dsSecret.StringData[datasourceKey])) || grafanaDSFound.Data[datasourceKey] == nil {
+	if (grafanaDSFound.Data[datasourceKey] != nil && !reflect.DeepEqual(string(grafanaDSFound.Data[datasourceKey]), string(dsSecret.Data[datasourceKey]))) || grafanaDSFound.Data[datasourceKey] == nil {
 		log.Info("Updating grafana datasource secret")
 		err = c.Update(context.TODO(), dsSecret)
 		if err != nil {
