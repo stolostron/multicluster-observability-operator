@@ -284,6 +284,7 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 			if hasCustomRegistry {
 				oldImage := container.Image
 				newImage, err := imageRegistryClient.Cluster(clusterName).ImageOverride(oldImage)
+				log.Info("Replace the endpoint operator image", "cluster", clusterName, "newImage", newImage)
 				if err == nil {
 					spec.Containers[i].Image = newImage
 				}
@@ -294,7 +295,7 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	manifests = injectIntoWork(manifests, dep)
 	// replace the pull secret and addon components image
 	if hasCustomRegistry {
-		log.Info("Using the custom registry", "cluster", clusterName)
+		log.Info("Replace the default pull secret to custom pull secret", "cluster", clusterName)
 		customPullSecret, err := imageRegistryClient.Cluster(clusterName).PullSecret()
 		if err == nil && customPullSecret != nil {
 			customPullSecret.ResourceVersion = ""
@@ -303,20 +304,25 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 			manifests = injectIntoWork(manifests, customPullSecret)
 		}
 
-		images := imageListConfigMap.Data
+		log.Info("Replace the image list configmap with custom image", "cluster", clusterName)
+		newImageListCM := imageListConfigMap.DeepCopy()
+		images := newImageListCM.Data
 		for key, oldImage := range images {
 			newImage, err := imageRegistryClient.Cluster(clusterName).ImageOverride(oldImage)
 			if err == nil {
-				imageListConfigMap.Data[key] = newImage
+				newImageListCM.Data[key] = newImage
 			}
 		}
+		manifests = injectIntoWork(manifests, newImageListCM)
 	}
 
 	if pullSecret != nil && !hasCustomRegistry {
 		manifests = injectIntoWork(manifests, pullSecret)
 	}
 
-	manifests = injectIntoWork(manifests, imageListConfigMap)
+	if !hasCustomRegistry {
+		manifests = injectIntoWork(manifests, imageListConfigMap)
+	}
 
 	// inject the hub info secret
 	hubInfo.Data[operatorconfig.ClusterNameKey] = []byte(clusterName)
