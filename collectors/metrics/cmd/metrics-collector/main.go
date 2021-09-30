@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -142,8 +141,8 @@ type Options struct {
 
 func (o *Options) Run() error {
 
-	var g run.Group
 	for i := 0; i < int(o.ThreadNum); i++ {
+		var g run.Group
 		err, cfg := o.initConfig(i)
 		if err != nil {
 			return err
@@ -189,7 +188,7 @@ func (o *Options) Run() error {
 			})
 		}
 
-		if len(o.Listen) > 0 {
+		if len(o.Listen) > 0 && i == 0 {
 			handlers := http.NewServeMux()
 			collectorhttp.DebugRoutes(handlers)
 			collectorhttp.HealthRoutes(handlers)
@@ -199,12 +198,12 @@ func (o *Options) Run() error {
 			})
 			handlers.Handle("/federate", serveLastMetrics(o.Logger, worker))
 			l, err := net.Listen("tcp", o.Listen)
-			if i > 0 {
-				values := strings.SplitN(o.Listen, ":", 2)
-				port, _ := strconv.Atoi(values[1])
-				l, err = net.Listen("tcp", values[0]+":"+
-					fmt.Sprint(port+i))
-			}
+			// if i > 0 {
+			// 	values := strings.SplitN(o.Listen, ":", 2)
+			// 	port, _ := strconv.Atoi(values[1])
+			// 	l, err = net.Listen("tcp", values[0]+":"+
+			// 		fmt.Sprint(port+i))
+			// }
 			if err != nil {
 				return fmt.Errorf("failed to listen: %v", err)
 			}
@@ -225,9 +224,9 @@ func (o *Options) Run() error {
 				})
 			}
 		}
+		return g.Run()
 	}
-
-	return g.Run()
+	return nil
 }
 
 func (o *Options) initConfig(num int) (error, *forwarder.Config) {

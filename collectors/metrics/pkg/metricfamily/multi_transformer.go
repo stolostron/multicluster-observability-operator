@@ -15,6 +15,10 @@ func (a *MultiTransformer) With(t Transformer) {
 	}
 }
 
+func (a *MultiTransformer) GetBuilderFuncs() []func() Transformer {
+	return a.builderFuncs
+}
+
 func (a *MultiTransformer) WithFunc(f func() Transformer) {
 	a.builderFuncs = append(a.builderFuncs, f)
 }
