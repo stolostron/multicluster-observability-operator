@@ -1325,7 +1325,7 @@ data:
             "error": null,
             "hide": 0,
             "includeAll": false,
-            "label": "cluster",
+            "label": "Cluster",
             "multi": false,
             "name": "cluster",
             "options": [],
