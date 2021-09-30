@@ -6,7 +6,6 @@ package tests
 import (
 	"bytes"
 	"os/exec"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -29,7 +28,6 @@ var _ = Describe("Observability:", func() {
 	})
 
 	JustAfterEach(func() {
-		time.Sleep(1 * time.Hour)
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 	})
 

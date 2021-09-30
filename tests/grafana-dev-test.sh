@@ -19,7 +19,7 @@ n=0
 until [ "$n" -ge 30 ]
 do
    kubectl get pods -n "$obs_namespace" -l app=multicluster-observability-grafana-dev | grep "2/2" | grep "Running" && break
-   n=$((n+1)) 
+   n=$((n+1))
    echo "Retrying in 10s for waiting for grafana-dev pod ready ..."
    sleep 10
 done
@@ -35,20 +35,39 @@ if [ $? -ne 0 ] || [ -z "$podName" ]; then
     exit 1
 fi
 
+sleep 10
 # create a new test user to test
 kubectl -n "$obs_namespace" exec -it "$podName" -c grafana-dashboard-loader -- /usr/bin/curl -XPOST -H "Content-Type: application/json" -H "X-Forwarded-User: WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000" -d '{ "name":"test", "email":"test", "login":"test", "password":"test" }' '127.0.0.1:3001/api/admin/users'
 sleep 30
 
-# test swith user to grafana admin
-./switch-to-grafana-admin.sh test
-if [ $? -ne 0 ]; then
+n=0
+until [ "$n" -ge 10 ]
+do
+    # test swith user to grafana admin
+    ./switch-to-grafana-admin.sh test
+    if [ $? -eq 0 ]; then
+        break
+    fi
+    n=$((n+1))
+    sleep 5
+done
+if [ $n -eq 10 ]; then
     echo "Failed run switch-to-grafana-admin.sh test"
     exit 1
 fi
 
-# test export grafana dashboard
-./generate-dashboard-configmap-yaml.sh "Sample Dashboard for E2E"
-if [ $? -ne 0 ]; then
+n=0
+until [ "$n" -ge 10 ]
+do
+    # test export grafana dashboard
+    ./generate-dashboard-configmap-yaml.sh "Sample Dashboard for E2E"
+    if [ $? -eq 0 ]; then
+        break
+    fi
+    n=$((n+1))
+    sleep 5
+done
+if [ $n -eq 10 ]; then
     echo "Failed run generate-dashboard-configmap-yaml.sh"
     exit 1
 fi
