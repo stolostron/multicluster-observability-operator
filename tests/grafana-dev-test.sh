@@ -4,13 +4,11 @@ base_dir="$(cd "$(dirname "$0")/.." ; pwd -P)"
 cd "$base_dir"
 obs_namespace=open-cluster-management-observability
 
-git clone --depth 1 https://github.com/open-cluster-management/multicluster-observability-operator.git grafana-dev-test
-
 # create a dashboard for test export grafana dashboard
 kubectl apply -n "$obs_namespace" -f "$base_dir"/examples/dashboards/sample_custom_dashboard/custom-sample-dashboard.yaml
 
 # test deploy grafana-dev
-cd grafana-dev-test/tools
+cd $base_dir/tools
 ./setup-grafana-dev.sh --deploy
 if [ $? -ne 0 ]; then
     echo "Failed run setup-grafana-dev.sh --deploy"
@@ -63,5 +61,4 @@ if [ $? -ne 0 ]; then
 fi
 
 # clean test env
-rm -rf "$base_dir"/grafana-dev-test
 kubectl delete -n "$obs_namespace" -f "$base_dir"/examples/dashboards/sample_custom_dashboard/custom-sample-dashboard.yaml
