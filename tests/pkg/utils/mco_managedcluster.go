@@ -5,6 +5,7 @@ package utils
 
 import (
 	"context"
+	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -54,5 +55,10 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 			}
 		}
 	}
+
+	if len(clusterNames) == 0 {
+		return clusterNames, fmt.Errorf("no managedcluster found")
+	}
+
 	return clusterNames, nil
 }
