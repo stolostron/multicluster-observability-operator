@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# avoid client-side throttling due to HOME=/
+export HOME=/tmp
+
 base_dir="$(cd "$(dirname "$0")/.." ; pwd -P)"
 cd "$base_dir"
 obs_namespace=open-cluster-management-observability
