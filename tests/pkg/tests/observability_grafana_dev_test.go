@@ -29,7 +29,7 @@ var _ = Describe("Observability:", func() {
 	})
 
 	JustAfterEach(func() {
-		time.Sleep(10 * time.Hour)
+		time.Sleep(1 * time.Hour)
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 	})
 
