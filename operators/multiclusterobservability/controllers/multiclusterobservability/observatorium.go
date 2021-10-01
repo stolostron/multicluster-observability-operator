@@ -325,8 +325,7 @@ func newAPISpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.APISpec {
 	}
 	//set the default observatorium components' image
 	apiSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ObservatoriumAPIImgName +
-		":" + mcoconfig.ObservatoriumAPIImgTag
-	apiSpec.Version = mcoconfig.ObservatoriumAPIImgTag
+		":" + mcoconfig.DefaultImgTagSuffix
 	replace, image := mcoconfig.ReplaceImage(mco.Annotations, apiSpec.Image, mcoconfig.ObservatoriumAPIImgName)
 	if replace {
 		apiSpec.Image = image
@@ -517,8 +516,8 @@ func newMemCacheSpec(component string, mco *mcov1beta2.MultiClusterObservability
 
 func newThanosSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.ThanosSpec {
 	thanosSpec := obsv1alpha1.ThanosSpec{}
-	thanosSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName + ":" + mcoconfig.ThanosImgTag
-	thanosSpec.Version = mcoconfig.ThanosImgTag
+	thanosSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ThanosImgName +
+		":" + mcoconfig.DefaultImgTagSuffix
 
 	thanosSpec.Compact = newCompactSpec(mco, scSelected)
 	thanosSpec.Receivers = newReceiversSpec(mco, scSelected)

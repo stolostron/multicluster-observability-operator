@@ -51,10 +51,6 @@ const (
 	AnnotationMCOWithoutResourcesRequests = "mco-thanos-without-resources-requests"
 	AnnotationCertDuration                = "mco-cert-duration"
 
-	DefaultImgRepository   = "quay.io/open-cluster-management"
-	DefaultDSImgRepository = "quay.io:443/acm-d"
-	DefaultImgTagSuffix    = "latest"
-
 	MCHUpdatedRequestName               = "mch-updated-request"
 	MCOUpdatedRequestName               = "mco-updated-request"
 	ImageManifestConfigMapNamePrefix    = "mch-image-manifest-"
@@ -105,17 +101,18 @@ const (
 )
 
 const (
+	DefaultImgRepository = "quay.io/open-cluster-management"
+	DefaultImgTagSuffix  = "2.4.0-SNAPSHOT-2021-09-23-07-02-14"
+
 	ObservatoriumImgRepo           = "quay.io/observatorium"
 	ObservatoriumAPIImgName        = "observatorium"
-	ObservatoriumAPIImgTag         = "2.3.0-SNAPSHOT-2021-07-26-18-43-26"
-	ObservatoriumOperatorImgName   = "observatorium_operator"
+	ObservatoriumOperatorImgName   = "observatorium-operator"
+	ObservatoriumOperatorImgKey    = "observatorium_operator"
 	ThanosReceiveControllerImgName = "thanos-receive-controller"
 	//ThanosReceiveControllerKey is used to get from mch-image-manifest.xxx configmap
 	ThanosReceiveControllerKey    = "thanos_receive_controller"
 	ThanosReceiveControllerImgTag = "master-2021-04-28-ee165b6"
-
-	ThanosImgName = "thanos"
-	ThanosImgTag  = "2.3.0-SNAPSHOT-2021-07-26-18-43-26"
+	ThanosImgName                 = "thanos"
 
 	MemcachedImgRepo = "quay.io/ocm-observability"
 	MemcachedImgName = "memcached"
@@ -126,11 +123,9 @@ const (
 	MemcachedExporterKey     = "memcached_exporter"
 	MemcachedExporterImgTag  = "v0.9.0"
 
-	GrafanaImgRepo            = "quay.io/openshift"
-	GrafanaImgName            = "origin-grafana"
-	GrafanaImgKey             = "grafana"
-	GrafanaImgTagSuffix       = "4.8.0"
-	GrafanaDashboardLoaderKey = "grafana_dashboard_loader"
+	GrafanaImgKey              = "grafana"
+	GrafanaDashboardLoaderName = "grafana-dashboard-loader"
+	GrafanaDashboardLoaderKey  = "grafana_dashboard_loader"
 
 	AlertManagerImgName           = "prometheus-alertmanager"
 	AlertManagerImgKey            = "prometheus_alertmanager"
@@ -141,14 +136,14 @@ const (
 
 	OauthProxyImgRepo      = "quay.io/open-cluster-management"
 	OauthProxyImgName      = "origin-oauth-proxy"
-	OauthProxyImgTagSuffix = "2.0.11-SNAPSHOT-2021-04-29-18-29-17"
+	OauthProxyImgTagSuffix = "2.0.12-SNAPSHOT-2021-06-11-19-40-10"
 	OauthProxyKey          = "oauth_proxy"
 
-	EndpointControllerImgTagSuffix = "2.3.0-SNAPSHOT-2021-07-26-18-43-26"
-	EndpointControllerImgName      = "endpoint-monitoring-operator"
-	EndpointControllerKey          = "endpoint_monitoring_operator"
+	EndpointControllerImgName = "endpoint-monitoring-operator"
+	EndpointControllerKey     = "endpoint_monitoring_operator"
 
-	RBACQueryProxyKey = "rbac_query_proxy"
+	RBACQueryProxyImgName = "rbac-query-proxy"
+	RBACQueryProxyKey     = "rbac_query_proxy"
 
 	RBACQueryProxyCPURequets    = "20m"
 	RBACQueryProxyMemoryRequets = "100Mi"

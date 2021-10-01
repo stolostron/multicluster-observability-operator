@@ -23,9 +23,7 @@ var _ = Describe("Observability:", func() {
 		var out bytes.Buffer
 		cmd.Stdout = &out
 		err := cmd.Run()
-		if err != nil {
-			klog.V(1).Infof("Failed to run grafana-dev-test.sh: %v", out.String())
-		}
+		klog.V(1).Infof("the output of grafana-dev-test.sh: %v", out.String())
 		Expect(err).NotTo(HaveOccurred())
 	})
 

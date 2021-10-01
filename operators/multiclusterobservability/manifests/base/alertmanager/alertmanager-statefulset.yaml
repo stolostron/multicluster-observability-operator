@@ -80,7 +80,7 @@ spec:
         - -webhook-url=http://localhost:9093/-/reload
         - -volume-dir=/etc/alertmanager/config
         - -volume-dir=/etc/tls/private
-        image: quay.io/openshift/origin-configmap-reloader:4.5.0
+        image: quay.io/openshift/origin-configmap-reloader:4.8.0
         imagePullPolicy: IfNotPresent
         name: config-reloader
         resources:

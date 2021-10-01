@@ -76,6 +76,8 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource,
 		{Name: mcoconfig.GetImagePullSecret(r.cr.Spec)},
 	}
 
+	spec.Containers[0].Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.AlertManagerImgName +
+		":" + mcoconfig.DefaultImgTagSuffix
 	//replace the alertmanager and config-reloader images
 	found, image := mcoconfig.ReplaceImage(
 		r.cr.Annotations,
