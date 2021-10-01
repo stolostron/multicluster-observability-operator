@@ -169,6 +169,12 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		reqLogger.Error(err, "Failed to list manifestwork resource")
 		return ctrl.Result{}, err
 	}
+	managedclusteraddonList := &addonv1alpha1.ManagedClusterAddOnList{}
+	err = r.Client.List(context.TODO(), managedclusteraddonList, opts)
+	if err != nil {
+		reqLogger.Error(err, "Failed to list managedclusteraddon resource")
+		return ctrl.Result{}, err
+	}
 	latestClusters := []string{}
 	staleAddons := []string{}
 	for _, addon := range obsAddonList.Items {
@@ -191,6 +197,21 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			}
 		} else {
 			staleAddons = commonutil.Remove(staleAddons, work.Namespace)
+		}
+	}
+
+	// after the managedcluster is detached, the manifestwork for observability will be delete be the cluster manager,
+	// but the managedclusteraddon for observability will not deleted by the cluster manager, so check against the
+	// managedclusteraddon list to remove the managedcluster resources after the managedcluster is detached.
+	for _, mcaddon := range managedclusteraddonList.Items {
+		if !commonutil.Contains(latestClusters, mcaddon.Namespace) {
+			reqLogger.Info("To delete managedcluster resources", "namespace", mcaddon.Namespace)
+			err = deleteManagedClusterRes(r.Client, mcaddon.Namespace)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		} else {
+			staleAddons = commonutil.Remove(staleAddons, mcaddon.Namespace)
 		}
 	}
 
@@ -406,6 +427,7 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 	}
 	err := c.Delete(context.TODO(), managedclusteraddon)
 	if err != nil && !k8serrors.IsNotFound(err) {
+		log.Error(err, "Failed to delete managedclusteraddon")
 		return err
 	}
 
@@ -445,7 +467,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			log.Info("UpdateFunc", "managedCluster", e.ObjectNew.GetName())
 			if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				if e.ObjectNew.GetDeletionTimestamp() != nil {
-					log.Info("DeleteFunc", "managedCluster", e.ObjectNew.GetName())
+					log.Info("managedcluster is in terminating state", "managedCluster", e.ObjectNew.GetName())
+					delete(managedClusterList, e.ObjectNew.GetName())
+					delete(managedClusterImageRegistry, e.ObjectNew.GetName())
 				} else {
 					updateManagedClusterList(e.ObjectNew)
 					updateManagedClusterImageRegistry(e.ObjectNew)
