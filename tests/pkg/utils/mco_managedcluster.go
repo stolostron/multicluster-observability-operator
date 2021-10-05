@@ -50,8 +50,14 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 		labels := metadata["labels"].(map[string]interface{})
 		if labels != nil {
 			vendor := labels["vendor"].(string)
-			if vendor == "OpenShift" || vendor == "GKE" || vendor == "EKS" {
-				clusterNames = append(clusterNames, name)
+			obsControllerStr := ""
+			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok {
+				obsControllerStr = obsController.(string)
+			}
+			if vendor == "OpenShift" || vendor == "GKE" || vendor == "EKS" || vendor == "AKS" {
+				if obsControllerStr != "unreachable" {
+					clusterNames = append(clusterNames, name)
+				}
 			}
 		}
 	}
