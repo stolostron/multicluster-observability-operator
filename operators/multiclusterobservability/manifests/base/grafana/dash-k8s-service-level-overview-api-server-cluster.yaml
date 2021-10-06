@@ -20,7 +20,7 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 13,
-      "iteration": 1632761729352,
+      "iteration": 1633563981762,
       "links": [
         {
           "icon": "dashboard",
@@ -454,8 +454,12 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "red",
                     "value": null
+                  },
+                  {
+                    "color": "rgb(255, 255, 255)",
+                    "value": 0
                   }
                 ]
               },
@@ -490,7 +494,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "(0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) * (7 * 24 * 60)",
+              "expr": "(0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) * (7 * 24 * 60) * -1",
               "format": "table",
               "instant": false,
               "interval": "1m",
@@ -664,11 +668,15 @@ data:
                 }
               ],
               "thresholds": {
-                "mode": "percentage",
+                "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "red",
                     "value": null
+                  },
+                  {
+                    "color": "rgb(255, 255, 255)",
+                    "value": 0
                   }
                 ]
               },
@@ -703,7 +711,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "(0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) * (30 * 24 * 60)",
+              "expr": "(0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) * (30 * 24 * 60) * -1",
               "format": "table",
               "hide": false,
               "instant": false,
@@ -987,7 +995,7 @@ data:
       "schemaVersion": 27,
       "style": "dark",
       "tags": [
-        "kubernetes-mixin",
+        "SLI",
         "SLO"
       ],
       "templating": {
