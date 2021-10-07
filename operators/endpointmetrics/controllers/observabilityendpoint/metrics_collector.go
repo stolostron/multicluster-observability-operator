@@ -59,7 +59,9 @@ type Rule struct {
 
 func createDeployment(clusterID string, clusterType string,
 	obsAddonSpec oashared.ObservabilityAddonSpec,
-	hubInfo operatorconfig.HubInfo, allowlist MetricsAllowlist, replicaCount int32) *appsv1.Deployment {
+	hubInfo operatorconfig.HubInfo, allowlist MetricsAllowlist,
+	nodeSelector map[string]string, tolerations []corev1.Toleration,
+	replicaCount int32) *appsv1.Deployment {
 	interval := fmt.Sprint(obsAddonSpec.Interval) + "s"
 	if fmt.Sprint(obsAddonSpec.Interval) == "" {
 		interval = defaultInterval
@@ -189,7 +191,9 @@ func createDeployment(clusterID string, clusterType string,
 							ImagePullPolicy: corev1.PullAlways,
 						},
 					},
-					Volumes: volumes,
+					Volumes:      volumes,
+					NodeSelector: nodeSelector,
+					Tolerations:  tolerations,
 				},
 			},
 		},
@@ -205,7 +209,9 @@ func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonS
 	replicaCount int32, forceRestart bool) (bool, error) {
 
 	list := getMetricsAllowlist(ctx, client)
-	deployment := createDeployment(clusterID, clusterType, obsAddonSpec, hubInfo, list, replicaCount)
+	endpointDeployment := getEndpointDeployment(ctx, client)
+	deployment := createDeployment(clusterID, clusterType, obsAddonSpec, hubInfo, list,
+		endpointDeployment.Spec.Template.Spec.NodeSelector, endpointDeployment.Spec.Template.Spec.Tolerations, replicaCount)
 	found := &appsv1.Deployment{}
 	err := client.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
 		Namespace: namespace}, found)
@@ -279,4 +285,13 @@ func getMetricsAllowlist(ctx context.Context, client client.Client) MetricsAllow
 		}
 	}
 	return *l
+}
+
+func getEndpointDeployment(ctx context.Context, client client.Client) appsv1.Deployment {
+	d := &appsv1.Deployment{}
+	err := client.Get(ctx, types.NamespacedName{Name: "endpoint-observability-operator", Namespace: namespace}, d)
+	if err != nil {
+		log.Error(err, "Failed to get deployment")
+	}
+	return *d
 }

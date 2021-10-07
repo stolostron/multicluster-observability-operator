@@ -270,6 +270,10 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 
 	// inject the endpoint operator deployment
 	spec := dep.Spec.Template.Spec
+	if clusterName == localClusterName {
+		spec.NodeSelector = mco.Spec.NodeSelector
+		spec.Tolerations = mco.Spec.Tolerations
+	}
 	for i, container := range spec.Containers {
 		if container.Name == "endpoint-observability-operator" {
 			for j, env := range container.Env {
