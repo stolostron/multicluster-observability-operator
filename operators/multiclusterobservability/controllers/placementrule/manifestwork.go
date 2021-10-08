@@ -295,7 +295,7 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 			}
 		}
 	}
-
+	dep.Spec.Template.Spec = spec
 	manifests = injectIntoWork(manifests, dep)
 	// replace the pull secret and addon components image
 	if hasCustomRegistry {
