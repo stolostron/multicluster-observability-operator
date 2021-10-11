@@ -110,6 +110,14 @@ func newManifestwork(name string, namespace string) *workv1.ManifestWork {
 			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
+			Annotations: map[string]string{
+				// Add the annotation "open-cluster-management/postpone-delete" for manifestwork so that
+				// the observabilityaddon can be cleaned up before the manifestwork is deleted by the
+				// managedcluster-import-controller when the corresponding managedcluster is detached.
+				// Note the annotation value is currently not taking effect, because managedcluster-import-controller
+				// managedcluster-import-controller hard code the value to be 2m
+				"open-cluster-management/postpone-delete": "2m",
+			},
 		},
 		Spec: workv1.ManifestWorkSpec{
 			Workload: workv1.ManifestsTemplate{
