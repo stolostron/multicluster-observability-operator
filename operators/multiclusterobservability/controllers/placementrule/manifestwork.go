@@ -115,8 +115,8 @@ func newManifestwork(name string, namespace string) *workv1.ManifestWork {
 				// the observabilityaddon can be cleaned up before the manifestwork is deleted by the
 				// managedcluster-import-controller when the corresponding managedcluster is detached.
 				// Note the annotation value is currently not taking effect, because managedcluster-import-controller
-				// managedcluster-import-controller hard code the value to be 2m
-				"open-cluster-management/postpone-delete": "2m",
+				// managedcluster-import-controller hard code the value to be 10m
+				"open-cluster-management/postpone-delete": "",
 			},
 		},
 		Spec: workv1.ManifestWorkSpec{
