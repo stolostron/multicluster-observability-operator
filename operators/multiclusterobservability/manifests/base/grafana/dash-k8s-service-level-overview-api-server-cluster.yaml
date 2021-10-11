@@ -20,7 +20,7 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 13,
-      "iteration": 1633563981762,
+      "iteration": 1633958242996,
       "links": [
         {
           "icon": "dashboard",
@@ -58,13 +58,26 @@ data:
                 "mode": "thresholds"
               },
               "custom": {},
-              "mappings": [],
+              "mappings": [
+                {
+                  "from": "",
+                  "id": 1,
+                  "text": "N/A",
+                  "to": "",
+                  "type": 1,
+                  "value": "null"
+                }
+              ],
               "thresholds": {
-                "mode": "absolute",
+                "mode": "percentage",
                 "steps": [
                   {
-                    "color": "rgb(204, 204, 220)",
+                    "color": "red",
                     "value": null
+                  },
+                  {
+                    "color": "rgb(255, 255, 255)",
+                    "value": 0
                   }
                 ]
               },
@@ -88,7 +101,7 @@ data:
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "",
+              "fields": "/^target$/",
               "values": false
             },
             "text": {},
@@ -97,7 +110,7 @@ data:
           "pluginVersion": "7.4.2",
           "targets": [
             {
-              "expr": "0.9900",
+              "expr": "sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}",
               "format": "table",
               "instant": true,
               "interval": "5m",
@@ -496,7 +509,7 @@ data:
             {
               "expr": "(0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) * (7 * 24 * 60) * -1",
               "format": "table",
-              "instant": false,
+              "instant": true,
               "interval": "1m",
               "legendFormat": "",
               "refId": "A"
@@ -714,7 +727,7 @@ data:
               "expr": "(0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) * (30 * 24 * 60) * -1",
               "format": "table",
               "hide": false,
-              "instant": false,
+              "instant": true,
               "interval": "1m",
               "legendFormat": "",
               "refId": "A"
