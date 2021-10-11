@@ -496,7 +496,7 @@ data:
             {
               "expr": "(0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) * (7 * 24 * 60) * -1",
               "format": "table",
-              "instant": false,
+              "instant": true,
               "interval": "1m",
               "legendFormat": "",
               "refId": "A"
@@ -714,7 +714,7 @@ data:
               "expr": "(0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) * (30 * 24 * 60) * -1",
               "format": "table",
               "hide": false,
-              "instant": false,
+              "instant": true,
               "interval": "1m",
               "legendFormat": "",
               "refId": "A"
