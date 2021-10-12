@@ -37,6 +37,24 @@ func TestObsAddonCR(t *testing.T) {
 		t.Fatalf("Failed to create observabilityaddon: (%v)", err)
 	}
 
+	testWork := newManifestwork(namespace+workNameSuffix, namespace)
+	testManifests := testWork.Spec.Workload.Manifests
+	testObservabilityAddon := &mcov1beta1.ObservabilityAddon{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, testObservabilityAddon)
+	if err != nil {
+		t.Fatalf("Failed to get observabilityaddon: (%v)", err)
+	}
+	// inject the testing observabilityAddon
+	if testObservabilityAddon != nil {
+		testManifests = injectIntoWork(testManifests, testObservabilityAddon)
+	}
+	testWork.Spec.Workload.Manifests = testManifests
+
+	err = c.Create(context.TODO(), testWork)
+	if err != nil {
+		t.Fatalf("Failed to create manifestwork: (%v)", err)
+	}
+
 	err = deleteObsAddon(c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
@@ -49,6 +67,11 @@ func TestObsAddonCR(t *testing.T) {
 	err = deleteObsAddon(c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to delete observabilityaddon: (%v)", err)
+	}
+
+	err = deleteManifestWork(c, namespace+workNameSuffix, namespace)
+	if err != nil {
+		t.Fatalf("Failed to delete manifestwork: (%v)", err)
 	}
 }
 
