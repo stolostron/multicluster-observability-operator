@@ -150,6 +150,8 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		if err != nil {
 			// OCP 3.11 has no cluster id, set it as empty string
 			clusterID = ""
+			// to differentiate ocp 3.x
+			clusterType = "ocp3"
 		}
 		isSNO, err := isSNO(ctx, r.Client)
 		if err == nil && isSNO {
