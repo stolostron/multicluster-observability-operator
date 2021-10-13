@@ -10,9 +10,10 @@ import (
 	"time"
 
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestWebhookController(t *testing.T) {
@@ -129,29 +130,25 @@ func TestWebhookController(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			client := fake.NewSimpleClientset()
+			objs := []runtime.Object{}
 			if c.existingmwh != nil {
-				_, err := client.AdmissionregistrationV1().MutatingWebhookConfigurations().Create(context.TODO(), c.existingmwh, metav1.CreateOptions{})
-				if err != nil {
-					t.Fatalf("failed to create the mutating webhook configuration: %v", err)
-				}
+				objs = append(objs, c.existingmwh)
 			}
 			if c.existingvwh != nil {
-				_, err := client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Create(context.TODO(), c.existingvwh, metav1.CreateOptions{})
-				if err != nil {
-					t.Fatalf("failed to create the validating webhook configuration: %v", err)
-				}
+				objs = append(objs, c.existingvwh)
 			}
-			wc := NewWebhookController(client, c.reconciledmwh, c.reconciledvwh)
-			ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
-			defer cancel()
+			cl := fake.NewFakeClient(objs...)
+			wc := NewWebhookController(cl, c.reconciledmwh, c.reconciledvwh)
+			ctx, cancel := context.WithCancel(context.Background())
 			go func() {
 				wc.Start(ctx)
 			}()
 			time.Sleep(1 * time.Second)
+			cancel()
+
 			if c.reconciledmwh != nil {
-				foundMwhc, err := client.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(context.TODO(), c.reconciledmwh.GetName(), metav1.GetOptions{})
-				if err != nil {
+				foundMwhc := &admissionregistrationv1.MutatingWebhookConfiguration{}
+				if err := cl.Get(context.TODO(), types.NamespacedName{Name: c.reconciledmwh.GetName()}, foundMwhc); err != nil {
 					t.Fatalf("failed to get the mutating webhook configuration: %v", err)
 				}
 				if !(foundMwhc.Webhooks[0].Name == c.reconciledmwh.Webhooks[0].Name &&
@@ -161,31 +158,17 @@ func TestWebhookController(t *testing.T) {
 					t.Errorf("Got differences between the found MutatingWebhookConfiguration and reconciled MutatingWebhookConfiguration:\nfound:%v\nreconciled:%v\n", foundMwhc, c.reconciledmwh)
 				}
 			}
+
 			if c.reconciledvwh != nil {
-				foundVwhc, err := client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(context.TODO(), c.reconciledvwh.GetName(), metav1.GetOptions{})
-				if err != nil {
+				foundVwhc := &admissionregistrationv1.ValidatingWebhookConfiguration{}
+				if err := cl.Get(context.TODO(), types.NamespacedName{Name: c.reconciledvwh.GetName()}, foundVwhc); err != nil {
 					t.Fatalf("failed to get the validating webhook configuration: %v", err)
 				}
 				if !(foundVwhc.Webhooks[0].Name == c.reconciledvwh.Webhooks[0].Name &&
 					reflect.DeepEqual(foundVwhc.Webhooks[0].AdmissionReviewVersions, c.reconciledvwh.Webhooks[0].AdmissionReviewVersions) &&
 					reflect.DeepEqual(foundVwhc.Webhooks[0].Rules, c.reconciledvwh.Webhooks[0].Rules) &&
 					reflect.DeepEqual(foundVwhc.Webhooks[0].ClientConfig.Service, c.reconciledvwh.Webhooks[0].ClientConfig.Service)) {
-					t.Errorf("Got differences between the found ValidatingWebhookConfiguration and reconciled ValidatingWebhookConfiguration:\nfound:%v\nreconciled:%v\n", foundVwhc, c.reconciledmwh)
-				}
-			}
-			// send the done signal to the webhook controller
-			time.Sleep(4 * time.Second)
-
-			if c.reconciledmwh != nil {
-				_, err := client.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(context.TODO(), c.reconciledmwh.GetName(), metav1.GetOptions{})
-				if !apierrors.IsNotFound(err) {
-					t.Errorf("expect got 'not found error' for the reconciled MutatingWebhookConfiguration, but got error: %v", err)
-				}
-			}
-			if c.reconciledvwh != nil {
-				_, err := client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(context.TODO(), c.reconciledvwh.GetName(), metav1.GetOptions{})
-				if !apierrors.IsNotFound(err) {
-					t.Errorf("expect got 'not found error' for the reconciled ValidatingWebhookConfiguration, but got error: %v", err)
+					t.Errorf("Got differences between the found ValidatingWebhookConfiguration and reconciled ValidatingWebhookConfiguration:\nfound:%v\nreconciled:%v\n", foundVwhc, c.reconciledvwh)
 				}
 			}
 		})
