@@ -361,10 +361,6 @@ func (w *Worker) forward(ctx context.Context) error {
 	}
 
 	before := metricfamily.MetricsCount(families)
-	trans := w.transformer.(metricfamily.MultiTransformer)
-	for _, buildFunc := range trans.GetBuilderFuncs() {
-		rlogger.Log(w.logger, rlogger.Warn, "func", buildFunc)
-	}
 	if err := metricfamily.Filter(families, w.transformer); err != nil {
 		statusErr := w.status.UpdateStatus("Degraded", "Degraded", "Failed to filter metrics")
 		if statusErr != nil {
