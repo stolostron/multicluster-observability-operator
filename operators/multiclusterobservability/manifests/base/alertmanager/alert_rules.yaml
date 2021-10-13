@@ -35,12 +35,12 @@ data:
         rules:
         - alert: ViolatedPolicyReport
           annotations:
-            summary: There is a policy report violation with a {{ $labels.severity }} severity level detected.
+            summary: "There is a policy report violation with a {{ $labels.severity }} severity level detected."
             description: "The policy: {{ $labels.policy }} has a severity of {{ $labels.severity }} on cluster: {{ $labels.cluster }}"
           expr: sum(policyreport_info{severity=~"low|moderate|important|critical"}) by (managed_cluster_id, category, clusterID, policy, severity) > 0
           for: 1m
           labels:
-            severity: {{ $labels.severity }}
+            severity: "{{ $labels.severity }}"
       - name: slo-sli-trends
         rules:
         - expr: sli:apiserver_request_duration_seconds:trend:1m >= bool 0.9900
