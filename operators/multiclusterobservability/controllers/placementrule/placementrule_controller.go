@@ -502,6 +502,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if e.Object.GetName() == obsAddonName &&
 				e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue {
+				log.Info("DeleteFunc", "obsAddonNamespace", e.Object.GetNamespace(), "obsAddonName", e.Object.GetName())
+				/* #nosec */
+				removePostponeDeleteAnnotationForManifestwork(c, e.Object.GetNamespace())
 				return true
 			}
 			return false

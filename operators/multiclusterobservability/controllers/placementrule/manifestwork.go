@@ -32,8 +32,9 @@ import (
 )
 
 const (
-	workNameSuffix   = "-observability"
-	localClusterName = "local-cluster"
+	workNameSuffix            = "-observability"
+	localClusterName          = "local-cluster"
+	workPostponeDeleteAnnoKey = "open-cluster-management/postpone-delete"
 )
 
 // intermidiate resources for the manifest work
@@ -110,6 +111,14 @@ func newManifestwork(name string, namespace string) *workv1.ManifestWork {
 			Labels: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
+			Annotations: map[string]string{
+				// Add the postpone delete annotation for manifestwork so that the observabilityaddon can be
+				// cleaned up before the manifestwork is deleted by the managedcluster-import-controller when
+				// the corresponding managedcluster is detached.
+				// Note the annotation value is currently not taking effect, because managedcluster-import-controller
+				// managedcluster-import-controller hard code the value to be 10m
+				workPostponeDeleteAnnoKey: "",
+			},
 		},
 		Spec: workv1.ManifestWorkSpec{
 			Workload: workv1.ManifestsTemplate{
@@ -117,6 +126,30 @@ func newManifestwork(name string, namespace string) *workv1.ManifestWork {
 			},
 		},
 	}
+}
+
+// removePostponeDeleteAnnotationForManifestwork removes the postpone delete annotation for manifestwork so that
+// the workagent can delete the manifestwork normally
+func removePostponeDeleteAnnotationForManifestwork(c client.Client, namespace string) error {
+	name := namespace + workNameSuffix
+	found := &workv1.ManifestWork{}
+	err := c.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
+	if err != nil {
+		log.Error(err, "failed to check manifestwork", "namespace", namespace, "name", name)
+		return err
+	}
+
+	if found.GetAnnotations() != nil {
+		delete(found.GetAnnotations(), workPostponeDeleteAnnoKey)
+	}
+
+	err = c.Update(context.TODO(), found)
+	if err != nil {
+		log.Error(err, "failed to update manifestwork", "namespace", namespace, "name", name)
+		return err
+	}
+
+	return nil
 }
 
 func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
