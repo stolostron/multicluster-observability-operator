@@ -19,7 +19,6 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -99,12 +98,6 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-
-	kubeClient, err := util.GetOrCreateKubeClient()
-	if err != nil {
-		setupLog.Error(err, "Failed to create the kube client")
-		os.Exit(1)
-	}
 
 	crdClient, err := util.GetOrCreateCRDClient()
 	if err != nil {
@@ -309,22 +302,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	rootCtx := ctrl.SetupSignalHandler()
-	internalCtx, internalCancel := context.WithCancel(rootCtx)
-	defer internalCancel()
-
-	whcontroller := webhook.NewWebhookController(kubeClient, nil, config.GetValidatingWebhookConfigurationForMCO())
-	setupLog.Info("starting webhook controller")
-	// start the webhook controller in new go rountine
-	go func() {
-		if err := whcontroller.Start(internalCtx); err != nil {
-			setupLog.Error(err, "problem running webhook controller")
-			os.Exit(1)
-		}
-	}()
+	setupLog.Info("add webhook controller to manager")
+	if err := mgr.Add(webhook.NewWebhookController(mgr.GetClient(), nil, config.GetValidatingWebhookConfigurationForMCO())); err != nil {
+		setupLog.Error(err, "unable to add webhook controller to manager")
+		os.Exit(1)
+	}
 
 	setupLog.Info("starting manager")
-	if err := mgr.Start(rootCtx); err != nil {
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
