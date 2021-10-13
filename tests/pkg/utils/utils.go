@@ -19,7 +19,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
-	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/version"
@@ -279,18 +279,18 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 		switch kind {
 		case "CustomResourceDefinition":
 			klog.V(5).Infof("Install CRD: %s\n", f)
-			obj := &apiextensionsv1beta1.CustomResourceDefinition{}
+			obj := &apiextensionsv1.CustomResourceDefinition{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
 				return err
 			}
-			existingObject, errGet := clientAPIExtension.ApiextensionsV1beta1().CustomResourceDefinitions().Get(context.TODO(), obj.Name, metav1.GetOptions{})
+			existingObject, errGet := clientAPIExtension.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), obj.Name, metav1.GetOptions{})
 			if errGet != nil {
-				_, err = clientAPIExtension.ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), obj, metav1.CreateOptions{})
+				_, err = clientAPIExtension.ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), obj, metav1.CreateOptions{})
 			} else {
 				existingObject.Spec = obj.Spec
 				klog.Warningf("CRD %s already exists, updating!", existingObject.Name)
-				_, err = clientAPIExtension.ApiextensionsV1beta1().CustomResourceDefinitions().Update(context.TODO(), existingObject, metav1.UpdateOptions{})
+				_, err = clientAPIExtension.ApiextensionsV1().CustomResourceDefinitions().Update(context.TODO(), existingObject, metav1.UpdateOptions{})
 			}
 		case "Namespace":
 			klog.V(5).Infof("Install %s: %s\n", kind, f)
@@ -575,10 +575,10 @@ func HaveServerResources(c Cluster, kubeconfig string, expectedAPIGroups []strin
 
 func HaveCRDs(c Cluster, kubeconfig string, expectedCRDs []string) error {
 	clientAPIExtension := NewKubeClientAPIExtension(c.ClusterServerURL, kubeconfig, c.KubeContext)
-	clientAPIExtensionV1beta1 := clientAPIExtension.ApiextensionsV1beta1()
+	clientAPIExtensionV1 := clientAPIExtension.ApiextensionsV1()
 	for _, crd := range expectedCRDs {
 		klog.V(1).Infof("Check if %s exists", crd)
-		_, err := clientAPIExtensionV1beta1.CustomResourceDefinitions().Get(context.TODO(), crd, metav1.GetOptions{})
+		_, err := clientAPIExtensionV1.CustomResourceDefinitions().Get(context.TODO(), crd, metav1.GetOptions{})
 		if err != nil {
 			klog.V(1).Infof("Error while retrieving crd %s: %s", crd, err.Error())
 			return err
