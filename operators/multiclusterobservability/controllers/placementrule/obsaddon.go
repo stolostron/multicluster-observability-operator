@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	obsv1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
@@ -41,27 +40,6 @@ func deleteObsAddon(c client.Client, namespace string) error {
 	err = removeObservabilityAddon(c, namespace)
 	if err != nil {
 		return err
-	}
-
-	// wait at most 30s for the observabilityAddon is deleted
-	log.Info("wait 30 seconds for the observabilityAddon is deleted", "namespace", namespace)
-	if errPoll := wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
-		if err := c.Get(context.TODO(), types.NamespacedName{Name: obsAddonName, Namespace: namespace}, found); err != nil {
-			if errors.IsNotFound(err) {
-				return true, nil
-			}
-			return false, err
-		} else {
-			log.Info("the observabilityAddon is not deleted yet", "namespace", namespace)
-			return false, nil
-		}
-	}); errPoll != nil {
-		log.Error(errPoll, "timeout to wait for the observabilityAddon is deleted", "namespace", namespace)
-	} else {
-		err = removePostponeDeleteAnnotationForManifestwork(c, namespace)
-		if err != nil {
-			return err
-		}
 	}
 
 	// forcely remove observabilityaddon if it's already stuck in Terminating more than 5 minutes
