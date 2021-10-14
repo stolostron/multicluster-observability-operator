@@ -456,6 +456,13 @@ spec:
                   value: open-cluster-management-addon-observability
                 image: quay.io/open-cluster-management/multicluster-observability-operator:latest
                 imagePullPolicy: Always
+                lifecycle:
+                  preStop:
+                    exec:
+                      command:
+                      - /bin/sh
+                      - -c
+                      - /usr/local/bin/prestop.sh
                 livenessProbe:
                   httpGet:
                     path: /healthz

@@ -52,6 +52,9 @@ RUN microdnf update -y && microdnf clean all
 # install templates
 COPY ./operators/multiclusterobservability/manifests /usr/local/manifests
 
+# install the prestop script
+COPY ./operators/multiclusterobservability/prestop.sh /usr/local/bin/prestop.sh
+
 # install operator binary
 COPY --from=builder /workspace/bin/manager ${OPERATOR}
 USER ${USER_UID}
