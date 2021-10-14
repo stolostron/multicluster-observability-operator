@@ -337,7 +337,7 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 		if err == nil && customPullSecret != nil {
 			customPullSecret.ResourceVersion = ""
 			customPullSecret.Name = config.GetImagePullSecret(mco.Spec)
-			customPullSecret.Namespace = config.GetDefaultNamespace()
+			customPullSecret.Namespace = spokeNameSpace
 			manifests = injectIntoWork(manifests, customPullSecret)
 		}
 
