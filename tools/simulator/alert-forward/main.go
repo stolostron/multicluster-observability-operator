@@ -153,7 +153,9 @@ func sendOne(c *http.Client, traceCtx context.Context, url string, b []byte) err
 	}
 
 	defer func() {
+		/* #nosec */
 		io.Copy(ioutil.Discard, resp.Body)
+		/* #nosec */
 		resp.Body.Close()
 	}()
 
