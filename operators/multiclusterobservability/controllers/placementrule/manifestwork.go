@@ -336,8 +336,8 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 		customPullSecret, err := imageRegistryClient.Cluster(clusterName).PullSecret()
 		if err == nil && customPullSecret != nil {
 			customPullSecret.ResourceVersion = ""
-			customPullSecret.Name = pullSecret.Name
-			customPullSecret.Namespace = pullSecret.Namespace
+			customPullSecret.Name = config.GetImagePullSecret(mco.Spec)
+			customPullSecret.Namespace = spokeNameSpace
 			manifests = injectIntoWork(manifests, customPullSecret)
 		}
 
