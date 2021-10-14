@@ -2,7 +2,7 @@
 # Copyright (c) 2021 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project
 
-METRICS_IMAGE="${METRICS_IMAGE:-quay.io/haoqing/metrics-data:latest}"
+METRICS_IMAGE="${METRICS_IMAGE:-quay.io/ocm-observability/metrics-data:2.4.0}"
 WORKDIR="$(pwd -P)"
 export PATH=${PATH}:${WORKDIR}
 
@@ -21,19 +21,24 @@ if [[ "$(uname)" == "Darwin" ]]; then
 fi
 
 managed_cluster='managed'
-if [ $# -eq 2 ]; then
-	managed_cluster=$2
+if [ $# -eq 3 ]; then
+	managed_cluster=$3
 fi
 
 if [ $# -lt 1 ]; then
-	echo "this script must be run with the number of clusters:"
-    echo -e "\n$0 total_clusters\n"
+	echo "this script must be run with the number of metrics-collector:"
+    echo -e "\n$0 total_collectors\n"
     exit 1
 fi
 
 re='^[0-9]+$'
 if ! [[ $1 =~ $re ]] ; then
    echo "error: arguments <$1> not a number" >&2; exit 1
+fi
+
+workers=1
+if [ $# -gt 2 ]; then
+	workers=$2
 fi
 
 for i in $(seq 1 $1)
@@ -59,8 +64,9 @@ do
         --arg cluster_name $cluster_name \
         --arg cluster "--label=\"cluster=$cluster_name\"" \
         --arg clusterID "--label=\"clusterID=$uuid\"" \
+        --arg workerNum "--worker-number=$workers" \
         --arg file "--simulated-timeseries-file=/metrics-volume/timeseries.txt" \
-        '.metadata.namespace=$cluster_name | .spec.template.spec.containers[0].command[.spec.template.spec.containers[0].command|length] |= . + $cluster |.spec.template.spec.containers[0].command[.spec.template.spec.containers[0].command|length] |= . + $clusterID | .spec.template.spec.containers[0].command[.spec.template.spec.containers[0].command|length] |= . + $file' $deploy_yaml_file > $deploy_yaml_file.tmp && mv $deploy_yaml_file.tmp $deploy_yaml_file
+        '.metadata.namespace=$cluster_name | .spec.template.spec.containers[0].command[.spec.template.spec.containers[0].command|length] |= . + $cluster |.spec.template.spec.containers[0].command[.spec.template.spec.containers[0].command|length] |= . + $clusterID | .spec.template.spec.containers[0].command[.spec.template.spec.containers[0].command|length] |= . + $file | .spec.template.spec.containers[0].command[.spec.template.spec.containers[0].command|length] |= . + $workerNum' $deploy_yaml_file > $deploy_yaml_file.tmp && mv $deploy_yaml_file.tmp $deploy_yaml_file
 
 	# insert metrics initContainer
         jq \

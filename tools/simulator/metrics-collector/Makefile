@@ -1,6 +1,6 @@
 # Copyright Contributors to the Open Cluster Management project
 
-METRICS_IMAGE?=quay.io/haoqing/metrics-data:latest
+METRICS_IMAGE?=quay.io/ocm-observability/metrics-data:2.4.0
 METRICS_JSON=./_output/metrics.json
 BIN_DIR?=$(shell pwd)/_output/bin
 GOJSONTOYAML_BIN=$(BIN_DIR)/gojsontoyaml

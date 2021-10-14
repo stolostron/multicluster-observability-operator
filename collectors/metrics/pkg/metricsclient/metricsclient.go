@@ -372,9 +372,9 @@ func MTLSTransport(logger log.Logger) (*http.Transport, error) {
 	tlsKeyFile := "/tlscerts/certs/tls.key"
 	tlsCrtFile := "/tlscerts/certs/tls.crt"
 	if testMode {
-		caCertFile = "./testdata/ca.crt"
-		tlsKeyFile = "./testdata/tls.key"
-		tlsCrtFile = "./testdata/tls.crt"
+		caCertFile = "../../testdata/tls/ca.crt"
+		tlsKeyFile = "../../testdata/tls/tls.key"
+		tlsCrtFile = "../../testdata/tls/tls.crt"
 	}
 	// Load Server CA cert
 	caCert, err := ioutil.ReadFile(caCertFile)
@@ -483,6 +483,19 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 		return nil
 	}
 	logger.Log(c.logger, logger.Debug, "timeseries number", len(timeseries))
+
+	//uncomment here to generate timeseries
+	/*
+		for i := 0; i < len(families); i++ {
+			var buff bytes.Buffer
+			textEncoder := expfmt.NewEncoder(&buff, expfmt.FmtText)
+			err = textEncoder.Encode(families[i])
+			if err != nil {
+				logger.Log(c.logger, logger.Error, "unexpected error during encode", err.Error())
+			}
+			fmt.Println(string(buff.Bytes()))
+		}
+	*/
 
 	for i := 0; i < len(timeseries); i += maxSeriesLength {
 		length := len(timeseries)
