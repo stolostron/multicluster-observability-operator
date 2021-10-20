@@ -28,7 +28,7 @@ func createOrUpdateObservabilityStorageVersionMigrationResource(client client.Cl
 	mco *mcov1beta2.MultiClusterObservability) error {
 	storageVersionMigrationName := storageVersionMigrationPrefix
 	if mco != nil {
-		storageVersionMigrationName += mco.GetName()
+		storageVersionMigrationName += "-" + mco.GetName()
 	}
 	storageVersionMigration := &migrationv1alpha1.StorageVersionMigration{
 		ObjectMeta: metav1.ObjectMeta{
