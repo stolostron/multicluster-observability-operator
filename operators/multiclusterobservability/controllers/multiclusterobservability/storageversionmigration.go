@@ -76,26 +76,3 @@ func createOrUpdateObservabilityStorageVersionMigrationResource(client client.Cl
 	log.Info("StorageVersionMigration already existed/unchanged", "name", storageVersionMigrationName)
 	return nil
 }
-
-// cleanObservabilityStorageVersionMigrationResource delete the StorageVersionMigration source if found
-func cleanObservabilityStorageVersionMigrationResource(client client.Client, mco *mcov1beta2.MultiClusterObservability) error {
-	storageVersionMigrationName := storageVersionMigrationPrefix
-	if mco != nil {
-		storageVersionMigrationName += mco.GetName()
-	}
-	found := &migrationv1alpha1.StorageVersionMigration{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: storageVersionMigrationName}, found)
-	if err != nil && errors.IsNotFound(err) {
-		log.Info("StorageVersionMigration doesn't exist", "name", storageVersionMigrationName)
-	} else if err != nil {
-		log.Error(err, "Failed to check StorageVersionMigration", "name", storageVersionMigrationName)
-		return err
-	} else {
-		err = client.Delete(context.TODO(), found)
-		if err != nil {
-			log.Error(err, "Failed to delete StorageVersionMigration", "name", storageVersionMigrationName)
-			return err
-		}
-	}
-	return nil
-}

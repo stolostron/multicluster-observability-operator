@@ -269,11 +269,6 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 	mco *mcov1beta2.MultiClusterObservability) (bool, error) {
 	if mco.GetDeletionTimestamp() != nil && commonutil.Contains(mco.GetFinalizers(), resFinalizer) {
 		log.Info("To delete resources across namespaces")
-		svmCrdExists := r.CRDMap[config.StorageVersionMigrationCrdName]
-		if svmCrdExists {
-			// remove the StorageVersionMigration resource and ignore error
-			cleanObservabilityStorageVersionMigrationResource(r.Client, mco) // #nosec
-		}
 		// clean up the cluster resources, eg. clusterrole, clusterrolebinding, etc
 		if err := cleanUpClusterScopedResources(r.Client, mco); err != nil {
 			log.Error(err, "Failed to remove cluster scoped resources")
