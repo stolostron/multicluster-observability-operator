@@ -182,7 +182,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	for _, res := range toDeploy {
 		resNS := res.GetNamespace()
 		if err := controllerutil.SetControllerReference(instance, res, r.Scheme); err != nil {
-			reqLogger.Error(err, "Failed to set controller reference")
+			reqLogger.Error(err, "Failed to set controller reference", "kind", res.GetKind(), "name", res.GetName())
 		}
 		if resNS == "" {
 			resNS = config.GetDefaultNamespace()
