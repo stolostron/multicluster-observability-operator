@@ -69,6 +69,9 @@ deploy_prometheus_operator() {
     echo "Install prometheus operator. Observatorium requires it."
     cd ${WORKDIR}/..
     git clone https://github.com/coreos/kube-prometheus.git
+    pushd kube-prometheus
+    git checkout release-0.8
+    popd
 
     echo "Replace namespace with openshift-monitoring"
     $sed_command "s~namespace: monitoring~namespace: openshift-monitoring~g" kube-prometheus/manifests/*.yaml
