@@ -26,7 +26,7 @@ print_mco_operator_log() {
 create_kind_cluster() {
     if [[ ! -f /usr/local/bin/kind ]]; then
         echo "This script will install kind (https://kind.sigs.k8s.io/) on your machine."
-        curl -Lo ./kind "https://kind.sigs.k8s.io/dl/v0.7.0/kind-$(uname)-amd64"
+        curl -Lko ./kind "https://kind.sigs.k8s.io/dl/v0.7.0/kind-$(uname)-amd64"
         chmod +x ./kind
         sudo mv ./kind /usr/local/bin/kind
     fi
