@@ -26,7 +26,7 @@ print_mco_operator_log() {
 create_kind_cluster() {
     if [[ ! -f /usr/local/bin/kind ]]; then
         echo "This script will install kind (https://kind.sigs.k8s.io/) on your machine."
-        curl -Lo ./kind "https://kind.sigs.k8s.io/dl/v0.7.0/kind-$(uname)-amd64"
+        curl -Lko ./kind "https://kind.sigs.k8s.io/dl/v0.7.0/kind-$(uname)-amd64"
         chmod +x ./kind
         sudo mv ./kind /usr/local/bin/kind
     fi
@@ -69,6 +69,9 @@ deploy_prometheus_operator() {
     echo "Install prometheus operator. Observatorium requires it."
     cd ${WORKDIR}/..
     git clone https://github.com/coreos/kube-prometheus.git
+    pushd kube-prometheus
+    git checkout release-0.8
+    popd
 
     echo "Replace namespace with openshift-monitoring"
     $sed_command "s~namespace: monitoring~namespace: openshift-monitoring~g" kube-prometheus/manifests/*.yaml
