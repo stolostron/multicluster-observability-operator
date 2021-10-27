@@ -156,7 +156,7 @@ func installMCO() {
 		return nil
 	}, EventuallyTimeoutMinute*25, EventuallyIntervalSecond*10).Should(Succeed())
 
-	By("Check endpoint-operator and metrics-collector pods are ready")
+	By("Waiting for all OBAs enabled")
 	Eventually(func() error {
 		err = utils.CheckAllOBAsEnabled(testOptions)
 		if err != nil {
@@ -166,6 +166,39 @@ func installMCO() {
 		testFailed = false
 		return nil
 	}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*10).Should(Succeed())
+
+	By("Waiting for endpoint-observability-operator and metrics-collector-deployment are ready")
+	Eventually(func() error {
+		dep, err := utils.GetDeployment(testOptions, false, "endpoint-observability-operator", MCO_ADDON_NAMESPACE)
+		if err != nil {
+			return err
+		}
+
+		if dep.Status.Replicas != dep.Status.ReadyReplicas {
+			err = fmt.Errorf("%s: expect %d but got %d ready replicas",
+				dep.Name,
+				dep.Status.Replicas,
+				dep.Status.ReadyReplicas)
+			return err
+		}
+		return nil
+	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*1).Should(Succeed())
+
+	Eventually(func() error {
+		dep, err := utils.GetDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE)
+		if err != nil {
+			return err
+		}
+
+		if dep.Status.Replicas != dep.Status.ReadyReplicas {
+			err = fmt.Errorf("%s: expect %d but got %d ready replicas",
+				dep.Name,
+				dep.Status.Replicas,
+				dep.Status.ReadyReplicas)
+			return err
+		}
+		return nil
+	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*1).Should(Succeed())
 
 	By("Check clustermanagementaddon CR is created")
 	Eventually(func() error {
