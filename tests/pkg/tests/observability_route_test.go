@@ -56,21 +56,15 @@ var _ = Describe("Observability:", func() {
 
 			client := &http.Client{}
 			if os.Getenv("IS_KIND_ENV") != "true" {
-				client = &http.Client{Transport: tr}
-				token, err := utils.FetchBearerToken(testOptions)
-				if err != nil {
-					return err
-				}
-				if token != "" {
-					req.Header.Set("Authorization", "Bearer "+token)
-				}
-				req.Host = testOptions.HubCluster.GrafanaHost
+				client.Transport = tr
+				req.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
 
 			resp, err := client.Do(req)
 			if err != nil {
 				return err
 			}
+			defer resp.Body.Close()
 
 			if resp.StatusCode != http.StatusOK {
 				klog.Errorf("resp: %+v\n", resp)
@@ -132,21 +126,15 @@ var _ = Describe("Observability:", func() {
 
 			client := &http.Client{}
 			if os.Getenv("IS_KIND_ENV") != "true" {
-				client = &http.Client{Transport: tr}
-				token, err := utils.FetchBearerToken(testOptions)
-				if err != nil {
-					return err
-				}
-				if token != "" {
-					alertPostReq.Header.Set("Authorization", "Bearer "+token)
-				}
-				alertPostReq.Host = testOptions.HubCluster.GrafanaHost
+				client.Transport = tr
+				alertPostReq.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
 			if !alertCreated {
 				resp, err := client.Do(alertPostReq)
 				if err != nil {
 					return err
 				}
+				defer resp.Body.Close()
 
 				if resp.StatusCode != http.StatusOK {
 					klog.Errorf("resp: %+v\n", resp)
@@ -156,7 +144,6 @@ var _ = Describe("Observability:", func() {
 			}
 
 			alertCreated = true
-
 			alertGetReq, err := http.NewRequest(
 				"GET",
 				url,
@@ -168,20 +155,14 @@ var _ = Describe("Observability:", func() {
 			}
 
 			if os.Getenv("IS_KIND_ENV") != "true" {
-				token, err := utils.FetchBearerToken(testOptions)
-				if err != nil {
-					return err
-				}
-				if token != "" {
-					alertGetReq.Header.Set("Authorization", "Bearer "+token)
-				}
-				alertGetReq.Host = testOptions.HubCluster.GrafanaHost
+				alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
 
 			resp, err := client.Do(alertGetReq)
 			if err != nil {
 				return err
 			}
+			defer resp.Body.Close()
 
 			if resp.StatusCode != http.StatusOK {
 				klog.Errorf("resp: %+v\n", resp)
