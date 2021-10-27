@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -149,6 +150,9 @@ var _ = Describe("Observability:", func() {
 				klog.Errorf("err: %+v\n", err)
 				return fmt.Errorf("Failed to create alert via alertmanager route")
 			}
+
+			By("Waiting for alert mgr generate the test alert")
+			time.Sleep(time.Second * 5)
 
 			alertGetReq, err := http.NewRequest(
 				"GET",
