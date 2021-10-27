@@ -34,7 +34,7 @@ var _ = Describe("Observability:", func() {
 
 	It("@BVT - [P1][Sev1][Observability][Integration] Should access metrics via rbac-query-proxy route (route/g0)", func() {
 		Eventually(func() error {
-			query := "/api/v1/query?query=kube_node_status_capacity_cpu_cores"
+			query := "/api/v1/query?query=cluster_version"
 			url := "https://rbac-query-proxy-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + query
 			req, err := http.NewRequest(
 				"GET",
@@ -80,7 +80,7 @@ var _ = Describe("Observability:", func() {
 				return err
 			}
 
-			if !strings.Contains(string(metricResult), "kube_node_status_capacity_cpu_cores") {
+			if !strings.Contains(string(metricResult), "cluster_version") {
 				return fmt.Errorf("Failed to find metric name from response")
 			}
 			return nil
