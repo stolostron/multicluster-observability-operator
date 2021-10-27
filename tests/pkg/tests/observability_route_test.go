@@ -11,13 +11,16 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/klog"
 
 	"github.com/open-cluster-management/multicluster-observability-operator/tests/pkg/utils"
+)
+
+var (
+	alertCreated bool = false
 )
 
 var _ = Describe("Observability:", func() {
@@ -139,26 +142,27 @@ var _ = Describe("Observability:", func() {
 				}
 				alertPostReq.Host = testOptions.HubCluster.GrafanaHost
 			}
+			if !alertCreated {
+				resp, err := client.Do(alertPostReq)
+				if err != nil {
+					return err
+				}
 
-			resp, err := client.Do(alertPostReq)
-			if err != nil {
-				return err
+				if resp.StatusCode != http.StatusOK {
+					klog.Errorf("resp: %+v\n", resp)
+					klog.Errorf("err: %+v\n", err)
+					return fmt.Errorf("Failed to create alert via alertmanager route")
+				}
 			}
 
-			if resp.StatusCode != http.StatusOK {
-				klog.Errorf("resp: %+v\n", resp)
-				klog.Errorf("err: %+v\n", err)
-				return fmt.Errorf("Failed to create alert via alertmanager route")
-			}
-
-			By("Waiting for alert mgr generate the test alert")
-			time.Sleep(time.Second * 5)
+			alertCreated = true
 
 			alertGetReq, err := http.NewRequest(
 				"GET",
 				url,
 				nil)
 			klog.V(5).Infof("request URL: %s\n", url)
+
 			if err != nil {
 				return err
 			}
@@ -174,7 +178,7 @@ var _ = Describe("Observability:", func() {
 				alertGetReq.Host = testOptions.HubCluster.GrafanaHost
 			}
 
-			resp, err = client.Do(alertGetReq)
+			resp, err := client.Do(alertGetReq)
 			if err != nil {
 				return err
 			}
