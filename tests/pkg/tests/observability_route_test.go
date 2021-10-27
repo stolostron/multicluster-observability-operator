@@ -44,6 +44,7 @@ var _ = Describe("Observability:", func() {
 			if err != nil {
 				return err
 			}
+
 			tr := &http.Transport{
 				/* #nosec */
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -51,11 +52,6 @@ var _ = Describe("Observability:", func() {
 
 			client := &http.Client{}
 			if os.Getenv("IS_KIND_ENV") != "true" {
-				tr = &http.Transport{
-					/* #nosec */
-					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-				}
-
 				client = &http.Client{Transport: tr}
 				token, err := utils.FetchBearerToken(testOptions)
 				if err != nil {
@@ -142,6 +138,7 @@ var _ = Describe("Observability:", func() {
 				}
 				alertPostReq.Host = testOptions.HubCluster.GrafanaHost
 			}
+
 			resp, err := client.Do(alertPostReq)
 			if err != nil {
 				return err
