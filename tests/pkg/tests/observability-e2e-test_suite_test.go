@@ -210,10 +210,4 @@ func initVars() {
 			}
 		}
 	}
-
-	BearerToken, err = utils.FetchBearerToken(testOptions)
-	if err != nil {
-		klog.Errorf("fetch bearer token error: %v", err)
-	}
-	Expect(BearerToken).NotTo(BeEmpty(), "failed to fetch `BearerToken`")
 }
