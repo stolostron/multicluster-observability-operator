@@ -181,10 +181,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	ns := &corev1.Namespace{}
 	for _, res := range toDeploy {
 		resNS := res.GetNamespace()
-		if resNS == config.GetDefaultNamespace() {
-			if err := controllerutil.SetControllerReference(instance, res, r.Scheme); err != nil {
-				reqLogger.Error(err, "Failed to set controller reference")
-			}
+		if err := controllerutil.SetControllerReference(instance, res, r.Scheme); err != nil {
+			reqLogger.Error(err, "Failed to set controller reference", "kind", res.GetKind(), "name", res.GetName())
 		}
 		if resNS == "" {
 			resNS = config.GetDefaultNamespace()
@@ -271,11 +269,6 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 	mco *mcov1beta2.MultiClusterObservability) (bool, error) {
 	if mco.GetDeletionTimestamp() != nil && commonutil.Contains(mco.GetFinalizers(), resFinalizer) {
 		log.Info("To delete resources across namespaces")
-		svmCrdExists := r.CRDMap[config.StorageVersionMigrationCrdName]
-		if svmCrdExists {
-			// remove the StorageVersionMigration resource and ignore error
-			cleanObservabilityStorageVersionMigrationResource(r.Client, mco) // #nosec
-		}
 		// clean up the cluster resources, eg. clusterrole, clusterrolebinding, etc
 		if err := cleanUpClusterScopedResources(r.Client, mco); err != nil {
 			log.Error(err, "Failed to remove cluster scoped resources")
@@ -766,7 +759,7 @@ func GenerateProxyRoute(
 // cleanUpClusterScopedResources delete the cluster scoped resources created by the MCO operator
 // The cluster scoped resources need to be deleted manually because they don't have ownerrefenence set as the MCO CR
 func cleanUpClusterScopedResources(cl client.Client, mco *mcov1beta2.MultiClusterObservability) error {
-	matchLabels := map[string]string{config.GetCrLabelKey(): mco.Name}
+	matchLabels := map[string]string{"owner": "multicluster-observability-operator"}
 	listOpts := []client.ListOption{
 		client.MatchingLabels(matchLabels),
 	}
