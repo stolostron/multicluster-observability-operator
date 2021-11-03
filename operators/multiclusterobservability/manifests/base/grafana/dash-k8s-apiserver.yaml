@@ -157,7 +157,7 @@ data:
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "Latency",
+              "legendFormat": "{{verb}}",
               "refId": "A"
             },
             {
