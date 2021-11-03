@@ -6,6 +6,7 @@ package tests
 import (
 	"bytes"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -48,10 +49,12 @@ var _ = Describe("Observability:", func() {
 			if err != nil {
 				return err
 			}
-
+			caCrt, err := utils.GetRouterCA(hubClient)
+			Expect(err).NotTo(HaveOccurred())
+			pool := x509.NewCertPool()
+			pool.AppendCertsFromPEM(caCrt)
 			tr := &http.Transport{
-				/* #nosec */
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				TLSClientConfig: &tls.Config{RootCAs: pool},
 			}
 
 			client := &http.Client{}
@@ -119,9 +122,12 @@ var _ = Describe("Observability:", func() {
 				return err
 			}
 
+			caCrt, err := utils.GetRouterCA(hubClient)
+			Expect(err).NotTo(HaveOccurred())
+			pool := x509.NewCertPool()
+			pool.AppendCertsFromPEM(caCrt)
 			tr := &http.Transport{
-				/* #nosec */
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				TLSClientConfig: &tls.Config{RootCAs: pool},
 			}
 
 			client := &http.Client{}
