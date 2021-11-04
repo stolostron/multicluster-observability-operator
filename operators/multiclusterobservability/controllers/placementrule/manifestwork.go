@@ -57,7 +57,7 @@ var (
 type MetricsAllowlist struct {
 	NameList  []string          `yaml:"names"`
 	MatchList []string          `yaml:"matches"`
-	ReNameMap map[string]string `yaml:"renames"`
+	RenameMap map[string]string `yaml:"renames"`
 	RuleList  []Rule            `yaml:"rules"`
 }
 
@@ -498,8 +498,8 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 		allowlist.NameList = mergeMetrics(allowlist.NameList, customAllowlist.NameList)
 		allowlist.MatchList = mergeMetrics(allowlist.MatchList, customAllowlist.MatchList)
 		allowlist.RuleList = append(allowlist.RuleList, customAllowlist.RuleList...)
-		for k, v := range customAllowlist.ReNameMap {
-			allowlist.ReNameMap[k] = v
+		for k, v := range customAllowlist.RenameMap {
+			allowlist.RenameMap[k] = v
 		}
 	} else {
 		log.Info("There is no custom metrics allowlist configmap in the cluster")
