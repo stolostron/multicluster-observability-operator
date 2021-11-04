@@ -24,6 +24,7 @@ import (
 var (
 	testHeadless bool
 
+	BearerToken             string
 	baseDomain              string
 	kubeadminUser           string
 	kubeadminCredential     string
