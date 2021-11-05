@@ -3,15 +3,18 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
-	"net/url"
 	"net/http"
 	"net/http/httptrace"
+	"net/url"
 	"os"
-	"strconv"
+	"os/signal"
+	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -19,104 +22,174 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"
+	"github.com/spf13/cobra"
 )
 
-var alerts = `[
-  {
-    "annotations":{
-      "description":"just for testing\n",
-      "summary":"An alert that is for testing."
-    },
-    "receivers":[
-      {
-        "name":"test"
-      }
-    ],
-    "labels":{
-      "alertname":"test",
-      "cluster":"testCluster",
-      "severity":"none"
-    }
-  }
-]`
+type alertForwarderOptions struct {
+	amHost            string
+	amScheme          string
+	amAPIVersion      string
+	amAccessToken     string
+	amAccessTokenFile string
+	interval          time.Duration
+	workers           int
+	alerts            string
+	alertsFile        string
+}
 
-func main() {
-	amHost := os.Getenv("ALERTMANAGER_HOST")
-	if amHost == "" {
-		log.Println("ALERTMANAGER_HOST must be specified!")
-		os.Exit(1)
-	}
-	amUrl := (&url.URL{
-		Scheme: "https",
-		Host:   amHost,
-		Path:   "/api/v2/alerts",
-	}).String()
+type alertForwarder struct {
+	amURL    string
+	amConfig *config.AlertmanagerConfig
+	interval time.Duration
+	workers  int
+	alerts   string
+}
 
-	amAccessToken := os.Getenv("ALERRTMANAGER_ACCESS_TOKEN")
-	if amAccessToken == "" {
-		log.Println("ALERRTMANAGER_ACCESS_TOKEN must be specified!")
-		os.Exit(1)
+func newAlertFowarder(opts *alertForwarderOptions) (*alertForwarder, error) {
+	if len(opts.amHost) == 0 {
+		return nil, fmt.Errorf("am-host must be specified!")
 	}
-	maxAlertSendRoutine := os.Getenv("MAX_ALERT_SEND_ROUTINE")
-	maxAlertSendRoutineNumber := 20
-	if maxAlertSendRoutine == "" {
-		log.Println("MAX_ALERT_SEND_ROUTINE is not specified, fallback to default value: 20")
-	} else {
-		i, err := strconv.Atoi(maxAlertSendRoutine)
+
+	u := &url.URL{
+		Scheme: opts.amScheme,
+		Host:   opts.amHost,
+		Path:   fmt.Sprintf("/api/%s/alerts", opts.amAPIVersion),
+	}
+
+	accessToken := ""
+	if len(opts.amAccessToken) > 0 {
+		accessToken = opts.amAccessToken
+	} else if len(opts.amAccessTokenFile) > 0 {
+		data, err := ioutil.ReadFile(opts.amAccessTokenFile)
 		if err != nil {
-			log.Println("invalid MAX_ALERT_SEND_ROUTINE, must be number!")
-			os.Exit(1)
+			return nil, err
 		}
-		maxAlertSendRoutineNumber = i
+		accessToken = strings.TrimSpace(string(data))
+	} else {
+		return nil, fmt.Errorf("am-access-token or am-access-token-file must be specified!")
 	}
 
-	alertSendInterval := os.Getenv("ALERT_SEND_INTERVAL")
-	asInterval, err := time.ParseDuration(alertSendInterval)
-	if err != nil {
-		log.Println("invalid ALERT_SEND_INTERVAL, fallback to default value: 5s")
-		asInterval = 5*time.Second
+	alerts := ""
+	if len(opts.alerts) > 0 {
+		alerts = opts.alerts
+	} else if len(opts.alertsFile) > 0 {
+		data, err := ioutil.ReadFile(opts.alertsFile)
+		if err != nil {
+			return nil, err
+		}
+		alerts = strings.TrimSpace(string(data))
+	} else {
+		return nil, fmt.Errorf("alerts or alerts-file must be specified!")
 	}
 
-	amCfg := createAlertmanagerConfig(amHost, amAccessToken)
+	return &alertForwarder{
+		amURL:    u.String(),
+		amConfig: createAlertmanagerConfig(opts.amHost, opts.amScheme, opts.amAPIVersion, accessToken),
+		interval: opts.interval,
+		workers:  opts.workers,
+		alerts:   alerts,
+	}, nil
+}
+
+func (af *alertForwarder) Run() error {
+	sigs := make(chan os.Signal, 1)
+	done := make(chan bool, 1)
+
+	// register the given channel to receive notifications of the specified unix signals
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	// start loop in new go routinr for system terminating signal
+	go func() {
+		sig := <-sigs
+		log.Printf("got unix terminating signal: %v\n", sig)
+		done <- true
+	}()
 
 	// client trace to log whether the request's underlying tcp connection was re-used
 	clientTrace := &httptrace.ClientTrace{
-		GotConn: func(info httptrace.GotConnInfo) { log.Printf("conn was reused: %t\n", info.Reused) },
+		GotConn: func(info httptrace.GotConnInfo) { log.Printf("connection was reused: %t\n", info.Reused) },
 	}
 	traceCtx := httptrace.WithClientTrace(context.Background(), clientTrace)
 
 	// create the http client to send alerts to alertmanager
-	client, err := config_util.NewClientFromConfig(amCfg.HTTPClientConfig, "alertmanager", config_util.WithHTTP2Disabled())
+	client, err := config_util.NewClientFromConfig(af.amConfig.HTTPClientConfig, "alertmanager", config_util.WithHTTP2Disabled())
 	if err != nil {
 		log.Printf("failed to create the http client: %v\n", err)
-		return
+		return err
 	}
 
-	// alerts send loop
-	var wg sync.WaitGroup
-	for i := 0; i < maxAlertSendRoutineNumber; i++ {
-		log.Printf("sending alerts with go routine %d\n", i)
-		wg.Add(1)
-		go func(index int, client *http.Client, traceCtx context.Context, url string, payload []byte) {
-			if err := sendOne(client, traceCtx, url, payload); err != nil {
-				log.Printf("failed to send alerts: %v\n", err)
+	// start alert forward worker each interval until done signal received
+	ticker := time.NewTicker(af.interval)
+	log.Println("starting alert forward loop....")
+	for {
+		select {
+		case <-done:
+			log.Printf("received terminating signal, shuting down the program...")
+			return nil
+		case <-ticker.C:
+			var wg sync.WaitGroup
+			for i := 0; i < af.workers; i++ {
+				log.Printf("sending alerts with worker %d\n", i)
+				wg.Add(1)
+				go func(index int, client *http.Client, traceCtx context.Context, url string, payload []byte) {
+					if err := sendOne(client, traceCtx, url, payload); err != nil {
+						log.Printf("failed to send alerts: %v\n", err)
+						log.Printf("failed to send alerts to %s: %v\n", url, err)
+					}
+					wg.Done()
+					log.Printf("send routine %d done\n", index)
+				}(i, client, traceCtx, af.amURL, []byte(af.alerts))
 			}
-			wg.Done()
-			log.Printf("send routine %d done\n", index)
-		}(i, client, traceCtx, amUrl, []byte(alerts))
-
-		//sleep 30 for the HAProxy close the client connection
-		time.Sleep(asInterval)
+			wg.Wait()
+		}
 	}
-	wg.Wait()
+}
+
+func main() {
+	opts := &alertForwarderOptions{
+		amScheme:     "https",
+		amAPIVersion: "v2",
+		interval:     30 * time.Second,
+		workers:      1000,
+		alertsFile:   "/tmp/alerts.json",
+	}
+	cmd := &cobra.Command{
+		Short:         "Application for forwarding alerts to target Alertmanager.",
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			af, err := newAlertFowarder(opts)
+			if err != nil {
+				log.Printf("failed to create alert forwarder: %v", err)
+				return err
+			}
+			log.Println("alert forwarder is initialized")
+			return af.Run()
+		},
+	}
+
+	cmd.Flags().StringVar(&opts.amHost, "am-host", opts.amHost, "Host for the target alertmanager.")
+	cmd.Flags().StringVar(&opts.amScheme, "am-scheme", opts.amScheme, "Scheme for the target alertmanager.")
+	cmd.Flags().StringVar(&opts.amAPIVersion, "am-apiversion", opts.amAPIVersion, "API Version for the target alertmanager.")
+	cmd.Flags().StringVar(&opts.amAccessToken, "am-access-token", opts.amAccessToken, "The bearer token used to authenticate to the target alertmanager.")
+	cmd.Flags().StringVar(&opts.amAccessTokenFile, "am-access-token-file", opts.amAccessTokenFile, "File containing the bearer token used to authenticate to the target alertmanager.")
+	cmd.Flags().DurationVar(&opts.interval, "interval", opts.interval, "The interval between sending alert forward requests.")
+	cmd.Flags().IntVar(&opts.workers, "workers", opts.workers, "The number of concurrent goroutines that forward the alerts.")
+	cmd.Flags().StringVar(&opts.alerts, "alerts", opts.alerts, "The sample of alerts.")
+	cmd.Flags().StringVar(&opts.alertsFile, "alerts-file", opts.alertsFile, "File containing the sample of alerts.")
+
+	if err := cmd.Execute(); err != nil {
+		log.Printf("failed to run command: %v", err)
+		os.Exit(1)
+	}
 }
 
 // createAlertmanagerConfig creates and returns the configuration for the target Alertmanager
-func createAlertmanagerConfig(amHost, amAccessToken string) *config.AlertmanagerConfig {
+func createAlertmanagerConfig(amHost, amScheme, amAPIVersion, amAccessToken string) *config.AlertmanagerConfig {
 	return &config.AlertmanagerConfig{
-		APIVersion: config.AlertmanagerAPIVersionV2,
+		APIVersion: config.AlertmanagerAPIVersion(amAPIVersion),
 		PathPrefix: "/",
-		Scheme:     "https",
+		Scheme:     amScheme,
 		Timeout:    model.Duration(10 * time.Second),
 		HTTPClientConfig: config_util.HTTPClientConfig{
 			Authorization: &config_util.Authorization{
@@ -163,6 +236,5 @@ func sendOne(c *http.Client, traceCtx context.Context, url string, b []byte) err
 	if resp.StatusCode/100 != 2 {
 		return errors.Errorf("bad response status %s", resp.Status)
 	}
-
 	return nil
 }

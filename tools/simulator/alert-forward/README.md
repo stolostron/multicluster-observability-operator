@@ -11,51 +11,46 @@ You must meet the following requirements to setup metrics collector:
 
 ## How to use
 
-1. Export host of the Alertmanager in the ACM hub cluster.
+### Run locally outside the cluster
+
+1. Export host of the Alertmanager in the ACM hub cluster:
 
 ```
 export ALERTMANAGER_HOST=$(oc -n open-cluster-management-observability get route alertmanager -o jsonpath="{.spec.host}")
 ```
 
-2. Export access token to the Alertmanager in the ACM hub cluster.
+2. Export access token to the Alertmanager in the ACM hub cluster:
 
 ```
 export ALERRTMANAGER_ACCESS_TOKEN=$(oc -n open-cluster-management-observability get secret $(oc -n open-cluster-management-observability get sa observability-alertmanager-accessor -o yaml | grep observability-alertmanager-accessor-token | cut -d' ' -f3) -o jsonpath="{.data.token}" | base64 -d)
 ```
 
-3. (Optional)Export simulated max go routine number for sending alert, if not set, default value(20) will be used.
-
+3. Run the simulator to send fake alerts to the Alertmanager in ACM hub cluster:
 ```
-export MAX_ALERT_SEND_ROUTINE=5
-```
-
-4. (Optional) Export alert send interval, if not set, default value(5 seconds) will be used.
-
-```
-export ALERT_SEND_INTERVAL=10s
+go run main.go --am-host=${ALERTMANAGER_HOST} --am-access-token=${ALERRTMANAGER_ACCESS_TOKEN} --alerts-file=tools/simulator/alert-forward/alerts.json
 ```
 
-5. Run the simulator to send fake alerts to the Alertmanager in the ACM hub cluster.
+> Note: you can also optionally specify the number of concurrent goroutines that forward the alerts by `--workers` flag and the alert forward interval by `--interval` flag.
+
+### Run as a Deployment inside the cluster
+
+1. (Optional) Build and push the alert-forwarder image:
+```
+docker build -f Dockerfile -t quay.io/ocm-observability/alert-forwarder:2.4.0 ../../..
+docker push quay.io/ocm-observability/alert-forwarder:2.4.0
+```
+
+2. Run the following command to deploy the alert-forwarder:
 
 ```
-# go run ./tools/simulator/alert-forward/main.go
-2021/10/12 04:22:50 sending alerts with go routine 0
-2021/10/12 04:22:50 conn was reused: false
-2021/10/12 04:22:50 send routine 0 done
-2021/10/12 04:22:55 sending alerts with go routine 1
-2021/10/12 04:22:55 conn was reused: true
-2021/10/12 04:22:55 send routine 1 done
-2021/10/12 04:23:00 sending alerts with go routine 2
-2021/10/12 04:23:00 conn was reused: true
-2021/10/12 04:23:00 send routine 2 done
-2021/10/12 04:23:05 sending alerts with go routine 3
-2021/10/12 04:23:05 conn was reused: true
-2021/10/12 04:23:05 send routine 3 done
-2021/10/12 04:23:10 sending alerts with go routine 4
-2021/10/12 04:23:10 conn was reused: true
-2021/10/12 04:23:10 send routine 4 done
-2021/10/12 04:23:15 sending alerts with go routine 5
-2021/10/12 04:23:15 conn was reused: true
-2021/10/12 04:23:15 send routine 5 done
+./setup-alert-forwarder.sh
+```
+
+3. Check if all the alert-forwarder pod is running successfully in your cluster:
+
+```
+# oc -n alert-forwarder get pod
+NAME                              READY   STATUS    RESTARTS   AGE
+alert-forwarder-fb75bbb8c-6zgq8   1/1     Running   0          3m11s
 ```
 
