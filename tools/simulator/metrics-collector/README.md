@@ -1,14 +1,15 @@
 # Metrics Collector Simulator
 
-Metrics collector simulator can be used to setup multiple metrics collector in different namespaces in one managed cluster, to simulate thousands of managed clusters push metrics to ACM hub cluster for scale testing.
+Metrics collector simulator can be used to setup multiple metrics collector in different namespaces in one managed cluster, to simulate thousands of managed clusters push metrics concurrenyly to ACM hub cluster for scale testing.
 
 _Note:_ this simulator is for testing purpose only.
 
 ## Prereqs
+
 You must meet the following requirements to setup metrics collector:
 
 - ACM 2.1+ available
-- `MultiClusterObservability` instance available and have following pods in `open-cluster-management-addon-observability` namespace:
+- `MultiClusterObservability` instance available and the following pods are running in `open-cluster-management-addon-observability` namespace:
 
 	```
 	$ oc get po -n open-cluster-management-addon-observability
@@ -17,37 +18,51 @@ You must meet the following requirements to setup metrics collector:
 	metrics-collector-deployment-74cbf5896f-jhg6v      1/1     Running   0          111m
 	```
 
-## Quick Start
-### Setup metrics collector
-You can run `setup-metrics-collector.sh` following with a number to setup multiple metrics collector.
+## How to use
 
-For example, setup 2 metrics collectors with 100 workers by the following command:
+### Setup metrics collector
+
+1. Run `setup-metrics-collector.sh` script to setup multiple metrics collector, `-n` specifies the simulated metrics collector number, and optional `-w` specifies the worker number for each simulated metrics collector, you can also specifies the simulated metrics collector name prefix by the `-m` flag. For example, setup 2 metrics collectors with 100 workers by the following command:
+
+```bash
+# ./setup-metrics-collector.sh -n 2 -w 100
 ```
-# ./setup-metrics-collector.sh 2 100
-```
-Check if all the metrics collector running successfully in your cluster:
-```
-# oc get pods --all-namespaces | grep simulate-managed-cluster
+
+2. Check if all the metrics collector running successfully in your cluster:
+
+```bash
+# oc get pods --all-namespaces | grep simulated-managed-cluster
 simulate-managed-cluster1                          metrics-collector-deployment-7d69d9f897-xn8vz                    1/1     Running            0          22h
 simulate-managed-cluster2                          metrics-collector-deployment-67844bfc59-lwchn                    1/1     Running            0          22h
 ```
-It simulates 200 metrics collectors to push the data into hub thanos.
 
-> Note: if you want the simulated metrics-collector be scheduled to master node, so that more simulated metrics-collectors can be deployed, you can set the environment variable `ALLOW_SCHEDULED_TO_MASTER` to be `true` before executing the setup script.
+> _Note:_ the above command will simulate 200 metrics collectors pushing the data concurrently into hub thanos.
+
+> _Note:_ if you want the simulated metrics-collector be scheduled to master node, so that more simulated metrics-collectors can be deployed in one cluster, you can set the environment variable `ALLOW_SCHEDULED_TO_MASTER` to be `true` before executing the setup script.
 
 ### Clean metrics collector
-Use `clean-metrics-collector.sh` to remove all metrics collector you created.
-```
-# ./clean-metrics-collector.sh 10
+
+Use `clean-metrics-collector.sh` to remove all the simulated metrics collector, `-n` specifies the simulated metrics collector number:
+
+```bash
+# ./clean-metrics-collector.sh -n 2
 ```
 
-## Generate your own metrics data source
+## Customize the metrics data source
+
+### Generate your own data source
+
 By default, `setup-metrics-collector.sh` is using metrics data defined in env `METRICS_IMAGE` as data source. You can build and push your own metrics data image with below command:
-```
+
+```bash
 # METRICS_IMAGE=<example/metrics-data:latest> make all
 ```
+
 ## Setup metrics collector with your own metrics data source
+
 Running below command to setup metrics collectors with your own data source:
+
+```bash
+# METRICS_IMAGE=<example/metrics-data:latest> ./setup-metrics-collector.sh -n 10
 ```
-# METRICS_IMAGE=<example/metrics-data:latest> ./setup-metrics-collector.sh 10
-```
+

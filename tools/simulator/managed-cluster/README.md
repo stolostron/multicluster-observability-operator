@@ -1,55 +1,71 @@
 # Managed Cluster Simulator
 
-The managed cluster simulator can be used to set up multiple managed clusters and create the corresponding namespaces in the ACM hub cluster, to simulate reconciling thousands of managed clusters for the multicluster-observability-operator.
+The managed cluster simulator can be used to set up multiple managed clusters and create the corresponding namespaces in ACM hub cluster, to simulate reconciling thousands of managed clusters for the multicluster-observability-operator.
+
+_Note:_ this simulator is for testing purpose only.
 
 ## Prereqs
 
-You must meet the following requirements to setup metrics collector:
+You must meet the following requirements to setup managed cluster simulator:
 
-1. ACM 2.1+ available
+1. ACM 2.3+ available
 2. `MultiClusterObservability` instance available in the hub cluster
 
-## Quick Start
-
-### Scale down the controllers
-
-Before creating simulated managed clusters, we should scale down cluster-manager and controllers for managedcluster and manifestwork, to avoid resource conflict with the multicluster-observability-operator. Execute the following command:
-
-```bash
-kubectl -n open-cluster-management scale deploy cluster-manager --replicas 0
-kubectl -n open-cluster-management-hub scale deploy cluster-manager-registration-controller --replicas 0
-kubectl -n open-cluster-management-agent scale deploy klusterlet --replicas 0
-kubectl -n open-cluster-management-agent scale deploy klusterlet-registration-agent --replicas 0
-kubectl -n open-cluster-management-agent scale deploy klusterlet-work-agent --replicas 0
-```
-
-> Note: to make sure the controllers are not scaled up again by the operator and OLM, we also need to edit the CSV in the `open-cluster-management` to update the replicas of `cluster-manager` to be `0`.
+## How to use
 
 ### Set up managed cluster simulator
 
-You can run `setup-managedcluster.sh` following with two numbers(start index and end index) to set up multiple simulated managedcluster.
-
-For example, set up 1-10 simulated managedcluster with the following command:
+1. You can run `setup-managedcluster.sh` followed with two numbers(start index and end index) to set up multiple simulated managed clusters. For example, set up 1-10 simulated managedcluster with the following command:
 
 ```bash
-# ./setup-managedcluster.sh 1 10
+# ./setup-managedcluster.sh 1 5
+Creating Simulated managedCluster simulated-1-managedcluster...
+managedcluster.cluster.open-cluster-management.io/simulated-1-managedcluster created
+Creating Simulated managedCluster simulated-2-managedcluster...
+managedcluster.cluster.open-cluster-management.io/simulated-2-managedcluster created
+Creating Simulated managedCluster simulated-3-managedcluster...
+managedcluster.cluster.open-cluster-management.io/simulated-3-managedcluster created
+Creating Simulated managedCluster simulated-4-managedcluster...
+managedcluster.cluster.open-cluster-management.io/simulated-4-managedcluster created
+Creating Simulated managedCluster simulated-5-managedcluster...
+managedcluster.cluster.open-cluster-management.io/simulated-5-managedcluster created
 ```
 
-Check if all the metrics collector running successfully in your cluster:
+2. Check if all the managed cluster are set up successfully in ACM hub cluster:
 
 ```bash
-# kubectl get managedcluster
-NAME                           HUB ACCEPTED   MANAGED CLUSTER URLS                                                   JOINED   AVAILABLE   AGE
-local-cluster                  true           https://api.obs-china-aws-4616-smzbp.dev05.red-chesterfield.com:6443   True     True        2d2h
-simulated-1-managedcluster     true           https://api.obs-china-aws-4616-smzbp.dev05.red-chesterfield.com:6443            Unknown     1m
-simulated-2-managedcluster     true           https://api.obs-china-aws-4616-smzbp.dev05.red-chesterfield.com:6443            Unknown     1m
-simulated-3-managedcluster     true           https://api.obs-china-aws-4616-smzbp.dev05.red-chesterfield.com:6443            Unknown     1m
-simulated-4-managedcluster     true           https://api.obs-china-aws-4616-smzbp.dev05.red-chesterfield.com:6443            Unknown     1m
-simulated-5-managedcluster     true           https://api.obs-china-aws-4616-smzbp.dev05.red-chesterfield.com:6443            Unknown     1m
-simulated-6-managedcluster     true           https://api.obs-china-aws-4616-smzbp.dev05.red-chesterfield.com:6443            Unknown     1m
-simulated-7-managedcluster     true           https://api.obs-china-aws-4616-smzbp.dev05.red-chesterfield.com:6443            Unknown     1m
-simulated-8-managedcluster     true           https://api.obs-china-aws-4616-smzbp.dev05.red-chesterfield.com:6443            Unknown     1m
-simulated-9-managedcluster     true           https://api.obs-china-aws-4616-smzbp.dev05.red-chesterfield.com:6443            Unknown     1m
-simulated-10-managedcluster    true           https://api.obs-china-aws-4616-smzbp.dev05.red-chesterfield.com:6443            Unknown     1m
+$ oc get managedcluster  | grep simulated
+simulated-1-managedcluster   true                                                                                       46s
+simulated-2-managedcluster   true                                                                                       46s
+simulated-3-managedcluster   true                                                                                       45s
+simulated-4-managedcluster   true                                                                                       44s
+simulated-5-managedcluster   true                                                                                       44s
+```
+
+3. Check if the `Manifestwork` are created for the simulated managed clusters:
+
+```bash
+$ for i in $(seq 1 5); do oc -n simulated-$i-managedcluster get manifestwork --no-headers; done
+simulated-1-managedcluster-observability   72s
+simulated-2-managedcluster-observability   70s
+simulated-3-managedcluster-observability   69s
+simulated-4-managedcluster-observability   67s
+simulated-5-managedcluster-observability   65s
+```
+
+4. Clean up the simulated managed clusters by running the `clean-managedcluster.sh` script followed with two numbers(start index and end index), For example, clean up 1-10 simulated managedcluster with the following command:
+
+```
+$ ./clean-managedcluster.sh 1 5
+Deleting Simulated managedCluster simulated-1-managedcluster...
+managedcluster.cluster.open-cluster-management.io "simulated-1-managedcluster" deleted
+Deleting Simulated managedCluster simulated-2-managedcluster...
+managedcluster.cluster.open-cluster-management.io "simulated-2-managedcluster" deleted
+Deleting Simulated managedCluster simulated-3-managedcluster...
+managedcluster.cluster.open-cluster-management.io "simulated-3-managedcluster" deleted
+Deleting Simulated managedCluster simulated-4-managedcluster...
+managedcluster.cluster.open-cluster-management.io "simulated-4-managedcluster" deleted
+Deleting Simulated managedCluster simulated-5-managedcluster...
+managedcluster.cluster.open-cluster-management.io "simulated-5-managedcluster" deleted
 ```
 
