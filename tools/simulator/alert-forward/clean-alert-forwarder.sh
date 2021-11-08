@@ -5,7 +5,7 @@
 KUBECTL="kubectl"
 if ! command -v kubectl &> /dev/null; then
     if command -v oc &> /dev/null; then
-        SED_COMMAND="oc"
+        KUBECTL="oc"
     else
         echo "kubectl or oc must be installed!"
         exit 1
