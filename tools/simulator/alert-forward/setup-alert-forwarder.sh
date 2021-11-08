@@ -16,8 +16,42 @@ fi
 
 SED_COMMAND='sed -i'
 if [[ "$(uname)" == "Darwin" ]]; then
-    sed_command='sed -i -e'
+    SED_COMMAND='sed -i -e'
 fi
+
+function usage() {
+  echo "${0} [-i INTERVAL] [-w WORKERS]"
+  echo ''
+  # shellcheck disable=SC2016
+  echo '  -i: Specifies the alert forward INTERVAL, optional, the default value is "30s".'
+  # shellcheck disable=SC2016
+  echo '  -w: Specifies the number of concurrent workers that forward the alerts, optional, the default value is "1000".'
+  echo ''
+}
+
+INTERVAL="30s" # default alert forward interval
+WORKERS=1000 # default alert forward workers
+
+# Allow command-line args to override the defaults.
+while getopts ":i:w:h" opt; do
+  case ${opt} in
+    i)
+      INTERVAL=${OPTARG}
+      ;;
+    w)
+      WORKERS=${OPTARG}
+      ;;
+    h)
+      usage
+      exit 0
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
 
 OBSERVABILITY_NS="open-cluster-management-observability"
 AM_ACCESS_SA="observability-alertmanager-accessor"
@@ -28,6 +62,8 @@ AM_HOST=$(${KUBECTL} -n ${OBSERVABILITY_NS} get route ${AM_ROUTE} -o jsonpath="{
 ALERT_FORWARDER_NS="alert-forwarder"
 
 ${SED_COMMAND} "s~__AM_HOST__~${AM_HOST}~g" ${WORK_DIR}/deployment.yaml
+${SED_COMMAND} "s~--interval=30s~--interval=${INTERVAL}~g" ${WORK_DIR}/deployment.yaml
+${SED_COMMAND} "s~--workers=1000~--workers=${WORKERS}~g" ${WORK_DIR}/deployment.yaml
 ${KUBECTL} create ns ${ALERT_FORWARDER_NS}
 ${KUBECTL} -n ${ALERT_FORWARDER_NS} create secret generic ${AM_ACCESS_TOKEN_SECRET} --from-literal=token=${AM_ACCESS_TOKEN}
 ${KUBECTL} -n ${ALERT_FORWARDER_NS} apply -f ${WORK_DIR}/deployment.yaml

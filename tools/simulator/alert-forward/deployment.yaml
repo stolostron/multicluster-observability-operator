@@ -15,10 +15,12 @@ spec:
       containers:
       - name: alert-forwarder
         image: quay.io/ocm-observability/alert-forwarder:2.4.0
+        imagePullPolicy: Always
         args:
         - --am-host=alertmanager-open-cluster-management-observability.apps.mcstest.dev05.red-chesterfield.com
         - --am-access-token-file=/etc/alert-forwarder/token
-        - --workers=2
+        - --workers=1000
+        - --interval=30s
         volumeMounts:
         - name: am-access-token
           mountPath: /etc/alert-forwarder
