@@ -34,7 +34,8 @@ var _ = Describe("Observability:", func() {
 		if os.Getenv("SKIP_INSTALL_STEP") == "true" {
 			Skip("Skip the case due to MCO CR was created customized")
 		}
-		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		if err != nil {
 			panic(err.Error())
 		}
@@ -47,7 +48,8 @@ var _ = Describe("Observability:", func() {
 		if os.Getenv("SKIP_INSTALL_STEP") == "true" {
 			Skip("Skip the case due to MCO CR was created customized")
 		}
-		mcoSC, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		mcoSC, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
 		spec := mcoSC.Object["spec"].(map[string]interface{})
@@ -70,7 +72,9 @@ var _ = Describe("Observability:", func() {
 		}
 
 		Eventually(func() error {
-			pvcList, err := hubClient.CoreV1().PersistentVolumeClaims(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
+			pvcList, err := hubClient.CoreV1().
+				PersistentVolumeClaims(MCO_NAMESPACE).
+				List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				return err
 			}
@@ -80,7 +84,12 @@ var _ = Describe("Observability:", func() {
 					scName := *pvc.Spec.StorageClassName
 					statusPhase := pvc.Status.Phase
 					if scName != expectedSC || statusPhase != "Bound" {
-						return fmt.Errorf("PVC check failed, scName = %s, expectedSC = %s, statusPhase = %s", scName, expectedSC, statusPhase)
+						return fmt.Errorf(
+							"PVC check failed, scName = %s, expectedSC = %s, statusPhase = %s",
+							scName,
+							expectedSC,
+							statusPhase,
+						)
 					}
 				}
 			}
@@ -145,7 +154,8 @@ var _ = Describe("Observability:", func() {
 
 	It("@BVT - [P1][Sev1][Observability][Integration] Checking replicas in advanced config for each component (config/g0)", func() {
 
-		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		if err != nil {
 			panic(err.Error())
 		}
@@ -180,7 +190,8 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("[P2][Sev2][Observability][Integration] Checking resources in advanced config (config/g0)", func() {
-		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		if err != nil {
 			panic(err.Error())
 		}
@@ -208,14 +219,17 @@ var _ = Describe("Observability:", func() {
 				Expect(err).NotTo(HaveOccurred())
 				for _, deployInfo := range (*deploys).Items {
 					Expect(cpu).To(Equal(deployInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().String()))
-					Expect(limits["memory"]).To(Equal(deployInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()))
+					Expect(
+						limits["memory"],
+					).To(Equal(deployInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()))
 				}
 			} else {
 				sts, err := utils.GetStatefulSetWithLabel(testOptions, true, component.Label, MCO_NAMESPACE)
 				Expect(err).NotTo(HaveOccurred())
 				for _, stsInfo := range (*sts).Items {
 					Expect(cpu).To(Equal(stsInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().String()))
-					Expect(limits["memory"]).To(Equal(stsInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()))
+					memStr := stsInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()
+					Expect(limits["memory"]).To(Equal(memStr))
 				}
 			}
 		}

@@ -21,7 +21,12 @@ func GetPodList(opt TestOptions, isHub bool, namespace string, labelSelector str
 	}
 	podList, err := clientKube.CoreV1().Pods(namespace).List(context.TODO(), listOption)
 	if err != nil {
-		klog.Errorf("Failed to get pod list in namespace %s using labelselector %s due to %v", namespace, labelSelector, err)
+		klog.Errorf(
+			"Failed to get pod list in namespace %s using labelselector %s due to %v",
+			namespace,
+			labelSelector,
+			err,
+		)
 		return err, podList
 	}
 	if podList != nil && len(podList.Items) == 0 {
@@ -40,7 +45,13 @@ func DeletePod(opt TestOptions, isHub bool, namespace, name string) error {
 	return nil
 }
 
-func GetPodLogs(opt TestOptions, isHub bool, namespace, podName, containerName string, previous bool, tailLines int64) (string, error) {
+func GetPodLogs(
+	opt TestOptions,
+	isHub bool,
+	namespace, podName, containerName string,
+	previous bool,
+	tailLines int64,
+) (string, error) {
 	clientKube := getKubeClient(opt, isHub)
 	podLogOpts := v1.PodLogOptions{
 		Container: containerName,

@@ -197,7 +197,13 @@ func main() {
 
 	if ingressCtlCrdExists {
 		gvkLabelsMap[operatorv1.SchemeGroupVersion.WithKind("IngressController")] = []filteredcache.Selector{
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s,metadata.name==%s", config.OpenshiftIngressOperatorNamespace, config.OpenshiftIngressOperatorCRName)},
+			{
+				FieldSelector: fmt.Sprintf(
+					"metadata.namespace==%s,metadata.name==%s",
+					config.OpenshiftIngressOperatorNamespace,
+					config.OpenshiftIngressOperatorCRName,
+				),
+			},
 		}
 	}
 	if mchCrdExists {
@@ -206,8 +212,8 @@ func main() {
 		}
 	}
 
-	// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behaviour, which means
-	// MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
+	// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behaviour, which
+	// means MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
 	// Adding selector will reduce the cache size when the managedcluster scale.
 	gvkLabelsMap[rbacv1.SchemeGroupVersion.WithKind("ClusterRole")] = []filteredcache.Selector{
 		{LabelSelector: "owner==multicluster-observability-operator"},
@@ -242,7 +248,12 @@ func main() {
 	}
 
 	if err = util.UpdateCRDWebhookNS(crdClient, mcoNamespace, config.MCOCrdName); err != nil {
-		setupLog.Error(err, "unable to update webhook service namespace in MCO CRD", "controller", "MultiClusterObservability")
+		setupLog.Error(
+			err,
+			"unable to update webhook service namespace in MCO CRD",
+			"controller",
+			"MultiClusterObservability",
+		)
 	}
 
 	svmCrdExists, err := util.CheckCRDExist(crdClient, config.StorageVersionMigrationCrdName)

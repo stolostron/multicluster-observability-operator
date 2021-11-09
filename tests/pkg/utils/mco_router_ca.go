@@ -18,7 +18,9 @@ const (
 
 func GetRouterCA(cli kubernetes.Interface) ([]byte, error) {
 	var caCrt []byte
-	caSecret, err := cli.CoreV1().Secrets("openshift-ingress").Get(context.TODO(), RouterCertsSecretName, metav1.GetOptions{})
+	caSecret, err := cli.CoreV1().
+		Secrets("openshift-ingress").
+		Get(context.TODO(), RouterCertsSecretName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("Failed to get router certificate secret %s due to %v", RouterCertsSecretName, err)
 		return caCrt, err

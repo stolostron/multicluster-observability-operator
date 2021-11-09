@@ -20,7 +20,9 @@ func CheckOBAStatus(opt TestOptions, namespace, status string) error {
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
-	oba, err := dynClient.Resource(NewMCOAddonGVR()).Namespace(namespace).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
+	oba, err := dynClient.Resource(NewMCOAddonGVR()).
+		Namespace(namespace).
+		Get(context.TODO(), "observability-addon", metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -37,7 +39,9 @@ func CheckManagedClusterAddonsStatus(opt TestOptions, namespace, status string) 
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
-	mca, err := dynClient.Resource(NewMCOManagedClusterAddonsGVR()).Namespace(namespace).Get(context.TODO(), "observability-controller", metav1.GetOptions{})
+	mca, err := dynClient.Resource(NewMCOManagedClusterAddonsGVR()).
+		Namespace(namespace).
+		Get(context.TODO(), "observability-controller", metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

@@ -93,7 +93,10 @@ type MetricsResult struct {
 	Value  []interface{}     `json:"value"`
 }
 
-func (c *Client) RetrievRecordingMetrics(ctx context.Context, req *http.Request, name string) ([]*clientmodel.MetricFamily, error) {
+func (c *Client) RetrievRecordingMetrics(
+	ctx context.Context,
+	req *http.Request,
+	name string) ([]*clientmodel.MetricFamily, error) {
 
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	req = req.WithContext(ctx)

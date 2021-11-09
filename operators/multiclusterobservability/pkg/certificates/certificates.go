@@ -46,7 +46,12 @@ var (
 	serialNumberLimit = new(big.Int).Lsh(big.NewInt(1), 128)
 )
 
-func CreateObservabilityCerts(c client.Client, scheme *runtime.Scheme, mco *mcov1beta2.MultiClusterObservability, ingressCtlCrdExists bool) error {
+func CreateObservabilityCerts(
+	c client.Client,
+	scheme *runtime.Scheme,
+	mco *mcov1beta2.MultiClusterObservability,
+	ingressCtlCrdExists bool,
+) error {
 
 	config.SetCertDuration(mco.Annotations)
 
@@ -340,7 +345,11 @@ func getCA(c client.Client, isServer bool) (*x509.Certificate, *rsa.PrivateKey, 
 		caCertName = clientCACerts
 	}
 	caSecret := &corev1.Secret{}
-	err := c.Get(context.TODO(), types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: caCertName}, caSecret)
+	err := c.Get(
+		context.TODO(),
+		types.NamespacedName{Namespace: config.GetDefaultNamespace(), Name: caCertName},
+		caSecret,
+	)
 	if err != nil {
 		log.Error(err, "Failed to get ca secret", "name", caCertName)
 		return nil, nil, nil, err

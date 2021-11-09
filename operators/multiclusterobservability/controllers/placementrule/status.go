@@ -61,7 +61,12 @@ func updateAddonStatus(c client.Client, addonList mcov1beta1.ObservabilityAddonL
 			managedclusteraddon.Status.Conditions = conditions
 			err = c.Status().Update(context.TODO(), managedclusteraddon)
 			if err != nil {
-				log.Error(err, "Failed to update status for managedclusteraddon", "namespace", addon.ObjectMeta.Namespace)
+				log.Error(
+					err,
+					"Failed to update status for managedclusteraddon",
+					"namespace",
+					addon.ObjectMeta.Namespace,
+				)
 				return err
 			}
 			log.Info("Updated status for managedclusteraddon", "namespace", addon.ObjectMeta.Namespace)

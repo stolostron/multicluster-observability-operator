@@ -48,7 +48,11 @@ var (
 
 var Images = map[string]string{}
 
-func Render(r *rendererutil.Renderer, c runtimeclient.Client, hubInfo *operatorconfig.HubInfo) ([]*unstructured.Unstructured, error) {
+func Render(
+	r *rendererutil.Renderer,
+	c runtimeclient.Client,
+	hubInfo *operatorconfig.HubInfo,
+) ([]*unstructured.Unstructured, error) {
 
 	genericTemplates, err := templates.GetTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
@@ -130,7 +134,11 @@ func Render(r *rendererutil.Renderer, c runtimeclient.Client, hubInfo *operatorc
 			cm := obj.(*corev1.ConfigMap)
 			promConfig, exists := cm.Data["prometheus.yaml"]
 			if !exists {
-				return nil, fmt.Errorf("no key 'prometheus.yaml' found in the configmap: %s/%s", cm.GetNamespace(), cm.GetName())
+				return nil, fmt.Errorf(
+					"no key 'prometheus.yaml' found in the configmap: %s/%s",
+					cm.GetNamespace(),
+					cm.GetName(),
+				)
 			}
 			// replace the hub alertmanager address
 			hubAmEp := strings.TrimLeft(hubInfo.AlertmanagerEndpoint, "https://")

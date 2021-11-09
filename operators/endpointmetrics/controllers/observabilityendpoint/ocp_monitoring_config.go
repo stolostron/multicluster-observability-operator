@@ -31,7 +31,12 @@ const (
 )
 
 // createHubAmRouterCASecret creates the secret that contains CA of the Hub's Alertmanager Route
-func createHubAmRouterCASecret(ctx context.Context, hubInfo *operatorconfig.HubInfo, client client.Client, targetNamespace string) error {
+func createHubAmRouterCASecret(
+	ctx context.Context,
+	hubInfo *operatorconfig.HubInfo,
+	client client.Client,
+	targetNamespace string) error {
+
 	hubAmRouterCA := hubInfo.AlertmanagerRouterCA
 	dataMap := map[string][]byte{hubAmRouterCASecretKey: []byte(hubAmRouterCA)}
 	hubAmRouterCASecret := &corev1.Secret{
@@ -219,7 +224,8 @@ func createOrUpdateClusterMonitoringConfig(
 	installProm bool) error {
 	targetNamespace := promNamespace
 	if installProm {
-		// for *KS, the hub CA and alertmanager access token should be created in namespace: open-cluster-management-addon-observability
+		// for *KS, the hub CA and alertmanager access token should be created
+		// in namespace: open-cluster-management-addon-observability
 		targetNamespace = namespace
 	}
 
@@ -298,7 +304,13 @@ func createOrUpdateClusterMonitoringConfig(
 	log.Info("configmap already exists, check if it needs update", "name", clusterMonitoringConfigName)
 	foundClusterMonitoringConfigurationYAMLString, ok := found.Data[clusterMonitoringConfigDataKey]
 	if !ok {
-		log.Info("configmap data doesn't contain key, try to update it", "name", clusterMonitoringConfigName, "key", clusterMonitoringConfigDataKey)
+		log.Info(
+			"configmap data doesn't contain key, try to update it",
+			"name",
+			clusterMonitoringConfigName,
+			"key",
+			clusterMonitoringConfigDataKey,
+		)
 		// replace config.yaml in configmap
 		found.Data[clusterMonitoringConfigDataKey] = string(newClusterMonitoringConfigurationYAMLBytes)
 		err = client.Update(ctx, found)
@@ -313,7 +325,9 @@ func createOrUpdateClusterMonitoringConfig(
 	log.Info("configmap already exists and key config.yaml exists, check if the value needs update",
 		"name", clusterMonitoringConfigName,
 		"key", clusterMonitoringConfigDataKey)
-	foundClusterMonitoringConfigurationJSONBytes, err := yaml.YAMLToJSON([]byte(foundClusterMonitoringConfigurationYAMLString))
+	foundClusterMonitoringConfigurationJSONBytes, err := yaml.YAMLToJSON(
+		[]byte(foundClusterMonitoringConfigurationYAMLString),
+	)
 	if err != nil {
 		log.Error(err, "failed to transform YAML to JSON", "YAML", foundClusterMonitoringConfigurationYAMLString)
 		return err
@@ -362,7 +376,9 @@ func createOrUpdateClusterMonitoringConfig(
 		log.Error(err, "failed to marshal the cluster monitoring config")
 		return err
 	}
-	updatedclusterMonitoringConfigurationYAMLBytes, err := yaml.JSONToYAML(updatedClusterMonitoringConfigurationJSONBytes)
+	updatedclusterMonitoringConfigurationYAMLBytes, err := yaml.JSONToYAML(
+		updatedClusterMonitoringConfigurationJSONBytes,
+	)
 	if err != nil {
 		log.Error(err, "failed to transform JSON to YAML", "JSON", updatedClusterMonitoringConfigurationJSONBytes)
 		return err
@@ -382,7 +398,8 @@ func createOrUpdateClusterMonitoringConfig(
 func revertClusterMonitoringConfig(ctx context.Context, client client.Client, installProm bool) error {
 	targetNamespace := promNamespace
 	if installProm {
-		// for *KS, the hub CA and alertmanager access token are not created in namespace: open-cluster-management-addon-observability
+		// for *KS, the hub CA and alertmanager access token are not created in namespace:
+		// open-cluster-management-addon-observability
 		targetNamespace = namespace
 	}
 
@@ -416,7 +433,13 @@ func revertClusterMonitoringConfig(ctx context.Context, client client.Client, in
 	log.Info("configmap exists, check if it needs revert", "name", clusterMonitoringConfigName)
 	foundClusterMonitoringConfigurationYAML, ok := found.Data[clusterMonitoringConfigDataKey]
 	if !ok {
-		log.Info("configmap data doesn't contain key, no need action", "name", clusterMonitoringConfigName, "key", clusterMonitoringConfigDataKey)
+		log.Info(
+			"configmap data doesn't contain key, no need action",
+			"name",
+			clusterMonitoringConfigName,
+			"key",
+			clusterMonitoringConfigDataKey,
+		)
 		return nil
 	}
 	foundClusterMonitoringConfigurationJSON, err := yaml.YAMLToJSON([]byte(foundClusterMonitoringConfigurationYAML))
@@ -425,7 +448,13 @@ func revertClusterMonitoringConfig(ctx context.Context, client client.Client, in
 		return err
 	}
 
-	log.Info("configmap exists and key config.yaml exists, check if the value needs revert", "name", clusterMonitoringConfigName, "key", clusterMonitoringConfigDataKey)
+	log.Info(
+		"configmap exists and key config.yaml exists, check if the value needs revert",
+		"name",
+		clusterMonitoringConfigName,
+		"key",
+		clusterMonitoringConfigDataKey,
+	)
 	foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
 	if err := json.Unmarshal([]byte(foundClusterMonitoringConfigurationJSON), foundClusterMonitoringConfiguration); err != nil {
 		log.Error(err, "failed to marshal the cluster monitoring config")
@@ -433,7 +462,13 @@ func revertClusterMonitoringConfig(ctx context.Context, client client.Client, in
 	}
 
 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig == nil {
-		log.Info("configmap data doesn't key: prometheusK8s, no need action", "name", clusterMonitoringConfigName, "key", clusterMonitoringConfigDataKey)
+		log.Info(
+			"configmap data doesn't key: prometheusK8s, no need action",
+			"name",
+			clusterMonitoringConfigName,
+			"key",
+			clusterMonitoringConfigDataKey,
+		)
 		return nil
 	} else {
 		// check if externalLabels exists
@@ -486,7 +521,9 @@ func revertClusterMonitoringConfig(ctx context.Context, client client.Client, in
 		log.Error(err, "failed to marshal the cluster monitoring config")
 		return err
 	}
-	updatedClusterMonitoringConfigurationYAMLBytes, err := yaml.JSONToYAML(updatedClusterMonitoringConfigurationJSONBytes)
+	updatedClusterMonitoringConfigurationYAMLBytes, err := yaml.JSONToYAML(
+		updatedClusterMonitoringConfigurationJSONBytes,
+	)
 	if err != nil {
 		log.Error(err, "failed to transform JSON to YAML", "JSON", updatedClusterMonitoringConfigurationJSONBytes)
 		return err

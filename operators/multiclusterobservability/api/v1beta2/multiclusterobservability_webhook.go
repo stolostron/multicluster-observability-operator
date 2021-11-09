@@ -88,7 +88,8 @@ func (mco *MultiClusterObservability) validateMultiClusterObservabilityName() *f
 }
 
 // validateMultiClusterObservabilitySpec validates the spec of the MultiClusterObservability CR.
-// notice that some fields are declaratively validated by OpenAPI schema with `// +kubebuilder:validation` in the type definition.
+// notice that some fields are declaratively validated by OpenAPI schema with `// +kubebuilder:validation` in the type
+// definition.
 func (mco *MultiClusterObservability) validateMultiClusterObservabilitySpec() *field.Error {
 	// The field helpers from the kubernetes API machinery help us return nicely structured validation errors.
 	return nil
@@ -99,8 +100,11 @@ func (mco *MultiClusterObservability) validateUpdateMultiClusterObservabilitySpe
 	return mco.validateUpdateMultiClusterObservabilityStorageSize(old)
 }
 
-// validateUpdateMultiClusterObservabilityStorageSize validates the update of storage size in the MultiClusterObservability CR.
-func (mco *MultiClusterObservability) validateUpdateMultiClusterObservabilityStorageSize(old runtime.Object) field.ErrorList {
+// validateUpdateMultiClusterObservabilityStorageSize validates the update of storage size in the
+// MultiClusterObservability CR.
+func (mco *MultiClusterObservability) validateUpdateMultiClusterObservabilityStorageSize(
+	old runtime.Object,
+) field.ErrorList {
 	var errs field.ErrorList
 	oldMCO := old.(*MultiClusterObservability)
 	kubeClient, err := createOrGetKubeClient()
@@ -129,19 +133,34 @@ func (mco *MultiClusterObservability) validateUpdateMultiClusterObservabilitySto
 		storageConfigFieldPath := field.NewPath("spec").Child("storageConfig")
 		storageForbiddenResize := "is forbidden to update."
 		if mcoOldConfig.AlertmanagerStorageSize != mcoNewConfig.AlertmanagerStorageSize {
-			errs = append(errs, field.Forbidden(storageConfigFieldPath.Child("alertmanagerStorageSize"), storageForbiddenResize))
+			errs = append(
+				errs,
+				field.Forbidden(storageConfigFieldPath.Child("alertmanagerStorageSize"), storageForbiddenResize),
+			)
 		}
 		if mcoOldConfig.CompactStorageSize != mcoNewConfig.CompactStorageSize {
-			errs = append(errs, field.Forbidden(storageConfigFieldPath.Child("compactStorageSize"), storageForbiddenResize))
+			errs = append(
+				errs,
+				field.Forbidden(storageConfigFieldPath.Child("compactStorageSize"), storageForbiddenResize),
+			)
 		}
 		if mcoOldConfig.ReceiveStorageSize != mcoNewConfig.ReceiveStorageSize {
-			errs = append(errs, field.Forbidden(storageConfigFieldPath.Child("receiveStorageSize"), storageForbiddenResize))
+			errs = append(
+				errs,
+				field.Forbidden(storageConfigFieldPath.Child("receiveStorageSize"), storageForbiddenResize),
+			)
 		}
 		if mcoOldConfig.StoreStorageSize != mcoNewConfig.StoreStorageSize {
-			errs = append(errs, field.Forbidden(storageConfigFieldPath.Child("storeStorageSize"), storageForbiddenResize))
+			errs = append(
+				errs,
+				field.Forbidden(storageConfigFieldPath.Child("storeStorageSize"), storageForbiddenResize),
+			)
 		}
 		if mcoOldConfig.RuleStorageSize != mcoNewConfig.RuleStorageSize {
-			errs = append(errs, field.Forbidden(storageConfigFieldPath.Child("ruleStorageSize"), storageForbiddenResize))
+			errs = append(
+				errs,
+				field.Forbidden(storageConfigFieldPath.Child("ruleStorageSize"), storageForbiddenResize),
+			)
 		}
 		return errs
 	}
@@ -162,7 +181,10 @@ func createOrGetKubeClient() (kubernetes.Interface, error) {
 }
 
 // getSelectedStorageClassForMultiClusterObservability get secected for the MultiClusterObservability CR
-func getSelectedStorageClassForMultiClusterObservability(c kubernetes.Interface, mco *MultiClusterObservability) (string, error) {
+func getSelectedStorageClassForMultiClusterObservability(
+	c kubernetes.Interface,
+	mco *MultiClusterObservability,
+) (string, error) {
 	scInCR := ""
 	if mco.Spec.StorageConfig != nil {
 		scInCR = mco.Spec.StorageConfig.StorageClass

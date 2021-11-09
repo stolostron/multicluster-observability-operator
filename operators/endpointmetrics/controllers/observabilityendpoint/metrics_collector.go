@@ -150,7 +150,10 @@ func createDeployment(clusterID string, clusterType string,
 		commands = append(commands, fmt.Sprintf("--rename=\"%s=%s\"", k, allowlist.RenameMap[k]))
 	}
 	for _, rule := range allowlist.RuleList {
-		commands = append(commands, fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr))
+		commands = append(
+			commands,
+			fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr),
+		)
 	}
 	from := promURL
 	if !installPrometheus {
@@ -217,8 +220,16 @@ func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonS
 
 	list := getMetricsAllowlist(ctx, client)
 	endpointDeployment := getEndpointDeployment(ctx, client)
-	deployment := createDeployment(clusterID, clusterType, obsAddonSpec, hubInfo, list,
-		endpointDeployment.Spec.Template.Spec.NodeSelector, endpointDeployment.Spec.Template.Spec.Tolerations, replicaCount)
+	deployment := createDeployment(
+		clusterID,
+		clusterType,
+		obsAddonSpec,
+		hubInfo,
+		list,
+		endpointDeployment.Spec.Template.Spec.NodeSelector,
+		endpointDeployment.Spec.Template.Spec.Tolerations,
+		replicaCount,
+	)
 	found := &appsv1.Deployment{}
 	err := client.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
 		Namespace: namespace}, found)

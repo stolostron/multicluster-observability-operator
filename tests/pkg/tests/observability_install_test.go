@@ -51,13 +51,29 @@ func installMCO() {
 	// print mco logs if MCO installation failed
 	defer func(testOptions utils.TestOptions, isHub bool, namespace, podName, containerName string, previous bool, tailLines int64) {
 		if testFailed {
-			mcoLogs, err := utils.GetPodLogs(testOptions, isHub, namespace, podName, containerName, previous, tailLines)
+			mcoLogs, err := utils.GetPodLogs(
+				testOptions,
+				isHub,
+				namespace,
+				podName,
+				containerName,
+				previous,
+				tailLines,
+			)
 			Expect(err).NotTo(HaveOccurred())
 			fmt.Fprintf(GinkgoWriter, "[DEBUG] MCO is installed failed, checking MCO operator logs:\n%s\n", mcoLogs)
 		} else {
 			fmt.Fprintf(GinkgoWriter, "[DEBUG] MCO is installed successfully!\n")
 		}
-	}(testOptions, false, mcoNs, mcoPod, "multicluster-observability-operator", false, 1000)
+	}(
+		testOptions,
+		false,
+		mcoNs,
+		mcoPod,
+		"multicluster-observability-operator",
+		false,
+		1000,
+	)
 
 	By("Checking Required CRDs is existed")
 	Eventually(func() error {
@@ -84,7 +100,13 @@ func installMCO() {
 	//set resource quota and limit range for canary environment to avoid destruct the node
 	yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/policy"})
 	Expect(err).NotTo(HaveOccurred())
-	Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
+	Expect(
+		utils.Apply(
+			testOptions.HubCluster.ClusterServerURL,
+			testOptions.KubeConfig,
+			testOptions.HubCluster.KubeContext,
+			yamlB,
+		)).NotTo(HaveOccurred())
 
 	By("Creating the MCO testing RBAC resources")
 	Expect(utils.CreateMCOTestingRBAC(testOptions)).NotTo(HaveOccurred())
@@ -94,12 +116,19 @@ func installMCO() {
 		v1beta1KustomizationPath := "../../../examples/mco/e2e/v1beta1"
 		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: v1beta1KustomizationPath})
 		Expect(err).NotTo(HaveOccurred())
-		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlB,
+			)).NotTo(HaveOccurred())
 
 		By("Waiting for MCO ready status")
 		allPodsIsReady := false
 		Eventually(func() error {
-			instance, err := dynClient.Resource(utils.NewMCOGVRV1BETA1()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			instance, err := dynClient.Resource(utils.NewMCOGVRV1BETA1()).
+				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 			if err == nil {
 				allPodsIsReady = utils.StatusContainsTypeEqualTo(instance, "Ready")
 				if allPodsIsReady {
@@ -109,7 +138,10 @@ func installMCO() {
 			}
 			testFailed = true
 			if instance != nil && instance.Object != nil {
-				return fmt.Errorf("MCO componnets cannot be running in 20 minutes. check the MCO CR status for the details: %v", instance.Object["status"])
+				return fmt.Errorf(
+					"MCO componnets cannot be running in 20 minutes. check the MCO CR status for the details: %v",
+					instance.Object["status"],
+				)
 			} else {
 				return fmt.Errorf("Wait for reconciling.")
 			}
@@ -117,7 +149,8 @@ func installMCO() {
 
 		By("Check clustermanagementaddon CR is created")
 		Eventually(func() error {
-			_, err := dynClient.Resource(utils.NewMCOClusterManagementAddonsGVR()).Get(context.TODO(), "observability-controller", metav1.GetOptions{})
+			_, err := dynClient.Resource(utils.NewMCOClusterManagementAddonsGVR()).
+				Get(context.TODO(), "observability-controller", metav1.GetOptions{})
 			if err != nil {
 				testFailed = true
 				return err
@@ -139,7 +172,12 @@ func installMCO() {
 
 	// add retry for update mco object failure
 	Eventually(func() error {
-		return utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)
+		return utils.Apply(
+			testOptions.HubCluster.ClusterServerURL,
+			testOptions.KubeConfig,
+			testOptions.HubCluster.KubeContext,
+			yamlB,
+		)
 	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
 	// wait for pod restarting
@@ -170,7 +208,8 @@ func installMCO() {
 
 	By("Check clustermanagementaddon CR is created")
 	Eventually(func() error {
-		_, err := dynClient.Resource(utils.NewMCOClusterManagementAddonsGVR()).Get(context.TODO(), "observability-controller", metav1.GetOptions{})
+		_, err := dynClient.Resource(utils.NewMCOClusterManagementAddonsGVR()).
+			Get(context.TODO(), "observability-controller", metav1.GetOptions{})
 		if err != nil {
 			testFailed = true
 			return err

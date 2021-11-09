@@ -43,8 +43,12 @@ func Start() {
 		log.Error(err, "Failed to create prom client")
 		os.Exit(1)
 	}
-	watchlist := cache.NewListWatchFromClient(promClient.MonitoringV1().RESTClient(), "servicemonitors", config.GetDefaultNamespace(),
-		fields.Everything())
+	watchlist := cache.NewListWatchFromClient(
+		promClient.MonitoringV1().RESTClient(),
+		"servicemonitors",
+		config.GetDefaultNamespace(),
+		fields.Everything(),
+	)
 	_, controller := cache.NewInformer(
 		watchlist,
 		&promv1.ServiceMonitor{},
@@ -73,7 +77,9 @@ func onDelete(promClient promclientset.Interface) func(obj interface{}) {
 	return func(obj interface{}) {
 		sm := obj.(*promv1.ServiceMonitor)
 		if sm.ObjectMeta.OwnerReferences != nil && sm.ObjectMeta.OwnerReferences[0].Kind == "Observatorium" {
-			err := promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Delete(context.TODO(), sm.Name, metav1.DeleteOptions{})
+			err := promClient.MonitoringV1().
+				ServiceMonitors(ocpMonitoringNamespace).
+				Delete(context.TODO(), sm.Name, metav1.DeleteOptions{})
 			if err != nil {
 				log.Error(err, "Failed to delete ServiceMonitor", "namespace", ocpMonitoringNamespace, "name", sm.Name)
 			} else {
@@ -95,7 +101,9 @@ func onUpdate(promClient promclientset.Interface) func(newObj interface{}, oldOb
 }
 
 func updateServiceMonitor(promClient promclientset.Interface, sm *promv1.ServiceMonitor) {
-	found, err := promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Get(context.TODO(), sm.Name, metav1.GetOptions{})
+	found, err := promClient.MonitoringV1().
+		ServiceMonitors(ocpMonitoringNamespace).
+		Get(context.TODO(), sm.Name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			_, err := promClient.MonitoringV1().ServiceMonitors(ocpMonitoringNamespace).Create(context.TODO(),

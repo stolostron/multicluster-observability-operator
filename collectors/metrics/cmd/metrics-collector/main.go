@@ -45,38 +45,129 @@ func main() {
 		},
 	}
 
-	cmd.Flags().Int64Var(&opt.WorkerNum, "worker-number", opt.WorkerNum, "The number of client runs in the simulate environment.")
-	cmd.Flags().StringVar(&opt.Listen, "listen", opt.Listen, "A host:port to listen on for health and metrics.")
-	cmd.Flags().StringVar(&opt.From, "from", opt.From, "The Prometheus server to federate from.")
-	cmd.Flags().StringVar(&opt.FromToken, "from-token", opt.FromToken, "A bearer token to use when authenticating to the source Prometheus server.")
-	cmd.Flags().StringVar(&opt.FromCAFile, "from-ca-file", opt.FromCAFile, "A file containing the CA certificate to use to verify the --from URL in addition to the system roots certificates.")
-	cmd.Flags().StringVar(&opt.FromTokenFile, "from-token-file", opt.FromTokenFile, "A file containing a bearer token to use when authenticating to the source Prometheus server.")
-	cmd.Flags().StringVar(&opt.ToUpload, "to-upload", opt.ToUpload, "A server endpoint to push metrics to.")
-	cmd.Flags().DurationVar(&opt.Interval, "interval", opt.Interval, "The interval between scrapes. Prometheus returns the last 5 minutes of metrics when invoking the federation endpoint.")
-	cmd.Flags().Int64Var(&opt.LimitBytes, "limit-bytes", opt.LimitBytes, "The maxiumum acceptable size of a response returned when scraping Prometheus.")
+	cmd.Flags().Int64Var(
+		&opt.WorkerNum,
+		"worker-number",
+		opt.WorkerNum,
+		"The number of client runs in the simulate environment.")
+	cmd.Flags().StringVar(
+		&opt.Listen,
+		"listen",
+		opt.Listen,
+		"A host:port to listen on for health and metrics.")
+	cmd.Flags().StringVar(
+		&opt.From,
+		"from",
+		opt.From,
+		"The Prometheus server to federate from.")
+	cmd.Flags().StringVar(
+		&opt.FromToken,
+		"from-token",
+		opt.FromToken,
+		"A bearer token to use when authenticating to the source Prometheus server.")
+	cmd.Flags().StringVar(
+		&opt.FromCAFile,
+		"from-ca-file",
+		opt.FromCAFile,
+		`A file containing the CA certificate to use to verify the --from URL in
+		 addition to the system roots certificates.`)
+	cmd.Flags().StringVar(
+		&opt.FromTokenFile,
+		"from-token-file",
+		opt.FromTokenFile,
+		"A file containing a bearer token to use when authenticating to the source Prometheus server.")
+	cmd.Flags().StringVar(
+		&opt.ToUpload,
+		"to-upload",
+		opt.ToUpload,
+		"A server endpoint to push metrics to.")
+	cmd.Flags().DurationVar(
+		&opt.Interval,
+		"interval",
+		opt.Interval,
+		`The interval between scrapes. Prometheus returns the last 5 minutes of 
+		 metrics when invoking the federation endpoint.`)
+	cmd.Flags().Int64Var(
+		&opt.LimitBytes,
+		"limit-bytes",
+		opt.LimitBytes,
+		"The maxiumum acceptable size of a response returned when scraping Prometheus.")
 
 	// TODO: more complex input definition, such as a JSON struct
-	cmd.Flags().StringArrayVar(&opt.Rules, "match", opt.Rules, "Match rules to federate.")
-	cmd.Flags().StringArrayVar(&opt.RecordingRules, "recordingrule", opt.RecordingRules, "Define recording rule is to generate new metrics based on specified query expression.")
-	cmd.Flags().StringVar(&opt.RulesFile, "match-file", opt.RulesFile, "A file containing match rules to federate, one rule per line.")
+	cmd.Flags().StringArrayVar(
+		&opt.Rules,
+		"match",
+		opt.Rules,
+		"Match rules to federate.")
+	cmd.Flags().StringArrayVar(
+		&opt.RecordingRules,
+		"recordingrule",
+		opt.RecordingRules,
+		"Define recording rule is to generate new metrics based on specified query expression.")
+	cmd.Flags().StringVar(
+		&opt.RulesFile,
+		"match-file",
+		opt.RulesFile,
+		"A file containing match rules to federate, one rule per line.")
 
-	cmd.Flags().StringSliceVar(&opt.LabelFlag, "label", opt.LabelFlag, "Labels to add to each outgoing metric, in key=value form.")
-	cmd.Flags().StringSliceVar(&opt.RenameFlag, "rename", opt.RenameFlag, "Rename metrics before sending by specifying OLD=NEW name pairs.")
-	cmd.Flags().StringArrayVar(&opt.ElideLabels, "elide-label", opt.ElideLabels, "A list of labels to be elided from outgoing metrics. Default to elide label prometheus and prometheus_replica")
+	cmd.Flags().StringSliceVar(
+		&opt.LabelFlag,
+		"label",
+		opt.LabelFlag,
+		"Labels to add to each outgoing metric, in key=value form.")
+	cmd.Flags().StringSliceVar(
+		&opt.RenameFlag,
+		"rename",
+		opt.RenameFlag,
+		"Rename metrics before sending by specifying OLD=NEW name pairs.")
+	cmd.Flags().StringArrayVar(
+		&opt.ElideLabels,
+		"elide-label",
+		opt.ElideLabels,
+		`A list of labels to be elided from outgoing metrics. Default to elide 
+		 label prometheus and prometheus_replica`)
 
-	cmd.Flags().StringSliceVar(&opt.AnonymizeLabels, "anonymize-labels", opt.AnonymizeLabels, "Anonymize the values of the provided values before sending them on.")
-	cmd.Flags().StringVar(&opt.AnonymizeSalt, "anonymize-salt", opt.AnonymizeSalt, "A secret and unguessable value used to anonymize the input data.")
-	cmd.Flags().StringVar(&opt.AnonymizeSaltFile, "anonymize-salt-file", opt.AnonymizeSaltFile, "A file containing a secret and unguessable value used to anonymize the input data.")
+	cmd.Flags().StringSliceVar(
+		&opt.AnonymizeLabels,
+		"anonymize-labels",
+		opt.AnonymizeLabels,
+		"Anonymize the values of the provided values before sending them on.")
+	cmd.Flags().StringVar(
+		&opt.AnonymizeSalt,
+		"anonymize-salt",
+		opt.AnonymizeSalt,
+		"A secret and unguessable value used to anonymize the input data.")
+	cmd.Flags().StringVar(
+		&opt.AnonymizeSaltFile,
+		"anonymize-salt-file",
+		opt.AnonymizeSaltFile,
+		"A file containing a secret and unguessable value used to anonymize the input data.")
 
-	cmd.Flags().BoolVarP(&opt.Verbose, "verbose", "v", opt.Verbose, "Show verbose output.")
+	cmd.Flags().BoolVarP(
+		&opt.Verbose,
+		"verbose", "v",
+		opt.Verbose,
+		"Show verbose output.")
 
-	cmd.Flags().StringVar(&opt.LogLevel, "log-level", opt.LogLevel, "Log filtering level. e.g info, debug, warn, error")
+	cmd.Flags().StringVar(
+		&opt.LogLevel,
+		"log-level",
+		opt.LogLevel,
+		"Log filtering level. e.g info, debug, warn, error")
 
 	// deprecated opt
-	cmd.Flags().StringVar(&opt.Identifier, "id", opt.Identifier, "The unique identifier for metrics sent with this client.")
+	cmd.Flags().StringVar(
+		&opt.Identifier,
+		"id",
+		opt.Identifier,
+		"The unique identifier for metrics sent with this client.")
 
 	//simulation test
-	cmd.Flags().StringVar(&opt.SimulatedTimeseriesFile, "simulated-timeseries-file", opt.SimulatedTimeseriesFile, "A file containing the sample of timeseries.")
+	cmd.Flags().StringVar(
+		&opt.SimulatedTimeseriesFile,
+		"simulated-timeseries-file",
+		opt.SimulatedTimeseriesFile,
+		"A file containing the sample of timeseries.")
 
 	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
 	lvl, err := cmd.Flags().GetString("log-level")
@@ -153,7 +244,12 @@ func (o *Options) Run() error {
 		return fmt.Errorf("failed to configure metrics collector: %v", err)
 	}
 
-	logger.Log(o.Logger, logger.Info, "msg", "starting metrics collector", "from", o.From, "to", o.ToUpload, "listen", o.Listen)
+	logger.Log(
+		o.Logger, logger.Info,
+		"msg", "starting metrics collector",
+		"from", o.From,
+		"to", o.ToUpload,
+		"listen", o.Listen)
 
 	{
 		// Execute the worker's `Run` func.

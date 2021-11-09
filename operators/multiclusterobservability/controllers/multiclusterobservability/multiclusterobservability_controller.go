@@ -187,7 +187,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		if resNS == "" {
 			resNS = config.GetDefaultNamespace()
 		}
-		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: resNS}, ns); err != nil && apierrors.IsNotFound(err) {
+		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: resNS}, ns); err != nil &&
+			apierrors.IsNotFound(err) {
 			ns = &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 				Name: resNS,
 			}}
@@ -420,6 +421,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		Owns(&observatoriumv1alpha1.Observatorium{}).
 		// Watch the configmap for thanos-ruler-custom-rules update
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmPred)).
+
 		// Watch the secret for deleting event of alertmanager-config
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(secretPred))
 
@@ -431,8 +433,12 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 				if e.Object.GetNamespace() == config.GetMCONamespace() &&
 					e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
 					e.Object.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion {
-					// only read the image manifests configmap and enqueue the request when the MCH is installed/upgraded successfully
-					ok, err := config.ReadImageManifestConfigMap(c, e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion)
+					// only read the image manifests configmap and enqueue the request when the MCH is
+					// installed/upgraded successfully
+					ok, err := config.ReadImageManifestConfigMap(
+						c,
+						e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion,
+					)
 					if err != nil {
 						return false
 					}
@@ -444,8 +450,12 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 				if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
 					e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
 					e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
-					// only read the image manifests configmap and enqueue the request when the MCH is installed/upgraded successfully
-					ok, err := config.ReadImageManifestConfigMap(c, e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion)
+					// only read the image manifests configmap and enqueue the request when the MCH is
+					// installed/upgraded successfully
+					ok, err := config.ReadImageManifestConfigMap(
+						c,
+						e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion,
+					)
 					if err != nil {
 						return false
 					}
@@ -461,14 +471,18 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		mchCrdExists, _ := r.CRDMap[config.MCHCrdName]
 		if mchCrdExists {
 			// secondary watch for MCH
-			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &mchv1.MultiClusterHub{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
-				return []reconcile.Request{
-					{NamespacedName: types.NamespacedName{
-						Name:      config.MCHUpdatedRequestName,
-						Namespace: a.GetNamespace(),
-					}},
-				}
-			}), builder.WithPredicates(mchPred))
+			ctrBuilder = ctrBuilder.Watches(
+				&source.Kind{Type: &mchv1.MultiClusterHub{}},
+				handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+					return []reconcile.Request{
+						{NamespacedName: types.NamespacedName{
+							Name:      config.MCHUpdatedRequestName,
+							Namespace: a.GetNamespace(),
+						}},
+					}
+				}),
+				builder.WithPredicates(mchPred),
+			)
 		}
 	}
 
@@ -630,8 +644,16 @@ func GenerateAlertmanagerRoute(
 
 	amRouteBYOCaSrt := &corev1.Secret{}
 	amRouteBYOCertSrt := &corev1.Secret{}
-	err1 := runclient.Get(context.TODO(), types.NamespacedName{Name: config.AlertmanagerRouteBYOCAName, Namespace: config.GetDefaultNamespace()}, amRouteBYOCaSrt)
-	err2 := runclient.Get(context.TODO(), types.NamespacedName{Name: config.AlertmanagerRouteBYOCERTName, Namespace: config.GetDefaultNamespace()}, amRouteBYOCertSrt)
+	err1 := runclient.Get(
+		context.TODO(),
+		types.NamespacedName{Name: config.AlertmanagerRouteBYOCAName, Namespace: config.GetDefaultNamespace()},
+		amRouteBYOCaSrt,
+	)
+	err2 := runclient.Get(
+		context.TODO(),
+		types.NamespacedName{Name: config.AlertmanagerRouteBYOCERTName, Namespace: config.GetDefaultNamespace()},
+		amRouteBYOCertSrt,
+	)
 
 	if err1 == nil && err2 == nil {
 		log.Info("BYO CA/Certificate found for the Route of Alertmanager, will using BYO CA/certificate for the Route of Alertmanager")
@@ -660,9 +682,19 @@ func GenerateAlertmanagerRoute(
 	}
 
 	found := &routev1.Route{}
-	err := runclient.Get(context.TODO(), types.NamespacedName{Name: amGateway.Name, Namespace: amGateway.Namespace}, found)
+	err := runclient.Get(
+		context.TODO(),
+		types.NamespacedName{Name: amGateway.Name, Namespace: amGateway.Namespace},
+		found,
+	)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating a new route to expose alertmanager", "amGateway.Namespace", amGateway.Namespace, "amGateway.Name", amGateway.Name)
+		log.Info(
+			"Creating a new route to expose alertmanager",
+			"amGateway.Namespace",
+			amGateway.Namespace,
+			"amGateway.Name",
+			amGateway.Name,
+		)
 		err = runclient.Create(context.TODO(), amGateway)
 		if err != nil {
 			return &ctrl.Result{}, err
@@ -706,8 +738,16 @@ func GenerateProxyRoute(
 
 	proxyRouteBYOCaSrt := &corev1.Secret{}
 	proxyRouteBYOCertSrt := &corev1.Secret{}
-	err1 := runclient.Get(context.TODO(), types.NamespacedName{Name: config.ProxyRouteBYOCAName, Namespace: config.GetDefaultNamespace()}, proxyRouteBYOCaSrt)
-	err2 := runclient.Get(context.TODO(), types.NamespacedName{Name: config.ProxyRouteBYOCERTName, Namespace: config.GetDefaultNamespace()}, proxyRouteBYOCertSrt)
+	err1 := runclient.Get(
+		context.TODO(),
+		types.NamespacedName{Name: config.ProxyRouteBYOCAName, Namespace: config.GetDefaultNamespace()},
+		proxyRouteBYOCaSrt,
+	)
+	err2 := runclient.Get(
+		context.TODO(),
+		types.NamespacedName{Name: config.ProxyRouteBYOCERTName, Namespace: config.GetDefaultNamespace()},
+		proxyRouteBYOCertSrt,
+	)
 
 	if err1 == nil && err2 == nil {
 		log.Info("BYO CA/Certificate found for the Route of Proxy, will using BYO CA/certificate for the Route of Proxy")
@@ -736,9 +776,19 @@ func GenerateProxyRoute(
 	}
 
 	found := &routev1.Route{}
-	err := runclient.Get(context.TODO(), types.NamespacedName{Name: proxyGateway.Name, Namespace: proxyGateway.Namespace}, found)
+	err := runclient.Get(
+		context.TODO(),
+		types.NamespacedName{Name: proxyGateway.Name, Namespace: proxyGateway.Namespace},
+		found,
+	)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating a new route to expose rbac proxy", "proxyGateway.Namespace", proxyGateway.Namespace, "proxyGateway.Name", proxyGateway.Name)
+		log.Info(
+			"Creating a new route to expose rbac proxy",
+			"proxyGateway.Namespace",
+			proxyGateway.Namespace,
+			"proxyGateway.Name",
+			proxyGateway.Name,
+		)
 		err = runclient.Create(context.TODO(), proxyGateway)
 		if err != nil {
 			return &ctrl.Result{}, err

@@ -93,8 +93,12 @@ func ModifyMetricsQueryParams(req *http.Request, url string) {
 // WatchManagedCluster will watch and save managedcluster when create/update/delete managedcluster
 func WatchManagedCluster(clusterClient clusterclientset.Interface) {
 	InitAllManagedClusterNames()
-	watchlist := cache.NewListWatchFromClient(clusterClient.ClusterV1().RESTClient(), "managedclusters", v1.NamespaceAll,
-		fields.Everything())
+	watchlist := cache.NewListWatchFromClient(
+		clusterClient.ClusterV1().RESTClient(),
+		"managedclusters",
+		v1.NamespaceAll,
+		fields.Everything(),
+	)
 	_, controller := cache.NewInformer(
 		watchlist,
 		&clusterv1.ManagedCluster{},

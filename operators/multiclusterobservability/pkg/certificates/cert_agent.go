@@ -18,7 +18,10 @@ const (
 
 type ObservabilityAgent struct{}
 
-func (o *ObservabilityAgent) Manifests(cluster *clusterv1.ManagedCluster, addon *addonapiv1alpha1.ManagedClusterAddOn) ([]runtime.Object, error) {
+func (o *ObservabilityAgent) Manifests(
+	cluster *clusterv1.ManagedCluster,
+	addon *addonapiv1alpha1.ManagedClusterAddOn,
+) ([]runtime.Object, error) {
 	return nil, nil
 }
 

@@ -80,7 +80,11 @@ func GenerateGrafanaDataSource(
 				Type:      "prometheus",
 				Access:    "proxy",
 				IsDefault: true,
-				URL:       fmt.Sprintf("http://%s.%s.svc.cluster.local:8080", config.ProxyServiceName, config.GetDefaultNamespace()),
+				URL: fmt.Sprintf(
+					"http://%s.%s.svc.cluster.local:8080",
+					config.ProxyServiceName,
+					config.GetDefaultNamespace(),
+				),
 				JSONData: &JsonData{
 					QueryTimeout: "300s",
 					TimeInterval: fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval),
