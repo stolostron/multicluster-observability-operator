@@ -37,4 +37,3 @@ spec:
   hubAcceptsClient: true
 EOF
 done
-

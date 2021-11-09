@@ -68,4 +68,3 @@ managedcluster.cluster.open-cluster-management.io "simulated-4-managedcluster" d
 Deleting Simulated managedCluster simulated-5-managedcluster...
 managedcluster.cluster.open-cluster-management.io "simulated-5-managedcluster" deleted
 ```
-

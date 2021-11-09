@@ -65,4 +65,3 @@ do
 	${KUBECTL} delete -n ${cluster_name} secret/observability-managed-cluster-certs
 	${KUBECTL} delete ns ${cluster_name}
 done
-

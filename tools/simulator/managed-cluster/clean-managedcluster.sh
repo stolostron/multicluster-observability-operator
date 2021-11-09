@@ -30,4 +30,3 @@ do
     echo "Deleting Simulated managedCluster simulated-${i}-managedcluster..."
     ${KUBECTL} delete managedcluster simulated-${i}-managedcluster
 done
-
