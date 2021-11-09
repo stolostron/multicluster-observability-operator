@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 )
 
 const (
@@ -52,11 +53,16 @@ func CheckAllOBAsEnabled(opt TestOptions) error {
 	if err != nil {
 		return err
 	}
+	klog.V(1).Infof("Have the following managedclusters: <%v>", clusters)
+
 	for _, cluster := range clusters {
+		klog.V(1).Infof("Check OBA status for cluster <%v>", cluster)
 		err = CheckOBAStatus(opt, cluster, ManagedClusterAddOnEnabledMessage)
 		if err != nil {
 			return err
 		}
+
+		klog.V(1).Infof("Check managedcluster addon status for cluster <%v>", cluster)
 		err = CheckManagedClusterAddonsStatus(opt, cluster, ManagedClusterAddOnEnabledMessage)
 		if err != nil {
 			return err
