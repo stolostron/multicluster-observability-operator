@@ -22,10 +22,10 @@ You must meet the following requirements to setup metrics collector:
 
 ### Setup metrics collector
 
-1. Run `setup-metrics-collector.sh` script to setup multiple metrics collector, `-n` specifies the simulated metrics collector number, and optional `-w` specifies the worker number for each simulated metrics collector, you can also specifies the simulated metrics collector name prefix by the `-m` flag. For example, setup 2 metrics collectors with 100 workers by the following command:
+1. Run `setup-metrics-collector.sh` script to setup multiple metrics collector, `-n` specifies the simulated metrics collector number, optional `-t` specifies the metrics data source type, can be "SNO"(default value) or "NON_SNO", and optional `-w` specifies the worker number for each simulated metrics collector, you can also specifies the simulated metrics collector name prefix by the `-m` flag. For example, setup 2 metrics collectors with 100 workers that collect the SNO metrics data by the following command:
 
 ```bash
-# ./setup-metrics-collector.sh -n 2 -w 100
+# ./setup-metrics-collector.sh -n 2 -t SNO -w 100
 ```
 
 2. Check if all the metrics collector running successfully in your cluster:
@@ -65,4 +65,3 @@ Running below command to setup metrics collectors with your own data source:
 ```bash
 # METRICS_IMAGE=<example/metrics-data:latest> ./setup-metrics-collector.sh -n 10
 ```
-

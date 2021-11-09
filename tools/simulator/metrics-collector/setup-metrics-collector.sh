@@ -29,10 +29,12 @@ if [[ "$(uname)" == "Darwin" ]]; then
 fi
 
 function usage() {
-	echo "${0} -n NUMBERS [-w WORKERS] [-m MANAGED_CLUSTER_PREFIX]"
+	echo "${0} -n NUMBERS [-t METRICS_DATA_TYPE] [-w WORKERS] [-m MANAGED_CLUSTER_PREFIX]"
 	echo ''
 	# shellcheck disable=SC2016
 	echo '  -n: Specifies the total number of simulated metrics collectors, required'
+	# shellcheck disable=SC2016
+	echo '  -t: Specifies the data type of metrics data source, the default value is "NON_SNO", it also can be "SNO".'
 	# shellcheck disable=SC2016
 	echo '  -w: Specifies the worker threads for each simulated metrics collector, optional, the default value is "1".'
 	# shellcheck disable=SC2016
@@ -41,15 +43,17 @@ function usage() {
 }
 
 WORKERS=1 # default worker threads for each simulated metrics collector
+METRICS_DATA_TYPE="NON_SNO" # default metrics data source type
 MANAGED_CLUSTER_PREFIX="simulated-managed-cluster" # default managedccluster name prefix
-# metrics data source image
-METRICS_IMAGE="${METRICS_IMAGE:-quay.io/ocm-observability/metrics-data:2.4.0}"
 
 # Allow command-line args to override the defaults.
-while getopts ":n:w:m:h" opt; do
+while getopts ":n:t:w:m:h" opt; do
 	case ${opt} in
 		n)
 			NUMBERS=${OPTARG}
+			;;
+		t)
+			METRICS_DATA_TYPE=${OPTARG}
 			;;
 		w)
 			WORKERS=${OPTARG}
@@ -80,11 +84,22 @@ if ! [[ ${NUMBERS} =~ ${re} ]] ; then
 	echo "error: arguments <${NUMBERS}> is not a number" >&2; exit 1
 fi
 
+if [[ ${METRICS_DATA_TYPE} != "SNO" && ${METRICS_DATA_TYPE} != "NON_SNO" ]] ; then
+	echo "error: arguments <${METRICS_DATA_TYPE}> is not valid, it must be 'SNO' of 'NON_SNO'" >&2; exit 1
+fi
+
 if ! [[ ${WORKERS} =~ ${re} ]] ; then
 	echo "error: arguments <${WORKERS}> is not a number" >&2; exit 1
 fi
 
 OBSERVABILITY_NS="open-cluster-management-addon-observability"
+
+# metrics data source image
+DEFAULT_METRICS_IMAGE="quay.io/ocm-observability/metrics-data:2.4.0"
+if [[ ${METRICS_DATA_TYPE} == "SNO" ]] ; then
+	DEFAULT_METRICS_IMAGE="quay.io/ocm-observability/metrics-data-sno:2.4.0"
+fi
+METRICS_IMAGE="${METRICS_IMAGE:-$DEFAULT_METRICS_IMAGE}"
 
 for i in $(seq 1 ${NUMBERS})
 do
@@ -139,4 +154,3 @@ do
 	cat "${rolebinding_yaml_file}" | ${KUBECTL} -n ${cluster_name} apply -f -
 	rm -f "${rolebinding_yaml_file}"
 done
-

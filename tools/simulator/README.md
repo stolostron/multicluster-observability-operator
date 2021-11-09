@@ -6,3 +6,4 @@ We have simulators in different subfolder for different scenarios, each simulato
 * [managed cluster simulator](managed-cluster)
 * [metrics-collector simulator](metrics-collector)
 
+_Note:_ these simulators are for testing purpose only.
