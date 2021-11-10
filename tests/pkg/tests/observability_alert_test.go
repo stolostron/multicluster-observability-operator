@@ -6,7 +6,6 @@ package tests
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -247,7 +246,7 @@ var _ = Describe("Observability:", func() {
 		klog.V(3).Infof("Successfully deleted CM: thanos-ruler-custom-rules")
 	})
 
-	It("[P2][Sev2][Observability][Integration] Should have alert named Watchdog forwarded to alertmanager generated (alert/g0)", func() {
+	It("[P2][Sev2][Observability][Integration] Should have alert named Watchdog forwarded to alertmanager (alert/g0)", func() {
 		amURL := url.URL{
 			Scheme: "https",
 			Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
@@ -257,14 +256,9 @@ var _ = Describe("Observability:", func() {
 		q.Set("filter", "alertname=Watchdog")
 		amURL.RawQuery = q.Encode()
 
-		caCrt, err := utils.GetRouterCA(hubClient)
-		Expect(err).NotTo(HaveOccurred())
-		pool := x509.NewCertPool()
-		pool.AppendCertsFromPEM(caCrt)
-
 		client := &http.Client{
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{RootCAs: pool},
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // skip CA verify because CA secret not found in KinD env.
 			},
 		}
 
