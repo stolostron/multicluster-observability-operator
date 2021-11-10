@@ -11,18 +11,18 @@ This is a container which will be called from:
 
 The tests in this container will:
 
-1. Create the MCO CR. The Object store to be already in place for CR to work.
-2. Wait for the the entire Observability suite (Hub and Addon) has been installed.
-3. Then check the Observability suite (Hub and Addon) is working as expected including disable/enable, Grafana etc.
+1. Create the object store and MCO CR.
+2. Wait for the the entire Observability suite (Hub and Addon) installed.
+3. Then check the Observability suite (Hub and Addon) is working as expected including disable/enable addon, grafana verify etc.
 
 ## Setup E2E Testing Environment
 
 If you only have an OCP cluster and haven't installed Observability yet, then you can install the Observability (both Hub and Addon) by the following steps:
 
-1. clone this repo:
+1. clone this repository:
 
 ```
-git clone git@github.com:open-cluster-management/observability-e2e-test.git
+git clone git@github.com:open-cluster-management/multicluster-observability-operator.git
 ```
 
 2. export `KUBECONFIG` environment to the kubeconfig of your OCP cluster:
@@ -37,22 +37,24 @@ export KUBECONFIG=<kubeconfig-file-of-your-ocp-cluster>
 make test-e2e-setup
 ```
 
-By default, the command will try to install the Observability and its dependencies with images of latest [UPSTREAM snapshot tag](https://quay.io/repository/open-cluster-management/acm-custom-registry?tab=tags). You may want to override one image to test the corresponding component, you can simply do that by exporting `COMPONENT_IMAGE_NAME` environment, for example, if you want to test `metrics-collector` image from `quay.io/<your_username_in_quay>/metrics-collector:test`, then execute the following command before running command in step 2:
+_Note:_ By default, the command will try to install the Observability and its dependencies with images of latest [UPSTREAM snapshot tag](https://quay.io/repository/open-cluster-management/acm-custom-registry?tab=tags). 
+
+4. Override the observability images to test the corresponding components by exporting the following environment before executing step 3:
+
+| Component Name | Image Environment Variable |
+| --- | --- |
+| multicluster-observability-operator | MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF |
+| rbac-query-proxy | RBAC_QUERY_PROXY_IMAGE_REF |
+| metrics-collector | METRICS_COLLECTOR_IMAGE_REF |
+| endpoint-monitoring-operator | ENDPOINT_MONITORING_OPERATOR_IMAGE_REF |
+| grafana-dashboard-loader | GRAFANA_DASHBOARD_LOADER_IMAGE_REF |
+| observatorium-operator | OBSERVATORIUM_OPERATOR_IMAGE_REF |
+
+For example, if you want to test `metrics-collector` image from `quay.io/<your_username_in_quay>/metrics-collector:test`, then execute the following command before running command in step 2:
 
 ```
-export COMPONENT_IMAGE_NAME=quay.io/<your_username_in_quay>/metrics-collector:test
+export METRICS_COLLECTOR_IMAGE_REF=quay.io/<your_username_in_quay>/metrics-collector:test
 ```
-
-The supported component images include the following **keywords**:
-
-- multicluster-observability-operator
-- rbac-query-proxy
-- metrics-collector
-- endpoint-monitoring-operator
-- grafana-dashboard-loader
-- observatorium-operator
-
-> Note: the component image override is useful when you want to test each stockholder repositories, you only need to export the `COMPONENT_IMAGE_NAME` environment if running the e2e testing locally. For the CICD pipeline, the prow will take care of export work, that means that when you raise a PR to the stockholder repositories, the prow will build the image based the source code of your PR and then install the Observability accordingly.
 
 ## Running E2E Testing
 

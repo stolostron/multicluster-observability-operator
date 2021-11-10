@@ -33,7 +33,7 @@ func installMCO() {
 		testOptions.KubeConfig,
 		testOptions.HubCluster.KubeContext)
 
-	By("Checking MCO operator is existed")
+	By("Checking MCO operator is started up and running")
 	podList, err := hubClient.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: MCO_LABEL})
 	Expect(len(podList.Items)).To(Equal(1))
 	Expect(err).NotTo(HaveOccurred())
@@ -75,7 +75,7 @@ func installMCO() {
 		1000,
 	)
 
-	By("Checking Required CRDs is existed")
+	By("Checking Required CRDs are created")
 	Eventually(func() error {
 		return utils.HaveCRDs(testOptions.HubCluster, testOptions.KubeConfig,
 			[]string{

@@ -5,26 +5,20 @@
 
 set -exo pipefail
 
-TARGET_OS="$(uname)"
-XARGS_FLAGS="-r"
+ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
+
 SED_COMMAND='sed -i -e'
-if [[ "$(uname)" == "Linux" ]]; then
-    TARGET_OS=linux
-elif [[ "$(uname)" == "Darwin" ]]; then
-    TARGET_OS=darwin
-    XARGS_FLAGS=
+if [[ "$(uname)" == "Darwin" ]]; then
     SED_COMMAND='sed -i '-e' -e'
-else
-    echo "This system's OS $(TARGET_OS) isn't recognized/supported" && exit 1
 fi
 
-ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
+# customize the images for testing
 ${ROOTDIR}/cicd-scripts/customize-mco.sh
 GINKGO_FOCUS="$(cat /tmp/ginkgo_focus)"
 
 # need to modify sc for KinD
 if [[ -n "${IS_KIND_ENV}" ]]; then
-    $SED_COMMAND "s~gp2$~standard~g"  ${ROOTDIR}/examples/minio/minio-pvc.yaml
+    ${SED_COMMAND} "s~gp2$~standard~g" ${ROOTDIR}/examples/minio/minio-pvc.yaml
 fi
 
 kubeconfig_hub_path=""
@@ -78,15 +72,14 @@ printf "\n      baseDomain: ${base_domain}" >> ${OPTIONSFILE}
 printf "\n      kubeconfig: ${kubeconfig_hub_path}" >> ${OPTIONSFILE}
 printf "\n      kubecontext: ${kubecontext}" >> ${OPTIONSFILE}
 
-go get -u github.com/onsi/ginkgo/ginkgo
-go mod vendor
 if command -v ginkgo &> /dev/null; then
     GINKGO_CMD=ginkgo
 else
     # just for Prow KinD vm
+    go get -u github.com/onsi/ginkgo/ginkgo
     GINKGO_CMD="/home/ec2-user/go/bin/ginkgo"
 fi
-$GINKGO_CMD -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=3
+${GINKGO_CMD} -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=3
 
 cat ${ROOTDIR}/tests/pkg/tests/results.xml | grep failures=\"0\" | grep errors=\"0\"
 if [ $? -ne 0 ]; then
