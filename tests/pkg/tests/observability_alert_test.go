@@ -6,6 +6,7 @@ package tests
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -246,7 +247,7 @@ var _ = Describe("Observability:", func() {
 		klog.V(3).Infof("Successfully deleted CM: thanos-ruler-custom-rules")
 	})
 
-	It("[P2][Sev2][Observability][Integration] Should have alert named Watchdog forwarded to alertmanager (alert/g0)", func() {
+	It("[P2][Sev2][Observability][Integration] Should have alert named Watchdog forwarded to alertmanager (alertforward/g0)", func() {
 		amURL := url.URL{
 			Scheme: "https",
 			Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
@@ -256,9 +257,14 @@ var _ = Describe("Observability:", func() {
 		q.Set("filter", "alertname=Watchdog")
 		amURL.RawQuery = q.Encode()
 
+		caCrt, err := utils.GetRouterCA(hubClient)
+		Expect(err).NotTo(HaveOccurred())
+		pool := x509.NewCertPool()
+		pool.AppendCertsFromPEM(caCrt)
+
 		client := &http.Client{
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // skip CA verify because CA secret not found in KinD env.
+				TLSClientConfig: &tls.Config{RootCAs: pool},
 			},
 		}
 
@@ -269,8 +275,11 @@ var _ = Describe("Observability:", func() {
 			alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 		}
 
-		expectedClusterIDs, err := utils.ListOCPManagedClusterIDs(testOptions, "4.8.0")
+		expectedOCPClusterIDs, err := utils.ListOCPManagedClusterIDs(testOptions, "4.8.0")
 		Expect(err).NotTo(HaveOccurred())
+		expectedKSClusterNames, err := utils.ListKSManagedClusterNames(testOptions)
+		Expect(err).NotTo(HaveOccurred())
+		expectClusterIdentifiers := append(expectedOCPClusterIDs, expectedKSClusterNames...)
 
 		By("Checking Watchdog alerts are forwarded to the hub")
 		Eventually(func() error {
@@ -309,8 +318,8 @@ var _ = Describe("Observability:", func() {
 			}
 
 			sort.Strings(clusterIDsInAlerts)
-			sort.Strings(expectedClusterIDs)
-			if !reflect.DeepEqual(clusterIDsInAlerts, expectedClusterIDs) {
+			sort.Strings(expectClusterIdentifiers)
+			if !reflect.DeepEqual(clusterIDsInAlerts, expectClusterIdentifiers) {
 				return fmt.Errorf("Not all openshift managedclusters >=4.8.0 forward Watchdog alert to hub cluster")
 			}
 

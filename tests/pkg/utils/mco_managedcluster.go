@@ -120,3 +120,37 @@ func ListOCPManagedClusterIDs(opt TestOptions, minVersionStr string) ([]string, 
 
 	return clusterIDs, nil
 }
+
+func ListKSManagedClusterNames(opt TestOptions) ([]string, error) {
+	clientDynamic := GetKubeClientDynamic(opt, true)
+	objs, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	clusterNames := []string{}
+	for _, obj := range objs.Items {
+		metadata := obj.Object["metadata"].(map[string]interface{})
+		labels := metadata["labels"].(map[string]interface{})
+		if labels != nil {
+			vendorStr := ""
+			if vendor, ok := labels["vendor"]; ok {
+				vendorStr = vendor.(string)
+			}
+			obsControllerStr := ""
+			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok {
+				obsControllerStr = obsController.(string)
+			}
+			if (vendorStr == "GKE" || vendorStr == "EKS" || vendorStr == "AKS") && obsControllerStr == "available" {
+				clusterNameStr := ""
+				if clusterNameVal, ok := labels["name"]; ok {
+					clusterNameStr = clusterNameVal.(string)
+				}
+				if len(clusterNameStr) > 0 {
+					clusterNames = append(clusterNames, clusterNameStr)
+				}
+			}
+		}
+	}
+
+	return clusterNames, nil
+}
