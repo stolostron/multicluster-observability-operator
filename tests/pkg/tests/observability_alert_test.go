@@ -247,7 +247,7 @@ var _ = Describe("Observability:", func() {
 		klog.V(3).Infof("Successfully deleted CM: thanos-ruler-custom-rules")
 	})
 
-	It("[P2][Sev2][Observability][Stable] Should have alert named Watchdog forwarded to alertmanager generated (alert/g0)", func() {
+	It("[P2][Sev2][Observability][Integration] Should have alert named Watchdog forwarded to alertmanager generated (alert/g0)", func() {
 		amURL := url.URL{
 			Scheme: "https",
 			Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
