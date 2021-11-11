@@ -106,7 +106,7 @@ OBSERVABILITY_NS="open-cluster-management-addon-observability"
 # metrics data source image
 DEFAULT_METRICS_IMAGE="quay.io/ocm-observability/metrics-data:2.4.0"
 if [[ ${METRICS_DATA_TYPE} == "SNO" ]] ; then
-	DEFAULT_METRICS_IMAGE="quay.io/ocm-observability/metrics-data-sno:2.4.0"
+	DEFAULT_METRICS_IMAGE="quay.io/ocm-observability/metrics-data:2.4.0-sno"
 fi
 METRICS_IMAGE="${METRICS_IMAGE:-$DEFAULT_METRICS_IMAGE}"
 
@@ -143,13 +143,6 @@ do
         --argjson emptydir '{"emptyDir": {}, "name": "metrics-volume"}' \
         --argjson metricsdir '{"mountPath": "/metrics-volume","name": "metrics-volume"}' \
         '.spec.template.spec += $init | .spec.template.spec.volumes += [$emptydir] | .spec.template.spec.containers[0].volumeMounts += [$metricsdir]' ${deploy_yaml_file} > ${deploy_yaml_file}.tmp && mv ${deploy_yaml_file}.tmp ${deploy_yaml_file}
-
-	if [ "$ALLOW_SCHEDULED_TO_MASTER" == "true" ]; then
-		# insert tolerations
-		jq \
-			--argjson tolerations '{"tolerations": [{"key":"node-role.kubernetes.io/master","operator":"Exists","effect":"NoSchedule"}]}' \
-			'.spec.template.spec += $tolerations' ${deploy_yaml_file} > ${deploy_yaml_file}.tmp && mv ${deploy_yaml_file}.tmp ${deploy_yaml_file}
-	fi
 
 	cat "${deploy_yaml_file}" | ${KUBECTL} -n ${cluster_name} apply -f -
 	rm -f "${deploy_yaml_file}" "${deploy_yaml_file}".tmp

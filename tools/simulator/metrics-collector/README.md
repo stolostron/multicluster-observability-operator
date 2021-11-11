@@ -1,6 +1,6 @@
 # Metrics Collector Simulator
 
-Metrics collector simulator can be used to setup multiple metrics collector in different namespaces in one managed cluster, to simulate thousands of managed clusters push metrics concurrenyly to ACM hub cluster for scale testing.
+Metrics collector simulator can be used to setup multiple metrics collector in different namespaces in one managed cluster, to simulate thousands of managed clusters push metrics concurrently to ACM hub cluster for scale testing.
 
 _Note:_ this simulator is for testing purpose only.
 
@@ -38,8 +38,6 @@ simulate-managed-cluster2                          metrics-collector-deployment-
 
 > _Note:_ the above command will simulate 200 metrics collectors pushing the data concurrently into hub thanos.
 
-> _Note:_ if you want the simulated metrics-collector be scheduled to master node, so that more simulated metrics-collectors can be deployed in one cluster, you can set the environment variable `ALLOW_SCHEDULED_TO_MASTER` to be `true` before executing the setup script.
-
 ### Clean metrics collector
 
 Use `clean-metrics-collector.sh` to remove all the simulated metrics collector, `-n` specifies the simulated metrics collector number:
@@ -53,6 +51,8 @@ Use `clean-metrics-collector.sh` to remove all the simulated metrics collector, 
 ### Generate your own data source
 
 By default, `setup-metrics-collector.sh` is using metrics data defined in env `METRICS_IMAGE` as data source. You can build and push your own metrics data image with below command:
+
+_Note:_ Currently the data source image built with this method doesn't contain all the real data from metrics collector, the renamed metrics and recording rules will be missing.
 
 ```bash
 # METRICS_IMAGE=<example/metrics-data:latest> make all
