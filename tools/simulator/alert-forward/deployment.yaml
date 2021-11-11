@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alert-forwarder
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alert-forwarder
+  template:
+    metadata:
+      labels:
+        app: alert-forwarder
+    spec:
+      containers:
+      - name: alert-forwarder
+        image: quay.io/ocm-observability/alert-forwarder:2.4.0
+        imagePullPolicy: Always
+        args:
+        - --am-host=alertmanager-open-cluster-management-observability.apps.mcstest.dev05.red-chesterfield.com
+        - --am-access-token-file=/etc/alert-forwarder/token
+        - --workers=1000
+        - --interval=30s
+        volumeMounts:
+        - name: am-access-token
+          mountPath: /etc/alert-forwarder
+      volumes:
+      - name: am-access-token
+        secret:
+          secretName: am-access-token
+
