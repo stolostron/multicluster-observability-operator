@@ -3,6 +3,9 @@
 # Copyright Contributors to the Open Cluster Management project
 
 WORK_DIR="$(cd "$(dirname "$0")" ; pwd -P)"
+# Create bin directory and add it to PATH
+mkdir -p ${WORK_DIR}/bin
+export PATH=${PATH}:${WORK_DIR}/bin
 
 if ! command -v jq &> /dev/null; then
 	if [[ "$(uname)" == "Linux" ]]; then
@@ -11,6 +14,7 @@ if ! command -v jq &> /dev/null; then
 		curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64
 	fi
 	chmod +x ./jq
+	chmod +x ./jq && mv ./jq ${WORK_DIR}/bin/jq
 fi
 
 KUBECTL="kubectl"
@@ -18,8 +22,13 @@ if ! command -v kubectl &> /dev/null; then
     if command -v oc &> /dev/null; then
         KUBECTL="oc"
     else
-        echo "kubectl or oc must be installed!"
-        exit 1
+        echo "This script will install kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your machine"
+        if [[ "$(uname)" == "Linux" ]]; then
+            curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl
+        elif [[ "$(uname)" == "Darwin" ]]; then
+            curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/darwin/amd64/kubectl
+        fi
+        chmod +x ./kubectl && mv ./kubectl ${WORK_DIR}/bin/kubectl
     fi
 fi
 

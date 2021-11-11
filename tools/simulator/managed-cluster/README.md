@@ -15,7 +15,7 @@ You must meet the following requirements to setup managed cluster simulator:
 
 ### Set up managed cluster simulator
 
-1. You can run `setup-managedcluster.sh` followed with two numbers(start index and end index) to set up multiple simulated managed clusters. For example, set up 1-10 simulated managedcluster with the following command:
+1. You can run `setup-managedcluster.sh` followed with two numbers(start index and end index) to set up multiple simulated managed clusters. For example, set up 1-5 simulated managedcluster with the following command:
 
 ```bash
 # ./setup-managedcluster.sh 1 5
@@ -53,7 +53,7 @@ simulated-4-managedcluster-observability   67s
 simulated-5-managedcluster-observability   65s
 ```
 
-4. Clean up the simulated managed clusters by running the `clean-managedcluster.sh` script followed with two numbers(start index and end index), For example, clean up 1-10 simulated managedcluster with the following command:
+4. Clean up the simulated managed clusters by running the `clean-managedcluster.sh` script followed with two numbers(start index and end index), For example, clean up 1-5 simulated managedcluster with the following command:
 
 ```
 $ ./clean-managedcluster.sh 1 5
