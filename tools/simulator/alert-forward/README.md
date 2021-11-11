@@ -40,7 +40,7 @@ $ go run main.go --am-host=${ALERTMANAGER_HOST} --am-access-token=${ALERRTMANAGE
 
 > _Note:_ you can also optionally specify the simulated alerts by `--alerts-file` flag.
 
-4. Specify the number of concurrent workers that forward the alerts by `--workers` flag, the default value is `1000`:
+4. Optionally specify the number of concurrent workers that forward the alerts by `--workers` flag, the default value is `1000`:
 
 ```bash
 $ go run main.go --am-host=${ALERTMANAGER_HOST} --am-access-token=${ALERRTMANAGER_ACCESS_TOKEN} --alerts-file=./alerts.json --workers 3
@@ -99,7 +99,7 @@ docker push quay.io/ocm-observability/alert-forwarder:2.4.0
 ./setup-alert-forwarder.sh
 ```
 
-3. Check if all the alert-forwarder pod is running successfully in your cluster:
+3. Check if the alert-forwarder pod is running successfully in your cluster:
 
 ```bash
 $ oc -n alert-forwarder get pod
@@ -113,7 +113,7 @@ $ oc -n alert-forwarder logs -f alert-forwarder-fb75bbb8c-6zgq8
 ...
 ```
 
-4. Specify the number of concurrent workers that forward the alerts by `-w` flag, the default value is `1000`:
+4. Optionally specify the number of concurrent workers that forward the alerts by `-w` flag, the default value is `1000`:
 
 ```bash
 $ ./setup-alert-forwarder.sh -w 3
