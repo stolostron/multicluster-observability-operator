@@ -164,8 +164,4 @@ $ oc -n alert-forwarder logs -f deploy/alert-forwarder
 
 ```bash
 $ ./clean-alert-forwarder.sh
-deployment.apps "alert-forwarder" deleted
-secret "am-access-token" deleted
-namespace "alert-forwarder" deleted
 ```
-
