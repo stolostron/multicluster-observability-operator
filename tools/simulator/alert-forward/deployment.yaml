@@ -17,7 +17,7 @@ spec:
         image: quay.io/ocm-observability/alert-forwarder:2.4.0
         imagePullPolicy: Always
         args:
-        - --am-host=alertmanager-open-cluster-management-observability.apps.mcstest.dev05.red-chesterfield.com
+        - --am-host=__AM_HOST__
         - --am-access-token-file=/etc/alert-forwarder/token
         - --workers=1000
         - --interval=30s
