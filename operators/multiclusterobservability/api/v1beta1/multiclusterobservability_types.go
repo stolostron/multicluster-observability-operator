@@ -45,7 +45,7 @@ type MultiClusterObservabilitySpec struct {
 
 	// Pull policy of the MultiClusterObservability images
 	// +optional
-	// +kubebuilder:default:=Always
+	// +kubebuilder:default:=IfNotPresent
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 
 	// Pull secret of the MultiClusterObservability images

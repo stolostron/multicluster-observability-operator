@@ -139,7 +139,7 @@ do
 
 	# insert metrics initContainer
     jq \
-        --argjson init '{"initContainers": [{"command":["sh","-c","cp /tmp/timeseries.txt /metrics-volume"],"image":"'${METRICS_IMAGE}'","imagePullPolicy":"Always","name":"init-metrics","volumeMounts":[{"mountPath":"/metrics-volume","name":"metrics-volume"}]}]}' \
+        --argjson init '{"initContainers": [{"command":["sh","-c","cp /tmp/timeseries.txt /metrics-volume"],"image":"'${METRICS_IMAGE}'","imagePullPolicy":"IfNotPresent","name":"init-metrics","volumeMounts":[{"mountPath":"/metrics-volume","name":"metrics-volume"}]}]}' \
         --argjson emptydir '{"emptyDir": {}, "name": "metrics-volume"}' \
         --argjson metricsdir '{"mountPath": "/metrics-volume","name": "metrics-volume"}' \
         '.spec.template.spec += $init | .spec.template.spec.volumes += [$emptydir] | .spec.template.spec.containers[0].volumeMounts += [$metricsdir]' ${deploy_yaml_file} > ${deploy_yaml_file}.tmp && mv ${deploy_yaml_file}.tmp ${deploy_yaml_file}

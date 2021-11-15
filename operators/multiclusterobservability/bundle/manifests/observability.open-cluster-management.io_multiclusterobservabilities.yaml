@@ -57,7 +57,7 @@ spec:
                 description: Enable or disable the downsample. The default value is false. This is not recommended as querying long time ranges without non-downsampled data is not efficient and useful.
                 type: boolean
               imagePullPolicy:
-                default: Always
+                default: IfNotPresent
                 description: Pull policy of the MultiClusterObservability images
                 type: string
               imagePullSecret:

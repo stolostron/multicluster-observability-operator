@@ -43,7 +43,7 @@ spec:
       - args:
         - -config=/etc/grafana/grafana.ini
         image: quay.io/open-cluster-management/grafana:2.4.0-SNAPSHOT-2021-09-23-07-02-14
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         name: grafana
         ports:
         - containerPort: 3001
@@ -70,7 +70,7 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         image: quay.io/open-cluster-management/grafana-dashboard-loader:2.3.0-SNAPSHOT-2021-07-26-18-43-26
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         resources:
           requests:
             cpu: 4m
