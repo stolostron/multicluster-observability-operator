@@ -134,7 +134,7 @@ func ListKSManagedClusterNames(opt TestOptions) ([]string, error) {
 			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok {
 				obsControllerStr = obsController.(string)
 			}
-			if vendorStr != "OpenShift" && obsControllerStr != "unreachable" {
+			if vendorStr != "OpenShift" && obsControllerStr == "available" {
 				clusterNameStr := ""
 				if clusterNameVal, ok := labels["name"]; ok {
 					clusterNameStr = clusterNameVal.(string)
