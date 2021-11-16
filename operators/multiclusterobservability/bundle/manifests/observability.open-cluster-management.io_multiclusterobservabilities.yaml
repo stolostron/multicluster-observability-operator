@@ -125,7 +125,7 @@ spec:
                     description: Object store config secret for metrics
                     properties:
                       key:
-                        description: The key of the secret to select from. Must be a valid secret key. Refer to https://thanos.io/storage.md/#configuration for a valid content of key.
+                        description: The key of the secret to select from. Must be a valid secret key. Refer to https://thanos.io/tip/thanos/storage.md/#configuring-access-to-object-storage for a valid content of key.
                         type: string
                       name:
                         description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
@@ -706,7 +706,7 @@ spec:
                     description: Object store config secret for metrics
                     properties:
                       key:
-                        description: The key of the secret to select from. Must be a valid secret key. Refer to https://thanos.io/storage.md/#configuration for a valid content of key.
+                        description: The key of the secret to select from. Must be a valid secret key. Refer to https://thanos.io/tip/thanos/storage.md/#configuring-access-to-object-storage for a valid content of key.
                         type: string
                       name:
                         description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
