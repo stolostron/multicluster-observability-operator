@@ -31,7 +31,7 @@ spec:
         - -leader-elect
         # Replace this with the built image name
         image: quay.io/open-cluster-management/multicluster-observability-operator:2.3.0-SNAPSHOT-2021-07-26-18-43-26
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
         ports:

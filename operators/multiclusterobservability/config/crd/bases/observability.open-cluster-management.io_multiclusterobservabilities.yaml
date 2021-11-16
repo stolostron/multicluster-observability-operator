@@ -54,7 +54,7 @@ spec:
                   non-downsampled data is not efficient and useful.
                 type: boolean
               imagePullPolicy:
-                default: Always
+                default: IfNotPresent
                 description: Pull policy of the MultiClusterObservability images
                 type: string
               imagePullSecret:

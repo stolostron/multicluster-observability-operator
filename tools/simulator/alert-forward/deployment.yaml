@@ -15,7 +15,7 @@ spec:
       containers:
       - name: alert-forwarder
         image: quay.io/ocm-observability/alert-forwarder:2.4.0
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         args:
         - --am-host=__AM_HOST__
         - --am-access-token-file=/etc/alert-forwarder/token

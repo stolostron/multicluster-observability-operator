@@ -42,7 +42,7 @@ Note: Disabling downsampling is not recommended as querying long time ranges wit
    </td>
    <td>corev1.PullPolicy
    </td>
-   <td>Pull policy of the MultiClusterObservability images. The default is <strong>Always<strong>.
+   <td>Pull policy of the MultiClusterObservability images. The default is <strong>IfNotPresent<strong>.
    </td>
    <td>N
    </td>

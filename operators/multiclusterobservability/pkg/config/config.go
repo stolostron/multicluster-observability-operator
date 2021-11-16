@@ -220,7 +220,7 @@ const (
 	DeleteDelay            = "48h"
 	BlockDuration          = "2h"
 
-	DefaultImagePullPolicy = "Always"
+	DefaultImagePullPolicy = "IfNotPresent"
 	DefaultImagePullSecret = "multiclusterhub-operator-pull-secret"
 
 	ResourceLimits   = "limits"
