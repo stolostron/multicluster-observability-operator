@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sort"
 	"strconv"
 	"time"
 
@@ -47,7 +48,7 @@ var (
 type MetricsAllowlist struct {
 	NameList  []string          `yaml:"names"`
 	MatchList []string          `yaml:"matches"`
-	ReNameMap map[string]string `yaml:"renames"`
+	RenameMap map[string]string `yaml:"renames"`
 	RuleList  []Rule            `yaml:"rules"`
 }
 
@@ -139,8 +140,14 @@ func createDeployment(clusterID string, clusterType string,
 	for _, match := range allowlist.MatchList {
 		commands = append(commands, fmt.Sprintf("--match={%s}", match))
 	}
-	for k, v := range allowlist.ReNameMap {
-		commands = append(commands, fmt.Sprintf("--rename=\"%s=%s\"", k, v))
+
+	renamekeys := make([]string, 0, len(allowlist.RenameMap))
+	for k := range allowlist.RenameMap {
+		renamekeys = append(renamekeys, k)
+	}
+	sort.Strings(renamekeys)
+	for _, k := range renamekeys {
+		commands = append(commands, fmt.Sprintf("--rename=\"%s=%s\"", k, allowlist.RenameMap[k]))
 	}
 	for _, rule := range allowlist.RuleList {
 		commands = append(commands, fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr))
