@@ -144,8 +144,8 @@ deploy_hub_spoke_core() {
     git clone --depth 1 -b release-2.4 https://github.com/open-cluster-management/registration-operator.git && cd registration-operator
     $SED_COMMAND "s~clusterName: cluster1$~clusterName: $MANAGED_CLUSTER~g" deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
     # deploy hub and spoke via OLM
-    make cluster-ip
-    make deploy
+    make cluster-ip IMAGE_TAG=${LATEST_SNAPSHOT} WORK_TAG=${LATEST_SNAPSHOT} REGISTRATION_TAG=${LATEST_SNAPSHOT} PLACEMENT_TAG=${LATEST_SNAPSHOT}
+    make deploy IMAGE_TAG=${LATEST_SNAPSHOT} WORK_TAG=${LATEST_SNAPSHOT} REGISTRATION_TAG=${LATEST_SNAPSHOT} PLACEMENT_TAG=${LATEST_SNAPSHOT}
 
     # wait until hub and spoke are ready
     wait_for_deployment_ready 10 60s ${HUB_NS} cluster-manager-registration-controller cluster-manager-registration-webhook cluster-manager-work-webhook
@@ -189,7 +189,11 @@ approve_csr_joinrequest() {
             for clustername in ${clusternames}; do
                 echo "approve joinrequest for ${clustername}"
                 kubectl patch managedcluster ${clustername} --patch '{"spec":{"hubAcceptsClient":true}}' --type=merge
-                kubectl label managedcluster ${clustername} vendor=GKE --overwrite
+		if [[ -n "${IS_KIND_ENV}" ]]; then
+			# update vendor label for KinD env
+			kubectl label managedcluster ${clustername} vendor-
+			kubectl label managedcluster ${clustername} vendor=GKE
+		fi
             done
             break
         fi
