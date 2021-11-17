@@ -225,7 +225,7 @@ The default is <strong>10Gi</strong>
    </td>
    <td>string
    </td>
-   <td>The key of the secret to select from. Must be a valid secret key. Refer to <a href="https://thanos.io/storage.md/#configuration">https://thanos.io/storage.md/#configuration</a> for a valid content of key.
+   <td>The key of the secret to select from. Must be a valid secret key. Refer to <a href="https://thanos.io/tip/thanos/storage.md/#configuring-access-to-object-storage">https://thanos.io/tip/thanos/storage.md/#configuring-access-to-object-storage</a> for a valid content of key.
    </td>
    <td>y
    </td>
