@@ -125,7 +125,7 @@ data:
           ],
           "timeFrom": "$window",
           "timeShift": null,
-          "title": "# of cluster that has exceeded the SLO",
+          "title": "Number of cluster that has exceeded the SLO",
           "transformations": [],
           "type": "stat"
         },
@@ -205,7 +205,7 @@ data:
           ],
           "timeFrom": "$window",
           "timeShift": null,
-          "title": "# of clusters that are meeting the SLO",
+          "title": "Number of clusters that are meeting the SLO",
           "transformations": [],
           "type": "stat"
         },
