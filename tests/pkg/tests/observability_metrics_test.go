@@ -39,8 +39,13 @@ var _ = Describe("Observability:", func() {
 	})
 
 	JustBeforeEach(func() {
-		clusters, clusterError = utils.ListManagedClusters(testOptions)
-		Expect(clusterError).NotTo(HaveOccurred())
+		Eventually(func() error {
+			clusters, clusterError = utils.ListManagedClusters(testOptions)
+			if clusterError != nil {
+				return clusterError
+			}
+			return nil
+		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	It("[P2][Sev2][Observability][Integration] Should have metrics which defined in custom metrics allowlist (metrics/g0)", func() {

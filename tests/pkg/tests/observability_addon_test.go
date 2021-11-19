@@ -28,8 +28,13 @@ var _ = Describe("Observability:", func() {
 	})
 
 	JustBeforeEach(func() {
-		clusters, clusterError = utils.ListManagedClusters(testOptions)
-		Expect(clusterError).NotTo(HaveOccurred())
+		Eventually(func() error {
+			clusters, clusterError = utils.ListManagedClusters(testOptions)
+			if clusterError != nil {
+				return clusterError
+			}
+			return nil
+		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	Context("[P2][Sev2][Observability] Modifying MCO cr to disable observabilityaddon (addon/g0) -", func() {
