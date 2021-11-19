@@ -25,13 +25,13 @@ You must meet the following requirements to setup metrics collector:
 1. Run `setup-metrics-collector.sh` script to setup multiple metrics collector, `-n` specifies the simulated metrics collector number, optional `-t` specifies the metrics data source type, can be "SNO"(default value) or "NON_SNO", and optional `-w` specifies the worker number for each simulated metrics collector, you can also specifies the simulated metrics collector name prefix by the `-m` flag. For example, setup 2 metrics collectors with 100 workers that collect the SNO metrics data by the following command:
 
 ```bash
-# ./setup-metrics-collector.sh -n 2 -t SNO -w 100
+./setup-metrics-collector.sh -n 2 -t SNO -w 100
 ```
 
 2. Check if all the metrics collector running successfully in your cluster:
 
 ```bash
-# oc get pods --all-namespaces | grep simulated-managed-cluster
+$ oc get pods --all-namespaces | grep simulated-managed-cluster
 simulate-managed-cluster1                          metrics-collector-deployment-7d69d9f897-xn8vz                    1/1     Running            0          22h
 simulate-managed-cluster2                          metrics-collector-deployment-67844bfc59-lwchn                    1/1     Running            0          22h
 ```
@@ -43,19 +43,17 @@ simulate-managed-cluster2                          metrics-collector-deployment-
 Use `clean-metrics-collector.sh` to remove all the simulated metrics collector, `-n` specifies the simulated metrics collector number:
 
 ```bash
-# ./clean-metrics-collector.sh -n 2
+./clean-metrics-collector.sh -n 2
 ```
 
 ## Customize the metrics data source
 
 ### Generate your own data source
 
-By default, `setup-metrics-collector.sh` is using metrics data defined in env `METRICS_IMAGE` as data source. You can build and push your own metrics data image with below command:
-
-_Note:_ Currently the data source image built with this method doesn't contain all the real data from metrics collector, the renamed metrics and recording rules will be missing.
+By default, `setup-metrics-collector.sh` is using metrics data defined in env `METRICS_IMAGE` as data source. If you want to build and publish your own metrics data image, you must log into an OCP cluster and then execute the following command:
 
 ```bash
-# METRICS_IMAGE=<example/metrics-data:latest> make all
+METRICS_IMAGE=<example/metrics-data:latest> ./generate-metrics-data.sh
 ```
 
 ## Setup metrics collector with your own metrics data source
@@ -63,5 +61,5 @@ _Note:_ Currently the data source image built with this method doesn't contain a
 Running below command to setup metrics collectors with your own data source:
 
 ```bash
-# METRICS_IMAGE=<example/metrics-data:latest> ./setup-metrics-collector.sh -n 10
+METRICS_IMAGE=<example/metrics-data:latest> ./setup-metrics-collector.sh -n 10
 ```
