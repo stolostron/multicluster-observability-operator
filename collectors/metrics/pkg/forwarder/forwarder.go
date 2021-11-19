@@ -67,6 +67,9 @@ type Config struct {
 	FromToken     string
 	FromTokenFile string
 	FromCAFile    string
+	ToUploadCA    string
+	ToUploadCert  string
+	ToUploadKey   string
 
 	AnonymizeLabels   []string
 	AnonymizeSalt     string
@@ -185,7 +188,7 @@ func createClients(cfg Config, interval time.Duration,
 
 	// Create the `toClient`.
 
-	toTransport, err := metricsclient.MTLSTransport(logger)
+	toTransport, err := metricsclient.MTLSTransport(logger, cfg.ToUploadCA, cfg.ToUploadCert, cfg.ToUploadKey)
 	if err != nil {
 		return nil, nil, transformer, errors.New(err.Error())
 	}

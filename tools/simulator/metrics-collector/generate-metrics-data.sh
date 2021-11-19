@@ -125,5 +125,7 @@ function push_metrics_data_image() {
 get_metrics_list
 get_recordingrules_list
 generate_timeseries
-build_metrics_data_image
-push_metrics_data_image
+if [[ -z "${IS_TIMESERIES_ONLY}" ]]; then
+    build_metrics_data_image
+    push_metrics_data_image
+fi

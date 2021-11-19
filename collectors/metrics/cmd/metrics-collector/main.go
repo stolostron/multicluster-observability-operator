@@ -30,6 +30,7 @@ import (
 
 func main() {
 	opt := &Options{
+		From:       "http://localhost:9090",
 		Listen:     "localhost:9002",
 		LimitBytes: 200 * 1024,
 		Rules:      []string{`{__name__="up"}`},
@@ -81,6 +82,21 @@ func main() {
 		"to-upload",
 		opt.ToUpload,
 		"A server endpoint to push metrics to.")
+	cmd.Flags().StringVar(
+		&opt.ToUploadCA,
+		"to-upload-ca",
+		opt.ToUploadCA,
+		"A file containing the CA certificate to verify the --to-upload URL in addition to the system certificates.")
+	cmd.Flags().StringVar(
+		&opt.ToUploadCert,
+		"to-upload-cert",
+		opt.ToUploadCert,
+		"A file containing the certificate to use to secure the request to the --to-upload URL.")
+	cmd.Flags().StringVar(
+		&opt.ToUploadKey,
+		"to-upload-key",
+		opt.ToUploadKey,
+		"A file containing the certificate key to use to secure the request to the --to-upload URL.")
 	cmd.Flags().DurationVar(
 		&opt.Interval,
 		"interval",
@@ -197,6 +213,9 @@ type Options struct {
 	FromCAFile    string
 	FromToken     string
 	FromTokenFile string
+	ToUploadCA    string
+	ToUploadCert  string
+	ToUploadKey   string
 
 	RenameFlag []string
 	Renames    map[string]string
@@ -330,6 +349,9 @@ func runMultiWorkers(o *Options) error {
 			ToUpload:                o.ToUpload,
 			FromCAFile:              o.FromCAFile,
 			FromTokenFile:           o.FromTokenFile,
+			ToUploadCA:              o.ToUploadCA,
+			ToUploadCert:            o.ToUploadCert,
+			ToUploadKey:             o.ToUploadKey,
 			Rules:                   o.Rules,
 			RenameFlag:              o.RenameFlag,
 			RecordingRules:          o.RecordingRules,
@@ -456,6 +478,9 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 		FromToken:     o.FromToken,
 		FromTokenFile: o.FromTokenFile,
 		FromCAFile:    o.FromCAFile,
+		ToUploadCA:    o.ToUploadCA,
+		ToUploadCert:  o.ToUploadCert,
+		ToUploadKey:   o.ToUploadKey,
 
 		AnonymizeLabels:   o.AnonymizeLabels,
 		AnonymizeSalt:     o.AnonymizeSalt,
