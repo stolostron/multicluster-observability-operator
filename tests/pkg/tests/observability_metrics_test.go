@@ -43,7 +43,7 @@ var _ = Describe("Observability:", func() {
 		Expect(clusterError).NotTo(HaveOccurred())
 	})
 
-	It("[P2][Sev2][Observability][Integration] Should have metrics which defined in custom metrics allowlist (metrics/g0)", func() {
+	It("[P2][Sev2][Observability][Integration] Customized metrics data are collected (metrics/g0)", func() {
 		By("Adding custom metrics allowlist configmap")
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/metrics/allowlist"})
 		Expect(err).ToNot(HaveOccurred())
@@ -62,7 +62,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][Observability][Integration] Should have no metrics which have been marked for deletion in names section (metrics/g0)", func() {
+	It("[P2][Sev2][Observability][Integration] Metrics removal from default allowlist (metrics/g0)", func() {
 		By("Waiting for deleted metrics disappear on grafana console")
 		Eventually(func() error {
 			for _, cluster := range clusters {
@@ -77,7 +77,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
 	})
 
-	It("[P2][Sev2][Observability][Integration] Should have no metrics which have been marked for deletion in matches section (metrics/g0)", func() {
+	It("[P2][Sev2][Observability][Integration] Metrics removal from default allowlist (metrics/g0)", func() {
 		By("Waiting for deleted metrics disappear on grafana console")
 		Eventually(func() error {
 			for _, cluster := range clusters {
@@ -92,7 +92,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
 	})
 
-	It("[P2][Sev2][Observability][Integration] Should have no metrics after custom metrics allowlist deleted (metrics/g0)", func() {
+	It("[P2][Sev2][Observability][Integration] Metrics removal from default allowlist (metrics/g0)", func() {
 		By("Deleting custom metrics allowlist configmap")
 		Eventually(func() error {
 			err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Delete(context.TODO(), allowlistCMname, metav1.DeleteOptions{})
