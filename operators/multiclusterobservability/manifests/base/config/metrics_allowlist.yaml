@@ -148,7 +148,7 @@ data:
       etcd_mvcc_db_total_size_in_bytes: etcd_debugging_mvcc_db_total_size_in_bytes
     rules:
       - record: apiserver_request_duration_seconds:histogram_quantile_99
-        expr: histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le)))
+        expr: histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le))
       - record: apiserver_request_duration_seconds:histogram_quantile_99:instance
         expr: histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le, verb, instance))
       - record: sum:apiserver_request_total:1h
