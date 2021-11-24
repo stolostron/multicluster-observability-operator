@@ -168,7 +168,10 @@ func PrintAllMCOPodsStatus(opt TestOptions) {
 
 		// only print not ready pod status
 		if !isReady {
-			klog.V(1).Infof("Pod <%s> is not <Ready> on <%s> status due to %#v\n", pod.Name, pod.Status.Phase, pod.Status)
+			klog.V(1).Infof("Pod <%s> is not <Ready> on <%s> status due to %#v\n",
+				pod.Name,
+				pod.Status.Phase,
+				pod.Status)
 		}
 	}
 }
@@ -192,7 +195,9 @@ func PrintMCOObject(opt TestOptions) {
 
 func PrintManagedClusterOBAObject(opt TestOptions) {
 	clientDynamic := GetKubeClientDynamic(opt, false)
-	oba, getErr := clientDynamic.Resource(NewMCOAddonGVR()).Namespace(MCO_ADDON_NAMESPACE).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
+	oba, getErr := clientDynamic.Resource(NewMCOAddonGVR()).
+		Namespace(MCO_ADDON_NAMESPACE).
+		Get(context.TODO(), "observability-addon", metav1.GetOptions{})
 	if getErr != nil {
 		klog.V(1).Infof("Failed to get oba object from managedcluster")
 		return
@@ -235,7 +240,10 @@ func PrintAllOBAPodsStatus(opt TestOptions) {
 
 		// only print not ready pod status
 		if !isReady {
-			klog.V(1).Infof("Pod <%s> is not <Ready> on <%s> status due to %#v\n", pod.Name, pod.Status.Phase, pod.Status)
+			klog.V(1).Infof("Pod <%s> is not <Ready> on <%s> status due to %#v\n",
+				pod.Name,
+				pod.Status.Phase,
+				pod.Status)
 		}
 	}
 }
@@ -768,7 +776,9 @@ func CreatePullSecret(opt TestOptions, mcoNs string) error {
 		Namespace: MCO_NAMESPACE,
 	}
 	klog.V(1).Infof("Create MCO pull secret")
-	_, err = clientKube.CoreV1().Secrets(pullSecret.Namespace).Create(context.TODO(), pullSecret, metav1.CreateOptions{})
+	_, err = clientKube.CoreV1().
+		Secrets(pullSecret.Namespace).
+		Create(context.TODO(), pullSecret, metav1.CreateOptions{})
 	return err
 }
 
@@ -850,7 +860,9 @@ func UninstallMCO(opt TestOptions) error {
 		opt.HubCluster.KubeContext)
 
 	klog.V(1).Infof("Delete MCO object storage secret")
-	deleteObjSecretErr := clientKube.CoreV1().Secrets(MCO_NAMESPACE).Delete(context.TODO(), OBJ_SECRET_NAME, metav1.DeleteOptions{})
+	deleteObjSecretErr := clientKube.CoreV1().
+		Secrets(MCO_NAMESPACE).
+		Delete(context.TODO(), OBJ_SECRET_NAME, metav1.DeleteOptions{})
 	if deleteObjSecretErr != nil {
 		return deleteObjSecretErr
 	}

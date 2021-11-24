@@ -64,7 +64,12 @@ var _ = Describe("Observability:", func() {
 
 			By("Waiting for MCO addon components scales to 0")
 			Eventually(func() error {
-				err, podList := utils.GetPodList(testOptions, false, MCO_ADDON_NAMESPACE, "component=metrics-collector")
+				err, podList := utils.GetPodList(
+					testOptions,
+					false,
+					MCO_ADDON_NAMESPACE,
+					"component=metrics-collector",
+				)
 				if len(podList.Items) != 0 || err != nil {
 					return fmt.Errorf("Failed to disable observability addon")
 				}
@@ -79,14 +84,21 @@ var _ = Describe("Observability:", func() {
 				return nil
 			}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
 		})
-		// it takes Prometheus 5m to notice a metric is not available - https://github.com/prometheus/prometheus/issues/1810
+		// it takes Prometheus 5m to notice a metric is not available -
+		// https://github.com/prometheus/prometheus/issues/1810
 		// the corret way is use timestamp, for example:
-		// timestamp(node_memory_MemAvailable_bytes{cluster="local-cluster"}) - timestamp(node_memory_MemAvailable_bytes{cluster="local-cluster"} offset 1m) > 59
+		// timestamp(node_memory_MemAvailable_bytes{cluster="local-cluster"}) -
+		// timestamp(node_memory_MemAvailable_bytes{cluster="local-cluster"} offset 1m) > 59
 		It("[Stable] Waiting for check no metric data in grafana console", func() {
 			Eventually(func() error {
 				for _, cluster := range clusters {
-					err, hasMetric := utils.ContainManagedClusterMetric(testOptions, `timestamp(node_memory_MemAvailable_bytes{cluster="`+cluster+`}) - timestamp(node_memory_MemAvailable_bytes{cluster=`+cluster+`"} offset 1m) > 59`, []string{`"__name__":"node_memory_MemAvailable_bytes"`})
-					if err != nil && !hasMetric && strings.Contains(err.Error(), "Failed to find metric name from response") {
+					err, hasMetric := utils.ContainManagedClusterMetric(
+						testOptions,
+						`timestamp(node_memory_MemAvailable_bytes{cluster="`+cluster+`}) - timestamp(node_memory_MemAvailable_bytes{cluster=`+cluster+`"} offset 1m) > 59`,
+						[]string{`"__name__":"node_memory_MemAvailable_bytes"`},
+					)
+					if err != nil && !hasMetric &&
+						strings.Contains(err.Error(), "Failed to find metric name from response") {
 						return nil
 					}
 				}
@@ -101,7 +113,12 @@ var _ = Describe("Observability:", func() {
 
 			By("Waiting for MCO addon components ready")
 			Eventually(func() bool {
-				err, podList := utils.GetPodList(testOptions, false, MCO_ADDON_NAMESPACE, "component=metrics-collector")
+				err, podList := utils.GetPodList(
+					testOptions,
+					false,
+					MCO_ADDON_NAMESPACE,
+					"component=metrics-collector",
+				)
 				if len(podList.Items) == 1 && err == nil {
 					return true
 				}
@@ -166,14 +183,20 @@ var _ = Describe("Observability:", func() {
 
 			By("Waiting for MCO addon components ready")
 			Eventually(func() bool {
-				err, podList := utils.GetPodList(testOptions, false, MCO_ADDON_NAMESPACE, "component=metrics-collector")
+				err, podList := utils.GetPodList(
+					testOptions,
+					false,
+					MCO_ADDON_NAMESPACE,
+					"component=metrics-collector",
+				)
 				if len(podList.Items) == 1 && err == nil {
 					return true
 				}
 				return false
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
 		})
-	})
+	},
+	)
 
 	JustAfterEach(func() {
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())

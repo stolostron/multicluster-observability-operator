@@ -566,8 +566,12 @@ func newReceiverControllerSpec(mco *mcov1beta2.MultiClusterObservability) obsv1a
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		receiveControllerSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ObservatoriumReceiveControllerCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ObservatoriumReceiveControllerMemoryRequets),
+				v1.ResourceName(v1.ResourceCPU): resource.MustParse(
+					mcoconfig.ObservatoriumReceiveControllerCPURequets,
+				),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(
+					mcoconfig.ObservatoriumReceiveControllerMemoryRequets,
+				),
 			},
 		}
 	}
@@ -656,7 +660,11 @@ func deleteStoreSts(cl client.Client, name string, oldNum int32, newNum int32) e
 		for i := newNum; i < oldNum; i++ {
 			stsName := fmt.Sprintf("%s-thanos-store-shard-%d", name, i)
 			found := &appsv1.StatefulSet{}
-			err := cl.Get(context.TODO(), types.NamespacedName{Name: stsName, Namespace: mcoconfig.GetDefaultNamespace()}, found)
+			err := cl.Get(
+				context.TODO(),
+				types.NamespacedName{Name: stsName, Namespace: mcoconfig.GetDefaultNamespace()},
+				found,
+			)
 			if err != nil {
 				if !errors.IsNotFound(err) {
 					log.Error(err, "Failed to get statefulset", "name", stsName)

@@ -51,7 +51,11 @@ func NewDeployer(client client.Client) *Deployer {
 func (d *Deployer) Deploy(obj *unstructured.Unstructured) error {
 	found := &unstructured.Unstructured{}
 	found.SetGroupVersionKind(obj.GroupVersionKind())
-	err := d.client.Get(context.TODO(), types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, found)
+	err := d.client.Get(
+		context.TODO(),
+		types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()},
+		found,
+	)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("Create", "Kind:", obj.GroupVersionKind(), "Name:", obj.GetName())

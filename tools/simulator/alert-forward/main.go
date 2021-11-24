@@ -170,11 +170,21 @@ func main() {
 
 	cmd.Flags().StringVar(&opts.amHost, "am-host", opts.amHost, "Host for the target alertmanager.")
 	cmd.Flags().StringVar(&opts.amScheme, "am-scheme", opts.amScheme, "Scheme for the target alertmanager.")
-	cmd.Flags().StringVar(&opts.amAPIVersion, "am-apiversion", opts.amAPIVersion, "API Version for the target alertmanager.")
-	cmd.Flags().StringVar(&opts.amAccessToken, "am-access-token", opts.amAccessToken, "The bearer token used to authenticate to the target alertmanager.")
-	cmd.Flags().StringVar(&opts.amAccessTokenFile, "am-access-token-file", opts.amAccessTokenFile, "File containing the bearer token used to authenticate to the target alertmanager.")
-	cmd.Flags().DurationVar(&opts.interval, "interval", opts.interval, "The interval between sending alert forward requests.")
-	cmd.Flags().IntVar(&opts.workers, "workers", opts.workers, "The number of concurrent goroutines that forward the alerts.")
+	cmd.Flags().StringVar(
+		&opts.amAPIVersion, "am-apiversion",
+		opts.amAPIVersion, "API Version for the target alertmanager.")
+	cmd.Flags().StringVar(
+		&opts.amAccessToken, "am-access-token",
+		opts.amAccessToken, "The bearer token used to authenticate to the target alertmanager.")
+	cmd.Flags().StringVar(
+		&opts.amAccessTokenFile, "am-access-token-file",
+		opts.amAccessTokenFile, "File containing the bearer token used to authenticate to the target alertmanager.")
+	cmd.Flags().DurationVar(
+		&opts.interval, "interval",
+		opts.interval, "The interval between sending alert forward requests.")
+	cmd.Flags().IntVar(
+		&opts.workers, "workers",
+		opts.workers, "The number of concurrent goroutines that forward the alerts.")
 	cmd.Flags().StringVar(&opts.alerts, "alerts", opts.alerts, "The sample of alerts.")
 	cmd.Flags().StringVar(&opts.alertsFile, "alerts-file", opts.alertsFile, "File containing the sample of alerts.")
 

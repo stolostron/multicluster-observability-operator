@@ -14,9 +14,13 @@ import (
 
 func CreateConfigMap(opt TestOptions, isHub bool, cm *corev1.ConfigMap) error {
 	clientKube := getKubeClient(opt, isHub)
-	found, err := clientKube.CoreV1().ConfigMaps(cm.ObjectMeta.Namespace).Get(context.TODO(), cm.ObjectMeta.Name, metav1.GetOptions{})
+	found, err := clientKube.CoreV1().
+		ConfigMaps(cm.ObjectMeta.Namespace).
+		Get(context.TODO(), cm.ObjectMeta.Name, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
-		_, err := clientKube.CoreV1().ConfigMaps(cm.ObjectMeta.Namespace).Create(context.TODO(), cm, metav1.CreateOptions{})
+		_, err := clientKube.CoreV1().
+			ConfigMaps(cm.ObjectMeta.Namespace).
+			Create(context.TODO(), cm, metav1.CreateOptions{})
 		if err == nil {
 			klog.V(1).Infof("configmap %s created", cm.ObjectMeta.Name)
 		}

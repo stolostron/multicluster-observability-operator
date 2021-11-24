@@ -53,7 +53,9 @@ var _ = Describe("Observability:", func() {
 	It("@BVT - [P1][Sev1][Observability][Stable] Should have the expected statefulsets (alert/g0)", func() {
 		By("Checking if STS: Alertmanager and observability-thanos-rule exist")
 		for _, label := range statefulsetLabels {
-			sts, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{LabelSelector: label})
+			sts, err := hubClient.AppsV1().
+				StatefulSets(MCO_NAMESPACE).
+				List(context.TODO(), metav1.ListOptions{LabelSelector: label})
 			Expect(err).NotTo(HaveOccurred())
 			for _, stsInfo := range (*sts).Items {
 				Expect(len(stsInfo.Spec.Template.Spec.Volumes)).Should(BeNumerically(">", 0))
@@ -65,7 +67,9 @@ var _ = Describe("Observability:", func() {
 
 				if strings.Contains(stsInfo.Name, "-thanos-rule") {
 					By("The statefulset: " + stsInfo.Name + " should have the appropriate configmap mounted")
-					Expect(stsInfo.Spec.Template.Spec.Volumes[0].ConfigMap.Name).To(Equal("thanos-ruler-default-rules"))
+					Expect(
+						stsInfo.Spec.Template.Spec.Volumes[0].ConfigMap.Name,
+					).To(Equal("thanos-ruler-default-rules"))
 				}
 			}
 		}
@@ -103,7 +107,8 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("@BVT - [P1][Sev1][Observability][Stable] Should have the alertmanager configured in rule (alert/g0)", func() {
-		By("Checking if --alertmanagers.url or --alertmanager.config or --alertmanagers.config-file is configured in rule")
+		By(`Checking if --alertmanagers.url or --alertmanager.config or 
+		    --alertmanagers.config-file is configured in rule`)
 		rules, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
 			LabelSelector: THANOS_RULE_LABEL,
 		})
@@ -141,9 +146,16 @@ var _ = Describe("Observability:", func() {
 		stsName := (*rules).Items[0].Name
 		oldSts, _ := utils.GetStatefulSet(testOptions, true, stsName, MCO_NAMESPACE)
 
-		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/alerts/custom_rules_valid"})
+		yamlB, err := kustomize.Render(
+			kustomize.Options{KustomizationPath: "../../../examples/alerts/custom_rules_valid"},
+		)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlB)).NotTo(HaveOccurred())
 
 		ThanosRuleRestarting := false
 		By("Wait for thanos rule pods are restarted and ready")
@@ -184,15 +196,27 @@ var _ = Describe("Observability:", func() {
 		By("Editing the secret, we should be able to add the third partying tools integrations")
 		secret := utils.CreateCustomAlertConfigYaml(testOptions.HubCluster.BaseDomain)
 
-		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, secret)).NotTo(HaveOccurred())
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				secret)).NotTo(HaveOccurred())
 		klog.V(3).Infof("Successfully modified the secret: alertmanager-config")
 	})
 
 	It("[P2][Sev2][Observability][Stable] Should have custom alert updated (alert/g0)", func() {
 		By("Updating custom alert rules")
 
-		yamlB, _ := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/alerts/custom_rules_invalid"})
-		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
+		yamlB, _ := kustomize.Render(
+			kustomize.Options{KustomizationPath: "../../../examples/alerts/custom_rules_invalid"},
+		)
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlB)).NotTo(HaveOccurred())
 
 		var labelName, labelValue string
 		labels, _ := kustomize.GetLabels(yamlB)
@@ -201,11 +225,14 @@ var _ = Describe("Observability:", func() {
 		}
 
 		By("Checking alert generated")
-		Eventually(func() error {
-			err, _ := utils.ContainManagedClusterMetric(testOptions, `ALERTS{`+labelName+`="`+labelValue+`"}`,
-				[]string{`"__name__":"ALERTS"`, `"` + labelName + `":"` + labelValue + `"`})
-			return err
-		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
+		Eventually(
+			func() error {
+				err, _ := utils.ContainManagedClusterMetric(testOptions, `ALERTS{`+labelName+`="`+labelValue+`"}`,
+					[]string{`"__name__":"ALERTS"`, `"` + labelName + `":"` + labelValue + `"`})
+				return err
+			},
+			EventuallyTimeoutMinute*5,
+			EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
 	})
 
 	It("[P2][Sev2][Observability][Stable] delete the customized rules (alert/g0)", func() {
@@ -220,7 +247,9 @@ var _ = Describe("Observability:", func() {
 
 		oldSts, _ := utils.GetStatefulSet(testOptions, true, stsName, MCO_NAMESPACE)
 		Eventually(func() error {
-			err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Delete(context.TODO(), configmap[1], metav1.DeleteOptions{})
+			err := hubClient.CoreV1().
+				ConfigMaps(MCO_NAMESPACE).
+				Delete(context.TODO(), configmap[1], metav1.DeleteOptions{})
 			return err
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 

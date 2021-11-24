@@ -371,7 +371,8 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	return err
 }
 
-// generateAmAccessorTokenSecret generates the secret that contains the access_token for the Alertmanager in the Hub cluster
+// generateAmAccessorTokenSecret generates the secret that contains the access_token
+// for the Alertmanager in the Hub cluster
 func generateAmAccessorTokenSecret(client client.Client) (*corev1.Secret, error) {
 	amAccessorSA := &corev1.ServiceAccount{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: config.AlertmanagerAccessorSAName,
@@ -390,8 +391,16 @@ func generateAmAccessorTokenSecret(client client.Client) (*corev1.Secret, error)
 	}
 
 	if tokenSrtName == "" {
-		log.Error(err, "no token secret for Alertmanager accessor serviceaccount", "name", config.AlertmanagerAccessorSAName)
-		return nil, fmt.Errorf("no token secret for Alertmanager accessor serviceaccount: %s", config.AlertmanagerAccessorSAName)
+		log.Error(
+			err,
+			"no token secret for Alertmanager accessor serviceaccount",
+			"name",
+			config.AlertmanagerAccessorSAName,
+		)
+		return nil, fmt.Errorf(
+			"no token secret for Alertmanager accessor serviceaccount: %s",
+			config.AlertmanagerAccessorSAName,
+		)
 	}
 
 	tokenSrt := &corev1.Secret{}

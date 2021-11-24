@@ -52,13 +52,23 @@ var _ = Describe("Observability:", func() {
 		By("Adding custom metrics allowlist configmap")
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/metrics/allowlist"})
 		Expect(err).ToNot(HaveOccurred())
-		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlB,
+			)).NotTo(HaveOccurred())
 
 		By("Waiting for new added metrics on grafana console")
 		Eventually(func() error {
 			for _, cluster := range clusters {
 				query := fmt.Sprintf("node_memory_Active_bytes{cluster=\"%s\"} offset 1m", cluster)
-				err, _ := utils.ContainManagedClusterMetric(testOptions, query, []string{`"__name__":"node_memory_Active_bytes"`})
+				err, _ := utils.ContainManagedClusterMetric(
+					testOptions,
+					query,
+					[]string{`"__name__":"node_memory_Active_bytes"`},
+				)
 				if err != nil {
 					return err
 				}
@@ -71,8 +81,11 @@ var _ = Describe("Observability:", func() {
 		By("Waiting for deleted metrics disappear on grafana console")
 		Eventually(func() error {
 			for _, cluster := range clusters {
-				query := fmt.Sprintf("timestamp(instance:node_num_cpu:sum{cluster=\"%s\"}) - timestamp(instance:node_num_cpu:sum{cluster=\"%s\"} offset 1m) > 59",
-					cluster, cluster)
+				query := fmt.Sprintf(
+					"timestamp(instance:node_num_cpu:sum{cluster=\"%s\"}) - timestamp(instance:node_num_cpu:sum{cluster=\"%s\"} offset 1m) > 59",
+					cluster,
+					cluster,
+				)
 				metricslistError, _ = utils.ContainManagedClusterMetric(testOptions, query, []string{})
 				if metricslistError == nil {
 					return nil
@@ -86,8 +99,11 @@ var _ = Describe("Observability:", func() {
 		By("Waiting for deleted metrics disappear on grafana console")
 		Eventually(func() error {
 			for _, cluster := range clusters {
-				query := fmt.Sprintf("timestamp(go_goroutines{cluster=\"%s\"}) - timestamp(go_goroutines{cluster=\"%s\"} offset 1m) > 59",
-					cluster, cluster)
+				query := fmt.Sprintf(
+					"timestamp(go_goroutines{cluster=\"%s\"}) - timestamp(go_goroutines{cluster=\"%s\"} offset 1m) > 59",
+					cluster,
+					cluster,
+				)
 				metricslistError, _ = utils.ContainManagedClusterMetric(testOptions, query, []string{})
 				if metricslistError == nil {
 					return nil
@@ -100,15 +116,20 @@ var _ = Describe("Observability:", func() {
 	It("[P2][Sev2][Observability][Integration] Should have no metrics after custom metrics allowlist deleted (metrics/g0)", func() {
 		By("Deleting custom metrics allowlist configmap")
 		Eventually(func() error {
-			err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Delete(context.TODO(), allowlistCMname, metav1.DeleteOptions{})
+			err := hubClient.CoreV1().
+				ConfigMaps(MCO_NAMESPACE).
+				Delete(context.TODO(), allowlistCMname, metav1.DeleteOptions{})
 			return err
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 
 		By("Waiting for new added metrics disappear on grafana console")
 		Eventually(func() error {
 			for _, cluster := range clusters {
-				query := fmt.Sprintf("timestamp(node_memory_Active_bytes{cluster=\"%s\"}) - timestamp(node_memory_Active_bytes{cluster=\"%s\"} offset 1m) > 59",
-					cluster, cluster)
+				query := fmt.Sprintf(
+					"timestamp(node_memory_Active_bytes{cluster=\"%s\"}) - timestamp(node_memory_Active_bytes{cluster=\"%s\"} offset 1m) > 59",
+					cluster,
+					cluster,
+				)
 				metricslistError, _ = utils.ContainManagedClusterMetric(testOptions, query, []string{})
 				if metricslistError == nil {
 					return nil

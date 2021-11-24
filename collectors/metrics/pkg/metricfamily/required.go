@@ -31,7 +31,12 @@ func (t requireLabel) Transform(family *clientmodel.MetricFamily) (bool, error) 
 				}
 				if label.GetName() == k {
 					if label.GetValue() != v {
-						return false, fmt.Errorf("expected label %s to have value %s instead of %s", label.GetName(), v, label.GetValue())
+						return false, fmt.Errorf(
+							"expected label %s to have value %s instead of %s",
+							label.GetName(),
+							v,
+							label.GetValue(),
+						)
 					}
 					continue Metrics
 				}

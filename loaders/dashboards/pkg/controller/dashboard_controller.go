@@ -299,24 +299,25 @@ func updateDashboard(old, new interface{}, overwrite bool) {
 			} else {
 				klog.Infof("failed to create/update: %v", respStatusCode)
 			}
-		} else {
-			if dashboard["title"] == homeDashboardTitle {
-				// get "id" value from response
-				re := regexp.MustCompile("\"id\":(\\d+),")
-				result := re.FindSubmatch(body)
-				if len(result) != 2 {
-					klog.Infof("failed to retrieve dashboard id")
+			return
+		}
+
+		if dashboard["title"] == homeDashboardTitle {
+			// get "id" value from response
+			re := regexp.MustCompile("\"id\":(\\d+),")
+			result := re.FindSubmatch(body)
+			if len(result) != 2 {
+				klog.Infof("failed to retrieve dashboard id")
+			} else {
+				id, err := strconv.Atoi(strings.Trim(string(result[1]), " "))
+				if err != nil {
+					klog.Error(err, "failed to parse dashboard id")
 				} else {
-					id, err := strconv.Atoi(strings.Trim(string(result[1]), " "))
-					if err != nil {
-						klog.Error(err, "failed to parse dashboard id")
-					} else {
-						setHomeDashboard(id)
-					}
+					setHomeDashboard(id)
 				}
 			}
-			klog.Info("Dashboard created/updated")
 		}
+		klog.Info("Dashboard created/updated")
 	}
 
 	folderTitle = getDashboardCustomFolderTitle(old)
