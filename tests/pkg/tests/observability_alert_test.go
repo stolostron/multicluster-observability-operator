@@ -40,7 +40,7 @@ var _ = Describe("Observability:", func() {
 	}
 	secret := "alertmanager-config"
 
-	It("@BVT - [P1][Sev1][Observability][Stable] Should have the expected statefulsets (alert/g0)", func() {
+	It("@BVT - [P1][Sev1][Observability][Stable] Verify alert is created and received - Should have the expected statefulsets (alert/g0)", func() {
 		By("Checking if STS: Alertmanager and observability-thanos-rule exist")
 		for _, label := range statefulsetLabels {
 			sts, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{LabelSelector: label})
@@ -83,7 +83,7 @@ var _ = Describe("Observability:", func() {
 		klog.V(3).Infof("Configmap %s does not exist", configmap[1])
 	})
 
-	It("@BVT - [P1][Sev1][Observability][Stable] Should have the expected secret (alert/g0)", func() {
+	It("@BVT - [P1][Sev1][Observability][Stable] Verify alert is created and received - Should have the expected secret (alert/g0)", func() {
 		By("Checking if SECRETS: alertmanager-config is existed")
 		secret, err := hubClient.CoreV1().Secrets(MCO_NAMESPACE).Get(context.TODO(), secret, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
@@ -92,7 +92,7 @@ var _ = Describe("Observability:", func() {
 		klog.V(3).Infof("Successfully got secret: %s", secret.GetName())
 	})
 
-	It("@BVT - [P1][Sev1][Observability][Stable] Should have the alertmanager configured in rule (alert/g0)", func() {
+	It("@BVT - [P1][Sev1][Observability][Stable] Verify alert is created and received - Should have the alertmanager configured in rule (alert/g0)", func() {
 		By("Checking if --alertmanagers.url or --alertmanager.config or --alertmanagers.config-file is configured in rule")
 		rules, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
 			LabelSelector: THANOS_RULE_LABEL,
