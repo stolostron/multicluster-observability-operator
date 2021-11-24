@@ -8,6 +8,7 @@ resources:
 - service.yaml
 - dash-acm-optimization-overview.yaml
 - dash-acm-clusters-overview.yaml
+- dash-acm-clusters-overview-ocp311.yaml
 - dash-k8s-etcd.yaml
 - dash-k8s-apiserver.yaml
 - dash-k8s-networking-cluster.yaml

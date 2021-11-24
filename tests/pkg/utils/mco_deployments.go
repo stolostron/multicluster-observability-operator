@@ -15,6 +15,7 @@ import (
 func GetDeployment(opt TestOptions, isHub bool, name string,
 	namespace string) (*appv1.Deployment, error) {
 	clientKube := getKubeClient(opt, isHub)
+	klog.V(1).Infof("Get deployment <%v> in namespace <%v>, isHub: <%v>", name, namespace, isHub)
 	dep, err := clientKube.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("Failed to get deployment %s in namespace %s due to %v", name, namespace, err)
@@ -25,6 +26,7 @@ func GetDeployment(opt TestOptions, isHub bool, name string,
 func GetDeploymentWithLabel(opt TestOptions, isHub bool, label string,
 	namespace string) (*appv1.DeploymentList, error) {
 	clientKube := getKubeClient(opt, isHub)
+	klog.V(1).Infof("Get get deployment with label selector <%v> in namespace <%v>, isHub: <%v>", label, namespace, isHub)
 	deps, err := clientKube.AppsV1().Deployments(namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: label,
 	})

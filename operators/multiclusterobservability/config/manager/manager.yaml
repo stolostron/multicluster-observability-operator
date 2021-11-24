@@ -53,6 +53,10 @@ spec:
             port: 8081
           initialDelaySeconds: 5
           periodSeconds: 10
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "/usr/local/bin/prestop.sh"]
         resources:
           limits:
             cpu: 600m

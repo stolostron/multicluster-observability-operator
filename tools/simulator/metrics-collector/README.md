@@ -21,24 +21,17 @@ You must meet the following requirements to setup metrics collector:
 ### Setup metrics collector
 You can run `setup-metrics-collector.sh` following with a number to setup multiple metrics collector.
 
-For example, setup 10 metrics collectors with the following command:
+For example, setup 2 metrics collectors with 100 workers by the following command:
 ```
-# ./setup-metrics-collector.sh 10
+# ./setup-metrics-collector.sh 2 100
 ```
 Check if all the metrics collector running successfully in your cluster:
 ```
 # oc get pods --all-namespaces | grep simulate-managed-cluster
 simulate-managed-cluster1                          metrics-collector-deployment-7d69d9f897-xn8vz                    1/1     Running            0          22h
-simulate-managed-cluster10                         metrics-collector-deployment-6698466fd8-9zxq2                    1/1     Running            0          22h
 simulate-managed-cluster2                          metrics-collector-deployment-67844bfc59-lwchn                    1/1     Running            0          22h
-simulate-managed-cluster3                          metrics-collector-deployment-56bc9485b4-gsxm9                    1/1     Running            0          22h
-simulate-managed-cluster4                          metrics-collector-deployment-85d7dd974d-hcm6n                    1/1     Running            0          22h
-simulate-managed-cluster5                          metrics-collector-deployment-76c9756648-pcw44                    1/1     Running            0          22h
-simulate-managed-cluster6                          metrics-collector-deployment-7557ccb5c6-l7m44                    1/1     Running            0          22h
-simulate-managed-cluster7                          metrics-collector-deployment-6994d95664-kb772                    1/1     Running            0          22h
-simulate-managed-cluster8                          metrics-collector-deployment-6c8794b786-jm52h                    1/1     Running            0          22h
-simulate-managed-cluster9                          metrics-collector-deployment-5fdcc96d99-gqwqf                    1/1     Running            0          22h
 ```
+It simulates 200 metrics collectors to push the data into hub thanos.
 
 > Note: if you want the simulated metrics-collector be scheduled to master node, so that more simulated metrics-collectors can be deployed, you can set the environment variable `ALLOW_SCHEDULED_TO_MASTER` to be `true` before executing the setup script.
 

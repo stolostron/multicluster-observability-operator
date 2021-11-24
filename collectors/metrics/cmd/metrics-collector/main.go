@@ -15,12 +15,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/oklog/run"
 	"github.com/prometheus/common/expfmt"
 	"github.com/spf13/cobra"
-
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"k8s.io/apimachinery/pkg/util/uuid"
 
 	"github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/forwarder"
 	collectorhttp "github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/http"
@@ -34,6 +34,7 @@ func main() {
 		LimitBytes: 200 * 1024,
 		Rules:      []string{`{__name__="up"}`},
 		Interval:   4*time.Minute + 30*time.Second,
+		WorkerNum:  1,
 	}
 	cmd := &cobra.Command{
 		Short:         "Federate Prometheus via push",
@@ -44,6 +45,7 @@ func main() {
 		},
 	}
 
+	cmd.Flags().Int64Var(&opt.WorkerNum, "worker-number", opt.WorkerNum, "The number of client runs in the simulate environment.")
 	cmd.Flags().StringVar(&opt.Listen, "listen", opt.Listen, "A host:port to listen on for health and metrics.")
 	cmd.Flags().StringVar(&opt.From, "from", opt.From, "The Prometheus server to federate from.")
 	cmd.Flags().StringVar(&opt.FromToken, "from-token", opt.FromToken, "A bearer token to use when authenticating to the source Prometheus server.")
@@ -131,17 +133,157 @@ type Options struct {
 
 	// simulation file
 	SimulatedTimeseriesFile string
+
+	// how many threads are running
+	// for production, it is always 1
+	WorkerNum int64
 }
 
 func (o *Options) Run() error {
+
+	var g run.Group
+
+	err, cfg := initConfig(o)
+	if err != nil {
+		return err
+	}
+
+	worker, err := forwarder.New(*cfg)
+	if err != nil {
+		return fmt.Errorf("failed to configure metrics collector: %v", err)
+	}
+
+	logger.Log(o.Logger, logger.Info, "msg", "starting metrics collector", "from", o.From, "to", o.ToUpload, "listen", o.Listen)
+
+	{
+		// Execute the worker's `Run` func.
+		ctx, cancel := context.WithCancel(context.Background())
+		g.Add(func() error {
+			worker.Run(ctx)
+			return nil
+		}, func(error) {
+			cancel()
+		})
+	}
+
+	{
+		// Notify and reload on SIGHUP.
+		hup := make(chan os.Signal, 1)
+		signal.Notify(hup, syscall.SIGHUP)
+		cancel := make(chan struct{})
+		g.Add(func() error {
+			for {
+				select {
+				case <-hup:
+					if err := worker.Reconfigure(*cfg); err != nil {
+						logger.Log(o.Logger, logger.Error, "msg", "failed to reload config", "err", err)
+						return err
+					}
+				case <-cancel:
+					return nil
+				}
+			}
+		}, func(error) {
+			close(cancel)
+		})
+	}
+
+	if len(o.Listen) > 0 {
+		handlers := http.NewServeMux()
+		collectorhttp.DebugRoutes(handlers)
+		collectorhttp.HealthRoutes(handlers)
+		collectorhttp.MetricRoutes(handlers)
+		collectorhttp.ReloadRoutes(handlers, func() error {
+			return worker.Reconfigure(*cfg)
+		})
+		handlers.Handle("/federate", serveLastMetrics(o.Logger, worker))
+		l, err := net.Listen("tcp", o.Listen)
+		if err != nil {
+			return fmt.Errorf("failed to listen: %v", err)
+		}
+
+		{
+			// Run the HTTP server.
+			g.Add(func() error {
+				if err := http.Serve(l, handlers); err != nil && err != http.ErrServerClosed {
+					logger.Log(o.Logger, logger.Error, "msg", "server exited unexpectedly", "err", err)
+					return err
+				}
+				return nil
+			}, func(error) {
+				err := l.Close()
+				if err != nil {
+					logger.Log(o.Logger, logger.Error, "msg", "failed to close listener", "err", err)
+				}
+			})
+		}
+	}
+
+	err = runMultiWorkers(o)
+	if err != nil {
+		return err
+	}
+
+	return g.Run()
+}
+
+func runMultiWorkers(o *Options) error {
+	for i := 1; i < int(o.WorkerNum); i++ {
+		opt := &Options{
+			From:                    o.From,
+			ToUpload:                o.ToUpload,
+			FromCAFile:              o.FromCAFile,
+			FromTokenFile:           o.FromTokenFile,
+			Rules:                   o.Rules,
+			RenameFlag:              o.RenameFlag,
+			RecordingRules:          o.RecordingRules,
+			Interval:                o.Interval,
+			Labels:                  map[string]string{},
+			SimulatedTimeseriesFile: o.SimulatedTimeseriesFile,
+			Logger:                  o.Logger,
+		}
+		for _, flag := range o.LabelFlag {
+			values := strings.SplitN(flag, "=", 2)
+			if len(values) != 2 {
+				return fmt.Errorf("--label must be of the form key=value: %s", flag)
+			}
+			if values[0] == "cluster" {
+				values[1] += "-" + fmt.Sprint(i)
+			}
+			if values[0] == "clusterID" {
+				values[1] = string(uuid.NewUUID())
+			}
+			opt.Labels[values[0]] = values[1]
+		}
+		err, forwardCfg := initConfig(opt)
+		if err != nil {
+			return err
+		}
+
+		forwardWorker, err := forwarder.New(*forwardCfg)
+		if err != nil {
+			return fmt.Errorf("failed to configure metrics collector: %v", err)
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			forwardWorker.Run(ctx)
+			cancel()
+		}()
+
+	}
+	return nil
+}
+
+func initConfig(o *Options) (error, *forwarder.Config) {
 	if len(o.From) == 0 {
-		return fmt.Errorf("you must specify a Prometheus server to federate from (e.g. http://localhost:9090)")
+		return fmt.Errorf("you must specify a Prometheus server to federate from (e.g. http://localhost:9090)"), nil
 	}
 
 	for _, flag := range o.LabelFlag {
 		values := strings.SplitN(flag, "=", 2)
 		if len(values) != 2 {
-			return fmt.Errorf("--label must be of the form key=value: %s", flag)
+			return fmt.Errorf("--label must be of the form key=value: %s", flag), nil
 		}
 		if o.Labels == nil {
 			o.Labels = make(map[string]string)
@@ -155,7 +297,7 @@ func (o *Options) Run() error {
 		}
 		values := strings.SplitN(flag, "=", 2)
 		if len(values) != 2 {
-			return fmt.Errorf("--rename must be of the form OLD_NAME=NEW_NAME: %s", flag)
+			return fmt.Errorf("--rename must be of the form OLD_NAME=NEW_NAME: %s", flag), nil
 		}
 		if o.Renames == nil {
 			o.Renames = make(map[string]string)
@@ -165,7 +307,7 @@ func (o *Options) Run() error {
 
 	from, err := url.Parse(o.From)
 	if err != nil {
-		return fmt.Errorf("--from is not a valid URL: %v", err)
+		return fmt.Errorf("--from is not a valid URL: %v", err), nil
 	}
 	from.Path = strings.TrimRight(from.Path, "/")
 	if len(from.Path) == 0 {
@@ -176,12 +318,12 @@ func (o *Options) Run() error {
 	if len(o.ToUpload) > 0 {
 		toUpload, err = url.Parse(o.ToUpload)
 		if err != nil {
-			return fmt.Errorf("--to-upload is not a valid URL: %v", err)
+			return fmt.Errorf("--to-upload is not a valid URL: %v", err), nil
 		}
 	}
 
 	if toUpload == nil {
-		return fmt.Errorf("--to-upload must be specified")
+		return fmt.Errorf("--to-upload must be specified"), nil
 	}
 
 	var transformer metricfamily.MultiTransformer
@@ -212,7 +354,7 @@ func (o *Options) Run() error {
 	transformer.With(metricfamily.TransformerFunc(metricfamily.PackMetrics))
 	transformer.With(metricfamily.TransformerFunc(metricfamily.SortMetrics))
 
-	cfg := forwarder.Config{
+	return nil, &forwarder.Config{
 		From:          from,
 		ToUpload:      toUpload,
 		FromToken:     o.FromToken,
@@ -233,80 +375,6 @@ func (o *Options) Run() error {
 		Logger:                  o.Logger,
 		SimulatedTimeseriesFile: o.SimulatedTimeseriesFile,
 	}
-
-	worker, err := forwarder.New(cfg)
-	if err != nil {
-		return fmt.Errorf("failed to configure metrics collector: %v", err)
-	}
-
-	logger.Log(o.Logger, logger.Info, "msg", "starting metrics collector", "from", o.From, "to", o.ToUpload, "listen", o.Listen)
-
-	var g run.Group
-	{
-		// Execute the worker's `Run` func.
-		ctx, cancel := context.WithCancel(context.Background())
-		g.Add(func() error {
-			worker.Run(ctx)
-			return nil
-		}, func(error) {
-			cancel()
-		})
-	}
-
-	{
-		// Notify and reload on SIGHUP.
-		hup := make(chan os.Signal, 1)
-		signal.Notify(hup, syscall.SIGHUP)
-		cancel := make(chan struct{})
-		g.Add(func() error {
-			for {
-				select {
-				case <-hup:
-					if err := worker.Reconfigure(cfg); err != nil {
-						logger.Log(o.Logger, logger.Error, "msg", "failed to reload config", "err", err)
-						return err
-					}
-				case <-cancel:
-					return nil
-				}
-			}
-		}, func(error) {
-			close(cancel)
-		})
-	}
-
-	if len(o.Listen) > 0 {
-		handlers := http.NewServeMux()
-		collectorhttp.DebugRoutes(handlers)
-		collectorhttp.HealthRoutes(handlers)
-		collectorhttp.MetricRoutes(handlers)
-		collectorhttp.ReloadRoutes(handlers, func() error {
-			return worker.Reconfigure(cfg)
-		})
-		handlers.Handle("/federate", serveLastMetrics(o.Logger, worker))
-		l, err := net.Listen("tcp", o.Listen)
-		if err != nil {
-			return fmt.Errorf("failed to listen: %v", err)
-		}
-
-		{
-			// Run the HTTP server.
-			g.Add(func() error {
-				if err := http.Serve(l, handlers); err != nil && err != http.ErrServerClosed {
-					logger.Log(o.Logger, logger.Error, "msg", "server exited unexpectedly", "err", err)
-					return err
-				}
-				return nil
-			}, func(error) {
-				err := l.Close()
-				if err != nil {
-					logger.Log(o.Logger, logger.Error, "msg", "failed to close listener", "err", err)
-				}
-			})
-		}
-	}
-
-	return g.Run()
 }
 
 // serveLastMetrics retrieves the last set of metrics served

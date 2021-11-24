@@ -6,6 +6,7 @@ package utils
 import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog"
 )
 
 func getKubeClient(opt TestOptions, isHub bool) kubernetes.Interface {
@@ -18,8 +19,7 @@ func getKubeClient(opt TestOptions, isHub bool) kubernetes.Interface {
 			opt.ManagedClusters[0].ClusterServerURL,
 			opt.ManagedClusters[0].KubeConfig,
 			"")
-		// use the default context as workaround
-		//			opt.ManagedClusters[0].KubeContext)
+		klog.V(1).Infof("New kubeclient for managedcluster <%v>", opt.ManagedClusters[0].Name)
 	}
 	return clientKube
 }
