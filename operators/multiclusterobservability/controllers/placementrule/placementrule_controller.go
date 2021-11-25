@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -57,6 +58,7 @@ var (
 	isClusterManagementAddonCreated = false
 	isplacementControllerRunnning   = false
 	managedClusterList              = map[string]string{}
+	managedClusterListMutex         = &sync.RWMutex{}
 )
 
 // PlacementRuleReconciler reconciles a PlacementRule object
@@ -300,6 +302,7 @@ func createAllRelatedRes(
 	}
 
 	failedCreateManagedClusterRes := false
+	managedClusterListMutex.RLock()
 	for managedCluster, openshiftVersion := range managedClusterList {
 		currentClusters = commonutil.Remove(currentClusters, managedCluster)
 		// enter the loop for the following reconcile requests:
@@ -336,6 +339,7 @@ func createAllRelatedRes(
 			}
 		}
 	}
+	managedClusterListMutex.RUnlock()
 
 	failedDeleteOba := false
 	for _, cluster := range currentClusters {
@@ -445,6 +449,8 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 }
 
 func updateManagedClusterList(obj client.Object) {
+	managedClusterListMutex.Lock()
+	defer managedClusterListMutex.Unlock()
 	if version, ok := obj.GetLabels()["openshiftVersion"]; ok {
 		managedClusterList[obj.GetName()] = version
 	} else {
@@ -468,8 +474,12 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				if e.ObjectNew.GetDeletionTimestamp() != nil {
 					log.Info("managedcluster is in terminating state", "managedCluster", e.ObjectNew.GetName())
+					managedClusterListMutex.Lock()
 					delete(managedClusterList, e.ObjectNew.GetName())
+					managedClusterListMutex.Unlock()
+					managedClusterImageRegistryMutex.Lock()
 					delete(managedClusterImageRegistry, e.ObjectNew.GetName())
+					managedClusterImageRegistryMutex.Unlock()
 				} else {
 					updateManagedClusterList(e.ObjectNew)
 					updateManagedClusterImageRegistry(e.ObjectNew)
@@ -480,8 +490,12 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			log.Info("DeleteFunc", "managedCluster", e.Object.GetName())
+			managedClusterListMutex.Lock()
 			delete(managedClusterList, e.Object.GetName())
+			managedClusterListMutex.Unlock()
+			managedClusterImageRegistryMutex.Lock()
 			delete(managedClusterImageRegistry, e.Object.GetName())
+			managedClusterImageRegistryMutex.Unlock()
 			return true
 		},
 	}

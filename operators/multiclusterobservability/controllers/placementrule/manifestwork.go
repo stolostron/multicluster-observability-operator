@@ -298,7 +298,9 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	}
 
 	// replace the managedcluster image with the custom registry
+	managedClusterImageRegistryMutex.RLock()
 	_, hasCustomRegistry := managedClusterImageRegistry[clusterName]
+	managedClusterImageRegistryMutex.RUnlock()
 	imageRegistryClient := NewImageRegistryClient(c)
 
 	// inject the endpoint operator deployment
