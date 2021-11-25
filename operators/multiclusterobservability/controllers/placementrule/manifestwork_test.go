@@ -285,7 +285,9 @@ func TestManifestWork(t *testing.T) {
 	// set the default pull secret
 	pullSecret = newPullSecret("multiclusterhub-operator-pull-secret", namespace, []byte("default"))
 	// config the managedcluster to use the custom registry
+	managedClusterImageRegistryMutex.Lock()
 	managedClusterImageRegistry[clusterName] = "open-cluster-management.io/image-registry=" + namespace + ".image_registry"
+	managedClusterImageRegistryMutex.Unlock()
 
 	works, crdWork, _, err = generateGlobalManifestResources(c, newTestMCO())
 	if err != nil {
