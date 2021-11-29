@@ -18,7 +18,7 @@ func getKubeClient(opt TestOptions, isHub bool) kubernetes.Interface {
 		clientKube = NewKubeClient(
 			opt.ManagedClusters[0].ClusterServerURL,
 			opt.ManagedClusters[0].KubeConfig,
-			"")
+			opt.ManagedClusters[0].KubeContext)
 		klog.V(1).Infof("New kubeclient for managedcluster <%v>", opt.ManagedClusters[0].Name)
 	}
 	return clientKube
@@ -31,7 +31,7 @@ func GetKubeClientDynamic(opt TestOptions, isHub bool) dynamic.Interface {
 	if !isHub && len(opt.ManagedClusters) > 0 {
 		url = opt.ManagedClusters[0].ClusterServerURL
 		kubeConfig = opt.ManagedClusters[0].KubeConfig
-		kubeContext = ""
+		kubeContext = opt.ManagedClusters[0].KubeContext
 	}
 
 	config, err := LoadConfig(url, kubeConfig, kubeContext)
