@@ -549,7 +549,11 @@ func newQuerySpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QuerySp
 	querySpec := obsv1alpha1.QuerySpec{}
 	querySpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ThanosQuery, mco.Spec.AdvancedConfig)
 	querySpec.ServiceMonitor = true
-	querySpec.LookbackDelta = fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval*2)
+	// only set lookback-delta when the scrape interval * 2 is larger than 5 minute,
+	// otherwise default value(5m) will be used.
+	if mco.Spec.ObservabilityAddonSpec.Interval*2 > 300 {
+		querySpec.LookbackDelta = fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval*2)
+	}
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		querySpec.Resources = mcoconfig.GetResources(config.ThanosQuery, mco.Spec.AdvancedConfig)
 	}
