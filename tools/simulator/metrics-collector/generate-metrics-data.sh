@@ -20,10 +20,12 @@ TIME_SERIES_OUT=${WORKDIR}/timeseries.txt
 METRICS_ALLOW_LIST_URL=${METRICS_ALLOW_LIST_URL:-https://raw.githubusercontent.com/open-cluster-management/multicluster-observability-operator/main/operators/multiclusterobservability/manifests/base/config/metrics_allowlist.yaml}
 METRICS_IMAGE=${METRICS_IMAGE-quay.io/ocm-observability/metrics-data:2.4.0}
 
-# check docker
-if ! command -v docker &> /dev/null; then
-    echo "docker must be installed to run this script."
-    exit 1
+if [[ -z "${IS_TIMESERIES_ONLY}" ]]; then
+    # check docker
+    if ! command -v docker &> /dev/null; then
+      echo "docker must be installed to run this script."
+      exit 1
+    fi
 fi
 
 # install kubectl
