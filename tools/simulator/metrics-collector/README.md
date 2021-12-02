@@ -9,13 +9,12 @@ _Note:_ this simulator is for testing purpose only.
 You must meet the following requirements to setup metrics collector:
 
 - ACM 2.1+ available
-- `MultiClusterObservability` instance available and the following pods are running in `open-cluster-management-addon-observability` namespace:
+- `MultiClusterObservability` instance available and `metrics-collector` pod is running in `open-cluster-management-addon-observability` namespace:
 
 	```
-	$ oc get po -n open-cluster-management-addon-observability
-	NAME                                               READY   STATUS    RESTARTS   AGE
-	endpoint-observability-operator-7f8f949bc8-trwzh   2/2     Running   0          118m
-	metrics-collector-deployment-74cbf5896f-jhg6v      1/1     Running   0          111m
+	$ oc get pod -n open-cluster-management-addon-observability -l component=metrics-collector
+	NAME                                           READY   STATUS    RESTARTS   AGE
+	metrics-collector-deployment-695c5fbd8-l2m89   1/1     Running   0          5m
 	```
 
 ## How to use
@@ -41,27 +40,29 @@ oc -n open-cluster-management-addon-observability get secret observability-contr
 oc -n open-cluster-management-addon-observability get secret observability-controller-open-cluster-management.io-observability-signer-client-cert -o jsonpath="{.data.tls\.key}" | base64 -d > tls.key
 ```
 
-4. Retrieve the simulated metrics by running the following command:
-
-```
-IS_TIMESERIES_ONLY=true ./generate-metrics-data.sh
-```
-
-_Note:_ you should find a file named `timeseries.txt` in current directory after running the command above that contains the metrics, you can generate simulated metrics in any connected OCP cluster.
-
-5. Set the name and ID of simulated managed cluster, for example:
+4. Set the name and ID of simulated managed cluster, for example:
 
 ```
 export SIMULATED_MANAGED_CLUSTER_NAME=simulated-sno-1
 export SIMULATED_MANAGED_CLUSTER_ID=2b4bfc20-110e-4c4e-aa42-d97ac608c5e8
 ```
 
-6. Run the metrics-collector to remotely write simulated metrics to the ACM hub by running the following command:
+5. Retrieve the simulated metrics by executing the script `generate-metrics-data.sh`. For example, log into an SNO cluster and execute the following command to get the metrics for SNO cluster:
+
+
+```
+IS_TIMESERIES_ONLY=true ./generate-metrics-data.sh
+```
+
+> _Note:_ we should find a file named `timeseries.txt` in current directory after running the command above that contains the metrics, you can generate simulated metrics in any connected OCP cluster.
+
+
+6. Run the metrics-collector to remotely write simulated SNO metrics to the ACM hub by running the following command:
 
 ```
 $ export STANDALONE=true && go run ../../../collectors/metrics/cmd/metrics-collector/main.go \
 	--to-upload https://${TO_UPLOAD_HOST}/api/metrics/v1/default/api/v1/receive \
-        --to-upload-ca ./ca.crt \
+	--to-upload-ca ./ca.crt \
 	--to-upload-cert ./tls.crt \
 	--to-upload-key ./tls.key \
 	--simulated-timeseries-file=./timeseries.txt \
@@ -76,6 +77,7 @@ level=info caller=logger.go:45 ts=2021-11-19T07:58:39.267185279Z component=forwa
 ```
 
 7. Optionally specify the number of concurrent workers that push the metrics by `--worker-number` flag, the default value is `1`.
+
 8. Optionally specify the interval of pushing the metrics by `--interval` flag, the default value is `300s`.
 
 ### Run as a Deployment inside the cluster
