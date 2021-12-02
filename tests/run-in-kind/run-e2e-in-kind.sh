@@ -7,10 +7,8 @@ WORKDIR=${ROOTDIR}/tests/run-in-kind
 
 export IS_KIND_ENV=true
 
-if [ "${OPENSHIFT_CI}" == "true" ]; then
-    # shellcheck disable=SC1091
-    source ${WORKDIR}/image_ref_env.sh
-fi
+# shellcheck disable=SC1091
+source ${WORKDIR}/env.sh
 
 setup_kubectl_command() {
     if ! command -v kubectl >/dev/null 2>&1; then 

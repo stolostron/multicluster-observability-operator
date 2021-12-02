@@ -40,12 +40,12 @@ unit-tests-collectors:
 
 .PHONY: e2e-tests
 e2e-tests:
-	@echo "Running e2e testings ..."
+	@echo "Running e2e tests ..."
 	@./cicd-scripts/run-e2e-tests.sh
 
 .PHONY: e2e-tests-in-kind
 e2e-tests-in-kind:
-	@echo "Running e2e testings in KinD cluster..."
+	@echo "Running e2e tests in KinD cluster..."
 ifeq ($(OPENSHIFT_CI),true)
 	@./cicd-scripts/run-e2e-in-kind-via-prow.sh
 else

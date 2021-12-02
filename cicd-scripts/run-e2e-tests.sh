@@ -76,8 +76,8 @@ if command -v ginkgo &> /dev/null; then
     GINKGO_CMD=ginkgo
 else
     # just for Prow KinD vm
-    go get -u github.com/onsi/ginkgo/ginkgo
-    GINKGO_CMD="/home/ec2-user/go/bin/ginkgo"
+    go install github.com/onsi/ginkgo/ginkgo@latest
+    GINKGO_CMD="$(go env GOPATH)/bin/ginkgo"
 fi
 ${GINKGO_CMD} -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=3
 
