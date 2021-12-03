@@ -18,10 +18,6 @@ import (
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
-
-	// "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
-
-	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
 )
 
 func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []string) (error, bool) {
@@ -112,12 +108,12 @@ func GetDefaultMetricList(opt TestOptions) []string {
 	cl := getKubeClient(opt, true)
 	cm, err := cl.CoreV1().ConfigMaps(MCO_NAMESPACE).Get(
 		context.TODO(),
-		operatorconfig.AllowlistConfigMapName,
+		"observability-metrics-allowlist",
 		metav1.GetOptions{},
 	)
 	if err != nil {
 		klog.Errorf("Failed to get the configmap <%v>: %+v\n",
-			operatorconfig.AllowlistConfigMapName,
+			"observability-metrics-allowlist",
 			err)
 	}
 
