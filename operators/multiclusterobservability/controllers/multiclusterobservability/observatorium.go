@@ -377,6 +377,7 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 	} else {
 		ruleSpec.Retention = mcoconfig.RetentionInLocal
 	}
+	ruleSpec.EvalInterval = fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval)
 	ruleSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ThanosRule, mco.Spec.AdvancedConfig)
 
 	ruleSpec.ServiceMonitor = true
