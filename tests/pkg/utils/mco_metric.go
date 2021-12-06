@@ -148,7 +148,7 @@ func GetDefaultMetricList(opt TestOptions) []string {
 
 func GetIgnoreMetricMap() map[string]bool {
 	txtlines := map[string]bool{}
-	file, err := os.Open("../../ignored-metric-list")
+	file, err := os.Open("../testdata/ignored-metric-list")
 	if err != nil {
 		klog.Errorf("failed to open the ignored-metric-list file: %+v\n", err)
 	}
