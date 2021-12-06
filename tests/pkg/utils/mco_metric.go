@@ -4,14 +4,19 @@
 package utils
 
 import (
+	"bufio"
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 
+	"gopkg.in/yaml.v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
 
@@ -83,4 +88,75 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 	}
 
 	return nil, true
+}
+
+type MetricsAllowlist struct {
+	NameList  []string          `yaml:"names"`
+	MatchList []string          `yaml:"matches"`
+	RenameMap map[string]string `yaml:"renames"`
+	RuleList  []Rule            `yaml:"rules"`
+}
+
+// Rule is the struct for recording rules and alert rules
+type Rule struct {
+	Record string `yaml:"record"`
+	Expr   string `yaml:"expr"`
+}
+
+func GetDefaultMetricList(opt TestOptions) []string {
+	allDefaultMetricName := []string{}
+	cl := getKubeClient(opt, true)
+	cm, err := cl.CoreV1().ConfigMaps(MCO_NAMESPACE).Get(
+		context.TODO(),
+		"observability-metrics-allowlist",
+		metav1.GetOptions{},
+	)
+	if err != nil {
+		klog.Errorf("Failed to get the configmap <%v>: %+v\n",
+			"observability-metrics-allowlist",
+			err)
+	}
+
+	allowlist := &MetricsAllowlist{}
+	err = yaml.Unmarshal([]byte(cm.Data["metrics_list.yaml"]), allowlist)
+	if err != nil {
+		klog.Errorf("Failed to unmarshal data: %+v\n", err)
+	}
+
+	allDefaultMetricName = append(allDefaultMetricName, allowlist.NameList...)
+
+	// get the metric name from matches section:
+	// string: __name__="go_goroutines",job="apiserver"
+	// want: go_goroutines
+	re := regexp.MustCompile("__name__=\"(\\w+)\"")
+	for _, name := range allowlist.MatchList {
+		result := re.FindStringSubmatch(name)
+		if len(result) > 1 {
+			allDefaultMetricName = append(allDefaultMetricName, result[1])
+		}
+	}
+
+	for _, name := range allowlist.RenameMap {
+		allDefaultMetricName = append(allDefaultMetricName, name)
+	}
+
+	for _, rule := range allowlist.RuleList {
+		allDefaultMetricName = append(allDefaultMetricName, rule.Record)
+	}
+	return allDefaultMetricName
+}
+
+func GetIgnoreMetricMap() map[string]bool {
+	txtlines := map[string]bool{}
+	file, err := os.Open("../testdata/ignored-metric-list")
+	if err != nil {
+		klog.Errorf("failed to open the ignored-metric-list file: %+v\n", err)
+	}
+
+	scanner := bufio.NewScanner(file)
+	scanner.Split(bufio.ScanLines)
+	for scanner.Scan() {
+		txtlines[scanner.Text()] = true
+	}
+	return txtlines
 }
