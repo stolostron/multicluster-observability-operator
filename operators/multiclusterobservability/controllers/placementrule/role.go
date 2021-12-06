@@ -339,7 +339,7 @@ func deleteResourceRole(c client.Client) error {
 func deleteRolebindings(c client.Client, namespace string) error {
 	crb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: namespace + "-" + resRoleBindingName,
+			Name: namespace + "-" + mcoRoleBindingName,
 		},
 	}
 	err := c.Delete(context.TODO(), crb)
