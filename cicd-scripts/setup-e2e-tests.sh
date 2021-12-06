@@ -7,19 +7,29 @@
 
 set -exo pipefail
 
-OBSERVABILITY_NS="open-cluster-management-observability"
-OCM_DEFAULT_NS="open-cluster-management"
-AGENT_NS="open-cluster-management-agent"
-HUB_NS="open-cluster-management-hub"
-export MANAGED_CLUSTER="local-cluster"
-COMPONENT_REPO="quay.io/open-cluster-management"
+if [[ -z "${KUBECONFIG}" ]]; then
+  echo "Error: environment variable KUBECONFIG must be specified!"
+  exit 1
+fi
 
 ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
-
 # Create bin directory and add it to PATH
 mkdir -p ${ROOTDIR}/bin
 export PATH=${PATH}:${ROOTDIR}/bin
 
+OCM_DEFAULT_NS="open-cluster-management"
+AGENT_NS="open-cluster-management-agent"
+HUB_NS="open-cluster-management-hub"
+OBSERVABILITY_NS="open-cluster-management-observability"
+IMAGE_REPO="quay.io/open-cluster-management"
+export MANAGED_CLUSTER="local-cluster" # registration-operator needs this
+
+SED_COMMAND='sed -i-e -e'
+if [[ "$(uname)" == "Darwin" ]]; then
+    SED_COMMAND='sed -i '-e' -e'
+fi
+
+# install jq
 if ! command -v jq &> /dev/null; then
     if [[ "$(uname)" == "Linux" ]]; then
         curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
@@ -29,79 +39,14 @@ if ! command -v jq &> /dev/null; then
     chmod +x ./jq && mv ./jq ${ROOTDIR}/bin/jq
 fi
 
-function usage() {
-  echo "${0} -a ACTION [-i IMAGES]"
-  echo ''
-  # shellcheck disable=SC2016
-  echo '  -a: Specifies the ACTION name, required, the value could be "install" or "uninstall".'
-  # shellcheck disable=SC2016
-  echo '  -i: Specifies the desired IMAGES, optional, the support images includes:
-        quay.io/open-cluster-management/multicluster-observability-operator:<tag>
-        quay.io/open-cluster-management/rbac-query-proxy:<tag>
-        quay.io/open-cluster-management/grafana-dashboard-loader:<tag>
-        quay.io/open-cluster-management/metrics-collector:<tag>
-        quay.io/open-cluster-management/endpoint-monitoring-operator:<tag>'
-  # shellcheck disable=SC2016
-  echo '  -p: Specifies the pipeline for the images'
-  echo ''
-}
-
-# Allow command-line args to override the defaults.
-while getopts ":a:i:p:h" opt; do
-  case ${opt} in
-    a)
-      ACTION=${OPTARG}
-      ;;
-    i)
-      IMAGES=${OPTARG}
-      ;;
-    p)
-      PIPELINE=${OPTARG}
-      ;;
-    h)
-      usage
-      exit 0
-      ;;
-    \?)
-      echo "Invalid option: -$OPTARG" >&2
-      usage
-      exit 1
-      ;;
-  esac
-done
-
-if [[ -z "${ACTION}" ]]; then
-  echo "Error: ACTION (-a) must be specified!"
-  usage
-  exit 1
-fi
-
-if [[ -z "${KUBECONFIG}" ]]; then
-  echo "Error: environment variable KUBECONFIG must be specified!"
-  exit 1
-fi
-
-TARGET_OS="$(uname)"
-XARGS_FLAGS="-r"
-SED_COMMAND='sed -i -e'
-if [[ "$(uname)" == "Linux" ]]; then
-    TARGET_OS=linux
-elif [[ "$(uname)" == "Darwin" ]]; then
-    TARGET_OS=darwin
-    XARGS_FLAGS=
-    SED_COMMAND='sed -i '-e' -e'
-else
-    echo "This system's OS $(TARGET_OS) isn't recognized/supported" && exit 1
-fi
-
 # Use snapshot for target release. Use latest one if no branch info detected, or not a release branch
 BRANCH=""
 LATEST_SNAPSHOT=""
 if [[ "${PULL_BASE_REF}" == "release-"* ]]; then
     BRANCH=${PULL_BASE_REF#"release-"}
-    BRANCH=`curl https://quay.io//api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'")))|keys[length-1]' | awk -F '-' '{print $1}'`
+    BRANCH=$(curl https://quay.io//api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'")))|keys[length-1]' | awk -F '-' '{print $1}')
     BRANCH="${BRANCH#\"}"
-    LATEST_SNAPSHOT=`curl https://quay.io//api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'-SNAPSHOT")))|keys[length-1]'`
+    LATEST_SNAPSHOT=$(curl https://quay.io//api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'-SNAPSHOT")))|keys[length-1]')
 fi
 if [[ "${LATEST_SNAPSHOT}" == "null" ]] || [[ "${LATEST_SNAPSHOT}" == "" ]]; then
     LATEST_SNAPSHOT=$(curl https://quay.io/api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("SNAPSHOT")))|keys[length-1]')
@@ -111,38 +56,37 @@ fi
 LATEST_SNAPSHOT="${LATEST_SNAPSHOT#\"}"
 LATEST_SNAPSHOT="${LATEST_SNAPSHOT%\"}"
 
-setup_kubectl() {
-    if ! command -v kubectl &> /dev/null; then
-        echo "This script will install kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your machine"
-        if [[ "$(uname)" == "Linux" ]]; then
-            curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl
-        elif [[ "$(uname)" == "Darwin" ]]; then
-            curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/darwin/amd64/kubectl
-        fi
-        chmod +x ./kubectl && mv ./kubectl ${ROOTDIR}/bin/kubectl
+# install kubectl
+if ! command -v kubectl &> /dev/null; then
+    echo "This script will install kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your machine"
+    if [[ "$(uname)" == "Linux" ]]; then
+        curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl
+    elif [[ "$(uname)" == "Darwin" ]]; then
+        curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/darwin/amd64/kubectl
     fi
-}
+    chmod +x ./kubectl && mv ./kubectl ${ROOTDIR}/bin/kubectl
+fi
 
-setup_kustomize() {
-    if ! command -v kustomize &> /dev/null; then
-        echo "This script will install kustomize (sigs.k8s.io/kustomize/kustomize) on your machine"
-        if [[ "$(uname)" == "Linux" ]]; then
-            curl -o kustomize_v3.8.7.tar.gz -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv3.8.7/kustomize_v3.8.7_linux_amd64.tar.gz
-        elif [[ "$(uname)" == "Darwin" ]]; then
-            curl -o kustomize_v3.8.7.tar.gz -L  https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv3.8.7/kustomize_v3.8.7_darwin_amd64.tar.gz
-        fi
-        tar xzvf kustomize_v3.8.7.tar.gz
-        chmod +x ./kustomize && mv ./kustomize ${ROOTDIR}/bin/kustomize
+# install kustomize
+if ! command -v kustomize &> /dev/null; then
+    echo "This script will install kustomize (sigs.k8s.io/kustomize/kustomize) on your machine"
+    if [[ "$(uname)" == "Linux" ]]; then
+        curl -o kustomize_v3.8.7.tar.gz -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv3.8.7/kustomize_v3.8.7_linux_amd64.tar.gz
+    elif [[ "$(uname)" == "Darwin" ]]; then
+        curl -o kustomize_v3.8.7.tar.gz -L  https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv3.8.7/kustomize_v3.8.7_darwin_amd64.tar.gz
     fi
-}
+    tar xzvf kustomize_v3.8.7.tar.gz
+    chmod +x ./kustomize && mv ./kustomize ${ROOTDIR}/bin/kustomize
+fi
 
+# deploy the hub and spoke core via OLM
 deploy_hub_spoke_core() {
     cd ${ROOTDIR}
-    if [ -d "registration-operator" ]; then
+    if [[ -d "registration-operator" ]]; then
         rm -rf registration-operator
     fi
     git clone --depth 1 -b release-2.4 https://github.com/open-cluster-management/registration-operator.git && cd registration-operator
-    $SED_COMMAND "s~clusterName: cluster1$~clusterName: $MANAGED_CLUSTER~g" deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
+    ${SED_COMMAND} "s~clusterName: cluster1$~clusterName: ${MANAGED_CLUSTER}~g" deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
     # deploy hub and spoke via OLM
     make cluster-ip IMAGE_TAG=${LATEST_SNAPSHOT} WORK_TAG=${LATEST_SNAPSHOT} REGISTRATION_TAG=${LATEST_SNAPSHOT} PLACEMENT_TAG=${LATEST_SNAPSHOT}
     make deploy IMAGE_TAG=${LATEST_SNAPSHOT} WORK_TAG=${LATEST_SNAPSHOT} REGISTRATION_TAG=${LATEST_SNAPSHOT} PLACEMENT_TAG=${LATEST_SNAPSHOT}
@@ -152,15 +96,7 @@ deploy_hub_spoke_core() {
     wait_for_deployment_ready 10 60s ${AGENT_NS} klusterlet-registration-agent klusterlet-work-agent
 }
 
-delete_hub_spoke_core() {
-    cd ${ROOTDIR}/registration-operator
-    # uninstall hub and spoke via OLM
-    make clean-deploy
-
-    rm -rf ${ROOTDIR}/registration-operator
-    oc delete ns ${OCM_DEFAULT_NS} --ignore-not-found
-}
-
+# approve the CSR for cluster join request
 approve_csr_joinrequest() {
     echo "wait for CSR for cluster join reqest is created..."
     for i in {1..60}; do
@@ -169,8 +105,8 @@ approve_csr_joinrequest() {
         if [[ ! -z ${csrs} ]]; then
             csrnames=$(kubectl get csr -lopen-cluster-management.io/cluster-name=${MANAGED_CLUSTER} -o jsonpath={.items..metadata.name})
             for csrname in ${csrnames}; do
-                echo "approve CSR: $csrname"
-                kubectl certificate approve $csrname
+                echo "approve CSR: ${csrname}"
+                kubectl certificate approve ${csrname}
             done
             break
         fi
@@ -189,11 +125,11 @@ approve_csr_joinrequest() {
             for clustername in ${clusternames}; do
                 echo "approve joinrequest for ${clustername}"
                 kubectl patch managedcluster ${clustername} --patch '{"spec":{"hubAcceptsClient":true}}' --type=merge
-		if [[ -n "${IS_KIND_ENV}" ]]; then
-			# update vendor label for KinD env
-			kubectl label managedcluster ${clustername} vendor-
-			kubectl label managedcluster ${clustername} vendor=GKE
-		fi
+                if [[ -n "${IS_KIND_ENV}" ]]; then
+                    # update vendor label for KinD env
+                    kubectl label managedcluster ${clustername} vendor-
+                    kubectl label managedcluster ${clustername} vendor=GKE
+                fi
             done
             break
         fi
@@ -206,103 +142,56 @@ approve_csr_joinrequest() {
     done
 }
 
-delete_csr() {
-    kubectl delete csr -lopen-cluster-management.io/cluster-name=${MANAGED_CLUSTER} --ignore-not-found
-}
-
-# deploy the new grafana to check the dashboards from browsers
+# deploy the grafana-test to check the dashboards from browsers
 deploy_grafana_test() {
-    cd ${ROOTDIR}/operators/multiclusterobservability/
-    $SED_COMMAND "s~name: grafana$~name: grafana-test~g; s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-test~g; s~secretName: grafana-config$~secretName: grafana-config-test~g; s~secretName: grafana-datasources$~secretName: grafana-datasources-test~g; /MULTICLUSTEROBSERVABILITY_CR_NAME/d" manifests/base/grafana/deployment.yaml
-    $SED_COMMAND "s~image: quay.io/open-cluster-management/grafana-dashboard-loader.*$~image: $COMPONENT_REPO/grafana-dashboard-loader:$LATEST_SNAPSHOT~g" manifests/base/grafana/deployment.yaml
-    $SED_COMMAND "s~replicas: 2$~replicas: 1~g" manifests/base/grafana/deployment.yaml
-    $SED_COMMAND "s~name: grafana$~name: grafana-test~g; s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-test~g" manifests/base/grafana/service.yaml
-    kubectl apply -f manifests/base/grafana/deployment.yaml
-    kubectl apply -f ${ROOTDIR}/tests/run-in-kind/grafana
-}
-
-deploy_mco_operator() {
-    # we need to change the mco operator img in Prow KinD cluster
-    if [[ -n "${IS_KIND_ENV}" ]]; then
-        cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator=${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF}
-    fi
-    kustomize build ${ROOTDIR}/operators/multiclusterobservability/config/default | kubectl apply -n ${OCM_DEFAULT_NS} -f -
-    echo "mco operator is deployed successfully."
-
-    # wait until mco is ready
-    wait_for_deployment_ready 10 60s ${OCM_DEFAULT_NS} multicluster-observability-operator
-
-    kubectl create ns ${OBSERVABILITY_NS} || true
+    cd ${ROOTDIR}
+    ${SED_COMMAND} "s~name: grafana$~name: grafana-test~g; s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-test~g; s~secretName: grafana-config$~secretName: grafana-config-test~g; s~secretName: grafana-datasources$~secretName: grafana-datasources-test~g; /MULTICLUSTEROBSERVABILITY_CR_NAME/d" operators/multiclusterobservability/manifests/base/grafana/deployment.yaml
+    ${SED_COMMAND} "s~image: quay.io/open-cluster-management/grafana-dashboard-loader.*$~image: ${IMAGE_REPO}/grafana-dashboard-loader:${LATEST_SNAPSHOT}~g" operators/multiclusterobservability/manifests/base/grafana/deployment.yaml
+    ${SED_COMMAND} "s~replicas: 2$~replicas: 1~g" operators/multiclusterobservability/manifests/base/grafana/deployment.yaml
+    kubectl apply -f operators/multiclusterobservability/manifests/base/grafana/deployment.yaml
+    kubectl apply -f ${ROOTDIR}/tests/run-in-kind/grafana # create grafana-test svc, grafana-test config and datasource configmaps
 
     if [[ -z "${IS_KIND_ENV}" ]]; then
         # TODO(morvencao): remove the following two extra routes after after accessing metrics from grafana url with bearer token is supported
         temp_route=$(mktemp -d /tmp/grafana.XXXXXXXXXX)
-        # install grafana route
-        cat << EOF > ${temp_route}/grafana-route.yaml
-kind: Route
+        # install grafana-test route
+        cat << EOF > ${temp_route}/grafana-test-route.yaml
 apiVersion: route.openshift.io/v1
+kind: Route
 metadata:
-  name: grafana
+  name: grafana-test
 spec:
-  host: grafana
+  host: grafana-test
   wildcardPolicy: None
   to:
     kind: Service
-    name: grafana
+    name: grafana-test
 EOF
-        # install observability-thanos-query-frontend route
-        cat << EOF > ${temp_route}/observability-thanos-query-frontend-route.yaml
-kind: Route
-apiVersion: route.openshift.io/v1
-metadata:
-  name: observability-thanos-query-frontend
-spec:
-  host: observability-thanos-query-frontend
-  port:
-    targetPort: http
-  to:
-    kind: Service
-    name: observability-thanos-query-frontend
-  wildcardPolicy: None
-EOF
+
         app_domain=$(kubectl -n openshift-ingress-operator get ingresscontrollers default -o jsonpath='{.status.domain}')
-        ${SED_COMMAND} "s~host: grafana$~host: grafana.$app_domain~g" ${temp_route}/grafana-route.yaml
-        kubectl -n ${OBSERVABILITY_NS} apply -f ${temp_route}/grafana-route.yaml
-        ${SED_COMMAND} "s~host: observability-thanos-query-frontend$~host: observability-thanos-query-frontend.$app_domain~g" ${temp_route}/observability-thanos-query-frontend-route.yaml
-        kubectl -n ${OBSERVABILITY_NS} apply -f ${temp_route}/observability-thanos-query-frontend-route.yaml
+        ${SED_COMMAND} "s~host: grafana-test$~host: grafana-test.${app_domain}~g" ${temp_route}/grafana-test-route.yaml
+        kubectl -n ${OBSERVABILITY_NS} apply -f ${temp_route}/grafana-test-route.yaml
     fi
 }
 
-delete_mco_operator() {
-    # delete mco CR if it exists
-    kubectl delete multiclusterobservabilities --all
+# deploy the MCO operator via the kustomize resources
+deploy_mco_operator() {
+    if [[ -n "${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF}" ]]; then
+        cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator=${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF}
+    else
+        cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator="${IMAGE_REPO}/multicluster-observability-operator:${LATEST_SNAPSHOT}"
+    fi
+    cd ${ROOTDIR}
+    kustomize build ${ROOTDIR}/operators/multiclusterobservability/config/default | kubectl apply -n ${OCM_DEFAULT_NS} -f -
 
-    # delete extra routes if they exist
-    kubectl -n ${OBSERVABILITY_NS} delete route --all
+    # wait until mco is ready
+    wait_for_deployment_ready 10 60s ${OCM_DEFAULT_NS} multicluster-observability-operator
+    echo "mco operator is deployed successfully."
 
-    kubectl -n ${OBSERVABILITY_NS} delete -k ${ROOTDIR}/examples/minio --ignore-not-found
-
-    # wait until all resources are deleted before delete the mco
-    for i in {1..20}; do
-        if [[ -z $(kubectl -n ${OBSERVABILITY_NS} get all) ]]; then
-            echo "all the resources in ${OBSERVABILITY_NS} namespace are removed."
-            break
-        fi
-        if [[ ${i} -eq 20 ]]; then
-            echo "timeout wait for the resources in ${OBSERVABILITY_NS} namespace are removed."
-            exit 1
-        fi
-        echo "retrying in 10s..."
-        sleep 10
-    done
-
-    # delete the mco
-    # don't delete the ${OCM_DEFAULT_NS} namespace at this step, since ACM is there
-    ${SED_COMMAND} '0,/^---$/d' ${ROOTDIR}/operators/multiclusterobservability/config/manager/manager.yaml
-    kustomize build ${ROOTDIR}/operators/multiclusterobservability/config/default | kubectl delete --ignore-not-found -f -
-    kubectl delete ns ${OBSERVABILITY_NS}
+    kubectl create ns ${OBSERVABILITY_NS} || true
 }
 
+# wait for MCO CR reaadiness with budget
 wait_for_observability_ready() {
     echo "wait for mco is ready and running..."
     retry_number=10
@@ -324,6 +213,7 @@ wait_for_observability_ready() {
     done
 }
 
+# wait until deployment are ready with budget
 wait_for_deployment_ready() {
     if [[ -z "${1}" ]]; then
         echo "retry number is empty, exiting..."
@@ -374,23 +264,13 @@ wait_for_deployment_ready() {
 
 # function execute is the main routine to do the actual work
 execute() {
-    setup_kubectl
-    setup_kustomize
-    if [[ "${ACTION}" == "install" ]]; then
-        deploy_hub_spoke_core
-        approve_csr_joinrequest
-        deploy_mco_operator
-        deploy_grafana_test
-        echo "OCM and MCO are installed successfuly..."
-    elif [[ "${ACTION}" == "uninstall" ]]; then
-        delete_mco_operator
-        delete_hub_spoke_core
-        delete_csr
-        echo "OCM and MCO are uninstalled successfuly..."
-    else
-        echo "This ACTION ${ACTION} isn't recognized/supported" && exit 1
-    fi
+    deploy_hub_spoke_core
+    approve_csr_joinrequest
+    deploy_mco_operator
+    deploy_grafana_test
+    echo "OCM and MCO are installed successfuly..."
 }
 
 # start executing the ACTION
 execute
+
