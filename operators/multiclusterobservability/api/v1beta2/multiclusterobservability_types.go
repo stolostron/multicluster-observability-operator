@@ -76,7 +76,7 @@ type AdvancedConfig struct {
 	Receive *CommonSpec `json:"receive,omitempty"`
 	// spec for thanos-rule
 	// +optional
-	Rule *CommonSpec `json:"rule,omitempty"`
+	Rule *RuleSpec `json:"rule,omitempty"`
 	// spec for thanos-store-shard
 	// +optional
 	Store *CommonSpec `json:"store,omitempty"`
@@ -89,6 +89,15 @@ type CommonSpec struct {
 	// Replicas for this component.
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
+}
+
+// Thanos Rule Spec
+type RuleSpec struct {
+	// Evaluation interval
+	// +optional
+	EvalInterval string `json:"evalInterval,omitempty"`
+
+	CommonSpec `json:",inline"`
 }
 
 // Thanos Compact Spec

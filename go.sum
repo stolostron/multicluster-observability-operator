@@ -1815,8 +1815,8 @@ github.com/open-cluster-management/multicloud-operators-subscription v1.0.0-2020
 github.com/open-cluster-management/multicloud-operators-subscription-release v1.0.1-2020-05-28-18-29-00.0.20200603160156-4d66bd136ba3/go.mod h1:UTzlywmLkZVU8kckKskqmXhAO/JB0OXQHk1+DvEDBeM=
 github.com/open-cluster-management/multiclusterhub-operator v0.0.0-20210622185704-40982c42385e h1:7+qEhDLdCSrtejQ6yZ1NoffhGOfnrPD1NHhEMCSlc+E=
 github.com/open-cluster-management/multiclusterhub-operator v0.0.0-20210622185704-40982c42385e/go.mod h1:HJUgtoBHqW5FhFj5387iFsWFr0VdhhMi0y0vt85jMFM=
-github.com/open-cluster-management/observatorium-operator v0.0.0-20210922021200-67aa09a88236 h1:8Z1tPQcFxFUxbKCZIcg2HhySyBC2qEe52Qs9tcwgIK0=
-github.com/open-cluster-management/observatorium-operator v0.0.0-20210922021200-67aa09a88236/go.mod h1:+WGDwga4Fsdmuj/eMVfqEzpvTZ7yKkq1mqVSRuUzAT4=
+github.com/open-cluster-management/observatorium-operator v0.0.0-20211203090447-ca3cec8d8aea h1:xW4uVm1qCo0nlh82RLJwy7SQMSdDK3mTsWX16dyfTJA=
+github.com/open-cluster-management/observatorium-operator v0.0.0-20211203090447-ca3cec8d8aea/go.mod h1:+WGDwga4Fsdmuj/eMVfqEzpvTZ7yKkq1mqVSRuUzAT4=
 github.com/opencontainers/go-digest v0.0.0-20170106003457-a6d0ee40d420/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
 github.com/opencontainers/go-digest v0.0.0-20180430190053-c9281466c8b2/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
 github.com/opencontainers/go-digest v1.0.0-rc1/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=

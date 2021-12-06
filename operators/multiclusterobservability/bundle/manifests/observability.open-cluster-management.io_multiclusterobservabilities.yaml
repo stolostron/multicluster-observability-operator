@@ -540,6 +540,9 @@ spec:
                   rule:
                     description: spec for thanos-rule
                     properties:
+                      evalInterval:
+                        description: Evaluation interval
+                        type: string
                       replicas:
                         description: Replicas for this component.
                         format: int32
