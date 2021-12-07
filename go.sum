@@ -1564,6 +1564,8 @@ github.com/mailru/easyjson v0.7.6 h1:8yTIVnZgCoiM1TgqoeTl+LfU5Jg6/xL3QhGQnimLYnA
 github.com/mailru/easyjson v0.7.6/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=
 github.com/maorfr/helm-plugin-utils v0.0.0-20200216074820-36d2fcf6ae86/go.mod h1:p3gwmRSFqbWw6plBpR0sKl3n3vpu8kX70gvCJKMvvCA=
 github.com/maratori/testpackage v1.0.1/go.mod h1:ddKdw+XG0Phzhx8BFDTKgpWP4i7MpApTE5fXSKAqwDU=
+github.com/marcolan018/observatorium-operator v0.0.0-20211130210716-ce5b1db8f558 h1:l8EDAUTxIW6cj/HIlFkp7lFmHH/4f6NCy5paT6tOhcQ=
+github.com/marcolan018/observatorium-operator v0.0.0-20211130210716-ce5b1db8f558/go.mod h1:+WGDwga4Fsdmuj/eMVfqEzpvTZ7yKkq1mqVSRuUzAT4=
 github.com/markbates/inflect v1.0.4/go.mod h1:1fR9+pO2KHEO9ZRtto13gDwwZaAKstQzferVeWqbgNs=
 github.com/markbates/oncer v0.0.0-20181203154359-bf2de49a0be2/go.mod h1:Ld9puTsIW75CHf65OeIOkyKbteujpZVXDpWK6YGZbxE=
 github.com/markbates/pkger v0.17.1/go.mod h1:0JoVlrol20BSywW79rN3kdFFsE5xYM+rSCQDXbLhiuI=
@@ -1816,6 +1818,8 @@ github.com/open-cluster-management/multiclusterhub-operator v0.0.0-2021062218570
 github.com/open-cluster-management/multiclusterhub-operator v0.0.0-20210622185704-40982c42385e/go.mod h1:HJUgtoBHqW5FhFj5387iFsWFr0VdhhMi0y0vt85jMFM=
 github.com/open-cluster-management/observatorium-operator v0.0.0-20210922021200-67aa09a88236 h1:8Z1tPQcFxFUxbKCZIcg2HhySyBC2qEe52Qs9tcwgIK0=
 github.com/open-cluster-management/observatorium-operator v0.0.0-20210922021200-67aa09a88236/go.mod h1:+WGDwga4Fsdmuj/eMVfqEzpvTZ7yKkq1mqVSRuUzAT4=
+github.com/open-cluster-management/observatorium-operator v0.0.0-20211203090447-ca3cec8d8aea h1:xW4uVm1qCo0nlh82RLJwy7SQMSdDK3mTsWX16dyfTJA=
+github.com/open-cluster-management/observatorium-operator v0.0.0-20211203090447-ca3cec8d8aea/go.mod h1:+WGDwga4Fsdmuj/eMVfqEzpvTZ7yKkq1mqVSRuUzAT4=
 github.com/opencontainers/go-digest v0.0.0-20170106003457-a6d0ee40d420/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
 github.com/opencontainers/go-digest v0.0.0-20180430190053-c9281466c8b2/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
 github.com/opencontainers/go-digest v1.0.0-rc1/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=

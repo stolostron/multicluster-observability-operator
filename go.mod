@@ -17,7 +17,7 @@ require (
 	github.com/onsi/gomega v1.13.0
 	github.com/open-cluster-management/multicloud-operators-foundation v1.0.0-2021-09-15-06-57-52
 	github.com/open-cluster-management/multiclusterhub-operator v0.0.0-20210622185704-40982c42385e
-	github.com/open-cluster-management/observatorium-operator v0.0.0-20210922021200-67aa09a88236
+	github.com/open-cluster-management/observatorium-operator v0.0.0-20211203090447-ca3cec8d8aea
 	github.com/openshift/api v3.9.1-0.20191111211345-a27ff30ebf09+incompatible
 	github.com/openshift/client-go v0.0.0-20201214125552-e615e336eb49
 	github.com/openshift/cluster-monitoring-operator v0.1.1-0.20210611103744-7168290cd660

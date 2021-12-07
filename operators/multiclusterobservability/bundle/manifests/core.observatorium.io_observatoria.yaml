@@ -478,6 +478,9 @@ spec:
                   serviceMonitor:
                     description: ServiceMonitor enables servicemonitor.
                     type: boolean
+                  tenantHeader:
+                    description: TenantHeader is the http header for tenant id.
+                    type: string
                   tenants:
                     description: Tenants is a slice of tenants for the Observatorium API.
                     items:
@@ -551,6 +554,9 @@ spec:
                     type: object
                   version:
                     description: Version describes the version of API to use.
+                    type: string
+                  writeEndpoint:
+                    description: WriteEndpoint is the write endpoint.
                     type: string
                 required:
                 - rbac
@@ -1195,6 +1201,9 @@ spec:
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.
                         type: boolean
+                      tenantHeader:
+                        description: TenantHeader is the http header for tenant id.
+                        type: string
                       volumeClaimTemplate:
                         description: VolumeClaimTemplate
                         properties:
