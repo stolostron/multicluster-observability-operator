@@ -354,6 +354,16 @@ spec:
                             type: object
                         type: object
                     type: object
+                  observatoriumConfig:
+                    description: spec for thanos advanced configuration
+                    properties:
+                      tenantHeader:
+                        description: Tenant header used by observatorium components.
+                        type: string
+                      writeEndpoint:
+                        description: Write endpoint of observatorium api.
+                        type: string
+                    type: object
                   query:
                     description: spec for thanos-query
                     properties:

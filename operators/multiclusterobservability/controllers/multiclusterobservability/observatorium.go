@@ -323,6 +323,10 @@ func newAPISpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.APISpec {
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		apiSpec.Resources = mcoconfig.GetResources(config.ObservatoriumAPI, mco.Spec.AdvancedConfig)
 	}
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.ObservatoriumConfig != nil {
+		apiSpec.TenantHeader = mco.Spec.AdvancedConfig.ObservatoriumConfig.TenantHeader
+		apiSpec.WriteEndpoint = mco.Spec.AdvancedConfig.ObservatoriumConfig.WriteEndpoint
+	}
 	//set the default observatorium components' image
 	apiSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ObservatoriumAPIImgName +
 		":" + mcoconfig.DefaultImgTagSuffix
@@ -360,6 +364,9 @@ func newReceiversSpec(
 		mco.Spec.StorageConfig.ReceiveStorageSize,
 		scSelected)
 
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.ObservatoriumConfig != nil {
+		receSpec.TenantHeader = mco.Spec.AdvancedConfig.ObservatoriumConfig.TenantHeader
+	}
 	return receSpec
 }
 

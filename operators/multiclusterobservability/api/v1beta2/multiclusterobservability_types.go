@@ -80,6 +80,9 @@ type AdvancedConfig struct {
 	// spec for thanos-store-shard
 	// +optional
 	Store *CommonSpec `json:"store,omitempty"`
+	// spec for thanos advanced configuration
+	// +optional
+	ObservatoriumConfig *ObservatoriumConfig `json:"observatoriumConfig,omitempty"`
 }
 
 type CommonSpec struct {
@@ -216,6 +219,16 @@ type MultiClusterObservabilityList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []MultiClusterObservability `json:"items"`
+}
+
+// ObservatoriumConfig is spec for thanos advanced configuration
+type ObservatoriumConfig struct {
+	// Write endpoint of observatorium api.
+	// +optional
+	WriteEndpoint string `json:"writeEndpoint,omitempty"`
+	// Tenant header used by observatorium components.
+	// +optional
+	TenantHeader string `json:"tenantHeader,omitempty"`
 }
 
 func init() {
