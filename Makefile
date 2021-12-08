@@ -39,29 +39,18 @@ unit-tests-collectors:
 	go test `go list ./collectors/... | grep -v test`
 
 .PHONY: e2e-tests
-
 e2e-tests:
-	@echo "Running e2e test ..."
+	@echo "Running e2e tests ..."
 	@./cicd-scripts/run-e2e-tests.sh
 
 .PHONY: e2e-tests-in-kind
 e2e-tests-in-kind:
-	@echo "Running e2e test in KinD ..."
+	@echo "Running e2e tests in KinD cluster..."
+ifeq ($(OPENSHIFT_CI),true)
 	@./cicd-scripts/run-e2e-in-kind-via-prow.sh
-
-test-e2e-setup:
-	@echo "Seting up e2e test environment ..."
-ifdef COMPONENT_IMAGE_NAMES
-	# override the image for the e2e test
-	@./cicd-scripts/setup-e2e-tests.sh -a install -i $(COMPONENT_IMAGE_NAMES)
 else
-	# fall back to the latest snapshot image from quay.io for the e2e test
-	@./cicd-scripts/setup-e2e-tests.sh -a install
+	@./tests/run-in-kind/run-e2e-in-kind.sh
 endif
-
-test-e2e-clean:
-	@echo "Clean e2e test environment ..."
-	@./cicd-scripts/setup-e2e-tests.sh -a uninstall
 
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
