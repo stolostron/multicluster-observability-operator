@@ -190,8 +190,10 @@ func onDelete(c client.Client) func(obj interface{}) {
 						err = c.Update(context.TODO(), caSecret)
 						if err != nil {
 							log.Error(err, "Failed to update secret for ca certificate", "name", s.Name)
+							i++
+						} else {
+							break
 						}
-						break
 					} else {
 						// wait mco operator recreate the ca certificate at most 30 seconds
 						if i < 6 {
