@@ -113,6 +113,20 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
 	})
 
+	It("[P2][Sev2][Observability][Integration] Should have metrics which used grafana dashboard (ssli/g1)", func() {
+		metricList := utils.GetDefaultMetricList(testOptions)
+		ignoreMetricMap := utils.GetIgnoreMetricMap()
+		for _, name := range metricList {
+			_, ok := ignoreMetricMap[name]
+			if !ok {
+				Eventually(func() error {
+					err, _ := utils.ContainManagedClusterMetric(testOptions, name, []string{name})
+					return err
+				}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*3).Should(Succeed())
+			}
+		}
+	})
+
 	JustAfterEach(func() {
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 	})
