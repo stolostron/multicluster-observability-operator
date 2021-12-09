@@ -4,6 +4,8 @@
 package placementrule
 
 import (
+	"sync"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	imageregistryv1alpha1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/imageregistry/v1alpha1"
@@ -11,12 +13,15 @@ import (
 )
 
 var (
-	managedClusterImageRegistry = map[string]string{}
+	managedClusterImageRegistry      = map[string]string{}
+	managedClusterImageRegistryMutex = &sync.RWMutex{}
 )
 
 func updateManagedClusterImageRegistry(obj client.Object) {
 	if imageReg, ok := obj.GetLabels()[imageregistryv1alpha1.ClusterImageRegistryLabel]; ok {
+		managedClusterImageRegistryMutex.Lock()
 		managedClusterImageRegistry[obj.GetName()] = imageReg
+		managedClusterImageRegistryMutex.Unlock()
 	}
 }
 
