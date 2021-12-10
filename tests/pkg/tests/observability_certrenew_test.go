@@ -27,7 +27,7 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("[P1][Sev1][Observability][Integration] Should have metrics collector pod restart if cert secret re-generated (certrenew/g0)", func() {
+	It("[P1][Sev1][Observability][Integration] Verify Observability Certificate rotation - Should have metrics collector pod restart if cert secret re-generated (certrenew/g0)", func() {
 		By("Waiting for pods ready: observability-observatorium-api, observability-rbac-query-proxy, metrics-collector-deployment")
 		// sleep 30s to wait for installation is ready
 		time.Sleep(30 * time.Second)

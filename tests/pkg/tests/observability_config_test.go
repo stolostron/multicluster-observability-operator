@@ -30,7 +30,7 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("@BVT - [P1][Sev1][Observability][Stable] Checking metrics default values on managed cluster (config/g0)", func() {
+	It("@BVT - [P1][Sev1][Observability][Stable] Verify metrics data global setting on the managed cluster (config/g0)", func() {
 		if os.Getenv("SKIP_INSTALL_STEP") == "true" {
 			Skip("Skip the case due to MCO CR was created customized")
 		}
@@ -43,7 +43,7 @@ var _ = Describe("Observability:", func() {
 		Expect(observabilityAddonSpec["interval"]).To(Equal(int64(30)))
 	})
 
-	It("@BVT - [P1][Sev1][Observability][Stable] Checking default value of PVC and StorageClass (config/g0)", func() {
+	It("@BVT - [P1][Sev1][Observability][Stable] Verify MCO CR storage class and PVC (config/g0)", func() {
 		if os.Getenv("SKIP_INSTALL_STEP") == "true" {
 			Skip("Skip the case due to MCO CR was created customized")
 		}
@@ -143,7 +143,7 @@ var _ = Describe("Observability:", func() {
 		},
 	}
 
-	It("@BVT - [P1][Sev1][Observability][Integration] Checking replicas in advanced config for each component (config/g0)", func() {
+	It("@BVT - [P1][Sev1][Observability][Integration] Verify the replica in advanced config for Observability components (config/g0)", func() {
 
 		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		if err != nil {
@@ -179,7 +179,7 @@ var _ = Describe("Observability:", func() {
 		}
 	})
 
-	It("[P2][Sev2][Observability][Integration] Checking resources in advanced config (config/g0)", func() {
+	It("[P2][Sev2][Observability][Integration] Persist advance values in MCO CR - Checking resources in advanced config (config/g0)", func() {
 		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		if err != nil {
 			panic(err.Error())
