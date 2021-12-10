@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	goversion "github.com/hashicorp/go-version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -49,6 +50,38 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 		name := metadata["name"].(string)
 		labels := metadata["labels"].(map[string]interface{})
 		if labels != nil {
+			obsControllerStr := ""
+			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok {
+				obsControllerStr = obsController.(string)
+			}
+			if obsControllerStr != "unreachable" {
+				clusterNames = append(clusterNames, name)
+			}
+		}
+	}
+
+	if len(clusterNames) == 0 {
+		return clusterNames, fmt.Errorf("no managedcluster found")
+	}
+
+	return clusterNames, nil
+}
+
+func ListOCPManagedClusterIDs(opt TestOptions, minVersionStr string) ([]string, error) {
+	minVersion, err := goversion.NewVersion(minVersionStr)
+	if err != nil {
+		return nil, err
+	}
+	clientDynamic := GetKubeClientDynamic(opt, true)
+	objs, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	clusterIDs := []string{}
+	for _, obj := range objs.Items {
+		metadata := obj.Object["metadata"].(map[string]interface{})
+		labels := metadata["labels"].(map[string]interface{})
+		if labels != nil {
 			vendorStr := ""
 			if vendor, ok := labels["vendor"]; ok {
 				vendorStr = vendor.(string)
@@ -57,16 +90,60 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok {
 				obsControllerStr = obsController.(string)
 			}
-			if vendorStr == "OpenShift" || vendorStr == "GKE" || vendorStr == "EKS" || vendorStr == "AKS" {
-				if obsControllerStr != "unreachable" {
-					clusterNames = append(clusterNames, name)
+			if vendorStr == "OpenShift" && obsControllerStr == "available" {
+				clusterVersionStr := ""
+				if clusterVersionVal, ok := labels["openshiftVersion"]; ok {
+					clusterVersionStr = clusterVersionVal.(string)
+				}
+				clusterVersion, err := goversion.NewVersion(clusterVersionStr)
+				if err != nil {
+					return nil, err
+				}
+				if clusterVersion.GreaterThanOrEqual(minVersion) {
+					clusterIDStr := ""
+					if clusterID, ok := labels["clusterID"]; ok {
+						clusterIDStr = clusterID.(string)
+					}
+					if len(clusterIDStr) > 0 {
+						clusterIDs = append(clusterIDs, clusterIDStr)
+					}
 				}
 			}
 		}
 	}
 
-	if len(clusterNames) == 0 {
-		return clusterNames, fmt.Errorf("no managedcluster found")
+	return clusterIDs, nil
+}
+
+func ListKSManagedClusterNames(opt TestOptions) ([]string, error) {
+	clientDynamic := GetKubeClientDynamic(opt, true)
+	objs, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	clusterNames := []string{}
+	for _, obj := range objs.Items {
+		metadata := obj.Object["metadata"].(map[string]interface{})
+		labels := metadata["labels"].(map[string]interface{})
+		if labels != nil {
+			vendorStr := ""
+			if vendor, ok := labels["vendor"]; ok {
+				vendorStr = vendor.(string)
+			}
+			obsControllerStr := ""
+			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok {
+				obsControllerStr = obsController.(string)
+			}
+			if vendorStr != "OpenShift" && obsControllerStr != "unreachable" {
+				clusterNameStr := ""
+				if clusterNameVal, ok := labels["name"]; ok {
+					clusterNameStr = clusterNameVal.(string)
+				}
+				if len(clusterNameStr) > 0 {
+					clusterNames = append(clusterNames, clusterNameStr)
+				}
+			}
+		}
 	}
 
 	return clusterNames, nil
