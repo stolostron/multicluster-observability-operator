@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 
 	"github.com/open-cluster-management/multicluster-observability-operator/tests/pkg/kustomize"
 	"github.com/open-cluster-management/multicluster-observability-operator/tests/pkg/utils"
@@ -177,4 +178,10 @@ func installMCO() {
 		testFailed = false
 		return nil
 	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+
+	BearerToken, err = utils.FetchBearerToken(testOptions)
+	if err != nil {
+		klog.Errorf("fetch bearer token error: %v", err)
+	}
+	Expect(BearerToken).NotTo(BeEmpty(), "failed to fetch `BearerToken`")
 }
