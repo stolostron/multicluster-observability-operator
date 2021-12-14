@@ -1314,6 +1314,9 @@ spec:
                       blockDuration:
                         description: Block duration for TSDB block
                         type: string
+                      evalInterval:
+                        description: Evaluation interval
+                        type: string
                       extraVolumeMounts:
                         description: ExtraVolumeMounts
                         items:

@@ -981,7 +981,7 @@ spec:
                     properties:
                       lookbackDelta:
                         description: The maximum lookback duration for retrieving metrics during expression evaluations.
-                        type: string            
+                        type: string
                       replicas:
                         description: Number of Query replicas.
                         format: int32
@@ -1315,6 +1315,9 @@ spec:
                         type: array
                       blockDuration:
                         description: Block duration for TSDB block
+                        type: string
+                      evalInterval:
+                        description: Evaluation interval
                         type: string
                       extraVolumeMounts:
                         description: ExtraVolumeMounts
