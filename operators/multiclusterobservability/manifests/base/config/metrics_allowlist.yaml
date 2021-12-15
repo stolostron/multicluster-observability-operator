@@ -130,6 +130,34 @@ data:
       - cluster:policy_governance_info:propagated_noncompliant_count
       - policy:policy_governance_info:propagated_count
       - policy:policy_governance_info:propagated_noncompliant_count
+      ### metrics for ocp 311 start
+      - node:node_cpu_utilisation:avg1m
+      - kube_node_labels
+      - 'node_namespace_pod:kube_pod_info:'
+      - container_memory_usage_bytes
+      - node_memory_MemTotal_bytes
+      #- node_memory_MemAvailable_bytes
+      - node:node_memory_bytes_total:sum
+      - node:node_net_utilisation:sum_irate
+      - node_network_receive_bytes
+      - node_network_transmit_bytes
+      - node_disk_bytes_read
+      - node_disk_bytes_written
+      - node:node_disk_utilisation:avg_irate
+      - kube_pod_status_ready
+      - kube_pod_status_phase
+      - node_filesystem_size
+      - node_filesystem_avail
+      - kube_pod_container_status_restarts_total
+      - openshift_clusterresourcequota_usage
+      - openshift_clusterresourcequota_labels
+      - namespace_pod_name_container_name:container_cpu_usage_seconds_total:sum_rate
+      - kube_namespace_labels
+      - container_memory_rss
+      #- kube_pod_info
+      - container_cpu_usage_seconds_total
+      #- kube_node_status_allocatable_cpu_cores
+      ### metrics for ocp 311 end
     matches:
       - __name__="workqueue_queue_duration_seconds_bucket",job="apiserver"
       - __name__="workqueue_adds_total",job="apiserver"
