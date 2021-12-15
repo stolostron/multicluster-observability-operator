@@ -1,12 +1,12 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: grafana-dashboard-k8s-capacity-planning-ocp311
+  name: grafana-dashboard-k8s-capacity-management-ocp311
   namespace: open-cluster-management-observability
   annotations:
     observability.open-cluster-management.io/dashboard-folder: "OCP 3.11"
 data: 
-  k8s-capacity-planning-ocp311.json: |
+  k8s-capacity-management-ocp311.json: |
     {
       "annotations": {
         "list": [
