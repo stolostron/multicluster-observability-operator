@@ -12,6 +12,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
 	github.com/golang/snappy v0.0.4
+	github.com/hashicorp/go-version v1.3.0
 	github.com/oklog/run v1.1.0
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.13.0
@@ -25,6 +26,7 @@ require (
 	github.com/prometheus-community/prom-label-proxy v0.3.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.48.1
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.47.1
+	github.com/prometheus/alertmanager v0.21.1-0.20201106142418-c39b78780054
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.26.0
@@ -113,7 +115,6 @@ require (
 	github.com/openshift/library-go v0.0.0-20210609150209-1c980926414c // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/alertmanager v0.21.1-0.20201106142418-c39b78780054 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
