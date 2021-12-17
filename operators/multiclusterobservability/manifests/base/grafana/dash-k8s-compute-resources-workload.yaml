@@ -708,7 +708,7 @@ data:
               "value": ""
             },
             "datasource": "$datasource",
-            "definition": "",
+            "definition": "label_values(kube_pod_info{clusterType!=\"ocp3\"},cluster)",
             "description": null,
             "error": null,
             "hide": 0,
@@ -718,7 +718,7 @@ data:
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(cluster)",
+              "query": "label_values(kube_pod_info{clusterType!=\"ocp3\"},cluster)",
               "refId": "Prometheus-cluster-Variable-Query"
             },
             "refresh": 2,
