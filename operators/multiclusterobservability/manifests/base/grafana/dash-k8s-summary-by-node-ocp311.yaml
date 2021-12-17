@@ -406,7 +406,7 @@ data:
           "tableColumn": "",
           "targets": [
             {
-              "expr": "sum (    \n    label_replace(      \n        rate(container_cpu_usage_seconds_total{job=\"kubelet\", image!=\"\", container_name!=\"\",cluster=\"$cluster\"}[5m]),        \n        \"pod\", \"$1\", \"pod_name\", \"(.*)\"    \n        )   \n        * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n        * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}  \n)  \n/ \nsum (    \n    kube_node_status_allocatable_cpu_cores{cluster=\"$cluster\"}    \n    * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"})",
+              "expr": "sum (    \n    label_replace(      \n        rate(container_cpu_usage_seconds_total{job=\"kubelet\", image!=\"\", container_name!=\"\",cluster=\"$cluster\"}[$__rate_interval]),        \n        \"pod\", \"$1\", \"pod_name\", \"(.*)\"    \n        )   \n        * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n        * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}  \n)  \n/ \nsum (    \n    kube_node_status_allocatable_cpu_cores{cluster=\"$cluster\"}    \n    * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"})",
               "format": "time_series",
               "intervalFactor": 1,
               "refId": "A"
@@ -487,7 +487,7 @@ data:
           "tableColumn": "",
           "targets": [
             {
-              "expr": "sum (    \n    label_replace(      \n        rate(container_cpu_usage_seconds_total{job=\"kubelet\", image!=\"\", container_name!=\"\",cluster=\"$cluster\"}[5m]),        \n        \"pod\", \"$1\", \"pod_name\", \"(.*)\"    \n        )   \n        * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n        * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}  \n)\n/\nsum(    \n    kube_pod_container_resource_requests_cpu_cores{cluster=\"$cluster\"}\n    * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}   \n)",
+              "expr": "sum (    \n    label_replace(      \n        rate(container_cpu_usage_seconds_total{job=\"kubelet\", image!=\"\", container_name!=\"\",cluster=\"$cluster\"}[$__rate_interval]),        \n        \"pod\", \"$1\", \"pod_name\", \"(.*)\"    \n        )   \n        * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n        * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}  \n)\n/\nsum(    \n    kube_pod_container_resource_requests_cpu_cores{cluster=\"$cluster\"}\n    * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}   \n)",
               "format": "time_series",
               "intervalFactor": 1,
               "refId": "A"
@@ -726,7 +726,7 @@ data:
               "refId": "C"
             },
             {
-              "expr": "sum (\nlabel_replace(  \n    rate(container_cpu_usage_seconds_total{job=\"kubelet\", image!=\"\", container_name!=\"\",cluster=\"$cluster\"}[5m]),  \n    \"pod\", \"$1\", \"pod_name\", \"(.*)\"\n)\n* on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}\n* on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}\n)",
+              "expr": "sum (\nlabel_replace(  \n    rate(container_cpu_usage_seconds_total{job=\"kubelet\", image!=\"\", container_name!=\"\",cluster=\"$cluster\"}[$__rate_interval]),  \n    \"pod\", \"$1\", \"pod_name\", \"(.*)\"\n)\n* on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}\n* on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}\n)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "Usage",
@@ -939,7 +939,7 @@ data:
           "tableColumn": "",
           "targets": [
             {
-              "expr": "sum (    \n    label_replace(      \n        container_memory_usage_bytes{pod_name!=\"\",container_name=\"\",cluster=\"$cluster\"},      \n        \"pod\", \"$1\", \"pod_name\", \"(.*)\"    )    \n        * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n        * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}  \n    )  \n/ \nsum (    \n    kube_node_status_allocatable_memory_bytes{cluster=\"$cluster\"}    \n    * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"})",
+              "expr": "sum (    \n    label_replace(      \n        container_memory_usage_bytes{pod_name!=\"\",container_name!=\"\",cluster=\"$cluster\"},      \n        \"pod\", \"$1\", \"pod_name\", \"(.*)\"    )    \n        * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n        * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}  \n    )  \n/ \nsum (    \n    kube_node_status_allocatable_memory_bytes{cluster=\"$cluster\"}    \n    * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"})",
               "format": "time_series",
               "intervalFactor": 1,
               "refId": "A"
@@ -1020,7 +1020,7 @@ data:
           "tableColumn": "",
           "targets": [
             {
-              "expr": "sum (    \n    label_replace(      \n        container_memory_usage_bytes{pod_name!=\"\",container_name=\"\",cluster=\"$cluster\"},      \n        \"pod\", \"$1\", \"pod_name\", \"(.*)\"    )    \n        * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n        * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}  \n    )  \n/\nsum(    \n    kube_pod_container_resource_requests_memory_bytes{cluster=\"$cluster\"}\n    * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}       \n)",
+              "expr": "sum (    \n    label_replace(      \n        container_memory_usage_bytes{pod_name!=\"\",container_name!=\"\",cluster=\"$cluster\"},      \n        \"pod\", \"$1\", \"pod_name\", \"(.*)\"    )    \n        * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n        * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}  \n    )  \n/\nsum(    \n    kube_pod_container_resource_requests_memory_bytes{cluster=\"$cluster\"}\n    * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}       \n)",
               "format": "time_series",
               "intervalFactor": 1,
               "refId": "A"
@@ -1259,7 +1259,7 @@ data:
               "refId": "C"
             },
             {
-              "expr": "sum (    \n    label_replace(      \n        container_memory_usage_bytes{pod_name!=\"\",container_name=\"\",cluster=\"$cluster\"},      \n        \"pod\", \"$1\", \"pod_name\", \"(.*)\"    \n    )    \n    * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n    * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}  \n)",
+              "expr": "sum (    \n    label_replace(      \n        container_memory_usage_bytes{pod_name!=\"\",container_name!=\"\",cluster=\"$cluster\"},      \n        \"pod\", \"$1\", \"pod_name\", \"(.*)\"    \n    )    \n    * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n    * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}  \n)",
               "format": "time_series",
               "intervalFactor": 1,
               "legendFormat": "Usage",
@@ -1444,7 +1444,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum by (node) (\n    irate(node_network_receive_bytes{job=\"node-exporter\",device!~\"veth.+\",cluster=\"$cluster\"}[5m])\n    * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n    * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"} \n)",
+              "expr": "sum by (node) (\n    irate(node_network_receive_bytes{job=\"node-exporter\",device!~\"veth.+\",cluster=\"$cluster\"}[$__rate_interval])\n    * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n    * on (node) group_left kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"} \n)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -1530,7 +1530,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum by (node) (\n    irate(node_network_transmit_bytes{job=\"node-exporter\",device!~\"veth.+\",cluster=\"$cluster\"}[5m]) \n    * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n    * on (node) group_left  kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"} \n)",
+              "expr": "sum by (node) (\n    irate(node_network_transmit_bytes{job=\"node-exporter\",device!~\"veth.+\",cluster=\"$cluster\"}[$__rate_interval]) \n    * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n    * on (node) group_left  kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"} \n)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -1616,7 +1616,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum by (node) ( \n    irate(node_disk_bytes_read[5m]) \n    * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n    * on (node) group_left  kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}  \n)",
+              "expr": "sum by (node) ( \n    irate(node_disk_bytes_read[$__rate_interval]) \n    * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n    * on (node) group_left  kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"}  \n)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -1702,7 +1702,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum by (node) ( \n    irate(node_disk_bytes_written[5m]) \n    * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n    * on (node) group_left  kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"} \n)",
+              "expr": "sum by (node) ( \n    irate(node_disk_bytes_written[$__rate_interval]) \n    * on (namespace, pod) group_left(node) node_namespace_pod:kube_pod_info:{cluster=\"$cluster\"}    \n    * on (node) group_left  kube_node_labels{label_node_role_kubernetes_io_$nodetype=\"true\",cluster=\"$cluster\"} \n)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,

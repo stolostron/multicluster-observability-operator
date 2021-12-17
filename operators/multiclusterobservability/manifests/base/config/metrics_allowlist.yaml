@@ -154,6 +154,12 @@ data:
       - namespace_pod_name_container_name:container_cpu_usage_seconds_total:sum_rate
       - kube_namespace_labels
       - container_memory_rss
+      - container_network_receive_bytes_total
+      - container_network_transmit_bytes_total
+      - container_network_receive_packets_total
+      - container_network_transmit_packets_total
+      - container_network_receive_packets_dropped_total
+      - container_network_transmit_packets_dropped_total
       #- kube_pod_info
       - container_cpu_usage_seconds_total
       #- kube_node_status_allocatable_cpu_cores
@@ -169,6 +175,7 @@ data:
       - __name__="container_memory_rss",container!=""
       - __name__="container_memory_swap",container!=""
       - __name__="container_memory_working_set_bytes",container!=""
+      - __name__="container_memory_working_set_bytes",container_name!=""
     renames:
       mixin_pod_workload: namespace_workload_pod:kube_pod_owner:relabel
       namespace:kube_pod_container_resource_requests_cpu_cores:sum: namespace_cpu:kube_pod_container_resource_requests:sum

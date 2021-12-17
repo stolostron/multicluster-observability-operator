@@ -258,7 +258,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(container_cpu_cfs_throttled_periods_total{namespace=\"$namespace\", pod_name=\"$pod\", container_name!=\"POD\", cluster=\"$cluster\"}[5m])) by (container_name) /sum(increase(container_cpu_cfs_periods_total{namespace=\"$namespace\", pod_name=\"$pod\", container_name!=\"POD\", cluster=\"$cluster\"}[5m])) by (container_name)",
+              "expr": "sum(increase(container_cpu_cfs_throttled_periods_total{namespace=\"$namespace\", pod_name=\"$pod\", container_name!=\"POD\", cluster=\"$cluster\"}[$__rate_interval])) by (container_name) /sum(increase(container_cpu_cfs_periods_total{namespace=\"$namespace\", pod_name=\"$pod\", container_name!=\"POD\", cluster=\"$cluster\"}[$__rate_interval])) by (container_name)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
