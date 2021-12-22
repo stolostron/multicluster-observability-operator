@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: setup-grafana-dev
+  namespace: open-cluster-management-observability
+  labels:
+    name: setup-grafana-dev
+spec:
+  template:
+    spec:
+      serviceAccountName: setup-grafana-dev
+      containers:
+      - name: setup-grafana-dev
+        image: quay.io/ocm-observability/setup-grafana-dev:v2.4
+        imagePullPolicy: Always
+        command: ["/bin/sh"]
+        args: ["-c", "/tmp/setup-grafana-dev.sh --deploy && /tmp/switch-to-grafana-admin.sh kube:admin"]
+      restartPolicy: Never
+  backoffLimit: 3
