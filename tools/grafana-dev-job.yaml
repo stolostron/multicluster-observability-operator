@@ -11,7 +11,7 @@ spec:
       serviceAccountName: setup-grafana-dev
       containers:
       - name: setup-grafana-dev
-        image: quay.io/songleo/setup-grafana-dev
+        image: quay.io/ocm-observability/setup-grafana-dev:v2.4
         imagePullPolicy: Always
         command: ["/tmp/setup-grafana-dev.sh",  "--deploy"]
       restartPolicy: Never
