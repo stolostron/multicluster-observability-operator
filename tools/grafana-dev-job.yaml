@@ -1,0 +1,18 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: setup-grafana-dev
+  namespace: open-cluster-management-observability
+  labels:
+    name: setup-grafana-dev
+spec:
+  template:
+    spec:
+      serviceAccountName: setup-grafana-dev
+      containers:
+      - name: setup-grafana-dev
+        image: quay.io/songleo/setup-grafana-dev
+        imagePullPolicy: Always
+        command: ["/tmp/setup-grafana-dev.sh",  "--deploy"]
+      restartPolicy: Never
+  backoffLimit: 3
