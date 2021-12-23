@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-	"github.com/prometheus/common/log"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured/unstructuredscheme"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
-        _ "k8s.io/client-go/plugin/pkg/client/auth"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -224,7 +223,6 @@ func LoadConfig(url, kubeconfig, ctx string) (*rest.Config, error) {
 	}
 	// If not, try the in-cluster config.
 	if c, err := rest.InClusterConfig(); err == nil {
-		// log.Print("incluster\n")
 		return c, nil
 	}
 	// If no in-cluster config, try the default location in the user's home directory.
@@ -691,13 +689,13 @@ func GetKubeVersion(client *rest.RESTClient) version.Info {
 
 	versionBody, err := client.Get().AbsPath("/version").Do(context.TODO()).Raw()
 	if err != nil {
-		log.Error(err, "fail to GET /version")
+		klog.Errorf("fail to GET /version with %v", err)
 		return version.Info{}
 	}
 
 	err = json.Unmarshal(versionBody, &kubeVersion)
 	if err != nil {
-		log.Error(fmt.Errorf("fail to Unmarshal, got '%s': %v", string(versionBody), err), "")
+		klog.Errorf("fail to Unmarshal, got '%s': %v", string(versionBody), err)
 		return version.Info{}
 	}
 
