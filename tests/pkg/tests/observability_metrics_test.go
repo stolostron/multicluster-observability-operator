@@ -142,6 +142,17 @@ var _ = Describe("Observability:", func() {
 	It("[P2][Sev2][Observability][Integration] Should have metrics which used grafana dashboard (ssli/g1)", func() {
 		metricList := utils.GetDefaultMetricList(testOptions)
 		ignoreMetricMap := utils.GetIgnoreMetricMap()
+		_, etcdPodList := utils.GetPodList(
+			testOptions,
+			true,
+			"openshift-etcd",
+			"app=etcd",
+		)
+		// ignore etcd network peer metrics for SNO cluster
+		if etcdPodList != nil && len(etcdPodList.Items) <= 0 {
+			ignoreMetricMap["etcd_network_peer_received_bytes_total"] = true
+			ignoreMetricMap["etcd_network_peer_sent_bytes_total"] = true
+		}
 		for _, name := range metricList {
 			_, ok := ignoreMetricMap[name]
 			if !ok {
