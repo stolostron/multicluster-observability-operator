@@ -498,19 +498,25 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 		Data: map[string]string{},
 	}
 
-	allowlist, err := getAllowList(client, operatorconfig.AllowlistConfigMapName)
+	allowlist, ocp3Allowlist, err := getAllowList(client, operatorconfig.AllowlistConfigMapName)
 	if err != nil {
 		log.Error(err, "Failed to get metrics allowlist configmap "+operatorconfig.AllowlistConfigMapName)
 		return nil, err
 	}
 
-	customAllowlist, err := getAllowList(client, config.AllowlistCustomConfigMapName)
+	customAllowlist, ocp3CustomAllowlist, err := getAllowList(client, config.AllowlistCustomConfigMapName)
 	if err == nil {
 		allowlist.NameList = mergeMetrics(allowlist.NameList, customAllowlist.NameList)
 		allowlist.MatchList = mergeMetrics(allowlist.MatchList, customAllowlist.MatchList)
 		allowlist.RuleList = append(allowlist.RuleList, customAllowlist.RuleList...)
 		for k, v := range customAllowlist.RenameMap {
 			allowlist.RenameMap[k] = v
+		}
+		ocp3Allowlist.NameList = mergeMetrics(ocp3Allowlist.NameList, ocp3CustomAllowlist.NameList)
+		ocp3Allowlist.MatchList = mergeMetrics(ocp3Allowlist.MatchList, ocp3CustomAllowlist.MatchList)
+		ocp3Allowlist.RuleList = append(ocp3Allowlist.RuleList, ocp3CustomAllowlist.RuleList...)
+		for k, v := range ocp3CustomAllowlist.RenameMap {
+			ocp3Allowlist.RenameMap[k] = v
 		}
 	} else {
 		log.Info("There is no custom metrics allowlist configmap in the cluster")
@@ -522,10 +528,16 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 	metricsAllowlist.Data["metrics_list.yaml"] = string(data)
+	data, err = yaml.Marshal(ocp3Allowlist)
+	if err != nil {
+		log.Error(err, "Failed to marshal allowlist data")
+		return nil, err
+	}
+	metricsAllowlist.Data["ocp311_metrics_list.yaml"] = string(data)
 	return metricsAllowlist, nil
 }
 
-func getAllowList(client client.Client, name string) (*MetricsAllowlist, error) {
+func getAllowList(client client.Client, name string) (*MetricsAllowlist, *MetricsAllowlist, error) {
 	found := &corev1.ConfigMap{}
 	namespacedName := types.NamespacedName{
 		Name:      name,
@@ -533,15 +545,21 @@ func getAllowList(client client.Client, name string) (*MetricsAllowlist, error) 
 	}
 	err := client.Get(context.TODO(), namespacedName, found)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	allowlist := &MetricsAllowlist{}
 	err = yaml.Unmarshal([]byte(found.Data["metrics_list.yaml"]), allowlist)
 	if err != nil {
 		log.Error(err, "Failed to unmarshal data in configmap "+name)
-		return nil, err
+		return nil, nil, err
 	}
-	return allowlist, nil
+	ocp3Allowlist := &MetricsAllowlist{}
+	err = yaml.Unmarshal([]byte(found.Data["ocp311_metrics_list.yaml"]), ocp3Allowlist)
+	if err != nil {
+		log.Error(err, "Failed to unmarshal data in configmap "+name)
+		return nil, nil, err
+	}
+	return allowlist, ocp3Allowlist, nil
 }
 
 func mergeMetrics(defaultAllowlist []string, customAllowlist []string) []string {

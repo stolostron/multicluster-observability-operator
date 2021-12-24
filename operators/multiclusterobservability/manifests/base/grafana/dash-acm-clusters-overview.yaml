@@ -250,7 +250,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "topk(50,  max(apiserver_request_duration_seconds:histogram_quantile_99) by (cluster))\n* on(cluster) group_left(api_up) count_values without() (\"api_up\", (sum(up{job=\"apiserver\"} == 1) by (cluster) / count(up{job=\"apiserver\"}) by (cluster)))",
+              "expr": "topk(50,  max(apiserver_request_duration_seconds:histogram_quantile_99{clusterType!=\"ocp3\"}) by (cluster))\n* on(cluster) group_left(api_up) count_values without() (\"api_up\", (sum(up{job=\"apiserver\",clusterType!=\"ocp3\"} == 1) by (cluster) / count(up{job=\"apiserver\",clusterType!=\"ocp3\"}) by (cluster)))",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -259,7 +259,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by (cluster)(sum:apiserver_request_total:1h{code=~\"5..\"})",
+              "expr": "sum by (cluster)(sum:apiserver_request_total:1h{code=~\"5..\",clusterType!=\"ocp3\"})",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1691,7 +1691,7 @@ data:
           "pluginVersion": "7.5.5",
           "targets": [
             {
-              "expr": "sum(instance:node_network_receive_bytes_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster)\n* on(cluster) group_left(node_transmit) count_values without() (\"node_transmit\", sum(instance:node_network_transmit_bytes_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster))\n* on(cluster) group_left(node_receive_drop) count_values without() (\"node_receive_drop\", sum(instance:node_network_receive_drop_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster))\n* on(cluster) group_left(node_transmit_drop) count_values without() (\"node_transmit_drop\", sum(instance:node_network_transmit_drop_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster))",
+              "expr": "sum(instance:node_network_receive_bytes_excluding_lo:rate1m{job=\"node-exporter\",clusterType!=\"ocp3\"}) by (cluster)\n* on(cluster) group_left(node_transmit) count_values without() (\"node_transmit\", sum(instance:node_network_transmit_bytes_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster))\n* on(cluster) group_left(node_receive_drop) count_values without() (\"node_receive_drop\", sum(instance:node_network_receive_drop_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster))\n* on(cluster) group_left(node_transmit_drop) count_values without() (\"node_transmit_drop\", sum(instance:node_network_transmit_drop_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster))",
               "legendFormat": "",
               "interval": "",
               "exemplar": true,

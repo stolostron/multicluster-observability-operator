@@ -452,7 +452,7 @@ data:
           "pluginVersion": "7.3.10",
           "targets": [
             {
-              "expr": "sum(changes(etcd_server_leader_changes_seen_total{clusterType=\"ocp3\",job=\"etcd\"}[$__range])) by (cluster)",
+              "expr": "sum(changes(etcd_server_leader_changes_seen_total{clusterType=\"ocp3\",job=\"apiserver\"}[$__range])) by (cluster)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -460,7 +460,7 @@ data:
               "refId": "A"
             },
             {
-              "expr": "max(etcd_debugging_mvcc_db_total_size_in_bytes{clusterType=\"ocp3\",job=\"etcd\"}) by (cluster)",
+              "expr": "max(etcd_debugging_mvcc_db_total_size_in_bytes{clusterType=\"ocp3\",job=\"apiserver\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -469,7 +469,7 @@ data:
               "refId": "B"
             },
             {
-              "expr": "max(etcd_server_has_leader{clusterType=\"ocp3\",job=\"etcd\"}) by (cluster)",
+              "expr": "max(etcd_server_has_leader{clusterType=\"ocp3\",job=\"apiserver\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -713,7 +713,7 @@ data:
           "pluginVersion": "7.3.10",
           "targets": [
             {
-              "expr": "(sum(cluster:kube_pod_container_resource_requests:cpu:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"cpu\"}) by (cluster)) - (1 - avg(rate(node_cpu_seconds_total{clusterType=\"ocp3\",mode=\"idle\"}[$__rate_interval])) by (cluster))",
+              "expr": "(sum(cluster:kube_pod_container_resource_requests:cpu:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_cpu_cores{clusterType=\"ocp3\"}) by (cluster)) - (1 - avg(rate(node_cpu_seconds_total{clusterType=\"ocp3\",mode=\"idle\"}[$__rate_interval])) by (cluster))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -723,7 +723,7 @@ data:
               "refId": "C"
             },
             {
-              "expr": "sum(cluster:kube_pod_container_resource_requests:cpu:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"cpu\"}) by (cluster)",
+              "expr": "sum(cluster:kube_pod_container_resource_requests:cpu:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_cpu_cores{clusterType=\"ocp3\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -955,7 +955,7 @@ data:
           "pluginVersion": "7.3.10",
           "targets": [
             {
-              "expr": "(sum(cluster:kube_pod_container_resource_requests:memory:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"memory\"}) by (cluster)) - (1 - sum(:node_memory_MemAvailable_bytes:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"memory\"}) by (cluster))",
+              "expr": "(sum(cluster:kube_pod_container_resource_requests:memory:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_memory_bytes{clusterType=\"ocp3\"}) by (cluster)) - (1 - sum(:node_memory_MemAvailable_bytes:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_memory_bytes{clusterType=\"ocp3\"}) by (cluster))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -965,7 +965,7 @@ data:
               "refId": "C"
             },
             {
-              "expr": "sum(cluster:kube_pod_container_resource_requests:memory:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"memory\"}) by (cluster)",
+              "expr": "sum(cluster:kube_pod_container_resource_requests:memory:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_memory_bytes{clusterType=\"ocp3\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -975,7 +975,7 @@ data:
               "refId": "A"
             },
             {
-              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"memory\"}) by (cluster)",
+              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_memory_bytes{clusterType=\"ocp3\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1199,7 +1199,7 @@ data:
               "refId": "F"
             },
             {
-              "expr": "sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"cpu\"}) by (cluster)",
+              "expr": "sum(kube_node_status_allocatable_cpu_cores{clusterType=\"ocp3\"}) by (cluster)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -1207,7 +1207,7 @@ data:
               "refId": "B"
             },
             {
-              "expr": "sum(cluster:kube_pod_container_resource_requests:cpu:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"cpu\"}) by (cluster)",
+              "expr": "sum(cluster:kube_pod_container_resource_requests:cpu:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_cpu_cores{clusterType=\"ocp3\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1534,7 +1534,7 @@ data:
               "refId": "F"
             },
             {
-              "expr": "sum(cluster:kube_pod_container_resource_requests:memory:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"memory\"}) by (cluster)",
+              "expr": "sum(cluster:kube_pod_container_resource_requests:memory:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_memory_bytes{clusterType=\"ocp3\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1544,7 +1544,7 @@ data:
               "refId": "A"
             },
             {
-              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"memory\"}) by (cluster)",
+              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_memory_bytes{clusterType=\"ocp3\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1655,7 +1655,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "topk(5, (1 - sum(:node_memory_MemAvailable_bytes:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"memory\"}) by (cluster)))",
+              "expr": "topk(5, (1 - sum(:node_memory_MemAvailable_bytes:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_memory_bytes{clusterType=\"ocp3\"}) by (cluster)))",
               "format": "time_series",
               "instant": false,
               "interval": "",
