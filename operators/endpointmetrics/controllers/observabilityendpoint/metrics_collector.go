@@ -24,16 +24,17 @@ import (
 )
 
 const (
-	metricsConfigMapKey  = "metrics_list.yaml"
-	metricsCollectorName = "metrics-collector-deployment"
-	selectorKey          = "component"
-	selectorValue        = "metrics-collector"
-	caMounthPath         = "/etc/serving-certs-ca-bundle"
-	caVolName            = "serving-certs-ca-bundle"
-	mtlsCertName         = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
-	mtlsCaName           = "observability-managed-cluster-certs"
-	limitBytes           = 1073741824
-	defaultInterval      = "30s"
+	metricsConfigMapKey       = "metrics_list.yaml"
+	metricsOcp311ConfigMapKey = "ocp311_metrics_list.yaml"
+	metricsCollectorName      = "metrics-collector-deployment"
+	selectorKey               = "component"
+	selectorValue             = "metrics-collector"
+	caMounthPath              = "/etc/serving-certs-ca-bundle"
+	caVolName                 = "serving-certs-ca-bundle"
+	mtlsCertName              = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
+	mtlsCaName                = "observability-managed-cluster-certs"
+	limitBytes                = 1073741824
+	defaultInterval           = "30s"
 )
 
 const (
@@ -221,7 +222,7 @@ func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonS
 	hubInfo operatorconfig.HubInfo, clusterID string, clusterType string,
 	replicaCount int32, forceRestart bool) (bool, error) {
 
-	list := getMetricsAllowlist(ctx, client)
+	list := getMetricsAllowlist(ctx, client, clusterType)
 	endpointDeployment := getEndpointDeployment(ctx, client)
 	deployment := createDeployment(
 		clusterID,
@@ -290,7 +291,7 @@ func deleteMetricsCollector(ctx context.Context, client client.Client) error {
 
 func int32Ptr(i int32) *int32 { return &i }
 
-func getMetricsAllowlist(ctx context.Context, client client.Client) MetricsAllowlist {
+func getMetricsAllowlist(ctx context.Context, client client.Client, clusterType string) MetricsAllowlist {
 	l := &MetricsAllowlist{}
 	cm := &corev1.ConfigMap{}
 	err := client.Get(ctx, types.NamespacedName{Name: operatorconfig.AllowlistConfigMapName,
@@ -299,7 +300,11 @@ func getMetricsAllowlist(ctx context.Context, client client.Client) MetricsAllow
 		log.Error(err, "Failed to get configmap")
 	} else {
 		if cm.Data != nil {
-			err = yaml.Unmarshal([]byte(cm.Data[metricsConfigMapKey]), l)
+			configmapKey := metricsConfigMapKey
+			if clusterType == "ocp3" {
+				configmapKey = metricsOcp311ConfigMapKey
+			}
+			err = yaml.Unmarshal([]byte(cm.Data[configmapKey]), l)
 			if err != nil {
 				log.Error(err, "Failed to unmarshal data in configmap")
 			}
