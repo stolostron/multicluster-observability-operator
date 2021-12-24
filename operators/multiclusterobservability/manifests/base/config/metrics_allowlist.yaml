@@ -224,7 +224,6 @@ data:
       - node_netstat_Tcp_RetransSegs
       - node_netstat_TcpExt_TCPSynRetrans
       - up
-      ### metrics for ocp 311 only start
       - node:node_cpu_utilisation:avg1m
       - kube_node_labels
       - 'node_namespace_pod:kube_pod_info:'
@@ -254,7 +253,6 @@ data:
       - container_network_receive_packets_dropped_total
       - container_network_transmit_packets_dropped_total
       - container_cpu_usage_seconds_total
-      ### metrics for ocp 311 only end
     matches:
       - __name__="workqueue_queue_duration_seconds_bucket",job="apiserver"
       - __name__="workqueue_adds_total",job="apiserver"
