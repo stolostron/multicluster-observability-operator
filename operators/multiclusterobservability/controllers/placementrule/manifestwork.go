@@ -504,7 +504,7 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 
-	customAllowlist, ocp3CustomAllowlist, err := getAllowList(client, config.AllowlistCustomConfigMapName)
+	customAllowlist, _, err := getAllowList(client, config.AllowlistCustomConfigMapName)
 	if err == nil {
 		allowlist.NameList = mergeMetrics(allowlist.NameList, customAllowlist.NameList)
 		allowlist.MatchList = mergeMetrics(allowlist.MatchList, customAllowlist.MatchList)
@@ -512,10 +512,10 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 		for k, v := range customAllowlist.RenameMap {
 			allowlist.RenameMap[k] = v
 		}
-		ocp3Allowlist.NameList = mergeMetrics(ocp3Allowlist.NameList, ocp3CustomAllowlist.NameList)
-		ocp3Allowlist.MatchList = mergeMetrics(ocp3Allowlist.MatchList, ocp3CustomAllowlist.MatchList)
-		ocp3Allowlist.RuleList = append(ocp3Allowlist.RuleList, ocp3CustomAllowlist.RuleList...)
-		for k, v := range ocp3CustomAllowlist.RenameMap {
+		ocp3Allowlist.NameList = mergeMetrics(ocp3Allowlist.NameList, customAllowlist.NameList)
+		ocp3Allowlist.MatchList = mergeMetrics(ocp3Allowlist.MatchList, customAllowlist.MatchList)
+		ocp3Allowlist.RuleList = append(ocp3Allowlist.RuleList, customAllowlist.RuleList...)
+		for k, v := range customAllowlist.RenameMap {
 			ocp3Allowlist.RenameMap[k] = v
 		}
 	} else {
