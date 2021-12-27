@@ -293,10 +293,10 @@ data:
       - record: :node_memory_MemAvailable_bytes:sum
         expr: sum(node_memory_MemAvailable_bytes{job=\"node-exporter\"}or(node_memory_Buffers_bytes{job=\"node-exporter\"} + node_memory_Cached_bytes{job=\"node-exporter\"} + node_memory_MemFree_bytes{job=\"node-exporter\"} + node_memory_Slab_bytes{job=\"node-exporter\"}))
       - record: instance:node_network_receive_bytes_excluding_lo:rate1m
-        expr: sum without(device) (rate(node_network_receive_bytes_total{job=\"node-exporter\", device!=\"lo\"}[1m]))
+        expr: sum(rate(node_network_receive_bytes_total{job=\"node-exporter\", device!=\"lo\"}[1m])) without(device)
       - record: instance:node_network_transmit_bytes_excluding_lo:rate1m
-        expr: sum without (device) (rate(node_network_transmit_bytes_total{job=\"node-exporter\", device!=\"lo\"}[1m]))
+        expr: sum(rate(node_network_transmit_bytes_total{job=\"node-exporter\", device!=\"lo\"}[1m])) without(device)
       - record: instance:node_network_receive_drop_excluding_lo:rate1m
-        expr: sum without (device) (rate(node_network_receive_drop_total{job=\"node-exporter\", device!=\"lo\"}[1m]))
+        expr: sum(rate(node_network_receive_drop_total{job=\"node-exporter\", device!=\"lo\"}[1m])) without(device)
       - record: instance:node_network_transmit_drop_excluding_lo:rate1m
-        expr: sum without (device) (rate(node_network_transmit_drop_total{job=\"node-exporter\", device!=\"lo\"}[1m]))
+        expr: sum(rate(node_network_transmit_drop_total{job=\"node-exporter\", device!=\"lo\"}[1m])) without(device)
