@@ -105,6 +105,16 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
   rules:
     - record: f
       expr: g
+`,
+"ocp311_metrics_list.yaml": `
+  names:
+    - a
+    - b
+  renames:
+    a: c
+  rules:
+    - record: f
+      expr: g
 `},
 	}
 }
