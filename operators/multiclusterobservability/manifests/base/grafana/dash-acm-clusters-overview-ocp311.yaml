@@ -294,226 +294,6 @@ data:
           "type": "table"
         },
         {
-          "datasource": null,
-          "description": "Leader election changes per cluster over the time range selected for dashboard.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {
-                "align": null,
-                "filterable": false
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": []
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "cluster"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Cluster"
-                  },
-                  {
-                    "id": "links",
-                    "value": [
-                      {
-                        "title": "Drill down to cluster",
-                        "url": "/d/N8BxQ2jMz/kubernetes-etcd-cluster?var-cluster=${__data.fields.cluster}"
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #A"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Leader Election Changes"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  },
-                  {
-                    "id": "thresholds",
-                    "value": {
-                      "mode": "absolute",
-                      "steps": [
-                        {
-                          "color": "green",
-                          "value": null
-                        },
-                        {
-                          "color": "yellow",
-                          "value": 1
-                        },
-                        {
-                          "color": "red",
-                          "value": 2
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "id": "custom.displayMode",
-                    "value": "color-text"
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #B"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "DB Size"
-                  },
-                  {
-                    "id": "unit",
-                    "value": "bytes"
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  },
-                  {
-                    "id": "decimals",
-                    "value": 2
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "Value #C"
-                },
-                "properties": [
-                  {
-                    "id": "displayName",
-                    "value": "Has a Leader"
-                  },
-                  {
-                    "id": "mappings",
-                    "value": [
-                      {
-                        "from": "",
-                        "id": 1,
-                        "text": "Yes",
-                        "to": "",
-                        "type": 1,
-                        "value": "1"
-                      },
-                      {
-                        "from": "",
-                        "id": 2,
-                        "text": "No",
-                        "to": "",
-                        "type": 1,
-                        "value": "0"
-                      }
-                    ]
-                  },
-                  {
-                    "id": "custom.align",
-                    "value": "left"
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 7,
-            "w": 12,
-            "x": 12,
-            "y": 1
-          },
-          "id": 150,
-          "interval": "1m",
-          "options": {
-            "frameIndex": 2,
-            "showHeader": true,
-            "sortBy": []
-          },
-          "pluginVersion": "7.3.10",
-          "targets": [
-            {
-              "expr": "sum(changes(etcd_server_leader_changes_seen_total{clusterType=\"ocp3\",job=\"etcd\"}[$__range])) by (cluster)",
-              "format": "table",
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "A"
-            },
-            {
-              "expr": "max(etcd_debugging_mvcc_db_total_size_in_bytes{clusterType=\"ocp3\",job=\"etcd\"}) by (cluster)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "B"
-            },
-            {
-              "expr": "max(etcd_server_has_leader{clusterType=\"ocp3\",job=\"etcd\"}) by (cluster)",
-              "format": "table",
-              "hide": false,
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "C"
-            }
-          ],
-          "title": "etcd",
-          "transformations": [
-            {
-              "id": "filterFieldsByName",
-              "options": {
-                "include": {
-                  "names": [
-                    "cluster",
-                    "Value #B",
-                    "Value #A",
-                    "Value #C"
-                  ]
-                }
-              }
-            },
-            {
-              "id": "merge",
-              "options": {}
-            },
-            {
-              "id": "organize",
-              "options": {
-                "excludeByName": {},
-                "indexByName": {
-                  "Value #A": 2,
-                  "Value #B": 3,
-                  "Value #C": 1,
-                  "cluster": 0
-                },
-                "renameByName": {}
-              }
-            }
-          ],
-          "type": "table"
-        },
-        {
           "collapsed": false,
           "datasource": "$datasource",
           "gridPos": {
@@ -713,7 +493,7 @@ data:
           "pluginVersion": "7.3.10",
           "targets": [
             {
-              "expr": "(sum(cluster:kube_pod_container_resource_requests:cpu:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"cpu\"}) by (cluster)) - (1 - avg(rate(node_cpu_seconds_total{clusterType=\"ocp3\",mode=\"idle\"}[$__rate_interval])) by (cluster))",
+              "expr": "(sum(cluster:kube_pod_container_resource_requests:cpu:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_cpu_cores{clusterType=\"ocp3\"}) by (cluster)) - (1 - avg(rate(node_cpu_seconds_total{clusterType=\"ocp3\",mode=\"idle\"}[$__rate_interval])) by (cluster))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -723,7 +503,7 @@ data:
               "refId": "C"
             },
             {
-              "expr": "sum(cluster:kube_pod_container_resource_requests:cpu:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"cpu\"}) by (cluster)",
+              "expr": "sum(cluster:kube_pod_container_resource_requests:cpu:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_cpu_cores{clusterType=\"ocp3\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -955,7 +735,7 @@ data:
           "pluginVersion": "7.3.10",
           "targets": [
             {
-              "expr": "(sum(cluster:kube_pod_container_resource_requests:memory:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"memory\"}) by (cluster)) - (1 - sum(:node_memory_MemAvailable_bytes:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"memory\"}) by (cluster))",
+              "expr": "(sum(cluster:kube_pod_container_resource_requests:memory:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_memory_bytes{clusterType=\"ocp3\"}) by (cluster)) - (1 - sum(:node_memory_MemAvailable_bytes:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_memory_bytes{clusterType=\"ocp3\"}) by (cluster))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -965,7 +745,7 @@ data:
               "refId": "C"
             },
             {
-              "expr": "sum(cluster:kube_pod_container_resource_requests:memory:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"memory\"}) by (cluster)",
+              "expr": "sum(cluster:kube_pod_container_resource_requests:memory:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_memory_bytes{clusterType=\"ocp3\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -975,7 +755,7 @@ data:
               "refId": "A"
             },
             {
-              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"memory\"}) by (cluster)",
+              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_memory_bytes{clusterType=\"ocp3\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1199,7 +979,7 @@ data:
               "refId": "F"
             },
             {
-              "expr": "sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"cpu\"}) by (cluster)",
+              "expr": "sum(kube_node_status_allocatable_cpu_cores{clusterType=\"ocp3\"}) by (cluster)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -1207,7 +987,7 @@ data:
               "refId": "B"
             },
             {
-              "expr": "sum(cluster:kube_pod_container_resource_requests:cpu:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"cpu\"}) by (cluster)",
+              "expr": "sum(cluster:kube_pod_container_resource_requests:cpu:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_cpu_cores{clusterType=\"ocp3\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1534,7 +1314,7 @@ data:
               "refId": "F"
             },
             {
-              "expr": "sum(cluster:kube_pod_container_resource_requests:memory:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"memory\"}) by (cluster)",
+              "expr": "sum(cluster:kube_pod_container_resource_requests:memory:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_memory_bytes{clusterType=\"ocp3\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1544,7 +1324,7 @@ data:
               "refId": "A"
             },
             {
-              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"memory\"}) by (cluster)",
+              "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_memory_bytes{clusterType=\"ocp3\"}) by (cluster)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1655,7 +1435,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "topk(5, (1 - sum(:node_memory_MemAvailable_bytes:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable{clusterType=\"ocp3\",resource=\"memory\"}) by (cluster)))",
+              "expr": "topk(5, (1 - sum(:node_memory_MemAvailable_bytes:sum{clusterType=\"ocp3\"}) by (cluster) / sum(kube_node_status_allocatable_memory_bytes{clusterType=\"ocp3\"}) by (cluster)))",
               "format": "time_series",
               "instant": false,
               "interval": "",

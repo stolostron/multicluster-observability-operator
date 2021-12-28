@@ -271,13 +271,13 @@ data:
       etcd_mvcc_db_total_size_in_bytes: etcd_debugging_mvcc_db_total_size_in_bytes
     rules:
       - record: apiserver_request_duration_seconds:histogram_quantile_99
-        expr: histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le))
+        expr: (histogram_quantile(0.99,sum(rate(apiserver_request_latencies_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le)))/1000000
       - record: apiserver_request_duration_seconds:histogram_quantile_99:instance
-        expr: histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le, verb, instance))
+        expr: (histogram_quantile(0.99, sum(rate(apiserver_request_latencies_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le, verb, instance)))/1000000
       - record: sum:apiserver_request_total:1h
-        expr: sum(rate(apiserver_request_total{job=\"apiserver\"}[1h])) by(code, instance)
+        expr: sum(rate(apiserver_request_count{job=\"apiserver\"}[1h])) by(code, instance)
       - record: sum:apiserver_request_total:5m
-        expr: sum(rate(apiserver_request_total{job=\"apiserver\"}[5m])) by(code, instance)
+        expr: sum(rate(apiserver_request_count{job=\"apiserver\"}[5m])) by(code, instance)
       - record: rpc_rate:grpc_server_handled_total:sum_rate
         expr: sum(rate(grpc_server_handled_total{job=\"etcd\",grpc_type=\"unary\",grpc_code!=\"OK\"}[5m]))
       - record: active_streams_watch:grpc_server_handled_total:sum
@@ -285,8 +285,18 @@ data:
       - record: active_streams_lease:grpc_server_handled_total:sum
         expr: sum(grpc_server_started_total{job=\"etcd\",grpc_service=\"etcdserverpb.Lease\",grpc_type=\"bidi_stream\"}) - sum(grpc_server_handled_total{job=\"etcd\",grpc_service=\"etcdserverpb.Lease\",grpc_type=\"bidi_stream\"})
       - record: cluster:kube_pod_container_resource_requests:cpu:sum
-        expr: sum(sum(sum(kube_pod_container_resource_requests{resource=\"cpu\"}) by (pod,namespace,container) * on(pod,namespace) group_left(phase) max(kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"} >0) by (pod,namespace,phase)) by (pod,namespace,phase))
+        expr: sum(sum(sum(kube_pod_container_resource_requests_cpu_cores) by (pod,namespace,container) * on(pod,namespace) group_left(phase) max(kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"} >0) by (pod,namespace,phase)) by (pod,namespace,phase))
       - record: cluster:kube_pod_container_resource_requests:memory:sum
-        expr: sum(sum(sum(kube_pod_container_resource_requests{resource=\"memory\"}) by (pod,namespace,container) * on(pod,namespace) group_left(phase) max(kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"} >0) by (pod,namespace,phase)) by (pod,namespace,phase))
+        expr: sum(sum(sum(kube_pod_container_resource_requests_memory_bytes) by (pod,namespace,container) * on(pod,namespace) group_left(phase) max(kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"} >0) by (pod,namespace,phase)) by (pod,namespace,phase))
       - record: sli:apiserver_request_duration_seconds:trend:1m
-        expr: sum(increase(apiserver_request_duration_seconds_bucket{job=\"apiserver\",service=\"kubernetes\",le=\"1\",verb=~\"POST|PUT|DELETE|PATCH\"}[1m])) / sum(increase(apiserver_request_duration_seconds_count{job=\"apiserver\",service=\"kubernetes\",verb=~\"POST|PUT|DELETE|PATCH\"}[1m]))
+        expr: sum(increase(apiserver_request_latencies_bucket{job=\"apiserver\",service=\"kubernetes\",le=\"1\",verb=~\"POST|PUT|DELETE|PATCH\"}[1m])) / sum(increase(apiserver_request_latencies_count{job=\"apiserver\",service=\"kubernetes\",verb=~\"POST|PUT|DELETE|PATCH\"}[1m]))
+      - record: :node_memory_MemAvailable_bytes:sum
+        expr: sum(node_memory_MemAvailable_bytes{job=\"node-exporter\"}or(node_memory_Buffers_bytes{job=\"node-exporter\"} + node_memory_Cached_bytes{job=\"node-exporter\"} + node_memory_MemFree_bytes{job=\"node-exporter\"} + node_memory_Slab_bytes{job=\"node-exporter\"}))
+      - record: instance:node_network_receive_bytes_excluding_lo:rate1m
+        expr: sum(rate(node_network_receive_bytes_total{job=\"node-exporter\", device!=\"lo\"}[1m])) without(device)
+      - record: instance:node_network_transmit_bytes_excluding_lo:rate1m
+        expr: sum(rate(node_network_transmit_bytes_total{job=\"node-exporter\", device!=\"lo\"}[1m])) without(device)
+      - record: instance:node_network_receive_drop_excluding_lo:rate1m
+        expr: sum(rate(node_network_receive_drop_total{job=\"node-exporter\", device!=\"lo\"}[1m])) without(device)
+      - record: instance:node_network_transmit_drop_excluding_lo:rate1m
+        expr: sum(rate(node_network_transmit_drop_total{job=\"node-exporter\", device!=\"lo\"}[1m])) without(device)
