@@ -39,3 +39,5 @@ RUN curl -LO https://dl.k8s.io/release/v1.23.0/bin/linux/amd64/kubectl
 RUN chmod +x kubectl && mv ./kubectl /usr/local/bin/kubectl
 
 ADD setup-grafana-dev.sh setup-grafana-dev.sh
+
+ADD switch-to-grafana-admin.sh switch-to-grafana-admin.sh

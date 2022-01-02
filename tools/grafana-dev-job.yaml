@@ -14,5 +14,9 @@ spec:
         image: quay.io/ocm-observability/setup-grafana-dev:v2.4
         imagePullPolicy: Always
         command: ["/tmp/setup-grafana-dev.sh",  "--deploy"]
+      - name: switch-to-grafana-admin
+        image: quay.io/ocm-observability/setup-grafana-dev:v2.4
+        imagePullPolicy: Always
+        command: ["/tmp/switch-to-grafana-admin.sh"]
       restartPolicy: Never
   backoffLimit: 3
