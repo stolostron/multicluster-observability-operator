@@ -115,6 +115,19 @@ EOL
   kubectl -n "$obs_namespace" patch deployment grafana-dev -p '{"metadata": {"ownerReferences":null}}'
   kubectl -n "$obs_namespace" patch svc grafana-dev -p '{"metadata": {"ownerReferences":null}}'
   kubectl -n "$obs_namespace" patch ingress grafana-dev -p '{"metadata": {"ownerReferences":null}}'
+
+  podName=$(kubectl get pods -n "$obs_namespace" -l app=multicluster-observability-grafana-dev --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
+  if [ $? -ne 0 ] || [ -z "$podName" ]; then
+      echo "Failed to get grafana-dev pod name, please check your grafana-dev deployment"
+      exit 1
+  fi
+  # create a default user (kube:admin) for switch-to-grafana-admin.sh script.
+  # the password is invalid, just use a placeholder for create user
+  kubectl -n "$obs_namespace" exec -it "$podName" -c grafana-dashboard-loader -- /usr/bin/curl -X POST -H "Content-Type: application/json" -H "X-Forwarded-User: WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000" -d '{ "name":"kube:admin", "email":"kube:admin", "login":"kube:admin", "password":"placeholder" }' '127.0.0.1:3001/api/admin/users'
+  if [ $? -ne 0 ] || [ -z "$podName" ]; then
+      echo "Failed to create kube:admin user in grafana-dev"
+      exit 1
+  fi
 }
 
 clean() {
