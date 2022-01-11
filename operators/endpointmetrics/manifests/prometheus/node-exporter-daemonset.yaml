@@ -27,7 +27,7 @@ spec:
         - --collector.filesystem.ignored-mount-points=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/pods/.+)($|/)
         - --collector.netclass.ignored-devices=^(veth.*|[a-z0-9]+@if\d+)$
         - --collector.netdev.device-exclude=^(veth.*|[a-z0-9]+@if\d+)$
-        image: quay.io/open-cluster-management/node-exporter:2.4.0-SNAPSHOT-2021-08-11-14-15-20
+        image: quay.io/stolostron/node-exporter:2.4.0-SNAPSHOT-2021-08-11-14-15-20
         name: node-exporter
         resources:
           limits:
@@ -55,7 +55,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.podIP
-        image: quay.io/open-cluster-management/kube-rbac-proxy:2.4.0-SNAPSHOT-2021-08-11-14-15-20
+        image: quay.io/stolostron/kube-rbac-proxy:2.4.0-SNAPSHOT-2021-08-11-14-15-20
         name: kube-rbac-proxy
         ports:
         - containerPort: 9100

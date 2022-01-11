@@ -24,7 +24,7 @@ The guide is used for developer to build and install the endpoint-monitoring-ope
 1. Check out the endpoint-metrics-operator repository.
 
 ```
-$ git clone git@github.com:open-cluster-management/endpoint-metrics-operator.git
+$ git clone git@github.com:stolostron/endpoint-metrics-operator.git
 ```
 
 2. Build the endpoint-metrics-operator image and push it to a public registry, such as quay.io:
@@ -86,13 +86,13 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxx
 4. Create the configmap named `observability-metrics-allowlist` in namespace `open-cluster-management-addon-observability`:
 
 ```
-$ kubectl apply -n open-cluster-management-addon-observability -f https://raw.githubusercontent.com/open-cluster-management/multicluster-observability-operator/main/manifests/base/config/metrics_allowlist.yaml
+$ kubectl apply -n open-cluster-management-addon-observability -f https://raw.githubusercontent.com/stolostron/multicluster-observability-operator/main/manifests/base/config/metrics_allowlist.yaml
 ```
 
-5. Update the value of environment variable `COLLECTOR_IMAGE` in the endpoint-metrics-operator deployment, for example: `quay.io/open-cluster-management/metrics-collector:2.3.0-SNAPSHOT-2021-04-08-09-07-10`
+5. Update the value of environment variable `COLLECTOR_IMAGE` in the endpoint-metrics-operator deployment, for example: `quay.io/stolostron/metrics-collector:2.3.0-SNAPSHOT-2021-04-08-09-07-10`
 
 ```
-$ sed -i 's~REPLACE_WITH_METRICS_COLLECTOR_IMAGE~quay.io/open-cluster-management/metrics-collector:2.3.0-SNAPSHOT-2021-04-08-09-07-10~g' config/manager/manager.yaml
+$ sed -i 's~REPLACE_WITH_METRICS_COLLECTOR_IMAGE~quay.io/stolostron/metrics-collector:2.3.0-SNAPSHOT-2021-04-08-09-07-10~g' config/manager/manager.yaml
 ```
 
 6. Update the value of environment variable `HUB_NAMESPACE` with the actual hub namespace, for example: `cluster1`

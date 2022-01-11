@@ -23,12 +23,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
-	oav1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/deploying"
-	rendererutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
+	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 )
 
 var (

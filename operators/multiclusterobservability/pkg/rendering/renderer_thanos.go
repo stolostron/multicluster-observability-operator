@@ -7,7 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
-	rendererutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering"
+	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 )
 
 func (r *MCORenderer) newThanosRenderer() {

@@ -94,7 +94,7 @@ spec:
               apiVersion: v1
               fieldPath: metadata.namespace
         - name: DEBUG
-        image: quay.io/open-cluster-management/thanos:2.3.0-SNAPSHOT-2021-07-26-18-43-26
+        image: quay.io/stolostron/thanos:2.3.0-SNAPSHOT-2021-07-26-18-43-26
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 8

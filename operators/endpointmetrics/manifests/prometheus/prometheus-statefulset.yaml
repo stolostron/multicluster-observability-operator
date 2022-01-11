@@ -28,7 +28,7 @@ spec:
         - --storage.tsdb.retention.time=24h
         - --web.enable-lifecycle
         - --web.route-prefix=/
-        image: quay.io/open-cluster-management/prometheus:2.4.0-SNAPSHOT-2021-08-11-14-15-20
+        image: quay.io/stolostron/prometheus:2.4.0-SNAPSHOT-2021-08-11-14-15-20
         imagePullPolicy: IfNotPresent
         name: prometheus
         ports:
@@ -81,7 +81,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.podIP
-        image: quay.io/open-cluster-management/kube-rbac-proxy:2.4.0-SNAPSHOT-2021-08-11-14-15-20
+        image: quay.io/stolostron/kube-rbac-proxy:2.4.0-SNAPSHOT-2021-08-11-14-15-20
         name: kube-rbac-proxy
         ports:
         - containerPort: 9091
