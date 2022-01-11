@@ -207,7 +207,7 @@ func main() {
 		}
 	}
 	if mchCrdExists {
-		gvkLabelsMap[mchv1.SchemeGroupVersion.WithKind("MultiClusterHub")] = []filteredcache.Selector{
+		gvkLabelsMap[mchv1.GroupVersion.WithKind("MultiClusterHub")] = []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", mcoNamespace)},
 		}
 	}

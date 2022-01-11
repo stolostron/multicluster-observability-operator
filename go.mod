@@ -44,7 +44,7 @@ require (
 	open-cluster-management.io/addon-framework v0.0.0-20211014025435-1f42884cdd53
 	open-cluster-management.io/api v0.0.0-20210916013819-2e58cdb938f9
 	sigs.k8s.io/controller-runtime v0.10.0
-	sigs.k8s.io/kube-storage-version-migrator v0.0.3
+	sigs.k8s.io/kube-storage-version-migrator v0.0.4
 	sigs.k8s.io/kustomize/api v0.8.8
 	sigs.k8s.io/kustomize/v3 v3.3.1
 	sigs.k8s.io/yaml v1.2.0
@@ -173,6 +173,7 @@ replace (
 	github.com/terraform-providers/terraform-provider-ignition/v2 => github.com/community-terraform-providers/terraform-provider-ignition/v2 v2.1.0
 	golang.org/x/text => golang.org/x/text v0.3.5
 	k8s.io/client-go => k8s.io/client-go v0.22.1
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
 	kubevirt.io/client-go => kubevirt.io/client-go v0.29.0
 	// HiveConfig import dependancies
 	sigs.k8s.io/cluster-api-provider-aws => github.com/openshift/cluster-api-provider-aws v0.2.1-0.20200506073438-9d49428ff837
@@ -180,7 +181,3 @@ replace (
 	sigs.k8s.io/cluster-api-provider-openstack => github.com/openshift/cluster-api-provider-openstack v0.0.0-20200526112135-319a35b2e38e
 	sigs.k8s.io/kube-storage-version-migrator => github.com/openshift/kubernetes-kube-storage-version-migrator v0.0.3-0.20210302135122-481bd04dbc78
 )
-
-// needed because otherwise installer fetches a library-go version that requires bitbucket.com/ww/goautoneg which is dead
-// Tagged version fetches github.com/munnerz/goautoneg instead
-replace github.com/openshift/library-go => github.com/openshift/library-go v0.0.0-20200918101923-1e4c94603efe
