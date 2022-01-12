@@ -99,7 +99,7 @@ If you want to run observability e2e testing manually, make sure you have cluste
 1. clone this repository and enter its root directory:
 
 ```
-git clone git@github.com:open-cluster-management/multicluster-observability-operator.git && cd multicluster-observability-operator
+git clone git@github.com:stolostron/multicluster-observability-operator.git && cd multicluster-observability-operator
 ```
 
 2. Before running the e2e testing, make sure [ginkgo](https://github.com/onsi/ginkgo) is installed:
@@ -155,7 +155,7 @@ export IMPORT_KUBECONFIG=~/.kube/import-cluster-config
 1. clone this repository and enter its root directory:
 
 ```
-git clone git@github.com:open-cluster-management/multicluster-observability-operator.git && cd multicluster-observability-operator
+git clone git@github.com:stolostron/multicluster-observability-operator.git && cd multicluster-observability-operator
 ```
 
 2. Optionally build docker image for observability e2e testing:
