@@ -27,7 +27,6 @@ docker-push:
 unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors
 
 unit-tests-operators:
-	go test github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics
 	go test `go list ./operators/... | grep -v test`
 
 unit-tests-loaders:
