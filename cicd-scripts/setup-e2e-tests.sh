@@ -87,8 +87,8 @@ deploy_hub_spoke_core() {
     ${SED_COMMAND} "s~clusterName: cluster1$~clusterName: ${MANAGED_CLUSTER}~g" deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
     # deploy hub and spoke via OLM
     REGISTRATION_LATEST_SNAPSHOT=$(curl https://quay.io/api/v1/repository/stolostron/registration | jq '.tags|with_entries(select(.key|test("'2.4'.*-SNAPSHOT-*")))|keys[length-1]')
-    make cluster-ip IMAGE_TAG=${REGISTRATION_LATEST_SNAPSHOT} WORK_TAG=${REGISTRATION_LATEST_SNAPSHOT} REGISTRATION_TAG=${REGISTRATION_LATEST_SNAPSHOT} PLACEMENT_TAG=${REGISTRATION_LATEST_SNAPSHOT}
-    make deploy IMAGE_TAG=${REGISTRATION_LATEST_SNAPSHOT} WORK_TAG=${REGISTRATION_LATEST_SNAPSHOT} REGISTRATION_TAG=${REGISTRATION_LATEST_SNAPSHOT} PLACEMENT_TAG=${REGISTRATION_LATEST_SNAPSHOT}
+    make cluster-ip IMAGE_REGISTRY=quay.io/stolostron IMAGE_TAG=${REGISTRATION_LATEST_SNAPSHOT} WORK_TAG=${REGISTRATION_LATEST_SNAPSHOT} REGISTRATION_TAG=${REGISTRATION_LATEST_SNAPSHOT} PLACEMENT_TAG=${REGISTRATION_LATEST_SNAPSHOT}
+    make deploy IMAGE_REGISTRY=quay.io/stolostron IMAGE_TAG=${REGISTRATION_LATEST_SNAPSHOT} WORK_TAG=${REGISTRATION_LATEST_SNAPSHOT} REGISTRATION_TAG=${REGISTRATION_LATEST_SNAPSHOT} PLACEMENT_TAG=${REGISTRATION_LATEST_SNAPSHOT}
 
     # wait until hub and spoke are ready
     wait_for_deployment_ready 10 60s ${HUB_NS} cluster-manager-registration-controller cluster-manager-registration-webhook cluster-manager-work-webhook
