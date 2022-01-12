@@ -22,9 +22,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/util"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	"open-cluster-management.io/addon-framework/pkg/addonmanager"
 )
 

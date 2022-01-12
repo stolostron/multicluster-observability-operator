@@ -21,9 +21,9 @@ timeseries: $(METRICS_JSON)
 	jobs -p | xargs -r kill
 
 $(METRICS_JSON): $(GOJSONTOYAML_BIN)
-	matches=`curl -L https://raw.githubusercontent.com/open-cluster-management/multicluster-observability-operator/main/manifests/base/config/metrics_allowlist.yaml | \
+	matches=`curl -L https://raw.githubusercontent.com/stolostron/multicluster-observability-operator/main/manifests/base/config/metrics_allowlist.yaml | \
 	    $(GOJSONTOYAML_BIN) --yamltojson | jq -r '.data."metrics_list.yaml"' | $(GOJSONTOYAML_BIN) --yamltojson | jq -r '.matches' | jq '"{" + .[] + "}"'`; \
-	names=`curl -L https://raw.githubusercontent.com/open-cluster-management/multicluster-observability-operator/main/manifests/base/config/metrics_allowlist.yaml | \
+	names=`curl -L https://raw.githubusercontent.com/stolostron/multicluster-observability-operator/main/manifests/base/config/metrics_allowlist.yaml | \
 	    $(GOJSONTOYAML_BIN) --yamltojson | jq -r '.data."metrics_list.yaml"' | $(GOJSONTOYAML_BIN) --yamltojson | jq -r '.names' | jq '"{__name__=\"" + .[] + "\"}"'`; \
 	echo $$matches $$names | jq -s . > $@
 

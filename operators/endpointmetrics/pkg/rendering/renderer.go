@@ -17,11 +17,11 @@ import (
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering/templates"
-	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
-	rendererutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering"
-	templatesutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering/templates"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/util"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering/templates"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
+	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (

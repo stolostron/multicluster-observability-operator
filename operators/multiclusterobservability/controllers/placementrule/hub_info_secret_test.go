@@ -15,8 +15,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 )
 
 const (

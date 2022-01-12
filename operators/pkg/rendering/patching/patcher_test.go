@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 	"sigs.k8s.io/yaml"
 
-	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 )
 
 var apiserver = `
@@ -56,7 +56,7 @@ func TestApplyGlobalPatches(t *testing.T) {
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   "test",
-			Annotations: map[string]string{"mco-imageRepository": "quay.io/open-cluster-management"},
+			Annotations: map[string]string{"mco-imageRepository": "quay.io/stolostron"},
 		},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			ImagePullPolicy: "Always",

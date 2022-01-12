@@ -22,10 +22,10 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
-	"github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/forwarder"
-	collectorhttp "github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/http"
-	"github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/logger"
-	"github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/metricfamily"
+	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/forwarder"
+	collectorhttp "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/http"
+	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
+	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/metricfamily"
 )
 
 func main() {

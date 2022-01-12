@@ -4,7 +4,7 @@
 -include /opt/build-harness/Makefile.prow
 
 # Image URL to use all building/pushing image targets
-IMG ?= quay.io/open-cluster-management/multicluster-observability-operator:latest
+IMG ?= quay.io/stolostron/multicluster-observability-operator:latest
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: 

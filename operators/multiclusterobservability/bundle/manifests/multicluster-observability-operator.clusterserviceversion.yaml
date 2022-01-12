@@ -454,7 +454,7 @@ spec:
                   value: /usr/local/manifests
                 - name: SPOKE_NAMESPACE
                   value: open-cluster-management-addon-observability
-                image: quay.io/open-cluster-management/multicluster-observability-operator:latest
+                image: quay.io/stolostron/multicluster-observability-operator:latest
                 imagePullPolicy: Always
                 lifecycle:
                   preStop:
@@ -523,7 +523,7 @@ spec:
   maturity: alpha
   provider:
     name: Red Hat, Inc
-    url: https://github.com/open-cluster-management/multicluster-observability-operator
+    url: https://github.com/stolostron/multicluster-observability-operator
   version: 0.1.0
   webhookdefinitions:
   - admissionReviewVersions:

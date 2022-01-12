@@ -14,9 +14,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
-	rendererutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering"
-	templatesutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering/templates"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
+	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 )
 
 func getAllowlistCM() *corev1.ConfigMap {

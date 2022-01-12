@@ -18,9 +18,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
-	oashared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
-	operatorconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
+	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 )
 
 const (
