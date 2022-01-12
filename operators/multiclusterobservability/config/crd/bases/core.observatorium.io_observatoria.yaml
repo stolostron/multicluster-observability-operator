@@ -379,6 +379,9 @@ spec:
                   image:
                     description: API image
                     type: string
+                  imagePullPolicy:
+                    description: API image pull policy
+                    type: string
                   rbac:
                     description: RBAC is an RBAC configuration for the Observatorium API.
                     properties:
@@ -590,6 +593,9 @@ spec:
                 properties:
                   image:
                     description: Loki image
+                    type: string
+                  imagePullPolicy:
+                    description: Loki image pull policy
                     type: string
                   replicas:
                     additionalProperties:
@@ -982,6 +988,9 @@ spec:
                   image:
                     description: Thanos image
                     type: string
+                  imagePullPolicy:
+                    description: Thanos image pull policy
+                    type: string
                   query:
                     description: Query
                     properties:
@@ -1031,6 +1040,9 @@ spec:
                           exporterImage:
                             description: Memcached Prometheus Exporter image
                             type: string
+                          exporterImagePullPolicy:
+                            description: Memcached Prometheus Exporter image image pull policy
+                            type: string
                           exporterResources:
                             description: Compute Resources required by this container.
                             properties:
@@ -1058,6 +1070,9 @@ spec:
                             type: string
                           image:
                             description: Memcached image
+                            type: string
+                          imagePullPolicy:
+                            description: Memcached image pull policy
                             type: string
                           maxItemSize:
                             description: 'Max item size (default: 1m, min: 1k, max: 1024m)'
@@ -1134,6 +1149,9 @@ spec:
                     properties:
                       image:
                         description: Receive Controller image
+                        type: string
+                      imagePullPolicy:
+                        description: Receive image pull policy
                         type: string
                       resources:
                         description: Compute Resources required by this container.
@@ -1354,6 +1372,9 @@ spec:
                       reloaderImage:
                         description: ReloaderImage is an image of configmap reloader
                         type: string
+                      reloaderImagePullPolicy:
+                        description: ReloaderImage image pull policy
+                        type: string
                       reloaderResources:
                         description: Compute Resources required by this container.
                         properties:
@@ -1531,6 +1552,9 @@ spec:
                           exporterImage:
                             description: Memcached Prometheus Exporter image
                             type: string
+                          exporterImagePullPolicy:
+                            description: Memcached Prometheus Exporter image image pull policy
+                            type: string
                           exporterResources:
                             description: Compute Resources required by this container.
                             properties:
@@ -1558,6 +1582,9 @@ spec:
                             type: string
                           image:
                             description: Memcached image
+                            type: string
+                          imagePullPolicy:
+                            description: Memcached image pull policy
                             type: string
                           maxItemSize:
                             description: 'Max item size (default: 1m, min: 1k, max: 1024m)'
