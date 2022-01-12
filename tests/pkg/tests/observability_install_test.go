@@ -13,8 +13,8 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/open-cluster-management/multicluster-observability-operator/tests/pkg/kustomize"
-	"github.com/open-cluster-management/multicluster-observability-operator/tests/pkg/utils"
+	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
+	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
 func installMCO() {

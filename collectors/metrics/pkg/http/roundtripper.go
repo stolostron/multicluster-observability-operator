@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 
-	"github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/logger"
+	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 )
 
 type bearerRoundTripper struct {

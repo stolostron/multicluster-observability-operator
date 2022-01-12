@@ -6,8 +6,8 @@ package placementrule
 import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	imageregistryv1alpha1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/imageregistry/v1alpha1"
-	"github.com/open-cluster-management/multicloud-operators-foundation/pkg/helpers/imageregistry"
+	imageregistryv1alpha1 "github.com/stolostron/multicloud-operators-foundation/pkg/apis/imageregistry/v1alpha1"
+	"github.com/stolostron/multicloud-operators-foundation/pkg/helpers/imageregistry"
 )
 
 var (

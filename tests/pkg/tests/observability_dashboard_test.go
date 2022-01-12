@@ -7,8 +7,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/open-cluster-management/multicluster-observability-operator/tests/pkg/kustomize"
-	"github.com/open-cluster-management/multicluster-observability-operator/tests/pkg/utils"
+	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
+	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
 const (

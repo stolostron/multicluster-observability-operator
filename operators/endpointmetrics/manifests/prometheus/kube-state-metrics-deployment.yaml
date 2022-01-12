@@ -26,7 +26,7 @@ spec:
         - --port=8081
         - --telemetry-host=127.0.0.1
         - --telemetry-port=8082
-        image: quay.io/open-cluster-management/kube-state-metrics:2.4.0-SNAPSHOT-2021-08-11-14-15-20
+        image: quay.io/stolostron/kube-state-metrics:2.4.0-SNAPSHOT-2021-08-11-14-15-20
         name: kube-state-metrics
         resources:
           limits:
@@ -42,7 +42,7 @@ spec:
         - --secure-listen-address=:8443
         - --tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
         - --upstream=http://127.0.0.1:8081/
-        image: quay.io/open-cluster-management/kube-rbac-proxy:2.4.0-SNAPSHOT-2021-08-11-14-15-20
+        image: quay.io/stolostron/kube-rbac-proxy:2.4.0-SNAPSHOT-2021-08-11-14-15-20
         name: kube-rbac-proxy-main
         ports:
         - containerPort: 8443
@@ -63,7 +63,7 @@ spec:
         - --secure-listen-address=:9443
         - --tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
         - --upstream=http://127.0.0.1:8082/
-        image: quay.io/open-cluster-management/kube-rbac-proxy:2.4.0-SNAPSHOT-2021-08-11-14-15-20
+        image: quay.io/stolostron/kube-rbac-proxy:2.4.0-SNAPSHOT-2021-08-11-14-15-20
         name: kube-rbac-proxy-self
         ports:
         - containerPort: 9443

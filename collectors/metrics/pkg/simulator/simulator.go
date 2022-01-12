@@ -17,9 +17,9 @@ import (
 
 	"github.com/go-kit/kit/log"
 
-	rlogger "github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	rlogger "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 )
 
 const (

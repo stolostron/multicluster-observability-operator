@@ -1,8 +1,8 @@
 # observability-e2e-test
 
-[![Build](https://img.shields.io/badge/build-Prow-informational)](https://prow.ci.openshift.org/?repo=open-cluster-management%2F${observability-e2e-test})
+[![Build](https://img.shields.io/badge/build-Prow-informational)](https://prow.ci.openshift.org/?repo=stolostron%2F${observability-e2e-test})
 
-This is modeled after: https://github.com/open-cluster-management/open-cluster-management-e2e
+This is modeled after: https://github.com/stolostron/open-cluster-management-e2e
 
 This is a container which will be called from:
 
@@ -22,7 +22,7 @@ If you only have an OCP cluster and haven't installed Observability yet, then yo
 1. clone this repo:
 
 ```
-git clone git@github.com:open-cluster-management/observability-e2e-test.git
+git clone git@github.com:stolostron/observability-e2e-test.git
 ```
 
 2. export `KUBECONFIG` environment to the kubeconfig of your OCP cluster:
@@ -37,7 +37,7 @@ export KUBECONFIG=<kubeconfig-file-of-your-ocp-cluster>
 make test-e2e-setup
 ```
 
-By default, the command will try to install the Observability and its dependencies with images of latest [UPSTREAM snapshot tag](https://quay.io/repository/open-cluster-management/acm-custom-registry?tab=tags). You may want to override one image to test the corresponding component, you can simply do that by exporting `COMPONENT_IMAGE_NAME` environment, for example, if you want to test `metrics-collector` image from `quay.io/<your_username_in_quay>/metrics-collector:test`, then execute the following command before running command in step 2:
+By default, the command will try to install the Observability and its dependencies with images of latest [UPSTREAM snapshot tag](https://quay.io/repository/stolostron/acm-custom-registry?tab=tags). You may want to override one image to test the corresponding component, you can simply do that by exporting `COMPONENT_IMAGE_NAME` environment, for example, if you want to test `metrics-collector` image from `quay.io/<your_username_in_quay>/metrics-collector:test`, then execute the following command before running command in step 2:
 
 ```
 export COMPONENT_IMAGE_NAME=quay.io/<your_username_in_quay>/metrics-collector:test
@@ -70,7 +70,7 @@ go get -u github.com/onsi/ginkgo/ginkgo
 make test-e2e
 ```
 
-**option 2:** If your E2E environment is set up by [deploy repo](https://github.com/open-cluster-management/deploy) similar to canary environment, then you need to copy `resources/options.yaml.template` to `resources/options.yaml`, and update values specific to your environment:
+**option 2:** If your E2E environment is set up by [deploy repo](https://github.com/stolostron/deploy) similar to canary environment, then you need to copy `resources/options.yaml.template` to `resources/options.yaml`, and update values specific to your environment:
 
 ```
 cp resources/options.yaml.template resources/options.yaml
@@ -117,7 +117,7 @@ export IMPORT_KUBECONFIG=~/.kube/import-cluster-config
 1. clone this repo:
 
 ```
-git clone git@github.com:open-cluster-management/observability-e2e-test.git
+git clone git@github.com:stolostron/observability-e2e-test.git
 ```
 
 2. copy `resources/options.yaml.template` to `resources/options.yaml`, and update values specific to your environment:

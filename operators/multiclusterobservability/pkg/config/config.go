@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	obsv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
+	obsv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -25,8 +25,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
-	observabilityv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	observabilityv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 )
 
 const (
@@ -101,7 +101,7 @@ const (
 )
 
 const (
-	DefaultImgRepository = "quay.io/open-cluster-management"
+	DefaultImgRepository = "quay.io/stolostron"
 	DefaultImgTagSuffix  = "2.4.0-SNAPSHOT-2021-09-23-07-02-14"
 
 	ObservatoriumImgRepo           = "quay.io/observatorium"
@@ -134,7 +134,7 @@ const (
 	ConfigmapReloaderImgTagSuffix = "4.8.0"
 	ConfigmapReloaderKey          = "prometheus-config-reloader"
 
-	OauthProxyImgRepo      = "quay.io/open-cluster-management"
+	OauthProxyImgRepo      = "quay.io/stolostron"
 	OauthProxyImgName      = "origin-oauth-proxy"
 	OauthProxyImgTagSuffix = "2.0.12-SNAPSHOT-2021-06-11-19-40-10"
 	OauthProxyKey          = "oauth_proxy"

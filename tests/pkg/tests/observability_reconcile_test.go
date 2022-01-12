@@ -14,7 +14,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/open-cluster-management/multicluster-observability-operator/tests/pkg/utils"
+	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
 var (

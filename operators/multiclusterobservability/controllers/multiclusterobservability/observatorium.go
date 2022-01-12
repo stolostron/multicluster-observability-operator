@@ -10,8 +10,8 @@ import (
 	"os"
 	"time"
 
-	obsv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
+	obsv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -25,10 +25,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/yaml"
 
-	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	mcoconfig "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/util"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (

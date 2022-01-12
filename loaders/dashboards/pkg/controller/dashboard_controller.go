@@ -25,7 +25,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 
-	"github.com/open-cluster-management/multicluster-observability-operator/loaders/dashboards/pkg/util"
+	"github.com/stolostron/multicluster-observability-operator/loaders/dashboards/pkg/util"
 )
 
 const (

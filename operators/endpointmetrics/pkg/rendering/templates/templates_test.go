@@ -8,7 +8,7 @@ import (
 	"path"
 	"testing"
 
-	templatesutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/rendering/templates"
+	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 )
 
 func TestGetCoreTemplates(t *testing.T) {

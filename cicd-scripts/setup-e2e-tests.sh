@@ -12,7 +12,7 @@ OCM_DEFAULT_NS="open-cluster-management"
 AGENT_NS="open-cluster-management-agent"
 HUB_NS="open-cluster-management-hub"
 export MANAGED_CLUSTER="local-cluster"
-COMPONENT_REPO="quay.io/open-cluster-management"
+COMPONENT_REPO="quay.io/stolostron"
 
 ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
 
@@ -36,11 +36,11 @@ function usage() {
   echo '  -a: Specifies the ACTION name, required, the value could be "install" or "uninstall".'
   # shellcheck disable=SC2016
   echo '  -i: Specifies the desired IMAGES, optional, the support images includes:
-        quay.io/open-cluster-management/multicluster-observability-operator:<tag>
-        quay.io/open-cluster-management/rbac-query-proxy:<tag>
-        quay.io/open-cluster-management/grafana-dashboard-loader:<tag>
-        quay.io/open-cluster-management/metrics-collector:<tag>
-        quay.io/open-cluster-management/endpoint-monitoring-operator:<tag>'
+        quay.io/stolostron/multicluster-observability-operator:<tag>
+        quay.io/stolostron/rbac-query-proxy:<tag>
+        quay.io/stolostron/grafana-dashboard-loader:<tag>
+        quay.io/stolostron/metrics-collector:<tag>
+        quay.io/stolostron/endpoint-monitoring-operator:<tag>'
   # shellcheck disable=SC2016
   echo '  -p: Specifies the pipeline for the images'
   echo ''
@@ -99,12 +99,12 @@ BRANCH=""
 LATEST_SNAPSHOT=""
 if [[ "${PULL_BASE_REF}" == "release-"* ]]; then
     BRANCH=${PULL_BASE_REF#"release-"}
-    BRANCH=`curl https://quay.io//api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'")))|keys[length-1]' | awk -F '-' '{print $1}'`
+    BRANCH=`curl https://quay.io//api/v1/repository/stolostron/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'")))|keys[length-1]' | awk -F '-' '{print $1}'`
     BRANCH="${BRANCH#\"}"
-    LATEST_SNAPSHOT=`curl https://quay.io//api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'-SNAPSHOT")))|keys[length-1]'`
+    LATEST_SNAPSHOT=`curl https://quay.io//api/v1/repository/stolostron/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'-SNAPSHOT")))|keys[length-1]'`
 fi
 if [[ "${LATEST_SNAPSHOT}" == "null" ]] || [[ "${LATEST_SNAPSHOT}" == "" ]]; then
-    LATEST_SNAPSHOT=$(curl https://quay.io/api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("SNAPSHOT")))|keys[length-1]')
+    LATEST_SNAPSHOT=$(curl https://quay.io/api/v1/repository/stolostron/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("SNAPSHOT")))|keys[length-1]')
 fi
 
 # trim the leading and tailing quotes
@@ -141,7 +141,7 @@ deploy_hub_spoke_core() {
     if [ -d "registration-operator" ]; then
         rm -rf registration-operator
     fi
-    git clone --depth 1 -b release-2.3 https://github.com/open-cluster-management/registration-operator.git && cd registration-operator
+    git clone --depth 1 -b release-2.3 https://github.com/stolostron/registration-operator.git && cd registration-operator
     $SED_COMMAND "s~clusterName: cluster1$~clusterName: $MANAGED_CLUSTER~g" deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
     # deploy hub and spoke via OLM
     make cluster-ip
@@ -210,7 +210,7 @@ delete_csr() {
 deploy_grafana_test() {
     cd ${ROOTDIR}/operators/multiclusterobservability/
     $SED_COMMAND "s~name: grafana$~name: grafana-test~g; s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-test~g; s~secretName: grafana-config$~secretName: grafana-config-test~g; s~secretName: grafana-datasources$~secretName: grafana-datasources-test~g; /MULTICLUSTEROBSERVABILITY_CR_NAME/d" manifests/base/grafana/deployment.yaml
-    $SED_COMMAND "s~image: quay.io/open-cluster-management/grafana-dashboard-loader.*$~image: $COMPONENT_REPO/grafana-dashboard-loader:$LATEST_SNAPSHOT~g" manifests/base/grafana/deployment.yaml
+    $SED_COMMAND "s~image: quay.io/stolostron/grafana-dashboard-loader.*$~image: $COMPONENT_REPO/grafana-dashboard-loader:$LATEST_SNAPSHOT~g" manifests/base/grafana/deployment.yaml
     $SED_COMMAND "s~replicas: 2$~replicas: 1~g" manifests/base/grafana/deployment.yaml
     $SED_COMMAND "s~name: grafana$~name: grafana-test~g; s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-test~g" manifests/base/grafana/service.yaml
     kubectl apply -f manifests/base/grafana/deployment.yaml
@@ -220,7 +220,7 @@ deploy_grafana_test() {
 deploy_mco_operator() {
     # we need to change the mco operator img in Prow KinD cluster
     if [[ -n "${IS_KIND_ENV}" ]]; then
-        cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator=${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF}
+        cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/stolostron/multicluster-observability-operator=${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF}
     fi
     kustomize build ${ROOTDIR}/operators/multiclusterobservability/config/default | kubectl apply -n ${OCM_DEFAULT_NS} -f -
     echo "mco operator is deployed successfully."

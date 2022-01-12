@@ -18,7 +18,7 @@ spec:
       serviceAccountName: endpoint-observability-operator
       containers:
       - name: endpoint-observability-operator
-        image: quay.io/open-cluster-management/endpoint-metrics-operator:latest
+        image: quay.io/stolostron/endpoint-metrics-operator:latest
         imagePullPolicy: Always
         command:
         - endpoint-monitoring-operator

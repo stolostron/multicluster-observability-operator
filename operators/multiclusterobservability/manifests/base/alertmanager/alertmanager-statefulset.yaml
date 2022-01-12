@@ -54,7 +54,7 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: status.podIP
-        image: quay.io/open-cluster-management/prometheus-alertmanager:2.3.0-SNAPSHOT-2021-07-26-18-43-26
+        image: quay.io/stolostron/prometheus-alertmanager:2.3.0-SNAPSHOT-2021-07-26-18-43-26
         imagePullPolicy: IfNotPresent
         name: alertmanager
         ports:
@@ -112,7 +112,7 @@ spec:
         - --skip-provider-button=true
         - --openshift-ca=/etc/pki/tls/cert.pem
         - --openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-        image: quay.io/open-cluster-management/origin-oauth-proxy:2.0.11-SNAPSHOT-2021-04-29-18-29-17
+        image: quay.io/stolostron/origin-oauth-proxy:2.0.11-SNAPSHOT-2021-04-29-18-29-17
         imagePullPolicy: IfNotPresent
         name: alertmanager-proxy
         ports:
