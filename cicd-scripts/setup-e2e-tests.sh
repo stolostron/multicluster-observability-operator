@@ -44,9 +44,7 @@ BRANCH=""
 LATEST_SNAPSHOT=""
 if [[ "${PULL_BASE_REF}" == "release-"* ]]; then
     BRANCH=${PULL_BASE_REF#"release-"}
-    BRANCH=$(curl https://quay.io/api/v1/repository/stolostron/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'")))|keys[length-1]' | awk -F '-' '{print $1}')
-    BRANCH="${BRANCH#\"}"
-    LATEST_SNAPSHOT=$(curl https://quay.io/api/v1/repository/stolostron/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'-SNAPSHOT")))|keys[length-1]')
+    LATEST_SNAPSHOT=`curl https://quay.io//api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|test("'${BRANCH}'.*-SNAPSHOT-*")))|keys[length-1]'`
 fi
 if [[ "${LATEST_SNAPSHOT}" == "null" ]] || [[ "${LATEST_SNAPSHOT}" == "" ]]; then
     LATEST_SNAPSHOT=$(curl https://quay.io/api/v1/repository/stolostron/multicluster-observability-operator | jq '.tags|with_entries(select((.key|contains("SNAPSHOT"))and(.key|contains("9.9.0")|not)))|keys[length-1]')
@@ -88,8 +86,9 @@ deploy_hub_spoke_core() {
     git clone --depth 1 -b release-2.4 https://github.com/stolostron/registration-operator.git && cd registration-operator
     ${SED_COMMAND} "s~clusterName: cluster1$~clusterName: ${MANAGED_CLUSTER}~g" deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
     # deploy hub and spoke via OLM
-    make cluster-ip IMAGE_TAG=${LATEST_SNAPSHOT} WORK_TAG=${LATEST_SNAPSHOT} REGISTRATION_TAG=${LATEST_SNAPSHOT} PLACEMENT_TAG=${LATEST_SNAPSHOT}
-    make deploy IMAGE_TAG=${LATEST_SNAPSHOT} WORK_TAG=${LATEST_SNAPSHOT} REGISTRATION_TAG=${LATEST_SNAPSHOT} PLACEMENT_TAG=${LATEST_SNAPSHOT}
+    REGISTRATION_LATEST_SNAPSHOT=$(curl https://quay.io/api/v1/repository/stolostron/registration | jq '.tags|with_entries(select(.key|test("'2.4'.*-SNAPSHOT-*")))|keys[length-1]')
+    make cluster-ip IMAGE_TAG=${REGISTRATION_LATEST_SNAPSHOT} WORK_TAG=${REGISTRATION_LATEST_SNAPSHOT} REGISTRATION_TAG=${REGISTRATION_LATEST_SNAPSHOT} PLACEMENT_TAG=${REGISTRATION_LATEST_SNAPSHOT}
+    make deploy IMAGE_TAG=${REGISTRATION_LATEST_SNAPSHOT} WORK_TAG=${REGISTRATION_LATEST_SNAPSHOT} REGISTRATION_TAG=${REGISTRATION_LATEST_SNAPSHOT} PLACEMENT_TAG=${REGISTRATION_LATEST_SNAPSHOT}
 
     # wait until hub and spoke are ready
     wait_for_deployment_ready 10 60s ${HUB_NS} cluster-manager-registration-controller cluster-manager-registration-webhook cluster-manager-work-webhook
