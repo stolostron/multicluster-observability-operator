@@ -54,7 +54,9 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource,
 	dep.Spec.Replicas = mcoconfig.GetReplicas(mcoconfig.Alertmanager, r.cr.Spec.AdvancedConfig)
 
 	spec := &dep.Spec.Template.Spec
-	spec.Containers[0].ImagePullPolicy = mcoconfig.GetImagePullPolicy(r.cr.Spec)
+
+	imagePullPolicy := mcoconfig.GetImagePullPolicy(r.cr.Spec)
+	spec.Containers[0].ImagePullPolicy = imagePullPolicy
 	args := spec.Containers[0].Args
 
 	if *dep.Spec.Replicas > 1 {
@@ -69,7 +71,7 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource,
 	spec.Containers[0].Args = args
 	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.Alertmanager, r.cr.Spec.AdvancedConfig)
 
-	spec.Containers[1].ImagePullPolicy = mcoconfig.GetImagePullPolicy(r.cr.Spec)
+	spec.Containers[1].ImagePullPolicy = imagePullPolicy
 	spec.NodeSelector = r.cr.Spec.NodeSelector
 	spec.Tolerations = r.cr.Spec.Tolerations
 	spec.ImagePullSecrets = []corev1.LocalObjectReference{
@@ -99,6 +101,7 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource,
 	if found {
 		spec.Containers[2].Image = image
 	}
+	spec.Containers[2].ImagePullPolicy = imagePullPolicy
 	//replace the volumeClaimTemplate
 	dep.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = &r.cr.Spec.StorageConfig.StorageClass
 	dep.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] =

@@ -55,7 +55,8 @@ func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
 	dep.Spec.Replicas = config.GetReplicas(config.RBACQueryProxy, r.cr.Spec.AdvancedConfig)
 
 	spec := &dep.Spec.Template.Spec
-	spec.Containers[0].ImagePullPolicy = mcoconfig.GetImagePullPolicy(r.cr.Spec)
+	imagePullPolicy := config.GetImagePullPolicy(r.cr.Spec)
+	spec.Containers[0].ImagePullPolicy = imagePullPolicy
 	args0 := spec.Containers[0].Args
 	for idx := range args0 {
 		args0[idx] = strings.Replace(args0[idx], "{{MCO_NAMESPACE}}", mcoconfig.GetDefaultNamespace(), 1)
@@ -69,7 +70,7 @@ func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
 	spec.Containers[0].Args = args0
 	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.RBACQueryProxy, r.cr.Spec.AdvancedConfig)
 
-	spec.Containers[1].ImagePullPolicy = mcoconfig.GetImagePullPolicy(r.cr.Spec)
+	spec.Containers[1].ImagePullPolicy = imagePullPolicy
 	args1 := spec.Containers[1].Args
 	for idx := range args1 {
 		args1[idx] = strings.Replace(args1[idx], "{{MCO_NAMESPACE}}", mcoconfig.GetDefaultNamespace(), 1)
