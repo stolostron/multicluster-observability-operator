@@ -47,7 +47,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
+	mchv1 "github.com/stolostron/multiclusterhub-operator/pkg/apis/operator/v1"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 )
 

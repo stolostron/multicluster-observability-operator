@@ -53,7 +53,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/webhook"
 	operatorsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
+	mchv1 "github.com/stolostron/multiclusterhub-operator/pkg/apis/operator/v1"
 	observatoriumAPIs "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
