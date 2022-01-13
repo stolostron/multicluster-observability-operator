@@ -72,8 +72,6 @@ printf "\n      baseDomain: ${base_domain}" >> ${OPTIONSFILE}
 printf "\n      kubeconfig: ${kubeconfig_hub_path}" >> ${OPTIONSFILE}
 printf "\n      kubecontext: ${kubecontext}" >> ${OPTIONSFILE}
 
-sleep 7200
-
 if command -v ginkgo &> /dev/null; then
     GINKGO_CMD=ginkgo
 else
@@ -81,6 +79,8 @@ else
     go install github.com/onsi/ginkgo/ginkgo@latest
     GINKGO_CMD="$(go env GOPATH)/bin/ginkgo"
 fi
+
+go mod vendor
 ${GINKGO_CMD} -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=3
 
 cat ${ROOTDIR}/tests/pkg/tests/results.xml | grep failures=\"0\" | grep errors=\"0\"
