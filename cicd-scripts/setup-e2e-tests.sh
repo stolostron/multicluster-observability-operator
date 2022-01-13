@@ -145,8 +145,8 @@ approve_csr_joinrequest() {
 deploy_grafana_test() {
     cd ${ROOTDIR}
     ${SED_COMMAND} "s~name: grafana$~name: grafana-test~g; s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-test~g; s~secretName: grafana-config$~secretName: grafana-config-test~g; s~secretName: grafana-datasources$~secretName: grafana-datasources-test~g; /MULTICLUSTEROBSERVABILITY_CR_NAME/d" operators/multiclusterobservability/manifests/base/grafana/deployment.yaml
-    ${SED_COMMAND} "s~image: quay.io/stolostron/grafana-dashboard-loader.*$~image: ${IMAGE_REPO}/grafana-dashboard-loader:${LATEST_SNAPSHOT}~g" operators/multiclusterobservability/manifests/base/grafana/deployment.yaml
-    ${SED_COMMAND} "s~image: quay.io/stolostron/grafana.*$~image: ${IMAGE_REPO}/grafana:${LATEST_SNAPSHOT}~g" operators/multiclusterobservability/manifests/base/grafana/deployment.yaml
+    ${SED_COMMAND} "s~image: quay.io/stolostron/grafana-dashboard-loader:.*$~image: ${IMAGE_REPO}/grafana-dashboard-loader:${LATEST_SNAPSHOT}~g" operators/multiclusterobservability/manifests/base/grafana/deployment.yaml
+    ${SED_COMMAND} "s~image: quay.io/stolostron/grafana:.*$~image: ${IMAGE_REPO}/grafana:${LATEST_SNAPSHOT}~g" operators/multiclusterobservability/manifests/base/grafana/deployment.yaml
     ${SED_COMMAND} "s~replicas: 2$~replicas: 1~g" operators/multiclusterobservability/manifests/base/grafana/deployment.yaml
     kubectl apply -f operators/multiclusterobservability/manifests/base/grafana/deployment.yaml
     kubectl apply -f ${ROOTDIR}/tests/run-in-kind/grafana # create grafana-test svc, grafana-test config and datasource configmaps
