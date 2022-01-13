@@ -186,3 +186,7 @@ replace (
 	sigs.k8s.io/cluster-api-provider-openstack => github.com/openshift/cluster-api-provider-openstack v0.0.0-20201116051540-155384b859c5
 	sigs.k8s.io/kube-storage-version-migrator => github.com/openshift/kubernetes-kube-storage-version-migrator v0.0.3-0.20210302135122-481bd04dbc78
 )
+
+// needed because otherwise installer fetches a library-go version that requires bitbucket.com/ww/goautoneg which is dead
+// Tagged version fetches github.com/munnerz/goautoneg instead
+replace github.com/openshift/library-go => github.com/openshift/library-go v0.0.0-20200918101923-1e4c94603efe

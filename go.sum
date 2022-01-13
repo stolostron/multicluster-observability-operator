@@ -1342,10 +1342,11 @@ github.com/opencontainers/selinux v1.8.0/go.mod h1:RScLhm78qiWa2gbVCcGkC7tCGdgk3
 github.com/openshift/api v0.0.0-20210331193751-3acddb19d360 h1:EGWKZ4foeELg9R+0OaLXKUoqHmtUwAMq0fCBUirbKwY=
 github.com/openshift/api v0.0.0-20210331193751-3acddb19d360/go.mod h1:dZ4kytOo3svxJHNYd0J55hwe/6IQG5gAUHUE0F3Jkio=
 github.com/openshift/build-machinery-go v0.0.0-20200713135615-1f43d26dccc7/go.mod h1:b1BuldmJlbA/xYtdZvKi+7j5YGB44qJUJDZ9zwiNCfE=
-github.com/openshift/build-machinery-go v0.0.0-20200917070002-f171684f77ab/go.mod h1:b1BuldmJlbA/xYtdZvKi+7j5YGB44qJUJDZ9zwiNCfE=
+github.com/openshift/build-machinery-go v0.0.0-20200819073603-48aa266c95f7/go.mod h1:b1BuldmJlbA/xYtdZvKi+7j5YGB44qJUJDZ9zwiNCfE=
 github.com/openshift/build-machinery-go v0.0.0-20210115170933-e575b44a7a94/go.mod h1:b1BuldmJlbA/xYtdZvKi+7j5YGB44qJUJDZ9zwiNCfE=
 github.com/openshift/build-machinery-go v0.0.0-20210209125900-0da259a2c359/go.mod h1:b1BuldmJlbA/xYtdZvKi+7j5YGB44qJUJDZ9zwiNCfE=
 github.com/openshift/build-machinery-go v0.0.0-20210806203541-4ea9b6da3a37/go.mod h1:b1BuldmJlbA/xYtdZvKi+7j5YGB44qJUJDZ9zwiNCfE=
+github.com/openshift/client-go v0.0.0-20200827190008-3062137373b5/go.mod h1:5rGmrkQ8DJEUXA+AR3rEjfH+HFyg4/apY9iCQFgvPfE=
 github.com/openshift/client-go v0.0.0-20201214125552-e615e336eb49/go.mod h1:9/jG4I6sh+5QublJpZZ4Zs/P4/QCXMsQQ/K/058bSB8=
 github.com/openshift/client-go v0.0.0-20210916133943-9acee1a0fb83 h1:TGBy40xVBCqDqvu8gaakva4u+08JtOt/LfekiwbCMyc=
 github.com/openshift/client-go v0.0.0-20210916133943-9acee1a0fb83/go.mod h1:iSeqKIqUKxVec3gV1kNvwS1tjDpzpdP134RimkLc3BE=
@@ -1353,9 +1354,8 @@ github.com/openshift/cluster-monitoring-operator v0.1.1-0.20210611103744-7168290
 github.com/openshift/cluster-monitoring-operator v0.1.1-0.20210611103744-7168290cd660/go.mod h1:0/kDYY2vkaFz/O1ZpFyzMKCULRIt5Bg9SBN2+iYZ2qs=
 github.com/openshift/kubernetes-kube-storage-version-migrator v0.0.3-0.20210302135122-481bd04dbc78 h1:BxSKP/SI7A42pPCJfOM1pj5uU5A8L5mCz3Vyer2l88U=
 github.com/openshift/kubernetes-kube-storage-version-migrator v0.0.3-0.20210302135122-481bd04dbc78/go.mod h1:Ld7NVItdAwI99lCHbys/n88rIMQjeS7PyXA4NL4yImM=
-github.com/openshift/library-go v0.0.0-20210113192829-cfbb3f4c80c2/go.mod h1:udseDnqxn5ON8i+NBjDp00fBTK0JRu1/6Y6tf6EivDE=
-github.com/openshift/library-go v0.0.0-20210916194400-ae21aab32431 h1:Fdg8exEe5DWwY3xmOxXy42L8K0N0nQA/q/i922kdD5M=
-github.com/openshift/library-go v0.0.0-20210916194400-ae21aab32431/go.mod h1:FS2LWYy/Hf4+2qfMZnh1Mt7EoOkc79x58xg02sidhn8=
+github.com/openshift/library-go v0.0.0-20200918101923-1e4c94603efe h1:MJqGN0NVONnTLDYPVIEH4uo6i3gAK7LAkhLnyFO8Je0=
+github.com/openshift/library-go v0.0.0-20200918101923-1e4c94603efe/go.mod h1:NI6xOQGuTnLXeHW8Z2glKSFhF7X+YxlAlqlBMaK0zEM=
 github.com/opentracing-contrib/go-grpc v0.0.0-20180928155321-4b5a12d3ff02/go.mod h1:JNdpVEzCpXBgIiv4ds+TzhN1hrtxq6ClLrTlT9OQRSc=
 github.com/opentracing-contrib/go-observer v0.0.0-20170622124052-a52f23424492/go.mod h1:Ngi6UdF0k5OKD5t5wlmGhe/EDKPoUM3BXZSSfIuJbis=
 github.com/opentracing-contrib/go-stdlib v0.0.0-20190519235532-cf7a6c988dc9/go.mod h1:PLldrQSroqzH70Xl+1DQcGnefIbqsKR7UDaiux3zV+w=
@@ -2496,7 +2496,6 @@ k8s.io/apiextensions-apiserver v0.17.0/go.mod h1:XiIFUakZywkUl54fVXa7QTEHcqQz9HG
 k8s.io/apiextensions-apiserver v0.18.3/go.mod h1:TMsNGs7DYpMXd+8MOCX8KzPOCx8fnZMoIGB24m03+JE=
 k8s.io/apiextensions-apiserver v0.18.6/go.mod h1:lv89S7fUysXjLZO7ke783xOwVTm6lKizADfvUM/SS/M=
 k8s.io/apiextensions-apiserver v0.19.0/go.mod h1:znfQxNpjqz/ZehvbfMg5N6fvBJW5Lqu5HVLTJQdP4Fs=
-k8s.io/apiextensions-apiserver v0.20.0/go.mod h1:ZH+C33L2Bh1LY1+HphoRmN1IQVLTShVcTojivK3N9xg=
 k8s.io/apiextensions-apiserver v0.20.1/go.mod h1:ntnrZV+6a3dB504qwC5PN/Yg9PBiDNt1EVqbW2kORVk=
 k8s.io/apiextensions-apiserver v0.21.0/go.mod h1:gsQGNtGkc/YoDG9loKI0V+oLZM4ljRPjc/sql5tmvzc=
 k8s.io/apiextensions-apiserver v0.22.1 h1:YSJYzlFNFSfUle+yeEXX0lSQyLEoxoPJySRupepb0gE=

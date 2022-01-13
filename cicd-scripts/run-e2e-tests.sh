@@ -72,6 +72,8 @@ printf "\n      baseDomain: ${base_domain}" >> ${OPTIONSFILE}
 printf "\n      kubeconfig: ${kubeconfig_hub_path}" >> ${OPTIONSFILE}
 printf "\n      kubecontext: ${kubecontext}" >> ${OPTIONSFILE}
 
+sleep 7200
+
 if command -v ginkgo &> /dev/null; then
     GINKGO_CMD=ginkgo
 else
