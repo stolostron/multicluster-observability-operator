@@ -1356,6 +1356,8 @@ github.com/openshift/kubernetes-kube-storage-version-migrator v0.0.3-0.202103021
 github.com/openshift/kubernetes-kube-storage-version-migrator v0.0.3-0.20210302135122-481bd04dbc78/go.mod h1:Ld7NVItdAwI99lCHbys/n88rIMQjeS7PyXA4NL4yImM=
 github.com/openshift/library-go v0.0.0-20200918101923-1e4c94603efe h1:MJqGN0NVONnTLDYPVIEH4uo6i3gAK7LAkhLnyFO8Je0=
 github.com/openshift/library-go v0.0.0-20200918101923-1e4c94603efe/go.mod h1:NI6xOQGuTnLXeHW8Z2glKSFhF7X+YxlAlqlBMaK0zEM=
+github.com/openshift/library-go v0.0.0-20210916194400-ae21aab32431 h1:Fdg8exEe5DWwY3xmOxXy42L8K0N0nQA/q/i922kdD5M=
+github.com/openshift/library-go v0.0.0-20210916194400-ae21aab32431/go.mod h1:FS2LWYy/Hf4+2qfMZnh1Mt7EoOkc79x58xg02sidhn8=
 github.com/opentracing-contrib/go-grpc v0.0.0-20180928155321-4b5a12d3ff02/go.mod h1:JNdpVEzCpXBgIiv4ds+TzhN1hrtxq6ClLrTlT9OQRSc=
 github.com/opentracing-contrib/go-observer v0.0.0-20170622124052-a52f23424492/go.mod h1:Ngi6UdF0k5OKD5t5wlmGhe/EDKPoUM3BXZSSfIuJbis=
 github.com/opentracing-contrib/go-stdlib v0.0.0-20190519235532-cf7a6c988dc9/go.mod h1:PLldrQSroqzH70Xl+1DQcGnefIbqsKR7UDaiux3zV+w=
