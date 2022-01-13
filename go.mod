@@ -30,7 +30,7 @@ require (
 	github.com/prometheus/prometheus v2.3.2+incompatible
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
-	github.com/stolostron/multicloud-operators-foundation v1.0.0-2021-10-26-20-16-14.0.20220110023249-172fb944faa9
+	github.com/stolostron/multicloud-operators-foundation v0.0.0-20220112005209-c7d642306a99
 	github.com/stolostron/multiclusterhub-operator v0.0.0-20220106205009-2af6f43fd562
 	github.com/stolostron/observatorium-operator v0.0.0-20220111085707-a484c2589b6c
 	github.com/stretchr/testify v1.7.0
