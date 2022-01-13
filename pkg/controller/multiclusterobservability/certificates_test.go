@@ -14,8 +14,8 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
-	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	mcov1beta1 "github.com/stolostron/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	mcoconfig "github.com/stolostron/multicluster-monitoring-operator/pkg/config"
 )
 
 const (

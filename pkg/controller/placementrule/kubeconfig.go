@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	"github.com/stolostron/multicluster-monitoring-operator/pkg/config"
 )
 
 const (

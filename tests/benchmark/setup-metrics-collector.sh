@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright (c) 2021 Red Hat, Inc.
 
-export IMAGE=quay.io/open-cluster-management/metrics-collector:2.2.0-SNAPSHOT-2021-01-17-18-45-18
+export IMAGE=quay.io/stolostron/metrics-collector:2.2.0-SNAPSHOT-2021-01-17-18-45-18
 export FROM=https://prometheus-k8s.openshift-monitoring.svc:9091
 export TO=https://observatorium-api-open-cluster-management-observability.apps.cyang-ocp3.dev05.red-chesterfield.com/api/metrics/v1/default/api/v1/receive
 

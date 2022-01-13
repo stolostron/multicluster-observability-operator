@@ -3,7 +3,7 @@
 package controller
 
 import (
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller/placementrule"
+	"github.com/stolostron/multicluster-monitoring-operator/pkg/controller/placementrule"
 )
 
 func init() {
