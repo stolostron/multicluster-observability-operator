@@ -1,4 +1,4 @@
-module github.com/open-cluster-management/multicluster-observability-operator
+module github.com/stolostron/multicluster-observability-operator
 
 go 1.17
 
@@ -7,12 +7,12 @@ require (
 	github.com/cloudflare/cfssl v1.5.0
 	github.com/go-logr/logr v0.4.0
 	github.com/open-cluster-management/addon-framework v0.0.0-20210519012201-d00a09b436d2
-	github.com/open-cluster-management/api v0.0.0-20210511122802-f38973154cbd
-	github.com/open-cluster-management/multicloud-operators-placementrule v1.0.1-2020-05-28-18-29-00.0.20200603172904-efde26079087
-	github.com/open-cluster-management/multiclusterhub-operator v0.0.0-20210622185704-40982c42385e
-	github.com/open-cluster-management/observatorium-operator v0.0.0-20210630101922-5eab9bc11b82
+	github.com/open-cluster-management/api v0.0.0-20210513122330-d76f10481f05
 	github.com/openshift/api v3.9.1-0.20191111211345-a27ff30ebf09+incompatible
 	github.com/openshift/client-go v0.0.0-20201214125552-e615e336eb49
+	github.com/stolostron/multicloud-operators-placementrule v0.0.0-20220113003548-6d97a1d71270
+	github.com/stolostron/multiclusterhub-operator v0.0.0-20220111203209-4882a2b93f0f
+	github.com/stolostron/observatorium-operator v0.0.0-20220112145421-f8fa289f2a90
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.21.1
 	k8s.io/apiextensions-apiserver v0.21.1
@@ -84,9 +84,9 @@ require (
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.17.0 // indirect
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83 // indirect
-	golang.org/x/net v0.0.0-20210428140749-89ef3d95e781 // indirect
+	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d // indirect
-	golang.org/x/sys v0.0.0-20210603081109-ebe580a85c40 // indirect
+	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1 // indirect
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d // indirect
 	golang.org/x/text v0.3.6 // indirect
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
@@ -95,7 +95,6 @@ require (
 	google.golang.org/protobuf v1.26.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-	k8s.io/cluster-registry v0.0.6 // indirect
 	k8s.io/component-base v0.21.1 // indirect
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/klog/v2 v2.8.0 // indirect
@@ -106,7 +105,8 @@ require (
 replace (
 	github.com/metal3-io/baremetal-operator => github.com/openshift/baremetal-operator v0.0.0-20200715132148-0f91f62a41fe
 	github.com/metal3-io/cluster-api-provider-baremetal => github.com/openshift/cluster-api-provider-baremetal v0.0.0-20190821174549-a2a477909c1d
-	github.com/open-cluster-management/api => github.com/open-cluster-management/api v0.0.0-20210409125704-06f2aec1a73f
+	github.com/open-cluster-management/addon-framework => open-cluster-management.io/addon-framework v0.0.0-20210519012201-d00a09b436d2
+	github.com/open-cluster-management/api => open-cluster-management.io/api v0.0.0-20210409125704-06f2aec1a73f
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad
 	github.com/terraform-providers/terraform-provider-aws => github.com/openshift/terraform-provider-aws v1.60.1-0.20200630224953-76d1fb4e5699
 	github.com/terraform-providers/terraform-provider-azurerm => github.com/openshift/terraform-provider-azurerm v1.40.1-0.20200707062554-97ea089cc12a

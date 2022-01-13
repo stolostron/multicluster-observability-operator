@@ -1,8 +1,8 @@
 # Observability Overview
 
-[![Build](https://img.shields.io/badge/build-Prow-informational)](https://prow.ci.openshift.org/?repo=open-cluster-management%2F${multicluster-observability-operator})
+[![Build](https://img.shields.io/badge/build-Prow-informational)](https://prow.ci.openshift.org/?repo=stolostron%2F${multicluster-observability-operator})
 
-This document attempts to explain how the different components in Open Cluster Management Observabilty come together to deliver multicluster fleet observability. We do leverage several open source projects: [Grafana](https://github.com/grafana/grafana), [Alertmanager](https://github.com/prometheus/alertmanager), [Thanos](https://github.com/thanos-io/thanos/), [Observatorium Operator and API Gateway](https://github.com/observatorium), [Prometheus](https://github.com/prometheus/prometheus); We also leverage a few [Open Cluster Mangement projects](https://open-cluster-management.io/) namely - [Cluster Manager or Registration Operator](https://github.com/open-cluster-management/registration-operator), [Klusterlet](https://github.com/open-cluster-management/registration-operator), [multicloud operators placementrule](https://github.com/open-cluster-management/multicloud-operators-placementrule). The multicluster-observability operator is the root operator which pulls in all things needed.
+This document attempts to explain how the different components in Open Cluster Management Observabilty come together to deliver multicluster fleet observability. We do leverage several open source projects: [Grafana](https://github.com/grafana/grafana), [Alertmanager](https://github.com/prometheus/alertmanager), [Thanos](https://github.com/thanos-io/thanos/), [Observatorium Operator and API Gateway](https://github.com/observatorium), [Prometheus](https://github.com/prometheus/prometheus); We also leverage a few [Open Cluster Mangement projects](https://open-cluster-management.io/) namely - [Cluster Manager or Registration Operator](https://github.com/stolostron/registration-operator), [Klusterlet](https://github.com/stolostron/registration-operator), [multicloud operators placementrule](https://github.com/stolostron/multicloud-operators-placementrule). The multicluster-observability operator is the root operator which pulls in all things needed.
 
 ## Conceptual Diagram
 
@@ -12,16 +12,16 @@ This document attempts to explain how the different components in Open Cluster M
 
 Component |Git Repo	| Description	
 ---  | ------ | ----  
-MCO Operator | [multicluster-observability-operator](https://github.com/open-cluster-management/multicluster-observability-operator) | Operator for monitoring. This is the root repo. If we follow the Readme instructions here to install, the code from all other repos mentioned below are used/referenced.
-Endpoint Operator | [endpoint-metrics-operator](https://github.com/open-cluster-management/endpoint-metrics-operator) | Operator that manages  setting up observability and data collection at the managed clusters.
-Observatorium Operator | [observatorium-operator](https://github.com/open-cluster-management/observatorium-operator) | Operator to deploy the Observatorium project. Inside the open cluster management, at this time, it means metrics using Thanos. Forked from main observatorium-operator repo.
-Metrics collector | [metrics-collector](https://github.com/open-cluster-management/metrics-collector) | Scrapes metrics from Prometheus at managed clusters, the metric collection being shaped by configuring allow-list. 
-RBAC Proxy | [rbac_query_proxy](https://github.com/open-cluster-management/rbac-query-proxy) | Helper service that acts a multicluster metrics RBAC proxy.
-Grafana | [grafana](https://github.com/open-cluster-management/grafana) | Grafana repo -  for  dashboarding and metric analytics. Forked from main grafana repo.
-Dashboard Loader | [grafana-dashboard-loader](https://github.com/open-cluster-management/grafana-dashboard-loader) | Sidecar proxy to load grafana dashboards from configmaps. 
-Management Ingress | [management-ingress](https://github.com/open-cluster-management/management-ingress) | NGINX based ingress controller to serve Open Cluster Management services. 
-Observatorium API | [observatorium](https://github.com/open-cluster-management/observatorium) | API Gateway which controls reading, writing of the Observability data to the backend infrastructure. Forked from main observatorium API repo.
-Thanos Ecosystem | [kube-thanos](https://github.com/open-cluster-management/kube-thanos) | Kubernetes specific configuration for deploying Thanos. The observatorium operator leverages this configuration to deploy the backend Thanos components.
+MCO Operator | [multicluster-observability-operator](https://github.com/stolostron/multicluster-observability-operator) | Operator for monitoring. This is the root repo. If we follow the Readme instructions here to install, the code from all other repos mentioned below are used/referenced.
+Endpoint Operator | [endpoint-metrics-operator](https://github.com/stolostron/endpoint-metrics-operator) | Operator that manages  setting up observability and data collection at the managed clusters.
+Observatorium Operator | [observatorium-operator](https://github.com/stolostron/observatorium-operator) | Operator to deploy the Observatorium project. Inside the open cluster management, at this time, it means metrics using Thanos. Forked from main observatorium-operator repo.
+Metrics collector | [metrics-collector](https://github.com/stolostron/metrics-collector) | Scrapes metrics from Prometheus at managed clusters, the metric collection being shaped by configuring allow-list. 
+RBAC Proxy | [rbac_query_proxy](https://github.com/stolostron/rbac-query-proxy) | Helper service that acts a multicluster metrics RBAC proxy.
+Grafana | [grafana](https://github.com/stolostron/grafana) | Grafana repo -  for  dashboarding and metric analytics. Forked from main grafana repo.
+Dashboard Loader | [grafana-dashboard-loader](https://github.com/stolostron/grafana-dashboard-loader) | Sidecar proxy to load grafana dashboards from configmaps. 
+Management Ingress | [management-ingress](https://github.com/stolostron/management-ingress) | NGINX based ingress controller to serve Open Cluster Management services. 
+Observatorium API | [observatorium](https://github.com/stolostron/observatorium) | API Gateway which controls reading, writing of the Observability data to the backend infrastructure. Forked from main observatorium API repo.
+Thanos Ecosystem | [kube-thanos](https://github.com/stolostron/kube-thanos) | Kubernetes specific configuration for deploying Thanos. The observatorium operator leverages this configuration to deploy the backend Thanos components.
 
 ## Quick Start Guide
 
@@ -44,7 +44,7 @@ Use the following quick start commands for building and testing the multicluster
 Check out the multicluster-observability-operator repository.
 
 ```
-$ git clone git@github.com:open-cluster-management/multicluster-observability-operator.git
+$ git clone git@github.com:stolostron/multicluster-observability-operator.git
 $ cd multicluster-observability-operator
 ```
 
@@ -65,7 +65,7 @@ $ kubectl create ns open-cluster-management-observability
 
 2. Deploy the minio service which acts as storage service of the multicluster observability:
 ```
-$ git clone --depth 1 git@github.com:open-cluster-management/observability-e2e-test.git
+$ git clone --depth 1 git@github.com:stolostron/observability-e2e-test.git
 $ kubectl -n open-cluster-management-observability apply -f observability-e2e-test/cicd-scripts/e2e-setup-manifests/minio
 ```
 

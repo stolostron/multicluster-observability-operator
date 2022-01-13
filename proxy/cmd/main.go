@@ -13,8 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	clusterclientset "github.com/open-cluster-management/api/client/cluster/clientset/versioned"
-	"github.com/open-cluster-management/rbac-query-proxy/pkg/proxy"
-	"github.com/open-cluster-management/rbac-query-proxy/pkg/util"
+	"github.com/stolostron/rbac-query-proxy/pkg/proxy"
+	"github.com/stolostron/rbac-query-proxy/pkg/util"
 )
 
 const (

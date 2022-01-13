@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/open-cluster-management/rbac-query-proxy/pkg/util"
+	"github.com/stolostron/rbac-query-proxy/pkg/util"
 )
 
 func TestNewEmptyMatrixHTTPBody(t *testing.T) {

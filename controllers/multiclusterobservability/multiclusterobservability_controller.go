@@ -37,16 +37,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
-	placemengctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/placementrule"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/certificates"
-	certctrl "github.com/open-cluster-management/multicluster-observability-operator/pkg/certificates"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/deploying"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/rendering"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
-	mchv1 "github.com/open-cluster-management/multiclusterhub-operator/pkg/apis/operator/v1"
-	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/api/v1beta2"
+	placemengctrl "github.com/stolostron/multicluster-observability-operator/controllers/placementrule"
+	"github.com/stolostron/multicluster-observability-operator/pkg/certificates"
+	certctrl "github.com/stolostron/multicluster-observability-operator/pkg/certificates"
+	"github.com/stolostron/multicluster-observability-operator/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/pkg/deploying"
+	"github.com/stolostron/multicluster-observability-operator/pkg/rendering"
+	"github.com/stolostron/multicluster-observability-operator/pkg/util"
+	mchv1 "github.com/stolostron/multiclusterhub-operator/pkg/apis/operator/v1"
+	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 )
 
 const (

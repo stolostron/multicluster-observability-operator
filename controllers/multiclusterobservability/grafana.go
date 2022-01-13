@@ -18,8 +18,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/pkg/config"
 )
 
 const (

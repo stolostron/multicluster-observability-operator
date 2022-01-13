@@ -1,7 +1,7 @@
 domain: open-cluster-management.io
 layout: go.kubebuilder.io/v3
 projectName: multicluster-observability-operator
-repo: github.com/open-cluster-management/multicluster-observability-operator
+repo: github.com/stolostron/multicluster-observability-operator
 resources:
 - crdVersion: v1
   group: observability

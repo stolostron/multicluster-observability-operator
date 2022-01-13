@@ -1,4 +1,4 @@
-module github.com/open-cluster-management/rbac-query-proxy
+module github.com/stolostron/rbac-query-proxy
 
 go 1.14
 

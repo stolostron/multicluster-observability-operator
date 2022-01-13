@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
+	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/api/v1beta1"
 )
 
 type compFn func(runtime.Object, runtime.Object) bool

@@ -33,12 +33,12 @@ import (
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	workv1 "github.com/open-cluster-management/api/work/v1"
-	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
-	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
-	mchv1 "github.com/open-cluster-management/multiclusterhub-operator/pkg/apis/operator/v1"
+	placementv1 "github.com/stolostron/multicloud-operators-placementrule/pkg/apis/apps/v1"
+	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/api/v1beta1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/pkg/util"
+	mchv1 "github.com/stolostron/multiclusterhub-operator/pkg/apis/operator/v1"
 )
 
 const (

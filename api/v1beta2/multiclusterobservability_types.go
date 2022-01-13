@@ -7,7 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	observabilityshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
+	observabilityshared "github.com/stolostron/multicluster-observability-operator/api/shared"
 )
 
 // MultiClusterObservabilitySpec defines the desired state of MultiClusterObservability
