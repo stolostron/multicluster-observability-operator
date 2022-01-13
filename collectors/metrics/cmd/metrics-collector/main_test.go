@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/open-cluster-management/multicluster-observability-operator/collectors/metrics/pkg/logger"
+	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 )
 
 func init() {

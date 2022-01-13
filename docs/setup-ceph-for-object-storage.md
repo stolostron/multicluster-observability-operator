@@ -199,4 +199,4 @@ config:
 ```
 
 ### Proceed with installation of ACM Observbility
-Then you can be following these steps to deploy multicluster-observability-operator: https://github.com/open-cluster-management/multicluster-observability-operator#install-this-operator-on-rhacm
+Then you can be following these steps to deploy multicluster-observability-operator: https://github.com/stolostron/multicluster-observability-operator#install-this-operator-on-rhacm

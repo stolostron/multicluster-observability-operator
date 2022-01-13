@@ -44,12 +44,12 @@ BRANCH=""
 LATEST_SNAPSHOT=""
 if [[ "${PULL_BASE_REF}" == "release-"* ]]; then
     BRANCH=${PULL_BASE_REF#"release-"}
-    BRANCH=$(curl https://quay.io//api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'")))|keys[length-1]' | awk -F '-' '{print $1}')
+    BRANCH=$(curl https://quay.io//api/v1/repository/stolostron/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'")))|keys[length-1]' | awk -F '-' '{print $1}')
     BRANCH="${BRANCH#\"}"
-    LATEST_SNAPSHOT=$(curl https://quay.io//api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'-SNAPSHOT")))|keys[length-1]')
+    LATEST_SNAPSHOT=$(curl https://quay.io//api/v1/repository/stolostron/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'-SNAPSHOT")))|keys[length-1]')
 fi
 if [[ "${LATEST_SNAPSHOT}" == "null" ]] || [[ "${LATEST_SNAPSHOT}" == "" ]]; then
-    LATEST_SNAPSHOT=$(curl https://quay.io/api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("SNAPSHOT")))|keys[length-1]')
+    LATEST_SNAPSHOT=$(curl https://quay.io/api/v1/repository/stolostron/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("SNAPSHOT")))|keys[length-1]')
 fi
 
 # trim the leading and tailing quotes
@@ -85,7 +85,7 @@ deploy_hub_spoke_core() {
     if [[ -d "registration-operator" ]]; then
         rm -rf registration-operator
     fi
-    git clone --depth 1 -b release-2.4 https://github.com/open-cluster-management/registration-operator.git && cd registration-operator
+    git clone --depth 1 -b release-2.4 https://github.com/stolostron/registration-operator.git && cd registration-operator
     ${SED_COMMAND} "s~clusterName: cluster1$~clusterName: ${MANAGED_CLUSTER}~g" deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
     # deploy hub and spoke via OLM
     make cluster-ip
@@ -146,7 +146,7 @@ approve_csr_joinrequest() {
 deploy_grafana_test() {
     cd ${ROOTDIR}
     ${SED_COMMAND} "s~name: grafana$~name: grafana-test~g; s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-test~g; s~secretName: grafana-config$~secretName: grafana-config-test~g; s~secretName: grafana-datasources$~secretName: grafana-datasources-test~g; /MULTICLUSTEROBSERVABILITY_CR_NAME/d" operators/multiclusterobservability/manifests/base/grafana/deployment.yaml
-    ${SED_COMMAND} "s~image: quay.io/open-cluster-management/grafana-dashboard-loader.*$~image: ${IMAGE_REPO}/grafana-dashboard-loader:${LATEST_SNAPSHOT}~g" operators/multiclusterobservability/manifests/base/grafana/deployment.yaml
+    ${SED_COMMAND} "s~image: quay.io/stolostron/grafana-dashboard-loader.*$~image: ${IMAGE_REPO}/grafana-dashboard-loader:${LATEST_SNAPSHOT}~g" operators/multiclusterobservability/manifests/base/grafana/deployment.yaml
     ${SED_COMMAND} "s~replicas: 2$~replicas: 1~g" operators/multiclusterobservability/manifests/base/grafana/deployment.yaml
     kubectl apply -f operators/multiclusterobservability/manifests/base/grafana/deployment.yaml
     kubectl apply -f ${ROOTDIR}/tests/run-in-kind/grafana # create grafana-test svc, grafana-test config and datasource configmaps
@@ -177,9 +177,9 @@ EOF
 # deploy the MCO operator via the kustomize resources
 deploy_mco_operator() {
     if [[ -n "${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF}" ]]; then
-        cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator=${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF}
+        cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/stolostron/multicluster-observability-operator=${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF}
     else
-        cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/open-cluster-management/multicluster-observability-operator="${IMAGE_REPO}/multicluster-observability-operator:${LATEST_SNAPSHOT}"
+        cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/stolostron/multicluster-observability-operator="${IMAGE_REPO}/multicluster-observability-operator:${LATEST_SNAPSHOT}"
     fi
     cd ${ROOTDIR}
     kustomize build ${ROOTDIR}/operators/multiclusterobservability/config/default | kubectl apply -n ${OCM_DEFAULT_NS} -f -
