@@ -274,4 +274,3 @@ spec:
       targetLabel: cluster
     type: OCP_PROMETHEUS
 ```
-
