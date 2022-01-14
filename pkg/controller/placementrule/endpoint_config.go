@@ -10,8 +10,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	obv1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
+	obv1beta1 "github.com/stolostron/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"github.com/stolostron/multicluster-monitoring-operator/pkg/util"
 )
 
 const (

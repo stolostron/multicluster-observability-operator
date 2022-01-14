@@ -12,9 +12,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/v3/pkg/resource"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
-	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
+	mcov1beta1 "github.com/stolostron/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	mcoconfig "github.com/stolostron/multicluster-monitoring-operator/pkg/config"
+	"github.com/stolostron/multicluster-monitoring-operator/pkg/util"
 )
 
 func (r *Renderer) newAlertManagerRenderer() {

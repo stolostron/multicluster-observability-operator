@@ -47,4 +47,4 @@ config:
   secret_key: WZIfOGYLx1DvlyKC9BII99VnSzDDJwymMZR3vAtL
 ```
 
-Then you can be following these steps to deploy multicluster-observability-operator: https://github.com/open-cluster-management/multicluster-monitoring-operator#install-this-operator-on-rhacm
+Then you can be following these steps to deploy multicluster-observability-operator: https://github.com/stolostron/multicluster-monitoring-operator#install-this-operator-on-rhacm

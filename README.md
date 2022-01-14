@@ -185,7 +185,7 @@ Complete the following steps to build the observability operator:
 1. Clone the `open-cluster-management/multicluster-monitoring-operator` repository locally. Run the following command:
 
    ```
-   git clone https://github.com/open-cluster-management/multicluster-monitoring-operator.git
+   git clone https://github.com/stolostron/multicluster-monitoring-operator.git
    ```
 
 2. Run the following command to access your vendor:
@@ -274,4 +274,3 @@ spec:
       targetLabel: cluster
     type: OCP_PROMETHEUS
 ```
-

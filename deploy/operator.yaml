@@ -16,7 +16,7 @@ spec:
       containers:
         - name: multicluster-observability-operator
           # Replace this with the built image name
-          image: quay.io/open-cluster-management/multicluster-observability-operator:0.1.0-426050808a84d6152586f3f13278ca244f1f3259
+          image: quay.io/stolostron/multicluster-observability-operator:0.1.0-426050808a84d6152586f3f13278ca244f1f3259
           command:
           - mco-operator
           imagePullPolicy: Always

@@ -13,9 +13,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	appsv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	appsv1 "github.com/stolostron/multicloud-operators-placementrule/pkg/apis/apps/v1"
+	mcov1beta1 "github.com/stolostron/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"github.com/stolostron/multicluster-monitoring-operator/pkg/config"
 )
 
 func createPlacementRule(client client.Client, scheme *runtime.Scheme,

@@ -10,10 +10,10 @@ import (
 	"time"
 
 	cert "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
-	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	configv1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	fakeconfigclient "github.com/openshift/client-go/config/clientset/versioned/fake"
+	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -28,10 +28,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
-	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
-	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
+	placementv1 "github.com/stolostron/multicloud-operators-placementrule/pkg/apis/apps/v1"
+	mcov1beta1 "github.com/stolostron/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"github.com/stolostron/multicluster-monitoring-operator/pkg/config"
+	mcoconfig "github.com/stolostron/multicluster-monitoring-operator/pkg/config"
 )
 
 func init() {

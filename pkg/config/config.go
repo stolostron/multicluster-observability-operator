@@ -8,10 +8,10 @@ import (
 	"os"
 	"strings"
 
-	obsv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
+	obsv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -22,8 +22,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
+	mcov1beta1 "github.com/stolostron/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	"github.com/stolostron/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
@@ -43,7 +43,7 @@ const (
 
 	DefaultImgPullPolicy   = corev1.PullAlways
 	DefaultImgPullSecret   = "multiclusterhub-operator-pull-secret"
-	DefaultImgRepository   = "quay.io/open-cluster-management"
+	DefaultImgRepository   = "quay.io/stolostron"
 	DefaultDSImgRepository = "quay.io:443/acm-d"
 	DefaultImgTagSuffix    = "latest"
 	DefaultStorageClass    = "gp2"

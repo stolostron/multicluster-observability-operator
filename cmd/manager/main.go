@@ -11,7 +11,6 @@ import (
 	"time"
 
 	certv1alpha1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
-	observatoriumAPIs "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
@@ -19,6 +18,7 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
+	observatoriumAPIs "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	zaplogfmt "github.com/sykesm/zap-logfmt"
 	uzap "go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -35,11 +35,11 @@ import (
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	workv1 "github.com/open-cluster-management/api/work/v1"
-	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis"
-	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/controller"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/version"
+	placementv1 "github.com/stolostron/multicloud-operators-placementrule/pkg/apis/apps/v1"
+	"github.com/stolostron/multicluster-monitoring-operator/pkg/apis"
+	mcoconfig "github.com/stolostron/multicluster-monitoring-operator/pkg/config"
+	"github.com/stolostron/multicluster-monitoring-operator/pkg/controller"
+	"github.com/stolostron/multicluster-monitoring-operator/version"
 )
 
 // Change below variables to serve metrics on different host or port.

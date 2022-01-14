@@ -7,8 +7,8 @@ import (
 	"context"
 	"fmt"
 
-	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
+	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -22,9 +22,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
 
-	mcov1beta1 "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
-	mcoconfig "github.com/open-cluster-management/multicluster-monitoring-operator/pkg/config"
-	"github.com/open-cluster-management/multicluster-monitoring-operator/pkg/util"
+	mcov1beta1 "github.com/stolostron/multicluster-monitoring-operator/pkg/apis/observability/v1beta1"
+	mcoconfig "github.com/stolostron/multicluster-monitoring-operator/pkg/config"
+	"github.com/stolostron/multicluster-monitoring-operator/pkg/util"
 )
 
 const (
