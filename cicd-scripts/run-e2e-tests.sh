@@ -16,7 +16,7 @@ if [ $? -ne 0 ]; then
 fi
 
 cd ${WORKDIR}/..
-git clone --depth 1 -b test https://github.com/stolostron/observability-e2e-test.git
+git clone --depth 1 -b release-2.2 https://github.com/stolostron/observability-e2e-test.git
 cd observability-e2e-test
 
 # run test cases
