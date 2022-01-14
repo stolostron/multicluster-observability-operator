@@ -1,8 +1,8 @@
 # observability-e2e-test
 
-[![Build](https://img.shields.io/badge/build-Prow-informational)](https://prow.ci.openshift.org/?repo=open-cluster-management%2F${observability-e2e-test})
+[![Build](https://img.shields.io/badge/build-Prow-informational)](https://prow.ci.openshift.org/?repo=stolostron%2F${observability-e2e-test})
 
-This is modeled after: https://github.com/open-cluster-management/open-cluster-management-e2e
+This is modeled after: https://github.com/stolostron/open-cluster-management-e2e
 
 This is a container which will be called from:
 
@@ -18,7 +18,7 @@ The tests in this container will:
 The tests can be running both locally and in [Openshift CI(based on Prow)](https://docs.ci.openshift.org/) in the following two kinds of environment:
 
 1. a [KinD](https://kind.sigs.k8s.io/) cluster.
-2. an OCP cluster with ACM installed with [deploy repo](https://github.com/open-cluster-management/deploy).
+2. an OCP cluster with ACM installed with [deploy repo](https://github.com/stolostron/deploy).
 
 ## Run e2e testing automatically
 
@@ -29,7 +29,7 @@ The observability e2e testing can be running automatically in KinD cluster or OC
 1. clone this repository and enter its root directory:
 
 ```
-git clone git@github.com:open-cluster-management/multicluster-observability-operator.git && cd multicluster-observability-operator
+git clone git@github.com:stolostron/multicluster-observability-operator.git && cd multicluster-observability-operator
 ```
 
 2. Optionally override the observability images to test the corresponding components by exporting the following environment variables before running e2e testing:
@@ -49,7 +49,7 @@ For example, if you want to test `metrics-collector` image from `quay.io/<your_u
 export METRICS_COLLECTOR_IMAGE_REF=quay.io/<your_username_in_quay>/metrics-collector:test
 ```
 
-> _Note:_ By default, the command will try to install the Observability and its dependencies with images of latest [UPSTREAM snapshot tag](https://quay.io/repository/open-cluster-management/acm-custom-registry?tab=tags).
+> _Note:_ By default, the command will try to install the Observability and its dependencies with images of latest [UPSTREAM snapshot tag](https://quay.io/repository/stolostron/acm-custom-registry?tab=tags).
 
 3. Then simply execute the following command to run e2e testing in a KinD cluster:
 
@@ -64,7 +64,7 @@ If you only have an OCP cluster with ACM installed, then you can run observabili
 1. clone this repository and enter its root directory:
 
 ```
-git clone git@github.com:open-cluster-management/multicluster-observability-operator.git && cd multicluster-observability-operator
+git clone git@github.com:stolostron/multicluster-observability-operator.git && cd multicluster-observability-operator
 ```
 
 2. export `KUBECONFIG` environment variable to the kubeconfig of the OCP cluster:
@@ -99,7 +99,7 @@ If you want to run observability e2e testing manually, make sure you have cluste
 1. clone this repository and enter its root directory:
 
 ```
-git clone git@github.com:open-cluster-management/multicluster-observability-operator.git && cd multicluster-observability-operator
+git clone git@github.com:stolostron/multicluster-observability-operator.git && cd multicluster-observability-operator
 ```
 
 2. Before running the e2e testing, make sure [ginkgo](https://github.com/onsi/ginkgo) is installed:
@@ -155,7 +155,7 @@ export IMPORT_KUBECONFIG=~/.kube/import-cluster-config
 1. clone this repository and enter its root directory:
 
 ```
-git clone git@github.com:open-cluster-management/multicluster-observability-operator.git && cd multicluster-observability-operator
+git clone git@github.com:stolostron/multicluster-observability-operator.git && cd multicluster-observability-operator
 ```
 
 2. Optionally build docker image for observability e2e testing:

@@ -23,7 +23,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 
-	"github.com/open-cluster-management/multicluster-observability-operator/proxy/pkg/rewrite"
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/rewrite"
 	clusterclientset "open-cluster-management.io/api/client/cluster/clientset/versioned"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )

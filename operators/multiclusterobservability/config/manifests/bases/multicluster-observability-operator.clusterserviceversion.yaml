@@ -54,5 +54,5 @@ spec:
   maturity: alpha
   provider:
     name: Red Hat, Inc
-    url: https://github.com/open-cluster-management/multicluster-observability-operator
+    url: https://github.com/stolostron/multicluster-observability-operator
   version: 0.0.0

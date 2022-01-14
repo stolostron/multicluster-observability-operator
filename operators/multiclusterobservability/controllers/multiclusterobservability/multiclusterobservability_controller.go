@@ -37,18 +37,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	placementctrl "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
-	certctrl "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
-	smctrl "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/servicemonitor"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
-	"github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/deploying"
-	commonutil "github.com/open-cluster-management/multicluster-observability-operator/operators/pkg/util"
-	mchv1 "github.com/open-cluster-management/multiclusterhub-operator/pkg/apis/operator/v1"
-	observatoriumv1alpha1 "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	placementctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
+	certctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
+	smctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/servicemonitor"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
+	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
+	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
+	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 )
 
 const (
@@ -425,8 +425,8 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		// Watch the secret for deleting event of alertmanager-config
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(secretPred))
 
-	mchGroupKind := schema.GroupKind{Group: mchv1.SchemeGroupVersion.Group, Kind: "MultiClusterHub"}
-	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.SchemeGroupVersion.Version); err == nil {
+	mchGroupKind := schema.GroupKind{Group: mchv1.GroupVersion.Group, Kind: "MultiClusterHub"}
+	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.GroupVersion.Version); err == nil {
 		mchPred := predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
 				// this is for operator restart, the mch CREATE event will be caught and the mch should be ready

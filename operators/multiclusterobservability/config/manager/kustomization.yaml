@@ -6,6 +6,6 @@ patchesStrategicMerge:
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
-- name: quay.io/open-cluster-management/multicluster-observability-operator
-  newName: quay.io/open-cluster-management/multicluster-observability-operator
+- name: quay.io/stolostron/multicluster-observability-operator
+  newName: quay.io/stolostron/multicluster-observability-operator
   newTag: latest

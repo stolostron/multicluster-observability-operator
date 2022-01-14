@@ -17,7 +17,7 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/klog"
 
-	"github.com/open-cluster-management/multicluster-observability-operator/tests/pkg/utils"
+	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
 var (

@@ -35,7 +35,7 @@ type Cluster struct {
 
 // Define the image registry
 type Registry struct {
-	// example: quay.io/open-cluster-management
+	// example: quay.io/stolostron
 	Server   string `yaml:"server"`
 	User     string `yaml:"user"`
 	Password string `yaml:"password"`

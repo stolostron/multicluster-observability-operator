@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/open-cluster-management/multicluster-observability-operator/proxy/pkg/util"
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
 )
 
 func TestNewEmptyMatrixHTTPBody(t *testing.T) {
