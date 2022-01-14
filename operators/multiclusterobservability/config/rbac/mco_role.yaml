@@ -1,0 +1,337 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: multicluster-observability-operator
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - services
+  - services/finalizers
+  - endpoints
+  - persistentvolumeclaims
+  - events
+  - configmaps
+  - secrets
+  - serviceaccounts
+  - namespaces
+  - nodes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - daemonsets
+  - replicasets
+  - statefulsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - storageclasses
+  verbs:
+  - watch
+  - get
+  - list
+- apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - servicemonitors
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resourceNames:
+  - multicluster-observability-operator
+  resources:
+  - deployments/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - replicasets
+  - deployments
+  verbs:
+  - get
+- apiGroups:
+  - monitor.open-cluster-management.io
+  resources:
+  - '*'
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - observability.open-cluster-management.io
+  resources:
+  - '*'
+  - multiclusterobservabilities
+  - endpointmonitorings
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - core.observatorium.io
+  resources:
+  - observatoria
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - integreatly.org
+  resources:
+  - grafanas
+  - grafanas/status
+  - grafanas/finalizers
+  - grafanadashboards
+  - grafanadashboards/status
+  - grafanadatasources
+  - grafanadatasources/status
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - watch
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - '*'
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - watch
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  - routes/custom-host
+  - routes/status
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - watch
+  - create
+- apiGroups:
+  - cluster.open-cluster-management.io
+  resources:
+  - manageclusters
+  verbs:
+  - 'get'
+  - 'list'
+  - 'watch'
+- apiGroups:
+  - work.open-cluster-management.io
+  resources:
+  - manifestworks
+  verbs:
+  - '*'
+- apiGroups:
+  - config.openshift.io
+  resources:
+  - '*'
+  - infrastructures
+  verbs:
+  - '*'
+- apiGroups:
+  - operator.openshift.io
+  resources:
+  - ingresscontrollers
+  verbs:
+  - 'get'
+  - 'list'
+  - 'watch'
+- apiGroups:
+  - certmanager.k8s.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - "coordination.k8s.io"
+  resources:
+  - leases
+  verbs:
+  - delete
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+- apiGroups:
+  - addon.open-cluster-management.io
+  resources:
+  - clustermanagementaddons
+  verbs:
+  - create
+  - update
+  - get 
+  - delete
+  - list
+  - watch
+- apiGroups:
+  - addon.open-cluster-management.io
+  resources:
+  - managedclusteraddons
+  - managedclusteraddons/status
+  verbs:
+  - watch
+  - create
+  - update
+  - delete
+  - get
+  - list
+- apiGroups:
+  - migration.k8s.io
+  resources:
+  - storageversionmigrations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - cluster.open-cluster-management.io
+  verbs:
+  - watch
+  - get
+  - list
+  resources:
+  - managedclusters
+- apiGroups:
+  - operator.open-cluster-management.io
+  verbs:
+  - watch
+  - get
+  - list
+  resources:
+  - multiclusterhubs
+- apiGroups:
+  - certificates.k8s.io
+  verbs:
+  - get
+  - list
+  - watch
+  resources:
+  - certificatesigningrequests
+- apiGroups:
+  - certificates.k8s.io
+  verbs:
+  - update
+  resources:
+  - certificatesigningrequests/status
+  - certificatesigningrequests/approval
+- apiGroups:
+  - certificates.k8s.io
+  verbs:
+  - approve
+  resources:
+  - signers
+  resourceNames:
+  - kubernetes.io/kube-apiserver-client
+  - open-cluster-management.io/observability-signer
+- apiGroups:
+  - certificates.k8s.io
+  verbs:
+  - get
+  - list
+  - watch
+  resources:
+  - certificatesigningrequests
+- apiGroups:
+  - certificates.k8s.io
+  verbs:
+  - update
+  resources:
+  - certificatesigningrequests/status
+- apiGroups:
+  - certificates.k8s.io
+  verbs:
+  - sign
+  resources:
+  - signers
+  resourceNames:
+  - open-cluster-management.io/observability-signer
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - imageregistry.open-cluster-management.io
+  resources:
+  - managedclusterimageregistries
+  verbs:
+  - get
+  - list
+  - watch

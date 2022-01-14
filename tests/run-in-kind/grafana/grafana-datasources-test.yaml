@@ -1,0 +1,23 @@
+apiVersion: v1
+stringData:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    - access: proxy
+      basicAuth: false
+      basicAuthPassword: ""
+      basicAuthUser: ""
+      editable: false
+      isDefault: true
+      name: Observatorium
+      orgId: 0
+      type: prometheus
+      url: http://observability-thanos-query-frontend.open-cluster-management-observability.svc.cluster.local:9090
+      version: 0
+      jsonData: null
+      secureJsonData: null
+kind: Secret
+metadata:
+  name: grafana-datasources-test
+  namespace: open-cluster-management-observability
+type: Opaque

@@ -1,0 +1,7 @@
+resources:
+- service.yaml
+- validatingwebhookconfiguration.yaml
+
+patchesStrategicMerge:
+- webhook_service_cert_patch.yaml
+- webhook_cainjection_patch.yaml

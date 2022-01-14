@@ -1,0 +1,2 @@
+resources:
+- bases/observability.open-cluster-management.io_observabilityaddons.yaml

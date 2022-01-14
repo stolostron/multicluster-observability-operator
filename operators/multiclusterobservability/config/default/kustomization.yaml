@@ -1,0 +1,9 @@
+# Adds namespace to all resources.
+namespace: open-cluster-management
+
+bases:
+- ../crd
+- ../rbac
+- ../manager
+- ../webhook
+

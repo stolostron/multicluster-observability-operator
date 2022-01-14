@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: rbac-query-proxy
+  name: rbac-query-proxy
+  namespace: open-cluster-management-observability
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: rbac-proxy-certs  
+spec:
+  ports:
+  - name: https
+    port: 8443
+    targetPort: oauth-proxy
+  - name: http
+    port: 8080
+    targetPort: http
+  selector:
+    app: rbac-query-proxy

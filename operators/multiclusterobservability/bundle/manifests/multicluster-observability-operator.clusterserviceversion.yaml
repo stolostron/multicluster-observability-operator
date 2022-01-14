@@ -1,0 +1,549 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "observability.open-cluster-management.io/v1beta1",
+          "kind": "MultiClusterObservability",
+          "metadata": {
+            "name": "observability"
+          },
+          "spec": {
+            "observabilityAddonSpec": {},
+            "storageConfigObject": {
+              "metricObjectStorage": {
+                "key": "thanos.yaml",
+                "name": "thanos-object-storage"
+              }
+            }
+          }
+        },
+        {
+          "apiVersion": "observability.open-cluster-management.io/v1beta1",
+          "kind": "ObservabilityAddon",
+          "metadata": {
+            "name": "observability-addon"
+          },
+          "spec": {
+            "enableMetrics": true,
+            "interval": 30
+          }
+        },
+        {
+          "apiVersion": "observability.open-cluster-management.io/v1beta2",
+          "kind": "MultiClusterObservability",
+          "metadata": {
+            "name": "observability"
+          },
+          "spec": {
+            "observabilityAddonSpec": {},
+            "storageConfig": {
+              "metricObjectStorage": {
+                "key": "thanos.yaml",
+                "name": "thanos-object-storage"
+              }
+            }
+          }
+        }
+      ]
+    capabilities: Basic Install
+    operators.operatorframework.io/builder: operator-sdk-v1.4.2
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    operators.operatorframework.io/internal-objects: '["observatoria.core.observatorium.io","observabilityaddons.observability.open-cluster-management.io"]'
+  name: multicluster-observability-operator.v0.1.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: MultiClusterObservability defines the configuration for the Observability installation on Hub and Managed Clusters all through this one custom resource.
+      displayName: MultiClusterObservability
+      kind: MultiClusterObservability
+      name: multiclusterobservabilities.observability.open-cluster-management.io
+      version: v1beta1
+    - description: MultiClusterObservability defines the configuration for the Observability installation on Hub and Managed Clusters all through this one custom resource.
+      displayName: MultiClusterObservability
+      kind: MultiClusterObservability
+      name: multiclusterobservabilities.observability.open-cluster-management.io
+      version: v1beta2
+    - description: ObservabilityAddon is the Schema for the observabilityaddon API
+      displayName: ObservabilityAddon
+      kind: ObservabilityAddon
+      name: observabilityaddons.observability.open-cluster-management.io
+      version: v1beta1
+    - kind: Observatorium
+      name: observatoria.core.observatorium.io
+      version: v1alpha1
+  description: The multicluster-observability-operator is a component of ACM observability feature. It is designed to install into Hub Cluster.
+  displayName: Multicluster Observability Operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          - services
+          - services/finalizers
+          - endpoints
+          - persistentvolumeclaims
+          - events
+          - configmaps
+          - secrets
+          - serviceaccounts
+          - namespaces
+          - nodes
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - apps
+          resources:
+          - deployments
+          - daemonsets
+          - replicasets
+          - statefulsets
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - storage.k8s.io
+          resources:
+          - storageclasses
+          verbs:
+          - watch
+          - get
+          - list
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - servicemonitors
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - apps
+          resourceNames:
+          - multicluster-observability-operator
+          resources:
+          - deployments/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - apps
+          resources:
+          - replicasets
+          - deployments
+          verbs:
+          - get
+        - apiGroups:
+          - monitor.open-cluster-management.io
+          resources:
+          - '*'
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - observability.open-cluster-management.io
+          resources:
+          - '*'
+          - multiclusterobservabilities
+          - endpointmonitorings
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - '*'
+          verbs:
+          - '*'
+        - apiGroups:
+          - core.observatorium.io
+          resources:
+          - observatoria
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - integreatly.org
+          resources:
+          - grafanas
+          - grafanas/status
+          - grafanas/finalizers
+          - grafanadashboards
+          - grafanadashboards/status
+          - grafanadatasources
+          - grafanadatasources/status
+          verbs:
+          - get
+          - list
+          - create
+          - update
+          - delete
+          - deletecollection
+          - watch
+        - apiGroups:
+          - apiextensions.k8s.io
+          resources:
+          - customresourcedefinitions
+          verbs:
+          - '*'
+        - apiGroups:
+          - networking.k8s.io
+          resources:
+          - ingresses
+          verbs:
+          - get
+          - list
+          - create
+          - update
+          - delete
+          - deletecollection
+          - watch
+        - apiGroups:
+          - route.openshift.io
+          resources:
+          - routes
+          - routes/custom-host
+          - routes/status
+          verbs:
+          - get
+          - list
+          - create
+          - update
+          - delete
+          - deletecollection
+          - watch
+          - create
+        - apiGroups:
+          - cluster.open-cluster-management.io
+          resources:
+          - manageclusters
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - work.open-cluster-management.io
+          resources:
+          - manifestworks
+          verbs:
+          - '*'
+        - apiGroups:
+          - config.openshift.io
+          resources:
+          - '*'
+          - infrastructures
+          verbs:
+          - '*'
+        - apiGroups:
+          - operator.openshift.io
+          resources:
+          - ingresscontrollers
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - certmanager.k8s.io
+          resources:
+          - '*'
+          verbs:
+          - '*'
+        - apiGroups:
+          - coordination.k8s.io
+          resources:
+          - leases
+          verbs:
+          - delete
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+        - apiGroups:
+          - addon.open-cluster-management.io
+          resources:
+          - clustermanagementaddons
+          verbs:
+          - create
+          - update
+          - get
+          - delete
+          - list
+          - watch
+        - apiGroups:
+          - addon.open-cluster-management.io
+          resources:
+          - managedclusteraddons
+          - managedclusteraddons/status
+          verbs:
+          - watch
+          - create
+          - update
+          - delete
+          - get
+          - list
+        - apiGroups:
+          - migration.k8s.io
+          resources:
+          - storageversionmigrations
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - update
+          - watch
+        - apiGroups:
+          - cluster.open-cluster-management.io
+          resources:
+          - managedclusters
+          verbs:
+          - watch
+          - get
+          - list
+        - apiGroups:
+          - operator.open-cluster-management.io
+          resources:
+          - multiclusterhubs
+          verbs:
+          - watch
+          - get
+          - list
+        - apiGroups:
+          - certificates.k8s.io
+          resources:
+          - certificatesigningrequests
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - certificates.k8s.io
+          resources:
+          - certificatesigningrequests/status
+          - certificatesigningrequests/approval
+          verbs:
+          - update
+        - apiGroups:
+          - certificates.k8s.io
+          resourceNames:
+          - kubernetes.io/kube-apiserver-client
+          - open-cluster-management.io/observability-signer
+          resources:
+          - signers
+          verbs:
+          - approve
+        - apiGroups:
+          - certificates.k8s.io
+          resources:
+          - certificatesigningrequests
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - certificates.k8s.io
+          resources:
+          - certificatesigningrequests/status
+          verbs:
+          - update
+        - apiGroups:
+          - certificates.k8s.io
+          resourceNames:
+          - open-cluster-management.io/observability-signer
+          resources:
+          - signers
+          verbs:
+          - sign
+        - apiGroups:
+          - admissionregistration.k8s.io
+          resources:
+          - mutatingwebhookconfigurations
+          - validatingwebhookconfigurations
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - imageregistry.open-cluster-management.io
+          resources:
+          - managedclusterimageregistries
+          verbs:
+          - get
+          - list
+          - watch
+        serviceAccountName: multicluster-observability-operator
+      deployments:
+      - name: multicluster-observability-operator
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              name: multicluster-observability-operator
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                name: multicluster-observability-operator
+            spec:
+              containers:
+              - args:
+                - -leader-elect
+                command:
+                - mco-operator
+                env:
+                - name: WATCH_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['olm.targetNamespaces']
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: POD_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: OPERATOR_NAME
+                  value: multicluster-observability-operator
+                - name: TEMPLATES_PATH
+                  value: /usr/local/manifests
+                - name: SPOKE_NAMESPACE
+                  value: open-cluster-management-addon-observability
+                image: quay.io/stolostron/multicluster-observability-operator:latest
+                imagePullPolicy: Always
+                lifecycle:
+                  preStop:
+                    exec:
+                      command:
+                      - /bin/sh
+                      - -c
+                      - /usr/local/bin/prestop.sh
+                livenessProbe:
+                  httpGet:
+                    path: /healthz
+                    port: 8081
+                  initialDelaySeconds: 15
+                  periodSeconds: 20
+                name: multicluster-observability-operator
+                ports:
+                - containerPort: 9443
+                  name: webhook-server
+                  protocol: TCP
+                - containerPort: 8383
+                  name: metrics
+                  protocol: TCP
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 8081
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                resources:
+                  limits:
+                    cpu: 600m
+                    memory: 1Gi
+                  requests:
+                    cpu: 100m
+                    memory: 128Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                volumeMounts:
+                - mountPath: /tmp/k8s-webhook-server/serving-certs
+                  name: cert
+                  readOnly: true
+              serviceAccountName: multicluster-observability-operator
+              volumes:
+              - name: cert
+                secret:
+                  defaultMode: 420
+                  secretName: multicluster-observability-operator-webhook-server-cert
+    strategy: deployment
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - MultiClusterObservability
+  links:
+  - name: Multicluster Observability Operator
+    url: https://multicluster-observability-operator.domain
+  maintainers:
+  - email: acm-contact@redhat.com
+    name: acm-contact
+  maturity: alpha
+  provider:
+    name: Red Hat, Inc
+    url: https://github.com/stolostron/multicluster-observability-operator
+  version: 0.1.0
+  webhookdefinitions:
+  - admissionReviewVersions:
+    - v1
+    - v1beta1
+    containerPort: 443
+    deploymentName: multicluster-observability-operator
+    failurePolicy: Fail
+    generateName: vmulticlusterobservability.observability.open-cluster-management.io
+    rules:
+    - apiGroups:
+      - observability.open-cluster-management.io
+      apiVersions:
+      - v1beta2
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - multiclusterobservabilities
+    sideEffects: None
+    targetPort: 9443
+    type: ValidatingAdmissionWebhook
+    webhookPath: /validate-observability-open-cluster-management-io-v1beta2-multiclusterobservability

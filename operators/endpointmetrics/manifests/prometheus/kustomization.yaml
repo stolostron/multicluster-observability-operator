@@ -1,0 +1,27 @@
+resources:
+- kube-prometheus-rules.yaml
+- kube-state-metrics-clusterRole.yaml
+- kube-state-metrics-clusterRoleBinding.yaml
+- kube-state-metrics-deployment.yaml
+- kube-state-metrics-service.yaml
+- kube-state-metrics-serviceAccount.yaml
+- kubernetes-monitoring-rules.yaml
+- kubernetes-monitoring-alertingrules.yaml
+- node-exporter-clusterRole.yaml
+- node-exporter-clusterRoleBinding.yaml
+- node-exporter-daemonset.yaml
+- node-exporter-rules.yaml
+- node-exporter-service.yaml
+- node-exporter-serviceAccount.yaml
+- prometheus-clusterRole.yaml
+- prometheus-clusterRoleBinding.yaml
+- prometheus-config.yaml
+- prometheus-role.yaml
+- prometheus-role-default.yaml
+- prometheus-role-kube-system.yaml
+- prometheus-roleBinding.yaml
+- prometheus-roleBinding-default.yaml
+- prometheus-roleBinding-kube-system.yaml
+- prometheus-service.yaml
+- prometheus-serviceAccount.yaml
+- prometheus-statefulset.yaml

@@ -1,0 +1,114 @@
+apiVersion: observability.open-cluster-management.io/v1beta2
+kind: MultiClusterObservability
+metadata:
+  name: observability
+  annotations:
+spec:
+  advanced:
+    retentionConfig:
+      blockDuration: 3h
+      cleanupInterval: 6m
+      deleteDelay: 50h
+      retentionInLocal: 5d
+      retentionResolution1h: 31d
+      retentionResolution5m: 15d
+      retentionResolutionRaw: 6d
+    observatoriumAPI:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      replicas: 3
+    queryFrontend:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      replicas: 3
+    query:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      replicas: 3
+    compact:
+      resources:
+        limits:
+          cpu: 1
+          memory: 2Gi
+    receive:
+      resources:
+        limits:
+          cpu: 1
+          memory: 4Gi
+      replicas: 2
+    rule:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      replicas: 1
+    store:
+      resources:
+        limits:
+          cpu: 1
+          memory: 2Gi
+      replicas: 3
+    storeMemcached:
+      resources:
+        limits:
+          cpu: 1
+          memory: 2Gi
+      replicas: 2
+      memoryLimitMb: 2048
+      maxItemSize: 2m
+      connectionLimit: 2048
+    queryFrontendMemcached:
+      resources:
+        limits:
+          cpu: 1
+          memory: 2Gi
+      replicas: 3
+      memoryLimitMb: 2048
+      maxItemSize: 2m
+      connectionLimit: 2048
+    grafana:
+      replicas: 3
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+    alertmanager:
+      replicas: 2
+      resources:
+        limits:
+          cpu: 100m
+          memory: 400Mi
+    rbacQueryProxy:
+      replicas: 3
+      resources:
+        limits:
+          cpu: 50m
+          memory: 200Mi
+  nodeSelector:
+    kubernetes.io/os: linux
+  observabilityAddonSpec:
+    enableMetrics: true
+    interval: 30
+    resources:
+      limits:
+        cpu: 200m
+        memory: 700Mi
+      requests:
+        cpu: 10m
+        memory: 100Mi
+  storageConfig:
+    alertmanagerStorageSize: 1Gi
+    compactStorageSize: 1Gi
+    metricObjectStorage:
+      key: thanos.yaml
+      name: thanos-object-storage
+    receiveStorageSize: 1Gi
+    ruleStorageSize: 1Gi
+    storageClass: gp2
+    storeStorageSize: 1Gi

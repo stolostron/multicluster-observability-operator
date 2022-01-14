@@ -1,0 +1,28 @@
+apiVersion: observability.open-cluster-management.io/v1beta2
+kind: MultiClusterObservability
+metadata:
+  name: observability
+spec:
+  advanced:
+    retentionConfig:
+      retentionResolution1h: 30d
+      retentionResolution5m: 14d
+      retentionResolutionRaw: 5d
+  enableDownsampling: false
+  imagePullPolicy: Always
+  imagePullSecret: multiclusterhub-operator-pull-secret
+  nodeSelector:
+    kubernetes.io/os: linux
+  observabilityAddonSpec:
+    enableMetrics: true
+    interval: 300
+  storageConfig:
+    alertmanagerStorageSize: 1Gi
+    compactStorageSize: 1Gi
+    metricObjectStorage:
+      key: thanos.yaml
+      name: thanos-object-storage
+    receiveStorageSize: 1Gi
+    ruleStorageSize: 1Gi
+    storageClass: gp2
+    storeStorageSize: 1Gi
