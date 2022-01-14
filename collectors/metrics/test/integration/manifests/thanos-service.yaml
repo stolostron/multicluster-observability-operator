@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: database-write-hashring
+    app.kubernetes.io/instance: observability-observatorium
+    app.kubernetes.io/name: thanos-receive
+    app.kubernetes.io/part-of: observatorium
+    app.kubernetes.io/version: 2.3.0-SNAPSHOT-2021-07-26-18-43-26
+    controller.receive.thanos.io/hashring: default
+  name: observability-observatorium-thanos-receive-default
+  namespace: open-cluster-management-observability
+spec:
+  clusterIP: None
+  ports:
+  - name: grpc
+    port: 10901
+    protocol: TCP
+    targetPort: 10901
+  - name: http
+    port: 10902
+    protocol: TCP
+    targetPort: 10902
+  - name: remote-write
+    port: 19291
+    protocol: TCP
+    targetPort: 19291
+  selector:
+    app.kubernetes.io/component: database-write-hashring
+    app.kubernetes.io/instance: observability-observatorium
+    app.kubernetes.io/name: thanos-receive
+    app.kubernetes.io/part-of: observatorium
+    controller.receive.thanos.io/hashring: default
+  sessionAffinity: None
+  type: ClusterIP
+

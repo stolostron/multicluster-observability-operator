@@ -1,0 +1,18 @@
+apiVersion: v1
+data:
+  config.yaml: |
+    alertmanagers:
+    - http_config:
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        tls_config:
+          ca_file: /etc/thanos/configmaps/alertmanager-ca-bundle/service-ca.crt
+          server_name: alertmanager.open-cluster-management-observability.svc
+          insecure_skip_verify: false
+      scheme: https
+      static_configs:
+      - alertmanager.open-cluster-management-observability.svc:9095
+      api_version: v2
+kind: ConfigMap
+metadata:
+  name: thanos-ruler-config
+  namespace: open-cluster-management

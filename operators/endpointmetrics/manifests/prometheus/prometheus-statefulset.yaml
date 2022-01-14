@@ -1,0 +1,165 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/component: prometheus
+    app.kubernetes.io/name: prometheus
+  name: prometheus-k8s
+  namespace: open-cluster-management-addon-observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: prometheus
+      app.kubernetes.io/name: prometheus
+  serviceName: prometheus-operated
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: prometheus
+      labels:
+        app.kubernetes.io/component: prometheus
+        app.kubernetes.io/name: prometheus
+    spec:
+      containers:
+      - args:
+        - --config.file=/etc/prometheus/config_out/prometheus.yaml
+        - --storage.tsdb.path=/prometheus
+        - --storage.tsdb.retention.time=24h
+        - --web.enable-lifecycle
+        - --web.route-prefix=/
+        image: quay.io/stolostron/prometheus:2.4.0-SNAPSHOT-2021-08-11-14-15-20
+        imagePullPolicy: IfNotPresent
+        name: prometheus
+        ports:
+        - containerPort: 9090
+          name: web
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 120
+          httpGet:
+            path: /-/ready
+            port: web
+            scheme: HTTP
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 3
+        resources:
+          requests:
+            memory: 400Mi
+        volumeMounts:
+        - mountPath: /prometheus
+          name: prometheus-k8s-db
+        - mountPath: /etc/prometheus/config_out
+          name: config-out
+          readOnly: true
+        - name: node-exporter-rules
+          mountPath: etc/prometheus/rules/prometheus-k8s-rulefiles-0/node-exporter-rules.yaml
+          subPath: node-exporter-rules.yaml
+        - name: kubernetes-monitoring-rules
+          mountPath: etc/prometheus/rules/prometheus-k8s-rulefiles-0/kubernetes-monitoring-rules.yaml
+          subPath: kubernetes-monitoring-rules.yaml
+        - name: kube-prometheus-rules
+          mountPath: etc/prometheus/rules/prometheus-k8s-rulefiles-0/kube-prometheus-rules.yaml
+          subPath: kube-prometheus-rules.yaml
+        - name: kubernetes-monitoring-alertingrules
+          mountPath: etc/prometheus/rules/prometheus-k8s-rulefiles-0/kubernetes-monitoring-alertingrules.yaml
+          subPath: kubernetes-monitoring-alertingrules.yaml
+        - name: observability-alertmanager-accessor
+          mountPath: /etc/prometheus/secrets/observability-alertmanager-accessor
+          readOnly: true
+        - name: hub-alertmanager-router-ca
+          mountPath: /etc/prometheus/secrets/hub-alertmanager-router-ca
+          readOnly: true
+      - args:
+        - --logtostderr
+        - --secure-listen-address=[$(IP)]:9091
+        - --tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+        - --upstream=http://127.0.0.1:9090/
+        env:
+        - name: IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        image: quay.io/stolostron/kube-rbac-proxy:2.4.0-SNAPSHOT-2021-08-11-14-15-20
+        name: kube-rbac-proxy
+        ports:
+        - containerPort: 9091
+          hostPort: 9091
+          name: https
+        resources:
+          limits:
+            cpu: 20m
+            memory: 40Mi
+          requests:
+            cpu: 10m
+            memory: 20Mi
+        securityContext:
+          runAsGroup: 65532
+          runAsNonRoot: true
+          runAsUser: 65532
+      - args:
+        - -webhook-url=http://localhost:9090/-/reload
+        - -volume-dir=/etc/prometheus/secrets/hub-alertmanager-router-ca
+        - -volume-dir=/etc/prometheus/secrets/observability-alertmanager-accessor
+        - -volume-dir=/etc/prometheus/config_out
+        image: quay.io/openshift/origin-configmap-reloader:4.5.0
+        imagePullPolicy: IfNotPresent
+        name: config-reloader
+        resources:
+          requests:
+            cpu: 4m
+            memory: 25Mi
+        volumeMounts:
+        - mountPath: /etc/prometheus/config_out
+          name: config-out
+          readOnly: true
+        - name: observability-alertmanager-accessor
+          mountPath: /etc/prometheus/secrets/observability-alertmanager-accessor
+          readOnly: true
+        - name: hub-alertmanager-router-ca
+          mountPath: /etc/prometheus/secrets/hub-alertmanager-router-ca
+          readOnly: true
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        kubernetes.io/os: linux
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 2000
+        runAsNonRoot: true
+        runAsUser: 1000
+      serviceAccount: prometheus-k8s
+      serviceAccountName: prometheus-k8s
+      terminationGracePeriodSeconds: 600
+      volumes:
+      - emptyDir: {}
+        name: prometheus-k8s-db
+      - configMap:
+          defaultMode: 420
+          name: prometheus-k8s-config
+        name: config-out
+      - configMap:
+          defaultMode: 420
+          name: node-exporter-rules
+        name: node-exporter-rules
+      - configMap:
+          defaultMode: 420
+          name: kubernetes-monitoring-rules
+        name: kubernetes-monitoring-rules
+      - configMap:
+          defaultMode: 420
+          name: kube-prometheus-rules
+        name: kube-prometheus-rules
+      - configMap:
+          defaultMode: 420
+          name: kubernetes-monitoring-alertingrules
+        name: kubernetes-monitoring-alertingrules
+      - secret:
+          defaultMode: 420
+          secretName: observability-alertmanager-accessor
+        name: observability-alertmanager-accessor
+      - secret:
+          defaultMode: 420
+          secretName: hub-alertmanager-router-ca
+        name: hub-alertmanager-router-ca

@@ -1,0 +1,11 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: images-list
+data:
+    prometheus: "quay.io/stolostron/prometheus:2.4.0-SNAPSHOT-2021-08-19-08-22-43"
+    prometheus-config-reloader: "quay.io/openshift/origin-configmap-reloader:4.5.0"
+    kube_state_metrics: "quay.io/stolostron/kube-state-metrics:2.4.0-SNAPSHOT-2021-08-19-08-22-43"
+    node_exporter: "quay.io/stolostron/node-exporter:2.4.0-SNAPSHOT-2021-08-19-08-22-43"
+    kube_rbac_proxy: "quay.io/stolostron/kube-rbac-proxy:2.4.0-SNAPSHOT-2021-08-19-08-22-43"
+    metrics_collector: "quay.io/stolostron/metrics-collector:2.4.0-SNAPSHOT-2021-08-19-08-22-43"

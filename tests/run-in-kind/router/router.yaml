@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingress-router
+  namespace: openshift-ingress
+  labels:
+    k8s-app: ingress-router
+spec:
+  selector:
+    matchLabels:
+      k8s-app: ingress-router
+  template:
+    metadata:
+      labels:
+        k8s-app: ingress-router
+    spec:
+      serviceAccountName: ingress-router
+      containers:
+      - env:
+        - name: ROUTER_LISTEN_ADDR
+          value: 0.0.0.0:1936
+        - name: ROUTER_METRICS_TYPE
+          value: haproxy
+        - name: ROUTER_SERVICE_HTTPS_PORT
+          value: "443"
+        - name: ROUTER_SERVICE_HTTP_PORT
+          value: "80"
+        - name: ROUTER_THREADS
+          value: "4"
+        image: quay.io/openshift/origin-haproxy-router:v4.0.0
+        livenessProbe:
+          httpGet:
+            host: localhost
+            path: /healthz
+            port: 1936
+          initialDelaySeconds: 10
+        name: router
+        ports:
+        - containerPort: 80
+        - containerPort: 443
+        - containerPort: 1936
+          name: stats
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            host: localhost
+            path: healthz/ready
+            port: 1936
+          initialDelaySeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+      hostNetwork: true

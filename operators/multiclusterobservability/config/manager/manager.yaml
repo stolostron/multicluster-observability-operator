@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    name: multicluster-observability-operator
+  name: open-cluster-management
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: multicluster-observability-operator
+  namespace: open-cluster-management
+  labels:
+    name: multicluster-observability-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: multicluster-observability-operator
+  template:
+    metadata:
+      labels:
+        name: multicluster-observability-operator
+    spec:
+      serviceAccountName: multicluster-observability-operator
+      containers:
+      - name: multicluster-observability-operator
+        command:
+        - mco-operator
+        args:
+        - -leader-elect
+        # Replace this with the built image name
+        image: quay.io/stolostron/multicluster-observability-operator:2.3.0-SNAPSHOT-2021-07-26-18-43-26
+        imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
+        - containerPort: 8383
+          name: metrics
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "/usr/local/bin/prestop.sh"]
+        resources:
+          limits:
+            cpu: 600m
+            memory: 1024Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        env:
+          - name: WATCH_NAMESPACE
+            value: ""
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: OPERATOR_NAME
+            value: "multicluster-observability-operator"
+          - name: TEMPLATES_PATH
+            value: /usr/local/manifests
+          - name: SPOKE_NAMESPACE
+            value: open-cluster-management-addon-observability
