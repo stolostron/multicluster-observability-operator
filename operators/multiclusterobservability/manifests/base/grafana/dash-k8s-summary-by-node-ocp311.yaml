@@ -104,7 +104,7 @@ data:
           ],
           "targets": [
             {
-              "expr": "max by (node,nodetype) (\nlabel_replace(\nlabel_replace(\nlabel_replace(kube_node_labels{cluster=\"$cluster\"}\n    ,\"nodetype\",\"master\",\"label_node_role_kubernetes_io_master\",\"true\")\n    ,\"nodetype\",\"infra\",\"label_node_role_kubernetes_io_infra\",\"true\")\n    ,\"nodetype\",\"compute\",\"label_node_role_kubernetes_io_compute\",\"true\")\n)",
+              "expr": "max by (node,nodetype)(label_join(label_replace(label_replace(label_replace(kube_node_labels{cluster=\"$cluster\"},\"nodetype_master\",\"master\",\"label_node_role_kubernetes_io_master\",\"true\"),\"nodetype_infra\",\"infra\",\"label_node_role_kubernetes_io_infra\",\"true\"),\"nodetype_compute\",\"compute\",\"label_node_role_kubernetes_io_compute\",\"true\"),\"nodetype\", \" \", \"nodetype_master\", \"nodetype_infra\", \"nodetype_compute\"))",
               "format": "table",
               "instant": true,
               "intervalFactor": 1,
