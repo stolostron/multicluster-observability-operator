@@ -41,7 +41,7 @@ spec:
                   - rbac-query-proxy
       containers:
       - name: rbac-query-proxy
-        image: quay.io/open-cluster-management/rbac-query-proxy:2.3.0-SNAPSHOT-2021-06-30-00-51-08
+        image: quay.io/stolostron/rbac-query-proxy:2.3.0-SNAPSHOT-2021-06-30-00-51-08
         imagePullPolicy: Always
         args:
         - "--listen-address=0.0.0.0:8080"
@@ -88,7 +88,7 @@ spec:
         - --skip-provider-button=true
         - --openshift-ca=/etc/pki/tls/cert.pem
         - --openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-        image: quay.io/open-cluster-management/origin-oauth-proxy:2.0.11-SNAPSHOT-2021-04-29-18-29-17
+        image: quay.io/stolostron/origin-oauth-proxy:2.0.11-SNAPSHOT-2021-04-29-18-29-17
         imagePullPolicy: Always
         name: oauth-proxy
         ports:

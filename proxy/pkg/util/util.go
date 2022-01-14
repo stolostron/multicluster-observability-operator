@@ -25,7 +25,7 @@ import (
 
 	clusterclientset "github.com/open-cluster-management/api/client/cluster/clientset/versioned"
 	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
-	"github.com/open-cluster-management/rbac-query-proxy/pkg/rewrite"
+	"github.com/stolostron/rbac-query-proxy/pkg/rewrite"
 )
 
 const (

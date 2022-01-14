@@ -46,14 +46,14 @@ import (
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
 	workv1 "github.com/open-cluster-management/api/work/v1"
-	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
-	observabilityv1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
-	observabilityv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
-	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/controllers/multiclusterobservability"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
-	mchv1 "github.com/open-cluster-management/multiclusterhub-operator/pkg/apis/operator/v1"
-	observatoriumAPIs "github.com/open-cluster-management/observatorium-operator/api/v1alpha1"
+	placementv1 "github.com/stolostron/multicloud-operators-placementrule/pkg/apis/apps/v1"
+	observabilityv1beta1 "github.com/stolostron/multicluster-observability-operator/api/v1beta1"
+	observabilityv1beta2 "github.com/stolostron/multicluster-observability-operator/api/v1beta2"
+	mcoctrl "github.com/stolostron/multicluster-observability-operator/controllers/multiclusterobservability"
+	"github.com/stolostron/multicluster-observability-operator/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/pkg/util"
+	mchv1 "github.com/stolostron/multiclusterhub-operator/pkg/apis/operator/v1"
+	observatoriumAPIs "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
 

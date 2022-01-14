@@ -69,7 +69,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: quay.io/open-cluster-management/grafana-dashboard-loader:2.3.0-SNAPSHOT-2021-06-30-00-51-08
+        image: quay.io/stolostron/grafana-dashboard-loader:2.3.0-SNAPSHOT-2021-06-30-00-51-08
         imagePullPolicy: Always
         resources:
           requests:

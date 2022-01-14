@@ -12,7 +12,7 @@ standard packages.
 import (
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 
-	observabilityv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
+	observabilityv1beta2 "github.com/stolostron/multicluster-observability-operator/api/v1beta2"
 )
 
 // +kubebuilder:docs-gen:collapse=Imports

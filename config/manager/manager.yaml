@@ -30,7 +30,7 @@ spec:
         args:
         - -leader-elect
         # Replace this with the built image name
-        image: quay.io/open-cluster-management/multicluster-observability-operator:2.3.0-SNAPSHOT-2021-06-30-00-51-08
+        image: quay.io/stolostron/multicluster-observability-operator:2.3.0-SNAPSHOT-2021-06-30-00-51-08
         imagePullPolicy: Always
         securityContext:
           allowPrivilegeEscalation: false

@@ -15,9 +15,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/api/shared"
-	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta2"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/config"
+	mcoshared "github.com/stolostron/multicluster-observability-operator/api/shared"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/pkg/config"
 )
 
 var (

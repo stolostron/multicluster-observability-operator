@@ -12,8 +12,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	obsv1beta1 "github.com/open-cluster-management/multicluster-observability-operator/api/v1beta1"
-	"github.com/open-cluster-management/multicluster-observability-operator/pkg/util"
+	obsv1beta1 "github.com/stolostron/multicluster-observability-operator/api/v1beta1"
+	"github.com/stolostron/multicluster-observability-operator/pkg/util"
 )
 
 const (

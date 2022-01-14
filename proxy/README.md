@@ -4,7 +4,7 @@ The rbac-query-proxy is a small HTTP reverse proxy, that can perform RBAC author
 
 ## Prerequisites
 
-- You must install [Open Cluster Management Observabilty](https://github.com/open-cluster-management/multicluster-observability-operator)
+- You must install [Open Cluster Management Observabilty](https://github.com/stolostron/multicluster-observability-operator)
 
 ## How to build image
 
