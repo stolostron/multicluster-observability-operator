@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	RouterCertsSecretName = "router-certs-default"
+	RouterCertsSecretName = "custom-ca-secret"
 )
 
 func GetRouterCA(cli kubernetes.Interface) ([]byte, error) {
