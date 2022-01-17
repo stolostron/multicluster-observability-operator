@@ -112,7 +112,7 @@ spec:
         - --skip-provider-button=true
         - --openshift-ca=/etc/pki/tls/cert.pem
         - --openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-        image: quay.io/open-cluster-management/origin-oauth-proxy:2.0.11-SNAPSHOT-2021-04-29-18-29-17
+        image: quay.io/stolostron/origin-oauth-proxy:4.5
         imagePullPolicy: IfNotPresent
         name: alertmanager-proxy
         ports:
