@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+  <testsuite name="Observability E2E Suite" tests="9" failures="0" errors="0" time="342.075">
+      <testcase name="Observability: [P2][Sev2][Observability] Verify metrics collector is prevent to be configured manually (endpoint_preserve/g0) - [Stable] Deleting metrics-collector deployment" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability] Verify metrics collector is prevent to be configured manually (endpoint_preserve/g0) - [Stable] Updating metrics-collector deployment" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Stable] Verify metrics collector is prevent to be configured manually - Should revert any manual changes on metrics-collector-view clusterolebinding (endpoint_preserve/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Stable] Verify metrics collector is prevent to be configured manually - Should recreate on metrics-collector-serving-certs-ca-bundle configmap if deleted (endpoint_preserve/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P1][Sev1][Observability][Integration] Setup a Grafana develop instance (grafana_dev/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name=" RHACM4K-1404: Observability: Verify alert is created and received - Should have the expected statefulsets @BVT - [P1][Sev1][Observability][Stable] (alert/g0)" classname="Observability E2E Suite" time="5.64138469"></testcase>
+      <testcase name=" RHACM4K-1404: Observability: Verify alert is created and received - Should have the expected configmap [P2][Sev2][Observability][Stable] (alert/g0)" classname="Observability E2E Suite" time="4.374831908"></testcase>
+      <testcase name=" RHACM4K-1404: Observability: Verify alert is created and received - Should not have the CM: thanos-ruler-custom-rules [P3][Sev3][Observability][Stable] (alert/g0)" classname="Observability E2E Suite" time="4.269746066"></testcase>
+      <testcase name=" RHACM4K-1404: Observability: Verify alert is created and received - Should have the expected secret @BVT - [P1][Sev1][Observability][Stable] (alert/g0)" classname="Observability E2E Suite" time="4.374271656"></testcase>
+      <testcase name=" RHACM4K-1404: Observability: Verify alert is created and received - Should have the alertmanager configured in rule @BVT - [P1][Sev1][Observability][Stable] (alert/g0)" classname="Observability E2E Suite" time="4.327121783"></testcase>
+      <testcase name=" [RHACM4K-1404: Observability: Verify alert is created and received - Should have custom alert generated P2][Sev2][Observability][Stable] (alert/g0)" classname="Observability E2E Suite" time="118.63202605"></testcase>
+      <testcase name=" [P2][Sev2][Observability][Stable] Should modify the SECRET: alertmanager-config (alert/g0)" classname="Observability E2E Suite" time="4.744035476"></testcase>
+      <testcase name=" RHACM4K-1668: Observability: Updated alert rule can take effect automatically - Should have custom alert updated [P2][Sev2][Observability][Stable] (alert/g0)" classname="Observability E2E Suite" time="36.656449109"></testcase>
+      <testcase name=" RHACM4K-1668: Observability: Updated alert rule can take effect automatically - delete the customized rules [P2][Sev2][Observability][Stable] (alert/g0)" classname="Observability E2E Suite" time="159.047780076"></testcase>
+      <testcase name=" RHACM4K-3457: Observability: Verify managed cluster alert would be forward to hub alert manager - Should have alert named Watchdog forwarded to alertmanager [P2][Sev2][Observability][Integration] (alertforward/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Stable] Verify new customized Grafana dashboard - Should have custom dashboard which defined in configmap (dashboard/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Stable] Verify new customized Grafana dashboard - Should have update custom dashboard after configmap updated (dashboard/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Stable] Verify new customized Grafana dashboard - Should have no custom dashboard in grafana after related configmap removed (dashboard/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P1][Sev1][Observability][Integration] Verify Observability Certificate rotation - Should have metrics collector pod restart if cert secret re-generated (certrenew/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Stable] Check and tune backup retention settings in MCO CR - Check compact args (retention/g0):" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Stable] Check and tune backup retention settings in MCO CR - Check store args (retention/g0):" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Stable] Check and tune backup retention settings in MCO CR - Check receive args (retention/g0):" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Stable] Check and tune backup retention settings in MCO CR - Check rule args (retention/g0):" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Stable] Check and tune backup retention settings in MCO CR - Check rule args (retention/g0):" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: @BVT - [P1][Sev1][Observability][Stable] Verify Grafana - Should have metric data in grafana console (grafana/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P1][Sev1][Observability] Verify Observatorium CR configuration compliance (observatorium_preserve/g0) - [Stable] Updating observatorium cr (spec.thanos.compact.retentionResolution1h) should be automatically reverted" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name=" RHACM4K-1260: Observability: Verify monitoring operator and deployment status when metrics collection disabled [P2][Sev2][Observability] (addon/g0) - [Stable] Should have resource requirement defined in CR" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name=" RHACM4K-1260: Observability: Verify monitoring operator and deployment status when metrics collection disabled [P2][Sev2][Observability] (addon/g0) - [Stable] Should have resource requirement in metrics-collector" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name=" RHACM4K-1260: Observability: Verify monitoring operator and deployment status when metrics collection disabled [P2][Sev2][Observability] (addon/g0) - [Stable] Should not have the expected MCO addon pods when disable observabilityaddon" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name=" RHACM4K-1260: Observability: Verify monitoring operator and deployment status when metrics collection disabled [P2][Sev2][Observability] (addon/g0) - [Stable] Waiting for check no metric data in grafana console" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name=" RHACM4K-1260: Observability: Verify monitoring operator and deployment status when metrics collection disabled [P2][Sev2][Observability] (addon/g0) - [Stable] Modifying MCO cr to enable observabilityaddon" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name=" RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster - Should not set interval to values beyond scope [P3][Sev3][Observability][Stable] (addon/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name=" RHACM4K-1235: Observability: Disable the Observability by updating managed cluster label [P2][Sev2][Observability] (addon/g0) - [Stable] Modifying managedcluster cr to disable observability" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name=" RHACM4K-1235: Observability: Disable the Observability by updating managed cluster label [P2][Sev2][Observability] (addon/g0) - [Stable] Remove disable observability label from the managed cluster" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Stable] Check and tune backup retention settings in MCO CR - tune retention settings in MCO CR (reconcile/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Stable] Verify nodeSelector setting effects for Observability components (reconcile/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Stable] Check affinity rule takes effect on Observability components (reconcile/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Stable] Customize the Observability components storage size (reconcile/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Stable] Check and tune backup retention settings in MCO CR - Revert MCO CR changes (reconcile/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Integration] Customized metrics data are collected (metrics/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Integration] Metrics removal from default allowlist (metrics/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Integration] Metrics removal from default allowlist (metrics/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Integration] Metrics removal from default allowlist (metrics/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Integration] Should have metrics which used grafana dashboard (ssli/g1)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: @BVT - [P1][Sev1][Observability][Integration] Should access metrics via rbac-query-proxy route (route/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: @BVT - [P1][Sev1][Observability][Integration] Should access alert via alertmanager route (route/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: @BVT - [P1][Sev1][Observability][Stable] Verify metrics data global setting on the managed cluster (config/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: @BVT - [P1][Sev1][Observability][Stable] Verify MCO CR storage class and PVC (config/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: @BVT - [P1][Sev1][Observability][Integration] Verify the replica in advanced config for Observability components (config/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+      <testcase name="Observability: [P2][Sev2][Observability][Integration] Persist advance values in MCO CR - Checking resources in advanced config (config/g0)" classname="Observability E2E Suite" time="0">
+          <skipped></skipped>
+      </testcase>
+  </testsuite>
