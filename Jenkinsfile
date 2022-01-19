@@ -64,9 +64,11 @@ pipeline {
                     echo "Aborting test.. OCP HUB details are required for the test execution"
                     exit 1
                 else
-                    oc login --insecure-skip-tls-verify -u \$MANAGED_CLUSTER_USER -p \$MANAGED_CLUSTER_PASS \$MANAGED_CLUSTER_API_URL
-                    oc config view --minify --raw=true > ~/.kube/managed_kubeconfig
-                    export MAKUBECONFIG=~/.kube/managed_kubeconfig
+		    if [[ -n "${params.AWS_ACCESS_KEY_ID}" || -n "${params.AWS_ACCESS_KEY_ID}" || -n "${params.MANAGED_CLUSTER_API_URL}" ]]; then
+                      oc login --insecure-skip-tls-verify -u \$MANAGED_CLUSTER_USER -p \$MANAGED_CLUSTER_PASS \$MANAGED_CLUSTER_API_URL
+                      oc config view --minify --raw=true > ~/.kube/managed_kubeconfig
+                      export MAKUBECONFIG=~/.kube/managed_kubeconfig
+                    fi
                     oc login --insecure-skip-tls-verify -u \$OC_CLUSTER_USER -p \$OC_HUB_CLUSTER_PASS \$OC_HUB_CLUSTER_API_URL
                     export KUBECONFIG=~/.kube/config
                     go mod vendor && ginkgo build ./tests/pkg/tests/
