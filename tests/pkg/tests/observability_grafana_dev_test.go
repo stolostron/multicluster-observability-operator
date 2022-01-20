@@ -14,11 +14,11 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
-var _ = Describe("Observability:", func() {
+var _ = Describe("", func() {
 
 	// Do not need to run this case in canary environment
 	// If we really need it in canary, ensure the grafana-dev-test.sh is available in observability-e2e-test image and all required commands exist
-	It("[P1][Sev1][Observability][Integration] Setup a Grafana develop instance (grafana_dev/g0)", func() {
+	It("RHACM4K-1705: Observability: Setup a Grafana develop instance [P1][Sev1][Observability][Integration] (grafana_dev/g0)", func() {
 		cmd := exec.Command("../../grafana-dev-test.sh")
 		var out bytes.Buffer
 		cmd.Stdout = &out

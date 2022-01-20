@@ -12,7 +12,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
-var _ = Describe("Observability:", func() {
+var _ = Describe("", func() {
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
@@ -25,7 +25,7 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("@BVT - [P1][Sev1][Observability][Stable] Verify Grafana - Should have metric data in grafana console (grafana/g0)", func() {
+	It("RHACM4K-1066: Observability: Verify Grafana - Should have metric data in grafana console @BVT - [P1][Sev1][Observability][Stable] (grafana/g0)", func() {
 		Eventually(func() error {
 			clusters, err := utils.ListManagedClusters(testOptions)
 			if err != nil {
