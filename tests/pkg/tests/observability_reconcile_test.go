@@ -26,7 +26,7 @@ var (
 	err       error
 )
 
-var _ = Describe("Observability:", func() {
+var _ = Describe("", func() {
 
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
@@ -40,7 +40,7 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("[P2][Sev2][Observability][Stable] Check and tune backup retention settings in MCO CR - tune retention settings in MCO CR (reconcile/g0)", func() {
+	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - tune retention settings in MCO CR [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
 		By("Modifying MCO CR for reconciling")
 		err := utils.ModifyMCOCR(testOptions)
 		Expect(err).ToNot(HaveOccurred())
@@ -96,7 +96,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][Observability][Stable] Verify nodeSelector setting effects for Observability components (reconcile/g0)", func() {
+	It("RHACM4K-1655: Observability: Verify nodeSelector setting effects for Observability components [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
 		By("Checking node selector spec in MCO CR")
 		mcoSC, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
@@ -116,7 +116,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][Observability][Stable] Check affinity rule takes effect on Observability components (reconcile/g0)", func() {
+	It("RHACM4K-1657: Observability: Check affinity rule takes effect on Observability components [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
 		By("Checking podAntiAffinity for all pods")
 		Eventually(func() error {
 			err := utils.CheckAllPodsAffinity(testOptions)
@@ -127,7 +127,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][Observability][Stable] Customize the Observability components storage size (reconcile/g0)", func() {
+	It("RHACM4K-2821: Observability: Customize the Observability components storage size [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
 		By("Resizing alertmanager storage")
 		alertmans, _ := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
 			LabelSelector: ALERTMANAGER_LABEL,
@@ -143,7 +143,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][Observability][Stable] Check and tune backup retention settings in MCO CR - Revert MCO CR changes (reconcile/g0)", func() {
+	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - Revert MCO CR changes [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
 		advRetentionCon, err := utils.CheckAdvRetentionConfig(testOptions)
 		if !advRetentionCon {
 			Skip("Skip the case since " + err.Error())

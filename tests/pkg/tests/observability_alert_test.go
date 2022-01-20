@@ -129,7 +129,7 @@ var _ = Describe("", func() {
 		klog.V(3).Info("Have the alertmanager url configured in rule")
 	})
 
-	It("[RHACM4K-1404: Observability: Verify alert is created and received - Should have custom alert generated P2][Sev2][Observability][Stable] (alert/g0)", func() {
+	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have custom alert generated P2][Sev2][Observability][Stable] (alert/g0)", func() {
 		By("Creating custom alert rules")
 
 		rules, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
