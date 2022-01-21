@@ -334,6 +334,7 @@ func newAPISpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.APISpec {
 	if replace {
 		apiSpec.Image = image
 	}
+	apiSpec.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 	apiSpec.ServiceMonitor = true
 	return apiSpec
 }
@@ -412,6 +413,7 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 	if found {
 		ruleSpec.ReloaderImage = reloaderImage
 	}
+	ruleSpec.ReloaderImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 
 	ruleSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.RuleStorageSize,
@@ -505,11 +507,13 @@ func newMemCacheSpec(component string, mco *mcov1beta2.MultiClusterObservability
 	if found {
 		memCacheSpec.Image = image
 	}
+	memCacheSpec.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 
 	found, image = mcoconfig.ReplaceImage(mco.Annotations, memCacheSpec.ExporterImage, mcoconfig.MemcachedExporterKey)
 	if found {
 		memCacheSpec.ExporterImage = image
 	}
+	memCacheSpec.ExporterImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 	if cacheConfig != nil && cacheConfig.MemoryLimitMB != nil {
 		memCacheSpec.MemoryLimitMB = cacheConfig.MemoryLimitMB
 	} else {
@@ -546,6 +550,7 @@ func newThanosSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string)
 	if replace {
 		thanosSpec.Image = image
 	}
+	thanosSpec.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 	return thanosSpec
 }
 
@@ -599,6 +604,7 @@ func newReceiverControllerSpec(mco *mcov1beta2.MultiClusterObservability) obsv1a
 	if replace {
 		receiveControllerSpec.Image = image
 	}
+	receiveControllerSpec.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 	return receiveControllerSpec
 }
 
