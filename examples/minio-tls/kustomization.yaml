@@ -1,0 +1,6 @@
+resources:
+- minio-deployment.yaml
+- minio-pvc.yaml
+- minio-tls-secret.yaml
+- minio-service.yaml
+- thanos-object-storage.yaml

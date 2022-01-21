@@ -164,11 +164,23 @@ func installMCO() {
 		err = utils.CheckMCOConversion(testOptions, v1beta1Tov1beta2GoldenPath)
 		Expect(err).NotTo(HaveOccurred())
 	}
+	if os.Getenv("IS_CANARY_ENV") != "true" {
+		By("Creating Minio-tls as object storage")
+		//set resource quota and limit range for canary environment to avoid destruct the node
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/minio-tls"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
 
-	By("Apply MCO instance of v1beta2")
-	v1beta2KustomizationPath := "../../../examples/mco/e2e/v1beta2"
-	yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: v1beta2KustomizationPath})
-	Expect(err).NotTo(HaveOccurred())
+		By("Apply MCO instance of v1beta2")
+		v1beta2KustomizationPath := "../../../examples/mco/e2e/v1beta2/custom-certs"
+		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: v1beta2KustomizationPath})
+		Expect(err).NotTo(HaveOccurred())
+	} else {
+		By("Apply MCO instance of v1beta2")
+		v1beta2KustomizationPath := "../../../examples/mco/e2e/v1beta2"
+		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: v1beta2KustomizationPath})
+		Expect(err).NotTo(HaveOccurred())
+	}
 
 	// add retry for update mco object failure
 	Eventually(func() error {

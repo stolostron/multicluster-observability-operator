@@ -39,6 +39,12 @@ type PreConfiguredStorage struct {
 	// Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 	// +required
 	Name string `json:"name"`
+	// TLS secret contains the custom certificate for the object store
+	// +optional
+	TLSSecretName string `json:"tlsSecretName"`
+	// TLS secret mount path in thanos store/ruler/compact/receiver
+	// +optional
+	TLSSecretMountPath string `json:"tlsSecretMountPath"`
 }
 
 // Condition is from metav1.Condition.

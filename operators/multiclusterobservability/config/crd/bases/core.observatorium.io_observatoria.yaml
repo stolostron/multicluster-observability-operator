@@ -743,6 +743,12 @@ spec:
                       name:
                         description: Object Store Config Secret Name
                         type: string
+                      tlsSecretMountPath:
+                        description: TLS secret mount path in thanos store/ruler/compact/receiver
+                        type: string
+                      tlsSecretName:
+                        description: TLS secret contains the custom certificate for the object store
+                        type: string
                     required:
                     - key
                     - name
