@@ -21,7 +21,7 @@ spec:
       - command:
         - /bin/sh
         - -c
-        - mkdir -p /storage/thanos && /usr/bin/minio server /storage
+        - mkdir -p /storage/thanos && /usr/bin/minio server --certs-dir /etc/minio/certs /storage
         env:
         - name: MINIO_ACCESS_KEY
           value: minio
@@ -46,4 +46,8 @@ spec:
           items:
           - key: ca.crt
             path: CAs/ca.crt
+          - key: public.crt
+            path: public.crt
+          - key: private.key
+            path: private.key
           secretName: minio-tls-secret

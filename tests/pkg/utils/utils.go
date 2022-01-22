@@ -404,6 +404,7 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 					Create(context.TODO(), obj, metav1.CreateOptions{})
 			} else {
 				obj.ObjectMeta = existingObject.ObjectMeta
+				obj.Spec.ClusterIP = existingObject.Spec.ClusterIP
 				klog.Warningf("%s %s/%s already exists, updating!", obj.Kind, obj.Namespace, obj.Name)
 				_, err = clientKube.CoreV1().Services(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
@@ -423,6 +424,7 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 					Create(context.TODO(), obj, metav1.CreateOptions{})
 			} else {
 				obj.ObjectMeta = existingObject.ObjectMeta
+				obj.Spec.VolumeName = existingObject.Spec.VolumeName
 				klog.Warningf("%s %s/%s already exists, updating!", obj.Kind, obj.Namespace, obj.Name)
 				_, err = clientKube.CoreV1().PersistentVolumeClaims(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}

@@ -165,7 +165,7 @@ func installMCO() {
 		Expect(err).NotTo(HaveOccurred())
 	}
 	if os.Getenv("IS_CANARY_ENV") != "true" {
-		By("Creating Minio-tls as object storage")
+		By("Recreating Minio-tls as object storage")
 		//set resource quota and limit range for canary environment to avoid destruct the node
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/minio-tls"})
 		Expect(err).NotTo(HaveOccurred())
