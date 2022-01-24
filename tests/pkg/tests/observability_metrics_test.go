@@ -118,7 +118,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
 	})
 
-	It("[P2][Sev2][Observability][Integration] Should have metrics which used grafana dashboard (ssli/g1)", func() {
+	It("RHACM4K-3339: Observability: Verify recording rule - Should have metrics which used grafana dashboard [P2][Sev2][Observability][Integration] (ssli/g1)", func() {
 		metricList := utils.GetDefaultMetricList(testOptions)
 		ignoreMetricMap := utils.GetIgnoreMetricMap()
 		for _, name := range metricList {

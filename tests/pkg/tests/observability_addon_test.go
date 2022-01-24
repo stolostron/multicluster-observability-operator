@@ -93,30 +93,30 @@ var _ = Describe("", func() {
 				return fmt.Errorf("Check no metric data in grafana console error: %v", err)
 			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
 		})
+	})
 
-		It("[Stable] Modifying MCO cr to enable observabilityaddon", func() {
-			Eventually(func() error {
-				return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
-			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
+	It("RHACM4K-1418: Observability: Verify clustermanagementaddon CR for Observability - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability] (addon/g0)", func() {
+		Eventually(func() error {
+			return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
+		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 
-			By("Waiting for MCO addon components ready")
-			Eventually(func() bool {
-				err, podList := utils.GetPodList(testOptions, false, MCO_ADDON_NAMESPACE, "component=metrics-collector")
-				if len(podList.Items) == 1 && err == nil {
-					return true
-				}
-				return false
-			}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(BeTrue())
+		By("Waiting for MCO addon components ready")
+		Eventually(func() bool {
+			err, podList := utils.GetPodList(testOptions, false, MCO_ADDON_NAMESPACE, "component=metrics-collector")
+			if len(podList.Items) == 1 && err == nil {
+				return true
+			}
+			return false
+		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(BeTrue())
 
-			By("Checking the status in managedclusteraddon reflects the endpoint operator status correctly")
-			Eventually(func() error {
-				err = utils.CheckAllOBAsEnabled(testOptions)
-				if err != nil {
-					return err
-				}
-				return nil
-			}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
-		})
+		By("Checking the status in managedclusteraddon reflects the endpoint operator status correctly")
+		Eventually(func() error {
+			err = utils.CheckAllOBAsEnabled(testOptions)
+			if err != nil {
+				return err
+			}
+			return nil
+		}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	It("RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster - Should not set interval to values beyond scope [P3][Sev3][Observability][Stable] (addon/g0)", func() {
@@ -143,7 +143,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 	})
 
-	Context("RHACM4K-1235: Observability: Disable the Observability by updating managed cluster label [P2][Sev2][Observability] (addon/g0) -", func() {
+	Context("RHACM4K-7518: Observability: Disable the Observability by updating managed cluster label [P2][Sev2][Observability] (addon/g0) -", func() {
 		It("[Stable] Modifying managedcluster cr to disable observability", func() {
 			Eventually(func() error {
 				return utils.UpdateObservabilityFromManagedCluster(testOptions, false)
