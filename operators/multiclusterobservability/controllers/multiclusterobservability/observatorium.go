@@ -220,6 +220,8 @@ func newDefaultObservatoriumSpec(mco *mcov1beta2.MultiClusterObservability,
 		objStorageConf := mco.Spec.StorageConfig.MetricObjectStorage
 		obs.ObjectStorageConfig.Thanos.Name = objStorageConf.Name
 		obs.ObjectStorageConfig.Thanos.Key = objStorageConf.Key
+		obs.ObjectStorageConfig.Thanos.TLSSecretName = objStorageConf.TLSSecretName
+		obs.ObjectStorageConfig.Thanos.TLSSecretMountPath = objStorageConf.TLSSecretMountPath
 	}
 	return obs
 }
