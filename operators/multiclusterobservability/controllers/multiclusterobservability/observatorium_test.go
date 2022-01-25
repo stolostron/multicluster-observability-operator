@@ -49,8 +49,10 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			StorageConfig: &mcov1beta2.StorageConfig{
 				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
-					Key:  "key",
-					Name: "name",
+					Key:                "key",
+					Name:               "name",
+					TLSSecretName:      "secret",
+					TLSSecretMountPath: "/etc/certs",
 				},
 				StorageClass:            storageClassName,
 				AlertmanagerStorageSize: "1Gi",
@@ -83,6 +85,8 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 		compactStorage.String() != statefulSetSize ||
 		obs.ObjectStorageConfig.Thanos.Key != "key" ||
 		obs.ObjectStorageConfig.Thanos.Name != "name" ||
+		obs.ObjectStorageConfig.Thanos.TLSSecretName != "secret" ||
+		obs.ObjectStorageConfig.Thanos.TLSSecretMountPath != "/etc/certs" ||
 		obs.Thanos.Query.LookbackDelta != "600s" {
 		t.Errorf("Failed to newDefaultObservatorium")
 	}
