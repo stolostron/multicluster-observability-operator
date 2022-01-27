@@ -143,20 +143,23 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 	})
 
-	Context("RHACM4K-7518: Observability: Disable the Observability by updating managed cluster label [P2][Sev2][Observability] (addon/g0) -", func() {
+	Context("RHACM4K-7518: Observability: Disable the Observability by updating managed cluster label [P2][Sev2][Observability] (addon/g1) -", func() {
 		It("[Stable] Modifying managedcluster cr to disable observability", func() {
 			Eventually(func() error {
 				return utils.UpdateObservabilityFromManagedCluster(testOptions, false)
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
-			By("Waiting for MCO addon components scales to 0")
-			Eventually(func() bool {
-				err, obaNS := utils.GetNamespace(testOptions, false, MCO_ADDON_NAMESPACE)
-				if err == nil && obaNS == nil {
-					return true
-				}
-				return false
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
+			klog.V(1).Infof("managedcluster number is <%d>", len(testOptions.ManagedClusters))
+			if len(testOptions.ManagedClusters) > 0 {
+				By("Waiting for MCO addon components scales to 0")
+				Eventually(func() bool {
+					err, obaNS := utils.GetNamespace(testOptions, false, MCO_ADDON_NAMESPACE)
+					if err == nil && obaNS == nil {
+						return true
+					}
+					return false
+				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
+			}
 		})
 
 		It("[Stable] Remove disable observability label from the managed cluster", func() {
