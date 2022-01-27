@@ -1,6 +1,19 @@
 apiVersion: v1
-data:
-  thanos.yaml: dHlwZTogczMNCmNvbmZpZzoNCiAgYnVja2V0OiAidGhhbm9zIg0KICBlbmRwb2ludDogIm1pbmlvOjkwMDAiDQogIGluc2VjdXJlOiBmYWxzZQ0KICBhY2Nlc3Nfa2V5OiAibWluaW8iDQogIHNlY3JldF9rZXk6ICJtaW5pbzEyMyINCiAgaHR0cF9jb25maWc6DQogICAgdGxzX2NvbmZpZzoNCiAgICAgIGNhX2ZpbGU6IC9ldGMvbWluaW8vY2VydHMvY2EuY3J0DQogICAgICBjZXJ0X2ZpbGU6IC9ldGMvbWluaW8vY2VydHMvcHVibGljLmNydA0KICAgICAga2V5X2ZpbGU6IC9ldGMvbWluaW8vY2VydHMvcHJpdmF0ZS5rZXkNCiAgICAgIGluc2VjdXJlX3NraXBfdmVyaWZ5OiBmYWxzZQ==
+stringData:
+  thanos.yaml: |
+    type: s3
+    config:
+      bucket: "thanos"
+      endpoint: "minio:9000"
+      insecure: false
+      access_key: "minio"
+      secret_key: "minio123"
+      http_config:
+        tls_config:
+          ca_file: /etc/minio/certs/ca.crt
+          cert_file: /etc/minio/certs/public.crt
+          key_file: /etc/minio/certs/private.key
+          insecure_skip_verify: false
 kind: Secret
 metadata:
   name: thanos-object-storage
