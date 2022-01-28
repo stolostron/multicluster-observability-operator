@@ -273,7 +273,7 @@ func TestDeploy(t *testing.T) {
 				},
 				Data: map[string][]byte{
 					"username": []byte("YWRtaW4="),
-					"password": []byte("MWYyZDFlMmU2N2Rm"),
+					"password": []byte(""),
 				},
 			},
 			validateResults: func(client client.Client) {
