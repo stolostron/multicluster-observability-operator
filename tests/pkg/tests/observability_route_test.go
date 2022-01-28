@@ -59,6 +59,10 @@ var _ = Describe("Observability:", func() {
 
 			client := &http.Client{}
 			if os.Getenv("IS_KIND_ENV") != "true" {
+				tr = &http.Transport{
+					// #nosec
+					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				}
 				client.Transport = tr
 				req.Header.Set("Authorization", "Bearer "+BearerToken)
 			}

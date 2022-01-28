@@ -286,22 +286,25 @@ var _ = Describe("Observability:", func() {
 		q.Set("filter", "alertname=Watchdog")
 		amURL.RawQuery = q.Encode()
 
-		caCrt, err := utils.GetRouterCA(hubClient)
-		Expect(err).NotTo(HaveOccurred())
-		pool := x509.NewCertPool()
-		pool.AppendCertsFromPEM(caCrt)
-
-		client := &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{RootCAs: pool},
-			},
-		}
-
 		alertGetReq, err := http.NewRequest("GET", amURL.String(), nil)
 		Expect(err).NotTo(HaveOccurred())
 
+		client := &http.Client{}
 		if os.Getenv("IS_KIND_ENV") != "true" {
+			caCrt, err := utils.GetRouterCA(hubClient)
+			Expect(err).NotTo(HaveOccurred())
+			pool := x509.NewCertPool()
+			pool.AppendCertsFromPEM(caCrt)
+
+			client.Transport = &http.Transport{
+				TLSClientConfig: &tls.Config{RootCAs: pool},
+			}
 			alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
+		} else {
+			client.Transport = &http.Transport{
+				// #nosec
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			}
 		}
 
 		expectedOCPClusterIDs, err := utils.ListOCPManagedClusterIDs(testOptions, "4.8.0")
