@@ -1,0 +1,11 @@
+resources:
+- k8s.yaml
+- kube-apiserver-availability.yaml
+- kube-apiserver-histogram.yaml
+- kube-apiserver.yaml
+- kube-prometheus-node-recording.yaml
+- kube-scheduler.yaml
+- kubelet.yaml
+- kubernetes-monitoring-alertingrules.yaml
+- node.yaml
+

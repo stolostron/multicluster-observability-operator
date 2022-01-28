@@ -1,0 +1,90 @@
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: acm-prometheus-operator-role
+  labels:
+    app.kubernetes.io/component: prometheus-operator
+    app.kubernetes.io/name: prometheus-operator
+rules:
+  - verbs:
+      - '*'
+    apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - alertmanagers
+      - alertmanagers/finalizers
+      - alertmanagerconfigs
+      - prometheuses
+      - prometheuses/finalizers
+      - thanosrulers
+      - thanosrulers/finalizers
+      - servicemonitors
+      - podmonitors
+      - probes
+      - prometheusrules
+  - verbs:
+      - '*'
+    apiGroups:
+      - apps
+    resources:
+      - statefulsets
+  - verbs:
+      - '*'
+    apiGroups:
+      - ''
+    resources:
+      - configmaps
+      - secrets
+  - verbs:
+      - list
+      - delete
+    apiGroups:
+      - ''
+    resources:
+      - pods
+  - verbs:
+      - get
+      - create
+      - update
+      - delete
+    apiGroups:
+      - ''
+    resources:
+      - services
+      - services/finalizers
+      - endpoints
+  - verbs:
+      - list
+      - watch
+    apiGroups:
+      - ''
+    resources:
+      - nodes
+  - verbs:
+      - get
+      - list
+      - watch
+    apiGroups:
+      - ''
+    resources:
+      - namespaces
+  - verbs:
+      - get
+      - list
+      - watch
+    apiGroups:
+      - networking.k8s.io
+    resources:
+      - ingresses
+  - verbs:
+      - create
+    apiGroups:
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+  - verbs:
+      - create
+    apiGroups:
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews

@@ -112,24 +112,9 @@ func updateRes(r *resource.Resource,
 	if r.GetKind() == "ConfigMap" && r.GetName() == operatorconfig.ImageConfigMap {
 		images := obj.(*corev1.ConfigMap).Data
 		for key, _ := range images {
-			imageKey := operatorconfig.ConfigmapReloaderKey
-			if key == imageKey {
-				found, image := mcoconfig.ReplaceImage(
-					mco.Annotations,
-					mcoconfig.ConfigmapReloaderImgRepo+"/"+operatorconfig.ImageKeyNameMap[imageKey],
-					key,
-				)
-				if found {
-					obj.(*corev1.ConfigMap).Data[key] = image
-				}
-			} else {
-				found, image := mcoconfig.ReplaceImage(
-					mco.Annotations,
-					mcoconfig.DefaultImgRepository+"/"+operatorconfig.ImageKeyNameMap[key],
-					key)
-				if found {
-					obj.(*corev1.ConfigMap).Data[key] = image
-				}
+			found, image := mcoconfig.ReplaceImage(mco.Annotations, images[key], key)
+			if found {
+				obj.(*corev1.ConfigMap).Data[key] = image
 			}
 		}
 	}

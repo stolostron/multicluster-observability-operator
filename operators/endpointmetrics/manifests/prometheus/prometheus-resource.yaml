@@ -1,0 +1,73 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  labels:
+    app.kubernetes.io/component: prometheus
+    app.kubernetes.io/name: prometheus
+    prometheus: k8s
+  name: k8s
+  namespace: open-cluster-management-addon-observability
+spec:
+  nodeSelector:
+    kubernetes.io/os: linux
+  serviceAccountName: prometheus-k8s
+  secrets:
+    - hub-alertmanager-router-ca
+    - observability-alertmanager-accessor
+  serviceMonitorSelector: {}
+  resources:
+    requests:
+      memory: 400Mi
+  externalLabels:
+    cluster: CLUSTER
+  listenLocal: true
+  containers:
+    - args:
+      - --logtostderr
+      - --secure-listen-address=[$(IP)]:9091
+      - --tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+      - --upstream=http://127.0.0.1:9090/
+      env:
+      - name: IP
+        valueFrom:
+          fieldRef:
+            fieldPath: status.podIP
+      image: quay.io/stolostron/kube-rbac-proxy:2.5.0-SNAPSHOT-2022-01-25-02-13-09
+      name: kube-rbac-proxy
+      ports:
+      - containerPort: 9091
+        name: https
+      resources:
+        limits:
+          cpu: 20m
+          memory: 40Mi
+        requests:
+          cpu: 10m
+          memory: 20Mi
+    - name: config-reloader
+      resources:
+        requests:
+          cpu: 1m
+          memory: 10Mi
+  podMetadata:
+    annotations:
+      target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
+    labels:
+      app.kubernetes.io/component: prometheus
+      app.kubernetes.io/name: prometheus
+  podMonitorSelector: {}
+  serviceMonitorNamespaceSelector: {}
+  rules:
+    alert: {}
+  arbitraryFSAccessThroughSMs: {}
+  image: quay.io/stolostron/prometheus:2.5.0-SNAPSHOT-2022-01-25-02-13-09
+  replicas: 1
+  ruleSelector: {}
+  ruleNamespaceSelector: {}
+  retention: 24h
+  additionalScrapeConfigs:
+    name: prometheus-scrape-targets
+    key: scrape-targets.yaml
+  additionalAlertManagerConfigs:
+    name: prometheus-alertmanager
+    key: alertmanager.yaml
