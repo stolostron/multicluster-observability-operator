@@ -130,6 +130,9 @@ spec:
                       name:
                         description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
                         type: string
+                      tlsSecretName:
+                        description: TLS secret contains the custom certificate for the object store
+                        type: string
                     required:
                     - key
                     - name
@@ -723,6 +726,9 @@ spec:
                         type: string
                       name:
                         description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                        type: string
+                      tlsSecretName:
+                        description: TLS secret contains the custom certificate for the object store
                         type: string
                     required:
                     - key

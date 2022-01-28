@@ -39,6 +39,9 @@ type PreConfiguredStorage struct {
 	// Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 	// +required
 	Name string `json:"name"`
+	// TLS secret contains the custom certificate for the object store
+	// +optional
+	TLSSecretName string `json:"tlsSecretName,omitempty"`
 }
 
 // Condition is from metav1.Condition.
