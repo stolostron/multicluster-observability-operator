@@ -14,7 +14,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
-var _ = Describe("Observability:", func() {
+var _ = Describe("", func() {
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
@@ -27,7 +27,7 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	Context("[P1][Sev1][Observability] Verify Observatorium CR configuration compliance (observatorium_preserve/g0) -", func() {
+	Context("RHACM4K-1443: Observability: Verify Observatorium CR configuration compliance [P1][Sev1][Observability] (observatorium_preserve/g0) -", func() {
 		It("[Stable] Updating observatorium cr (spec.thanos.compact.retentionResolution1h) should be automatically reverted", func() {
 			oldResourceVersion := ""
 			updateRetention := "10d"

@@ -140,7 +140,7 @@ CDDQ0YU1C4A77A0GE54S
 ```
 $ SECRET_KEY=$(oc -n rook-ceph get secret rook-ceph-object-user-object-object -o yaml | grep SecretKey | awk '{print $2}' | base64 --decode)
 $ echo $SECRET_KEY
-awkEbItAs6OXsbOC6Qk7SX45h01GSw51z9SDasBI
+
 ```
 
 ### Expose Object Store externally
@@ -168,7 +168,7 @@ AWS_ENDPOINT: `oc get service rook-ceph-rgw-object -n rook-ceph` and use `CLUSTE
 
 ```
 [root@rook-ceph-tools /]# export AWS_ACCESS_KEY_ID=CDDQ0YU1C4A77A0GE54S
-[root@rook-ceph-tools /]# export AWS_SECRET_ACCESS_KEY=awkEbItAs6OXsbOC6Qk7SX45h01GSw51z9SDasBI
+[root@rook-ceph-tools /]# export AWS_SECRET_ACCESS_KEY=
 [root@rook-ceph-tools /]# export AWS_HOST=rook-ceph-rgw-object:8081
 [root@rook-ceph-tools /]# export AWS_ENDPOINT=172.30.162.20:8081
 ```
@@ -195,7 +195,7 @@ config:
   endpoint: rook-ceph-rgw-object-rook-ceph.apps.acm-hub.dev05.red-chesterfield.com
   insecure: true
   access_key: CDDQ0YU1C4A77A0GE54S
-  secret_key: awkEbItAs6OXsbOC6Qk7SX45h01GSw51z9SDasBI
+  secret_key: 
 ```
 
 ### Proceed with installation of ACM Observbility
