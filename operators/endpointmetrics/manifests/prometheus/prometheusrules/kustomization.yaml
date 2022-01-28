@@ -8,4 +8,5 @@ resources:
 - kubelet.yaml
 - kubernetes-monitoring-alertingrules.yaml
 - node.yaml
+- node-exporter.yaml
 
