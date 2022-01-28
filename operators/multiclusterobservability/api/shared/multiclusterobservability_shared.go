@@ -42,9 +42,6 @@ type PreConfiguredStorage struct {
 	// TLS secret contains the custom certificate for the object store
 	// +optional
 	TLSSecretName string `json:"tlsSecretName,omitempty"`
-	// TLS secret mount path in thanos store/ruler/compact/receiver
-	// +optional
-	TLSSecretMountPath string `json:"tlsSecretMountPath,omitempty"`
 }
 
 // Condition is from metav1.Condition.

@@ -6,15 +6,18 @@ package multiclusterobservability
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"path"
 	"time"
 
 	routev1 "github.com/openshift/api/route/v1"
 	obsv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
+	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,8 +26,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/yaml"
 
+	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -52,6 +55,12 @@ func GenerateObservatoriumCR(
 		return &ctrl.Result{}, err
 	}
 
+	// fetch TLS secret mount path from the object store secret
+	tlsSecretMountPath, err := getTLSSecretMountPath(cl, mco.Spec.StorageConfig.MetricObjectStorage)
+	if err != nil {
+		return &ctrl.Result{}, err
+	}
+
 	log.Info("storageClassSelected", "storageClassSelected", storageClassSelected)
 
 	observatoriumCR := &obsv1alpha1.Observatorium{
@@ -60,7 +69,7 @@ func GenerateObservatoriumCR(
 			Namespace: mcoconfig.GetDefaultNamespace(),
 			Labels:    labels,
 		},
-		Spec: *newDefaultObservatoriumSpec(mco, storageClassSelected),
+		Spec: *newDefaultObservatoriumSpec(mco, storageClassSelected, tlsSecretMountPath),
 	}
 
 	// Set MultiClusterObservability instance as the owner and controller
@@ -79,7 +88,7 @@ func GenerateObservatoriumCR(
 		observatoriumCRFound,
 	)
 
-	if err != nil && errors.IsNotFound(err) {
+	if err != nil && k8serrors.IsNotFound(err) {
 		log.Info("Creating a new observatorium CR",
 			"observatorium", observatoriumCR.Name,
 		)
@@ -128,6 +137,35 @@ func GenerateObservatoriumCR(
 	}
 
 	return nil, nil
+}
+
+func getTLSSecretMountPath(client client.Client,
+	objectStorage *oashared.PreConfiguredStorage) (string, error) {
+	found := &v1.Secret{}
+	err := client.Get(
+		context.TODO(),
+		types.NamespacedName{Name: objectStorage.Name, Namespace: mcoconfig.GetDefaultNamespace()},
+		found,
+	)
+	if err != nil {
+		return "", err
+	}
+	data, ok := found.Data[objectStorage.Key]
+	if !ok {
+		return "", errors.New("failed to found the object storage configuration key from secret")
+	}
+
+	var objectConfg mcoconfig.ObjectStorgeConf
+	err = yaml.Unmarshal(data, &objectConfg)
+	if err != nil {
+		return "", err
+	}
+
+	caFile := objectConfg.Config.HTTPConfig.TLSConfig.CAFile
+	if caFile == "" {
+		return "", nil
+	}
+	return path.Dir(caFile), nil
 }
 
 func updateTenantID(
@@ -183,7 +221,7 @@ func GenerateAPIGatewayRoute(
 		context.TODO(),
 		types.NamespacedName{Name: apiGateway.Name, Namespace: apiGateway.Namespace},
 		&routev1.Route{})
-	if err != nil && errors.IsNotFound(err) {
+	if err != nil && k8serrors.IsNotFound(err) {
 		log.Info("Creating a new route to expose observatorium api",
 			"apiGateway.Namespace", apiGateway.Namespace,
 			"apiGateway.Name", apiGateway.Name,
@@ -198,7 +236,7 @@ func GenerateAPIGatewayRoute(
 }
 
 func newDefaultObservatoriumSpec(mco *mcov1beta2.MultiClusterObservability,
-	scSelected string) *obsv1alpha1.ObservatoriumSpec {
+	scSelected, tlsSecretMountPath string) *obsv1alpha1.ObservatoriumSpec {
 
 	obs := &obsv1alpha1.ObservatoriumSpec{}
 	obs.SecurityContext = &v1.SecurityContext{}
@@ -221,7 +259,7 @@ func newDefaultObservatoriumSpec(mco *mcov1beta2.MultiClusterObservability,
 		obs.ObjectStorageConfig.Thanos.Name = objStorageConf.Name
 		obs.ObjectStorageConfig.Thanos.Key = objStorageConf.Key
 		obs.ObjectStorageConfig.Thanos.TLSSecretName = objStorageConf.TLSSecretName
-		obs.ObjectStorageConfig.Thanos.TLSSecretMountPath = objStorageConf.TLSSecretMountPath
+		obs.ObjectStorageConfig.Thanos.TLSSecretMountPath = tlsSecretMountPath
 	}
 	return obs
 }
@@ -693,7 +731,7 @@ func deleteStoreSts(cl client.Client, name string, oldNum int32, newNum int32) e
 				found,
 			)
 			if err != nil {
-				if !errors.IsNotFound(err) {
+				if !k8serrors.IsNotFound(err) {
 					log.Error(err, "Failed to get statefulset", "name", stsName)
 					return err
 				}
