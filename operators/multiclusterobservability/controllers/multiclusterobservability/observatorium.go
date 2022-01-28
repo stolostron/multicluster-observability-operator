@@ -148,6 +148,11 @@ func getTLSSecretMountPath(client client.Client,
 		found,
 	)
 	if err != nil {
+		// report the status if the object store is not defined in checkObjStorageStatus method
+		// here just ignore
+		if k8serrors.IsNotFound(err) {
+			return "", nil
+		}
 		return "", err
 	}
 	data, ok := found.Data[objectStorage.Key]
