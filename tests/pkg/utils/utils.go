@@ -21,6 +21,7 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/klog"
 
@@ -501,35 +502,44 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.StorageV1().StorageClasses().Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		default:
+			var gvr schema.GroupVersionResource
 			switch kind {
 			case "MultiClusterObservability":
+				gvr = NewMCOGVRV1BETA2()
+				if apiVersion == "observability.open-cluster-management.io/v1beta1" {
+					gvr = NewMCOGVRV1BETA1()
+				}
 				klog.V(5).Infof("Install MultiClusterObservability: %s\n", f)
+			case "PrometheusRule":
+				gvr = schema.GroupVersionResource{
+					Group:    "monitoring.coreos.com",
+					Version:  "v1",
+					Resource: "prometheusrules"}
+				klog.V(5).Infof("Install PrometheusRule: %s\n", f)
 			default:
 				return fmt.Errorf("resource %s not supported", kind)
 			}
 
-			gvr := NewMCOGVRV1BETA2()
-			if apiVersion == "observability.open-cluster-management.io/v1beta1" {
-				gvr = NewMCOGVRV1BETA1()
+			if kind == "MultiClusterObservability" {
+				// url string, kubeconfig string, ctx string
+				opt := TestOptions{
+					HubCluster: Cluster{
+						ClusterServerURL: url,
+						KubeContext:      ctx,
+					},
+					KubeConfig: kubeconfig,
+				}
+				if ips, err := GetPullSecret(opt); err == nil {
+					obj.Object["spec"].(map[string]interface{})["imagePullSecret"] = ips
+				}
 			}
 
-			// url string, kubeconfig string, ctx string
-			opt := TestOptions{
-				HubCluster: Cluster{
-					ClusterServerURL: url,
-					KubeContext:      ctx,
-				},
-				KubeConfig: kubeconfig,
-			}
 			clientDynamic := NewKubeClientDynamic(url, kubeconfig, ctx)
 			if ns := obj.GetNamespace(); ns != "" {
 				existingObject, errGet := clientDynamic.Resource(gvr).
 					Namespace(ns).
 					Get(context.TODO(), obj.GetName(), metav1.GetOptions{})
 				if errGet != nil {
-					if ips, err := GetPullSecret(opt); err == nil {
-						obj.Object["spec"].(map[string]interface{})["imagePullSecret"] = ips
-					}
 					_, err = clientDynamic.Resource(gvr).
 						Namespace(ns).
 						Create(context.TODO(), obj, metav1.CreateOptions{})
@@ -541,9 +551,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 			} else {
 				existingObject, errGet := clientDynamic.Resource(gvr).Get(context.TODO(), obj.GetName(), metav1.GetOptions{})
 				if errGet != nil {
-					if ips, err := GetPullSecret(opt); err == nil {
-						obj.Object["spec"].(map[string]interface{})["imagePullSecret"] = ips
-					}
 					_, err = clientDynamic.Resource(gvr).Create(context.TODO(), obj, metav1.CreateOptions{})
 				} else {
 					obj.Object["metadata"] = existingObject.Object["metadata"]

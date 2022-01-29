@@ -277,6 +277,7 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("[P2][Sev2][Observability][Integration] Should have alert named Watchdog forwarded to alertmanager (alertforward/g0)", func() {
+
 		amURL := url.URL{
 			Scheme: "https",
 			Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
@@ -301,6 +302,10 @@ var _ = Describe("Observability:", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		if os.Getenv("IS_KIND_ENV") != "true" {
+			if BearerToken == "" {
+				BearerToken, err = utils.FetchBearerToken(testOptions)
+				Expect(err).NotTo(HaveOccurred())
+			}
 			alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 		}
 
@@ -309,6 +314,24 @@ var _ = Describe("Observability:", func() {
 		expectedKSClusterNames, err := utils.ListKSManagedClusterNames(testOptions)
 		Expect(err).NotTo(HaveOccurred())
 		expectClusterIdentifiers := append(expectedOCPClusterIDs, expectedKSClusterNames...)
+
+		// install watchdog PrometheusRule to *KS clusters
+		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: watchDogRuleKustomizationPath})
+		Expect(err).NotTo(HaveOccurred())
+		for _, ks := range expectedKSClusterNames {
+			for idx, mc := range testOptions.ManagedClusters {
+				if mc.Name == ks {
+					err = utils.Apply(
+						testOptions.ManagedClusters[idx].ClusterServerURL,
+						testOptions.ManagedClusters[idx].KubeConfig,
+						testOptions.ManagedClusters[idx].KubeContext,
+						yamlB,
+					)
+					Expect(err).NotTo(HaveOccurred())
+				}
+			}
+		}
 
 		By("Checking Watchdog alerts are forwarded to the hub")
 		Eventually(func() error {
