@@ -40,9 +40,14 @@ jobs:
 
       - name: Update go modules to latest versions
         run: |
-          echo "Preparing to update all ggo modules to latest versions"
+          echo "Preparing to update all go modules to latest versions"
           go get -u all
           go mod tidy
+
+      - name: Validate package build properly
+        run: |
+          echo "Preparing to build package"
+          go build ./...
 
   test:
     needs: [build, update]
