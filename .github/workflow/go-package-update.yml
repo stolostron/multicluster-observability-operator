@@ -14,7 +14,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  build:
+  main:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
@@ -29,10 +29,6 @@ jobs:
         run: |
           echo "Using go version: $(go version)"
 
-  update:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
       - name: Verify outdated go modules versions
         run: |
           echo "Preparing to list go modules within current build"
@@ -49,11 +45,19 @@ jobs:
           echo "Preparing to build package"
           go build ./...
 
-  test:
-    needs: [build, update]
-    runs-on: ubuntu-latest
-    steps:
       - name: Test repoisitory code after updating go module to the latest version
         run: | 
           echo "Preparing to run test repository code"
           go test ./...
+
+      # TODO: This will be added within after verifying that the github action is wokingg properly.
+      # - name: Create pulll request for updated go module versions
+      #   run: |
+      #     echo "Preparing to create pull request for updated go module versions"
+      #     git config user.name github-actions
+      #     git config user.email github-actions@github.com
+      #     git add .
+      #     git commit -sm "Bump go mod dependencies to latest version"
+      #     git push
+      #   with:
+      #     token: $GITHUB_TOKEN
