@@ -1,8 +1,17 @@
 name: Update go module dependencies versions
 
+# Set jobs to be configured and executed by schedule.
 on:
+  push: # Actions will be executed by pushing changes to the listed branches.
+    branches:
+      - 'main'
+      - 'releases/**'
   schedule:
-    - cron: '0 8 * * Tue'
+    - cron: '0 8 * * Tue' # Actions will be executed at 8am for every Tuesday.
+
+# Set environment variables.
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   build:
@@ -14,7 +23,7 @@ jobs:
       - name: Setup go for repository code
         uses: actions/setup-go@v2
         with:
-          go-version: '^1.17'
+          go-version: '^1.17' # Go version should be 1.17 or higher.
 
       - name: Validate go version
         run: |
