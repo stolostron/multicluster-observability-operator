@@ -1,0 +1,45 @@
+name: Update go module dependencies versions
+
+on:
+  schedule:
+    - cron: '0 8 * * Tue'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+
+      - name: Setup go for repository code
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.17'
+
+      - name: Validate go version
+        run: |
+          echo "Using go version: $(go version)"
+
+  update:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Verify outdated go modules versions
+        run: |
+          echo "Preparing to list go modules within current build"
+          go list -u -m all
+
+      - name: Update go modules to latest versions
+        run: |
+          echo "Preparing to update all ggo modules to latest versions"
+          go get -u all
+          go mod tidy
+
+  test:
+    needs: [build, update]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test repoisitory code after updating go module to the latest version
+        run: | 
+          echo "Preparing to run test repository code"
+          go test ./...
