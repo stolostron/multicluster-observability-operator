@@ -70,8 +70,15 @@ var _ = Describe("Observability:", func() {
 					MCO_ADDON_NAMESPACE,
 					"component=metrics-collector",
 				)
-				if len(podList.Items) != 0 || err != nil {
+				if err != nil {
 					return fmt.Errorf("Failed to disable observability addon")
+				}
+				if len(podList.Items) != 0 {
+					for _, po := range podList.Items {
+						if po.Status.Phase == "Running" {
+							return fmt.Errorf("Failed to disable observability addon, there is still metrics-collector pod in Running")
+						}
+					}
 				}
 				return nil
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
