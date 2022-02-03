@@ -3,10 +3,10 @@ apiVersion: v1
 metadata:
   name: images-list
 data:
-    prometheus: "quay.io/stolostron/prometheus:2.4.0-SNAPSHOT-2021-08-19-08-22-43"
-    prometheus_config_reloader: "quay.io/openshift/origin-prometheus-config-reloader:4.9.0"
-    prometheus_operator: "quay.io/prometheus-operator/prometheus-operator:v0.53.1"
-    kube_state_metrics: "quay.io/stolostron/kube-state-metrics:2.4.0-SNAPSHOT-2021-08-19-08-22-43"
-    node_exporter: "quay.io/stolostron/node-exporter:2.4.0-SNAPSHOT-2021-08-19-08-22-43"
-    kube_rbac_proxy: "quay.io/stolostron/kube-rbac-proxy:2.4.0-SNAPSHOT-2021-08-19-08-22-43"
-    metrics_collector: "quay.io/stolostron/metrics-collector:2.4.0-SNAPSHOT-2021-08-19-08-22-43"
+    prometheus: "quay.io/stolostron/prometheus:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
+    prometheus_config_reloader: "quay.io/stolostron/prometheus-config-reloader:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
+    prometheus_operator: "quay.io/stolostron/prometheus-operator:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
+    kube_state_metrics: "quay.io/stolostron/kube-state-metrics:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
+    node_exporter: "quay.io/stolostron/node-exporter:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
+    kube_rbac_proxy: "quay.io/stolostron/kube-rbac-proxy:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
+    metrics_collector: "quay.io/stolostron/metrics-collector:2.5.0-SNAPSHOT-2022-02-03-20-02-33"
