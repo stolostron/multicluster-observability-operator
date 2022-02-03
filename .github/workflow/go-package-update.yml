@@ -1,0 +1,63 @@
+name: Update go module dependencies versions
+
+# Set jobs to be configured and executed by schedule.
+on:
+  push: # Actions will be executed by pushing changes to the listed branches.
+    branches:
+      - 'main'
+      - 'releases/**'
+  schedule:
+    - cron: '0 8 * * Tue' # Actions will be executed at 8am for every Tuesday.
+
+# Set environment variables.
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+
+      - name: Setup go for repository code
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.17' # Go version should be 1.17 or higher.
+
+      - name: Validate go version
+        run: |
+          echo "Using go version: $(go version)"
+
+      - name: Verify outdated go modules versions
+        run: |
+          echo "Preparing to list go modules within current build"
+          go list -u -m all
+
+      - name: Update go modules to latest versions
+        run: |
+          echo "Preparing to update all go modules to latest versions"
+          go get -u all
+          go mod tidy
+
+      - name: Validate package build properly
+        run: |
+          echo "Preparing to build package"
+          go build ./...
+
+      - name: Test repoisitory code after updating go module to the latest version
+        run: | 
+          echo "Preparing to run test repository code"
+          go test ./...
+
+      # TODO: This will be added within after verifying that the github action is wokingg properly.
+      # - name: Create pulll request for updated go module versions
+      #   run: |
+      #     echo "Preparing to create pull request for updated go module versions"
+      #     git config user.name github-actions
+      #     git config user.email github-actions@github.com
+      #     git add .
+      #     git commit -sm "Bump go mod dependencies to latest version"
+      #     git push
+      #   with:
+      #     token: $GITHUB_TOKEN
