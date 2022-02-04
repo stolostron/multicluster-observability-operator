@@ -114,8 +114,8 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
-	if (!mco.spec.ObservabilityAddonSpec.EnableMetrics) {
-		reqLoger.Info("EnableMetrics is set to false. Delete Observability addons")
+	if !deleteAll && !mco.Spec.ObservabilityAddonSpec.EnableMetrics {
+		reqLogger.Info("EnableMetrics is set to false. Delete Observability addons")
 		deleteAll = true
 	}
 
