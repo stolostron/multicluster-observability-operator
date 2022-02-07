@@ -123,6 +123,7 @@ data:
             {
               "expr": "(sum (openshift_clusterresourcequota_labels{cluster=\"$cluster\"} * on (name) group_right () openshift_clusterresourcequota_usage{resource=\"requests.memory\",type=\"hard\"}) by (cluster))/(sum (kube_node_labels{cluster=\"$cluster\"} * on (node) group_right () kube_node_status_allocatable_memory_bytes) by (cluster))",
               "format": "time_series",
+              "instant": true,
               "intervalFactor": 1,
               "legendFormat": "",
               "refId": "A"
@@ -201,6 +202,7 @@ data:
             {
               "expr": "(sum (kube_node_labels{cluster=\"$cluster\"} * on (node) group_left () sum (kube_pod_container_resource_requests_memory_bytes) by (node)) by (cluster))/(sum (kube_node_labels{cluster=\"$cluster\"} * on (node) group_left () kube_node_status_allocatable_memory_bytes) by (cluster))",
               "format": "time_series",
+              "instant": true,
               "hide": false,
               "intervalFactor": 1,
               "legendFormat": "",
@@ -280,6 +282,7 @@ data:
             {
               "expr": "sum(kube_node_labels{cluster=\"$cluster\"} * on (node) group_left () sum(kube_pod_info * on (pod) group_left() label_replace(sum(container_memory_usage_bytes{container_name=~\".+\", container_name!=\"POD\"}) by (pod_name),\"pod\",\"$1\",\"pod_name\", \"(.+)\")) by (node)) by (cluster)/(sum (kube_node_labels{cluster=\"$cluster\"} * on (node) group_left () kube_node_status_allocatable_memory_bytes) by (cluster))",
               "format": "time_series",
+              "instant": true,
               "intervalFactor": 1,
               "legendFormat": "",
               "refId": "B"
@@ -356,6 +359,7 @@ data:
             {
               "expr": "(sum (openshift_clusterresourcequota_labels{cluster=\"$cluster\"} * on (name) group_right () openshift_clusterresourcequota_usage{cluster=\"$cluster\",resource=\"requests.memory\",type=\"hard\"}) by (cluster))",
               "format": "time_series",
+              "instant": true,
               "intervalFactor": 1,
               "legendFormat": "",
               "refId": "A"
@@ -431,6 +435,7 @@ data:
             {
               "expr": "(sum (kube_node_labels{cluster=\"$cluster\"} * on (node) group_left () sum (kube_pod_container_resource_requests_memory_bytes) by (node)) by (cluster))",
               "format": "time_series",
+              "instant": true,
               "intervalFactor": 1,
               "legendFormat": "",
               "refId": "B"
@@ -505,6 +510,7 @@ data:
             {
               "expr": "sum(kube_node_labels{cluster=\"$cluster\"} * on (node) group_left () sum(kube_pod_info * on (pod) group_left() label_replace(sum(container_memory_usage_bytes{container_name=~\".+\", container_name!=\"POD\"}) by (pod_name),\"pod\",\"$1\",\"pod_name\", \"(.+)\")) by (node)) by (cluster)",
               "format": "time_series",
+              "instant": true,
               "intervalFactor": 1,
               "legendFormat": "",
               "refId": "C"
@@ -601,6 +607,7 @@ data:
             {
               "expr": "(sum (openshift_clusterresourcequota_labels{cluster=\"$cluster\"} * on (name) group_right () openshift_clusterresourcequota_usage{resource=\"requests.cpu\",type=\"hard\"}) by (cluster))/(sum (kube_node_labels{cluster=\"$cluster\"} * on (node) group_right () kube_node_status_allocatable_cpu_cores) by (cluster))",
               "format": "time_series",
+              "instant": true,
               "intervalFactor": 1,
               "legendFormat": "",
               "refId": "A"
@@ -679,6 +686,7 @@ data:
             {
               "expr": "(sum (kube_node_labels{cluster=\"$cluster\"} * on (node) group_left () sum (kube_pod_container_resource_requests_cpu_cores) by (node)) by (cluster))/(sum (kube_node_labels{cluster=\"$cluster\"} * on (node) group_left () kube_node_status_allocatable_cpu_cores) by (cluster))",
               "format": "time_series",
+              "instant": true,
               "intervalFactor": 1,
               "legendFormat": "",
               "refId": "B"
@@ -758,6 +766,7 @@ data:
             {
               "expr": "sum(kube_node_labels{cluster=\"$cluster\"} * on (node) group_left () sum(kube_pod_info * on (pod) group_left() label_replace(sum(rate (container_cpu_usage_seconds_total{container_name=~\".+\", container_name!=\"POD\"} [$__rate_interval])) by (pod_name),\"pod\",\"$1\",\"pod_name\", \"(.+)\")) by (node)) by (cluster) / (sum (kube_node_labels{cluster=\"$cluster\"} * on (node) group_left () kube_node_status_allocatable_cpu_cores) by (cluster)) / (sum (kube_node_labels{cluster=\"$cluster\"} * on (node) group_left () kube_node_status_allocatable_cpu_cores) by (cluster))",
               "format": "time_series",
+              "instant": true,
               "intervalFactor": 1,
               "legendFormat": "",
               "refId": "A"
@@ -834,6 +843,7 @@ data:
             {
               "expr": "(sum (openshift_clusterresourcequota_labels{cluster=\"$cluster\"} * on (name) group_right () openshift_clusterresourcequota_usage{cluster=\"$cluster\",resource=\"requests.cpu\",type=\"hard\"}) by (cluster))",
               "format": "time_series",
+              "instant": true,
               "intervalFactor": 1,
               "legendFormat": "",
               "refId": "A"
@@ -909,6 +919,7 @@ data:
             {
               "expr": "(sum (kube_node_labels{cluster=\"$cluster\"} * on (node) group_left () sum (kube_pod_container_resource_requests_cpu_cores) by (node)) by (cluster))",
               "format": "time_series",
+              "instant": true,
               "intervalFactor": 1,
               "legendFormat": "",
               "refId": "A"
@@ -983,6 +994,7 @@ data:
             {
               "expr": "sum(kube_node_labels{cluster=\"$cluster\"} * on (node) group_left () sum(kube_pod_info * on (pod) group_left() label_replace(sum(rate (container_cpu_usage_seconds_total{container_name=~\".+\", container_name!=\"POD\"} [$__rate_interval])) by (pod_name),\"pod\",\"$1\",\"pod_name\", \"(.+)\")) by (node)) by (cluster) / (sum (kube_node_labels{cluster=\"$cluster\"} * on (node) group_left () kube_node_status_allocatable_cpu_cores) by (cluster))",
               "format": "time_series",
+              "instant": true,
               "intervalFactor": 1,
               "legendFormat": "",
               "refId": "A"
