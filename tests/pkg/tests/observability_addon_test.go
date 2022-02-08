@@ -72,7 +72,7 @@ var _ = Describe("Observability:", func() {
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
 			Eventually(func() error {
-				err = utils.CheckAllOBADisabled(testOptions)
+				err = utils.CheckAllOBAsDeleted(testOptions)
 				if err != nil {
 					return err
 				}
