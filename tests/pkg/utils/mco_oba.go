@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
@@ -38,8 +39,8 @@ func CheckOBADeleted(opt TestOptions, namespace string) error {
 		opt.HubCluster.KubeContext)
 
 	_, err := dynClient.Resource(NewMCOAddonGVR()).Namespace(namespace).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
-	if err == nil {
-		return fmt.Errorf("observability-addon is not deleted for managed cluster %s", namespace)
+	if err == nil || !errors.IsNotFound(err) {
+		return fmt.Errorf("observability-addon is not properly deleted for managed cluster %s", namespace)
 	}
 	return nil
 }
