@@ -114,6 +114,11 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
+	if !deleteAll && !mco.Spec.ObservabilityAddonSpec.EnableMetrics {
+		reqLogger.Info("EnableMetrics is set to false. Delete Observability addons")
+		deleteAll = true
+	}
+
 	// check if the MCH CRD exists
 	mchCrdExists, _ := r.CRDMap[config.MCHCrdName]
 	// requeue after 10 seconds if the mch crd exists and image image manifests map is empty
