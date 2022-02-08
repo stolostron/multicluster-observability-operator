@@ -2,8 +2,12 @@ name: Update go module dependencies versions
 
 # Set jobs to be configured and executed by schedule.
 on:
+  push: # Actions will be executed by pushing changes to the listed branches.
+    branches:
+      - 'main'
+      - 'release-*'
   schedule:
-    - cron: '* * * * Mon-Fri' # Actions will be executed at 8am for every Tuesday.
+    - cron: '0 8 * * Tue' # Actions will be executed at 8am for every Tuesday.
 
 # Set environment variables.
 env:
@@ -47,9 +51,10 @@ jobs:
           go test ./...
 
       # TODO: This will be added within after verifying that the github action is wokingg properly.
-      # - name: Create pulll request for updated go module versions
-      #   run: |
-      #     echo "Preparing to create pull request for updated go module versions"
+      - name: Create pulll request for updated go module versions
+        run: |
+          echo "Preparing to create pull request for updated go module versions"
+          ehco "TODO: Add pull request for updated go module versions"
       #     git config user.name github-actions
       #     git config user.email github-actions@github.com
       #     git add .
