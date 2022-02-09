@@ -137,4 +137,3 @@ observability-addon   137m
 ### View metrics in dashboard
 
 Access Grafana console in hub cluster at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "ACM:Managed Cluster Monitoring"
-
