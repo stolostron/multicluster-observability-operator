@@ -25,19 +25,22 @@ type Renderer struct {
 func NewRenderer() *Renderer {
 	renderer := &Renderer{}
 	renderer.renderFns = map[string]RenderFn{
-		"Deployment":            renderer.RenderDeployments,
-		"StatefulSet":           renderer.RenderNamespace,
-		"DaemonSet":             renderer.RenderNamespace,
-		"Service":               renderer.RenderNamespace,
-		"ServiceAccount":        renderer.RenderNamespace,
-		"ConfigMap":             renderer.RenderNamespace,
-		"ClusterRole":           renderer.RenderClusterRole,
-		"ClusterRoleBinding":    renderer.RenderClusterRoleBinding,
-		"Secret":                renderer.RenderNamespace,
-		"Role":                  renderer.RenderNamespace,
-		"RoleBinding":           renderer.RenderNamespace,
-		"Ingress":               renderer.RenderNamespace,
-		"PersistentVolumeClaim": renderer.RenderNamespace,
+		"Deployment":               renderer.RenderDeployments,
+		"StatefulSet":              renderer.RenderNamespace,
+		"DaemonSet":                renderer.RenderNamespace,
+		"Service":                  renderer.RenderNamespace,
+		"ServiceAccount":           renderer.RenderNamespace,
+		"ConfigMap":                renderer.RenderNamespace,
+		"ClusterRole":              renderer.RenderClusterRole,
+		"ClusterRoleBinding":       renderer.RenderClusterRoleBinding,
+		"Secret":                   renderer.RenderNamespace,
+		"Role":                     renderer.RenderNamespace,
+		"RoleBinding":              renderer.RenderNamespace,
+		"Ingress":                  renderer.RenderNamespace,
+		"PersistentVolumeClaim":    renderer.RenderNamespace,
+		"Prometheus":               renderer.RenderNamespace,
+		"PrometheusRule":           renderer.RenderNamespace,
+		"CustomResourceDefinition": renderer.RenderNamespace,
 	}
 	return renderer
 }

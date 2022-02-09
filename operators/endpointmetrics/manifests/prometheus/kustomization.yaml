@@ -1,27 +1,29 @@
 resources:
-- kube-prometheus-rules.yaml
 - kube-state-metrics-clusterRole.yaml
 - kube-state-metrics-clusterRoleBinding.yaml
 - kube-state-metrics-deployment.yaml
 - kube-state-metrics-service.yaml
 - kube-state-metrics-serviceAccount.yaml
-- kubernetes-monitoring-rules.yaml
-- kubernetes-monitoring-alertingrules.yaml
 - node-exporter-clusterRole.yaml
 - node-exporter-clusterRoleBinding.yaml
 - node-exporter-daemonset.yaml
-- node-exporter-rules.yaml
 - node-exporter-service.yaml
 - node-exporter-serviceAccount.yaml
+- prometheus-alertmanager-config-secret.yaml
 - prometheus-clusterRole.yaml
 - prometheus-clusterRoleBinding.yaml
-- prometheus-config.yaml
+- prometheus-operator-deployment.yaml
+- prometheus-operator-role.yaml
+- prometheus-operator-roleBinding.yaml
+- prometheus-operator-serviceAccount.yaml
+- prometheus-resource.yaml
 - prometheus-role.yaml
 - prometheus-role-default.yaml
 - prometheus-role-kube-system.yaml
 - prometheus-roleBinding.yaml
 - prometheus-roleBinding-default.yaml
 - prometheus-roleBinding-kube-system.yaml
+- prometheus-scrape-targets-secret.yaml
 - prometheus-service.yaml
 - prometheus-serviceAccount.yaml
-- prometheus-statefulset.yaml
+
