@@ -236,6 +236,11 @@ func (r *ReconcilePlacementRule) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, nil
 	}
 
+	if !deleteAll && !mco.Spec.ObservabilityAddonSpec.EnableMetrics {
+		reqLogger.Info("EnableMetrics is set to false. Delete Observability addons")
+		deleteAll = true
+	}
+
 	//read image manifest configmap to be used to replace the image for each component.
 	if _, err = config.ReadImageManifestConfigMap(r.client); err != nil {
 		return reconcile.Result{}, err
