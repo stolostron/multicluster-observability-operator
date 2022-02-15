@@ -64,7 +64,6 @@ jobs:
         run: |
           echo -e "\nCreated automated PR: $(date +%S-%d-%m-%y)" >> Readme.md
           git status
-          git add -A
 
       - name: Create pull request for updated node modules versions
         continue-on-error: true # Continuing on error, adding this for debugging purposes.
