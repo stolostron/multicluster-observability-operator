@@ -77,7 +77,7 @@ func ModifyMetricsQueryParams(req *http.Request, reqUrl string) {
 	var rawQuery string
 	if req.Method == "POST" {
 		body, _ := ioutil.ReadAll(req.Body)
-		req.Body.Close()
+		_ = req.Body.Close()
 		queryValues, err := url.ParseQuery(string(body))
 		if err != nil {
 			klog.Errorf("Failed to parse request body: %v", err)
