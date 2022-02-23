@@ -586,6 +586,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.AllowlistCustomConfigMapName &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				util.AddBackupLabelToConfigMap(c, config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
 				// generate the metrics allowlist configmap
 				log.Info("generate metric allow list configmap for custom configmap CREATE")
 				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
@@ -597,6 +598,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.ObjectNew.GetName() == config.AllowlistCustomConfigMapName &&
 				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+				util.AddBackupLabelToConfigMap(c, config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
 				// regenerate the metrics allowlist configmap
 				log.Info("generate metric allow list configmap for custom configmap UPDATE")
 				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
@@ -694,6 +696,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
 				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
 					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
+				util.AddBackupLabelToSecret(c, e.Object.GetName(), config.GetDefaultNamespace())
 				// generate the hubInfo secret
 				hubInfoSecret, _ = generateHubInfoSecret(
 					c,
@@ -710,6 +713,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
 				(e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
 					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName) {
+				util.AddBackupLabelToSecret(c, e.ObjectNew.GetName(), config.GetDefaultNamespace())
 				// regenerate the hubInfo secret
 				hubInfoSecret, _ = generateHubInfoSecret(
 					c,

@@ -214,6 +214,9 @@ func createCertSecret(c client.Client,
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: config.GetDefaultNamespace(),
+					Labels: map[string]string{
+						config.BackupLabelName: config.BackupLabelValue,
+					},
 				},
 				Data: map[string][]byte{
 					"ca.crt":  caCertBytes,

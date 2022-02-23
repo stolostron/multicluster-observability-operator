@@ -111,6 +111,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, err
 	}
 
+	config.ThanosObjectStoreSecretName = instance.Spec.StorageConfig.MetricObjectStorage.Key
+
 	// start to update mco status
 	StartStatusUpdate(r.Client, instance)
 
@@ -350,20 +352,33 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	cmPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == config.AlertRuleCustomConfigMapName &&
-				e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				config.SetCustomRuleConfigMap(true)
-				return true
+			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				if e.Object.GetName() == config.AlertRuleCustomConfigMapName {
+					util.AddBackupLabelToConfigMap(c, config.AlertRuleCustomConfigMapName, config.GetDefaultNamespace())
+					config.SetCustomRuleConfigMap(true)
+				} else {
+					// ConfigMap with custom-grafana-dashboard labels
+					if _, ok := e.Object.GetLabels()[config.GrafanaCustomDashboardLabel]; ok {
+						util.AddBackupLabelToConfigMap(c, e.Object.GetName(), config.GetDefaultNamespace())
+					}
+				}
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			// Find a way to restart the alertmanager to take the update
-			// if e.ObjectNew.GetName() == config.AlertRuleCustomConfigMapName &&
-			// 	e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
-			// 	config.SetCustomRuleConfigMap(true)
-			// 	return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
-			// }
+			// Find a way to restart the alertmanager to take the update, still add backup label
+			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
+				if e.ObjectNew.GetName() == config.AlertRuleCustomConfigMapName {
+					util.AddBackupLabelToConfigMap(c, config.AlertRuleCustomConfigMapName, config.GetDefaultNamespace())
+					//config.SetCustomRuleConfigMap(true)
+					//return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
+				} else {
+					// ConfigMap with custom-grafana-dashboard labels
+					if _, ok := e.ObjectNew.GetLabels()[config.GrafanaCustomDashboardLabel]; ok {
+						util.AddBackupLabelToConfigMap(c, e.ObjectNew.GetName(), config.GetDefaultNamespace())
+					}
+				}
+			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
@@ -379,16 +394,25 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 	secretPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
-				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
+				(e.Object.GetName() == config.ThanosObjectStoreSecretName ||
+					e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
+					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName ||
+					e.Object.GetName() == config.ProxyRouteBYOCAName ||
+					e.Object.GetName() == config.ProxyRouteBYOCERTName) {
+				util.AddBackupLabelToSecret(c, e.Object.GetName(), config.GetDefaultNamespace())
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
+			// Watch thanos-object-secret and add backup label
 			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() &&
-				(e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName) {
+				(e.ObjectNew.GetName() == config.ThanosObjectStoreSecretName ||
+					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
+					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName ||
+					e.ObjectNew.GetName() == config.ProxyRouteBYOCAName ||
+					e.ObjectNew.GetName() == config.ProxyRouteBYOCERTName) {
+				util.AddBackupLabelToSecret(c, e.ObjectNew.GetName(), config.GetDefaultNamespace())
 				return true
 			}
 			return false

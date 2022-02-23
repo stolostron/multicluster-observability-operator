@@ -98,6 +98,8 @@ const (
 
 	ValidatingWebhookConfigurationName = "multicluster-observability-operator"
 	WebhookServiceName                 = "multicluster-observability-webhook-service"
+	BackupLabelName                    = "cluster.open-cluster-management.io/backup"
+	BackupLabelValue                   = ""
 )
 
 const (
@@ -123,9 +125,10 @@ const (
 	MemcachedExporterKey     = "memcached_exporter"
 	MemcachedExporterImgTag  = "v0.9.0"
 
-	GrafanaImgKey              = "grafana"
-	GrafanaDashboardLoaderName = "grafana-dashboard-loader"
-	GrafanaDashboardLoaderKey  = "grafana_dashboard_loader"
+	GrafanaImgKey               = "grafana"
+	GrafanaDashboardLoaderName  = "grafana-dashboard-loader"
+	GrafanaDashboardLoaderKey   = "grafana_dashboard_loader"
+	GrafanaCustomDashboardLabel = "grafana-custom-dashboard"
 
 	AlertManagerImgName           = "prometheus-alertmanager"
 	AlertManagerImgKey            = "prometheus_alertmanager"
@@ -277,6 +280,8 @@ var (
 	MemoryLimitMB   = int32(1024)
 	ConnectionLimit = int32(1024)
 	MaxItemSize     = "1m"
+
+	ThanosObjectStoreSecretName = "thanos-object-storage" // default name
 )
 
 func GetReplicas(component string, advanced *observabilityv1beta2.AdvancedConfig) *int32 {
