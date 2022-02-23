@@ -281,7 +281,7 @@ var (
 	ConnectionLimit = int32(1024)
 	MaxItemSize     = "1m"
 
-	ThanosObjectStoreSecretName = "thanos-object-storage" // default name
+	ThanosObjectStore = "thanos-object-storage" // default name
 )
 
 func GetReplicas(component string, advanced *observabilityv1beta2.AdvancedConfig) *int32 {

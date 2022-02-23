@@ -24,13 +24,13 @@ func AddBackupLabelToConfigMap(c client.Client, name string, namespace string) e
 	}
 	if _, ok := m.ObjectMeta.Labels[config.BackupLabelName]; !ok {
 		m.ObjectMeta.Labels[config.BackupLabelName] = config.BackupLabelValue
-		err = c.Update(context.TODO(), m)
+		err := c.Update(context.TODO(), m)
 		if err != nil {
-			log.Error(err, "Failed to update ConfigMap", "name", name)
 			return err
 		} else {
-			log.Info("Update ConfigMap backup label", "name", name)
+			log.Info("Add backup label for configMap", "name", name)
 		}
+
 	}
 	return nil
 }
@@ -46,12 +46,11 @@ func AddBackupLabelToSecret(c client.Client, name string, namespace string) erro
 	}
 	if _, ok := s.ObjectMeta.Labels[config.BackupLabelName]; !ok {
 		s.ObjectMeta.Labels[config.BackupLabelName] = config.BackupLabelValue
-		err = c.Update(context.TODO(), s)
+		err := c.Update(context.TODO(), s)
 		if err != nil {
-			log.Error(err, "Failed to update Secret", "name", name)
 			return err
 		} else {
-			log.Info("Update ConfigMap backup label", "name", name)
+			log.Info("Add backup label for secret", "name", name)
 		}
 	}
 	return nil
