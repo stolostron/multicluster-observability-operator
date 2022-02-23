@@ -58,7 +58,7 @@ jobs:
         id: format-log
         continue-on-error: true
         run: |
-          sed -i '' 's/^go:/- go:/g; s/^go get/- go get/g' .github/logs/update-log-$(date +%m-%d-%y).md
+          sed -i 's/^go:/- go:/g; s/^go get/- go get/g' .github/logs/update-log-$(date +%m-%d-%y).md
 
       - name: Verify go modules dependencies updated to latest versions (failure)
         id: verify-failure
