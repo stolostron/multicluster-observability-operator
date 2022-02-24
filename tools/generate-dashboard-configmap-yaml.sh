@@ -45,7 +45,7 @@ start() {
     savePath=$2
   fi
   org_dashboard_name=$1
-  dashboard_name=`echo ${1// /-} | tr '[:upper:]' '[:lower:]'`
+  dashboard_name=`echo ${1//[!(a-z\A-Z\0-9\-\.)]/-} | tr '[:upper:]' '[:lower:]'`
 
   while [[ $# -gt 0 ]]
   do
