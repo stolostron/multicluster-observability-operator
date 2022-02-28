@@ -586,10 +586,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.AllowlistCustomConfigMapName &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				err := util.AddBackupLabelToConfigMap(c, config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
-				if err != nil {
-					log.Error(err, "Failed to add backup label")
-				}
 				// generate the metrics allowlist configmap
 				log.Info("generate metric allow list configmap for custom configmap CREATE")
 				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
@@ -601,10 +597,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.ObjectNew.GetName() == config.AllowlistCustomConfigMapName &&
 				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				err := util.AddBackupLabelToConfigMap(c, config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
-				if err != nil {
-					log.Error(err, "Failed to add backup label")
-				}
 				// regenerate the metrics allowlist configmap
 				log.Info("generate metric allow list configmap for custom configmap UPDATE")
 				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
@@ -702,10 +694,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
 				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
 					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				err := util.AddBackupLabelToSecret(c, e.Object.GetName(), config.GetDefaultNamespace())
-				if err != nil {
-					log.Error(err, "Failed to add backup label")
-				}
 				// generate the hubInfo secret
 				hubInfoSecret, _ = generateHubInfoSecret(
 					c,
@@ -722,10 +710,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
 				(e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
 					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				err := util.AddBackupLabelToSecret(c, e.ObjectNew.GetName(), config.GetDefaultNamespace())
-				if err != nil {
-					log.Error(err, "Failed to add backup label")
-				}
 				// regenerate the hubInfo secret
 				hubInfoSecret, _ = generateHubInfoSecret(
 					c,

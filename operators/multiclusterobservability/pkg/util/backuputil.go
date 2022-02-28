@@ -13,7 +13,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
 
-func AddBackupLabelToConfigMap(c client.Client, name string, namespace string) error {
+func AddBackupLabelToConfigMap(c client.Client, name, namespace string) error {
 	m := &corev1.ConfigMap{}
 	err := c.Get(context.TODO(), types.NamespacedName{
 		Name:      name,
@@ -23,6 +23,9 @@ func AddBackupLabelToConfigMap(c client.Client, name string, namespace string) e
 		return err
 	}
 	if _, ok := m.ObjectMeta.Labels[config.BackupLabelName]; !ok {
+		if m.ObjectMeta.Labels == nil {
+			m.ObjectMeta.Labels = make(map[string]string)
+		}
 		m.ObjectMeta.Labels[config.BackupLabelName] = config.BackupLabelValue
 		err := c.Update(context.TODO(), m)
 		if err != nil {
@@ -35,7 +38,7 @@ func AddBackupLabelToConfigMap(c client.Client, name string, namespace string) e
 	return nil
 }
 
-func AddBackupLabelToSecret(c client.Client, name string, namespace string) error {
+func AddBackupLabelToSecret(c client.Client, name, namespace string) error {
 	s := &corev1.Secret{}
 	err := c.Get(context.TODO(), types.NamespacedName{
 		Name:      name,
@@ -45,6 +48,9 @@ func AddBackupLabelToSecret(c client.Client, name string, namespace string) erro
 		return err
 	}
 	if _, ok := s.ObjectMeta.Labels[config.BackupLabelName]; !ok {
+		if s.ObjectMeta.Labels == nil {
+			s.ObjectMeta.Labels = make(map[string]string)
+		}
 		s.ObjectMeta.Labels[config.BackupLabelName] = config.BackupLabelValue
 		err := c.Update(context.TODO(), s)
 		if err != nil {

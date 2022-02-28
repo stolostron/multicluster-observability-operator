@@ -241,6 +241,11 @@ const (
 	StorageVersionMigrationCrdName = "storageversionmigrations.migration.k8s.io"
 )
 
+const (
+	ResourceTypeConfigMap = "ConfigMap"
+	ResourceTypeSecret    = "Secret"
+)
+
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation
 type ObjectStorgeConf struct {
 	Type   string `yaml:"type"`
@@ -281,7 +286,20 @@ var (
 	ConnectionLimit = int32(1024)
 	MaxItemSize     = "1m"
 
-	ThanosObjectStore = "thanos-object-storage" // default name
+	BackupResourceMap = map[string]string{
+		AllowlistCustomConfigMapName: ResourceTypeConfigMap,
+		AlertRuleCustomConfigMapName: ResourceTypeConfigMap,
+		AlertmanagerConfigName:       ResourceTypeConfigMap,
+
+		ServerCACerts:                ResourceTypeSecret,
+		ClientCACerts:                ResourceTypeSecret,
+		ServerCerts:                  ResourceTypeSecret,
+		GrafanaCerts:                 ResourceTypeSecret,
+		AlertmanagerRouteBYOCAName:   ResourceTypeSecret,
+		AlertmanagerRouteBYOCERTName: ResourceTypeSecret,
+		ProxyRouteBYOCAName:          ResourceTypeSecret,
+		ProxyRouteBYOCERTName:        ResourceTypeSecret,
+	}
 )
 
 func GetReplicas(component string, advanced *observabilityv1beta2.AdvancedConfig) *int32 {

@@ -111,8 +111,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, err
 	}
 
-	config.ThanosObjectStore = instance.Spec.StorageConfig.MetricObjectStorage.Key
-
 	// start to update mco status
 	StartStatusUpdate(r.Client, instance)
 
@@ -151,6 +149,28 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	if config.IsPaused(instance.GetAnnotations()) {
 		reqLogger.Info("MCO reconciliation is paused. Nothing more to do.")
 		return ctrl.Result{}, nil
+	}
+
+	if _, ok := config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Key]; !ok {
+		config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Key] = config.ResourceTypeSecret
+	}
+
+	if res, ok := config.BackupResourceMap[req.Name]; ok {
+		var err error = nil
+		switch res {
+		case config.ResourceTypeConfigMap:
+			err = util.AddBackupLabelToConfigMap(r.Client, req.Name, config.GetDefaultNamespace())
+		case config.ResourceTypeSecret:
+			err = util.AddBackupLabelToSecret(r.Client, req.Name, config.GetDefaultNamespace())
+		default:
+			// we should never be here
+			log.Info("unknown type " + res)
+		}
+		
+		if err != nil {
+			reqLogger.Error(err, "Failed to add backup label")
+			return ctrl.Result{}, err
+		}
 	}
 
 	storageClassSelected, err := getStorageClass(instance, r.Client)
@@ -354,41 +374,40 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				if e.Object.GetName() == config.AlertRuleCustomConfigMapName {
-					err := util.AddBackupLabelToConfigMap(c, config.AlertRuleCustomConfigMapName, config.GetDefaultNamespace())
-					if err != nil {
-						log.Error(err, "Failed to add backup label")
-					}
 					config.SetCustomRuleConfigMap(true)
-				} else {
-					// ConfigMap with custom-grafana-dashboard labels
-					if _, ok := e.Object.GetLabels()[config.GrafanaCustomDashboardLabel]; ok {
-						err := util.AddBackupLabelToConfigMap(c, e.Object.GetName(), config.GetDefaultNamespace())
-						if err != nil {
-							log.Error(err, "Failed to add backup label")
-						}
-					}
+					return true
+				} else if _, ok := e.Object.GetLabels()[config.BackupLabelName]; ok {
+					// resource already has backup label
+					return false
+				} else if _, ok := config.BackupResourceMap[e.Object.GetName()]; ok {
+					// resource's backup label must be checked
+					return true
+				} else if _, ok := e.Object.GetLabels()[config.GrafanaCustomDashboardLabel]; ok {
+					// ConfigMap with custom-grafana-dashboard labels, check for backup label
+					config.BackupResourceMap[e.Object.GetName()] = config.ResourceTypeConfigMap
+					return true
 				}
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			// Find a way to restart the alertmanager to take the update, still add backup label
+			// Find a way to restart the alertmanager to take the update
 			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
 				if e.ObjectNew.GetName() == config.AlertRuleCustomConfigMapName {
-					err := util.AddBackupLabelToConfigMap(c, config.AlertRuleCustomConfigMapName, config.GetDefaultNamespace())
-					if err != nil {
-						log.Error(err, "Failed to add backup label")
-					}
+					// Grafana dynamically loads AlertRule configmap, nothing more to do
 					//config.SetCustomRuleConfigMap(true)
 					//return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
-				} else {
-					// ConfigMap with custom-grafana-dashboard labels
-					if _, ok := e.ObjectNew.GetLabels()[config.GrafanaCustomDashboardLabel]; ok {
-						err := util.AddBackupLabelToConfigMap(c, e.ObjectNew.GetName(), config.GetDefaultNamespace())
-						if err != nil {
-							log.Error(err, "Failed to add backup label")
-						}
-					}
+					return false
+				} else if _, ok := e.ObjectNew.GetLabels()[config.BackupLabelName]; ok {
+					// resource already has backup label
+					return false
+				} else if _, ok := config.BackupResourceMap[e.ObjectNew.GetName()]; ok {
+					// resource's backup label must be checked
+					return true
+				} else if _, ok := e.ObjectNew.GetLabels()[config.GrafanaCustomDashboardLabel]; ok {
+					// ConfigMap with custom-grafana-dashboard labels, check for backup label
+					config.BackupResourceMap[e.ObjectNew.GetName()] = config.ResourceTypeConfigMap
+					return true
 				}
 			}
 			return false
@@ -405,37 +424,30 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	secretPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
-				(e.Object.GetName() == config.ThanosObjectStore ||
-					e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName ||
-					e.Object.GetName() == config.ProxyRouteBYOCAName ||
-					e.Object.GetName() == config.ProxyRouteBYOCERTName) {
-				err := util.AddBackupLabelToSecret(c, e.Object.GetName(), config.GetDefaultNamespace())
-				if err != nil {
-					log.Error(err, "Failed to add backup label")
-				}
-				// return true for all secrets except thanos-object-storage
-				if e.Object.GetName() != config.ThanosObjectStore {
+			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				if e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
+					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName {
+					return true
+				} else if _, ok := e.Object.GetLabels()[config.BackupLabelName]; ok {
+					// resource already has backup label
+					return false
+				} else if _, ok := config.BackupResourceMap[e.Object.GetName()]; ok {
+					// resource's backup label must be checked
 					return true
 				}
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			// Watch thanos-object-secret and add backup label
-			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() &&
-				(e.ObjectNew.GetName() == config.ThanosObjectStore ||
-					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName ||
-					e.ObjectNew.GetName() == config.ProxyRouteBYOCAName ||
-					e.ObjectNew.GetName() == config.ProxyRouteBYOCERTName) {
-				err := util.AddBackupLabelToSecret(c, e.ObjectNew.GetName(), config.GetDefaultNamespace())
-				if err != nil {
-					log.Error(err, "Failed to add backup label")
-				}
-				// return true for all secrets except thanos-object-storage
-				if e.ObjectNew.GetName() != config.ThanosObjectStore {
+			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
+				if e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
+					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName {
+					return true
+				} else if _, ok := e.ObjectNew.GetLabels()[config.BackupLabelName]; ok {
+					// resource already has backup label
+					return false
+				} else if _, ok := config.BackupResourceMap[e.ObjectNew.GetName()]; ok {
+					// resource's backup label must be checked
 					return true
 				}
 			}
