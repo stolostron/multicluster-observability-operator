@@ -23,7 +23,7 @@ require (
 	github.com/prometheus-community/prom-label-proxy v0.3.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.48.1
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.47.1
-	github.com/prometheus/alertmanager v0.22.2
+	github.com/prometheus/alertmanager v0.23.0
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.30.0
@@ -85,7 +85,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.19.5 // indirect
 	github.com/go-openapi/loads v0.20.2 // indirect
-	github.com/go-openapi/runtime v0.19.28 // indirect
+	github.com/go-openapi/runtime v0.19.29 // indirect
 	github.com/go-openapi/spec v0.20.3 // indirect
 	github.com/go-openapi/strfmt v0.20.1 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
