@@ -70,13 +70,17 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 		},
 	}
 
-	obs := newDefaultObservatoriumSpec(mco, storageClassName, "")
+	objs := []runtime.Object{mco}
+	// Create a fake client to mock API calls.
+	cl := fake.NewFakeClient(objs...)
+
+	obs, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
 
 	receiversStorage := obs.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	ruleStorage := obs.Thanos.Rule.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	storeStorage := obs.Thanos.Store.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	compactStorage := obs.Thanos.Compact.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
-	obs = newDefaultObservatoriumSpec(mco, storageClassName, "")
+	obs, _ = newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
 	if *obs.Thanos.Receivers.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
 		*obs.Thanos.Rule.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
 		*obs.Thanos.Store.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
@@ -162,7 +166,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	)
 
 	oldSpec := observatoriumCRFound.Spec
-	newSpec := newDefaultObservatoriumSpec(mco, storageClassName, "")
+	newSpec, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
 	oldSpecBytes, _ := yaml.Marshal(oldSpec)
 	newSpecBytes, _ := yaml.Marshal(newSpec)
 

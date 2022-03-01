@@ -63,13 +63,17 @@ func GenerateObservatoriumCR(
 
 	log.Info("storageClassSelected", "storageClassSelected", storageClassSelected)
 
+	obsSpec, err := newDefaultObservatoriumSpec(cl, mco, storageClassSelected, tlsSecretMountPath)
+	if err != nil {
+		return &ctrl.Result{}, err
+	}
 	observatoriumCR := &obsv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mcoconfig.GetOperandName(mcoconfig.Observatorium),
 			Namespace: mcoconfig.GetDefaultNamespace(),
 			Labels:    labels,
 		},
-		Spec: *newDefaultObservatoriumSpec(mco, storageClassSelected, tlsSecretMountPath),
+		Spec: *obsSpec,
 	}
 
 	// Set MultiClusterObservability instance as the owner and controller
@@ -241,14 +245,18 @@ func GenerateAPIGatewayRoute(
 }
 
 func newDefaultObservatoriumSpec(mco *mcov1beta2.MultiClusterObservability,
-	scSelected, tlsSecretMountPath string) *obsv1alpha1.ObservatoriumSpec {
+	scSelected, tlsSecretMountPath string) (*obsv1alpha1.ObservatoriumSpec, error) {
 
 	obs := &obsv1alpha1.ObservatoriumSpec{}
 	obs.SecurityContext = &v1.SecurityContext{}
 	obs.PullSecret = mcoconfig.GetImagePullSecret(mco.Spec)
 	obs.NodeSelector = mco.Spec.NodeSelector
 	obs.Tolerations = mco.Spec.Tolerations
-	obs.API = newAPISpec(mco)
+	obsApi, err := newAPISpec(cl, mco)
+	if err != nil {
+		return obs, err
+	}
+	obs.API = obsApi
 	obs.Thanos = newThanosSpec(mco, scSelected)
 	if util.ProxyEnvVarsAreSet() {
 		obs.EnvVars = newEnvVars()
@@ -266,7 +274,7 @@ func newDefaultObservatoriumSpec(mco *mcov1beta2.MultiClusterObservability,
 		obs.ObjectStorageConfig.Thanos.TLSSecretName = objStorageConf.TLSSecretName
 		obs.ObjectStorageConfig.Thanos.TLSSecretMountPath = tlsSecretMountPath
 	}
-	return obs
+	return obs, nil
 }
 
 // return proxy variables
@@ -359,7 +367,7 @@ func newAPITLS() obsv1alpha1.TLS {
 	}
 }
 
-func newAPISpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.APISpec {
+func newAPISpec(cl client.Client, mco *mcov1beta2.MultiClusterObservability) (obsv1alpha1.APISpec, error) {
 	apiSpec := obsv1alpha1.APISpec{}
 	apiSpec.RBAC = newAPIRBAC()
 	apiSpec.Tenants = newAPITenants()
@@ -367,10 +375,6 @@ func newAPISpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.APISpec {
 	apiSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ObservatoriumAPI, mco.Spec.AdvancedConfig)
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		apiSpec.Resources = mcoconfig.GetResources(config.ObservatoriumAPI, mco.Spec.AdvancedConfig)
-	}
-	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.ObservatoriumConfig != nil {
-		apiSpec.TenantHeader = mco.Spec.AdvancedConfig.ObservatoriumConfig.TenantHeader
-		apiSpec.WriteEndpoint = mco.Spec.AdvancedConfig.ObservatoriumConfig.WriteEndpoint
 	}
 	//set the default observatorium components' image
 	apiSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ObservatoriumAPIImgName +
@@ -381,7 +385,35 @@ func newAPISpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.APISpec {
 	}
 	apiSpec.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 	apiSpec.ServiceMonitor = true
-	return apiSpec
+	if mco.Spec.StorageConfig.WriteStorage != nil {
+		var eps []obsv1alpha1.Endpoint
+		for _, config := range mco.Spec.StorageConfig.WriteStorage {
+			storageSecret := &v1.Secret{}
+			err := cl.Get(context.TODO(), types.NamespacedName{Name: config.Name, Namespace: mcoconfig.GetDefaultNamespace()}, storageSecret)
+			if err != nil {
+				log.Error(err, "Failed to get the secret", "name", config.Name)
+				return apiSpec, err
+			} else {
+				data, ok := storageSecret.Data[config.Key]
+				if !ok {
+					log.Error(err, "Invalid key in secret", "name", config.Name, "key", config.Key)
+					return apiSpec, errors.New(fmt.Sprintf("Invalid key %s in secret %s", config.Key, config.Name))
+				}
+				ep := &obsv1alpha1.Endpoint{}
+				err = yaml.Unmarshal(data, ep)
+				if err != nil {
+					log.Error(err, "Failed to unmarshal data in secret", "name", config.Name)
+					return apiSpec, err
+				}
+				ep.Name = config.Name
+				eps = append(eps, *ep)
+			}
+		}
+		if len(eps) > 0 {
+			apiSpec.AdditionalWriteEndpoints = eps
+		}
+	}
+	return apiSpec, nil
 }
 
 func newReceiversSpec(
