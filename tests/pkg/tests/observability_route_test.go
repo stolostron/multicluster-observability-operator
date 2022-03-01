@@ -37,7 +37,7 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("@BVT - [P1][Sev1][Observability][Integration] Should access metrics via rbac-query-proxy route (route/g0)", func() {
+	It("@BVT - [P1][Sev1][observability][Integration] Should access metrics via rbac-query-proxy route (route/g0)", func() {
 		Eventually(func() error {
 			query := "/api/v1/query?query=cluster_version"
 			url := "https://rbac-query-proxy-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + query
@@ -88,7 +88,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("@BVT - [P1][Sev1][Observability][Integration] Should access alert via alertmanager route (route/g0)", func() {
+	It("@BVT - [P1][Sev1][observability][Integration] Should access alert via alertmanager route (route/g0)", func() {
 		Eventually(func() error {
 			query := "/api/v2/alerts"
 			url := "https://alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain + query

@@ -37,7 +37,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	Context("[P2][Sev2][Observability] Modifying MCO cr to disable observabilityaddon (addon/g0) -", func() {
+	Context("[P2][Sev2][observability] Modifying MCO cr to disable observabilityaddon (addon/g0) -", func() {
 		It("[Stable] Should have resource requirement defined in CR", func() {
 			By("Check addon resource requirement")
 			res, err := utils.GetMCOAddonSpecResources(testOptions)
@@ -143,7 +143,7 @@ var _ = Describe("Observability:", func() {
 		})
 	})
 
-	It("[P3][Sev3][Observability][Stable] Should not set interval to values beyond scope (addon/g0)", func() {
+	It("[P3][Sev3][observability][Stable] Should not set interval to values beyond scope (addon/g0)", func() {
 		By("Set interval to 14")
 		Eventually(func() bool {
 			err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(14))
@@ -167,7 +167,7 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 	})
 
-	Context("[P2][Sev2][Observability] Should not have the expected MCO addon pods when disable observability from managedcluster (addon/g0) -", func() {
+	Context("[P2][Sev2][observability] Should not have the expected MCO addon pods when disable observability from managedcluster (addon/g0) -", func() {
 		It("[Stable] Modifying managedcluster cr to disable observability", func() {
 			Eventually(func() error {
 				return utils.UpdateObservabilityFromManagedCluster(testOptions, false)

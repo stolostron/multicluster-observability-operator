@@ -11,5 +11,5 @@ if [ -z $1 ]; then
     exit 1
 fi
 
-sed -i "s~BeforeSuite~Observability: [P1][Sev1][Observability] Cannot enable observability service successfully~g" $1
-sed -i "s~AfterSuite~Observability: [P1][Sev1][Observability] Cannot uninstall observability service completely~g" $1
+sed -i "s~BeforeSuite~Observability: [P1][Sev1][observability] Cannot enable observability service successfully~g" $1
+sed -i "s~AfterSuite~Observability: [P1][Sev1][observability] Cannot uninstall observability service completely~g" $1
