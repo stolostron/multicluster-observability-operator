@@ -95,6 +95,25 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling MultiClusterObservability")
 
+	if res, ok := config.BackupResourceMap[req.Name]; ok {
+		reqLogger.Info("Adding backup label")
+		var err error = nil
+		switch res {
+		case config.ResourceTypeConfigMap:
+			err = util.AddBackupLabelToConfigMap(r.Client, req.Name, config.GetDefaultNamespace())
+		case config.ResourceTypeSecret:
+			err = util.AddBackupLabelToSecret(r.Client, req.Name, config.GetDefaultNamespace())
+		default:
+			// we should never be here
+			log.Info("unknown type " + res)
+		}
+
+		if err != nil {
+			reqLogger.Error(err, "Failed to add backup label")
+			return ctrl.Result{}, err
+		}
+	}
+
 	// Fetch the MultiClusterObservability instance
 	instance := &mcov1beta2.MultiClusterObservability{}
 	err := r.Client.Get(context.TODO(), types.NamespacedName{
@@ -152,23 +171,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	if _, ok := config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Key]; !ok {
+		log.Info("Adding backup label", "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Key)
 		config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Key] = config.ResourceTypeSecret
-	}
-
-	if res, ok := config.BackupResourceMap[req.Name]; ok {
-		var err error = nil
-		switch res {
-		case config.ResourceTypeConfigMap:
-			err = util.AddBackupLabelToConfigMap(r.Client, req.Name, config.GetDefaultNamespace())
-		case config.ResourceTypeSecret:
-			err = util.AddBackupLabelToSecret(r.Client, req.Name, config.GetDefaultNamespace())
-		default:
-			// we should never be here
-			log.Info("unknown type " + res)
-		}
-		
+		err = util.AddBackupLabelToSecret(r.Client, instance.Spec.StorageConfig.MetricObjectStorage.Key, config.GetDefaultNamespace())
 		if err != nil {
-			reqLogger.Error(err, "Failed to add backup label")
+			log.Error(err, "Failed to add backup label", "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Key)
 			return ctrl.Result{}, err
 		}
 	}

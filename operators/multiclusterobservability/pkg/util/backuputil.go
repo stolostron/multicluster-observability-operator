@@ -7,6 +7,7 @@ import (
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -19,9 +20,17 @@ func AddBackupLabelToConfigMap(c client.Client, name, namespace string) error {
 		Name:      name,
 		Namespace: namespace,
 	}, m)
+
 	if err != nil {
-		return err
+		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			log.Error(err, "ConfigMap not found", "ConfigMap", name)
+			return nil
+		} else {
+			return err
+		}
 	}
+
 	if _, ok := m.ObjectMeta.Labels[config.BackupLabelName]; !ok {
 		if m.ObjectMeta.Labels == nil {
 			m.ObjectMeta.Labels = make(map[string]string)
@@ -44,9 +53,17 @@ func AddBackupLabelToSecret(c client.Client, name, namespace string) error {
 		Name:      name,
 		Namespace: namespace,
 	}, s)
+
 	if err != nil {
-		return err
+		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			log.Error(err, "Secret not found", "Secret", name)
+			return nil
+		} else {
+			return err
+		}
 	}
+
 	if _, ok := s.ObjectMeta.Labels[config.BackupLabelName]; !ok {
 		if s.ObjectMeta.Labels == nil {
 			s.ObjectMeta.Labels = make(map[string]string)
