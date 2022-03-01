@@ -1,0 +1,17 @@
+# Configure dependabot to update the dependency for go modules.
+
+version: 2
+updates:
+  # Enable version updates for go modules
+  - package-ecosystem: "gomod"
+    # Raise pull requests to update vendored dependencies that are checked in to the repository
+    vendor: true
+    # Look for `go.mod` and `go.sum` files in the `root` directory
+    directory: "/"
+    # Check the go registry for updates every day (weekdays)
+    schedule:
+      interval: "daily"
+    assignees:
+      - "clyang82"
+      - "marcolan018"
+    open-pull-requests-limit: 5
