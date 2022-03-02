@@ -302,7 +302,7 @@ data:
         expr: sum(rate(node_network_transmit_drop_total{job=\"node-exporter\", device!=\"lo\"}[1m])) without(device)
   metrics_rules.yaml: |
     - name: NamespaceHighCPUUsage
-      expr: (sum(kube_resourcequota{resource=\"limits.cpu\", type=\"used\"}) by (cluster, namespace, resourcequota) / sum(kube_resourcequota{resource=\"limits.cpu\", type=\"hard\"}) by (cluster, namespace, resourcequota)) * 100 > 70
+      expr: (sum(kube_resourcequota{resource=\"limits.cpu\", type=\"used\"}) by (namespace, resourcequota) / sum(kube_resourcequota{resource=\"limits.cpu\", type=\"hard\"}) by (namespace, resourcequota)) * 100 > 70
       for: 2m
       metrics_list:
         container_cpu_cfs_periods_total
@@ -316,7 +316,7 @@ data:
         node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate
 
     - name: NamespaceHighMemoryUsage
-      expr: (sum(kube_resourcequota{resource=\"limits.memory\", type=\"used\"}) by (cluster, namespace, resourcequota) / sum(kube_resourcequota{resource=\"limits.memory\", type=\"hard\"}) by (cluster, namespace, resourcequota)) * 100 > 70
+      expr: (sum(kube_resourcequota{resource=\"limits.memory\", type=\"used\"}) by (namespace, resourcequota) / sum(kube_resourcequota{resource=\"limits.memory\", type=\"hard\"}) by (namespace, resourcequota)) * 100 > 70
       for: 2m
       metrics_list:
         - container_memory_cache
