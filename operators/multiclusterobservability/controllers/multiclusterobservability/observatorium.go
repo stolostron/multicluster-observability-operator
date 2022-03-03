@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"reflect"
 	"time"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -31,10 +32,14 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (
+	endpointsConfigName = "observability-remotewrite-endpoints"
+	endpointsKey        = "endpoints.yaml"
+
 	obsAPIGateway = "observatorium-api"
 
 	readOnlyRoleName  = "read-only-metrics"
@@ -128,7 +133,7 @@ func GenerateObservatoriumCR(
 	newObj.Spec = newSpec
 	err = cl.Update(context.TODO(), newObj)
 	if err != nil {
-		log.Error(err, "Failed to update observatorium CR %s", observatoriumCR.Name)
+		log.Error(err, "Failed to update observatorium CR %s", "name", observatoriumCR.Name)
 		// add timeout for update failure avoid update conflict
 		return &ctrl.Result{RequeueAfter: time.Second * 3}, err
 	}
@@ -244,8 +249,8 @@ func GenerateAPIGatewayRoute(
 	return nil, nil
 }
 
-func newDefaultObservatoriumSpec(mco *mcov1beta2.MultiClusterObservability,
-	scSelected, tlsSecretMountPath string) (*obsv1alpha1.ObservatoriumSpec, error) {
+func newDefaultObservatoriumSpec(cl client.Client, mco *mcov1beta2.MultiClusterObservability,
+	scSelected string, tlsSecretMountPath string) (*obsv1alpha1.ObservatoriumSpec, error) {
 
 	obs := &obsv1alpha1.ObservatoriumSpec{}
 	obs.SecurityContext = &v1.SecurityContext{}
@@ -367,7 +372,49 @@ func newAPITLS() obsv1alpha1.TLS {
 	}
 }
 
-func newAPISpec(cl client.Client, mco *mcov1beta2.MultiClusterObservability) (obsv1alpha1.APISpec, error) {
+func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpoint) error {
+	epsYaml, err := yaml.Marshal(eps)
+	if err != nil {
+		return err
+	}
+	epsYamlMap := map[string][]byte{}
+	epsYamlMap[endpointsKey] = epsYaml
+	epsSecret := &v1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: v1.SchemeGroupVersion.String(),
+			Kind:       "Secret",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      endpointsConfigName,
+			Namespace: config.GetDefaultNamespace(),
+		},
+		Data: epsYamlMap,
+	}
+	found := &v1.Secret{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: endpointsConfigName, Namespace: config.GetDefaultNamespace()}, found)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			err = c.Create(context.TODO(), epsSecret)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	} else {
+		if !reflect.DeepEqual(epsYamlMap, found.Data) {
+			epsSecret.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+			err = c.Update(context.TODO(), epsSecret)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+
+}
+
+func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obsv1alpha1.APISpec, error) {
 	apiSpec := obsv1alpha1.APISpec{}
 	apiSpec.RBAC = newAPIRBAC()
 	apiSpec.Tenants = newAPITenants()
@@ -386,31 +433,50 @@ func newAPISpec(cl client.Client, mco *mcov1beta2.MultiClusterObservability) (ob
 	apiSpec.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 	apiSpec.ServiceMonitor = true
 	if mco.Spec.StorageConfig.WriteStorage != nil {
-		var eps []obsv1alpha1.Endpoint
-		for _, config := range mco.Spec.StorageConfig.WriteStorage {
+		eps := []mcoutil.RemoteWriteEndpoint{}
+		mountSecrets := []string{}
+		for _, storageConfig := range mco.Spec.StorageConfig.WriteStorage {
 			storageSecret := &v1.Secret{}
-			err := cl.Get(context.TODO(), types.NamespacedName{Name: config.Name, Namespace: mcoconfig.GetDefaultNamespace()}, storageSecret)
+			err := c.Get(context.TODO(), types.NamespacedName{Name: storageConfig.Name, Namespace: mcoconfig.GetDefaultNamespace()}, storageSecret)
 			if err != nil {
-				log.Error(err, "Failed to get the secret", "name", config.Name)
+				log.Error(err, "Failed to get the secret", "name", storageConfig.Name)
 				return apiSpec, err
 			} else {
-				data, ok := storageSecret.Data[config.Key]
+				data, ok := storageSecret.Data[storageConfig.Key]
 				if !ok {
-					log.Error(err, "Invalid key in secret", "name", config.Name, "key", config.Key)
-					return apiSpec, errors.New(fmt.Sprintf("Invalid key %s in secret %s", config.Key, config.Name))
+					log.Error(err, "Invalid key in secret", "name", storageConfig.Name, "key", storageConfig.Key)
+					return apiSpec, errors.New(fmt.Sprintf("Invalid key %s in secret %s", storageConfig.Key, storageConfig.Name))
 				}
-				ep := &obsv1alpha1.Endpoint{}
+				ep := &mcoutil.RemoteWriteEndpointWithSecret{}
 				err = yaml.Unmarshal(data, ep)
 				if err != nil {
-					log.Error(err, "Failed to unmarshal data in secret", "name", config.Name)
+					log.Error(err, "Failed to unmarshal data in secret", "name", storageConfig.Name)
 					return apiSpec, err
 				}
-				ep.Name = config.Name
-				eps = append(eps, *ep)
+				newEp := &mcoutil.RemoteWriteEndpoint{
+					Name: storageConfig.Name,
+					URL:  ep.URL,
+				}
+				if ep.HttpClientConfig != nil {
+					newConfig, mountS := mcoutil.Transform(*ep.HttpClientConfig)
+					mountSecrets = append(mountSecrets, mountS...)
+					newEp.HttpClientConfig = newConfig
+				}
+				eps = append(eps, *newEp)
 			}
 		}
+
+		err := applyEndpointsSecret(c, eps)
+		if err != nil {
+			return apiSpec, err
+		}
 		if len(eps) > 0 {
-			apiSpec.AdditionalWriteEndpoints = eps
+			apiSpec.AdditionalWriteEndpoints = &obsv1alpha1.EndpointsConfig{
+				EndpointsConfigSecret: endpointsConfigName,
+			}
+			if len(mountSecrets) > 0 {
+				apiSpec.AdditionalWriteEndpoints.MountSecrets = mountSecrets
+			}
 		}
 	}
 	return apiSpec, nil
@@ -442,9 +508,6 @@ func newReceiversSpec(
 		mco.Spec.StorageConfig.ReceiveStorageSize,
 		scSelected)
 
-	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.ObservatoriumConfig != nil {
-		receSpec.TenantHeader = mco.Spec.AdvancedConfig.ObservatoriumConfig.TenantHeader
-	}
 	return receSpec
 }
 
