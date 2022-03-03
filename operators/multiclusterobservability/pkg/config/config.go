@@ -291,10 +291,6 @@ var (
 		AlertRuleCustomConfigMapName: ResourceTypeConfigMap,
 		AlertmanagerConfigName:       ResourceTypeConfigMap,
 
-		ServerCACerts:                ResourceTypeSecret,
-		ClientCACerts:                ResourceTypeSecret,
-		ServerCerts:                  ResourceTypeSecret,
-		GrafanaCerts:                 ResourceTypeSecret,
 		AlertmanagerRouteBYOCAName:   ResourceTypeSecret,
 		AlertmanagerRouteBYOCERTName: ResourceTypeSecret,
 		ProxyRouteBYOCAName:          ResourceTypeSecret,
