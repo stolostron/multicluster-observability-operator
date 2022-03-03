@@ -95,6 +95,25 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling MultiClusterObservability")
 
+	if res, ok := config.BackupResourceMap[req.Name]; ok {
+		reqLogger.Info("Adding backup label")
+		var err error = nil
+		switch res {
+		case config.ResourceTypeConfigMap:
+			err = util.AddBackupLabelToConfigMap(r.Client, req.Name, config.GetDefaultNamespace())
+		case config.ResourceTypeSecret:
+			err = util.AddBackupLabelToSecret(r.Client, req.Name, config.GetDefaultNamespace())
+		default:
+			// we should never be here
+			log.Info("unknown type " + res)
+		}
+
+		if err != nil {
+			reqLogger.Error(err, "Failed to add backup label")
+			return ctrl.Result{}, err
+		}
+	}
+
 	// Fetch the MultiClusterObservability instance
 	instance := &mcov1beta2.MultiClusterObservability{}
 	err := r.Client.Get(context.TODO(), types.NamespacedName{
@@ -149,6 +168,16 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	if config.IsPaused(instance.GetAnnotations()) {
 		reqLogger.Info("MCO reconciliation is paused. Nothing more to do.")
 		return ctrl.Result{}, nil
+	}
+
+	if _, ok := config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Key]; !ok {
+		log.Info("Adding backup label", "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Key)
+		config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Key] = config.ResourceTypeSecret
+		err = util.AddBackupLabelToSecret(r.Client, instance.Spec.StorageConfig.MetricObjectStorage.Key, config.GetDefaultNamespace())
+		if err != nil {
+			log.Error(err, "Failed to add backup label", "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Key)
+			return ctrl.Result{}, err
+		}
 	}
 
 	storageClassSelected, err := getStorageClass(instance, r.Client)
@@ -350,20 +379,44 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	cmPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == config.AlertRuleCustomConfigMapName &&
-				e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				config.SetCustomRuleConfigMap(true)
-				return true
+			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				if e.Object.GetName() == config.AlertRuleCustomConfigMapName {
+					config.SetCustomRuleConfigMap(true)
+					return true
+				} else if _, ok := e.Object.GetLabels()[config.BackupLabelName]; ok {
+					// resource already has backup label
+					return false
+				} else if _, ok := config.BackupResourceMap[e.Object.GetName()]; ok {
+					// resource's backup label must be checked
+					return true
+				} else if _, ok := e.Object.GetLabels()[config.GrafanaCustomDashboardLabel]; ok {
+					// ConfigMap with custom-grafana-dashboard labels, check for backup label
+					config.BackupResourceMap[e.Object.GetName()] = config.ResourceTypeConfigMap
+					return true
+				}
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// Find a way to restart the alertmanager to take the update
-			// if e.ObjectNew.GetName() == config.AlertRuleCustomConfigMapName &&
-			// 	e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
-			// 	config.SetCustomRuleConfigMap(true)
-			// 	return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
-			// }
+			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
+				if e.ObjectNew.GetName() == config.AlertRuleCustomConfigMapName {
+					// Grafana dynamically loads AlertRule configmap, nothing more to do
+					//config.SetCustomRuleConfigMap(true)
+					//return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
+					return false
+				} else if _, ok := e.ObjectNew.GetLabels()[config.BackupLabelName]; ok {
+					// resource already has backup label
+					return false
+				} else if _, ok := config.BackupResourceMap[e.ObjectNew.GetName()]; ok {
+					// resource's backup label must be checked
+					return true
+				} else if _, ok := e.ObjectNew.GetLabels()[config.GrafanaCustomDashboardLabel]; ok {
+					// ConfigMap with custom-grafana-dashboard labels, check for backup label
+					config.BackupResourceMap[e.ObjectNew.GetName()] = config.ResourceTypeConfigMap
+					return true
+				}
+			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
@@ -378,18 +431,32 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	secretPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
-				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				return true
+			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				if e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
+					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName {
+					return true
+				} else if _, ok := e.Object.GetLabels()[config.BackupLabelName]; ok {
+					// resource already has backup label
+					return false
+				} else if _, ok := config.BackupResourceMap[e.Object.GetName()]; ok {
+					// resource's backup label must be checked
+					return true
+				}
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() &&
-				(e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				return true
+			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
+				if e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
+					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName {
+					return true
+				} else if _, ok := e.ObjectNew.GetLabels()[config.BackupLabelName]; ok {
+					// resource already has backup label
+					return false
+				} else if _, ok := config.BackupResourceMap[e.ObjectNew.GetName()]; ok {
+					// resource's backup label must be checked
+					return true
+				}
 			}
 			return false
 		},
