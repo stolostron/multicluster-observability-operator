@@ -94,6 +94,7 @@ type MultiClusterObservabilityReconciler struct {
 func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling MultiClusterObservability")
+	reqLogger.Info("Add new logging....")
 
 	// Fetch the MultiClusterObservability instance
 	instance := &mcov1beta2.MultiClusterObservability{}
