@@ -391,7 +391,8 @@ func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpoint) er
 		Data: epsYamlMap,
 	}
 	found := &v1.Secret{}
-	err = c.Get(context.TODO(), types.NamespacedName{Name: endpointsConfigName, Namespace: config.GetDefaultNamespace()}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: endpointsConfigName,
+		Namespace: config.GetDefaultNamespace()}, found)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			err = c.Create(context.TODO(), epsSecret)
@@ -437,7 +438,8 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 		mountSecrets := []string{}
 		for _, storageConfig := range mco.Spec.StorageConfig.WriteStorage {
 			storageSecret := &v1.Secret{}
-			err := c.Get(context.TODO(), types.NamespacedName{Name: storageConfig.Name, Namespace: mcoconfig.GetDefaultNamespace()}, storageSecret)
+			err := c.Get(context.TODO(), types.NamespacedName{Name: storageConfig.Name,
+				Namespace: mcoconfig.GetDefaultNamespace()}, storageSecret)
 			if err != nil {
 				log.Error(err, "Failed to get the secret", "name", storageConfig.Name)
 				return apiSpec, err
