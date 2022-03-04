@@ -2489,8 +2489,8 @@ github.com/stolostron/multicloud-operators-foundation v0.0.0-20220112005209-c7d6
 github.com/stolostron/multicloud-operators-foundation v0.0.0-20220112005209-c7d642306a99/go.mod h1:OGgYyIj05jrIlLYF+oczqidvHLKPEdum/fN0aLBjPhQ=
 github.com/stolostron/multiclusterhub-operator v0.0.0-20220106205009-2af6f43fd562 h1:ifA576QBRoYFKuym91i5s6orpG1w+G7csDoMxn4FmHE=
 github.com/stolostron/multiclusterhub-operator v0.0.0-20220106205009-2af6f43fd562/go.mod h1:bnUDg8gb0adzST1gzFiivscUlXtE3tYbMtoHsW6DHaY=
-github.com/stolostron/observatorium-operator v0.0.0-20220121035924-6c1bbabd97bc h1:ukPeZmhHeVwvxdKYyqkRna8b8Ohh8Mz1TRzlm45+kDU=
-github.com/stolostron/observatorium-operator v0.0.0-20220121035924-6c1bbabd97bc/go.mod h1:3TfJn5Ot5u8q2aSag1tw3vlqlM6U4Gut3ktydX1ZoBQ=
+github.com/stolostron/observatorium-operator v0.0.0-20220304053449-4093e6d9c453 h1:JgA/LtcPJ02qx0gtebNpTMkupVgSJbB5cBZjtkYt/64=
+github.com/stolostron/observatorium-operator v0.0.0-20220304053449-4093e6d9c453/go.mod h1:3TfJn5Ot5u8q2aSag1tw3vlqlM6U4Gut3ktydX1ZoBQ=
 github.com/streadway/amqp v0.0.0-20190404075320-75d898a42a94/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1SddzLXVw=
 github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1SddzLXVw=
 github.com/streadway/amqp v1.0.0/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1SddzLXVw=

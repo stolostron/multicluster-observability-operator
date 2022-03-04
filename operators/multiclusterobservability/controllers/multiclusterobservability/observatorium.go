@@ -476,6 +476,7 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 			}
 			if len(mountSecrets) > 0 {
 				apiSpec.AdditionalWriteEndpoints.MountSecrets = mountSecrets
+				apiSpec.AdditionalWriteEndpoints.MountPath = mcoutil.MountPath
 			}
 		}
 	}

@@ -382,6 +382,9 @@ spec:
                       endpointsConfigSecret:
                         description: Secret name for the endpoints configuration
                         type: string
+                      mountPath:
+                        description: Mount path for the secrets
+                        type: string
                       mountSecrets:
                         description: Secret list to be mounted
                         items:
