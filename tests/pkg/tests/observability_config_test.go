@@ -235,7 +235,7 @@ var _ = Describe("Observability:", func() {
 		}
 	})
 
-	It("[P1][Sev1][observability][Integration] Checking service account annotations is set for store/query/rule/compact/receive (config/g0)", func() {
+	It("[P2][Sev2][observability][Integration] Checking service account annotations is set for store/query/rule/compact/receive (config/g0)", func() {
 
 		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -252,7 +252,7 @@ var _ = Describe("Observability:", func() {
 
 		for _, component := range []string{"compact", "store", "query", "receive", "rule"} {
 			klog.V(1).Infof("The component is: %s\n", component)
-			annotations := advancedSpec[component].(map[string]interface{})["serviceAccountAnnotations"].(map[string]string)
+			annotations := advancedSpec[component].(map[string]interface{})["serviceAccountAnnotations"].(map[string]interface{})
 			sas, err := utils.GetSAWithLabel(testOptions, true,
 				"app.kubernetes.io/name=thanos-"+component, MCO_NAMESPACE)
 			Expect(err).NotTo(HaveOccurred())
@@ -260,7 +260,7 @@ var _ = Describe("Observability:", func() {
 				for key, value := range annotations {
 					exist := false
 					for eKey, eValue := range saInfo.Annotations {
-						if eKey == key && eValue == value {
+						if eKey == key && eValue == value.(string) {
 							exist = true
 							continue
 						}
