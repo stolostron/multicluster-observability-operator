@@ -511,6 +511,10 @@ func newReceiversSpec(
 		mco.Spec.StorageConfig.ReceiveStorageSize,
 		scSelected)
 
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Receive != nil &&
+		mco.Spec.AdvancedConfig.Receive.ServiceAccountAnnotations != nil {
+		receSpec.ServiceAccountAnnotations = mco.Spec.AdvancedConfig.Receive.ServiceAccountAnnotations
+	}
 	return receSpec
 }
 
@@ -602,6 +606,11 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 		}
 	}
 
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Rule != nil &&
+		mco.Spec.AdvancedConfig.Rule.ServiceAccountAnnotations != nil {
+		ruleSpec.ServiceAccountAnnotations = mco.Spec.AdvancedConfig.Rule.ServiceAccountAnnotations
+	}
+
 	return ruleSpec
 }
 
@@ -618,6 +627,11 @@ func newStoreSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) 
 	storeSpec.Shards = mcoconfig.GetReplicas(mcoconfig.ThanosStoreShard, mco.Spec.AdvancedConfig)
 	storeSpec.ServiceMonitor = true
 	storeSpec.Cache = newMemCacheSpec(mcoconfig.ThanosStoreMemcached, mco)
+
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Store != nil &&
+		mco.Spec.AdvancedConfig.Store.ServiceAccountAnnotations != nil {
+		storeSpec.ServiceAccountAnnotations = mco.Spec.AdvancedConfig.Store.ServiceAccountAnnotations
+	}
 
 	return storeSpec
 }
@@ -720,6 +734,10 @@ func newQuerySpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QuerySp
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		querySpec.Resources = mcoconfig.GetResources(config.ThanosQuery, mco.Spec.AdvancedConfig)
 	}
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Query != nil &&
+		mco.Spec.AdvancedConfig.Query.ServiceAccountAnnotations != nil {
+		querySpec.ServiceAccountAnnotations = mco.Spec.AdvancedConfig.Query.ServiceAccountAnnotations
+	}
 	return querySpec
 }
 
@@ -787,6 +805,11 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 		compactSpec.RetentionResolution1h = mco.Spec.AdvancedConfig.RetentionConfig.RetentionResolution1h
 	} else {
 		compactSpec.RetentionResolution1h = mcoconfig.RetentionResolution1h
+	}
+
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil &&
+		mco.Spec.AdvancedConfig.Compact.ServiceAccountAnnotations != nil {
+		compactSpec.ServiceAccountAnnotations = mco.Spec.AdvancedConfig.Compact.ServiceAccountAnnotations
 	}
 
 	compactSpec.VolumeClaimTemplate = newVolumeClaimTemplate(

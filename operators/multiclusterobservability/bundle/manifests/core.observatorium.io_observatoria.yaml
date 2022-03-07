@@ -899,6 +899,11 @@ spec:
                       retentionResolutionRaw:
                         description: RetentionResolutionRaw
                         type: string
+                      serviceAccountAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is an unstructured key value map stored with a service account
+                        type: object
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.
                         type: boolean
@@ -1037,6 +1042,11 @@ spec:
                               x-kubernetes-int-or-string: true
                             description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
+                        type: object
+                      serviceAccountAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is an unstructured key value map stored with a service account
                         type: object
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.
@@ -1233,6 +1243,11 @@ spec:
                       retention:
                         description: How long to retain raw samples on local storage
                         type: string
+                      serviceAccountAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is an unstructured key value map stored with a service account
+                        type: object
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.
                         type: boolean
@@ -1453,6 +1468,11 @@ spec:
                           - name
                           type: object
                         type: array
+                      serviceAccountAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is an unstructured key value map stored with a service account
+                        type: object
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.
                         type: boolean
@@ -1659,6 +1679,11 @@ spec:
                               x-kubernetes-int-or-string: true
                             description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
+                        type: object
+                      serviceAccountAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is an unstructured key value map stored with a service account
                         type: object
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.
