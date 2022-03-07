@@ -23,6 +23,7 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 )
 
@@ -56,6 +57,12 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 					Name:          "name",
 					TLSSecretName: "secret",
 				},
+				WriteStorage: []*mcoshared.PreConfiguredStorage{
+					{
+						Key:  "write_key",
+						Name: "write_name",
+					},
+				},
 				StorageClass:            storageClassName,
 				AlertmanagerStorageSize: "1Gi",
 				CompactStorageSize:      "1Gi",
@@ -70,7 +77,19 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 		},
 	}
 
-	objs := []runtime.Object{mco}
+	writeStorageS := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "write_name",
+			Namespace: config.GetDefaultNamespace(),
+		},
+		Type: "Opaque",
+		Data: map[string][]byte{
+			"write_key": []byte(`url: http://remotewrite/endpoint
+`),
+		},
+	}
+
+	objs := []runtime.Object{mco, writeStorageS}
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
 
@@ -92,8 +111,26 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 		obs.ObjectStorageConfig.Thanos.Key != "key" ||
 		obs.ObjectStorageConfig.Thanos.Name != "name" ||
 		obs.ObjectStorageConfig.Thanos.TLSSecretName != "secret" ||
-		obs.Thanos.Query.LookbackDelta != "600s" {
+		obs.Thanos.Query.LookbackDelta != "600s" ||
+		obs.API.AdditionalWriteEndpoints.EndpointsConfigSecret != endpointsConfigName {
 		t.Errorf("Failed to newDefaultObservatorium")
+	}
+
+	endpointS := &corev1.Secret{}
+	err := cl.Get(context.TODO(), types.NamespacedName{
+		Name:      endpointsConfigName,
+		Namespace: config.GetDefaultNamespace(),
+	}, endpointS)
+	if err != nil {
+		t.Errorf("Failed to get endpoint config secret due to %v", err)
+	}
+	endpointConfig := []mcoutil.RemoteWriteEndpoint{}
+	err = yaml.Unmarshal(endpointS.Data[endpointsKey], &endpointConfig)
+	if err != nil {
+		t.Errorf("Failed to unmarshal endpoint secret due to %v", err)
+	}
+	if endpointConfig[0].Name != "write_name" || endpointConfig[0].URL.String() != "http://remotewrite/endpoint" {
+		t.Errorf("Wrong endpoint config: %s, %s", endpointConfig[0].Name, endpointConfig[0].URL.String())
 	}
 }
 
