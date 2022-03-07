@@ -750,6 +750,21 @@ spec:
                     default: 10Gi
                     description: The amount of storage applied to thanos store stateful sets,
                     type: string
+                  writeStorage:
+                    description: WriteStorage storage config secret list for metrics
+                    items:
+                      properties:
+                        key:
+                          description: The key of the secret to select from. Must be a valid secret key. Refer to https://thanos.io/storage.md/#configuration for a valid content of key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                          type: string
+                      required:
+                      - key
+                      - name
+                      type: object
+                    type: array
                 required:
                 - metricObjectStorage
                 type: object

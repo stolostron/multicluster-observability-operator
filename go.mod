@@ -32,7 +32,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stolostron/multicloud-operators-foundation v0.0.0-20220112005209-c7d642306a99
 	github.com/stolostron/multiclusterhub-operator v0.0.0-20220106205009-2af6f43fd562
-	github.com/stolostron/observatorium-operator v0.0.0-20220121035924-6c1bbabd97bc
+	github.com/stolostron/observatorium-operator v0.0.0-20220304053449-4093e6d9c453
 	github.com/stretchr/testify v1.7.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.22.1

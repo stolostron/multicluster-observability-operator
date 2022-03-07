@@ -434,16 +434,6 @@ spec:
                             type: object
                         type: object
                     type: object
-                  observatoriumConfig:
-                    description: spec for thanos advanced configuration
-                    properties:
-                      tenantHeader:
-                        description: Tenant header used by observatorium components.
-                        type: string
-                      writeEndpoint:
-                        description: Write endpoint of observatorium api.
-                        type: string
-                    type: object
                   query:
                     description: spec for thanos-query
                     properties:
@@ -895,6 +885,27 @@ spec:
                     description: The amount of storage applied to thanos store stateful
                       sets,
                     type: string
+                  writeStorage:
+                    description: WriteStorage storage config secret list for metrics
+                    items:
+                      properties:
+                        key:
+                          description: The key of the secret to select from. Must
+                            be a valid secret key. Refer to https://thanos.io/tip/thanos/storage.md/#configuring-access-to-object-storage
+                            for a valid content of key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                          type: string
+                        tlsSecretName:
+                          description: TLS secret contains the custom certificate
+                            for the object store
+                          type: string
+                      required:
+                      - key
+                      - name
+                      type: object
+                    type: array
                 required:
                 - metricObjectStorage
                 type: object
