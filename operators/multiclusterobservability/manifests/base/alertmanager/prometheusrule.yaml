@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  annotations:
+    update-namespace: 'false'
+  name: acm-observability-alert-rules
+  namespace: openshift-monitoring
+spec:
+  groups:
+    - name: observability.rules
+      rules:
+        - alert: ACMRemoteWriteError
+          annotations:
+            summary: "Error in remote write."
+            description: "There are errors when sending requests to remote write endpoint: {{ $labels.name }}"
+          expr: increase(acm_remote_write_requests_total{code!~"2.*"}[5m]) > 10
+          labels:
+            severity: critical
