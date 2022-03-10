@@ -47,16 +47,28 @@ var (
 )
 
 type MetricsAllowlist struct {
-	NameList  []string          `yaml:"names"`
-	MatchList []string          `yaml:"matches"`
-	RenameMap map[string]string `yaml:"renames"`
-	RuleList  []Rule            `yaml:"rules"`
+	NameList  			[]string          `yaml:"names"`
+	MatchList 			[]string          `yaml:"matches"`
+	RenameMap 			map[string]string `yaml:"renames"`
+	RecordingRuleList	[]RecordingRule   `yaml:"recording_rules"`
+	CollectRuleList		[]CollectRule     `yaml:"collect_rules"`
 }
 
 // Rule is the struct for recording rules and alert rules
-type Rule struct {
+type RecordingRule struct {
 	Record string `yaml:"record"`
 	Expr   string `yaml:"expr"`
+}
+
+type CollectRuleSelector struct {
+	Match map[string]string `yaml:"match"`
+}
+type CollectRule struct {
+	Name      string              `yaml:"name"`
+	Expr      string              `yaml:"expr"`
+	For       string              `yaml:"for"`
+	Selector  CollectRuleSelector `yaml:"selector"`
+	MatchList []string            `yaml:"matches"`
 }
 
 func createDeployment(clusterID string, clusterType string,
@@ -153,7 +165,7 @@ func createDeployment(clusterID string, clusterType string,
 	for _, k := range renamekeys {
 		commands = append(commands, fmt.Sprintf("--rename=\"%s=%s\"", k, allowlist.RenameMap[k]))
 	}
-	for _, rule := range allowlist.RuleList {
+	for _, rule := range allowlist.RecordingRuleList {
 		commands = append(
 			commands,
 			fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr),
