@@ -51,7 +51,7 @@ var (
 	imageListConfigMap            *corev1.ConfigMap
 
 	rawExtensionList     []runtime.RawExtension
-	promRawExtensionList []runtime.RawExtension
+	//promRawExtensionList []runtime.RawExtension
 )
 
 type MetricsAllowlist struct {

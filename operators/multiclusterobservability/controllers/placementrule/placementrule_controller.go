@@ -53,7 +53,7 @@ const (
 
 var (
 	log                             = logf.Log.WithName("controller_placementrule")
-	watchNamespace                  = config.GetDefaultNamespace()
+	//watchNamespace                  = config.GetDefaultNamespace()
 	isCRoleCreated                  = false
 	isClusterManagementAddonCreated = false
 	isplacementControllerRunnning   = false
@@ -120,7 +120,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	// check if the MCH CRD exists
-	mchCrdExists, _ := r.CRDMap[config.MCHCrdName]
+	mchCrdExists := r.CRDMap[config.MCHCrdName]
 	// requeue after 10 seconds if the mch crd exists and image image manifests map is empty
 	if mchCrdExists && len(config.GetImageManifests()) == 0 {
 		// if the mch CR is not ready, then requeue the request after 10s
@@ -373,7 +373,7 @@ func createAllRelatedRes(
 	}
 
 	if failedCreateManagedClusterRes || failedDeleteOba {
-		return ctrl.Result{}, errors.New("Failed to create managedcluster resources or" +
+		return ctrl.Result{}, errors.New("failed to create managedcluster resources or" +
 			" failed to delete observabilityaddon, skip and reconcile later")
 	}
 
@@ -482,7 +482,7 @@ func updateManagedClusterList(obj client.Object) {
 // SetupWithManager sets up the controller with the Manager.
 func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	c := mgr.GetClient()
-	ingressCtlCrdExists, _ := r.CRDMap[config.IngressControllerCRD]
+	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
 	clusterPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			log.Info("CreateFunc", "managedCluster", e.Object.GetName())
@@ -917,7 +917,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(routeCASecretPred))
 		}
 
-		mchCrdExists, _ := r.CRDMap[config.MCHCrdName]
+		mchCrdExists := r.CRDMap[config.MCHCrdName]
 		if mchCrdExists {
 			// secondary watch for MCH
 			ctrBuilder = ctrBuilder.Watches(

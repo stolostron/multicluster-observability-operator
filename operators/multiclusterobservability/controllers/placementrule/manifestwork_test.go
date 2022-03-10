@@ -220,7 +220,7 @@ func TestManifestWork(t *testing.T) {
 		newImageRegistry("image_registry", namespace, "registry_server", "custorm_pull_secret"),
 		newPullSecret("custorm_pull_secret", namespace, []byte("custorm")),
 	}
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get work dir: (%v)", err)
