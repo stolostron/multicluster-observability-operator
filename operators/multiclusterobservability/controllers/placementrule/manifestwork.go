@@ -55,14 +55,26 @@ var (
 )
 
 type MetricsAllowlist struct {
-	NameList  []string          `yaml:"names"`
-	MatchList []string          `yaml:"matches"`
-	RenameMap map[string]string `yaml:"renames"`
-	RuleList  []Rule            `yaml:"rules"`
+	NameList          []string          `yaml:"names"`
+	MatchList         []string          `yaml:"matches"`
+	RenameMap         map[string]string `yaml:"renames"`
+	RuleList          []RecordingRule   `yaml:"rules"` //deprecated
+	RecordingRuleList []RecordingRule   `yaml:"recording_rules"`
+	CollectRuleList   []CollectRule     `yaml:"collect_rules"`
+}
+type CollectRuleSelector struct {
+	Match map[string]string `yaml:"match"`
+}
+type CollectRule struct {
+	Name      string              `yaml:"name"`
+	Expr      string              `yaml:"expr"`
+	For       string              `yaml:"for"`
+	Selector  CollectRuleSelector `yaml:"selector"`
+	MatchList []string            `yaml:"matches"`
 }
 
 // Rule is the struct for recording rules and alert rules
-type Rule struct {
+type RecordingRule struct {
 	Record string `yaml:"record"`
 	Expr   string `yaml:"expr"`
 }
@@ -173,7 +185,7 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 
 	if found.GetDeletionTimestamp() != nil {
 		log.Info("Existing manifestwork is terminating, skip and reconcile later")
-		return errors.New("Existing manifestwork is terminating, skip and reconcile later")
+		return errors.New("existing manifestwork is terminating, skip and reconcile later")
 	}
 
 	manifests := work.Spec.Workload.Manifests
@@ -508,7 +520,12 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 	if err == nil {
 		allowlist.NameList = mergeMetrics(allowlist.NameList, customAllowlist.NameList)
 		allowlist.MatchList = mergeMetrics(allowlist.MatchList, customAllowlist.MatchList)
-		allowlist.RuleList = append(allowlist.RuleList, customAllowlist.RuleList...)
+		if customAllowlist.RecordingRuleList != nil {
+			allowlist.RecordingRuleList = append(allowlist.RecordingRuleList, customAllowlist.RecordingRuleList...)
+		} else {
+			//check if rules are specified for backward compatibility
+			allowlist.RecordingRuleList = append(allowlist.RecordingRuleList, customAllowlist.RuleList...)
+		}
 		for k, v := range customAllowlist.RenameMap {
 			allowlist.RenameMap[k] = v
 		}
@@ -550,13 +567,13 @@ func getAllowList(client client.Client, name string) (*MetricsAllowlist, *Metric
 	allowlist := &MetricsAllowlist{}
 	err = yaml.Unmarshal([]byte(found.Data["metrics_list.yaml"]), allowlist)
 	if err != nil {
-		log.Error(err, "Failed to unmarshal data in configmap "+name)
+		log.Error(err, "Failed to unmarshal metrics_list.yaml data in configmap "+name)
 		return nil, nil, err
 	}
 	ocp3Allowlist := &MetricsAllowlist{}
 	err = yaml.Unmarshal([]byte(found.Data["ocp311_metrics_list.yaml"]), ocp3Allowlist)
 	if err != nil {
-		log.Error(err, "Failed to unmarshal data in configmap "+name)
+		log.Error(err, "Failed to unmarshal ocp311_metrics_list data in configmap "+name)
 		return nil, nil, err
 	}
 	return allowlist, ocp3Allowlist, nil

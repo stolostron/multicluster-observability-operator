@@ -102,7 +102,7 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
     - b
   renames:
     a: c
-  rules:
+  recording_rules:
     - record: f
       expr: g
 `,
@@ -112,7 +112,7 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
     - b
   renames:
     a: c
-  rules:
+  recording_rules:
     - record: f
       expr: g
 `},

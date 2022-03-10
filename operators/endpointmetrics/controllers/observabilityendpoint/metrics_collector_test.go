@@ -30,7 +30,7 @@ names:
   - b
 matches:
   - c
-rules:
+recording_rules:
   - record: f
     expr: g
 `},
