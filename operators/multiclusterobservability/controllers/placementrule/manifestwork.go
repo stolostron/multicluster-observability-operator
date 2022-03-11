@@ -50,7 +50,7 @@ var (
 	endpointMetricsOperatorDeploy *appsv1.Deployment
 	imageListConfigMap            *corev1.ConfigMap
 
-	rawExtensionList     []runtime.RawExtension
+	rawExtensionList []runtime.RawExtension
 	//promRawExtensionList []runtime.RawExtension
 )
 
@@ -626,7 +626,7 @@ func mergeCollectorRules(defaultCollectRulelist []CollectRule, customCollectRule
 		if !deletedCollectRules[collectRule.Name] {
 			mergedCollectRules = append(mergedCollectRules, collectRule)
 			collectRuleRecorder[collectRule.Name] = true
- 		}
+		}
 	}
 	fmt.Printf("mergedCollectorRules (%v)", mergedCollectRules)
 	return mergedCollectRules
