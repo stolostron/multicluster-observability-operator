@@ -520,6 +520,7 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 	if err == nil {
 		allowlist.NameList = mergeMetrics(allowlist.NameList, customAllowlist.NameList)
 		allowlist.MatchList = mergeMetrics(allowlist.MatchList, customAllowlist.MatchList)
+		allowlist.CollectRuleList = mergeCollectorRules(allowlist.CollectRuleList, customAllowlist.CollectRuleList)
 		if customAllowlist.RecordingRuleList != nil {
 			allowlist.RecordingRuleList = append(allowlist.RecordingRuleList, customAllowlist.RecordingRuleList...)
 		} else {
@@ -605,6 +606,30 @@ func mergeMetrics(defaultAllowlist []string, customAllowlist []string) []string 
 	}
 
 	return mergedMetrics
+}
+
+func mergeCollectorRules(defaultCollectRulelist []CollectRule, customCollectRulelist []CollectRule) []CollectRule {
+	deletedCollectRules := map[string]bool{}
+	for _, collectRule := range customCollectRulelist {
+		if strings.HasPrefix(collectRule.Name, "-") {
+			deletedCollectRules[strings.TrimPrefix(collectRule.Name, "-")] = true
+		}
+	}
+
+	mergedCollectRules := []CollectRule{}
+	collectRuleRecorder := map[string]bool{}
+	for _, collectRule := range defaultCollectRulelist {
+		if collectRuleRecorder[collectRule.Name] {
+			continue
+		}
+
+		if !deletedCollectRules[collectRule.Name] {
+			mergedCollectRules = append(mergedCollectRules, collectRule)
+			collectRuleRecorder[collectRule.Name] = true
+ 		}
+	}
+	fmt.Printf("mergedCollectorRules (%v)", mergedCollectRules)
+	return mergedCollectRules
 }
 
 func getObservabilityAddon(c client.Client, namespace string,

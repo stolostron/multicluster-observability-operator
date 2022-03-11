@@ -105,6 +105,17 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
   recording_rules:
     - record: f
       expr: g
+  collect_rules:
+    - name: keep
+      expr: e
+      for: 2m
+      matches:
+        - __name__="foo"
+    - name: discard
+      expr: d
+      for: 2m
+      matches:
+        - __name__="bar"
 `,
 			"ocp311_metrics_list.yaml": `
   names:
@@ -134,6 +145,8 @@ func NewMetricsCustomAllowListCM() *corev1.ConfigMap {
   rules:
     - record: h
       expr: i
+  collect_rules:
+    - name: -discard
 `},
 	}
 }
@@ -235,7 +248,7 @@ func TestManifestWork(t *testing.T) {
 	}
 	works, crdWork, _, err := generateGlobalManifestResources(c, newTestMCO())
 	if err != nil {
-		t.Fatalf("Failed to get global manifestwork resourc: (%v)", err)
+		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
 	t.Logf("work size is %d", len(works))
 	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true); err != nil {
@@ -263,7 +276,7 @@ func TestManifestWork(t *testing.T) {
 	pullSecret = nil
 	works, crdWork, _, err = generateGlobalManifestResources(c, newTestMCO())
 	if err != nil {
-		t.Fatalf("Failed to get global manifestwork resourc: (%v)", err)
+		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
 	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, false)
 	if err != nil {
@@ -301,7 +314,7 @@ func TestManifestWork(t *testing.T) {
 
 	works, crdWork, _, err = generateGlobalManifestResources(c, newTestMCO())
 	if err != nil {
-		t.Fatalf("Failed to get global manifestwork resourc: (%v)", err)
+		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
 
 	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true); err != nil {
