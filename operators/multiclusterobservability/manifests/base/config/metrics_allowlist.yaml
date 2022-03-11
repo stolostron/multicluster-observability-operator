@@ -28,8 +28,6 @@ data:
       - cluster_infrastructure_provider
       - cluster_version
       - cluster_version_payload
-      - container_cpu_cfs_periods_total
-      - container_cpu_cfs_throttled_periods_total
       - container_spec_cpu_quota
       - coredns_dns_request_count_total
       - coredns_dns_request_duration_seconds_sum
@@ -87,15 +85,12 @@ data:
       - kube_node_status_capacity_pods
       - kube_node_status_capacity_cpu_cores
       - kube_node_status_condition
-      - kube_pod_container_resource_limits
       - kube_pod_container_resource_limits_cpu_cores
       - kube_pod_container_resource_limits_memory_bytes
-      - kube_pod_container_resource_requests
       - kube_pod_container_resource_requests_cpu_cores
       - kube_pod_container_resource_requests_memory_bytes
       - kube_pod_info
       - kube_pod_owner
-      - kube_resourcequota
       - kubelet_running_container_count
       - kubelet_runtime_operations
       - kubelet_runtime_operations_latency_microseconds
@@ -137,10 +132,6 @@ data:
       - __name__="go_goroutines",job="apiserver"
       - __name__="process_cpu_seconds_total",job="apiserver"
       - __name__="process_resident_memory_bytes",job="apiserver"
-      - __name__="container_memory_cache",container!=""
-      - __name__="container_memory_rss",container!=""
-      - __name__="container_memory_swap",container!=""
-      - __name__="container_memory_working_set_bytes",container!=""
     renames:
       mixin_pod_workload: namespace_workload_pod:kube_pod_owner:relabel
       namespace:kube_pod_container_resource_requests_cpu_cores:sum: namespace_cpu:kube_pod_container_resource_requests:sum
