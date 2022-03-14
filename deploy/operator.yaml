@@ -39,7 +39,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: COMPONENT_VERSION
-              value: "2.2.11"
+              value: "2.2.12"
             - name: OPERATOR_NAME
               value: "multicluster-observability-operator"
             - name: TEMPLATES_PATH
