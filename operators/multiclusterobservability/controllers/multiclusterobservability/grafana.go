@@ -72,6 +72,12 @@ func GenerateGrafanaDataSource(
 	scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
 
+	DynamicTimeInterval := mco.Spec.ObservabilityAddonSpec.Interval
+
+	if DynamicTimeInterval > 30 {
+		DynamicTimeInterval = 30
+	}
+
 	grafanaDatasources, err := yaml.Marshal(GrafanaDatasources{
 		APIVersion: 1,
 		Datasources: []*GrafanaDatasource{
@@ -88,6 +94,21 @@ func GenerateGrafanaDataSource(
 				JSONData: &JsonData{
 					QueryTimeout: "300s",
 					TimeInterval: fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval),
+				},
+			},
+			{
+				Name:      "Observatorium-Dynamic",
+				Type:      "prometheus",
+				Access:    "proxy",
+				IsDefault: false,
+				URL: fmt.Sprintf(
+					"http://%s.%s.svc.cluster.local:8080",
+					config.ProxyServiceName,
+					config.GetDefaultNamespace(),
+				),
+				JSONData: &JsonData{
+					QueryTimeout: "300s",
+					TimeInterval: fmt.Sprintf("%ds", DynamicTimeInterval),
 				},
 			},
 		},
