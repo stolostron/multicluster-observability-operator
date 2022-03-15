@@ -53,7 +53,7 @@ data:
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "Observatorium-Dynamic",
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "links": []
@@ -169,7 +169,7 @@ data:
           "type": "row"
         },
         {
-          "datasource": "Observatorium-Dynamic",
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "custom": {
@@ -386,7 +386,7 @@ data:
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "Observatorium-Dynamic",
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "links": []
@@ -501,7 +501,7 @@ data:
           "type": "row"
         },
         {
-          "datasource": "Observatorium-Dynamic",
+          "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
               "custom": {
