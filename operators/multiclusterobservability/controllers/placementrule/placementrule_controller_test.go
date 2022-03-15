@@ -140,9 +140,11 @@ func TestObservabilityAddonController(t *testing.T) {
 	manifestsPath := path.Join(wd, "../../manifests")
 	os.Setenv("TEMPLATES_PATH", testManifestsPath)
 	templates.ResetTemplates()
-	err = os.Symlink(manifestsPath, testManifestsPath)
-	if err != nil {
-		t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
+	if _, err := os.Stat(testManifestsPath); err == os.ErrNotExist {
+		err = os.Symlink(manifestsPath, testManifestsPath)
+		if err != nil {
+			t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
+		}
 	}
 
 	req := ctrl.Request{
@@ -312,8 +314,11 @@ func TestObservabilityAddonController(t *testing.T) {
 	}
 
 	// remove the testing manifests directory
-	if err = os.Remove(testManifestsPath); err != nil {
-		t.Fatalf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
+	_, err = os.Stat(testManifestsPath)
+	if err == nil {
+		if err = os.Remove(testManifestsPath); err != nil {
+			t.Fatalf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
+		}
 	}
 	os.Remove(path.Join(wd, "../../placementrule-tests"))
 }
