@@ -173,7 +173,7 @@ data:
         expr: sum(kube_pod_container_resource_limits{endpoint=\"https-main\", container!=\"\"})
       - record: kube_pod_container_resource_requests:sum
         expr: sum(kube_pod_container_resource_requests{endpoint=\"https-main\", container!=\"\"})
-    collect_rules: |
+    collect_rules:
       - name: NamespaceResourceUsage
         annotations:
           summary:
