@@ -106,16 +106,42 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
     - record: f
       expr: g
   collect_rules:
-    - name: keep
-      expr: e
-      for: 2m
-      matches:
-        - __name__="foo"
-    - name: discard
-      expr: d
-      for: 2m
-      matches:
-        - __name__="bar"
+    - name: keepGroup
+      annotations:
+        summary:
+        description:
+      selector:
+        matchExpressions:
+          - key: clusterType
+            operator: NotIn
+            values: ["SNO"]
+      rules:
+      - collect: c
+        annotations:
+          summary:
+          description:
+        expr: e
+        for: 2m
+        matches:
+          - __name__="foo"
+    - name: discardGroup
+      annotations:
+        summary:
+        description:
+      selector:
+	    matchExpressions:
+          - key: clusterType
+            operator: In
+            values: ["SNO"]
+        rules:
+        - collect: d
+          annotations:
+            summary:
+            description:
+          expr: d
+          for: 2m
+          names:
+            - foobar_metric
 `,
 			"ocp311_metrics_list.yaml": `
   names:
