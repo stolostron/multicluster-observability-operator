@@ -26,7 +26,7 @@ data:
       "gnetId": 12117,
       "graphTooltip": 0,
       "id": 10,
-      "iteration": 1647365702415,
+      "iteration": 1647373958245,
       "links": [],
       "panels": [
         {
@@ -104,7 +104,9 @@ data:
             "justifyMode": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": ["mean"],
+              "calcs": [
+                "mean"
+              ],
               "fields": "",
               "values": false
             },
@@ -188,7 +190,9 @@ data:
             "justifyMode": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": ["mean"],
+              "calcs": [
+                "mean"
+              ],
               "fields": "",
               "values": false
             },
@@ -272,7 +276,9 @@ data:
             "justifyMode": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": ["mean"],
+              "calcs": [
+                "mean"
+              ],
               "fields": "",
               "values": false
             },
@@ -356,7 +362,9 @@ data:
             "justifyMode": "auto",
             "orientation": "horizontal",
             "reduceOptions": {
-              "calcs": ["mean"],
+              "calcs": [
+                "mean"
+              ],
               "fields": "",
               "values": false
             },
@@ -1388,7 +1396,9 @@ data:
       "refresh": "5m",
       "schemaVersion": 30,
       "style": "dark",
-      "tags": ["kubernetes-mixin"],
+      "tags": [
+        "kubernetes-mixin"
+      ],
       "templating": {
         "list": [
           {
@@ -1407,7 +1417,7 @@ data:
             "options": [],
             "query": "prometheus",
             "refresh": 2,
-            "regex": "",
+            "regex": "Observatorium-Dynamic",
             "skipUrlSync": false,
             "type": "datasource"
           },
@@ -1478,13 +1488,31 @@ data:
         "to": "now"
       },
       "timepicker": {
-        "refresh_intervals": ["1m", "5m", "15m", "30m", "1h", "2h", "1d"],
-        "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "2d", "7d", "30d"]
+        "refresh_intervals": [
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ],
+        "time_options": [
+          "5m",
+          "15m",
+          "1h",
+          "6h",
+          "12h",
+          "24h",
+          "2d",
+          "7d",
+          "30d"
+        ]
       },
       "timezone": "browser",
       "title": "Kubernetes / Compute Resources / Namespace (Pods)",
       "uid": "85a562078cdf77779eaa1add43ccec1e",
-      "version": 2
+      "version": 3
     }
 kind: ConfigMap
 metadata:

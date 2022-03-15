@@ -900,7 +900,7 @@ data:
             "query": "prometheus",
             "queryValue": "",
             "refresh": 2,
-            "regex": "",
+            "regex": "Observatorium-Dynamic",
             "skipUrlSync": false,
             "type": "datasource"
           },
