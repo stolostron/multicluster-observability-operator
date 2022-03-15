@@ -11,6 +11,12 @@ data:
             "hide": true,
             "iconColor": "rgba(0, 211, 255, 1)",
             "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
             "type": "dashboard"
           }
         ]
@@ -19,13 +25,17 @@ data:
       "editable": true,
       "gnetId": 12121,
       "graphTooltip": 0,
-      "id": 8,
-      "iteration": 1621618974171,
+      "id": 16,
+      "iteration": 1647365265745,
       "links": [],
       "panels": [
         {
           "collapsed": false,
           "datasource": "$dashboard",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -43,10 +53,9 @@ data:
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "$datasource",
+          "datasource": "Observatorium-Dynamic",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -79,7 +88,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -143,6 +152,10 @@ data:
         {
           "collapsed": false,
           "datasource": "$dashboard",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -156,11 +169,12 @@ data:
           "type": "row"
         },
         {
-          "datasource": "$datasource",
+          "datasource": "Observatorium-Dynamic",
           "fieldConfig": {
             "defaults": {
               "custom": {
                 "align": "left",
+                "displayMode": "auto",
                 "filterable": false
               },
               "mappings": [],
@@ -247,7 +261,7 @@ data:
           "options": {
             "showHeader": true
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "targets": [
             {
               "expr": "sum(\n    node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\", namespace=\"$namespace\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n",
@@ -351,6 +365,10 @@ data:
         {
           "collapsed": false,
           "datasource": "$dashboard",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -368,10 +386,9 @@ data:
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": "$datasource",
+          "datasource": "Observatorium-Dynamic",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -403,7 +420,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -467,6 +484,10 @@ data:
         {
           "collapsed": false,
           "datasource": "$dashboard",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -480,11 +501,12 @@ data:
           "type": "row"
         },
         {
-          "datasource": "$datasource",
+          "datasource": "Observatorium-Dynamic",
           "fieldConfig": {
             "defaults": {
               "custom": {
                 "align": "left",
+                "displayMode": "auto",
                 "filterable": false
               },
               "mappings": [],
@@ -572,7 +594,7 @@ data:
           "options": {
             "showHeader": true
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "targets": [
             {
               "expr": "sum(\n    container_memory_working_set_bytes{cluster=\"$cluster\", namespace=\"$namespace\", container!=\"\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n",
@@ -673,7 +695,7 @@ data:
         }
       ],
       "refresh": "5m",
-      "schemaVersion": 27,
+      "schemaVersion": 30,
       "style": "dark",
       "tags": [
         "kubernetes-mixin"
@@ -726,7 +748,6 @@ data:
             "skipUrlSync": false,
             "sort": 1,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
@@ -757,7 +778,6 @@ data:
             "skipUrlSync": false,
             "sort": 1,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
@@ -788,7 +808,6 @@ data:
             "skipUrlSync": false,
             "sort": 1,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
@@ -819,7 +838,6 @@ data:
             "skipUrlSync": false,
             "sort": 1,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
@@ -855,7 +873,7 @@ data:
       "timezone": "browser",
       "title": "Kubernetes / Compute Resources / Workload",
       "uid": "a164a7f0339f99e89cea5cb47e9be617",
-      "version": 2
+      "version": 3
     }
 kind: ConfigMap
 metadata:
