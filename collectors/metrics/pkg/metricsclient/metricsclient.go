@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -377,7 +378,7 @@ func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string)
 		tlsCrtFile = "../../testdata/tls/tls.crt"
 	}
 	// Load Server CA cert
-	caCert, err := ioutil.ReadFile(caCertFile)
+	caCert, err := ioutil.ReadFile(filepath.Clean(caCertFile))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load server ca cert file")
 	}
