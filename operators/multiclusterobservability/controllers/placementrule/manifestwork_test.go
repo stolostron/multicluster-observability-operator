@@ -129,7 +129,7 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
         summary:
         description:
       selector:
-	    matchExpressions:
+        matchExpressions:
           - key: clusterType
             operator: In
             values: ["SNO"]
