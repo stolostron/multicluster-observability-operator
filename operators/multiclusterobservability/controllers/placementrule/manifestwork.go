@@ -50,30 +50,19 @@ var (
 	endpointMetricsOperatorDeploy *appsv1.Deployment
 	imageListConfigMap            *corev1.ConfigMap
 
-	rawExtensionList     []runtime.RawExtension
-	promRawExtensionList []runtime.RawExtension
+	rawExtensionList []runtime.RawExtension
+	//promRawExtensionList []runtime.RawExtension
 )
 
 type MetricsAllowlist struct {
-	NameList          []string          `yaml:"names"`
-	MatchList         []string          `yaml:"matches"`
-	RenameMap         map[string]string `yaml:"renames"`
-	RuleList          []RecordingRule   `yaml:"rules"` //deprecated
-	RecordingRuleList []RecordingRule   `yaml:"recording_rules"`
-	CollectRuleList   []CollectRule     `yaml:"collect_rules"`
-}
-type CollectRuleSelector struct {
-	Match map[string]string `yaml:"match"`
-}
-type CollectRule struct {
-	Name      string              `yaml:"name"`
-	Expr      string              `yaml:"expr"`
-	For       string              `yaml:"for"`
-	Selector  CollectRuleSelector `yaml:"selector"`
-	MatchList []string            `yaml:"matches"`
+	NameList             []string                          `yaml:"names"`
+	MatchList            []string                          `yaml:"matches"`
+	RenameMap            map[string]string                 `yaml:"renames"`
+	RuleList             []RecordingRule                   `yaml:"rules"` //deprecated
+	RecordingRuleList    []RecordingRule                   `yaml:"recording_rules"`
+	CollectRuleGroupList []operatorconfig.CollectRuleGroup `yaml:"collect_rules"`
 }
 
-// Rule is the struct for recording rules and alert rules
 type RecordingRule struct {
 	Record string `yaml:"record"`
 	Expr   string `yaml:"expr"`
@@ -520,6 +509,7 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 	if err == nil {
 		allowlist.NameList = mergeMetrics(allowlist.NameList, customAllowlist.NameList)
 		allowlist.MatchList = mergeMetrics(allowlist.MatchList, customAllowlist.MatchList)
+		allowlist.CollectRuleGroupList = mergeCollectorRuleGroupList(allowlist.CollectRuleGroupList, customAllowlist.CollectRuleGroupList)
 		if customAllowlist.RecordingRuleList != nil {
 			allowlist.RecordingRuleList = append(allowlist.RecordingRuleList, customAllowlist.RecordingRuleList...)
 		} else {
@@ -605,6 +595,24 @@ func mergeMetrics(defaultAllowlist []string, customAllowlist []string) []string 
 	}
 
 	return mergedMetrics
+}
+
+func mergeCollectorRuleGroupList(defaultCollectRuleGroupList []operatorconfig.CollectRuleGroup, customCollectRuleGroupList []operatorconfig.CollectRuleGroup) []operatorconfig.CollectRuleGroup {
+	deletedCollectRuleGroups := map[string]bool{}
+	for _, collectRuleGroup := range customCollectRuleGroupList {
+		if strings.HasPrefix(collectRuleGroup.Name, "-") {
+			deletedCollectRuleGroups[strings.TrimPrefix(collectRuleGroup.Name, "-")] = true
+		}
+	}
+
+	mergedCollectRuleGroups := []operatorconfig.CollectRuleGroup{}
+	for _, collectRuleGroup := range defaultCollectRuleGroupList {
+		if !deletedCollectRuleGroups[collectRuleGroup.Name] {
+			mergedCollectRuleGroups = append(mergedCollectRuleGroups, collectRuleGroup)
+		}
+	}
+
+	return mergedCollectRuleGroups
 }
 
 func getObservabilityAddon(c client.Client, namespace string,

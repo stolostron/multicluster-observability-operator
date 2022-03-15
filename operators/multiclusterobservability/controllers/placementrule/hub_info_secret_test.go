@@ -110,7 +110,7 @@ func TestNewSecret(t *testing.T) {
 	initSchema(t)
 
 	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret()}
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true)
 	if err != nil {
@@ -130,7 +130,7 @@ func TestNewBYOSecret(t *testing.T) {
 	initSchema(t)
 
 	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestAmRouteBYOCA(), newTestAmRouteBYOCert()}
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true)
 	if err != nil {

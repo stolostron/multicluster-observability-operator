@@ -111,7 +111,7 @@ func updateRes(r *resource.Resource,
 	// set images for components in managed clusters
 	if r.GetKind() == "ConfigMap" && r.GetName() == operatorconfig.ImageConfigMap {
 		images := obj.(*corev1.ConfigMap).Data
-		for key, _ := range images {
+		for key := range images {
 			found, image := mcoconfig.ReplaceImage(mco.Annotations, images[key], key)
 			if found {
 				obj.(*corev1.ConfigMap).Data[key] = image
@@ -146,21 +146,21 @@ func getImage(mco *mcov1beta2.MultiClusterObservability,
 	return image
 }
 
-func loadPromTemplates(mco *mcov1beta2.MultiClusterObservability) (
-	[]runtime.RawExtension, error) {
-	// load and render promTemplates
-	promTemplates, err := templates.GetOrLoadPrometheusTemplates(templatesutil.GetTemplateRenderer())
-	if err != nil {
-		log.Error(err, "Failed to load templates")
-		return nil, err
-	}
-	rawExtensionList := []runtime.RawExtension{}
-	for _, r := range promTemplates {
-		obj, err := updateRes(r, mco)
-		if err != nil {
-			return nil, err
-		}
-		rawExtensionList = append(rawExtensionList, runtime.RawExtension{Object: obj})
-	}
-	return rawExtensionList, nil
-}
+// func loadPromTemplates(mco *mcov1beta2.MultiClusterObservability) (
+// 	[]runtime.RawExtension, error) {
+// 	// load and render promTemplates
+// 	promTemplates, err := templates.GetOrLoadPrometheusTemplates(templatesutil.GetTemplateRenderer())
+// 	if err != nil {
+// 		log.Error(err, "Failed to load templates")
+// 		return nil, err
+// 	}
+// 	rawExtensionList := []runtime.RawExtension{}
+// 	for _, r := range promTemplates {
+// 		obj, err := updateRes(r, mco)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		rawExtensionList = append(rawExtensionList, runtime.RawExtension{Object: obj})
+// 	}
+// 	return rawExtensionList, nil
+// }
