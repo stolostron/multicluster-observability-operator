@@ -11,6 +11,12 @@ data:
             "hide": true,
             "iconColor": "rgba(0, 211, 255, 1)",
             "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
             "type": "dashboard"
           }
         ]
@@ -19,13 +25,17 @@ data:
       "editable": true,
       "gnetId": 12120,
       "graphTooltip": 0,
-      "id": 7,
-      "iteration": 1621618845678,
+      "id": 14,
+      "iteration": 1647365265618,
       "links": [],
       "panels": [
         {
           "collapsed": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -46,7 +56,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -78,7 +87,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -180,6 +189,10 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -200,7 +213,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -233,7 +245,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -305,6 +317,10 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -326,6 +342,7 @@ data:
               },
               "custom": {
                 "align": null,
+                "displayMode": "auto",
                 "filterable": false
               },
               "decimals": 2,
@@ -509,7 +526,7 @@ data:
             "showHeader": true,
             "sortBy": []
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "targets": [
             {
               "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\", container!=\"POD\"}) by (container)",
@@ -594,6 +611,10 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -614,7 +635,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -646,7 +666,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -750,6 +770,10 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -771,6 +795,7 @@ data:
               },
               "custom": {
                 "align": null,
+                "displayMode": "auto",
                 "filterable": false
               },
               "decimals": 2,
@@ -1025,7 +1050,7 @@ data:
           "options": {
             "showHeader": true
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "targets": [
             {
               "expr": "sum(container_memory_working_set_bytes{cluster=\"$cluster\", namespace=\"$namespace\", pod=\"$pod\", container!=\"POD\", container!=\"\"}) by (container)",
@@ -1137,7 +1162,7 @@ data:
         }
       ],
       "refresh": "5m",
-      "schemaVersion": 27,
+      "schemaVersion": 30,
       "style": "dark",
       "tags": [
         "kubernetes-mixin"
@@ -1160,7 +1185,7 @@ data:
             "options": [],
             "query": "prometheus",
             "refresh": 2,
-            "regex": "",
+            "regex": "Observatorium-Dynamic",
             "skipUrlSync": false,
             "type": "datasource"
           },
@@ -1190,7 +1215,6 @@ data:
             "skipUrlSync": false,
             "sort": 1,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
@@ -1221,7 +1245,6 @@ data:
             "skipUrlSync": false,
             "sort": 1,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
@@ -1252,7 +1275,6 @@ data:
             "skipUrlSync": false,
             "sort": 1,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
@@ -1288,7 +1310,7 @@ data:
       "timezone": "",
       "title": "Kubernetes / Compute Resources / Pod",
       "uid": "6581e46e4e5c7ba40a07646395ef7b23",
-      "version": 2
+      "version": 3
     }
 kind: ConfigMap
 metadata:
