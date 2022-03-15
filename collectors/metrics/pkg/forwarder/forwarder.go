@@ -115,7 +115,8 @@ type Worker struct {
 	status status.StatusReport
 }
 
-func CreateFromClient(cfg Config, interval time.Duration, name string, logger log.Logger) (*metricsclient.Client, error) {
+func CreateFromClient(cfg Config, interval time.Duration, name string,
+	logger log.Logger) (*metricsclient.Client, error) {
 	fromTransport := metricsclient.DefaultTransport(logger, false)
 	if len(cfg.FromCAFile) > 0 {
 		if fromTransport.TLSClientConfig == nil {

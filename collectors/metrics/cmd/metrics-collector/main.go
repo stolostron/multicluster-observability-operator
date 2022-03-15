@@ -145,7 +145,7 @@ func main() {
 	cmd.Flags().StringVar(
 		&opt.RecordingRulesFile,
 		"collect-file",
-		opt.RulesFile,
+		opt.RecordingRulesFile,
 		"A file containing collect rules.")
 
 	cmd.Flags().StringSliceVar(
