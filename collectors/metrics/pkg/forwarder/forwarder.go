@@ -141,7 +141,7 @@ func CreateFromClient(cfg Config, interval time.Duration, name string,
 			fromTransport.TLSClientConfig = &tls.Config{
 				MinVersion: tls.VersionTLS12,
 				/* #nosec */
-				InsecureSkipVerify: len(cfg.FromCAFile) == 0,
+				InsecureSkipVerify: true,
 			}
 		}
 	}
