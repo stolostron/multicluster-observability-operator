@@ -52,7 +52,7 @@ const (
 )
 
 var (
-	log                             = logf.Log.WithName("controller_placementrule")
+	log = logf.Log.WithName("controller_placementrule")
 	//watchNamespace                  = config.GetDefaultNamespace()
 	isCRoleCreated                  = false
 	isClusterManagementAddonCreated = false
