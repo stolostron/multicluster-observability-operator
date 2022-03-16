@@ -267,6 +267,10 @@ func evaluateRule(logger log.Logger, r CollectRule, metrics []*clientmodel.Metri
 					Value: *l.Value,
 				})
 			}
+			ls = append(ls, labels.Label{
+				Name:  "rule_name",
+				Value: r.Name,
+			})
 			h := ls.Hash()
 			if (*firingRules[r.Name]).triggerTime[h] != nil {
 				delete(firings, h)

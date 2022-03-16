@@ -27,6 +27,10 @@ func getHash(k string, v string) uint64 {
 		Name:  k,
 		Value: v,
 	})
+	ls = append(ls, labels.Label{
+		Name:  "rule_name",
+		Value: TEST_RULE_NAME,
+	})
 	return ls.Hash()
 }
 
