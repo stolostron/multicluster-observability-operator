@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -46,34 +47,9 @@ var (
 	promURL    = "https://prometheus-k8s:9091"
 )
 
-type MetricsAllowlist struct {
-	NameList  			[]string          `yaml:"names"`
-	MatchList 			[]string          `yaml:"matches"`
-	RenameMap 			map[string]string `yaml:"renames"`
-	RecordingRuleList	[]RecordingRule   `yaml:"recording_rules"`
-	CollectRuleList		[]CollectRule     `yaml:"collect_rules"`
-}
-
-// Rule is the struct for recording rules and alert rules
-type RecordingRule struct {
-	Record string `yaml:"record"`
-	Expr   string `yaml:"expr"`
-}
-
-type CollectRuleSelector struct {
-	Match map[string]string `yaml:"match"`
-}
-type CollectRule struct {
-	Name      string              `yaml:"name"`
-	Expr      string              `yaml:"expr"`
-	For       string              `yaml:"for"`
-	Selector  CollectRuleSelector `yaml:"selector"`
-	MatchList []string            `yaml:"matches"`
-}
-
 func createDeployment(clusterID string, clusterType string,
 	obsAddonSpec oashared.ObservabilityAddonSpec,
-	hubInfo operatorconfig.HubInfo, allowlist MetricsAllowlist,
+	hubInfo operatorconfig.HubInfo, allowlist operatorconfig.MetricsAllowlist,
 	nodeSelector map[string]string, tolerations []corev1.Toleration,
 	replicaCount int32) *appsv1.Deployment {
 	interval := fmt.Sprint(obsAddonSpec.Interval) + "s"
@@ -171,6 +147,31 @@ func createDeployment(clusterID string, clusterType string,
 			fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr),
 		)
 	}
+
+	for _, group := range allowlist.CollectRuleGroupList {
+		if group.Selector.MatchExpression != nil {
+			for _, expr := range group.Selector.MatchExpression {
+				if !evluateMatchExpression(expr, clusterID, clusterType, obsAddonSpec, hubInfo,
+					allowlist, nodeSelector, tolerations, replicaCount) {
+					continue
+				}
+				for _, rule := range group.CollectRuleList {
+					matchList := []string{}
+					for _, match := range rule.MatchList {
+						matchList = append(matchList, `"`+strings.ReplaceAll(match, `"`, `\"`)+`"`)
+					}
+					matchListStr := "[" + strings.Join(matchList, ",") + "]"
+					nameListStr := `["` + strings.Join(rule.NameList, `","`) + `"]`
+					commands = append(
+						commands,
+						fmt.Sprintf("--collectrule={\"name\":\"%s\",\"expr\":\"%s\",\"for\":\"%s\",\"names\":%v,\"matches\":%v}",
+							rule.Collect, rule.Expr, rule.For, nameListStr, matchListStr),
+					)
+				}
+			}
+		}
+	}
+
 	from := promURL
 	if !installPrometheus {
 		from = ocpPromURL
@@ -303,8 +304,8 @@ func deleteMetricsCollector(ctx context.Context, client client.Client) error {
 
 func int32Ptr(i int32) *int32 { return &i }
 
-func getMetricsAllowlist(ctx context.Context, client client.Client, clusterType string) MetricsAllowlist {
-	l := &MetricsAllowlist{}
+func getMetricsAllowlist(ctx context.Context, client client.Client, clusterType string) operatorconfig.MetricsAllowlist {
+	l := &operatorconfig.MetricsAllowlist{}
 	cm := &corev1.ConfigMap{}
 	err := client.Get(ctx, types.NamespacedName{Name: operatorconfig.AllowlistConfigMapName,
 		Namespace: namespace}, cm)

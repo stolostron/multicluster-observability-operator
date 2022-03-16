@@ -18,15 +18,10 @@ type HubInfo struct {
 	AlertmanagerRouterCA     string `yaml:"alertmanager-router-ca"`
 }
 
-// CollectRuleGroup structure contains information of a group of collect rules used for
-// dnamically collecting metrics.
-type CollectRuleGroup struct {
-	Name            string              `yaml:"name"`
-	Annotations     map[string]string   `yaml:"annotations"`
-	Selector        CollectRuleSelector `yaml:"selector"`
-	CollectRuleList []CollectRule       `yaml:"rules"`
+type RecordingRule struct {
+	Record string `yaml:"record"`
+	Expr   string `yaml:"expr"`
 }
-
 type CollectRule struct {
 	Collect     string            `yaml:"collect"`
 	Annotations map[string]string `yaml:"annotations"`
@@ -38,4 +33,21 @@ type CollectRule struct {
 
 type CollectRuleSelector struct {
 	MatchExpression []metav1.LabelSelectorRequirement `yaml:"matchExpressions"`
+}
+
+// CollectRuleGroup structure contains information of a group of collect rules used for
+// dnamically collecting metrics.
+type CollectRuleGroup struct {
+	Name            string              `yaml:"name"`
+	Annotations     map[string]string   `yaml:"annotations"`
+	Selector        CollectRuleSelector `yaml:"selector"`
+	CollectRuleList []CollectRule       `yaml:"rules"`
+}
+type MetricsAllowlist struct {
+	NameList             []string           `yaml:"names"`
+	MatchList            []string           `yaml:"matches"`
+	RenameMap            map[string]string  `yaml:"renames"`
+	RuleList             []RecordingRule    `yaml:"rules"` //deprecated
+	RecordingRuleList    []RecordingRule    `yaml:"recording_rules"`
+	CollectRuleGroupList []CollectRuleGroup `yaml:"collect_rules"`
 }
