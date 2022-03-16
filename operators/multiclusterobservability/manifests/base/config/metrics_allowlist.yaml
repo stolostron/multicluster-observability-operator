@@ -168,11 +168,15 @@ data:
       - record: sli:apiserver_request_duration_seconds:trend:1m
         expr: sum(increase(apiserver_request_duration_seconds_bucket{job=\"apiserver\",service=\"kubernetes\",le=\"1\",verb=~\"POST|PUT|DELETE|PATCH\"}[1m])) / sum(increase(apiserver_request_duration_seconds_count{job=\"apiserver\",service=\"kubernetes\",verb=~\"POST|PUT|DELETE|PATCH\"}[1m]))
       - record: container_memory_rss:sum
-        expr: sum(container_memory_rss{endpoint=\"https-metrics\", container!=\"\"})
+        expr: sum(container_memory_rss{endpoint=\"https-metrics\", container!=\"\"}) without (job)
       - record: kube_pod_container_resource_limits:sum
-        expr: sum(kube_pod_container_resource_limits{endpoint=\"https-main\", container!=\"\"})
+        expr: sum(kube_pod_container_resource_limits{endpoint=\"https-main\", container!=\"\"}) without (job)
       - record: kube_pod_container_resource_requests:sum
-        expr: sum(kube_pod_container_resource_requests{endpoint=\"https-main\", container!=\"\"})
+        expr: sum(kube_pod_container_resource_requests{endpoint=\"https-main\", container!=\"\"}) without (job)
+      - record: namespace_workload_pod:kube_pod_owner:relabel:sum
+        expr: sum(namespace_workload_pod:kube_pod_owner:relabel{pod!=\"\"}) without ()
+      - record: node_namespace_pod_container:container_cpu_usage_seconds_total:sum
+        expr: sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{container!=\"\"}) without ()
     collect_rules:
       - name: NamespaceResourceUsage
         annotations:
