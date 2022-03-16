@@ -74,7 +74,7 @@ func GenerateGrafanaDataSource(
 
 	DynamicTimeInterval := mco.Spec.ObservabilityAddonSpec.Interval
 
-	if DynamicTimeInterval > 30  && !config.CollectRulesEnabled {
+	if DynamicTimeInterval > 30 && config.CollectRulesEnabled {
 		DynamicTimeInterval = 30
 	}
 
