@@ -978,7 +978,7 @@ data:
               "step": 10
             },
             {
-              "expr": "namespace_workload_pod:kube_pod_owner:relabel:sum{cluster=\"$cluster\"}",
+              "expr": "namespace_workload_pod:kube_pod_owner:relabel:avg{cluster=\"$cluster\"}",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1496,7 +1496,7 @@ data:
               "step": 10
             },
             {
-              "expr": "namespace_workload_pod:kube_pod_owner:relabel:sum{cluster=\"$cluster\"}",
+              "expr": "namespace_workload_pod:kube_pod_owner:relabel:avg{cluster=\"$cluster\"}",
               "format": "table",
               "hide": false,
               "instant": true,
