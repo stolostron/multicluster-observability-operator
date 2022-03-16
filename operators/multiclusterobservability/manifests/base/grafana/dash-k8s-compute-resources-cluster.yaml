@@ -978,7 +978,7 @@ data:
               "step": 10
             },
             {
-              "expr": "count(avg(namespace_workload_pod:kube_pod_owner:relabel{cluster=\"$cluster\"}) by (workload, namespace)) by (namespace)",
+              "expr": "count(avg(namespace_workload_pod:kube_pod_owner:relabel:sum{cluster=\"$cluster\"}) by (workload, namespace)) by (namespace)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -1496,7 +1496,7 @@ data:
               "step": 10
             },
             {
-              "expr": "count(avg(namespace_workload_pod:kube_pod_owner:relabel{cluster=\"$cluster\"}) by (workload, namespace)) by (namespace)",
+              "expr": "count(avg(namespace_workload_pod:kube_pod_owner:relabel:sum{cluster=\"$cluster\"}) by (workload, namespace)) by (namespace)",
               "format": "table",
               "hide": false,
               "instant": true,
