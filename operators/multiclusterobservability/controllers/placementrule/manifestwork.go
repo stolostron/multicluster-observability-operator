@@ -598,6 +598,8 @@ func mergeCollectorRuleGroupList(defaultCollectRuleGroupList []operatorconfig.Co
 		}
 	}
 
+	config.CollectRulesEnabled = len(mergedCollectRuleGroups) == 2
+
 	return mergedCollectRuleGroups
 }
 
