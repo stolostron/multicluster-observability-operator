@@ -68,8 +68,10 @@ require (
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/brancz/locutus v0.0.0-20210511124350-7a84f4d1bcb3 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
+	github.com/containerd/containerd v1.5.10 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dennwc/varint v1.0.0 // indirect
+	github.com/docker/distribution v2.8.0+incompatible // indirect
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
 	github.com/efficientgo/tools/core v0.0.0-20210201224146-3d78f4d30648 // indirect
 	github.com/emicklei/go-restful v2.14.2+incompatible // indirect
@@ -117,7 +119,7 @@ require (
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
-	github.com/opencontainers/image-spec v1.0.2-0.20190823105129-775207bd45b6 // indirect
+	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/openshift/library-go v0.0.0-20210916194400-ae21aab32431 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
