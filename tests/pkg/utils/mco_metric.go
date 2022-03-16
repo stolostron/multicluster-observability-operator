@@ -69,11 +69,11 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 	}
 
 	if !strings.Contains(string(metricResult), `"status":"success"`) {
-		return fmt.Errorf("Failed to find valid status from response"), false
+		return fmt.Errorf("Failed to find valid status from response for query: %s", query), false
 	}
 
 	if strings.Contains(string(metricResult), `"result":[]`) {
-		return fmt.Errorf("Failed to find metric name from response"), false
+		return fmt.Errorf("Failed to find metric name from response for query: %s", query), false
 	}
 
 	contained := true
