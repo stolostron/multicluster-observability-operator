@@ -161,10 +161,11 @@ func createDeployment(clusterID string, clusterType string,
 						matchList = append(matchList, `"`+strings.ReplaceAll(match, `"`, `\"`)+`"`)
 					}
 					matchListStr := "[" + strings.Join(matchList, ",") + "]"
+					nameListStr := `["` + strings.Join(rule.NameList, `","`) + `"]`
 					commands = append(
 						commands,
 						fmt.Sprintf("--collectrule={\"name\":\"%s\",\"expr\":\"%s\",\"for\":\"%s\",\"names\":%v,\"matches\":%v}",
-							rule.Collect, rule.Expr, rule.For, rule.NameList, matchListStr),
+							rule.Collect, rule.Expr, rule.For, nameListStr, matchListStr),
 					)
 				}
 			}
