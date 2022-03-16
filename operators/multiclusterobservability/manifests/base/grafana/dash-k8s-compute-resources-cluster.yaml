@@ -628,7 +628,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\"}) by (namespace)",
+              "expr": "node_namespace_pod_container:container_cpu_usage_seconds_total:sum{cluster=\"$cluster\"}",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{namespace}}",
@@ -978,7 +978,7 @@ data:
               "step": 10
             },
             {
-              "expr": "count(avg(namespace_workload_pod:kube_pod_owner:relabel{cluster=\"$cluster\"}) by (workload, namespace)) by (namespace)",
+              "expr": "namespace_workload_pod:kube_pod_owner:relabel:avg{cluster=\"$cluster\"}",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -989,7 +989,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\"}) by (namespace)",
+              "expr": "node_namespace_pod_container:container_cpu_usage_seconds_total:sum{cluster=\"$cluster\"}",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -1010,7 +1010,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\"}) by (namespace) / sum(kube_pod_container_resource_requests:sum{cluster=\"$cluster\", resource=\"cpu\"}) by (namespace)",
+              "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum{cluster=\"$cluster\"}) by (namespace) / sum(kube_pod_container_resource_requests:sum{cluster=\"$cluster\", resource=\"cpu\"}) by (namespace)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -1032,7 +1032,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\"}) by (namespace) / sum(kube_pod_container_resource_limits:sum{cluster=\"$cluster\", resource=\"cpu\"}) by (namespace)",
+              "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum{cluster=\"$cluster\"}) by (namespace) / sum(kube_pod_container_resource_limits:sum{cluster=\"$cluster\", resource=\"cpu\"}) by (namespace)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -1496,7 +1496,7 @@ data:
               "step": 10
             },
             {
-              "expr": "count(avg(namespace_workload_pod:kube_pod_owner:relabel{cluster=\"$cluster\"}) by (workload, namespace)) by (namespace)",
+              "expr": "namespace_workload_pod:kube_pod_owner:relabel:avg{cluster=\"$cluster\"}",
               "format": "table",
               "hide": false,
               "instant": true,
