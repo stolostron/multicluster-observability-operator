@@ -180,7 +180,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum{cluster=\"$cluster\"}) by (namespace)",
+              "expr": "node_namespace_pod_container:container_cpu_usage_seconds_total:sum{cluster=\"$cluster\"}",
               "interval": "",
               "legendFormat": "{{namespace}}",
               "refId": "A"
@@ -611,7 +611,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum{cluster=\"$cluster\"}) by (namespace)",
+              "expr": "node_namespace_pod_container:container_cpu_usage_seconds_total:sum{cluster=\"$cluster\"}",
               "format": "table",
               "instant": true,
               "intervalFactor": 1,
