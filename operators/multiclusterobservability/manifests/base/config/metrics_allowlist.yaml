@@ -192,7 +192,7 @@ data:
           annotations:
             summary:
             description:  
-          expr: (sum(kube_resourcequota{resource=\"limits.cpu\", type=\"used\"}) by (namespace, resourcequota) / sum(kube_resourcequota{resource=\"limits.cpu\", type=\"hard\"}) by (namespace, resourcequota)) * 100 > 70
+          expr: namespace:container_cpu_usage:sum/min(sum(kube_resourcequota{resource=\"limits.cpu\", type=\"hard\"}) by (namespace, resourcequota)) by (namespace) * 100 > 70
           for: 2m
           matches:
             - __name__="container_cpu_cfs_periods_total",namespace="{{ $labels.namespace }}"
@@ -208,7 +208,7 @@ data:
           annotations:
             summary:
             description:  
-          expr: (sum(kube_resourcequota{resource=\"limits.memory\", type=\"used\"}) by (namespace, resourcequota) / sum(kube_resourcequota{resource=\"limits.memory\", type=\"hard\"}) by (namespace, resourcequota)) * 100 > 70
+          expr: sum(container_memory_working_set_bytes{container!=\"\"}) by (namespace)/min(sum(kube_resourcequota{resource=\"limits.memory\", type=\"hard\"}) by (namespace, resourcequota)) by (namespace) * 100 > 70
           for: 2m
           matches:
             - __name__="container_memory_cache",namespace="{{ $labels.namespace }}"
