@@ -251,7 +251,7 @@ data:
           annotations:
             summary:
             description:  
-          expr: cluster:memory_usage:ratio * 100 > 70
+          expr: sum(container_memory_working_set_bytes{container!=\"\"})/sum(machine_memory_bytes) by() * 100 > 70
           for: 2m
           names:
             - container_memory_cache 
