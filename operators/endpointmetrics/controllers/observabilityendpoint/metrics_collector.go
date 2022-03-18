@@ -251,7 +251,10 @@ func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonS
 	hubInfo operatorconfig.HubInfo, clusterID string, clusterType string,
 	replicaCount int32, forceRestart bool) (bool, error) {
 
-	list := getMetricsAllowlist(ctx, client, clusterType)
+	list, err := getMetricsAllowlist(ctx, client, clusterType)
+	if err != nil {
+		return false, err
+	}
 	endpointDeployment := getEndpointDeployment(ctx, client)
 	deployment := createDeployment(
 		clusterID,
@@ -264,7 +267,7 @@ func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonS
 		replicaCount,
 	)
 	found := &appsv1.Deployment{}
-	err := client.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
+	err = client.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
 		Namespace: namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -320,7 +323,8 @@ func deleteMetricsCollector(ctx context.Context, client client.Client) error {
 
 func int32Ptr(i int32) *int32 { return &i }
 
-func getMetricsAllowlist(ctx context.Context, client client.Client, clusterType string) operatorconfig.MetricsAllowlist {
+func getMetricsAllowlist(ctx context.Context, client client.Client,
+	clusterType string) (operatorconfig.MetricsAllowlist, error) {
 	l := &operatorconfig.MetricsAllowlist{}
 	cm := &corev1.ConfigMap{}
 	err := client.Get(ctx, types.NamespacedName{Name: operatorconfig.AllowlistConfigMapName,
@@ -336,10 +340,11 @@ func getMetricsAllowlist(ctx context.Context, client client.Client, clusterType 
 			err = yaml.Unmarshal([]byte(cm.Data[configmapKey]), l)
 			if err != nil {
 				log.Error(err, "Failed to unmarshal data in configmap")
+				return *l, err
 			}
 		}
 	}
-	return *l
+	return *l, nil
 }
 
 func getEndpointDeployment(ctx context.Context, client client.Client) appsv1.Deployment {
