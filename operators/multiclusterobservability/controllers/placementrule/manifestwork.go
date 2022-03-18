@@ -602,8 +602,6 @@ func mergeCollectorRuleGroupList(defaultCollectRuleGroupList []operatorconfig.Co
 		}
 	}
 
-	config.CollectRulesEnabled = len(mergedCollectRuleGroups) > 0
-
 	return mergedCollectRuleGroups
 }
 
