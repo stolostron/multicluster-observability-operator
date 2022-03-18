@@ -29,23 +29,25 @@ names:
   - a
   - b
 matches:
-  - c
+  - __name__="c"
 recording_rules:
   - record: f
     expr: g
 collect_rules:
   - name: h
     selector:
-	  matchExpressions:
-		- key: clusterType
-		  operator: NotIn
-		  values: ["SNO"]
-	rules:
-	  - collect: j
-	    expr: k
-	    for: 1m
-		names:
-		  - l
+      matchExpressions:
+        - key: clusterType
+          operator: NotIn
+          values: ["SNO"]
+    rules:
+      - collect: j
+        expr: k
+        for: 1m
+        names:
+          - c
+        matches:
+          - __name__="a"
 `},
 	}
 }
