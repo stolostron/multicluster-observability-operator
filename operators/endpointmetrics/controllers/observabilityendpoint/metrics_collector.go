@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -126,10 +127,49 @@ func createDeployment(clusterID string, clusterType string,
 	if clusterType != "" {
 		commands = append(commands, fmt.Sprintf("--label=\"clusterType=%s\"", clusterType))
 	}
+
+	dynamicMetricList := map[string]bool{}
+	for _, group := range allowlist.CollectRuleGroupList {
+		if group.Selector.MatchExpression != nil {
+			for _, expr := range group.Selector.MatchExpression {
+				if !evluateMatchExpression(expr, clusterID, clusterType, obsAddonSpec, hubInfo,
+					allowlist, nodeSelector, tolerations, replicaCount) {
+					continue
+				}
+				for _, rule := range group.CollectRuleList {
+					matchList := []string{}
+					for _, match := range rule.MatchList {
+						matchList = append(matchList, `"`+strings.ReplaceAll(match, `"`, `\"`)+`"`)
+						if name := getNameInMatch(match); name != "" {
+							dynamicMetricList[name] = false
+						}
+					}
+					for _, name := range rule.NameList {
+						dynamicMetricList[name] = false
+					}
+					matchListStr := "[" + strings.Join(matchList, ",") + "]"
+					nameListStr := `["` + strings.Join(rule.NameList, `","`) + `"]`
+					commands = append(
+						commands,
+						fmt.Sprintf("--collectrule={\"name\":\"%s\",\"expr\":\"%s\",\"for\":\"%s\",\"names\":%v,\"matches\":%v}",
+							rule.Collect, rule.Expr, rule.For, nameListStr, matchListStr),
+					)
+				}
+			}
+		}
+	}
+
 	for _, metrics := range allowlist.NameList {
-		commands = append(commands, fmt.Sprintf("--match={__name__=\"%s\"}", metrics))
+		if _, ok := dynamicMetricList[metrics]; !ok {
+			commands = append(commands, fmt.Sprintf("--match={__name__=\"%s\"}", metrics))
+		}
 	}
 	for _, match := range allowlist.MatchList {
+		if name := getNameInMatch(match); name != "" {
+			if _, ok := dynamicMetricList[name]; ok {
+				continue
+			}
+		}
 		commands = append(commands, fmt.Sprintf("--match={%s}", match))
 	}
 
@@ -146,30 +186,6 @@ func createDeployment(clusterID string, clusterType string,
 			commands,
 			fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr),
 		)
-	}
-
-	for _, group := range allowlist.CollectRuleGroupList {
-		if group.Selector.MatchExpression != nil {
-			for _, expr := range group.Selector.MatchExpression {
-				if !evluateMatchExpression(expr, clusterID, clusterType, obsAddonSpec, hubInfo,
-					allowlist, nodeSelector, tolerations, replicaCount) {
-					continue
-				}
-				for _, rule := range group.CollectRuleList {
-					matchList := []string{}
-					for _, match := range rule.MatchList {
-						matchList = append(matchList, `"`+strings.ReplaceAll(match, `"`, `\"`)+`"`)
-					}
-					matchListStr := "[" + strings.Join(matchList, ",") + "]"
-					nameListStr := `["` + strings.Join(rule.NameList, `","`) + `"]`
-					commands = append(
-						commands,
-						fmt.Sprintf("--collectrule={\"name\":\"%s\",\"expr\":\"%s\",\"for\":\"%s\",\"names\":%v,\"matches\":%v}",
-							rule.Collect, rule.Expr, rule.For, nameListStr, matchListStr),
-					)
-				}
-			}
-		}
 	}
 
 	from := promURL
@@ -333,4 +349,13 @@ func getEndpointDeployment(ctx context.Context, client client.Client) appsv1.Dep
 		log.Error(err, "Failed to get deployment")
 	}
 	return *d
+}
+
+func getNameInMatch(match string) string {
+	r := regexp.MustCompile(`__name__="([^,]*)"`)
+	m := r.FindAllStringSubmatch(match, -1)
+	if m != nil {
+		return m[0][1]
+	}
+	return ""
 }
