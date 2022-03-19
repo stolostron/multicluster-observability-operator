@@ -296,8 +296,6 @@ var (
 		ProxyRouteBYOCAName:          ResourceTypeSecret,
 		ProxyRouteBYOCERTName:        ResourceTypeSecret,
 	}
-
-	CollectRulesEnabled bool = true
 )
 
 func GetReplicas(component string, advanced *observabilityv1beta2.AdvancedConfig) *int32 {

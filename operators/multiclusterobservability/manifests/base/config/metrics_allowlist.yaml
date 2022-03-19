@@ -178,49 +178,6 @@ data:
       - record: node_namespace_pod_container:container_cpu_usage_seconds_total:sum
         expr: sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{container!=\"\"}) by (namespace)
     collect_rules:
-      - name: NamespaceResourceUsage
-        annotations:
-          summary:
-          description: 
-        selector:
-          matchExpressions:
-            - key: clusterType
-              operator: NotIn
-              values: ["SNO"]
-        rules:
-        - collect: NamespaceHighCPUUsage
-          annotations:
-            summary:
-            description:  
-          expr: namespace:container_cpu_usage:sum/min(sum(kube_resourcequota{resource=\"limits.cpu\", type=\"hard\"}) by (namespace, resourcequota)) by (namespace) * 100 > 70
-          for: 2m
-          matches:
-            - __name__="container_cpu_cfs_periods_total",namespace="{{ $labels.namespace }}"
-            - __name__="container_cpu_cfs_throttled_periods_total",namespace="{{ $labels.namespace }}"
-            - __name__="kube_pod_container_resource_limits",namespace="{{ $labels.namespace }}"
-            - __name__="kube_pod_container_resource_requests",namespace="{{ $labels.namespace }}"
-            - __name__="kube_resourcequota",namespace="{{ $labels.namespace }}"
-            - __name__="mixin_pod_workload",namespace="{{ $labels.namespace }}"
-            - __name__="namespace_workload_pod:kube_pod_owner:relabel",namespace="{{ $labels.namespace }}"
-            - __name__="node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate",namespace="{{ $labels.namespace }}"
-            - __name__="node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate",namespace="{{ $labels.namespace }}"
-        - collect: NamespaceHighMemoryUsage
-          annotations:
-            summary:
-            description:  
-          expr: sum(container_memory_working_set_bytes{container!=\"\"}) by (namespace)/min(sum(kube_resourcequota{resource=\"limits.memory\", type=\"hard\"}) by (namespace, resourcequota)) by (namespace) * 100 > 70
-          for: 2m
-          matches:
-            - __name__="container_memory_cache",namespace="{{ $labels.namespace }}"
-            - __name__="container_memory_rss",namespace="{{ $labels.namespace }}"
-            - __name__="container_memory_swap",namespace="{{ $labels.namespace }}"
-            - __name__="container_memory_working_set_bytes",namespace="{{ $labels.namespace }}"
-            - __name__="kube_pod_container_resource_limits",namespace="{{ $labels.namespace }}"
-            - __name__="kube_pod_container_resource_requests",namespace="{{ $labels.namespace }}"
-            - __name__="kube_resourcequota",namespace="{{ $labels.namespace }}"
-            - __name__="mixin_pod_workload",namespace="{{ $labels.namespace }}"
-            - __name__="namespace_workload_pod:kube_pod_owner:relabel",namespace="{{ $labels.namespace }}"
-
       - name: SNOResourceUsage
         annotations:
           summary:

@@ -585,20 +585,22 @@ func mergeMetrics(defaultAllowlist []string, customAllowlist []string) []string 
 
 func mergeCollectorRuleGroupList(defaultCollectRuleGroupList []operatorconfig.CollectRuleGroup, customCollectRuleGroupList []operatorconfig.CollectRuleGroup) []operatorconfig.CollectRuleGroup {
 	deletedCollectRuleGroups := map[string]bool{}
+	mergedCollectRuleGroups := []operatorconfig.CollectRuleGroup{}
+
 	for _, collectRuleGroup := range customCollectRuleGroupList {
 		if strings.HasPrefix(collectRuleGroup.Name, "-") {
 			deletedCollectRuleGroups[strings.TrimPrefix(collectRuleGroup.Name, "-")] = true
+		} else if collectRuleGroup.Name == "NamespaceResourceUsage" {
+			// dev-preview: Allow adding only a collect group named NamespaceResourceUsage
+			mergedCollectRuleGroups = append(mergedCollectRuleGroups, collectRuleGroup)
 		}
 	}
 
-	mergedCollectRuleGroups := []operatorconfig.CollectRuleGroup{}
 	for _, collectRuleGroup := range defaultCollectRuleGroupList {
 		if !deletedCollectRuleGroups[collectRuleGroup.Name] {
 			mergedCollectRuleGroups = append(mergedCollectRuleGroups, collectRuleGroup)
 		}
 	}
-
-	config.CollectRulesEnabled = len(mergedCollectRuleGroups) == 2
 
 	return mergedCollectRuleGroups
 }
