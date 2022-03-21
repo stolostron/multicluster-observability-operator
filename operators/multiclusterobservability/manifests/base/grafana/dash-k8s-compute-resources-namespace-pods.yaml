@@ -1417,7 +1417,7 @@ data:
             "options": [],
             "query": "prometheus",
             "refresh": 2,
-            "regex": "Observatorium-Dynamic",
+            "regex": "",
             "skipUrlSync": false,
             "type": "datasource"
           },
