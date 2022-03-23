@@ -106,9 +106,8 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
     - record: f
       expr: g
   collect_rules:
-    - name: keepGroup
+    - group: keepGroup
       annotations:
-        summary:
         description:
       selector:
         matchExpressions:
@@ -118,15 +117,14 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
       rules:
       - collect: c
         annotations:
-          summary:
           description:
         expr: e
         for: 2m
-        matches:
-          - __name__="foo"
-    - name: discardGroup
+        dynamic_metrics:
+          matches:
+            - __name__="foo"
+    - group: discardGroup
       annotations:
-        summary:
         description:
       selector:
         matchExpressions:
@@ -136,12 +134,12 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
         rules:
         - collect: d
           annotations:
-            summary:
             description:
           expr: d
           for: 2m
-          names:
-            - foobar_metric
+          dynamic_metrics:
+            names:
+              - foobar_metric
 `,
 			"ocp311_metrics_list.yaml": `
   names:

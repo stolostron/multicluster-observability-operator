@@ -27,8 +27,12 @@ type CollectRule struct {
 	Annotations map[string]string `yaml:"annotations"`
 	Expr        string            `yaml:"expr"`
 	For         string            `yaml:"for"`
-	NameList    []string          `yaml:"names"`
-	MatchList   []string          `yaml:"matches"`
+	Metrics    DynamicMetrics    `yaml:"dynamic_metrics"`
+}
+
+type DynamicMetrics struct {
+	NameList  []string `yaml:"names"`
+	MatchList []string `yaml:"matches"`
 }
 
 type CollectRuleSelector struct {
@@ -38,7 +42,7 @@ type CollectRuleSelector struct {
 // CollectRuleGroup structure contains information of a group of collect rules used for
 // dnamically collecting metrics.
 type CollectRuleGroup struct {
-	Name            string              `yaml:"name"`
+	Name            string              `yaml:"group"`
 	Annotations     map[string]string   `yaml:"annotations"`
 	Selector        CollectRuleSelector `yaml:"selector"`
 	CollectRuleList []CollectRule       `yaml:"rules"`

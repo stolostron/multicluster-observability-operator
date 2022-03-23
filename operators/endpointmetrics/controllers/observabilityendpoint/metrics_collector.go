@@ -138,17 +138,17 @@ func createDeployment(clusterID string, clusterType string,
 				}
 				for _, rule := range group.CollectRuleList {
 					matchList := []string{}
-					for _, match := range rule.MatchList {
+					for _, match := range rule.Metrics.MatchList {
 						matchList = append(matchList, `"`+strings.ReplaceAll(match, `"`, `\"`)+`"`)
 						if name := getNameInMatch(match); name != "" {
 							dynamicMetricList[name] = false
 						}
 					}
-					for _, name := range rule.NameList {
+					for _, name := range rule.Metrics.NameList {
 						dynamicMetricList[name] = false
 					}
 					matchListStr := "[" + strings.Join(matchList, ",") + "]"
-					nameListStr := `["` + strings.Join(rule.NameList, `","`) + `"]`
+					nameListStr := `["` + strings.Join(rule.Metrics.NameList, `","`) + `"]`
 					commands = append(
 						commands,
 						fmt.Sprintf("--collectrule={\"name\":\"%s\",\"expr\":\"%s\",\"for\":\"%s\",\"names\":%v,\"matches\":%v}",
