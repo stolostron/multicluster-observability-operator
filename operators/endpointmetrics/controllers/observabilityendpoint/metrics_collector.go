@@ -57,6 +57,10 @@ func createDeployment(clusterID string, clusterType string,
 	if fmt.Sprint(obsAddonSpec.Interval) == "" {
 		interval = defaultInterval
 	}
+	evaluateInterval := "30s"
+	if obsAddonSpec.Interval < 30 {
+		evaluateInterval = interval
+	}
 
 	volumes := []corev1.Volume{
 		{
@@ -116,6 +120,7 @@ func createDeployment(clusterID string, clusterType string,
 		"--to-upload-cert=/tlscerts/certs/tls.crt",
 		"--to-upload-key=/tlscerts/certs/tls.key",
 		"--interval=" + interval,
+		"--evaluate-interval=" + evaluateInterval,
 		"--limit-bytes=" + strconv.Itoa(limitBytes),
 		fmt.Sprintf("--label=\"cluster=%s\"", hubInfo.ClusterName),
 		fmt.Sprintf("--label=\"clusterID=%s\"", clusterID),
