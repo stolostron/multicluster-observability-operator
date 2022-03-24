@@ -74,10 +74,10 @@ function get_metrics_list() {
 function get_recordingrules_list() {
 	echo "getting recordingrules list..."
 	if [[ -z "${IS_GENERATING_OCP311_METRICS}" ]]; then
-		recordingrules=$(curl -L ${METRICS_ALLOW_LIST_URL} | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.data."metrics_list.yaml"' | ${GOJSONTOYAML_BIN} --yamltojson | jq '.rules[]')
+		recordingrules=$(curl -L ${METRICS_ALLOW_LIST_URL} | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.data."metrics_list.yaml"' | ${GOJSONTOYAML_BIN} --yamltojson | jq '.recording_rules[]')
 		echo "$recordingrules" | jq -s . > ${RECORDINGRULES_JSON_OUT}
 	else
-		recordingrules=$(curl -L ${METRICS_ALLOW_LIST_URL} | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.data."ocp311_metrics_list.yaml"' | ${GOJSONTOYAML_BIN} --yamltojson | jq '.rules[]')
+		recordingrules=$(curl -L ${METRICS_ALLOW_LIST_URL} | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.data."ocp311_metrics_list.yaml"' | ${GOJSONTOYAML_BIN} --yamltojson | jq '.recording_rules[]')
                 echo "$recordingrules" | jq -s . > ${RECORDINGRULES_JSON_OUT}
 	fi
 }
