@@ -9,6 +9,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -308,6 +310,49 @@ func TestCompareObject(t *testing.T) {
 					Data: map[string][]byte{
 						"username": []byte("YWRtaW4="),
 						"password": []byte("MWYyZDFlMmU2N2Rm"),
+					},
+				},
+			},
+		},
+		{
+			name: "Compare CRD",
+			rawObj1: runtime.RawExtension{
+				Object: &apiextensionsv1.CustomResourceDefinition{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "v1",
+						Kind:       "CustomResourceDefinition",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-crd-1",
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Group: "group1",
+					},
+				},
+			},
+			rawObj2: runtime.RawExtension{
+				Object: &apiextensionsv1beta1.CustomResourceDefinition{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "v1beta1",
+						Kind:       "CustomResourceDefinition",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-crd-1",
+					},
+					Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{},
+				},
+			},
+			rawObj3: runtime.RawExtension{
+				Object: &apiextensionsv1.CustomResourceDefinition{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "v1",
+						Kind:       "CustomResourceDefinition",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-crd-1",
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Group: "group2",
 					},
 				},
 			},

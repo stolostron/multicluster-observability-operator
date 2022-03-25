@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -25,35 +26,40 @@ type compFn func(runtime.Object, runtime.Object) bool
 var log = logf.Log.WithName("obj_compare")
 
 var compFns = map[string]compFn{
-	"Namespace":                compareNamespaces,
-	"Deployment":               compareDeployments,
-	"ServiceAccount":           compareServiceAccounts,
-	"ClusterRole":              compareClusterRoles,
-	"ClusterRoleBinding":       compareClusterRoleBindings,
-	"Secret":                   compareSecrets,
-	"Service":                  compareServices,
-	"ConfigMap":                compareConfigMap,
-	"CustomResourceDefinition": compareCRD,
-	"ObservabilityAddon":       compareObsAddon,
+	"Namespace":                       compareNamespaces,
+	"Deployment":                      compareDeployments,
+	"ServiceAccount":                  compareServiceAccounts,
+	"ClusterRole":                     compareClusterRoles,
+	"ClusterRoleBinding":              compareClusterRoleBindings,
+	"Secret":                          compareSecrets,
+	"Service":                         compareServices,
+	"ConfigMap":                       compareConfigMap,
+	"CustomResourceDefinitionv1":      compareCRDv1,
+	"CustomResourceDefinitionv1beta1": compareCRDv1beta1,
+	"ObservabilityAddon":              compareObsAddon,
 }
 
 // GetK8sObj is used to get k8s struct based on the passed-in Kind name
-func GetK8sObj(kind string) runtime.Object {
+func GetK8sObj(kind, version string) runtime.Object {
 	objs := map[string]runtime.Object{
-		"Namespace":                &corev1.Namespace{},
-		"Deployment":               &v1.Deployment{},
-		"StatefulSet":              &v1.StatefulSet{},
-		"DaemonSet":                &v1.DaemonSet{},
-		"ClusterRole":              &rbacv1.ClusterRole{},
-		"ClusterRoleBinding":       &rbacv1.ClusterRoleBinding{},
-		"ServiceAccount":           &corev1.ServiceAccount{},
-		"PersistentVolumeClaim":    &corev1.PersistentVolumeClaim{},
-		"Secret":                   &corev1.Secret{},
-		"ConfigMap":                &corev1.ConfigMap{},
-		"Service":                  &corev1.Service{},
-		"CustomResourceDefinition": &apiextensionsv1.CustomResourceDefinition{},
-		"ObservabilityAddon":       &mcov1beta1.ObservabilityAddon{},
-		"Prometheus":               &prometheusv1.Prometheus{},
+		"Namespace":                       &corev1.Namespace{},
+		"Deployment":                      &v1.Deployment{},
+		"StatefulSet":                     &v1.StatefulSet{},
+		"DaemonSet":                       &v1.DaemonSet{},
+		"ClusterRole":                     &rbacv1.ClusterRole{},
+		"ClusterRoleBinding":              &rbacv1.ClusterRoleBinding{},
+		"ServiceAccount":                  &corev1.ServiceAccount{},
+		"PersistentVolumeClaim":           &corev1.PersistentVolumeClaim{},
+		"Secret":                          &corev1.Secret{},
+		"ConfigMap":                       &corev1.ConfigMap{},
+		"Service":                         &corev1.Service{},
+		"CustomResourceDefinitionv1":      &apiextensionsv1.CustomResourceDefinition{},
+		"CustomResourceDefinitionv1beta1": &apiextensionsv1beta1.CustomResourceDefinition{},
+		"ObservabilityAddon":              &mcov1beta1.ObservabilityAddon{},
+		"Prometheus":                      &prometheusv1.Prometheus{},
+	}
+	if kind == "CustomResourceDefinition" {
+		kind = kind + version
 	}
 	return objs[kind]
 }
@@ -73,9 +79,15 @@ func CompareObject(re1 runtime.RawExtension, re2 runtime.RawExtension) bool {
 	}
 	kind1 := obj1.GetObjectKind().GroupVersionKind().Kind
 	kind2 := obj2.GetObjectKind().GroupVersionKind().Kind
-	if kind1 != kind2 {
-		log.Info("obj1 and obj2 have differnt Kind", "kind1", kind2, "kind2", kind2)
+	version1 := obj1.GetObjectKind().GroupVersionKind().Version
+	version2 := obj2.GetObjectKind().GroupVersionKind().Version
+	if kind1 != kind2 || version1 != version2 {
+		log.Info("obj1 and obj2 have differnt Kind or Version",
+			"kind1", kind2, "kind2", kind2, "version1", version1, "version2", version2)
 		return false
+	}
+	if kind1 == "CustomResourceDefinition" {
+		kind1 = kind1 + version1
 	}
 	return compFns[kind1](obj1, obj2)
 }
@@ -89,7 +101,7 @@ func GetObject(re runtime.RawExtension) (runtime.Object, error) {
 		log.Error(err, "Failed to decode the raw")
 		return nil, err
 	}
-	obj := GetK8sObj(gvk.Kind)
+	obj := GetK8sObj(gvk.Kind, gvk.Version)
 	err = yaml.NewYAMLOrJSONDecoder(strings.NewReader(string(re.Raw)), 100).Decode(obj)
 	if err != nil {
 		log.Error(err, "Failed to decode the raw to Kind", "kind", gvk.Kind)
@@ -206,9 +218,23 @@ func compareConfigMap(obj1 runtime.Object, obj2 runtime.Object) bool {
 	return true
 }
 
-func compareCRD(obj1 runtime.Object, obj2 runtime.Object) bool {
+func compareCRDv1(obj1 runtime.Object, obj2 runtime.Object) bool {
 	crd1 := obj1.(*apiextensionsv1.CustomResourceDefinition)
 	crd2 := obj2.(*apiextensionsv1.CustomResourceDefinition)
+	if crd1.Name != crd2.Name {
+		log.Info("Find updated name for crd", "crd", crd1.Name)
+		return false
+	}
+	if !reflect.DeepEqual(crd1.Spec, crd2.Spec) {
+		log.Info("Find updated spec for crd", "crd", crd1.Name)
+		return false
+	}
+	return true
+}
+
+func compareCRDv1beta1(obj1 runtime.Object, obj2 runtime.Object) bool {
+	crd1 := obj1.(*apiextensionsv1beta1.CustomResourceDefinition)
+	crd2 := obj2.(*apiextensionsv1beta1.CustomResourceDefinition)
 	if crd1.Name != crd2.Name {
 		log.Info("Find updated name for crd", "crd", crd1.Name)
 		return false
