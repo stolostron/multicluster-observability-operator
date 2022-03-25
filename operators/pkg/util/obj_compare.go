@@ -34,13 +34,18 @@ var compFns = map[string]compFn{
 	"Secret":                          compareSecrets,
 	"Service":                         compareServices,
 	"ConfigMap":                       compareConfigMap,
+	"CustomResourceDefinition":        compareCRDv1,
 	"CustomResourceDefinitionv1":      compareCRDv1,
 	"CustomResourceDefinitionv1beta1": compareCRDv1beta1,
 	"ObservabilityAddon":              compareObsAddon,
 }
 
+func GetK8sObj(kind string) runtime.Object {
+	return GetK8sObjWithVersion(kind, "")
+}
+
 // GetK8sObj is used to get k8s struct based on the passed-in Kind name
-func GetK8sObj(kind, version string) runtime.Object {
+func GetK8sObjWithVersion(kind, version string) runtime.Object {
 	objs := map[string]runtime.Object{
 		"Namespace":                       &corev1.Namespace{},
 		"Deployment":                      &v1.Deployment{},
@@ -53,6 +58,7 @@ func GetK8sObj(kind, version string) runtime.Object {
 		"Secret":                          &corev1.Secret{},
 		"ConfigMap":                       &corev1.ConfigMap{},
 		"Service":                         &corev1.Service{},
+		"CustomResourceDefinition":        &apiextensionsv1.CustomResourceDefinition{},
 		"CustomResourceDefinitionv1":      &apiextensionsv1.CustomResourceDefinition{},
 		"CustomResourceDefinitionv1beta1": &apiextensionsv1beta1.CustomResourceDefinition{},
 		"ObservabilityAddon":              &mcov1beta1.ObservabilityAddon{},
@@ -101,7 +107,7 @@ func GetObject(re runtime.RawExtension) (runtime.Object, error) {
 		log.Error(err, "Failed to decode the raw")
 		return nil, err
 	}
-	obj := GetK8sObj(gvk.Kind, gvk.Version)
+	obj := GetK8sObjWithVersion(gvk.Kind, gvk.Version)
 	err = yaml.NewYAMLOrJSONDecoder(strings.NewReader(string(re.Raw)), 100).Decode(obj)
 	if err != nil {
 		log.Error(err, "Failed to decode the raw to Kind", "kind", gvk.Kind)
