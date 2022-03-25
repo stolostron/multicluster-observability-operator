@@ -71,30 +71,6 @@ config:
 		},
 
 		{
-			conf: []byte(`type: s3
-config:
-  bucket: bucket
-  endpoint: endpoint
-  insecure: true
-  access_key: ""
-  secret_key: secret_key`),
-			name:     "no access_key",
-			expected: false,
-		},
-
-		{
-			conf: []byte(`type: s3
-config:
-  bucket: bucket
-  endpoint: endpoint
-  insecure: true
-  access_key: access_key
-  secret_key: ""`),
-			name:     "no secret_key",
-			expected: false,
-		},
-
-		{
 			conf: []byte(`type: gcs
 config:
   bucket: ""
