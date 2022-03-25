@@ -590,8 +590,7 @@ func mergeCollectorRuleGroupList(defaultCollectRuleGroupList []operatorconfig.Co
 	for _, collectRuleGroup := range customCollectRuleGroupList {
 		if strings.HasPrefix(collectRuleGroup.Name, "-") {
 			deletedCollectRuleGroups[strings.TrimPrefix(collectRuleGroup.Name, "-")] = true
-		} else if collectRuleGroup.Name == "NamespaceResourceUsage" {
-			// dev-preview: Allow adding only a collect group named NamespaceResourceUsage
+		} else {
 			mergedCollectRuleGroups = append(mergedCollectRuleGroups, collectRuleGroup)
 		}
 	}

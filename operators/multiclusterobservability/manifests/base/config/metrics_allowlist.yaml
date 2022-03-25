@@ -214,13 +214,14 @@ data:
           for: 2m
           dynamic_metrics:
             names:
-              - container_memory_cache 
-              - container_memory_rss 
-              - container_memory_swap 
-              - container_memory_working_set_bytes 
               - kube_pod_container_resource_limits 
               - kube_pod_container_resource_requests 
-              - namespace_workload_pod:kube_pod_owner:relabel   
+              - namespace_workload_pod:kube_pod_owner:relabel
+            matches:
+              - __name__="container_memory_cache",container!=""
+              - __name__="container_memory_rss",container!=""
+              - __name__="container_memory_swap",container!=""
+              - __name__="container_memory_working_set_bytes",container!=""
  
   ocp311_metrics_list.yaml: |
     names:
