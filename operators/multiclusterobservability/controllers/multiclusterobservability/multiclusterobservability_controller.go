@@ -170,12 +170,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, nil
 	}
 
-	if _, ok := config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Key]; !ok {
-		log.Info("Adding backup label", "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Key)
-		config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Key] = config.ResourceTypeSecret
-		err = util.AddBackupLabelToSecret(r.Client, instance.Spec.StorageConfig.MetricObjectStorage.Key, config.GetDefaultNamespace())
+	if _, ok := config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Name]; !ok {
+		log.Info("Adding backup label", "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Name)
+		config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Name] = config.ResourceTypeSecret
+		err = util.AddBackupLabelToSecret(r.Client, instance.Spec.StorageConfig.MetricObjectStorage.Name, config.GetDefaultNamespace())
 		if err != nil {
-			log.Error(err, "Failed to add backup label", "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Key)
+			log.Error(err, "Failed to add backup label", "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Name)
 			return ctrl.Result{}, err
 		}
 	}

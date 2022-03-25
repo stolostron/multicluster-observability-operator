@@ -289,8 +289,8 @@ var (
 	BackupResourceMap = map[string]string{
 		AllowlistCustomConfigMapName: ResourceTypeConfigMap,
 		AlertRuleCustomConfigMapName: ResourceTypeConfigMap,
-		AlertmanagerConfigName:       ResourceTypeConfigMap,
 
+		AlertmanagerConfigName:       ResourceTypeSecret,
 		AlertmanagerRouteBYOCAName:   ResourceTypeSecret,
 		AlertmanagerRouteBYOCERTName: ResourceTypeSecret,
 		ProxyRouteBYOCAName:          ResourceTypeSecret,
