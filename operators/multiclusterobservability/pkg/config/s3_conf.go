@@ -20,14 +20,6 @@ func validateS3(conf Config) error {
 		return errors.New("no s3 endpoint in config file")
 	}
 
-	if conf.AccessKey == "" {
-		return errors.New("no s3 access_key in config file")
-	}
-
-	if conf.SecretKey == "" {
-		return errors.New("no s3 secret_key in config file")
-	}
-
 	return nil
 }
 
