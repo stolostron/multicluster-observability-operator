@@ -50,22 +50,9 @@ var (
 	endpointMetricsOperatorDeploy *appsv1.Deployment
 	imageListConfigMap            *corev1.ConfigMap
 
-	rawExtensionList     []runtime.RawExtension
-	promRawExtensionList []runtime.RawExtension
+	rawExtensionList []runtime.RawExtension
+	//promRawExtensionList []runtime.RawExtension
 )
-
-type MetricsAllowlist struct {
-	NameList  []string          `yaml:"names"`
-	MatchList []string          `yaml:"matches"`
-	RenameMap map[string]string `yaml:"renames"`
-	RuleList  []Rule            `yaml:"rules"`
-}
-
-// Rule is the struct for recording rules and alert rules
-type Rule struct {
-	Record string `yaml:"record"`
-	Expr   string `yaml:"expr"`
-}
 
 func deleteManifestWork(c client.Client, name string, namespace string) error {
 
@@ -173,7 +160,7 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 
 	if found.GetDeletionTimestamp() != nil {
 		log.Info("Existing manifestwork is terminating, skip and reconcile later")
-		return errors.New("Existing manifestwork is terminating, skip and reconcile later")
+		return errors.New("existing manifestwork is terminating, skip and reconcile later")
 	}
 
 	manifests := work.Spec.Workload.Manifests
@@ -373,7 +360,8 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	return err
 }
 
-// generateAmAccessorTokenSecret generates the secret that contains the access_token for the Alertmanager in the Hub cluster
+// generateAmAccessorTokenSecret generates the secret that contains the access_token
+// for the Alertmanager in the Hub cluster
 func generateAmAccessorTokenSecret(client client.Client) (*corev1.Secret, error) {
 	amAccessorSA := &corev1.ServiceAccount{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: config.AlertmanagerAccessorSAName,
@@ -392,8 +380,16 @@ func generateAmAccessorTokenSecret(client client.Client) (*corev1.Secret, error)
 	}
 
 	if tokenSrtName == "" {
-		log.Error(err, "no token secret for Alertmanager accessor serviceaccount", "name", config.AlertmanagerAccessorSAName)
-		return nil, fmt.Errorf("no token secret for Alertmanager accessor serviceaccount: %s", config.AlertmanagerAccessorSAName)
+		log.Error(
+			err,
+			"no token secret for Alertmanager accessor serviceaccount",
+			"name",
+			config.AlertmanagerAccessorSAName,
+		)
+		return nil, fmt.Errorf(
+			"no token secret for Alertmanager accessor serviceaccount: %s",
+			config.AlertmanagerAccessorSAName,
+		)
 	}
 
 	tokenSrt := &corev1.Secret{}
@@ -489,19 +485,31 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 		Data: map[string]string{},
 	}
 
-	allowlist, err := getAllowList(client, operatorconfig.AllowlistConfigMapName)
+	allowlist, ocp3Allowlist, err := getAllowList(client, operatorconfig.AllowlistConfigMapName)
 	if err != nil {
 		log.Error(err, "Failed to get metrics allowlist configmap "+operatorconfig.AllowlistConfigMapName)
 		return nil, err
 	}
 
-	customAllowlist, err := getAllowList(client, config.AllowlistCustomConfigMapName)
+	customAllowlist, _, err := getAllowList(client, config.AllowlistCustomConfigMapName)
 	if err == nil {
 		allowlist.NameList = mergeMetrics(allowlist.NameList, customAllowlist.NameList)
 		allowlist.MatchList = mergeMetrics(allowlist.MatchList, customAllowlist.MatchList)
-		allowlist.RuleList = append(allowlist.RuleList, customAllowlist.RuleList...)
+		allowlist.CollectRuleGroupList = mergeCollectorRuleGroupList(allowlist.CollectRuleGroupList, customAllowlist.CollectRuleGroupList)
+		if customAllowlist.RecordingRuleList != nil {
+			allowlist.RecordingRuleList = append(allowlist.RecordingRuleList, customAllowlist.RecordingRuleList...)
+		} else {
+			//check if rules are specified for backward compatibility
+			allowlist.RecordingRuleList = append(allowlist.RecordingRuleList, customAllowlist.RuleList...)
+		}
 		for k, v := range customAllowlist.RenameMap {
 			allowlist.RenameMap[k] = v
+		}
+		ocp3Allowlist.NameList = mergeMetrics(ocp3Allowlist.NameList, customAllowlist.NameList)
+		ocp3Allowlist.MatchList = mergeMetrics(ocp3Allowlist.MatchList, customAllowlist.MatchList)
+		ocp3Allowlist.RuleList = append(ocp3Allowlist.RuleList, customAllowlist.RuleList...)
+		for k, v := range customAllowlist.RenameMap {
+			ocp3Allowlist.RenameMap[k] = v
 		}
 	} else {
 		log.Info("There is no custom metrics allowlist configmap in the cluster")
@@ -513,10 +521,16 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 	metricsAllowlist.Data["metrics_list.yaml"] = string(data)
+	data, err = yaml.Marshal(ocp3Allowlist)
+	if err != nil {
+		log.Error(err, "Failed to marshal allowlist data")
+		return nil, err
+	}
+	metricsAllowlist.Data["ocp311_metrics_list.yaml"] = string(data)
 	return metricsAllowlist, nil
 }
 
-func getAllowList(client client.Client, name string) (*MetricsAllowlist, error) {
+func getAllowList(client client.Client, name string) (*operatorconfig.MetricsAllowlist, *operatorconfig.MetricsAllowlist, error) {
 	found := &corev1.ConfigMap{}
 	namespacedName := types.NamespacedName{
 		Name:      name,
@@ -524,15 +538,21 @@ func getAllowList(client client.Client, name string) (*MetricsAllowlist, error) 
 	}
 	err := client.Get(context.TODO(), namespacedName, found)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	allowlist := &MetricsAllowlist{}
+	allowlist := &operatorconfig.MetricsAllowlist{}
 	err = yaml.Unmarshal([]byte(found.Data["metrics_list.yaml"]), allowlist)
 	if err != nil {
-		log.Error(err, "Failed to unmarshal data in configmap "+name)
-		return nil, err
+		log.Error(err, "Failed to unmarshal metrics_list.yaml data in configmap "+name)
+		return nil, nil, err
 	}
-	return allowlist, nil
+	ocp3Allowlist := &operatorconfig.MetricsAllowlist{}
+	err = yaml.Unmarshal([]byte(found.Data["ocp311_metrics_list.yaml"]), ocp3Allowlist)
+	if err != nil {
+		log.Error(err, "Failed to unmarshal ocp311_metrics_list data in configmap "+name)
+		return nil, nil, err
+	}
+	return allowlist, ocp3Allowlist, nil
 }
 
 func mergeMetrics(defaultAllowlist []string, customAllowlist []string) []string {
@@ -561,6 +581,26 @@ func mergeMetrics(defaultAllowlist []string, customAllowlist []string) []string 
 	}
 
 	return mergedMetrics
+}
+
+func mergeCollectorRuleGroupList(defaultCollectRuleGroupList []operatorconfig.CollectRuleGroup, customCollectRuleGroupList []operatorconfig.CollectRuleGroup) []operatorconfig.CollectRuleGroup {
+	deletedCollectRuleGroups := map[string]bool{}
+	for _, collectRuleGroup := range customCollectRuleGroupList {
+		if strings.HasPrefix(collectRuleGroup.Name, "-") {
+			deletedCollectRuleGroups[strings.TrimPrefix(collectRuleGroup.Name, "-")] = true
+		}
+	}
+
+	mergedCollectRuleGroups := []operatorconfig.CollectRuleGroup{}
+	for _, collectRuleGroup := range defaultCollectRuleGroupList {
+		if !deletedCollectRuleGroups[collectRuleGroup.Name] {
+			mergedCollectRuleGroups = append(mergedCollectRuleGroups, collectRuleGroup)
+		}
+	}
+
+	config.CollectRulesEnabled = len(mergedCollectRuleGroups) == 2
+
+	return mergedCollectRuleGroups
 }
 
 func getObservabilityAddon(c client.Client, namespace string,

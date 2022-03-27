@@ -33,7 +33,11 @@ var _ = Describe("", func() {
 			}
 			for _, cluster := range clusters {
 				query := fmt.Sprintf("node_memory_MemAvailable_bytes{cluster=\"%s\"}", cluster)
-				err, _ = utils.ContainManagedClusterMetric(testOptions, query, []string{`"__name__":"node_memory_MemAvailable_bytes"`})
+				err, _ = utils.ContainManagedClusterMetric(
+					testOptions,
+					query,
+					[]string{`"__name__":"node_memory_MemAvailable_bytes"`},
+				)
 				if err != nil {
 					return err
 				}

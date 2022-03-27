@@ -25,7 +25,11 @@ type WebhookController struct {
 }
 
 // NewWebhookController create the WebhookController.
-func NewWebhookController(client client.Client, mwh *admissionregistrationv1.MutatingWebhookConfiguration, vwh *admissionregistrationv1.ValidatingWebhookConfiguration) *WebhookController {
+func NewWebhookController(
+	client client.Client,
+	mwh *admissionregistrationv1.MutatingWebhookConfiguration,
+	vwh *admissionregistrationv1.ValidatingWebhookConfiguration,
+) *WebhookController {
 	return &WebhookController{
 		client:            client,
 		mutatingWebhook:   mwh,
@@ -39,14 +43,23 @@ func NewWebhookController(client client.Client, mwh *admissionregistrationv1.Mut
 // currently the controller will not watch the change of the webhook configurations.
 func (wc *WebhookController) Start(ctx context.Context) error {
 	if wc.mutatingWebhook != nil {
-		log.V(1).Info("creating or updating the mutatingwebhookconfiguration", "mutatingwebhookconfiguration", wc.mutatingWebhook.GetName())
+		log.V(1).Info(
+			"creating or updating the mutatingwebhookconfiguration",
+			"mutatingwebhookconfiguration",
+			wc.mutatingWebhook.GetName())
 		foundMwhc := &admissionregistrationv1.MutatingWebhookConfiguration{}
-		if err := wc.client.Get(context.TODO(), types.NamespacedName{Name: wc.mutatingWebhook.GetName()}, foundMwhc); err != nil && apierrors.IsNotFound(err) {
+		err := wc.client.Get(
+			context.TODO(),
+			types.NamespacedName{Name: wc.mutatingWebhook.GetName()}, foundMwhc)
+		if err != nil && apierrors.IsNotFound(err) {
 			if err := wc.client.Create(context.TODO(), wc.mutatingWebhook); err != nil {
-				log.V(1).Info("failed to create the mutatingwebhookconfiguration", "mutatingwebhookconfiguration", wc.mutatingWebhook.GetName(), "error", err)
+				log.V(1).Info("failed to create the mutatingwebhookconfiguration",
+					"mutatingwebhookconfiguration", wc.mutatingWebhook.GetName(),
+					"error", err)
 				return err
 			}
-			log.V(1).Info("the mutatingwebhookconfiguration is created", "mutatingwebhookconfiguration", wc.mutatingWebhook.GetName())
+			log.V(1).Info("the mutatingwebhookconfiguration is created",
+				"mutatingwebhookconfiguration", wc.mutatingWebhook.GetName())
 		} else if err != nil {
 			log.V(1).Info("failed to check the mutatingwebhookconfiguration", "mutatingwebhookconfiguration", wc.mutatingWebhook.GetName(), "error", err)
 			return err
@@ -71,14 +84,19 @@ func (wc *WebhookController) Start(ctx context.Context) error {
 	}
 
 	if wc.validatingWebhook != nil {
-		log.V(1).Info("creating or updating the validatingwebhookconfiguration", "validatingwebhookconfiguration", wc.validatingWebhook.GetName())
+		log.V(1).Info("creating or updating the validatingwebhookconfiguration",
+			"validatingwebhookconfiguration", wc.validatingWebhook.GetName())
 		foundVwhc := &admissionregistrationv1.ValidatingWebhookConfiguration{}
-		if err := wc.client.Get(context.TODO(), types.NamespacedName{Name: wc.validatingWebhook.GetName()}, foundVwhc); err != nil && apierrors.IsNotFound(err) {
+		if err := wc.client.Get(context.TODO(), types.NamespacedName{Name: wc.validatingWebhook.GetName()}, foundVwhc); err != nil &&
+			apierrors.IsNotFound(err) {
 			if err := wc.client.Create(context.TODO(), wc.validatingWebhook); err != nil {
-				log.V(1).Info("failed to create the validatingwebhookconfiguration", "validatingwebhookconfiguration", wc.validatingWebhook.GetName(), "error", err)
+				log.V(1).Info("failed to create the validatingwebhookconfiguration",
+					"validatingwebhookconfiguration", wc.validatingWebhook.GetName(),
+					"error", err)
 				return err
 			}
-			log.V(1).Info("the validatingwebhookconfiguration is created", "validatingwebhookconfiguration", wc.validatingWebhook.GetName())
+			log.V(1).Info("the validatingwebhookconfiguration is created",
+				"validatingwebhookconfiguration", wc.validatingWebhook.GetName())
 		} else if err != nil {
 			log.V(1).Info("failed to check the validatingwebhookconfiguration", "validatingwebhookconfiguration", wc.validatingWebhook.GetName(), "error", err)
 			return err
@@ -105,7 +123,9 @@ func (wc *WebhookController) Start(ctx context.Context) error {
 	// wait for context done signal
 	<-ctx.Done()
 
-	// currently kubernetes prevents terminating pod from deleting kubernetes resources(including validatingwebhookconfiguration...), see: https://kubernetes.io/blog/2021/05/14/using-finalizers-to-control-deletion/
+	// currently kubernetes prevents terminating pod from deleting kubernetes resources(including
+	// validatingwebhookconfiguration...), see:
+	// https://kubernetes.io/blog/2021/05/14/using-finalizers-to-control-deletion/
 	// that's why the deleting webhook configuration code is commented
 	/*
 		log.V(1).Info("Shutdown signal received, waiting for the webhook cleanup.")

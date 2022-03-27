@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"strings"
 
+	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -36,13 +38,16 @@ type Deployer struct {
 func NewDeployer(client client.Client) *Deployer {
 	deployer := &Deployer{client: client}
 	deployer.deployerFns = map[string]deployerFn{
-		"Deployment":         deployer.updateDeployment,
-		"StatefulSet":        deployer.updateStatefulSet,
-		"Service":            deployer.updateService,
-		"ConfigMap":          deployer.updateConfigMap,
-		"Secret":             deployer.updateSecret,
-		"ClusterRole":        deployer.updateClusterRole,
-		"ClusterRoleBinding": deployer.updateClusterRoleBinding,
+		"Deployment":               deployer.updateDeployment,
+		"StatefulSet":              deployer.updateStatefulSet,
+		"Service":                  deployer.updateService,
+		"ConfigMap":                deployer.updateConfigMap,
+		"Secret":                   deployer.updateSecret,
+		"ClusterRole":              deployer.updateClusterRole,
+		"ClusterRoleBinding":       deployer.updateClusterRoleBinding,
+		"CustomResourceDefinition": deployer.updateCRD,
+		"Prometheus":               deployer.updatePrometheus,
+		"PrometheusRule":           deployer.updatePrometheusRule,
 	}
 	return deployer
 }
@@ -51,7 +56,11 @@ func NewDeployer(client client.Client) *Deployer {
 func (d *Deployer) Deploy(obj *unstructured.Unstructured) error {
 	found := &unstructured.Unstructured{}
 	found.SetGroupVersionKind(obj.GroupVersionKind())
-	err := d.client.Get(context.TODO(), types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, found)
+	err := d.client.Get(
+		context.TODO(),
+		types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()},
+		found,
+	)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("Create", "Kind:", obj.GroupVersionKind(), "Name:", obj.GetName())
@@ -240,6 +249,73 @@ func (d *Deployer) updateClusterRoleBinding(desiredObj, runtimeObj *unstructured
 		!apiequality.Semantic.DeepDerivative(desiredClusterRoleBinding.RoleRef, runtimeClusterRoleBinding.RoleRef) {
 		log.Info("Update", "Kind:", desiredObj.GroupVersionKind(), "Name:", desiredObj.GetName())
 		return d.client.Update(context.TODO(), desiredClusterRoleBinding)
+	}
+	return nil
+}
+
+func (d *Deployer) updateCRD(desiredObj, runtimeObj *unstructured.Unstructured) error {
+	runtimeJSON, _ := runtimeObj.MarshalJSON()
+	runtimeCRD := &apiextensionsv1.CustomResourceDefinition{}
+	err := json.Unmarshal(runtimeJSON, runtimeCRD)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime CRD %s", runtimeObj.GetName()))
+	}
+
+	desiredJSON, _ := desiredObj.MarshalJSON()
+	desiredCRD := &apiextensionsv1.CustomResourceDefinition{}
+	err = json.Unmarshal(desiredJSON, desiredCRD)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to Unmarshal CRD %s", runtimeObj.GetName()))
+	}
+
+	if !apiequality.Semantic.DeepDerivative(desiredCRD.Spec, runtimeCRD.Spec) {
+		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
+		return d.client.Update(context.TODO(), desiredCRD)
+	}
+
+	return nil
+}
+
+func (d *Deployer) updatePrometheus(desiredObj, runtimeObj *unstructured.Unstructured) error {
+	runtimeJSON, _ := runtimeObj.MarshalJSON()
+	runtimePrometheus := &prometheusv1.Prometheus{}
+	err := json.Unmarshal(runtimeJSON, runtimePrometheus)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime Prometheus %s", runtimeObj.GetName()))
+	}
+
+	desiredJSON, _ := desiredObj.MarshalJSON()
+	desiredPrometheus := &prometheusv1.Prometheus{}
+	err = json.Unmarshal(desiredJSON, desiredPrometheus)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to Unmarshal Prometheus %s", runtimeObj.GetName()))
+	}
+
+	if !apiequality.Semantic.DeepDerivative(desiredPrometheus.Spec, runtimePrometheus.Spec) {
+		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
+		return d.client.Update(context.TODO(), desiredPrometheus)
+	}
+	return nil
+}
+
+func (d *Deployer) updatePrometheusRule(desiredObj, runtimeObj *unstructured.Unstructured) error {
+	runtimeJSON, _ := runtimeObj.MarshalJSON()
+	runtimePrometheusRule := &prometheusv1.PrometheusRule{}
+	err := json.Unmarshal(runtimeJSON, runtimePrometheusRule)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime PrometheusRule  %s", runtimeObj.GetName()))
+	}
+
+	desiredJSON, _ := desiredObj.MarshalJSON()
+	desiredPrometheusRule := &prometheusv1.PrometheusRule{}
+	err = json.Unmarshal(desiredJSON, desiredPrometheusRule)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to Unmarshal PrometheusRule  %s", runtimeObj.GetName()))
+	}
+
+	if !apiequality.Semantic.DeepDerivative(desiredPrometheusRule.Spec, runtimePrometheusRule.Spec) {
+		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
+		return d.client.Update(context.TODO(), desiredPrometheusRule)
 	}
 	return nil
 }

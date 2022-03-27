@@ -29,7 +29,7 @@ func TestRender(t *testing.T) {
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
-			ImagePullPolicy: "Always",
+			ImagePullPolicy: "IfNotPresent",
 			ImagePullSecret: "test",
 			StorageConfig: &mcov1beta2.StorageConfig{
 				MetricObjectStorage: &mcoshared.PreConfiguredStorage{

@@ -47,7 +47,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	mchv1 "github.com/stolostron/multiclusterhub-operator/pkg/apis/operator/v1"
+	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 )
 
@@ -94,6 +94,25 @@ type MultiClusterObservabilityReconciler struct {
 func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling MultiClusterObservability")
+
+	if res, ok := config.BackupResourceMap[req.Name]; ok {
+		reqLogger.Info("Adding backup label")
+		var err error = nil
+		switch res {
+		case config.ResourceTypeConfigMap:
+			err = util.AddBackupLabelToConfigMap(r.Client, req.Name, config.GetDefaultNamespace())
+		case config.ResourceTypeSecret:
+			err = util.AddBackupLabelToSecret(r.Client, req.Name, config.GetDefaultNamespace())
+		default:
+			// we should never be here
+			log.Info("unknown type " + res)
+		}
+
+		if err != nil {
+			reqLogger.Error(err, "Failed to add backup label")
+			return ctrl.Result{}, err
+		}
+	}
 
 	// Fetch the MultiClusterObservability instance
 	instance := &mcov1beta2.MultiClusterObservability{}
@@ -151,6 +170,16 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, nil
 	}
 
+	if _, ok := config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Key]; !ok {
+		log.Info("Adding backup label", "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Key)
+		config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Key] = config.ResourceTypeSecret
+		err = util.AddBackupLabelToSecret(r.Client, instance.Spec.StorageConfig.MetricObjectStorage.Key, config.GetDefaultNamespace())
+		if err != nil {
+			log.Error(err, "Failed to add backup label", "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Key)
+			return ctrl.Result{}, err
+		}
+	}
+
 	storageClassSelected, err := getStorageClass(instance, r.Client)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -181,15 +210,14 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	ns := &corev1.Namespace{}
 	for _, res := range toDeploy {
 		resNS := res.GetNamespace()
-		if resNS == config.GetDefaultNamespace() {
-			if err := controllerutil.SetControllerReference(instance, res, r.Scheme); err != nil {
-				reqLogger.Error(err, "Failed to set controller reference")
-			}
+		if err := controllerutil.SetControllerReference(instance, res, r.Scheme); err != nil {
+			reqLogger.Error(err, "Failed to set controller reference", "kind", res.GetKind(), "name", res.GetName())
 		}
 		if resNS == "" {
 			resNS = config.GetDefaultNamespace()
 		}
-		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: resNS}, ns); err != nil && apierrors.IsNotFound(err) {
+		if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: resNS}, ns); err != nil &&
+			apierrors.IsNotFound(err) {
 			ns = &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
 				Name: resNS,
 			}}
@@ -271,11 +299,6 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 	mco *mcov1beta2.MultiClusterObservability) (bool, error) {
 	if mco.GetDeletionTimestamp() != nil && commonutil.Contains(mco.GetFinalizers(), resFinalizer) {
 		log.Info("To delete resources across namespaces")
-		svmCrdExists := r.CRDMap[config.StorageVersionMigrationCrdName]
-		if svmCrdExists {
-			// remove the StorageVersionMigration resource and ignore error
-			cleanObservabilityStorageVersionMigrationResource(r.Client, mco) // #nosec
-		}
 		// clean up the cluster resources, eg. clusterrole, clusterrolebinding, etc
 		if err := cleanUpClusterScopedResources(r.Client, mco); err != nil {
 			log.Error(err, "Failed to remove cluster scoped resources")
@@ -356,20 +379,44 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	cmPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == config.AlertRuleCustomConfigMapName &&
-				e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				config.SetCustomRuleConfigMap(true)
-				return true
+			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				if e.Object.GetName() == config.AlertRuleCustomConfigMapName {
+					config.SetCustomRuleConfigMap(true)
+					return true
+				} else if _, ok := e.Object.GetLabels()[config.BackupLabelName]; ok {
+					// resource already has backup label
+					return false
+				} else if _, ok := config.BackupResourceMap[e.Object.GetName()]; ok {
+					// resource's backup label must be checked
+					return true
+				} else if _, ok := e.Object.GetLabels()[config.GrafanaCustomDashboardLabel]; ok {
+					// ConfigMap with custom-grafana-dashboard labels, check for backup label
+					config.BackupResourceMap[e.Object.GetName()] = config.ResourceTypeConfigMap
+					return true
+				}
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// Find a way to restart the alertmanager to take the update
-			// if e.ObjectNew.GetName() == config.AlertRuleCustomConfigMapName &&
-			// 	e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
-			// 	config.SetCustomRuleConfigMap(true)
-			// 	return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
-			// }
+			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
+				if e.ObjectNew.GetName() == config.AlertRuleCustomConfigMapName {
+					// Grafana dynamically loads AlertRule configmap, nothing more to do
+					//config.SetCustomRuleConfigMap(true)
+					//return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
+					return false
+				} else if _, ok := e.ObjectNew.GetLabels()[config.BackupLabelName]; ok {
+					// resource already has backup label
+					return false
+				} else if _, ok := config.BackupResourceMap[e.ObjectNew.GetName()]; ok {
+					// resource's backup label must be checked
+					return true
+				} else if _, ok := e.ObjectNew.GetLabels()[config.GrafanaCustomDashboardLabel]; ok {
+					// ConfigMap with custom-grafana-dashboard labels, check for backup label
+					config.BackupResourceMap[e.ObjectNew.GetName()] = config.ResourceTypeConfigMap
+					return true
+				}
+			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
@@ -384,18 +431,32 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	secretPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
-				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				return true
+			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				if e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
+					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName {
+					return true
+				} else if _, ok := e.Object.GetLabels()[config.BackupLabelName]; ok {
+					// resource already has backup label
+					return false
+				} else if _, ok := config.BackupResourceMap[e.Object.GetName()]; ok {
+					// resource's backup label must be checked
+					return true
+				}
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() &&
-				(e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				return true
+			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
+				if e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
+					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName {
+					return true
+				} else if _, ok := e.ObjectNew.GetLabels()[config.BackupLabelName]; ok {
+					// resource already has backup label
+					return false
+				} else if _, ok := config.BackupResourceMap[e.ObjectNew.GetName()]; ok {
+					// resource's backup label must be checked
+					return true
+				}
 			}
 			return false
 		},
@@ -427,19 +488,24 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		Owns(&observatoriumv1alpha1.Observatorium{}).
 		// Watch the configmap for thanos-ruler-custom-rules update
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmPred)).
+
 		// Watch the secret for deleting event of alertmanager-config
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(secretPred))
 
-	mchGroupKind := schema.GroupKind{Group: mchv1.SchemeGroupVersion.Group, Kind: "MultiClusterHub"}
-	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.SchemeGroupVersion.Version); err == nil {
+	mchGroupKind := schema.GroupKind{Group: mchv1.GroupVersion.Group, Kind: "MultiClusterHub"}
+	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.GroupVersion.Version); err == nil {
 		mchPred := predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
 				// this is for operator restart, the mch CREATE event will be caught and the mch should be ready
 				if e.Object.GetNamespace() == config.GetMCONamespace() &&
 					e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
 					e.Object.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion {
-					// only read the image manifests configmap and enqueue the request when the MCH is installed/upgraded successfully
-					ok, err := config.ReadImageManifestConfigMap(c, e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion)
+					// only read the image manifests configmap and enqueue the request when the MCH is
+					// installed/upgraded successfully
+					ok, err := config.ReadImageManifestConfigMap(
+						c,
+						e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion,
+					)
 					if err != nil {
 						return false
 					}
@@ -451,8 +517,12 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 				if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
 					e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
 					e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
-					// only read the image manifests configmap and enqueue the request when the MCH is installed/upgraded successfully
-					ok, err := config.ReadImageManifestConfigMap(c, e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion)
+					// only read the image manifests configmap and enqueue the request when the MCH is
+					// installed/upgraded successfully
+					ok, err := config.ReadImageManifestConfigMap(
+						c,
+						e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion,
+					)
 					if err != nil {
 						return false
 					}
@@ -468,14 +538,18 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		mchCrdExists, _ := r.CRDMap[config.MCHCrdName]
 		if mchCrdExists {
 			// secondary watch for MCH
-			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &mchv1.MultiClusterHub{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
-				return []reconcile.Request{
-					{NamespacedName: types.NamespacedName{
-						Name:      config.MCHUpdatedRequestName,
-						Namespace: a.GetNamespace(),
-					}},
-				}
-			}), builder.WithPredicates(mchPred))
+			ctrBuilder = ctrBuilder.Watches(
+				&source.Kind{Type: &mchv1.MultiClusterHub{}},
+				handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+					return []reconcile.Request{
+						{NamespacedName: types.NamespacedName{
+							Name:      config.MCHUpdatedRequestName,
+							Namespace: a.GetNamespace(),
+						}},
+					}
+				}),
+				builder.WithPredicates(mchPred),
+			)
 		}
 	}
 
@@ -637,8 +711,16 @@ func GenerateAlertmanagerRoute(
 
 	amRouteBYOCaSrt := &corev1.Secret{}
 	amRouteBYOCertSrt := &corev1.Secret{}
-	err1 := runclient.Get(context.TODO(), types.NamespacedName{Name: config.AlertmanagerRouteBYOCAName, Namespace: config.GetDefaultNamespace()}, amRouteBYOCaSrt)
-	err2 := runclient.Get(context.TODO(), types.NamespacedName{Name: config.AlertmanagerRouteBYOCERTName, Namespace: config.GetDefaultNamespace()}, amRouteBYOCertSrt)
+	err1 := runclient.Get(
+		context.TODO(),
+		types.NamespacedName{Name: config.AlertmanagerRouteBYOCAName, Namespace: config.GetDefaultNamespace()},
+		amRouteBYOCaSrt,
+	)
+	err2 := runclient.Get(
+		context.TODO(),
+		types.NamespacedName{Name: config.AlertmanagerRouteBYOCERTName, Namespace: config.GetDefaultNamespace()},
+		amRouteBYOCertSrt,
+	)
 
 	if err1 == nil && err2 == nil {
 		log.Info("BYO CA/Certificate found for the Route of Alertmanager, will using BYO CA/certificate for the Route of Alertmanager")
@@ -667,9 +749,19 @@ func GenerateAlertmanagerRoute(
 	}
 
 	found := &routev1.Route{}
-	err := runclient.Get(context.TODO(), types.NamespacedName{Name: amGateway.Name, Namespace: amGateway.Namespace}, found)
+	err := runclient.Get(
+		context.TODO(),
+		types.NamespacedName{Name: amGateway.Name, Namespace: amGateway.Namespace},
+		found,
+	)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating a new route to expose alertmanager", "amGateway.Namespace", amGateway.Namespace, "amGateway.Name", amGateway.Name)
+		log.Info(
+			"Creating a new route to expose alertmanager",
+			"amGateway.Namespace",
+			amGateway.Namespace,
+			"amGateway.Name",
+			amGateway.Name,
+		)
 		err = runclient.Create(context.TODO(), amGateway)
 		if err != nil {
 			return &ctrl.Result{}, err
@@ -713,8 +805,16 @@ func GenerateProxyRoute(
 
 	proxyRouteBYOCaSrt := &corev1.Secret{}
 	proxyRouteBYOCertSrt := &corev1.Secret{}
-	err1 := runclient.Get(context.TODO(), types.NamespacedName{Name: config.ProxyRouteBYOCAName, Namespace: config.GetDefaultNamespace()}, proxyRouteBYOCaSrt)
-	err2 := runclient.Get(context.TODO(), types.NamespacedName{Name: config.ProxyRouteBYOCERTName, Namespace: config.GetDefaultNamespace()}, proxyRouteBYOCertSrt)
+	err1 := runclient.Get(
+		context.TODO(),
+		types.NamespacedName{Name: config.ProxyRouteBYOCAName, Namespace: config.GetDefaultNamespace()},
+		proxyRouteBYOCaSrt,
+	)
+	err2 := runclient.Get(
+		context.TODO(),
+		types.NamespacedName{Name: config.ProxyRouteBYOCERTName, Namespace: config.GetDefaultNamespace()},
+		proxyRouteBYOCertSrt,
+	)
 
 	if err1 == nil && err2 == nil {
 		log.Info("BYO CA/Certificate found for the Route of Proxy, will using BYO CA/certificate for the Route of Proxy")
@@ -743,9 +843,19 @@ func GenerateProxyRoute(
 	}
 
 	found := &routev1.Route{}
-	err := runclient.Get(context.TODO(), types.NamespacedName{Name: proxyGateway.Name, Namespace: proxyGateway.Namespace}, found)
+	err := runclient.Get(
+		context.TODO(),
+		types.NamespacedName{Name: proxyGateway.Name, Namespace: proxyGateway.Namespace},
+		found,
+	)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating a new route to expose rbac proxy", "proxyGateway.Namespace", proxyGateway.Namespace, "proxyGateway.Name", proxyGateway.Name)
+		log.Info(
+			"Creating a new route to expose rbac proxy",
+			"proxyGateway.Namespace",
+			proxyGateway.Namespace,
+			"proxyGateway.Name",
+			proxyGateway.Name,
+		)
 		err = runclient.Create(context.TODO(), proxyGateway)
 		if err != nil {
 			return &ctrl.Result{}, err

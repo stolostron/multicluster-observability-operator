@@ -8,7 +8,6 @@ resources:
 - service.yaml
 - dash-acm-optimization-overview.yaml
 - dash-acm-clusters-overview.yaml
-- dash-acm-clusters-overview-ocp311.yaml
 - dash-k8s-etcd.yaml
 - dash-k8s-apiserver.yaml
 - dash-k8s-networking-cluster.yaml
@@ -22,3 +21,11 @@ resources:
 - dash-k8s-service-level-overview-api-server-cluster.yaml
 - dash-cluster-rsrc-use.yaml
 - dash-node-rsrc-use.yaml
+- dash-acm-clusters-overview-ocp311.yaml
+- dash-acm-optimization-overview-ocp311.yaml
+- dash-k8s-capacity-planning-ocp311.yaml
+- dash-k8s-compute-resources-namespace-pods-ocp311.yaml
+- dash-k8s-compute-resources-pod-ocp311.yaml
+- dash-k8s-namespaces-in-cluster-ocp311.yaml
+- dash-k8s-pods-in-namespace-ocp311.yaml
+- dash-k8s-summary-by-node-ocp311.yaml

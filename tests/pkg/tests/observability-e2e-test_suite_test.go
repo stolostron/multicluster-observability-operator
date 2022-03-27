@@ -85,12 +85,42 @@ func init() {
 	klog.SetOutput(GinkgoWriter)
 	klog.InitFlags(nil)
 
-	flag.StringVar(&kubeadminUser, "kubeadmin-user", "kubeadmin", "Provide the kubeadmin credential for the cluster under test (e.g. -kubeadmin-user=\"xxxxx\").")
-	flag.StringVar(&kubeadminCredential, "kubeadmin-credential", "", "Provide the kubeadmin credential for the cluster under test (e.g. -kubeadmin-credential=\"xxxxx-xxxxx-xxxxx-xxxxx\").")
-	flag.StringVar(&baseDomain, "base-domain", "", "Provide the base domain for the cluster under test (e.g. -base-domain=\"demo.red-chesterfield.com\").")
-	flag.StringVar(&reportFile, "report-file", "results.xml", "Provide the path to where the junit results will be printed.")
-	flag.StringVar(&kubeconfig, "kubeconfig", "", "Location of the kubeconfig to use; defaults to KUBECONFIG if not set")
-	flag.StringVar(&optionsFile, "options", "", "Location of an \"options.yaml\" file to provide input for various tests")
+	flag.StringVar(
+		&kubeadminUser,
+		"kubeadmin-user",
+		"kubeadmin",
+		"Provide the kubeadmin credential for the cluster under test (e.g. -kubeadmin-user=\"xxxxx\").",
+	)
+	flag.StringVar(
+		&kubeadminCredential,
+		"kubeadmin-credential",
+		"",
+		"Provide the kubeadmin credential for the cluster under test (e.g. -kubeadmin-credential=\"xxxxx-xxxxx-xxxxx-xxxxx\").",
+	)
+	flag.StringVar(
+		&baseDomain,
+		"base-domain",
+		"",
+		"Provide the base domain for the cluster under test (e.g. -base-domain=\"demo.red-chesterfield.com\").",
+	)
+	flag.StringVar(
+		&reportFile,
+		"report-file",
+		"results.xml",
+		"Provide the path to where the junit results will be printed.",
+	)
+	flag.StringVar(
+		&kubeconfig,
+		"kubeconfig",
+		"",
+		"Location of the kubeconfig to use; defaults to KUBECONFIG if not set",
+	)
+	flag.StringVar(
+		&optionsFile,
+		"options",
+		"",
+		"Location of an \"options.yaml\" file to provide input for various tests",
+	)
 }
 
 func TestObservabilityE2E(t *testing.T) {
@@ -185,7 +215,10 @@ func initVars() {
 		baseDomain = testOptions.HubCluster.BaseDomain
 
 		if testOptions.HubCluster.ClusterServerURL == "" {
-			testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:6443", testOptions.HubCluster.BaseDomain)
+			testOptions.HubCluster.ClusterServerURL = fmt.Sprintf(
+				"https://api.%s:6443",
+				testOptions.HubCluster.BaseDomain,
+			)
 		}
 	} else {
 		Expect(baseDomain).NotTo(BeEmpty(), "The `baseDomain` is required.")

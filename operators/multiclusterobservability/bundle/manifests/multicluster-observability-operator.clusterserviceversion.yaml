@@ -416,6 +416,18 @@ spec:
           - get
           - list
           - watch
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - prometheusrules
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
         serviceAccountName: multicluster-observability-operator
       deployments:
       - name: multicluster-observability-operator
@@ -455,7 +467,7 @@ spec:
                 - name: SPOKE_NAMESPACE
                   value: open-cluster-management-addon-observability
                 image: quay.io/stolostron/multicluster-observability-operator:latest
-                imagePullPolicy: Always
+                imagePullPolicy: IfNotPresent
                 lifecycle:
                   preStop:
                     exec:

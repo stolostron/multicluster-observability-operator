@@ -11,6 +11,12 @@ data:
             "hide": true,
             "iconColor": "rgba(0, 211, 255, 1)",
             "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
             "type": "dashboard"
           }
         ]
@@ -18,13 +24,17 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": 2,
-      "iteration": 1621618422811,
+      "id": 4,
+      "iteration": 1646943408368,
       "links": [],
       "panels": [
         {
           "collapsed": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -39,21 +49,25 @@ data:
         {
           "cacheTimeout": null,
           "datasource": "$datasource",
+          "description": "Highlights % differences between CPU requests commitments vs utilization.  When this difference is large ( >20%), it means that resources are reserved but unused.",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
-              "custom": {},
               "mappings": [
                 {
-                  "id": 0,
-                  "op": "=",
-                  "text": "N/A",
-                  "type": 1,
-                  "value": "null"
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "special"
                 }
               ],
+              "max": 1,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -99,10 +113,11 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "targets": [
             {
-              "expr": "(sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"cpu\"}) / sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"cpu\"})) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\",cluster=\"$cluster\"}[$__rate_interval])))",
+              "exemplar": true,
+              "expr": "(sum(kube_pod_container_resource_requests:sum{cluster=\"$cluster\", resource=\"cpu\"}) / sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"cpu\"})) - (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\",cluster=\"$cluster\"}[$__rate_interval])))",
               "format": "time_series",
               "instant": true,
               "interval": "",
@@ -114,7 +129,6 @@ data:
           "timeFrom": null,
           "timeShift": null,
           "title": "Overestimation",
-          "description": "Highlights % differences between CPU requests commitments vs utilization.  When this difference is large ( >20%), it means that resources are reserved but unused.",
           "type": "stat"
         },
         {
@@ -125,7 +139,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -157,7 +170,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -167,7 +180,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\"}) by (namespace)",
+              "expr": "node_namespace_pod_container:container_cpu_usage_seconds_total:sum{cluster=\"$cluster\"}",
               "interval": "",
               "legendFormat": "{{namespace}}",
               "refId": "A"
@@ -223,16 +236,19 @@ data:
                 "fixedColor": "rgb(255, 255, 255)",
                 "mode": "fixed"
               },
-              "custom": {},
               "mappings": [
                 {
-                  "id": 0,
-                  "op": "=",
-                  "text": "N/A",
-                  "type": 1,
-                  "value": "null"
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "special"
                 }
               ],
+              "max": 1,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -275,10 +291,11 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "targets": [
             {
-              "expr": "sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"cpu\"}) / sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"cpu\"})",
+              "exemplar": true,
+              "expr": "sum(kube_pod_container_resource_requests:sum{cluster=\"$cluster\", resource=\"cpu\"}) / sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"cpu\"})",
               "format": "time_series",
               "instant": true,
               "interval": "",
@@ -301,16 +318,19 @@ data:
                 "fixedColor": "rgb(255, 255, 255)",
                 "mode": "fixed"
               },
-              "custom": {},
               "mappings": [
                 {
-                  "id": 0,
-                  "op": "=",
-                  "text": "N/A",
-                  "type": 1,
-                  "value": "null"
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "special"
                 }
               ],
+              "max": 1,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -353,7 +373,7 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "targets": [
             {
               "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\", cluster=\"$cluster\"}[$__rate_interval]))",
@@ -377,6 +397,7 @@ data:
               },
               "custom": {
                 "align": null,
+                "displayMode": "auto",
                 "filterable": false
               },
               "mappings": [],
@@ -576,10 +597,11 @@ data:
           "options": {
             "showHeader": true
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "targets": [
             {
-              "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\"}) by (namespace) / sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"cpu\"}) by (namespace)",
+              "exemplar": true,
+              "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum{cluster=\"$cluster\"}) by (namespace) / sum(kube_pod_container_resource_requests:sum{cluster=\"$cluster\", resource=\"cpu\"}) by (namespace)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -589,7 +611,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\"}) by (namespace)",
+              "expr": "node_namespace_pod_container:container_cpu_usage_seconds_total:sum{cluster=\"$cluster\"}",
               "format": "table",
               "instant": true,
               "intervalFactor": 1,
@@ -598,7 +620,8 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"cpu\"}) by (namespace)",
+              "exemplar": true,
+              "expr": "sum(kube_pod_container_resource_requests:sum{cluster=\"$cluster\", resource=\"cpu\"}) by (namespace)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -647,6 +670,10 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -661,21 +688,25 @@ data:
         {
           "cacheTimeout": null,
           "datasource": "$datasource",
+          "description": "Highlights % differences between Memory requests commitments vs utilization.  When this difference is large ( >20%), it means that resources are reserved but unused.",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
-              "custom": {},
               "mappings": [
                 {
-                  "id": 0,
-                  "op": "=",
-                  "text": "N/A",
-                  "type": 1,
-                  "value": "null"
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "special"
                 }
               ],
+              "max": 1,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -721,10 +752,11 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "targets": [
             {
-              "expr": "(sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"memory\"})/ sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"memory\"}))\n-\n(1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=\"$cluster\"})/ sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"memory\"}))",
+              "exemplar": true,
+              "expr": "(sum(kube_pod_container_resource_requests:sum{cluster=\"$cluster\", resource=\"memory\"})/ sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"memory\"}))\n-\n(1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=\"$cluster\"})/ sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"memory\"}))",
               "format": "time_series",
               "instant": true,
               "interval": "",
@@ -736,7 +768,6 @@ data:
           "timeFrom": null,
           "timeShift": null,
           "title": "Overestimation",
-          "description": "Highlights % differences between Memory requests commitments vs utilization.  When this difference is large ( >20%), it means that resources are reserved but unused.",
           "type": "stat"
         },
         {
@@ -747,7 +778,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -780,7 +810,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -790,7 +820,8 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(container_memory_rss{cluster=\"$cluster\", container!=\"\"}) by (namespace)",
+              "exemplar": true,
+              "expr": "sum(container_memory_rss:sum{cluster=\"$cluster\", container!=\"\"}) by (namespace)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -850,16 +881,19 @@ data:
                 "fixedColor": "rgb(255, 255, 255)",
                 "mode": "fixed"
               },
-              "custom": {},
               "mappings": [
                 {
-                  "id": 0,
-                  "op": "=",
-                  "text": "N/A",
-                  "type": 1,
-                  "value": "null"
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "special"
                 }
               ],
+              "max": 1,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -902,10 +936,11 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "targets": [
             {
-              "expr": "sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"memory\"}) / sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"memory\"})",
+              "exemplar": true,
+              "expr": "sum(kube_pod_container_resource_requests:sum{cluster=\"$cluster\", resource=\"memory\"}) / sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"memory\"})",
               "format": "time_series",
               "instant": true,
               "interval": "",
@@ -928,16 +963,19 @@ data:
                 "fixedColor": "rgb(255, 255, 255)",
                 "mode": "fixed"
               },
-              "custom": {},
               "mappings": [
                 {
-                  "id": 0,
-                  "op": "=",
-                  "text": "N/A",
-                  "type": 1,
-                  "value": "null"
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "special"
                 }
               ],
+              "max": 1,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -980,7 +1018,7 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "targets": [
             {
               "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"memory\"})",
@@ -1007,6 +1045,7 @@ data:
               },
               "custom": {
                 "align": null,
+                "displayMode": "auto",
                 "filterable": false
               },
               "mappings": [],
@@ -1205,10 +1244,11 @@ data:
           "options": {
             "showHeader": true
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "targets": [
             {
-              "expr": "sum(container_memory_rss{cluster=\"$cluster\", container!=\"\"}) by (namespace) / sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"memory\"}) by (namespace)",
+              "exemplar": true,
+              "expr": "sum(container_memory_rss:sum{cluster=\"$cluster\", container!=\"\"}) by (namespace) / sum(kube_pod_container_resource_requests:sum{cluster=\"$cluster\", resource=\"memory\"}) by (namespace)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -1218,16 +1258,19 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(container_memory_rss{cluster=\"$cluster\", container!=\"\"}) by (namespace)",
+              "exemplar": true,
+              "expr": "sum(container_memory_rss:sum{cluster=\"$cluster\", container!=\"\"}) by (namespace)",
               "format": "table",
               "instant": true,
+              "interval": "",
               "intervalFactor": 2,
               "legendFormat": "",
               "refId": "C",
               "step": 10
             },
             {
-              "expr": "sum(kube_pod_container_resource_requests{cluster=\"$cluster\", resource=\"memory\"}) by (namespace)",
+              "exemplar": true,
+              "expr": "sum(kube_pod_container_resource_requests:sum{cluster=\"$cluster\", resource=\"memory\"}) by (namespace)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -1276,6 +1319,10 @@ data:
         {
           "collapsed": false,
           "datasource": null,
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -1296,6 +1343,7 @@ data:
               },
               "custom": {
                 "align": null,
+                "displayMode": "auto",
                 "filterable": false
               },
               "mappings": [],
@@ -1462,7 +1510,7 @@ data:
             "showHeader": true,
             "sortBy": []
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.1.3",
           "targets": [
             {
               "expr": "sum(instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=\"$cluster\"}) by (instance)",
@@ -1536,7 +1584,7 @@ data:
         }
       ],
       "refresh": "5m",
-      "schemaVersion": 27,
+      "schemaVersion": 30,
       "style": "dark",
       "tags": [
         "ACM"
@@ -1572,7 +1620,7 @@ data:
               "value": ""
             },
             "datasource": "$datasource",
-            "definition": "label_values(cluster)",
+            "definition": "label_values(kube_pod_info{clusterType!=\"ocp3\"},cluster)",
             "description": null,
             "error": null,
             "hide": 0,
@@ -1582,7 +1630,7 @@ data:
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(cluster)",
+              "query": "label_values(kube_pod_info{clusterType!=\"ocp3\"},cluster)",
               "refId": "Observatorium-cluster-Variable-Query"
             },
             "refresh": 2,
@@ -1590,7 +1638,6 @@ data:
             "skipUrlSync": false,
             "sort": 1,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
@@ -1615,7 +1662,7 @@ data:
       "timezone": "browser",
       "title": "ACM - Resource Optimization / Cluster",
       "uid": "8Qvi3edMz",
-      "version": 3
+      "version": 4
     }
 kind: ConfigMap
 metadata:

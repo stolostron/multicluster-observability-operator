@@ -25,24 +25,31 @@ type Renderer struct {
 func NewRenderer() *Renderer {
 	renderer := &Renderer{}
 	renderer.renderFns = map[string]RenderFn{
-		"Deployment":            renderer.RenderDeployments,
-		"StatefulSet":           renderer.RenderNamespace,
-		"DaemonSet":             renderer.RenderNamespace,
-		"Service":               renderer.RenderNamespace,
-		"ServiceAccount":        renderer.RenderNamespace,
-		"ConfigMap":             renderer.RenderNamespace,
-		"ClusterRole":           renderer.RenderClusterRole,
-		"ClusterRoleBinding":    renderer.RenderClusterRoleBinding,
-		"Secret":                renderer.RenderNamespace,
-		"Role":                  renderer.RenderNamespace,
-		"RoleBinding":           renderer.RenderNamespace,
-		"Ingress":               renderer.RenderNamespace,
-		"PersistentVolumeClaim": renderer.RenderNamespace,
+		"Deployment":               renderer.RenderDeployments,
+		"StatefulSet":              renderer.RenderNamespace,
+		"DaemonSet":                renderer.RenderNamespace,
+		"Service":                  renderer.RenderNamespace,
+		"ServiceAccount":           renderer.RenderNamespace,
+		"ConfigMap":                renderer.RenderNamespace,
+		"ClusterRole":              renderer.RenderClusterRole,
+		"ClusterRoleBinding":       renderer.RenderClusterRoleBinding,
+		"Secret":                   renderer.RenderNamespace,
+		"Role":                     renderer.RenderNamespace,
+		"RoleBinding":              renderer.RenderNamespace,
+		"Ingress":                  renderer.RenderNamespace,
+		"PersistentVolumeClaim":    renderer.RenderNamespace,
+		"Prometheus":               renderer.RenderNamespace,
+		"PrometheusRule":           renderer.RenderNamespace,
+		"CustomResourceDefinition": renderer.RenderNamespace,
 	}
 	return renderer
 }
 
-func (r *Renderer) RenderTemplates(templates []*resource.Resource, namespace string, labels map[string]string) ([]*unstructured.Unstructured, error) {
+func (r *Renderer) RenderTemplates(
+	templates []*resource.Resource,
+	namespace string,
+	labels map[string]string,
+) ([]*unstructured.Unstructured, error) {
 	uobjs := []*unstructured.Unstructured{}
 	for _, template := range templates {
 		render, ok := r.renderFns[template.GetKind()]
@@ -64,7 +71,11 @@ func (r *Renderer) RenderTemplates(templates []*resource.Resource, namespace str
 	return uobjs, nil
 }
 
-func (r *Renderer) RenderDeployments(res *resource.Resource, namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+func (r *Renderer) RenderDeployments(
+	res *resource.Resource,
+	namespace string,
+	labels map[string]string,
+) (*unstructured.Unstructured, error) {
 	/* 	err := patching.ApplyGlobalPatches(res, r.cr)
 	   	if err != nil {
 	   		return nil, err
@@ -75,7 +86,11 @@ func (r *Renderer) RenderDeployments(res *resource.Resource, namespace string, l
 	return u, nil
 }
 
-func (r *Renderer) RenderNamespace(res *resource.Resource, namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+func (r *Renderer) RenderNamespace(
+	res *resource.Resource,
+	namespace string,
+	labels map[string]string,
+) (*unstructured.Unstructured, error) {
 	u := &unstructured.Unstructured{Object: res.Map()}
 	if UpdateNamespace(u) {
 		res.SetNamespace(namespace)
@@ -84,7 +99,11 @@ func (r *Renderer) RenderNamespace(res *resource.Resource, namespace string, lab
 	return u, nil
 }
 
-func (r *Renderer) RenderClusterRole(res *resource.Resource, namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+func (r *Renderer) RenderClusterRole(
+	res *resource.Resource,
+	namespace string,
+	labels map[string]string,
+) (*unstructured.Unstructured, error) {
 	u := &unstructured.Unstructured{Object: res.Map()}
 
 	cLabels := u.GetLabels()
@@ -99,7 +118,11 @@ func (r *Renderer) RenderClusterRole(res *resource.Resource, namespace string, l
 	return u, nil
 }
 
-func (r *Renderer) RenderClusterRoleBinding(res *resource.Resource, namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+func (r *Renderer) RenderClusterRoleBinding(
+	res *resource.Resource,
+	namespace string,
+	labels map[string]string,
+) (*unstructured.Unstructured, error) {
 	u := &unstructured.Unstructured{Object: res.Map()}
 
 	cLabels := u.GetLabels()

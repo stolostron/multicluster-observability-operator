@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -52,6 +53,7 @@ func GetK8sObj(kind string) runtime.Object {
 		"Service":                  &corev1.Service{},
 		"CustomResourceDefinition": &apiextensionsv1.CustomResourceDefinition{},
 		"ObservabilityAddon":       &mcov1beta1.ObservabilityAddon{},
+		"Prometheus":               &prometheusv1.Prometheus{},
 	}
 	return objs[kind]
 }

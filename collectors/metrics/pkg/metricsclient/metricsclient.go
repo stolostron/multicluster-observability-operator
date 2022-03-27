@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -93,7 +94,10 @@ type MetricsResult struct {
 	Value  []interface{}     `json:"value"`
 }
 
-func (c *Client) RetrievRecordingMetrics(ctx context.Context, req *http.Request, name string) ([]*clientmodel.MetricFamily, error) {
+func (c *Client) RetrievRecordingMetrics(
+	ctx context.Context,
+	req *http.Request,
+	name string) ([]*clientmodel.MetricFamily, error) {
 
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	req = req.WithContext(ctx)
@@ -366,18 +370,15 @@ func withCancel(ctx context.Context, client *http.Client, req *http.Request, fn 
 	return err
 }
 
-func MTLSTransport(logger log.Logger) (*http.Transport, error) {
+func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string) (*http.Transport, error) {
 	testMode := os.Getenv("UNIT_TEST") != ""
-	caCertFile := "/tlscerts/ca/ca.crt"
-	tlsKeyFile := "/tlscerts/certs/tls.key"
-	tlsCrtFile := "/tlscerts/certs/tls.crt"
 	if testMode {
 		caCertFile = "../../testdata/tls/ca.crt"
 		tlsKeyFile = "../../testdata/tls/tls.key"
 		tlsCrtFile = "../../testdata/tls/tls.crt"
 	}
 	// Load Server CA cert
-	caCert, err := ioutil.ReadFile(caCertFile)
+	caCert, err := ioutil.ReadFile(filepath.Clean(caCertFile))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load server ca cert file")
 	}

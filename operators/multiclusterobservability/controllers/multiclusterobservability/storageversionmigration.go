@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -27,7 +28,7 @@ func createOrUpdateObservabilityStorageVersionMigrationResource(client client.Cl
 	mco *mcov1beta2.MultiClusterObservability) error {
 	storageVersionMigrationName := storageVersionMigrationPrefix
 	if mco != nil {
-		storageVersionMigrationName += mco.GetName()
+		storageVersionMigrationName += "-" + mco.GetName()
 	}
 	storageVersionMigration := &migrationv1alpha1.StorageVersionMigration{
 		ObjectMeta: metav1.ObjectMeta{
@@ -40,6 +41,10 @@ func createOrUpdateObservabilityStorageVersionMigrationResource(client client.Cl
 				Resource: config.MCORsName,
 			},
 		},
+	}
+
+	if err := controllerutil.SetControllerReference(mco, storageVersionMigration, scheme); err != nil {
+		log.Error(err, "Failed to set controller reference", "name", storageVersionMigrationName)
 	}
 
 	found := &migrationv1alpha1.StorageVersionMigration{}
@@ -69,28 +74,5 @@ func createOrUpdateObservabilityStorageVersionMigrationResource(client client.Cl
 	}
 
 	log.Info("StorageVersionMigration already existed/unchanged", "name", storageVersionMigrationName)
-	return nil
-}
-
-// cleanObservabilityStorageVersionMigrationResource delete the StorageVersionMigration source if found
-func cleanObservabilityStorageVersionMigrationResource(client client.Client, mco *mcov1beta2.MultiClusterObservability) error {
-	storageVersionMigrationName := storageVersionMigrationPrefix
-	if mco != nil {
-		storageVersionMigrationName += mco.GetName()
-	}
-	found := &migrationv1alpha1.StorageVersionMigration{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: storageVersionMigrationName}, found)
-	if err != nil && errors.IsNotFound(err) {
-		log.Info("StorageVersionMigration doesn't exist", "name", storageVersionMigrationName)
-	} else if err != nil {
-		log.Error(err, "Failed to check StorageVersionMigration", "name", storageVersionMigrationName)
-		return err
-	} else {
-		err = client.Delete(context.TODO(), found)
-		if err != nil {
-			log.Error(err, "Failed to delete StorageVersionMigration", "name", storageVersionMigrationName)
-			return err
-		}
-	}
 	return nil
 }

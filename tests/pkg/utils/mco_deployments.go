@@ -26,7 +26,10 @@ func GetDeployment(opt TestOptions, isHub bool, name string,
 func GetDeploymentWithLabel(opt TestOptions, isHub bool, label string,
 	namespace string) (*appv1.DeploymentList, error) {
 	clientKube := getKubeClient(opt, isHub)
-	klog.V(1).Infof("Get get deployment with label selector <%v> in namespace <%v>, isHub: <%v>", label, namespace, isHub)
+	klog.V(1).Infof("Get get deployment with label selector <%v> in namespace <%v>, isHub: <%v>",
+		label,
+		namespace,
+		isHub)
 	deps, err := clientKube.AppsV1().Deployments(namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: label,
 	})
@@ -60,7 +63,11 @@ func UpdateDeployment(
 	return updateDep, err
 }
 
-func UpdateDeploymentReplicas(opt TestOptions, deployName, crProperty string, desiredReplicas, expectedReplicas int32) error {
+func UpdateDeploymentReplicas(
+	opt TestOptions,
+	deployName, crProperty string,
+	desiredReplicas, expectedReplicas int32,
+) error {
 	clientDynamic := GetKubeClientDynamic(opt, true)
 	deploy, err := GetDeployment(opt, true, deployName, MCO_NAMESPACE)
 	if err != nil {
@@ -72,7 +79,9 @@ func UpdateDeploymentReplicas(opt TestOptions, deployName, crProperty string, de
 		return err
 	}
 
-	obs, err := clientDynamic.Resource(NewMCOMObservatoriumGVR()).Namespace(MCO_NAMESPACE).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+	obs, err := clientDynamic.Resource(NewMCOMObservatoriumGVR()).
+		Namespace(MCO_NAMESPACE).
+		Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

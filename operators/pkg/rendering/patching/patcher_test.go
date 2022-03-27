@@ -59,7 +59,7 @@ func TestApplyGlobalPatches(t *testing.T) {
 			Annotations: map[string]string{"mco-imageRepository": "quay.io/stolostron"},
 		},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
-			ImagePullPolicy: "Always",
+			ImagePullPolicy: "IfNotPresent",
 			ImagePullSecret: "test",
 		},
 	}

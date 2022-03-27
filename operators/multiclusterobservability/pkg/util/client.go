@@ -109,19 +109,30 @@ func CheckCRDExist(crdClient crdClientSet.Interface, crdName string) (bool, erro
 }
 
 func UpdateCRDWebhookNS(crdClient crdClientSet.Interface, namespace, crdName string) error {
-	crdObj, err := crdClient.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), crdName, metav1.GetOptions{})
+	crdObj, err := crdClient.ApiextensionsV1().
+		CustomResourceDefinitions().
+		Get(context.TODO(), crdName, metav1.GetOptions{})
 	if err != nil {
 		log.Error(err, "failed to get CRD", "CRD", crdName)
 		return err
 	}
-	if crdObj.Spec.Conversion == nil || crdObj.Spec.Conversion.Webhook == nil || crdObj.Spec.Conversion.Webhook.ClientConfig == nil {
+	if crdObj.Spec.Conversion == nil || crdObj.Spec.Conversion.Webhook == nil ||
+		crdObj.Spec.Conversion.Webhook.ClientConfig == nil {
 		log.Error(err, "empty Conversion in the CRD", "CRD", crdName)
 		return fmt.Errorf("empty Conversion in the CRD %s", crdName)
 	}
 	if crdObj.Spec.Conversion.Webhook.ClientConfig.Service.Namespace != namespace {
-		log.Info("updating the webhook service namespace", "original namespace", crdObj.Spec.Conversion.Webhook.ClientConfig.Service.Namespace, "new namespace", namespace)
+		log.Info(
+			"updating the webhook service namespace",
+			"original namespace",
+			crdObj.Spec.Conversion.Webhook.ClientConfig.Service.Namespace,
+			"new namespace",
+			namespace,
+		)
 		crdObj.Spec.Conversion.Webhook.ClientConfig.Service.Namespace = namespace
-		_, err := crdClient.ApiextensionsV1().CustomResourceDefinitions().Update(context.TODO(), crdObj, metav1.UpdateOptions{})
+		_, err := crdClient.ApiextensionsV1().
+			CustomResourceDefinitions().
+			Update(context.TODO(), crdObj, metav1.UpdateOptions{})
 		if err != nil {
 			log.Error(err, "failed to update webhook service namespace")
 			return err

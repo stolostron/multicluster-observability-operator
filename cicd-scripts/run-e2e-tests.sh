@@ -19,6 +19,7 @@ GINKGO_FOCUS="$(cat /tmp/ginkgo_focus)"
 # need to modify sc for KinD
 if [[ -n "${IS_KIND_ENV}" ]]; then
     ${SED_COMMAND} "s~gp2$~standard~g" ${ROOTDIR}/examples/minio/minio-pvc.yaml
+    ${SED_COMMAND} "s~gp2$~standard~g" ${ROOTDIR}/examples/minio-tls/minio-pvc.yaml
 fi
 
 kubeconfig_hub_path=""
@@ -79,6 +80,8 @@ else
     go install github.com/onsi/ginkgo/ginkgo@latest
     GINKGO_CMD="$(go env GOPATH)/bin/ginkgo"
 fi
+
+go mod vendor
 ${GINKGO_CMD} -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=3
 
 cat ${ROOTDIR}/tests/pkg/tests/results.xml | grep failures=\"0\" | grep errors=\"0\"

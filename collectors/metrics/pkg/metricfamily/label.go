@@ -49,7 +49,9 @@ func (t *label) Transform(family *clientmodel.MetricFamily) (bool, error) {
 	return true, nil
 }
 
-func appendLabels(existing []*clientmodel.LabelPair, overrides map[string]*clientmodel.LabelPair) []*clientmodel.LabelPair {
+func appendLabels(
+	existing []*clientmodel.LabelPair,
+	overrides map[string]*clientmodel.LabelPair) []*clientmodel.LabelPair {
 	var found []string
 	for i, pair := range existing {
 		name := pair.GetName()

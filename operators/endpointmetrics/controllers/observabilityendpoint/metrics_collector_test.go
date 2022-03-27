@@ -30,9 +30,22 @@ names:
   - b
 matches:
   - c
-rules:
+recording_rules:
   - record: f
     expr: g
+collect_rules:
+  - name: h
+    selector:
+	  matchExpressions:
+		- key: clusterType
+		  operator: NotIn
+		  values: ["SNO"]
+	rules:
+	  - collect: j
+	    expr: k
+	    for: 1m
+		names:
+		  - l
 `},
 	}
 }

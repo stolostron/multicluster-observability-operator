@@ -20,7 +20,7 @@ func TestObsAddonCR(t *testing.T) {
 	initSchema(t)
 
 	objs := []runtime.Object{newTestObsApiRoute()}
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	err := createObsAddon(c, namespace)
 	if err != nil {
@@ -79,7 +79,7 @@ func TestStaleObsAddonCR(t *testing.T) {
 	initSchema(t)
 
 	objs := []runtime.Object{newTestObsApiRoute()}
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	err := createObsAddon(c, namespace)
 	if err != nil {

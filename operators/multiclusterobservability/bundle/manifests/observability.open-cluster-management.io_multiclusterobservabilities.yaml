@@ -57,7 +57,7 @@ spec:
                 description: Enable or disable the downsample. The default value is false. This is not recommended as querying long time ranges without non-downsampled data is not efficient and useful.
                 type: boolean
               imagePullPolicy:
-                default: Always
+                default: IfNotPresent
                 description: Pull policy of the MultiClusterObservability images
                 type: string
               imagePullSecret:
@@ -125,10 +125,13 @@ spec:
                     description: Object store config secret for metrics
                     properties:
                       key:
-                        description: The key of the secret to select from. Must be a valid secret key. Refer to https://thanos.io/storage.md/#configuration for a valid content of key.
+                        description: The key of the secret to select from. Must be a valid secret key. Refer to https://thanos.io/tip/thanos/storage.md/#configuring-access-to-object-storage for a valid content of key.
                         type: string
                       name:
                         description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                        type: string
+                      tlsSecretName:
+                        description: TLS secret contains the custom certificate for the object store
                         type: string
                     required:
                     - key
@@ -293,6 +296,11 @@ spec:
                             description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                             type: object
                         type: object
+                      serviceAccountAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is an unstructured key value map stored with a service account
+                        type: object
                     type: object
                   grafana:
                     description: The spec of grafana
@@ -382,6 +390,11 @@ spec:
                               x-kubernetes-int-or-string: true
                             description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                             type: object
+                        type: object
+                      serviceAccountAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is an unstructured key value map stored with a service account
                         type: object
                     type: object
                   queryFrontend:
@@ -514,6 +527,11 @@ spec:
                             description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                             type: object
                         type: object
+                      serviceAccountAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is an unstructured key value map stored with a service account
+                        type: object
                     type: object
                   retentionConfig:
                     description: The spec of the data retention configurations
@@ -569,6 +587,11 @@ spec:
                             description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                             type: object
                         type: object
+                      serviceAccountAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is an unstructured key value map stored with a service account
+                        type: object
                     type: object
                   store:
                     description: spec for thanos-store-shard
@@ -598,6 +621,11 @@ spec:
                               x-kubernetes-int-or-string: true
                             description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                             type: object
+                        type: object
+                      serviceAccountAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is an unstructured key value map stored with a service account
                         type: object
                     type: object
                   storeMemcached:
@@ -709,10 +737,13 @@ spec:
                     description: Object store config secret for metrics
                     properties:
                       key:
-                        description: The key of the secret to select from. Must be a valid secret key. Refer to https://thanos.io/storage.md/#configuration for a valid content of key.
+                        description: The key of the secret to select from. Must be a valid secret key. Refer to https://thanos.io/tip/thanos/storage.md/#configuring-access-to-object-storage for a valid content of key.
                         type: string
                       name:
                         description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                        type: string
+                      tlsSecretName:
+                        description: TLS secret contains the custom certificate for the object store
                         type: string
                     required:
                     - key
@@ -734,6 +765,24 @@ spec:
                     default: 10Gi
                     description: The amount of storage applied to thanos store stateful sets,
                     type: string
+                  writeStorage:
+                    description: WriteStorage storage config secret list for metrics
+                    items:
+                      properties:
+                        key:
+                          description: The key of the secret to select from. Must be a valid secret key. Refer to https://thanos.io/tip/thanos/storage.md/#configuring-access-to-object-storage for a valid content of key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
+                          type: string
+                        tlsSecretName:
+                          description: TLS secret contains the custom certificate for the object store
+                          type: string
+                      required:
+                      - key
+                      - name
+                      type: object
+                    type: array
                 required:
                 - metricObjectStorage
                 type: object

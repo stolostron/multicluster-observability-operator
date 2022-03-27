@@ -51,7 +51,9 @@ func uninstallMCO() {
 		name := MCO_CR_NAME + "-addon"
 		clientDynamic := utils.GetKubeClientDynamic(testOptions, false)
 		// should check oba instance from managedcluster
-		instance, _ := clientDynamic.Resource(utils.NewMCOAddonGVR()).Namespace(MCO_ADDON_NAMESPACE).Get(context.TODO(), name, metav1.GetOptions{})
+		instance, _ := clientDynamic.Resource(utils.NewMCOAddonGVR()).
+			Namespace(MCO_ADDON_NAMESPACE).
+			Get(context.TODO(), name, metav1.GetOptions{})
 		if instance != nil {
 			utils.PrintManagedClusterOBAObject(testOptions)
 			return fmt.Errorf("Failed to delete MCO addon instance")
@@ -62,7 +64,9 @@ func uninstallMCO() {
 	By("Waiting for delete manifestwork")
 	Eventually(func() error {
 		name := "endpoint-observability-work"
-		_, err := dynClient.Resource(utils.NewOCMManifestworksGVR()).Namespace("local-cluster").Get(context.TODO(), name, metav1.GetOptions{})
+		_, err := dynClient.Resource(utils.NewOCMManifestworksGVR()).
+			Namespace("local-cluster").
+			Get(context.TODO(), name, metav1.GetOptions{})
 		return err
 	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(MatchError(`manifestworks.work.open-cluster-management.io "endpoint-observability-work" not found`))
 

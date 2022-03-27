@@ -68,8 +68,12 @@ func Start(c client.Client, ingressCtlCrdExists bool) {
 		log.Error(err, "Failed to create kube client")
 		os.Exit(1)
 	}
-	watchlist := cache.NewListWatchFromClient(kubeClient.CoreV1().RESTClient(), "secrets", config.GetDefaultNamespace(),
-		fields.OneTermEqualSelector("metadata.namespace", config.GetDefaultNamespace()))
+	watchlist := cache.NewListWatchFromClient(
+		kubeClient.CoreV1().RESTClient(),
+		"secrets",
+		config.GetDefaultNamespace(),
+		fields.OneTermEqualSelector("metadata.namespace", config.GetDefaultNamespace()),
+	)
 	_, controller := cache.NewInformer(
 		watchlist,
 		&v1.Secret{},
@@ -169,7 +173,11 @@ func onDelete(c client.Client) func(obj interface{}) {
 				Name: config.GetMonitoringCRName(),
 			}, mco)
 			if err == nil {
-				log.Info("secret for ca certificate deleted by mistake, add the cert back to the new created one", "name", s.Name)
+				log.Info(
+					"secret for ca certificate deleted by mistake, add the cert back to the new created one",
+					"name",
+					s.Name,
+				)
 				i := 0
 				for {
 					caSecret := &v1.Secret{}
@@ -182,8 +190,10 @@ func onDelete(c client.Client) func(obj interface{}) {
 						err = c.Update(context.TODO(), caSecret)
 						if err != nil {
 							log.Error(err, "Failed to update secret for ca certificate", "name", s.Name)
+							i++
+						} else {
+							break
 						}
-						break
 					} else {
 						// wait mco operator recreate the ca certificate at most 30 seconds
 						if i < 6 {

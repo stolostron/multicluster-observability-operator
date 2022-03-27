@@ -26,7 +26,7 @@ func TestUpdateAddonStatus(t *testing.T) {
 		Status: addonv1alpha1.ManagedClusterAddOnStatus{},
 	}
 	objs := []runtime.Object{maddon}
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	addonList := &mcov1beta1.ObservabilityAddonList{
 		Items: []mcov1beta1.ObservabilityAddon{

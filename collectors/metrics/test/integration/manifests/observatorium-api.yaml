@@ -48,7 +48,7 @@ spec:
         - --tls.server.key-file=/etc/observatorium2/server.key
         - --tls.healthchecks.server-ca-file=/etc/observatorium2/server-ca.pem
         image: quay.io/observatorium/observatorium:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         name: observatorium-api
         ports:
         - containerPort: 8081

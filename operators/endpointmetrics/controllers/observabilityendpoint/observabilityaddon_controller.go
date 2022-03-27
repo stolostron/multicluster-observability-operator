@@ -106,7 +106,11 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	// retrieve the hubInfo
 	hubSecret := &corev1.Secret{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: operatorconfig.HubInfoSecretName, Namespace: namespace}, hubSecret)
+	err = r.Client.Get(
+		ctx,
+		types.NamespacedName{Name: operatorconfig.HubInfoSecretName, Namespace: namespace},
+		hubSecret,
+	)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -197,7 +201,15 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		if req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == caConfigmapName {
 			forceRestart = true
 		}
-		created, err := updateMetricsCollector(ctx, r.Client, obsAddon.Spec, *hubInfo, clusterID, clusterType, 1, forceRestart)
+		created, err := updateMetricsCollector(
+			ctx,
+			r.Client,
+			obsAddon.Spec,
+			*hubInfo, clusterID,
+			clusterType,
+			1,
+			forceRestart)
+
 		if err != nil {
 			util.ReportStatus(ctx, r.Client, obsAddon, "Degraded")
 			return ctrl.Result{}, err
@@ -234,9 +246,11 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 			return false, err
 		}
 
-		// Should we return bool from the delete functions for crb and cm? What is it used for? Should we use the bool before removing finalizer?
-		// SHould we return true if metricscollector is not found as that means  metrics collector is not present?
-		// Moved this part up as we need to clean up cm and crb before we remove the finalizer - is that the right way to do it?
+		// Should we return bool from the delete functions for crb and cm? What
+		// is it used for? Should we use the bool before removing finalizer?
+		// SHould we return true if metricscollector is not found as that means
+		// metrics collector is not present? Moved this part up as we need to clean
+		// up cm and crb before we remove the finalizer - is that the right way to do it?
 		if !installPrometheus {
 			err = deleteMonitoringClusterRoleBinding(ctx, r.Client)
 			if err != nil {

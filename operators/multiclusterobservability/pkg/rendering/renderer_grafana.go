@@ -47,6 +47,7 @@ func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
 	dep.Spec.Replicas = config.GetReplicas(config.Grafana, r.cr.Spec.AdvancedConfig)
 
 	spec := &dep.Spec.Template.Spec
+	imagePullPolicy := config.GetImagePullPolicy(r.cr.Spec)
 
 	spec.Containers[0].Image = config.DefaultImgRepository + "/" + config.GrafanaImgKey +
 		":" + config.DefaultImgTagSuffix
@@ -54,6 +55,7 @@ func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
 	if found {
 		spec.Containers[0].Image = image
 	}
+	spec.Containers[0].ImagePullPolicy = imagePullPolicy
 	spec.Containers[0].Resources = config.GetResources(config.Grafana, r.cr.Spec.AdvancedConfig)
 
 	spec.Containers[1].Image = config.DefaultImgRepository + "/" + config.GrafanaDashboardLoaderName +
@@ -63,6 +65,7 @@ func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
 	if found {
 		spec.Containers[1].Image = image
 	}
+	spec.Containers[1].ImagePullPolicy = imagePullPolicy
 
 	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 	if err != nil {
