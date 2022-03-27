@@ -37,17 +37,32 @@ var _ = Describe("", func() {
 				dep *appv1.Deployment
 			)
 			Eventually(func() error {
-				dep, err = utils.GetDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE)
+				dep, err = utils.GetDeployment(
+					testOptions,
+					false,
+					"metrics-collector-deployment",
+					MCO_ADDON_NAMESPACE,
+				)
 				return err
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 
 			Eventually(func() error {
-				err = utils.DeleteDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE)
+				err = utils.DeleteDeployment(
+					testOptions,
+					false,
+					"metrics-collector-deployment",
+					MCO_ADDON_NAMESPACE,
+				)
 				return err
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 
 			Eventually(func() bool {
-				newDep, err = utils.GetDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE)
+				newDep, err = utils.GetDeployment(
+					testOptions,
+					false,
+					"metrics-collector-deployment",
+					MCO_ADDON_NAMESPACE,
+				)
 				if err == nil {
 					if dep.ObjectMeta.ResourceVersion != newDep.ObjectMeta.ResourceVersion {
 						return true
@@ -59,17 +74,33 @@ var _ = Describe("", func() {
 		It("[Stable] Updating metrics-collector deployment", func() {
 			updateSaName := "test-serviceaccount"
 			Eventually(func() error {
-				newDep, err = utils.GetDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE)
+				newDep, err = utils.GetDeployment(
+					testOptions,
+					false,
+					"metrics-collector-deployment",
+					MCO_ADDON_NAMESPACE,
+				)
 				if err != nil {
 					return err
 				}
 				newDep.Spec.Template.Spec.ServiceAccountName = updateSaName
-				newDep, err = utils.UpdateDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE, newDep)
+				newDep, err = utils.UpdateDeployment(
+					testOptions,
+					false,
+					"metrics-collector-deployment",
+					MCO_ADDON_NAMESPACE,
+					newDep,
+				)
 				return err
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 
 			Eventually(func() bool {
-				revertDep, err := utils.GetDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE)
+				revertDep, err := utils.GetDeployment(
+					testOptions,
+					false,
+					"metrics-collector-deployment",
+					MCO_ADDON_NAMESPACE,
+				)
 				if err == nil {
 					if revertDep.ObjectMeta.ResourceVersion != newDep.ObjectMeta.ResourceVersion &&
 						revertDep.Spec.Template.Spec.ServiceAccountName != updateSaName {
@@ -130,16 +161,31 @@ var _ = Describe("", func() {
 			cm  *v1.ConfigMap
 		)
 		Eventually(func() error {
-			err, cm = utils.GetConfigMap(testOptions, false, "metrics-collector-serving-certs-ca-bundle", MCO_ADDON_NAMESPACE)
+			err, cm = utils.GetConfigMap(
+				testOptions,
+				false,
+				"metrics-collector-serving-certs-ca-bundle",
+				MCO_ADDON_NAMESPACE,
+			)
 			return err
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 		Eventually(func() error {
-			err = utils.DeleteConfigMap(testOptions, false, "metrics-collector-serving-certs-ca-bundle", MCO_ADDON_NAMESPACE)
+			err = utils.DeleteConfigMap(
+				testOptions,
+				false,
+				"metrics-collector-serving-certs-ca-bundle",
+				MCO_ADDON_NAMESPACE,
+			)
 			return err
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 		newCm := &v1.ConfigMap{}
 		Eventually(func() bool {
-			err, newCm = utils.GetConfigMap(testOptions, false, "metrics-collector-serving-certs-ca-bundle", MCO_ADDON_NAMESPACE)
+			err, newCm = utils.GetConfigMap(
+				testOptions,
+				false,
+				"metrics-collector-serving-certs-ca-bundle",
+				MCO_ADDON_NAMESPACE,
+			)
 			if err == nil {
 				if cm.ObjectMeta.ResourceVersion != newCm.ObjectMeta.ResourceVersion {
 					return true

@@ -9,7 +9,7 @@ spec:
       retentionResolution5m: 14d
       retentionResolutionRaw: 5d
   enableDownsampling: false
-  imagePullPolicy: Always
+  imagePullPolicy: IfNotPresent
   imagePullSecret: multiclusterhub-operator-pull-secret
   nodeSelector:
     kubernetes.io/os: linux

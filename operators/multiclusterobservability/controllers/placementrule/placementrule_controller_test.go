@@ -28,7 +28,7 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
-	mchv1 "github.com/stolostron/multiclusterhub-operator/pkg/apis/operator/v1"
+	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	workv1 "open-cluster-management.io/api/work/v1"
@@ -128,7 +128,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	}
 	objs := []runtime.Object{mco, pull, newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
 		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newManagedClusterAddon(), deprecatedRole}
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &PlacementRuleReconciler{Client: c, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
 
 	wd, err := os.Getwd()
@@ -140,9 +140,11 @@ func TestObservabilityAddonController(t *testing.T) {
 	manifestsPath := path.Join(wd, "../../manifests")
 	os.Setenv("TEMPLATES_PATH", testManifestsPath)
 	templates.ResetTemplates()
-	err = os.Symlink(manifestsPath, testManifestsPath)
-	if err != nil {
-		t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
+	if _, err := os.Stat(testManifestsPath); err == os.ErrNotExist {
+		err = os.Symlink(manifestsPath, testManifestsPath)
+		if err != nil {
+			t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
+		}
 	}
 
 	req := ctrl.Request{
@@ -312,8 +314,11 @@ func TestObservabilityAddonController(t *testing.T) {
 	}
 
 	// remove the testing manifests directory
-	if err = os.Remove(testManifestsPath); err != nil {
-		t.Fatalf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
+	_, err = os.Stat(testManifestsPath)
+	if err == nil {
+		if err = os.Remove(testManifestsPath); err != nil {
+			t.Fatalf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
+		}
 	}
 	os.Remove(path.Join(wd, "../../placementrule-tests"))
 }

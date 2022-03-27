@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -24,16 +25,17 @@ import (
 )
 
 const (
-	metricsConfigMapKey  = "metrics_list.yaml"
-	metricsCollectorName = "metrics-collector-deployment"
-	selectorKey          = "component"
-	selectorValue        = "metrics-collector"
-	caMounthPath         = "/etc/serving-certs-ca-bundle"
-	caVolName            = "serving-certs-ca-bundle"
-	mtlsCertName         = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
-	mtlsCaName           = "observability-managed-cluster-certs"
-	limitBytes           = 1073741824
-	defaultInterval      = "30s"
+	metricsConfigMapKey       = "metrics_list.yaml"
+	metricsOcp311ConfigMapKey = "ocp311_metrics_list.yaml"
+	metricsCollectorName      = "metrics-collector-deployment"
+	selectorKey               = "component"
+	selectorValue             = "metrics-collector"
+	caMounthPath              = "/etc/serving-certs-ca-bundle"
+	caVolName                 = "serving-certs-ca-bundle"
+	mtlsCertName              = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
+	mtlsCaName                = "observability-managed-cluster-certs"
+	limitBytes                = 1073741824
+	defaultInterval           = "30s"
 )
 
 const (
@@ -45,22 +47,9 @@ var (
 	promURL    = "https://prometheus-k8s:9091"
 )
 
-type MetricsAllowlist struct {
-	NameList  []string          `yaml:"names"`
-	MatchList []string          `yaml:"matches"`
-	RenameMap map[string]string `yaml:"renames"`
-	RuleList  []Rule            `yaml:"rules"`
-}
-
-// Rule is the struct for recording rules and alert rules
-type Rule struct {
-	Record string `yaml:"record"`
-	Expr   string `yaml:"expr"`
-}
-
 func createDeployment(clusterID string, clusterType string,
 	obsAddonSpec oashared.ObservabilityAddonSpec,
-	hubInfo operatorconfig.HubInfo, allowlist MetricsAllowlist,
+	hubInfo operatorconfig.HubInfo, allowlist operatorconfig.MetricsAllowlist,
 	nodeSelector map[string]string, tolerations []corev1.Toleration,
 	replicaCount int32) *appsv1.Deployment {
 	interval := fmt.Sprint(obsAddonSpec.Interval) + "s"
@@ -122,6 +111,9 @@ func createDeployment(clusterID string, clusterType string,
 		"/usr/bin/metrics-collector",
 		"--from=$(FROM)",
 		"--to-upload=$(TO)",
+		"--to-upload-ca=/tlscerts/ca/ca.crt",
+		"--to-upload-cert=/tlscerts/certs/tls.crt",
+		"--to-upload-key=/tlscerts/certs/tls.key",
 		"--interval=" + interval,
 		"--limit-bytes=" + strconv.Itoa(limitBytes),
 		fmt.Sprintf("--label=\"cluster=%s\"", hubInfo.ClusterName),
@@ -149,9 +141,37 @@ func createDeployment(clusterID string, clusterType string,
 	for _, k := range renamekeys {
 		commands = append(commands, fmt.Sprintf("--rename=\"%s=%s\"", k, allowlist.RenameMap[k]))
 	}
-	for _, rule := range allowlist.RuleList {
-		commands = append(commands, fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr))
+	for _, rule := range allowlist.RecordingRuleList {
+		commands = append(
+			commands,
+			fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr),
+		)
 	}
+
+	for _, group := range allowlist.CollectRuleGroupList {
+		if group.Selector.MatchExpression != nil {
+			for _, expr := range group.Selector.MatchExpression {
+				if !evluateMatchExpression(expr, clusterID, clusterType, obsAddonSpec, hubInfo,
+					allowlist, nodeSelector, tolerations, replicaCount) {
+					continue
+				}
+				for _, rule := range group.CollectRuleList {
+					matchList := []string{}
+					for _, match := range rule.MatchList {
+						matchList = append(matchList, `"`+strings.ReplaceAll(match, `"`, `\"`)+`"`)
+					}
+					matchListStr := "[" + strings.Join(matchList, ",") + "]"
+					nameListStr := `["` + strings.Join(rule.NameList, `","`) + `"]`
+					commands = append(
+						commands,
+						fmt.Sprintf("--collectrule={\"name\":\"%s\",\"expr\":\"%s\",\"for\":\"%s\",\"names\":%v,\"matches\":%v}",
+							rule.Collect, rule.Expr, rule.For, nameListStr, matchListStr),
+					)
+				}
+			}
+		}
+	}
+
 	from := promURL
 	if !installPrometheus {
 		from = ocpPromURL
@@ -195,7 +215,7 @@ func createDeployment(clusterID string, clusterType string,
 								},
 							},
 							VolumeMounts:    mounts,
-							ImagePullPolicy: corev1.PullAlways,
+							ImagePullPolicy: corev1.PullIfNotPresent,
 						},
 					},
 					Volumes:      volumes,
@@ -215,10 +235,18 @@ func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonS
 	hubInfo operatorconfig.HubInfo, clusterID string, clusterType string,
 	replicaCount int32, forceRestart bool) (bool, error) {
 
-	list := getMetricsAllowlist(ctx, client)
+	list := getMetricsAllowlist(ctx, client, clusterType)
 	endpointDeployment := getEndpointDeployment(ctx, client)
-	deployment := createDeployment(clusterID, clusterType, obsAddonSpec, hubInfo, list,
-		endpointDeployment.Spec.Template.Spec.NodeSelector, endpointDeployment.Spec.Template.Spec.Tolerations, replicaCount)
+	deployment := createDeployment(
+		clusterID,
+		clusterType,
+		obsAddonSpec,
+		hubInfo,
+		list,
+		endpointDeployment.Spec.Template.Spec.NodeSelector,
+		endpointDeployment.Spec.Template.Spec.Tolerations,
+		replicaCount,
+	)
 	found := &appsv1.Deployment{}
 	err := client.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
 		Namespace: namespace}, found)
@@ -276,8 +304,8 @@ func deleteMetricsCollector(ctx context.Context, client client.Client) error {
 
 func int32Ptr(i int32) *int32 { return &i }
 
-func getMetricsAllowlist(ctx context.Context, client client.Client) MetricsAllowlist {
-	l := &MetricsAllowlist{}
+func getMetricsAllowlist(ctx context.Context, client client.Client, clusterType string) operatorconfig.MetricsAllowlist {
+	l := &operatorconfig.MetricsAllowlist{}
 	cm := &corev1.ConfigMap{}
 	err := client.Get(ctx, types.NamespacedName{Name: operatorconfig.AllowlistConfigMapName,
 		Namespace: namespace}, cm)
@@ -285,7 +313,11 @@ func getMetricsAllowlist(ctx context.Context, client client.Client) MetricsAllow
 		log.Error(err, "Failed to get configmap")
 	} else {
 		if cm.Data != nil {
-			err = yaml.Unmarshal([]byte(cm.Data[metricsConfigMapKey]), l)
+			configmapKey := metricsConfigMapKey
+			if clusterType == "ocp3" {
+				configmapKey = metricsOcp311ConfigMapKey
+			}
+			err = yaml.Unmarshal([]byte(cm.Data[configmapKey]), l)
 			if err != nil {
 				log.Error(err, "Failed to unmarshal data in configmap")
 			}

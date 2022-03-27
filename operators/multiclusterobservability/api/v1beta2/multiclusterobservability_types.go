@@ -67,19 +67,19 @@ type AdvancedConfig struct {
 	QueryFrontend *CommonSpec `json:"queryFrontend,omitempty"`
 	// spec for thanos-query
 	// +optional
-	Query *CommonSpec `json:"query,omitempty"`
+	Query *QuerySpec `json:"query,omitempty"`
 	// spec for thanos-compact
 	// +optional
 	Compact *CompactSpec `json:"compact,omitempty"`
 	// spec for thanos-receiver
 	// +optional
-	Receive *CommonSpec `json:"receive,omitempty"`
+	Receive *ReceiveSpec `json:"receive,omitempty"`
 	// spec for thanos-rule
 	// +optional
 	Rule *RuleSpec `json:"rule,omitempty"`
 	// spec for thanos-store-shard
 	// +optional
-	Store *CommonSpec `json:"store,omitempty"`
+	Store *StoreSpec `json:"store,omitempty"`
 }
 
 type CommonSpec struct {
@@ -91,11 +91,42 @@ type CommonSpec struct {
 	Replicas *int32 `json:"replicas,omitempty"`
 }
 
+// Thanos Query Spec
+type QuerySpec struct {
+	// Annotations is an unstructured key value map stored with a service account
+	// +optional
+	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
+
+	CommonSpec `json:",inline"`
+}
+
+// Thanos Receive Spec
+type ReceiveSpec struct {
+	// Annotations is an unstructured key value map stored with a service account
+	// +optional
+	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
+
+	CommonSpec `json:",inline"`
+}
+
+// Thanos Store Spec
+type StoreSpec struct {
+	// Annotations is an unstructured key value map stored with a service account
+	// +optional
+	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
+
+	CommonSpec `json:",inline"`
+}
+
 // Thanos Rule Spec
 type RuleSpec struct {
 	// Evaluation interval
 	// +optional
 	EvalInterval string `json:"evalInterval,omitempty"`
+
+	// Annotations is an unstructured key value map stored with a service account
+	// +optional
+	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
 
 	CommonSpec `json:",inline"`
 }
@@ -105,6 +136,9 @@ type CompactSpec struct {
 	// Compute Resources required by the compact.
 	// +optional
 	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
+	// Annotations is an unstructured key value map stored with a service account
+	// +optional
+	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
 }
 
 // CacheConfig is the spec of memcached.
@@ -155,6 +189,9 @@ type StorageConfig struct {
 	// Object store config secret for metrics
 	// +required
 	MetricObjectStorage *observabilityshared.PreConfiguredStorage `json:"metricObjectStorage"`
+	// WriteStorage storage config secret list for metrics
+	// +optional
+	WriteStorage []*observabilityshared.PreConfiguredStorage `json:"writeStorage,omitempty"`
 	// Specify the storageClass Stateful Sets. This storage class will also
 	// be used for Object Storage if MetricObjectStorage was configured for
 	// the system to create the storage.

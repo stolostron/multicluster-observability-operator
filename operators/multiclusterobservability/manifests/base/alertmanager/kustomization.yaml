@@ -12,3 +12,4 @@ resources:
 - alertmanager-accessor-clusterrole.yaml
 - alertmanager-accessor-clusterrolebinding.yaml
 - alertmanager-accessor-serviceaccount.yaml
+- prometheusrule.yaml

@@ -34,7 +34,8 @@ var _ = Describe("", func() {
 		if os.Getenv("SKIP_INSTALL_STEP") == "true" {
 			Skip("Skip the case due to MCO CR was created customized")
 		}
-		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		if err != nil {
 			panic(err.Error())
 		}
@@ -47,7 +48,8 @@ var _ = Describe("", func() {
 		if os.Getenv("SKIP_INSTALL_STEP") == "true" {
 			Skip("Skip the case due to MCO CR was created customized")
 		}
-		mcoSC, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		mcoSC, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
 		spec := mcoSC.Object["spec"].(map[string]interface{})
@@ -70,7 +72,9 @@ var _ = Describe("", func() {
 		}
 
 		Eventually(func() error {
-			pvcList, err := hubClient.CoreV1().PersistentVolumeClaims(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
+			pvcList, err := hubClient.CoreV1().
+				PersistentVolumeClaims(MCO_NAMESPACE).
+				List(context.TODO(), metav1.ListOptions{})
 			if err != nil {
 				return err
 			}
@@ -80,7 +84,12 @@ var _ = Describe("", func() {
 					scName := *pvc.Spec.StorageClassName
 					statusPhase := pvc.Status.Phase
 					if scName != expectedSC || statusPhase != "Bound" {
-						return fmt.Errorf("PVC check failed, scName = %s, expectedSC = %s, statusPhase = %s", scName, expectedSC, statusPhase)
+						return fmt.Errorf(
+							"PVC check failed, scName = %s, expectedSC = %s, statusPhase = %s",
+							scName,
+							expectedSC,
+							statusPhase,
+						)
 					}
 				}
 			}
@@ -145,7 +154,8 @@ var _ = Describe("", func() {
 
 	It("RHACM4K-2822: Observability: Verify the replica in advanced config for Observability components @BVT - [P1][Sev1][Observability][Integration] (config/g0)", func() {
 
-		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		if err != nil {
 			panic(err.Error())
 		}
@@ -208,16 +218,56 @@ var _ = Describe("", func() {
 				Expect(err).NotTo(HaveOccurred())
 				for _, deployInfo := range (*deploys).Items {
 					Expect(cpu).To(Equal(deployInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().String()))
-					Expect(limits["memory"]).To(Equal(deployInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()))
+					Expect(
+						limits["memory"],
+					).To(Equal(deployInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()))
 				}
 			} else {
 				sts, err := utils.GetStatefulSetWithLabel(testOptions, true, component.Label, MCO_NAMESPACE)
 				Expect(err).NotTo(HaveOccurred())
 				for _, stsInfo := range (*sts).Items {
 					Expect(cpu).To(Equal(stsInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().String()))
-					Expect(limits["memory"]).To(Equal(stsInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()))
+					memStr := stsInfo.Spec.Template.Spec.Containers[0].Resources.Limits.Memory().String()
+					Expect(limits["memory"]).To(Equal(memStr))
 				}
 			}
+		}
+	})
+
+	It("[P2][Sev2][observability][Integration] Checking service account annotations is set for store/query/rule/compact/receive (config/g0)", func() {
+
+		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if err != nil {
+			panic(err.Error())
+		}
+
+		spec := mcoRes.Object["spec"].(map[string]interface{})
+		if _, adv := spec["advanced"]; !adv {
+			Skip("Skip the case since the MCO CR did not have advanced spec configed")
+		}
+
+		advancedSpec := mcoRes.Object["spec"].(map[string]interface{})["advanced"].(map[string]interface{})
+
+		for _, component := range []string{"compact", "store", "query", "receive", "rule"} {
+			klog.V(1).Infof("The component is: %s\n", component)
+			annotations := advancedSpec[component].(map[string]interface{})["serviceAccountAnnotations"].(map[string]interface{})
+			sas, err := utils.GetSAWithLabel(testOptions, true,
+				"app.kubernetes.io/name=thanos-"+component, MCO_NAMESPACE)
+			Expect(err).NotTo(HaveOccurred())
+			for _, saInfo := range (*sas).Items {
+				for key, value := range annotations {
+					exist := false
+					for eKey, eValue := range saInfo.Annotations {
+						if eKey == key && eValue == value.(string) {
+							exist = true
+							continue
+						}
+					}
+					Expect(exist).To(BeTrue())
+				}
+			}
+
 		}
 	})
 

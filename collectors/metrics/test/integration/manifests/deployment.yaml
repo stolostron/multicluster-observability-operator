@@ -104,7 +104,7 @@ spec:
         - name: HTTPS_PROXY
         - name: NO_PROXY
         image: {{ METRICS_COLLECTOR_IMAGE }}
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         name: metrics-collector
         ports:
         - containerPort: 8080

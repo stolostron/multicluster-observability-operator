@@ -36,7 +36,8 @@ var _ = Describe("", func() {
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
 
-		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		if err != nil {
 			panic(err.Error())
 		}
@@ -48,7 +49,10 @@ var _ = Describe("", func() {
 					case "deleteDelay":
 						deleteDelay = reflect.ValueOf(v).String()
 						idmk, _ := strconv.Atoi(deleteDelay[:len(deleteDelay)-1])
-						ignoreDeletionMarksDelay = fmt.Sprintf("%.f", math.Ceil(float64(idmk)/float64(2))) + deleteDelay[len(deleteDelay)-1:]
+						ignoreDeletionMarksDelay = fmt.Sprintf(
+							"%.f",
+							math.Ceil(float64(idmk)/float64(2)),
+						) + deleteDelay[len(deleteDelay)-1:]
 					case "retentionInLocal":
 						retentionInLocal = reflect.ValueOf(v).String()
 					case "blockDuration":
@@ -93,7 +97,10 @@ var _ = Describe("", func() {
 					return nil
 				}
 			}
-			return fmt.Errorf("Failed to check store args: --ignore-deletion-marks-delay="+ignoreDeletionMarksDelay+". The args is: %v", argList)
+			return fmt.Errorf(
+				"Failed to check store args: --ignore-deletion-marks-delay="+ignoreDeletionMarksDelay+". The args is: %v",
+				argList,
+			)
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
@@ -112,7 +119,10 @@ var _ = Describe("", func() {
 					return nil
 				}
 			}
-			return fmt.Errorf("Failed to check receive args: --tsdb.retention="+retentionInLocal+". The args is: %v", argList)
+			return fmt.Errorf(
+				"Failed to check receive args: --tsdb.retention="+retentionInLocal+". The args is: %v",
+				argList,
+			)
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
@@ -131,7 +141,10 @@ var _ = Describe("", func() {
 					return nil
 				}
 			}
-			return fmt.Errorf("Failed to check rule args: --tsdb.retention="+retentionInLocal+". The args is: %v", argList)
+			return fmt.Errorf(
+				"Failed to check rule args: --tsdb.retention="+retentionInLocal+". The args is: %v",
+				argList,
+			)
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
@@ -150,7 +163,10 @@ var _ = Describe("", func() {
 					return nil
 				}
 			}
-			return fmt.Errorf("Failed to check rule args: --tsdb.block-duration="+blockDuration+". The args is: %v", argList)
+			return fmt.Errorf(
+				"Failed to check rule args: --tsdb.block-duration="+blockDuration+". The args is: %v",
+				argList,
+			)
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 

@@ -53,7 +53,9 @@ var _ = Describe("", func() {
 	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have the expected statefulsets @BVT - [P1][Sev1][Observability][Stable] (alert/g0)", func() {
 		By("Checking if STS: Alertmanager and observability-thanos-rule exist")
 		for _, label := range statefulsetLabels {
-			sts, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{LabelSelector: label})
+			sts, err := hubClient.AppsV1().
+				StatefulSets(MCO_NAMESPACE).
+				List(context.TODO(), metav1.ListOptions{LabelSelector: label})
 			Expect(err).NotTo(HaveOccurred())
 			for _, stsInfo := range (*sts).Items {
 				Expect(len(stsInfo.Spec.Template.Spec.Volumes)).Should(BeNumerically(">", 0))
@@ -65,7 +67,9 @@ var _ = Describe("", func() {
 
 				if strings.Contains(stsInfo.Name, "-thanos-rule") {
 					By("The statefulset: " + stsInfo.Name + " should have the appropriate configmap mounted")
-					Expect(stsInfo.Spec.Template.Spec.Volumes[0].ConfigMap.Name).To(Equal("thanos-ruler-default-rules"))
+					Expect(
+						stsInfo.Spec.Template.Spec.Volumes[0].ConfigMap.Name,
+					).To(Equal("thanos-ruler-default-rules"))
 				}
 			}
 		}
@@ -141,9 +145,16 @@ var _ = Describe("", func() {
 		stsName := (*rules).Items[0].Name
 		oldSts, _ := utils.GetStatefulSet(testOptions, true, stsName, MCO_NAMESPACE)
 
-		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/alerts/custom_rules_valid"})
+		yamlB, err := kustomize.Render(
+			kustomize.Options{KustomizationPath: "../../../examples/alerts/custom_rules_valid"},
+		)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlB)).NotTo(HaveOccurred())
 
 		ThanosRuleRestarting := false
 		By("Wait for thanos rule pods are restarted and ready")
@@ -180,19 +191,31 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][Observability][Stable] Should modify the SECRET: alertmanager-config (alert/g0)", func() {
+	It("[P2][Sev2][observability][Stable] Should modify the SECRET: alertmanager-config (alert/g0)", func() {
 		By("Editing the secret, we should be able to add the third partying tools integrations")
 		secret := utils.CreateCustomAlertConfigYaml(testOptions.HubCluster.BaseDomain)
 
-		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, secret)).NotTo(HaveOccurred())
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				secret)).NotTo(HaveOccurred())
 		klog.V(3).Infof("Successfully modified the secret: alertmanager-config")
 	})
 
 	It("RHACM4K-1668: Observability: Updated alert rule can take effect automatically - Should have custom alert updated [P2][Sev2][Observability][Stable] (alert/g0)", func() {
 		By("Updating custom alert rules")
 
-		yamlB, _ := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/alerts/custom_rules_invalid"})
-		Expect(utils.Apply(testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig, testOptions.HubCluster.KubeContext, yamlB)).NotTo(HaveOccurred())
+		yamlB, _ := kustomize.Render(
+			kustomize.Options{KustomizationPath: "../../../examples/alerts/custom_rules_invalid"},
+		)
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlB)).NotTo(HaveOccurred())
 
 		var labelName, labelValue string
 		labels, _ := kustomize.GetLabels(yamlB)
@@ -201,11 +224,14 @@ var _ = Describe("", func() {
 		}
 
 		By("Checking alert generated")
-		Eventually(func() error {
-			err, _ := utils.ContainManagedClusterMetric(testOptions, `ALERTS{`+labelName+`="`+labelValue+`"}`,
-				[]string{`"__name__":"ALERTS"`, `"` + labelName + `":"` + labelValue + `"`})
-			return err
-		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
+		Eventually(
+			func() error {
+				err, _ := utils.ContainManagedClusterMetric(testOptions, `ALERTS{`+labelName+`="`+labelValue+`"}`,
+					[]string{`"__name__":"ALERTS"`, `"` + labelName + `":"` + labelValue + `"`})
+				return err
+			},
+			EventuallyTimeoutMinute*5,
+			EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
 	})
 
 	It("RHACM4K-1668: Observability: Updated alert rule can take effect automatically - delete the customized rules [P2][Sev2][Observability][Stable] (alert/g0)", func() {
@@ -220,7 +246,9 @@ var _ = Describe("", func() {
 
 		oldSts, _ := utils.GetStatefulSet(testOptions, true, stsName, MCO_NAMESPACE)
 		Eventually(func() error {
-			err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Delete(context.TODO(), configmap[1], metav1.DeleteOptions{})
+			err := hubClient.CoreV1().
+				ConfigMaps(MCO_NAMESPACE).
+				Delete(context.TODO(), configmap[1], metav1.DeleteOptions{})
 			return err
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 
@@ -272,6 +300,10 @@ var _ = Describe("", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		if os.Getenv("IS_KIND_ENV") != "true" {
+			if BearerToken == "" {
+				BearerToken, err = utils.FetchBearerToken(testOptions)
+				Expect(err).NotTo(HaveOccurred())
+			}
 			alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 		}
 
@@ -280,6 +312,24 @@ var _ = Describe("", func() {
 		expectedKSClusterNames, err := utils.ListKSManagedClusterNames(testOptions)
 		Expect(err).NotTo(HaveOccurred())
 		expectClusterIdentifiers := append(expectedOCPClusterIDs, expectedKSClusterNames...)
+
+		// install watchdog PrometheusRule to *KS clusters
+		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: watchDogRuleKustomizationPath})
+		Expect(err).NotTo(HaveOccurred())
+		for _, ks := range expectedKSClusterNames {
+			for idx, mc := range testOptions.ManagedClusters {
+				if mc.Name == ks {
+					err = utils.Apply(
+						testOptions.ManagedClusters[idx].ClusterServerURL,
+						testOptions.ManagedClusters[idx].KubeConfig,
+						testOptions.ManagedClusters[idx].KubeContext,
+						yamlB,
+					)
+					Expect(err).NotTo(HaveOccurred())
+				}
+			}
+		}
 
 		By("Checking Watchdog alerts are forwarded to the hub")
 		Eventually(func() error {

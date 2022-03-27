@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: prometheus-operator
+    app.kubernetes.io/name: prometheus-operator
+  name: prometheus-operator
+  namespace: open-cluster-management-addon-observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: prometheus-operator
+      app.kubernetes.io/name: prometheus-operator
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: prometheus-operator
+      labels:
+        app.kubernetes.io/component: prometheus-operator
+        app.kubernetes.io/name: prometheus-operator
+    spec:
+      containers:
+      - args:
+          - '--kubelet-service=kube-system/kubelet'
+          - '--prometheus-config-reloader={{PROM_CONFIGMAP_RELOADER_IMG}}'
+          - '--namespaces={{NAMESPACE}}'
+        image: quay.io/prometheus-operator/prometheus-operator:v0.53.1
+        imagePullPolicy: IfNotPresent
+        name: prometheus-operator
+        ports:
+          - name: http
+            containerPort: 8080
+            protocol: TCP
+        resources:
+          requests:
+            cpu: 5m
+            memory: 150Mi
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        kubernetes.io/os: linux
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: prometheus-operator
+      serviceAccountName: prometheus-operator
+      terminationGracePeriodSeconds: 600

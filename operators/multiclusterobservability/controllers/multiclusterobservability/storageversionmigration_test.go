@@ -40,7 +40,7 @@ func TestCreateOrUpdateObservabilityStorageVersionMigrationResource(t *testing.T
 	}
 
 	// Test scenario in which StorageVersionMigration updated by others
-	svmName := storageVersionMigrationPrefix + mco.GetName()
+	svmName := storageVersionMigrationPrefix + "-" + mco.GetName()
 	svm := &migrationv1alpha1.StorageVersionMigration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: svmName,
@@ -67,11 +67,6 @@ func TestCreateOrUpdateObservabilityStorageVersionMigrationResource(t *testing.T
 		t.Fatalf("Failed to update StorageVersionMigration (%s)", svmName)
 	}
 
-	err = cleanObservabilityStorageVersionMigrationResource(c, mco)
-	if err != nil {
-		t.Fatalf("Failed to clean the StorageVersionMigration")
-	}
-
 	// Test clean scenario in which StorageVersionMigration is already removed
 	err = createOrUpdateObservabilityStorageVersionMigrationResource(c, s, mco)
 	if err != nil {
@@ -81,10 +76,5 @@ func TestCreateOrUpdateObservabilityStorageVersionMigrationResource(t *testing.T
 	err = c.Delete(context.TODO(), svm)
 	if err != nil {
 		t.Fatalf("Failed to delete (%s): (%v)", svmName, err)
-	}
-
-	err = cleanObservabilityStorageVersionMigrationResource(c, mco)
-	if err != nil {
-		t.Fatalf("Failed to clean the StorageVersionMigration")
 	}
 }

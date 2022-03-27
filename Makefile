@@ -56,3 +56,4 @@ endif
 .PHONY: bundle
 bundle:
 	cd operators/multiclusterobservability && make bundle
+

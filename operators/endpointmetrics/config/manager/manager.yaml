@@ -19,7 +19,7 @@ spec:
       containers:
       - name: endpoint-observability-operator
         image: quay.io/stolostron/endpoint-metrics-operator:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         command:
         - endpoint-monitoring-operator
         env:

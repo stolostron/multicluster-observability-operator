@@ -98,6 +98,8 @@ const (
 
 	ValidatingWebhookConfigurationName = "multicluster-observability-operator"
 	WebhookServiceName                 = "multicluster-observability-webhook-service"
+	BackupLabelName                    = "cluster.open-cluster-management.io/backup"
+	BackupLabelValue                   = ""
 )
 
 const (
@@ -123,9 +125,10 @@ const (
 	MemcachedExporterKey     = "memcached_exporter"
 	MemcachedExporterImgTag  = "v0.9.0"
 
-	GrafanaImgKey              = "grafana"
-	GrafanaDashboardLoaderName = "grafana-dashboard-loader"
-	GrafanaDashboardLoaderKey  = "grafana_dashboard_loader"
+	GrafanaImgKey               = "grafana"
+	GrafanaDashboardLoaderName  = "grafana-dashboard-loader"
+	GrafanaDashboardLoaderKey   = "grafana_dashboard_loader"
+	GrafanaCustomDashboardLabel = "grafana-custom-dashboard"
 
 	AlertManagerImgName           = "prometheus-alertmanager"
 	AlertManagerImgKey            = "prometheus_alertmanager"
@@ -220,7 +223,7 @@ const (
 	DeleteDelay            = "48h"
 	BlockDuration          = "2h"
 
-	DefaultImagePullPolicy = "Always"
+	DefaultImagePullPolicy = "IfNotPresent"
 	DefaultImagePullSecret = "multiclusterhub-operator-pull-secret"
 
 	ResourceLimits   = "limits"
@@ -236,6 +239,11 @@ const (
 	MCHCrdName                     = "multiclusterhubs.operator.open-cluster-management.io"
 	MCOCrdName                     = "multiclusterobservabilities.observability.open-cluster-management.io"
 	StorageVersionMigrationCrdName = "storageversionmigrations.migration.k8s.io"
+)
+
+const (
+	ResourceTypeConfigMap = "ConfigMap"
+	ResourceTypeSecret    = "Secret"
 )
 
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation
@@ -277,6 +285,19 @@ var (
 	MemoryLimitMB   = int32(1024)
 	ConnectionLimit = int32(1024)
 	MaxItemSize     = "1m"
+
+	BackupResourceMap = map[string]string{
+		AllowlistCustomConfigMapName: ResourceTypeConfigMap,
+		AlertRuleCustomConfigMapName: ResourceTypeConfigMap,
+		AlertmanagerConfigName:       ResourceTypeConfigMap,
+
+		AlertmanagerRouteBYOCAName:   ResourceTypeSecret,
+		AlertmanagerRouteBYOCERTName: ResourceTypeSecret,
+		ProxyRouteBYOCAName:          ResourceTypeSecret,
+		ProxyRouteBYOCERTName:        ResourceTypeSecret,
+	}
+
+	CollectRulesEnabled bool = true
 )
 
 func GetReplicas(component string, advanced *observabilityv1beta2.AdvancedConfig) *int32 {
@@ -440,8 +461,13 @@ func GetObsAPIHost(client client.Client, namespace string) (string, error) {
 
 	err := client.Get(context.TODO(), types.NamespacedName{Name: obsAPIGateway, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		// if the observatorium-api router is not created yet, fallback to get host from the domain of ingresscontroller
-		domain, err := getDomainForIngressController(client, OpenshiftIngressOperatorCRName, OpenshiftIngressOperatorNamespace)
+		// if the observatorium-api router is not created yet, fallback to get host
+		// from the domain of ingresscontroller
+		domain, err := getDomainForIngressController(
+			client,
+			OpenshiftIngressOperatorCRName,
+			OpenshiftIngressOperatorNamespace,
+		)
 		if err != nil {
 			return "", nil
 		}
@@ -467,7 +493,11 @@ func GetAlertmanagerEndpoint(client client.Client, namespace string) (string, er
 	err := client.Get(context.TODO(), types.NamespacedName{Name: AlertmanagerRouteName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		// if the alertmanager router is not created yet, fallback to get host from the domain of ingresscontroller
-		domain, err := getDomainForIngressController(client, OpenshiftIngressOperatorCRName, OpenshiftIngressOperatorNamespace)
+		domain, err := getDomainForIngressController(
+			client,
+			OpenshiftIngressOperatorCRName,
+			OpenshiftIngressOperatorNamespace,
+		)
 		if err != nil {
 			return "", nil
 		}
@@ -496,14 +526,26 @@ func getDomainForIngressController(client client.Client, name, namespace string)
 func GetAlertmanagerRouterCA(client client.Client) (string, error) {
 	amRouteBYOCaSrt := &corev1.Secret{}
 	amRouteBYOCertSrt := &corev1.Secret{}
-	err1 := client.Get(context.TODO(), types.NamespacedName{Name: AlertmanagerRouteBYOCAName, Namespace: GetDefaultNamespace()}, amRouteBYOCaSrt)
-	err2 := client.Get(context.TODO(), types.NamespacedName{Name: AlertmanagerRouteBYOCERTName, Namespace: GetDefaultNamespace()}, amRouteBYOCertSrt)
+	err1 := client.Get(
+		context.TODO(),
+		types.NamespacedName{Name: AlertmanagerRouteBYOCAName, Namespace: GetDefaultNamespace()},
+		amRouteBYOCaSrt,
+	)
+	err2 := client.Get(
+		context.TODO(),
+		types.NamespacedName{Name: AlertmanagerRouteBYOCERTName, Namespace: GetDefaultNamespace()},
+		amRouteBYOCertSrt,
+	)
 	if err1 == nil && err2 == nil {
 		return string(amRouteBYOCaSrt.Data["tls.crt"]), nil
 	}
 
 	ingressOperator := &operatorv1.IngressController{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: OpenshiftIngressOperatorCRName, Namespace: OpenshiftIngressOperatorNamespace}, ingressOperator)
+	err := client.Get(
+		context.TODO(),
+		types.NamespacedName{Name: OpenshiftIngressOperatorCRName, Namespace: OpenshiftIngressOperatorNamespace},
+		ingressOperator,
+	)
 	if err != nil {
 		return "", err
 	}
@@ -515,7 +557,11 @@ func GetAlertmanagerRouterCA(client client.Client) (string, error) {
 	}
 
 	routerCASecret := &corev1.Secret{}
-	err = client.Get(context.TODO(), types.NamespacedName{Name: routerCASrtName, Namespace: OpenshiftIngressNamespace}, routerCASecret)
+	err = client.Get(
+		context.TODO(),
+		types.NamespacedName{Name: routerCASrtName, Namespace: OpenshiftIngressNamespace},
+		routerCASecret,
+	)
 	if err != nil {
 		return "", err
 	}
@@ -525,7 +571,11 @@ func GetAlertmanagerRouterCA(client client.Client) (string, error) {
 // GetAlertmanagerCA is used to get the CA of Alertmanager
 func GetAlertmanagerCA(client client.Client) (string, error) {
 	amCAConfigmap := &corev1.ConfigMap{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: AlertmanagersDefaultCaBundleName, Namespace: GetDefaultNamespace()}, amCAConfigmap)
+	err := client.Get(
+		context.TODO(),
+		types.NamespacedName{Name: AlertmanagersDefaultCaBundleName, Namespace: GetDefaultNamespace()},
+		amCAConfigmap,
+	)
 	if err != nil {
 		return "", err
 	}
@@ -662,7 +712,12 @@ func SetCertDuration(annotations map[string]string) {
 	if annotations != nil && annotations[AnnotationCertDuration] != "" {
 		d, err := time.ParseDuration(annotations[AnnotationCertDuration])
 		if err != nil {
-			log.Error(err, "Failed to parse cert duration, use default one", "annotation", annotations[AnnotationCertDuration])
+			log.Error(
+				err,
+				"Failed to parse cert duration, use default one",
+				"annotation",
+				annotations[AnnotationCertDuration],
+			)
 		} else {
 			certDuration = d
 			return

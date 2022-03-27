@@ -133,7 +133,11 @@ func createClusterRoleBinding(c client.Client, namespace string, name string) er
 		return nil
 	}
 
-	log.Info("clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged", "namespace", namespace)
+	log.Info(
+		"clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged",
+		"namespace",
+		namespace,
+	)
 	return nil
 }
 
@@ -268,7 +272,12 @@ func createResourceRoleBinding(c client.Client, namespace string, name string) e
 		log.Info("Creating endpoint-observability-res-rolebinding rolebinding", "namespace", namespace)
 		err = c.Create(context.TODO(), rb)
 		if err != nil {
-			log.Error(err, "Failed to create endpoint-observability-res-rolebinding rolebinding", "namespace", namespace)
+			log.Error(
+				err,
+				"Failed to create endpoint-observability-res-rolebinding rolebinding",
+				"namespace",
+				namespace,
+			)
 			return err
 		}
 		return nil
@@ -282,7 +291,12 @@ func createResourceRoleBinding(c client.Client, namespace string, name string) e
 		rb.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 		err = c.Update(context.TODO(), rb)
 		if err != nil {
-			log.Error(err, "Failed to update endpoint-observability-res-rolebinding rolebinding", "namespace", namespace)
+			log.Error(
+				err,
+				"Failed to update endpoint-observability-res-rolebinding rolebinding",
+				"namespace",
+				namespace,
+			)
 			return err
 		}
 		return nil
@@ -325,7 +339,7 @@ func deleteResourceRole(c client.Client) error {
 func deleteRolebindings(c client.Client, namespace string) error {
 	crb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: namespace + "-" + resRoleBindingName,
+			Name: namespace + "-" + mcoRoleBindingName,
 		},
 	}
 	err := c.Delete(context.TODO(), crb)

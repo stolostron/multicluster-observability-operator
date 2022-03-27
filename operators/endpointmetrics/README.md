@@ -86,7 +86,7 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxx
 4. Create the configmap named `observability-metrics-allowlist` in namespace `open-cluster-management-addon-observability`:
 
 ```
-$ kubectl apply -n open-cluster-management-addon-observability -f https://raw.githubusercontent.com/open-cluster-management/multicluster-observability-operator/main/manifests/base/config/metrics_allowlist.yaml
+$ kubectl apply -n open-cluster-management-addon-observability -f https://raw.githubusercontent.com/stolostron/multicluster-observability-operator/main/manifests/base/config/metrics_allowlist.yaml
 ```
 
 5. Update the value of environment variable `COLLECTOR_IMAGE` in the endpoint-metrics-operator deployment, for example: `quay.io/stolostron/metrics-collector:2.3.0-SNAPSHOT-2021-04-08-09-07-10`
@@ -137,4 +137,3 @@ observability-addon   137m
 ### View metrics in dashboard
 
 Access Grafana console in hub cluster at https://{YOUR_DOMAIN}/grafana, view the metrics in the dashboard named "ACM:Managed Cluster Monitoring"
-

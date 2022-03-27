@@ -54,7 +54,14 @@ func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValu
 	); err != nil && errors.IsNotFound(err) {
 		// create new managedClusterAddon
 		if err := c.Create(context.TODO(), newManagedClusterAddon); err != nil {
-			log.Error(err, "failed to create managedclusteraddon", "name", ManagedClusterAddonName, "namespace", namespace)
+			log.Error(
+				err,
+				"failed to create managedclusteraddon",
+				"name",
+				ManagedClusterAddonName,
+				"namespace",
+				namespace,
+			)
 			return err
 		}
 
@@ -72,7 +79,14 @@ func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValu
 			}
 			return false, err
 		}); errPoll != nil {
-			log.Error(errPoll, "failed to get the created managedclusteraddon", "name", ManagedClusterAddonName, "namespace", namespace)
+			log.Error(
+				errPoll,
+				"failed to get the created managedclusteraddon",
+				"name",
+				ManagedClusterAddonName,
+				"namespace",
+				namespace,
+			)
 			return errPoll
 		}
 
@@ -106,7 +120,14 @@ func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValu
 		}
 		// update status for the created managedclusteraddon
 		if err := c.Status().Update(context.TODO(), managedClusterAddon); err != nil {
-			log.Error(err, "failed to update status for managedclusteraddon", "name", ManagedClusterAddonName, "namespace", namespace)
+			log.Error(
+				err,
+				"failed to update status for managedclusteraddon",
+				"name",
+				ManagedClusterAddonName,
+				"namespace",
+				namespace,
+			)
 			return err
 		}
 		return nil
@@ -117,16 +138,35 @@ func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValu
 
 	// managedclusteraddon already exists, updating...
 	if !reflect.DeepEqual(managedClusterAddon.Spec, newManagedClusterAddon.Spec) {
-		log.Info("found difference, updating managedClusterAddon", "name", ManagedClusterAddonName, "namespace", namespace)
+		log.Info(
+			"found difference, updating managedClusterAddon",
+			"name",
+			ManagedClusterAddonName,
+			"namespace",
+			namespace,
+		)
 		newManagedClusterAddon.ObjectMeta.ResourceVersion = managedClusterAddon.ObjectMeta.ResourceVersion
 		err := c.Update(context.TODO(), newManagedClusterAddon)
 		if err != nil {
-			log.Error(err, "failed to update managedclusteraddon", "name", ManagedClusterAddonName, "namespace", namespace)
+			log.Error(
+				err,
+				"failed to update managedclusteraddon",
+				"name",
+				ManagedClusterAddonName,
+				"namespace",
+				namespace,
+			)
 			return err
 		}
 		return nil
 	}
 
-	log.Info("ManagedClusterAddOn is created or updated successfully", "name", ManagedClusterAddonName, "namespace", namespace)
+	log.Info(
+		"ManagedClusterAddOn is created or updated successfully",
+		"name",
+		ManagedClusterAddonName,
+		"namespace",
+		namespace,
+	)
 	return nil
 }

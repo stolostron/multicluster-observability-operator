@@ -32,6 +32,7 @@ import (
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -53,7 +54,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/webhook"
 	operatorsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	mchv1 "github.com/stolostron/multiclusterhub-operator/pkg/apis/operator/v1"
+	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	observatoriumAPIs "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -75,6 +76,7 @@ func init() {
 	utilruntime.Must(observabilityv1beta1.AddToScheme(scheme))
 	utilruntime.Must(observabilityv1beta2.AddToScheme(scheme))
 	utilruntime.Must(observatoriumAPIs.AddToScheme(scheme))
+	utilruntime.Must(prometheusv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -197,17 +199,23 @@ func main() {
 
 	if ingressCtlCrdExists {
 		gvkLabelsMap[operatorv1.SchemeGroupVersion.WithKind("IngressController")] = []filteredcache.Selector{
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s,metadata.name==%s", config.OpenshiftIngressOperatorNamespace, config.OpenshiftIngressOperatorCRName)},
+			{
+				FieldSelector: fmt.Sprintf(
+					"metadata.namespace==%s,metadata.name==%s",
+					config.OpenshiftIngressOperatorNamespace,
+					config.OpenshiftIngressOperatorCRName,
+				),
+			},
 		}
 	}
 	if mchCrdExists {
-		gvkLabelsMap[mchv1.SchemeGroupVersion.WithKind("MultiClusterHub")] = []filteredcache.Selector{
+		gvkLabelsMap[mchv1.GroupVersion.WithKind("MultiClusterHub")] = []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", mcoNamespace)},
 		}
 	}
 
-	// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behaviour, which means
-	// MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
+	// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behaviour, which
+	// means MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
 	// Adding selector will reduce the cache size when the managedcluster scale.
 	gvkLabelsMap[rbacv1.SchemeGroupVersion.WithKind("ClusterRole")] = []filteredcache.Selector{
 		{LabelSelector: "owner==multicluster-observability-operator"},
@@ -242,7 +250,12 @@ func main() {
 	}
 
 	if err = util.UpdateCRDWebhookNS(crdClient, mcoNamespace, config.MCOCrdName); err != nil {
-		setupLog.Error(err, "unable to update webhook service namespace in MCO CRD", "controller", "MultiClusterObservability")
+		setupLog.Error(
+			err,
+			"unable to update webhook service namespace in MCO CRD",
+			"controller",
+			"MultiClusterObservability",
+		)
 	}
 
 	svmCrdExists, err := util.CheckCRDExist(crdClient, config.StorageVersionMigrationCrdName)

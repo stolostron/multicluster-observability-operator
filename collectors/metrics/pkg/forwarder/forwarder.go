@@ -67,17 +67,24 @@ type Config struct {
 	FromToken     string
 	FromTokenFile string
 	FromCAFile    string
+	ToUploadCA    string
+	ToUploadCert  string
+	ToUploadKey   string
 
-	AnonymizeLabels   []string
-	AnonymizeSalt     string
-	AnonymizeSaltFile string
-	Debug             bool
-	Interval          time.Duration
-	LimitBytes        int64
-	Rules             []string
-	RecordingRules    []string
-	RulesFile         string
-	Transformer       metricfamily.Transformer
+	AnonymizeLabels    []string
+	AnonymizeSalt      string
+	AnonymizeSaltFile  string
+	Debug              bool
+	Interval           time.Duration
+	EvaluateInterval   time.Duration
+	LimitBytes         int64
+	Rules              []string
+	RulesFile          string
+	RecordingRules     []string
+	RecordingRulesFile string
+	CollectRules       []string
+	CollectRulesFile   string
+	Transformer        metricfamily.Transformer
 
 	Logger                  log.Logger
 	SimulatedTimeseriesFile string
@@ -108,6 +115,58 @@ type Worker struct {
 	status status.StatusReport
 }
 
+func CreateFromClient(cfg Config, interval time.Duration, name string,
+	logger log.Logger) (*metricsclient.Client, error) {
+	fromTransport := metricsclient.DefaultTransport(logger, false)
+	if len(cfg.FromCAFile) > 0 {
+		if fromTransport.TLSClientConfig == nil {
+			fromTransport.TLSClientConfig = &tls.Config{
+				MinVersion: tls.VersionTLS12,
+			}
+		}
+		pool, err := x509.SystemCertPool()
+		if err != nil {
+			return nil, fmt.Errorf("failed to read system certificates: %v", err)
+		}
+		data, err := ioutil.ReadFile(cfg.FromCAFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read from-ca-file: %v", err)
+		}
+		if !pool.AppendCertsFromPEM(data) {
+			rlogger.Log(logger, rlogger.Warn, "msg", "no certs found in from-ca-file")
+		}
+		fromTransport.TLSClientConfig.RootCAs = pool
+	} else {
+		if fromTransport.TLSClientConfig == nil {
+			fromTransport.TLSClientConfig = &tls.Config{
+				MinVersion: tls.VersionTLS12,
+				/* #nosec */
+				InsecureSkipVerify: true,
+			}
+		}
+	}
+
+	// Create the `fromClient`.
+	fromClient := &http.Client{Transport: fromTransport}
+	if cfg.Debug {
+		fromClient.Transport = metricshttp.NewDebugRoundTripper(logger, fromClient.Transport)
+	}
+	if len(cfg.FromToken) == 0 && len(cfg.FromTokenFile) > 0 {
+		data, err := ioutil.ReadFile(cfg.FromTokenFile)
+		if err != nil {
+			return nil, fmt.Errorf("unable to read from-token-file: %v", err)
+		}
+		cfg.FromToken = strings.TrimSpace(string(data))
+	}
+	if len(cfg.FromToken) > 0 {
+		fromClient.Transport = metricshttp.NewBearerRoundTripper(cfg.FromToken, fromClient.Transport)
+	}
+
+	from := metricsclient.New(logger, fromClient, cfg.LimitBytes, interval, "federate_from")
+
+	return from, nil
+}
+
 func createClients(cfg Config, interval time.Duration,
 	logger log.Logger) (*metricsclient.Client, *metricsclient.Client, metricfamily.MultiTransformer, error) {
 
@@ -136,56 +195,14 @@ func createClients(cfg Config, interval time.Duration,
 	if len(cfg.AnonymizeLabels) > 0 {
 		transformer.With(metricfamily.NewMetricsAnonymizer(anonymizeSalt, cfg.AnonymizeLabels, nil))
 	}
-
-	fromTransport := metricsclient.DefaultTransport(logger, false)
-	if len(cfg.FromCAFile) > 0 {
-		if fromTransport.TLSClientConfig == nil {
-			fromTransport.TLSClientConfig = &tls.Config{
-				MinVersion: tls.VersionTLS12,
-			}
-		}
-		pool, err := x509.SystemCertPool()
-		if err != nil {
-			return nil, nil, transformer, fmt.Errorf("failed to read system certificates: %v", err)
-		}
-		data, err := ioutil.ReadFile(cfg.FromCAFile)
-		if err != nil {
-			return nil, nil, transformer, fmt.Errorf("failed to read from-ca-file: %v", err)
-		}
-		if !pool.AppendCertsFromPEM(data) {
-			rlogger.Log(logger, rlogger.Warn, "msg", "no certs found in from-ca-file")
-		}
-		fromTransport.TLSClientConfig.RootCAs = pool
-	} else {
-		if fromTransport.TLSClientConfig == nil {
-			fromTransport.TLSClientConfig = &tls.Config{
-				MinVersion: tls.VersionTLS12,
-				/* #nosec */
-				InsecureSkipVerify: true,
-			}
-		}
+	from, err := CreateFromClient(cfg, interval, "federate_from", logger)
+	if err != nil {
+		return nil, nil, transformer, err
 	}
-
-	// Create the `fromClient`.
-	fromClient := &http.Client{Transport: fromTransport}
-	if cfg.Debug {
-		fromClient.Transport = metricshttp.NewDebugRoundTripper(logger, fromClient.Transport)
-	}
-	if len(cfg.FromToken) == 0 && len(cfg.FromTokenFile) > 0 {
-		data, err := ioutil.ReadFile(cfg.FromTokenFile)
-		if err != nil {
-			return nil, nil, transformer, fmt.Errorf("unable to read from-token-file: %v", err)
-		}
-		cfg.FromToken = strings.TrimSpace(string(data))
-	}
-	if len(cfg.FromToken) > 0 {
-		fromClient.Transport = metricshttp.NewBearerRoundTripper(cfg.FromToken, fromClient.Transport)
-	}
-	from := metricsclient.New(logger, fromClient, cfg.LimitBytes, interval, "federate_from")
 
 	// Create the `toClient`.
 
-	toTransport, err := metricsclient.MTLSTransport(logger)
+	toTransport, err := metricsclient.MTLSTransport(logger, cfg.ToUploadCA, cfg.ToUploadCert, cfg.ToUploadKey)
 	if err != nil {
 		return nil, nil, transformer, errors.New(err.Error())
 	}

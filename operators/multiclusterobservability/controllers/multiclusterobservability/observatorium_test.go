@@ -8,6 +8,8 @@ import (
 	"context"
 	"testing"
 
+	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,11 +17,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/yaml"
 
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 )
 
@@ -49,8 +53,15 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			StorageConfig: &mcov1beta2.StorageConfig{
 				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
-					Key:  "key",
-					Name: "name",
+					Key:           "key",
+					Name:          "name",
+					TLSSecretName: "secret",
+				},
+				WriteStorage: []*mcoshared.PreConfiguredStorage{
+					{
+						Key:  "write_key",
+						Name: "write_name",
+					},
 				},
 				StorageClass:            storageClassName,
 				AlertmanagerStorageSize: "1Gi",
@@ -66,13 +77,29 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 		},
 	}
 
-	obs := newDefaultObservatoriumSpec(mco, storageClassName)
+	writeStorageS := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "write_name",
+			Namespace: config.GetDefaultNamespace(),
+		},
+		Type: "Opaque",
+		Data: map[string][]byte{
+			"write_key": []byte(`url: http://remotewrite/endpoint
+`),
+		},
+	}
+
+	objs := []runtime.Object{mco, writeStorageS}
+	// Create a fake client to mock API calls.
+	cl := fake.NewFakeClient(objs...)
+
+	obs, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
 
 	receiversStorage := obs.Thanos.Receivers.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	ruleStorage := obs.Thanos.Rule.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	storeStorage := obs.Thanos.Store.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
 	compactStorage := obs.Thanos.Compact.VolumeClaimTemplate.Spec.Resources.Requests["storage"]
-	obs = newDefaultObservatoriumSpec(mco, storageClassName)
+	obs, _ = newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
 	if *obs.Thanos.Receivers.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
 		*obs.Thanos.Rule.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
 		*obs.Thanos.Store.VolumeClaimTemplate.Spec.StorageClassName != storageClassName ||
@@ -83,8 +110,27 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 		compactStorage.String() != statefulSetSize ||
 		obs.ObjectStorageConfig.Thanos.Key != "key" ||
 		obs.ObjectStorageConfig.Thanos.Name != "name" ||
-		obs.Thanos.Query.LookbackDelta != "600s" {
+		obs.ObjectStorageConfig.Thanos.TLSSecretName != "secret" ||
+		obs.Thanos.Query.LookbackDelta != "600s" ||
+		obs.API.AdditionalWriteEndpoints.EndpointsConfigSecret != endpointsConfigName {
 		t.Errorf("Failed to newDefaultObservatorium")
+	}
+
+	endpointS := &corev1.Secret{}
+	err := cl.Get(context.TODO(), types.NamespacedName{
+		Name:      endpointsConfigName,
+		Namespace: config.GetDefaultNamespace(),
+	}, endpointS)
+	if err != nil {
+		t.Errorf("Failed to get endpoint config secret due to %v", err)
+	}
+	endpointConfig := []mcoutil.RemoteWriteEndpoint{}
+	err = yaml.Unmarshal(endpointS.Data[endpointsKey], &endpointConfig)
+	if err != nil {
+		t.Errorf("Failed to unmarshal endpoint secret due to %v", err)
+	}
+	if endpointConfig[0].Name != "write_name" || endpointConfig[0].URL.String() != "http://remotewrite/endpoint" {
+		t.Errorf("Wrong endpoint config: %s, %s", endpointConfig[0].Name, endpointConfig[0].URL.String())
 	}
 }
 
@@ -157,7 +203,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	)
 
 	oldSpec := observatoriumCRFound.Spec
-	newSpec := newDefaultObservatoriumSpec(mco, storageClassName)
+	newSpec, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
 	oldSpecBytes, _ := yaml.Marshal(oldSpec)
 	newSpecBytes, _ := yaml.Marshal(newSpec)
 
@@ -168,5 +214,109 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	_, err = GenerateObservatoriumCR(cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to update observatorium due to %v", err)
+	}
+}
+
+func TestGetTLSSecretMountPath(t *testing.T) {
+
+	testCaseList := []struct {
+		name        string
+		secret      *corev1.Secret
+		storeConfig *oashared.PreConfiguredStorage
+		expected    string
+	}{
+
+		{
+			"no tls secret defined",
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: config.GetDefaultNamespace(),
+				},
+				Type: "Opaque",
+				Data: map[string][]byte{
+					"thanos.yaml": []byte(`type: s3
+config:
+  bucket: s3
+  endpoint: s3.amazonaws.com
+`),
+				},
+			},
+			&oashared.PreConfiguredStorage{
+				Key:  "thanos.yaml",
+				Name: "test",
+			},
+			"",
+		},
+		{
+			"has tls config defined",
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-1",
+					Namespace: config.GetDefaultNamespace(),
+				},
+				Type: "Opaque",
+				Data: map[string][]byte{
+					"thanos.yaml": []byte(`type: s3
+config:
+  bucket: s3
+  endpoint: s3.amazonaws.com
+  insecure: true
+  http_config:
+    tls_config:
+      ca_file: /etc/minio/certs/ca.crt
+      cert_file: /etc/minio/certs/public.crt
+      key_file: /etc/minio/certs/private.key
+      insecure_skip_verify: true
+`),
+				},
+			},
+			&oashared.PreConfiguredStorage{
+				Key:  "thanos.yaml",
+				Name: "test-1",
+			},
+			"/etc/minio/certs",
+		},
+		{
+			"has tls config defined in root path",
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-2",
+					Namespace: config.GetDefaultNamespace(),
+				},
+				Type: "Opaque",
+				Data: map[string][]byte{
+					"thanos.yaml": []byte(`type: s3
+config:
+  bucket: s3
+  endpoint: s3.amazonaws.com
+  insecure: true
+  http_config:
+    tls_config:
+      ca_file: /ca.crt
+      cert_file: /etc/minio/certs/public.crt
+      key_file: /etc/minio/certs/private.key
+      insecure_skip_verify: true
+`),
+				},
+			},
+			&oashared.PreConfiguredStorage{
+				Key:  "thanos.yaml",
+				Name: "test-2",
+			},
+			"/",
+		},
+	}
+
+	client := fake.NewFakeClient([]runtime.Object{}...)
+	for _, c := range testCaseList {
+		err := client.Create(context.TODO(), c.secret)
+		if err != nil {
+			t.Errorf("failed to create object storage secret, due to %v", err)
+		}
+		path, err := getTLSSecretMountPath(client, c.storeConfig)
+		if path != c.expected {
+			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", c.name, path, c.expected)
+		}
 	}
 }

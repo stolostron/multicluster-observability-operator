@@ -35,7 +35,12 @@ var _ = Describe("", func() {
 		hubPodsName := []string{}
 		Eventually(func() bool {
 			if collectorPodName == "" {
-				_, podList := utils.GetPodList(testOptions, false, MCO_ADDON_NAMESPACE, "component=metrics-collector")
+				_, podList := utils.GetPodList(
+					testOptions,
+					false,
+					MCO_ADDON_NAMESPACE,
+					"component=metrics-collector",
+				)
 				if podList != nil && len(podList.Items) > 0 {
 					collectorPodName = podList.Items[0].Name
 				}
@@ -44,7 +49,12 @@ var _ = Describe("", func() {
 				return false
 			}
 			hubPodsName = []string{}
-			_, apiPodList := utils.GetPodList(testOptions, true, MCO_NAMESPACE, "app.kubernetes.io/name=observatorium-api")
+			_, apiPodList := utils.GetPodList(
+				testOptions,
+				true,
+				MCO_NAMESPACE,
+				"app.kubernetes.io/name=observatorium-api",
+			)
 			if apiPodList != nil && len(apiPodList.Items) != 0 {
 				for _, pod := range apiPodList.Items {
 					hubPodsName = append(hubPodsName, pod.Name)
@@ -70,11 +80,18 @@ var _ = Describe("", func() {
 
 		By(fmt.Sprintf("Waiting for old pods removed: %v and new pods created", hubPodsName))
 		Eventually(func() bool {
-			err1, appPodList := utils.GetPodList(testOptions, true, MCO_NAMESPACE, "app.kubernetes.io/name=observatorium-api")
+			err1, appPodList := utils.GetPodList(
+				testOptions,
+				true,
+				MCO_NAMESPACE,
+				"app.kubernetes.io/name=observatorium-api",
+			)
 			err2, rbacPodList := utils.GetPodList(testOptions, true, MCO_NAMESPACE, "app=rbac-query-proxy")
 			if err1 == nil && err2 == nil {
 				if len(hubPodsName) != len(appPodList.Items)+len(rbacPodList.Items) {
-					klog.V(1).Infof("Wrong number of pods: <%d> observatorium-api pods and <%d> rbac-query-proxy pods", len(appPodList.Items), len(rbacPodList.Items))
+					klog.V(1).Infof("Wrong number of pods: <%d> observatorium-api pods and <%d> rbac-query-proxy pods",
+						len(appPodList.Items),
+						len(rbacPodList.Items))
 					return false
 				}
 				for _, oldPodName := range hubPodsName {
@@ -122,7 +139,12 @@ var _ = Describe("", func() {
 
 		By(fmt.Sprintf("Waiting for old pod <%s> removed and new pod created", collectorPodName))
 		Eventually(func() bool {
-			err, podList := utils.GetPodList(testOptions, false, MCO_ADDON_NAMESPACE, "component=metrics-collector")
+			err, podList := utils.GetPodList(
+				testOptions,
+				false,
+				MCO_ADDON_NAMESPACE,
+				"component=metrics-collector",
+			)
 			if err == nil {
 				for _, pod := range podList.Items {
 					if pod.Name != collectorPodName {
@@ -136,7 +158,12 @@ var _ = Describe("", func() {
 
 			}
 			// debug code to check label "cert/time-restarted"
-			deployment, err := utils.GetDeployment(testOptions, false, "metrics-collector-deployment", MCO_ADDON_NAMESPACE)
+			deployment, err := utils.GetDeployment(
+				testOptions,
+				false,
+				"metrics-collector-deployment",
+				MCO_ADDON_NAMESPACE,
+			)
 			if err == nil {
 				klog.V(1).Infof("labels: <%v>", deployment.Spec.Template.ObjectMeta.Labels)
 			}

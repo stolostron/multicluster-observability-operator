@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
@@ -20,7 +21,9 @@ func CheckOBAStatus(opt TestOptions, namespace, status string) error {
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
-	oba, err := dynClient.Resource(NewMCOAddonGVR()).Namespace(namespace).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
+	oba, err := dynClient.Resource(NewMCOAddonGVR()).
+		Namespace(namespace).
+		Get(context.TODO(), "observability-addon", metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -31,13 +34,28 @@ func CheckOBAStatus(opt TestOptions, namespace, status string) error {
 	}
 }
 
+func CheckOBADeleted(opt TestOptions, namespace string) error {
+	dynClient := NewKubeClientDynamic(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	_, err := dynClient.Resource(NewMCOAddonGVR()).Namespace(namespace).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
+	if err == nil || !errors.IsNotFound(err) {
+		return fmt.Errorf("observability-addon is not properly deleted for managed cluster %s", namespace)
+	}
+	return nil
+}
+
 func CheckManagedClusterAddonsStatus(opt TestOptions, namespace, status string) error {
 	dynClient := NewKubeClientDynamic(
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
-	mca, err := dynClient.Resource(NewMCOManagedClusterAddonsGVR()).Namespace(namespace).Get(context.TODO(), "observability-controller", metav1.GetOptions{})
+	mca, err := dynClient.Resource(NewMCOManagedClusterAddonsGVR()).
+		Namespace(namespace).
+		Get(context.TODO(), "observability-controller", metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -82,6 +100,20 @@ func CheckAllOBADisabled(opt TestOptions) error {
 			return err
 		}
 		err = CheckManagedClusterAddonsStatus(opt, cluster, ManagedClusterAddOnDisabledMessage)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func CheckAllOBAsDeleted(opt TestOptions) error {
+	clusters, err := ListManagedClusters(opt)
+	if err != nil {
+		return err
+	}
+	for _, cluster := range clusters {
+		err = CheckOBADeleted(opt, cluster)
 		if err != nil {
 			return err
 		}

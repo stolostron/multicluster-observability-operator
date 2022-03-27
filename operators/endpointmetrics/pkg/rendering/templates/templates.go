@@ -16,7 +16,17 @@ func GetTemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
 	resourceList := []*resource.Resource{}
 
 	// add prometheus template
+	if err := r.AddTemplateFromPath(r.GetTemplatesPath()+"/prometheus/crd", &resourceList); err != nil {
+		return resourceList, err
+	}
+
+	// add prometheus template
 	if err := r.AddTemplateFromPath(r.GetTemplatesPath()+"/prometheus", &resourceList); err != nil {
+		return resourceList, err
+	}
+
+	// add prometheus template
+	if err := r.AddTemplateFromPath(r.GetTemplatesPath()+"/prometheus/prometheusrules", &resourceList); err != nil {
 		return resourceList, err
 	}
 

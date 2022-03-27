@@ -29,7 +29,11 @@ func GetStatefulSetWithLabel(opt TestOptions, isHub bool, label string,
 	})
 
 	if err != nil {
-		klog.Errorf("Failed to get statefulset with label selector %s in namespace %s due to %v", label, namespace, err)
+		klog.Errorf(
+			"Failed to get statefulset with label selector %s in namespace %s due to %v",
+			label,
+			namespace,
+			err)
 	}
 	return sts, err
 }

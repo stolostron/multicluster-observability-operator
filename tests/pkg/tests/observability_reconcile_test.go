@@ -98,7 +98,8 @@ var _ = Describe("", func() {
 
 	It("RHACM4K-1655: Observability: Verify nodeSelector setting effects for Observability components [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
 		By("Checking node selector spec in MCO CR")
-		mcoSC, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		mcoSC, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
+			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
 		spec := mcoSC.Object["spec"].(map[string]interface{})

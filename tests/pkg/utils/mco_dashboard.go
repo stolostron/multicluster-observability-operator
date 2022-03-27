@@ -30,7 +30,7 @@ func ContainDashboard(opt TestOptions, title string) (error, bool) {
 	client := &http.Client{}
 	if os.Getenv("IS_KIND_ENV") != "true" {
 		tr := &http.Transport{
-			/* #nosec */
+			// #nosec
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 

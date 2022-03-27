@@ -6,15 +6,19 @@ package multiclusterobservability
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"path"
+	"reflect"
 	"time"
 
 	routev1 "github.com/openshift/api/route/v1"
 	obsv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
+	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,15 +27,19 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/yaml"
 
+	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (
+	endpointsConfigName = "observability-remotewrite-endpoints"
+	endpointsKey        = "endpoints.yaml"
+
 	obsAPIGateway = "observatorium-api"
 
 	readOnlyRoleName  = "read-only-metrics"
@@ -52,15 +60,25 @@ func GenerateObservatoriumCR(
 		return &ctrl.Result{}, err
 	}
 
+	// fetch TLS secret mount path from the object store secret
+	tlsSecretMountPath, err := getTLSSecretMountPath(cl, mco.Spec.StorageConfig.MetricObjectStorage)
+	if err != nil {
+		return &ctrl.Result{}, err
+	}
+
 	log.Info("storageClassSelected", "storageClassSelected", storageClassSelected)
 
+	obsSpec, err := newDefaultObservatoriumSpec(cl, mco, storageClassSelected, tlsSecretMountPath)
+	if err != nil {
+		return &ctrl.Result{}, err
+	}
 	observatoriumCR := &obsv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mcoconfig.GetOperandName(mcoconfig.Observatorium),
 			Namespace: mcoconfig.GetDefaultNamespace(),
 			Labels:    labels,
 		},
-		Spec: *newDefaultObservatoriumSpec(mco, storageClassSelected),
+		Spec: *obsSpec,
 	}
 
 	// Set MultiClusterObservability instance as the owner and controller
@@ -79,7 +97,7 @@ func GenerateObservatoriumCR(
 		observatoriumCRFound,
 	)
 
-	if err != nil && errors.IsNotFound(err) {
+	if err != nil && k8serrors.IsNotFound(err) {
 		log.Info("Creating a new observatorium CR",
 			"observatorium", observatoriumCR.Name,
 		)
@@ -115,7 +133,7 @@ func GenerateObservatoriumCR(
 	newObj.Spec = newSpec
 	err = cl.Update(context.TODO(), newObj)
 	if err != nil {
-		log.Error(err, "Failed to update observatorium CR %s", observatoriumCR.Name)
+		log.Error(err, "Failed to update observatorium CR %s", "name", observatoriumCR.Name)
 		// add timeout for update failure avoid update conflict
 		return &ctrl.Result{RequeueAfter: time.Second * 3}, err
 	}
@@ -128,6 +146,40 @@ func GenerateObservatoriumCR(
 	}
 
 	return nil, nil
+}
+
+func getTLSSecretMountPath(client client.Client,
+	objectStorage *oashared.PreConfiguredStorage) (string, error) {
+	found := &v1.Secret{}
+	err := client.Get(
+		context.TODO(),
+		types.NamespacedName{Name: objectStorage.Name, Namespace: mcoconfig.GetDefaultNamespace()},
+		found,
+	)
+	if err != nil {
+		// report the status if the object store is not defined in checkObjStorageStatus method
+		// here just ignore
+		if k8serrors.IsNotFound(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	data, ok := found.Data[objectStorage.Key]
+	if !ok {
+		return "", errors.New("failed to found the object storage configuration key from secret")
+	}
+
+	var objectConfg mcoconfig.ObjectStorgeConf
+	err = yaml.Unmarshal(data, &objectConfg)
+	if err != nil {
+		return "", err
+	}
+
+	caFile := objectConfg.Config.HTTPConfig.TLSConfig.CAFile
+	if caFile == "" {
+		return "", nil
+	}
+	return path.Dir(caFile), nil
 }
 
 func updateTenantID(
@@ -183,7 +235,7 @@ func GenerateAPIGatewayRoute(
 		context.TODO(),
 		types.NamespacedName{Name: apiGateway.Name, Namespace: apiGateway.Namespace},
 		&routev1.Route{})
-	if err != nil && errors.IsNotFound(err) {
+	if err != nil && k8serrors.IsNotFound(err) {
 		log.Info("Creating a new route to expose observatorium api",
 			"apiGateway.Namespace", apiGateway.Namespace,
 			"apiGateway.Name", apiGateway.Name,
@@ -197,15 +249,19 @@ func GenerateAPIGatewayRoute(
 	return nil, nil
 }
 
-func newDefaultObservatoriumSpec(mco *mcov1beta2.MultiClusterObservability,
-	scSelected string) *obsv1alpha1.ObservatoriumSpec {
+func newDefaultObservatoriumSpec(cl client.Client, mco *mcov1beta2.MultiClusterObservability,
+	scSelected string, tlsSecretMountPath string) (*obsv1alpha1.ObservatoriumSpec, error) {
 
 	obs := &obsv1alpha1.ObservatoriumSpec{}
 	obs.SecurityContext = &v1.SecurityContext{}
 	obs.PullSecret = mcoconfig.GetImagePullSecret(mco.Spec)
 	obs.NodeSelector = mco.Spec.NodeSelector
 	obs.Tolerations = mco.Spec.Tolerations
-	obs.API = newAPISpec(mco)
+	obsApi, err := newAPISpec(cl, mco)
+	if err != nil {
+		return obs, err
+	}
+	obs.API = obsApi
 	obs.Thanos = newThanosSpec(mco, scSelected)
 	if util.ProxyEnvVarsAreSet() {
 		obs.EnvVars = newEnvVars()
@@ -220,8 +276,10 @@ func newDefaultObservatoriumSpec(mco *mcov1beta2.MultiClusterObservability,
 		objStorageConf := mco.Spec.StorageConfig.MetricObjectStorage
 		obs.ObjectStorageConfig.Thanos.Name = objStorageConf.Name
 		obs.ObjectStorageConfig.Thanos.Key = objStorageConf.Key
+		obs.ObjectStorageConfig.Thanos.TLSSecretName = objStorageConf.TLSSecretName
+		obs.ObjectStorageConfig.Thanos.TLSSecretMountPath = tlsSecretMountPath
 	}
-	return obs
+	return obs, nil
 }
 
 // return proxy variables
@@ -314,7 +372,50 @@ func newAPITLS() obsv1alpha1.TLS {
 	}
 }
 
-func newAPISpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.APISpec {
+func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpoint) error {
+	epsYaml, err := yaml.Marshal(eps)
+	if err != nil {
+		return err
+	}
+	epsYamlMap := map[string][]byte{}
+	epsYamlMap[endpointsKey] = epsYaml
+	epsSecret := &v1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: v1.SchemeGroupVersion.String(),
+			Kind:       "Secret",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      endpointsConfigName,
+			Namespace: config.GetDefaultNamespace(),
+		},
+		Data: epsYamlMap,
+	}
+	found := &v1.Secret{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: endpointsConfigName,
+		Namespace: config.GetDefaultNamespace()}, found)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			err = c.Create(context.TODO(), epsSecret)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	} else {
+		if !reflect.DeepEqual(epsYamlMap, found.Data) {
+			epsSecret.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+			err = c.Update(context.TODO(), epsSecret)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+
+}
+
+func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obsv1alpha1.APISpec, error) {
 	apiSpec := obsv1alpha1.APISpec{}
 	apiSpec.RBAC = newAPIRBAC()
 	apiSpec.Tenants = newAPITenants()
@@ -330,8 +431,58 @@ func newAPISpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.APISpec {
 	if replace {
 		apiSpec.Image = image
 	}
+	apiSpec.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 	apiSpec.ServiceMonitor = true
-	return apiSpec
+	if mco.Spec.StorageConfig.WriteStorage != nil {
+		eps := []mcoutil.RemoteWriteEndpoint{}
+		mountSecrets := []string{}
+		for _, storageConfig := range mco.Spec.StorageConfig.WriteStorage {
+			storageSecret := &v1.Secret{}
+			err := c.Get(context.TODO(), types.NamespacedName{Name: storageConfig.Name,
+				Namespace: mcoconfig.GetDefaultNamespace()}, storageSecret)
+			if err != nil {
+				log.Error(err, "Failed to get the secret", "name", storageConfig.Name)
+				return apiSpec, err
+			} else {
+				data, ok := storageSecret.Data[storageConfig.Key]
+				if !ok {
+					log.Error(err, "Invalid key in secret", "name", storageConfig.Name, "key", storageConfig.Key)
+					return apiSpec, errors.New(fmt.Sprintf("Invalid key %s in secret %s", storageConfig.Key, storageConfig.Name))
+				}
+				ep := &mcoutil.RemoteWriteEndpointWithSecret{}
+				err = yaml.Unmarshal(data, ep)
+				if err != nil {
+					log.Error(err, "Failed to unmarshal data in secret", "name", storageConfig.Name)
+					return apiSpec, err
+				}
+				newEp := &mcoutil.RemoteWriteEndpoint{
+					Name: storageConfig.Name,
+					URL:  ep.URL,
+				}
+				if ep.HttpClientConfig != nil {
+					newConfig, mountS := mcoutil.Transform(*ep.HttpClientConfig)
+					mountSecrets = append(mountSecrets, mountS...)
+					newEp.HttpClientConfig = newConfig
+				}
+				eps = append(eps, *newEp)
+			}
+		}
+
+		err := applyEndpointsSecret(c, eps)
+		if err != nil {
+			return apiSpec, err
+		}
+		if len(eps) > 0 {
+			apiSpec.AdditionalWriteEndpoints = &obsv1alpha1.EndpointsConfig{
+				EndpointsConfigSecret: endpointsConfigName,
+			}
+			if len(mountSecrets) > 0 {
+				apiSpec.AdditionalWriteEndpoints.MountSecrets = mountSecrets
+				apiSpec.AdditionalWriteEndpoints.MountPath = mcoutil.MountPath
+			}
+		}
+	}
+	return apiSpec, nil
 }
 
 func newReceiversSpec(
@@ -360,6 +511,10 @@ func newReceiversSpec(
 		mco.Spec.StorageConfig.ReceiveStorageSize,
 		scSelected)
 
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Receive != nil &&
+		mco.Spec.AdvancedConfig.Receive.ServiceAccountAnnotations != nil {
+		receSpec.ServiceAccountAnnotations = mco.Spec.AdvancedConfig.Receive.ServiceAccountAnnotations
+	}
 	return receSpec
 }
 
@@ -405,6 +560,7 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 	if found {
 		ruleSpec.ReloaderImage = reloaderImage
 	}
+	ruleSpec.ReloaderImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 
 	ruleSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.RuleStorageSize,
@@ -450,6 +606,11 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 		}
 	}
 
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Rule != nil &&
+		mco.Spec.AdvancedConfig.Rule.ServiceAccountAnnotations != nil {
+		ruleSpec.ServiceAccountAnnotations = mco.Spec.AdvancedConfig.Rule.ServiceAccountAnnotations
+	}
+
 	return ruleSpec
 }
 
@@ -466,6 +627,11 @@ func newStoreSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) 
 	storeSpec.Shards = mcoconfig.GetReplicas(mcoconfig.ThanosStoreShard, mco.Spec.AdvancedConfig)
 	storeSpec.ServiceMonitor = true
 	storeSpec.Cache = newMemCacheSpec(mcoconfig.ThanosStoreMemcached, mco)
+
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Store != nil &&
+		mco.Spec.AdvancedConfig.Store.ServiceAccountAnnotations != nil {
+		storeSpec.ServiceAccountAnnotations = mco.Spec.AdvancedConfig.Store.ServiceAccountAnnotations
+	}
 
 	return storeSpec
 }
@@ -498,11 +664,13 @@ func newMemCacheSpec(component string, mco *mcov1beta2.MultiClusterObservability
 	if found {
 		memCacheSpec.Image = image
 	}
+	memCacheSpec.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 
 	found, image = mcoconfig.ReplaceImage(mco.Annotations, memCacheSpec.ExporterImage, mcoconfig.MemcachedExporterKey)
 	if found {
 		memCacheSpec.ExporterImage = image
 	}
+	memCacheSpec.ExporterImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 	if cacheConfig != nil && cacheConfig.MemoryLimitMB != nil {
 		memCacheSpec.MemoryLimitMB = cacheConfig.MemoryLimitMB
 	} else {
@@ -539,6 +707,7 @@ func newThanosSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string)
 	if replace {
 		thanosSpec.Image = image
 	}
+	thanosSpec.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 	return thanosSpec
 }
 
@@ -565,6 +734,10 @@ func newQuerySpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QuerySp
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		querySpec.Resources = mcoconfig.GetResources(config.ThanosQuery, mco.Spec.AdvancedConfig)
 	}
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Query != nil &&
+		mco.Spec.AdvancedConfig.Query.ServiceAccountAnnotations != nil {
+		querySpec.ServiceAccountAnnotations = mco.Spec.AdvancedConfig.Query.ServiceAccountAnnotations
+	}
 	return querySpec
 }
 
@@ -578,8 +751,12 @@ func newReceiverControllerSpec(mco *mcov1beta2.MultiClusterObservability) obsv1a
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		receiveControllerSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ObservatoriumReceiveControllerCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ObservatoriumReceiveControllerMemoryRequets),
+				v1.ResourceName(v1.ResourceCPU): resource.MustParse(
+					mcoconfig.ObservatoriumReceiveControllerCPURequets,
+				),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(
+					mcoconfig.ObservatoriumReceiveControllerMemoryRequets,
+				),
 			},
 		}
 	}
@@ -588,6 +765,7 @@ func newReceiverControllerSpec(mco *mcov1beta2.MultiClusterObservability) obsv1a
 	if replace {
 		receiveControllerSpec.Image = image
 	}
+	receiveControllerSpec.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 	return receiveControllerSpec
 }
 
@@ -629,6 +807,11 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 		compactSpec.RetentionResolution1h = mcoconfig.RetentionResolution1h
 	}
 
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil &&
+		mco.Spec.AdvancedConfig.Compact.ServiceAccountAnnotations != nil {
+		compactSpec.ServiceAccountAnnotations = mco.Spec.AdvancedConfig.Compact.ServiceAccountAnnotations
+	}
+
 	compactSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.CompactStorageSize,
 		scSelected)
@@ -668,9 +851,13 @@ func deleteStoreSts(cl client.Client, name string, oldNum int32, newNum int32) e
 		for i := newNum; i < oldNum; i++ {
 			stsName := fmt.Sprintf("%s-thanos-store-shard-%d", name, i)
 			found := &appsv1.StatefulSet{}
-			err := cl.Get(context.TODO(), types.NamespacedName{Name: stsName, Namespace: mcoconfig.GetDefaultNamespace()}, found)
+			err := cl.Get(
+				context.TODO(),
+				types.NamespacedName{Name: stsName, Namespace: mcoconfig.GetDefaultNamespace()},
+				found,
+			)
 			if err != nil {
-				if !errors.IsNotFound(err) {
+				if !k8serrors.IsNotFound(err) {
 					log.Error(err, "Failed to get statefulset", "name", stsName)
 					return err
 				}

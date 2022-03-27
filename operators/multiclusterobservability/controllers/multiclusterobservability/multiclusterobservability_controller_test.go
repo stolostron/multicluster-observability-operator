@@ -27,9 +27,10 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
 
-	mchv1 "github.com/stolostron/multiclusterhub-operator/pkg/apis/operator/v1"
+	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -40,6 +41,7 @@ import (
 )
 
 func init() {
+	ctrl.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(os.Stdout)))
 	os.Setenv("UNIT_TEST", "true")
 }
 
@@ -316,13 +318,16 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	clientCACerts := newTestCert(config.ClientCACerts, namespace)
 	grafanaCert := newTestCert(config.GrafanaCerts, namespace)
 	serverCert := newTestCert(config.ServerCerts, namespace)
+	//byo case for proxy
+	proxyRouteBYOCACerts := newTestCert(config.ProxyRouteBYOCAName, namespace)
+	proxyRouteBYOCert := newTestCert(config.ProxyRouteBYOCERTName, namespace)
 	// byo case for the alertmanager route
 	testAmRouteBYOCaSecret := newTestCert(config.AlertmanagerRouteBYOCAName, namespace)
 	testAmRouteBYOCertSecret := newTestCert(config.AlertmanagerRouteBYOCERTName, namespace)
 	clustermgmtAddon := newClusterManagementAddon()
 
-	objs := []runtime.Object{mco, svc, serverCACerts, clientCACerts, grafanaCert, serverCert,
-		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon}
+	objs := []runtime.Object{mco, svc, serverCACerts, clientCACerts, proxyRouteBYOCACerts, grafanaCert, serverCert,
+		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, proxyRouteBYOCert, clustermgmtAddon}
 	// Create a fake client to mock API calls.
 	cl := fake.NewFakeClient(objs...)
 
@@ -375,12 +380,66 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create secret: (%v)", err)
 	}
-	_, err = r.Reconcile(context.TODO(), req)
+
+	// backup label test for Secret
+	req2 := ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      "test",
+			Namespace: namespace,
+		},
+	}
+
+	_, err = r.Reconcile(context.TODO(), req2)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 	//wait for update status
 	time.Sleep(1 * time.Second)
+
+	updatedObjectStoreSecret := &corev1.Secret{}
+	err = r.Client.Get(context.TODO(), req2.NamespacedName, updatedObjectStoreSecret)
+	if err != nil {
+		t.Fatalf("backup Failed to get ObjectStore secret (%v)", err)
+	}
+
+	if _, ok := updatedObjectStoreSecret.Labels[config.BackupLabelName]; !ok {
+		t.Fatalf("Missing backup label on: (%v)", updatedObjectStoreSecret)
+	}
+
+	// backup label test for Configmap
+	err = cl.Create(context.TODO(), &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.AlertRuleCustomConfigMapName,
+			Namespace: namespace,
+		},
+	})
+	if err != nil {
+		t.Fatalf("Failed to create configmap: (%v)", err)
+	}
+
+	req2 = ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      config.AlertRuleCustomConfigMapName,
+			Namespace: namespace,
+		},
+	}
+
+	_, err = r.Reconcile(context.TODO(), req2)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+	//wait for update status
+	time.Sleep(1 * time.Second)
+
+	updatedConfigmap := &corev1.ConfigMap{}
+	err = r.Client.Get(context.TODO(), req2.NamespacedName, updatedConfigmap)
+	if err != nil {
+		t.Fatalf("backup Failed to get configmap (%v)", err)
+	}
+
+	if _, ok := updatedConfigmap.Labels[config.BackupLabelName]; !ok {
+		t.Fatalf("Missing backup label on: (%v)", updatedConfigmap)
+	}
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
 	err = r.Client.Get(context.TODO(), req.NamespacedName, updatedMCO)
