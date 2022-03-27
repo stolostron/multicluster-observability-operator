@@ -53,6 +53,7 @@ const (
 
 	MCHUpdatedRequestName               = "mch-updated-request"
 	MCOUpdatedRequestName               = "mco-updated-request"
+	MulticloudConsoleRouteName          = "multicloud-console"
 	ImageManifestConfigMapNamePrefix    = "mch-image-manifest-"
 	OCMManifestConfigMapTypeLabelKey    = "ocm-configmap-type"
 	OCMManifestConfigMapTypeLabelValue  = "image-manifest"
@@ -296,6 +297,8 @@ var (
 		ProxyRouteBYOCAName:          ResourceTypeSecret,
 		ProxyRouteBYOCERTName:        ResourceTypeSecret,
 	}
+
+	multicloudConsoleRouteHost = ""
 )
 
 func GetReplicas(component string, advanced *observabilityv1beta2.AdvancedConfig) *int32 {
@@ -1139,4 +1142,21 @@ func GetValidatingWebhookConfigurationForMCO() *admissionregistrationv1.Validati
 			},
 		},
 	}
+}
+
+// GetMulticloudConsoleHost is used to get the URL for multicloud-console route
+func GetMulticloudConsoleHost(client client.Client) (string, error) {
+	if multicloudConsoleRouteHost != "" {
+		return multicloudConsoleRouteHost, nil
+	}
+
+	namespace := GetMCONamespace()
+	found := &routev1.Route{}
+
+	err := client.Get(context.TODO(), types.NamespacedName{
+		Name: MulticloudConsoleRouteName, Namespace: namespace}, found)
+	if err != nil {
+		return "", nil
+	}
+	return found.Spec.Host, nil
 }
