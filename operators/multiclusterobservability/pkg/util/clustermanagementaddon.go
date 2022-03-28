@@ -6,8 +6,10 @@ package util
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"reflect"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -28,9 +30,12 @@ type clusterManagementAddOnSpec struct {
 }
 
 func CreateClusterManagementAddon(c client.Client) error {
-	clusterManagementAddon := newClusterManagementAddon()
+	clusterManagementAddon, err := newClusterManagementAddon(c)
+	if err != nil {
+		return err
+	}
 	found := &addonv1alpha1.ClusterManagementAddOn{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: ObservabilityController}, found)
+	err = c.Get(context.TODO(), types.NamespacedName{Name: ObservabilityController}, found)
 	if err != nil && errors.IsNotFound(err) {
 		if err := c.Create(context.TODO(), clusterManagementAddon); err != nil {
 			log.Error(err, "Failed to create observability-controller clustermanagementaddon ")
@@ -74,7 +79,16 @@ func DeleteClusterManagementAddon(client client.Client) error {
 	return nil
 }
 
-func newClusterManagementAddon() *addonv1alpha1.ClusterManagementAddOn {
+func newClusterManagementAddon(c client.Client) (*addonv1alpha1.ClusterManagementAddOn, error) {
+	host, err := config.GetMulticloudConsoleHost(c)
+	if err != nil {
+		return nil, err
+	}
+	grafanaUrl := url.URL{
+		Scheme: "https",
+		Host:   host,
+		Path:   grafanaLink,
+	}
 	clusterManagementAddOnSpec := clusterManagementAddOnSpec{
 		DisplayName: "Observability Controller",
 		Description: "Manages Observability components.",
@@ -88,7 +102,7 @@ func newClusterManagementAddon() *addonv1alpha1.ClusterManagementAddOn {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ObservabilityController,
 			Annotations: map[string]string{
-				"console.open-cluster-management.io/launch-link":      grafanaLink,
+				"console.open-cluster-management.io/launch-link":      grafanaUrl.String(),
 				"console.open-cluster-management.io/launch-link-text": "Grafana",
 			},
 		},
@@ -101,5 +115,5 @@ func newClusterManagementAddon() *addonv1alpha1.ClusterManagementAddOn {
 				CRDName: clusterManagementAddOnSpec.CRDName,
 			},
 		},
-	}
+	}, nil
 }
