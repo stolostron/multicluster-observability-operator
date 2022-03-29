@@ -2136,7 +2136,7 @@ data:
                 "compute"
               ]
             },
-            "hide": 0,
+            "hide": 2,
             "includeAll": false,
             "label": "Node type",
             "multi": true,
