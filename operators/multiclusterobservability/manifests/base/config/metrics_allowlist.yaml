@@ -195,7 +195,7 @@ data:
           annotations:
             description: >
               Collects the dynamic metrics specified if the cluster cpu usage is constantly more than 70% for 2 minutes
-          expr: cluster:container_cpu_usage:ratio * 100 > 70
+          expr: (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))) * 100 > 70
           for: 2m
           dynamic_metrics:
             names:
@@ -210,7 +210,7 @@ data:
           annotations:
             description: >
               Collects the dynamic metrics specified if the cluster memory usage is constantly more than 70% for 2 minutes
-          expr: sum(container_memory_working_set_bytes{container!=\"\"})/sum(machine_memory_bytes) by() * 100 > 70
+          expr: (1 - sum(:node_memory_MemAvailable_bytes:sum) / sum(kube_node_status_allocatable{resource="memory"})) * 100 > 70
           for: 2m
           dynamic_metrics:
             names:
