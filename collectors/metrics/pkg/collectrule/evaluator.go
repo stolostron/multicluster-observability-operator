@@ -243,6 +243,9 @@ func renderMatches(r CollectRule, ls labels.Labels) []string {
 			replace := labelsMap[v[1]]
 			matches = append(matches, fmt.Sprintf("{%s}", strings.ReplaceAll(match, original, replace)))
 		}
+		if len(m) == 0 {
+			matches = append(matches, fmt.Sprintf("{%s}", match))
+		}
 	}
 	return matches
 }
