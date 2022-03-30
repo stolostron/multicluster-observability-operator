@@ -303,6 +303,7 @@ spec:
           - addon.open-cluster-management.io
           resources:
           - clustermanagementaddons
+          - clustermanagementaddons/finalizers
           verbs:
           - create
           - update
@@ -315,6 +316,7 @@ spec:
           resources:
           - managedclusteraddons
           - managedclusteraddons/status
+          - managedclusteraddons/finalizers
           verbs:
           - watch
           - create
