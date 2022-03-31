@@ -116,10 +116,10 @@ var _ = Describe("", func() {
 			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 
-	It("RHACM4K-1418: Observability: Verify clustermanagementaddon CR for Observability - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability] (addon/g0)", func() {
-		Eventually(func() error {
-			return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
-		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
+		It("RHACM4K-1418: Observability: Verify clustermanagementaddon CR for Observability - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability] (addon/g0)", func() {
+			Eventually(func() error {
+				return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 
 			By("Waiting for MCO addon components ready")
 			Eventually(func() bool {
@@ -176,14 +176,17 @@ var _ = Describe("", func() {
 				return utils.UpdateObservabilityFromManagedCluster(testOptions, false)
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
-			By("Waiting for MCO addon components scales to 0")
-			Eventually(func() bool {
-				err, obaNS := utils.GetNamespace(testOptions, false, MCO_ADDON_NAMESPACE)
-				if err == nil && obaNS == nil {
-					return true
-				}
-				return false
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
+			klog.V(1).Infof("managedcluster number is <%d>", len(testOptions.ManagedClusters))
+			if len(testOptions.ManagedClusters) > 0 {
+				By("Waiting for MCO addon components scales to 0")
+				Eventually(func() bool {
+					err, obaNS := utils.GetNamespace(testOptions, false, MCO_ADDON_NAMESPACE)
+					if err == nil && obaNS == nil {
+						return true
+					}
+					return false
+				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
+			}
 		})
 
 		It("[Stable] Remove disable observability label from the managed cluster", func() {
