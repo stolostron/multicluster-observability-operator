@@ -44,6 +44,8 @@ const (
 
 	readOnlyRoleName  = "read-only-metrics"
 	writeOnlyRoleName = "write-only-metrics"
+
+	endpointsRestartLabel = "endpoints/time-restarted"
 )
 
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
@@ -406,6 +408,11 @@ func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpoint) er
 		if !reflect.DeepEqual(epsYamlMap, found.Data) {
 			epsSecret.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 			err = c.Update(context.TODO(), epsSecret)
+			if err != nil {
+				return err
+			}
+			err = util.UpdateDeployLabel(c, config.GetOperandName(config.ObservatoriumAPI),
+				config.GetDefaultNamespace(), endpointsRestartLabel)
 			if err != nil {
 				return err
 			}
