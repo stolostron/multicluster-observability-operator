@@ -4,11 +4,18 @@
 package util
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"net/http"
 	"net/http/pprof"
 	"os"
+	"time"
+
+	appv1 "k8s.io/api/apps/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Remove is used to remove string from a string array
@@ -109,5 +116,30 @@ func RegisterDebugEndpoint(register func(string, http.Handler) error) error {
 		return err
 	}
 
+	return nil
+}
+
+func UpdateDeployLabel(c client.Client, dName, namespace, label string) error {
+	dep := &appv1.Deployment{}
+	err := c.Get(context.TODO(), types.NamespacedName{
+		Name:      dName,
+		Namespace: namespace,
+	}, dep)
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			log.Error(err, "Failed to check the deployment", "name", dName)
+		}
+		return err
+	}
+	if dep.Status.ReadyReplicas != 0 {
+		dep.Spec.Template.ObjectMeta.Labels[label] = time.Now().Format("2006-1-2.1504")
+		err = c.Update(context.TODO(), dep)
+		if err != nil {
+			log.Error(err, "Failed to update the deployment", "name", dName)
+			return err
+		} else {
+			log.Info("Update deployment restart label", "name", dName)
+		}
+	}
 	return nil
 }
