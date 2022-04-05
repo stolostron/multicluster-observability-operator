@@ -92,7 +92,7 @@ var _ = Describe("Observability:", func() {
 				}
 			}
 			return metricslistError
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have no metrics which have been marked for deletion in matches section (metrics/g0)", func() {
@@ -110,7 +110,7 @@ var _ = Describe("Observability:", func() {
 				}
 			}
 			return metricslistError
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have no metrics after custom metrics allowlist deleted (metrics/g0)", func() {
@@ -136,7 +136,7 @@ var _ = Describe("Observability:", func() {
 				}
 			}
 			return metricslistError
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have metrics which used grafana dashboard (ssli/g1)", func() {
