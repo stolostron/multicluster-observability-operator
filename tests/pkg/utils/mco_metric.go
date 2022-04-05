@@ -59,7 +59,7 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 	if resp.StatusCode != http.StatusOK {
 		klog.Errorf("resp: %+v\n", resp)
 		klog.Errorf("err: %+v\n", err)
-		return fmt.Errorf("Failed to access managed cluster metrics via grafana console"), false
+		return fmt.Errorf("failed to access managed cluster metrics via grafana console: %s", query), false
 	}
 
 	metricResult, err := ioutil.ReadAll(resp.Body)
@@ -69,11 +69,11 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 	}
 
 	if !strings.Contains(string(metricResult), `"status":"success"`) {
-		return fmt.Errorf("Failed to find valid status from response"), false
+		return fmt.Errorf("failed to find valid status from response"), false
 	}
 
 	if strings.Contains(string(metricResult), `"result":[]`) {
-		return fmt.Errorf("Failed to find metric name from response"), false
+		return fmt.Errorf("failed to find metric name from response"), false
 	}
 
 	contained := true
@@ -84,26 +84,52 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 		}
 	}
 	if !contained {
-		return fmt.Errorf("Failed to find metric name from response"), false
+		return fmt.Errorf("failed to find metric name from response"), false
 	}
 
 	return nil, true
 }
 
 type MetricsAllowlist struct {
-	NameList  []string          `yaml:"names"`
-	MatchList []string          `yaml:"matches"`
-	RenameMap map[string]string `yaml:"renames"`
-	RuleList  []Rule            `yaml:"rules"`
+	NameList             []string           `yaml:"names"`
+	MatchList            []string           `yaml:"matches"`
+	RenameMap            map[string]string  `yaml:"renames"`
+	RuleList             []RecordingRule    `yaml:"rules"` //deprecated
+	RecordingRuleList    []RecordingRule    `yaml:"recording_rules"`
+	CollectRuleGroupList []CollectRuleGroup `yaml:"collect_rules"`
 }
 
-// Rule is the struct for recording rules and alert rules
-type Rule struct {
+type RecordingRule struct {
 	Record string `yaml:"record"`
 	Expr   string `yaml:"expr"`
 }
+type CollectRule struct {
+	Collect     string            `yaml:"collect"`
+	Annotations map[string]string `yaml:"annotations"`
+	Expr        string            `yaml:"expr"`
+	For         string            `yaml:"for"`
+	Metrics     DynamicMetrics    `yaml:"dynamic_metrics"`
+}
 
-func GetDefaultMetricList(opt TestOptions) []string {
+type DynamicMetrics struct {
+	NameList  []string `yaml:"names"`
+	MatchList []string `yaml:"matches"`
+}
+
+type CollectRuleSelector struct {
+	MatchExpression []metav1.LabelSelectorRequirement `yaml:"matchExpressions"`
+}
+
+// CollectRuleGroup structure contains information of a group of collect rules used for
+// dnamically collecting metrics.
+type CollectRuleGroup struct {
+	Name            string              `yaml:"group"`
+	Annotations     map[string]string   `yaml:"annotations"`
+	Selector        CollectRuleSelector `yaml:"selector"`
+	CollectRuleList []CollectRule       `yaml:"rules"`
+}
+
+func GetDefaultMetricList(opt TestOptions) ([]string, []string) {
 	allDefaultMetricName := []string{}
 	cl := getKubeClient(opt, true)
 	cm, err := cl.CoreV1().ConfigMaps(MCO_NAMESPACE).Get(
@@ -120,7 +146,7 @@ func GetDefaultMetricList(opt TestOptions) []string {
 	allowlist := &MetricsAllowlist{}
 	err = yaml.Unmarshal([]byte(cm.Data["metrics_list.yaml"]), allowlist)
 	if err != nil {
-		klog.Errorf("Failed to unmarshal data: %+v\n", err)
+		klog.Errorf("failed to unmarshal data: %+v\n", err)
 	}
 
 	allDefaultMetricName = append(allDefaultMetricName, allowlist.NameList...)
@@ -143,7 +169,20 @@ func GetDefaultMetricList(opt TestOptions) []string {
 	for _, rule := range allowlist.RuleList {
 		allDefaultMetricName = append(allDefaultMetricName, rule.Record)
 	}
-	return allDefaultMetricName
+
+	dynamicMetricsName := []string{}
+	for _, collectRuleGroups := range allowlist.CollectRuleGroupList {
+		for _, collectRule := range collectRuleGroups.CollectRuleList {
+			dynamicMetricsName = append(dynamicMetricsName, collectRule.Metrics.NameList...)
+			for _, match := range collectRule.Metrics.MatchList {
+				if name := getNameInMatch(match); name != "" {
+					dynamicMetricsName = append(dynamicMetricsName, name)
+				}
+			}
+		}
+	}
+
+	return allDefaultMetricName, dynamicMetricsName
 }
 
 func GetIgnoreMetricMap() map[string]bool {
@@ -159,4 +198,13 @@ func GetIgnoreMetricMap() map[string]bool {
 		txtlines[scanner.Text()] = true
 	}
 	return txtlines
+}
+
+func getNameInMatch(match string) string {
+	r := regexp.MustCompile(`__name__="([^,]*)"`)
+	m := r.FindAllStringSubmatch(match, -1)
+	if m != nil {
+		return m[0][1]
+	}
+	return ""
 }
