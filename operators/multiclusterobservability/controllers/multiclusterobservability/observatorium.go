@@ -452,22 +452,7 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 				return apiSpec, err
 			} else {
 				// add backup label
-				if _, ok := config.BackupResourceMap[storageConfig.Name]; !ok {
-					log.Info("Adding backup label", "Secret", storageConfig.Name)
-					config.BackupResourceMap[storageConfig.Name] = config.ResourceTypeSecret
-					if _, ok := storageSecret.ObjectMeta.Labels[config.BackupLabelName]; !ok {
-						if storageSecret.ObjectMeta.Labels == nil {
-							storageSecret.ObjectMeta.Labels = make(map[string]string)
-						}
-						storageSecret.ObjectMeta.Labels[config.BackupLabelName] = config.BackupLabelValue
-						err := c.Update(context.TODO(), storageSecret)
-						if err != nil {
-							return apiSpec, err
-						} else {
-							log.Info("Add backup label for secret", "name", storageConfig.Name)
-						}
-					}
-				}
+				addBackupLabel(c, storageConfig.Name, storageSecret)
 
 				data, ok := storageSecret.Data[storageConfig.Key]
 				if !ok {
@@ -489,15 +474,7 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 
 					// add backup label
 					for _, s := range mountS {
-						if _, ok := config.BackupResourceMap[s]; !ok {
-							log.Info("Adding backup label", "Secret", s)
-							config.BackupResourceMap[s] = config.ResourceTypeSecret
-							err = mcoutil.AddBackupLabelToSecret(c, s, config.GetDefaultNamespace())
-							if err != nil {
-								log.Error(err, "Failed to add backup label", "Secret", s)
-								return apiSpec, err
-							}
-						}
+						addBackupLabel(c, s, nil)
 					}
 
 					mountSecrets = append(mountSecrets, mountS...)
@@ -907,6 +884,33 @@ func deleteStoreSts(cl client.Client, name string, oldNum int32, newNum int32) e
 					return err
 				}
 			}
+		}
+	}
+	return nil
+}
+
+func addBackupLabel(c client.Client, name string, backupS *v1.Secret) error {
+	if _, ok := config.BackupResourceMap[name]; !ok {
+		log.Info("Adding backup label", "Secret", name)
+		config.BackupResourceMap[name] = config.ResourceTypeSecret
+		var err error
+		err = nil
+		if backupS == nil {
+			err = mcoutil.AddBackupLabelToSecret(c, name, config.GetDefaultNamespace())
+		} else {
+			if _, ok := backupS.ObjectMeta.Labels[config.BackupLabelName]; !ok {
+				if backupS.ObjectMeta.Labels == nil {
+					backupS.ObjectMeta.Labels = make(map[string]string)
+				}
+				backupS.ObjectMeta.Labels[config.BackupLabelName] = config.BackupLabelValue
+				err = c.Update(context.TODO(), backupS)
+			}
+		}
+		if err != nil {
+			log.Error(err, "Failed to add backup label", "Secret", name)
+			return err
+		} else {
+			log.Info("Add backup label for secret", "name", name)
 		}
 	}
 	return nil
