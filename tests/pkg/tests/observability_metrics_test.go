@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
@@ -161,6 +162,9 @@ var _ = Describe("Observability:", func() {
 			if !ok {
 				Eventually(func() error {
 					err, _ := utils.ContainManagedClusterMetric(testOptions, name, []string{name})
+					if err != nil {
+						klog.V(1).Infof("failed to get metrics %s", name)
+					}
 					return err
 				}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*3).Should(Succeed())
 			}
