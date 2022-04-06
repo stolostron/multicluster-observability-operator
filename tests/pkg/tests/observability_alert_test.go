@@ -232,7 +232,7 @@ var _ = Describe("Observability:", func() {
 				return err
 			},
 			EventuallyTimeoutMinute*5,
-			EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
+			EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
 	})
 
 	It("[P2][Sev2][observability][Stable] delete the customized rules (alert/g0)", func() {

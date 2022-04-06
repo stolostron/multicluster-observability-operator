@@ -105,7 +105,7 @@ var _ = Describe("Observability:", func() {
 						[]string{`"__name__":"node_memory_MemAvailable_bytes"`},
 					)
 					if err != nil && !hasMetric &&
-						strings.Contains(err.Error(), "Failed to find metric name from response") {
+						strings.Contains(err.Error(), "failed to find metric name from response") {
 						return nil
 					}
 				}

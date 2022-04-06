@@ -92,7 +92,7 @@ var _ = Describe("Observability:", func() {
 				}
 			}
 			return metricslistError
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have no metrics which have been marked for deletion in matches section (metrics/g0)", func() {
@@ -110,7 +110,7 @@ var _ = Describe("Observability:", func() {
 				}
 			}
 			return metricslistError
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have no metrics after custom metrics allowlist deleted (metrics/g0)", func() {
@@ -136,11 +136,11 @@ var _ = Describe("Observability:", func() {
 				}
 			}
 			return metricslistError
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have metrics which used grafana dashboard (ssli/g1)", func() {
-		metricList := utils.GetDefaultMetricList(testOptions)
+		metricList, dynamicMetricList := utils.GetDefaultMetricList(testOptions)
 		ignoreMetricMap := utils.GetIgnoreMetricMap()
 		_, etcdPodList := utils.GetPodList(
 			testOptions,
@@ -152,6 +152,9 @@ var _ = Describe("Observability:", func() {
 		if etcdPodList != nil && len(etcdPodList.Items) <= 0 {
 			ignoreMetricMap["etcd_network_peer_received_bytes_total"] = true
 			ignoreMetricMap["etcd_network_peer_sent_bytes_total"] = true
+		}
+		for _, name := range dynamicMetricList {
+			ignoreMetricMap[name] = true
 		}
 		for _, name := range metricList {
 			_, ok := ignoreMetricMap[name]
