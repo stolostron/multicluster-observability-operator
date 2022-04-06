@@ -451,6 +451,24 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 				log.Error(err, "Failed to get the secret", "name", storageConfig.Name)
 				return apiSpec, err
 			} else {
+				// add backup label
+				if _, ok := config.BackupResourceMap[storageConfig.Name]; !ok {
+					log.Info("Adding backup label", "Secret", storageConfig.Name)
+					config.BackupResourceMap[storageConfig.Name] = config.ResourceTypeSecret
+					if _, ok := storageSecret.ObjectMeta.Labels[config.BackupLabelName]; !ok {
+						if storageSecret.ObjectMeta.Labels == nil {
+							storageSecret.ObjectMeta.Labels = make(map[string]string)
+						}
+						storageSecret.ObjectMeta.Labels[config.BackupLabelName] = config.BackupLabelValue
+						err := c.Update(context.TODO(), storageSecret)
+						if err != nil {
+							return apiSpec, err
+						} else {
+							log.Info("Add backup label for secret", "name", storageConfig.Name)
+						}
+					}
+				}
+
 				data, ok := storageSecret.Data[storageConfig.Key]
 				if !ok {
 					log.Error(err, "Invalid key in secret", "name", storageConfig.Name, "key", storageConfig.Key)
@@ -468,6 +486,20 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 				}
 				if ep.HttpClientConfig != nil {
 					newConfig, mountS := mcoutil.Transform(*ep.HttpClientConfig)
+
+					// add backup label
+					for _, s := range mountS {
+						if _, ok := config.BackupResourceMap[s]; !ok {
+							log.Info("Adding backup label", "Secret", s)
+							config.BackupResourceMap[s] = config.ResourceTypeSecret
+							err = mcoutil.AddBackupLabelToSecret(c, s, config.GetDefaultNamespace())
+							if err != nil {
+								log.Error(err, "Failed to add backup label", "Secret", s)
+								return apiSpec, err
+							}
+						}
+					}
+
 					mountSecrets = append(mountSecrets, mountS...)
 					newEp.HttpClientConfig = newConfig
 				}
