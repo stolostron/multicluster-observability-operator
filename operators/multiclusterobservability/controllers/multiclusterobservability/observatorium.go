@@ -452,7 +452,10 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 				return apiSpec, err
 			} else {
 				// add backup label
-				addBackupLabel(c, storageConfig.Name, storageSecret)
+				err = addBackupLabel(c, storageConfig.Name, storageSecret)
+				if err != nil {
+					return apiSpec, err
+				}
 
 				data, ok := storageSecret.Data[storageConfig.Key]
 				if !ok {
@@ -474,7 +477,10 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 
 					// add backup label
 					for _, s := range mountS {
-						addBackupLabel(c, s, nil)
+						err = addBackupLabel(c, s, nil)
+						if err != nil {
+							return apiSpec, err
+						}
 					}
 
 					mountSecrets = append(mountSecrets, mountS...)
