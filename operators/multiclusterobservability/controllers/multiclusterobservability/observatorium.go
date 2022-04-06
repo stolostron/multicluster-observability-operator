@@ -451,6 +451,12 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 				log.Error(err, "Failed to get the secret", "name", storageConfig.Name)
 				return apiSpec, err
 			} else {
+				// add backup label
+				err = addBackupLabel(c, storageConfig.Name, storageSecret)
+				if err != nil {
+					return apiSpec, err
+				}
+
 				data, ok := storageSecret.Data[storageConfig.Key]
 				if !ok {
 					log.Error(err, "Invalid key in secret", "name", storageConfig.Name, "key", storageConfig.Key)
@@ -468,6 +474,15 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 				}
 				if ep.HttpClientConfig != nil {
 					newConfig, mountS := mcoutil.Transform(*ep.HttpClientConfig)
+
+					// add backup label
+					for _, s := range mountS {
+						err = addBackupLabel(c, s, nil)
+						if err != nil {
+							return apiSpec, err
+						}
+					}
+
 					mountSecrets = append(mountSecrets, mountS...)
 					newEp.HttpClientConfig = newConfig
 				}
@@ -875,6 +890,33 @@ func deleteStoreSts(cl client.Client, name string, oldNum int32, newNum int32) e
 					return err
 				}
 			}
+		}
+	}
+	return nil
+}
+
+func addBackupLabel(c client.Client, name string, backupS *v1.Secret) error {
+	if _, ok := config.BackupResourceMap[name]; !ok {
+		log.Info("Adding backup label", "Secret", name)
+		config.BackupResourceMap[name] = config.ResourceTypeSecret
+		var err error
+		err = nil
+		if backupS == nil {
+			err = mcoutil.AddBackupLabelToSecret(c, name, config.GetDefaultNamespace())
+		} else {
+			if _, ok := backupS.ObjectMeta.Labels[config.BackupLabelName]; !ok {
+				if backupS.ObjectMeta.Labels == nil {
+					backupS.ObjectMeta.Labels = make(map[string]string)
+				}
+				backupS.ObjectMeta.Labels[config.BackupLabelName] = config.BackupLabelValue
+				err = c.Update(context.TODO(), backupS)
+			}
+		}
+		if err != nil {
+			log.Error(err, "Failed to add backup label", "Secret", name)
+			return err
+		} else {
+			log.Info("Add backup label for secret", "name", name)
 		}
 	}
 	return nil
