@@ -222,6 +222,7 @@ rules:
   - addon.open-cluster-management.io
   resources:
   - clustermanagementaddons
+  - clustermanagementaddons/finalizers
   verbs:
   - create
   - update
@@ -234,6 +235,7 @@ rules:
   resources:
   - managedclusteraddons
   - managedclusteraddons/status
+  - managedclusteraddons/finalizers
   verbs:
   - watch
   - create
