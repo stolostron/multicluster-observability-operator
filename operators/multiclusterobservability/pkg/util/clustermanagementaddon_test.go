@@ -21,6 +21,7 @@ import (
 func TestClusterManagmentAddon(t *testing.T) {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
+	routev1.AddToScheme(s)
 
 	consoleRoute := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
