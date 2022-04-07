@@ -7,7 +7,10 @@ import (
 	"context"
 	"testing"
 
+	routev1 "github.com/openshift/api/route/v1"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -18,7 +21,18 @@ import (
 func TestClusterManagmentAddon(t *testing.T) {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
-	c := fake.NewFakeClient()
+
+	consoleRoute := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "multicloud-console",
+			Namespace: config.GetMCONamespace(),
+		},
+		Spec: routev1.RouteSpec{
+			Host: "console",
+		},
+	}
+
+	c := fake.NewFakeClient(consoleRoute)
 	err := CreateClusterManagementAddon(c)
 	if err != nil {
 		t.Fatalf("Failed to create clustermanagementaddon: (%v)", err)
