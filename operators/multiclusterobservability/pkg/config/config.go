@@ -1156,7 +1156,7 @@ func GetMulticloudConsoleHost(client client.Client) (string, error) {
 	err := client.Get(context.TODO(), types.NamespacedName{
 		Name: MulticloudConsoleRouteName, Namespace: namespace}, found)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	return found.Spec.Host, nil
 }
