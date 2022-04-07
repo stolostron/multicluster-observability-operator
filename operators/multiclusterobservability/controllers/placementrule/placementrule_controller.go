@@ -160,7 +160,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			req,
 			mco,
 			obsAddonList,
-			r.CRDMap[config.IngressControllerCRD],
+			r.CRDMap,
 		)
 		if err != nil {
 			return res, err
@@ -267,7 +267,7 @@ func createAllRelatedRes(
 	request ctrl.Request,
 	mco *mcov1beta2.MultiClusterObservability,
 	obsAddonList *mcov1beta1.ObservabilityAddonList,
-	ingressCtlCrdExists bool) (ctrl.Result, error) {
+	CRDMap map[string]bool) (ctrl.Result, error) {
 
 	// create the clusterrole if not there
 	if !isCRoleCreated {
@@ -283,7 +283,7 @@ func createAllRelatedRes(
 	}
 	//Check if ClusterManagementAddon is created or create it
 	if !isClusterManagementAddonCreated {
-		err := util.CreateClusterManagementAddon(c)
+		err := util.CreateClusterManagementAddon(c, !CRDMap[config.MCHCrdName])
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -309,7 +309,7 @@ func createAllRelatedRes(
 	// regenerate the hubinfo secret if empty
 	if hubInfoSecret == nil {
 		var err error
-		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists); err != nil {
+		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap[config.IngressControllerCRD]); err != nil {
 			return ctrl.Result{}, err
 		}
 	}

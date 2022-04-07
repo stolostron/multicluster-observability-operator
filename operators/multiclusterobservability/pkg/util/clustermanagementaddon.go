@@ -29,8 +29,8 @@ type clusterManagementAddOnSpec struct {
 	CRDName     string `json:"crdName"`
 }
 
-func CreateClusterManagementAddon(c client.Client) error {
-	clusterManagementAddon, err := newClusterManagementAddon(c)
+func CreateClusterManagementAddon(c client.Client, isStandalone bool) error {
+	clusterManagementAddon, err := newClusterManagementAddon(c, isStandalone)
 	if err != nil {
 		return err
 	}
@@ -79,8 +79,8 @@ func DeleteClusterManagementAddon(client client.Client) error {
 	return nil
 }
 
-func newClusterManagementAddon(c client.Client) (*addonv1alpha1.ClusterManagementAddOn, error) {
-	host, err := config.GetMulticloudConsoleHost(c)
+func newClusterManagementAddon(c client.Client, isStandalone bool) (*addonv1alpha1.ClusterManagementAddOn, error) {
+	host, err := config.GetMulticloudConsoleHost(c, isStandalone)
 	if err != nil {
 		return nil, err
 	}
