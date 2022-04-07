@@ -110,6 +110,18 @@ func newMCHInstanceWithVersion(namespace, version string) *mchv1.MultiClusterHub
 	}
 }
 
+func newConsoleRoute() *routev1.Route {
+	return &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "multicloud-console",
+			Namespace: config.GetMCONamespace(),
+		},
+		Spec: routev1.RouteSpec{
+			Host: "console",
+		},
+	}
+}
+
 func TestObservabilityAddonController(t *testing.T) {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
@@ -126,7 +138,7 @@ func TestObservabilityAddonController(t *testing.T) {
 			},
 		},
 	}
-	objs := []runtime.Object{mco, pull, newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
+	objs := []runtime.Object{mco, pull, newConsoleRoute(), newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
 		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newManagedClusterAddon(), deprecatedRole}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &PlacementRuleReconciler{Client: c, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
