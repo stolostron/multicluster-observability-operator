@@ -170,9 +170,9 @@ data:
       - record: container_memory_rss:sum
         expr: sum(container_memory_rss{endpoint=\"https-metrics\"}) by (container, namespace)
       - record: kube_pod_container_resource_limits:sum
-        expr: sum(kube_pod_container_resource_limits{endpoint=\"https-main\"}) by (resource, namespace)
+        expr: sum(kube_pod_container_resource_limits) by (resource, namespace)
       - record: kube_pod_container_resource_requests:sum
-        expr: sum(kube_pod_container_resource_requests{endpoint=\"https-main\", container!=\"\"}) by (resource, namespace)
+        expr: sum(kube_pod_container_resource_requests{container!=\"\"}) by (resource, namespace)
       - record: namespace_workload_pod:kube_pod_owner:relabel:avg
         expr: count(avg(namespace_workload_pod:kube_pod_owner:relabel{pod!=\"\"}) by (workload, namespace)) by (namespace)
       - record: node_namespace_pod_container:container_cpu_usage_seconds_total:sum
