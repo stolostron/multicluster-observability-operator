@@ -64,6 +64,10 @@ func AddBackupLabelToSecret(c client.Client, name, namespace string) error {
 		}
 	}
 
+	return AddBackupLabelToSecretObj(c, s)
+}
+
+func AddBackupLabelToSecretObj(c client.Client, s *corev1.Secret) error {
 	if _, ok := s.ObjectMeta.Labels[config.BackupLabelName]; !ok {
 		if s.ObjectMeta.Labels == nil {
 			s.ObjectMeta.Labels = make(map[string]string)
@@ -73,7 +77,7 @@ func AddBackupLabelToSecret(c client.Client, name, namespace string) error {
 		if err != nil {
 			return err
 		} else {
-			log.Info("Add backup label for secret", "name", name)
+			log.Info("Add backup label for secret", "name", s.ObjectMeta.Name)
 		}
 	}
 	return nil

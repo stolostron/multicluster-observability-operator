@@ -26,6 +26,7 @@ import (
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
@@ -127,6 +128,7 @@ func createCASecret(c client.Client,
 	} else {
 		if !isRenew {
 			log.Info("CA secrets already existed", "name", name)
+			mcoutil.AddBackupLabelToSecretObj(c, caSecret)
 		} else {
 			block, _ := pem.Decode(caSecret.Data["tls.key"])
 			caKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
@@ -261,6 +263,7 @@ func createCertSecret(c client.Client,
 
 		if !isRenew {
 			log.Info("Certificate secrets already existed", "name", name)
+			mcoutil.AddBackupLabelToSecretObj(c, crtSecret)
 		} else {
 			caCert, caKey, caCertBytes, err := getCA(c, isServer)
 			if err != nil {
