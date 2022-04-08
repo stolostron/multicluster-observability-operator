@@ -1145,9 +1145,13 @@ func GetValidatingWebhookConfigurationForMCO() *admissionregistrationv1.Validati
 }
 
 // GetMulticloudConsoleHost is used to get the URL for multicloud-console route
-func GetMulticloudConsoleHost(client client.Client) (string, error) {
+func GetMulticloudConsoleHost(client client.Client, isStandalone bool) (string, error) {
 	if multicloudConsoleRouteHost != "" {
 		return multicloudConsoleRouteHost, nil
+	}
+
+	if isStandalone {
+		return "", nil
 	}
 
 	namespace := GetMCONamespace()
@@ -1156,7 +1160,7 @@ func GetMulticloudConsoleHost(client client.Client) (string, error) {
 	err := client.Get(context.TODO(), types.NamespacedName{
 		Name: MulticloudConsoleRouteName, Namespace: namespace}, found)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	return found.Spec.Host, nil
 }

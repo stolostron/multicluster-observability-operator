@@ -210,6 +210,10 @@ func getSelectedStorageClassForMultiClusterObservability(
 		expectedSC = scInCR
 	}
 
+	if expectedSC == "" {
+		multiclusterobservabilitylog.Info("The storageclass specified in MCO CR is not available, also there is no default storageclass")
+	}
+
 	return expectedSC, nil
 }
 
