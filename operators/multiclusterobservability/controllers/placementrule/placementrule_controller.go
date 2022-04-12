@@ -37,6 +37,7 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
@@ -582,33 +583,36 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 
-	customAllowlistPred := predicate.Funcs{
+	allowlistPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == config.AllowlistCustomConfigMapName &&
+			if (e.Object.GetName() == config.AllowlistCustomConfigMapName ||
+				e.Object.GetName() == operatorconfig.AllowlistConfigMapName) &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				// generate the metrics allowlist configmap
-				log.Info("generate metric allow list configmap for custom configmap CREATE")
+				log.Info("generate metric allow list configmap for allowlist configmap CREATE")
 				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == config.AllowlistCustomConfigMapName &&
+			if (e.ObjectNew.GetName() == config.AllowlistCustomConfigMapName ||
+				e.ObjectNew.GetName() == operatorconfig.AllowlistConfigMapName) &&
 				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				// regenerate the metrics allowlist configmap
-				log.Info("generate metric allow list configmap for custom configmap UPDATE")
+				log.Info("generate metric allow list configmap for allowlist configmap UPDATE")
 				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetName() == config.AllowlistCustomConfigMapName &&
+			if (e.Object.GetName() == config.AllowlistCustomConfigMapName ||
+				e.Object.GetName() == operatorconfig.AllowlistConfigMapName) &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				// regenerate the metrics allowlist configmap
-				log.Info("generate metric allow list configmap for custom configmap UPDATE")
+				log.Info("generate metric allow list configmap for allowlist configmap UPDATE")
 				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
@@ -826,7 +830,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}), builder.WithPredicates(mcoPred)).
 
 		// secondary watch for custom allowlist configmap
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(customAllowlistPred)).
+		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(allowlistPred)).
 
 		// secondary watch for certificate secrets
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(certSecretPred)).
