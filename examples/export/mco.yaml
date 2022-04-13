@@ -118,6 +118,9 @@ spec:
     metricObjectStorage:
       key: thanos.yaml
       name: thanos-object-storage
+    writeStorage:
+    - key: ep.yaml
+      name: victoriametrics
     receiveStorageSize: 1Gi
     ruleStorageSize: 1Gi
     storageClass: gp2
