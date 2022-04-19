@@ -374,7 +374,7 @@ func newAPITLS() obsv1alpha1.TLS {
 	}
 }
 
-func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpoint) error {
+func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpointWithSecret) error {
 	epsYaml, err := yaml.Marshal(eps)
 	if err != nil {
 		return err
@@ -441,7 +441,7 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 	apiSpec.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 	apiSpec.ServiceMonitor = true
 	if mco.Spec.StorageConfig.WriteStorage != nil {
-		eps := []mcoutil.RemoteWriteEndpoint{}
+		eps := []mcoutil.RemoteWriteEndpointWithSecret{}
 		mountSecrets := []string{}
 		for _, storageConfig := range mco.Spec.StorageConfig.WriteStorage {
 			storageSecret := &v1.Secret{}
@@ -468,7 +468,7 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 					log.Error(err, "Failed to unmarshal data in secret", "name", storageConfig.Name)
 					return apiSpec, err
 				}
-				newEp := &mcoutil.RemoteWriteEndpoint{
+				newEp := &mcoutil.RemoteWriteEndpointWithSecret{
 					Name: storageConfig.Name,
 					URL:  ep.URL,
 				}
