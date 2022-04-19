@@ -5,6 +5,7 @@ package utils
 
 import (
 	"context"
+	"os"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -25,8 +26,11 @@ func CleanExportResources(opt TestOptions) error {
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
 
-	v1beta2KustomizationPath := "../../../examples/mco/e2e/v1beta2"
-	yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: v1beta2KustomizationPath})
+	templatePath := "../../../examples/mco/e2e/v1beta2"
+	if os.Getenv("IS_CANARY_ENV") != "true" {
+		templatePath = "../../../examples/mco/e2e/v1beta2/custom-certs"
+	}
+	yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: templatePath})
 	if err != nil {
 		return err
 	}

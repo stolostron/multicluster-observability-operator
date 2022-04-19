@@ -5,6 +5,7 @@ package tests
 
 import (
 	"fmt"
+	"os"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -37,8 +38,23 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have acm_remote_write_requests_total metrics with correct labels/value (export/g0)", func() {
-		By("Adding victoriametrics deployment and updating mco cr")
+		By("Adding victoriametrics deployment/service/secret")
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/export"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlB,
+			)).NotTo(HaveOccurred())
+
+		By("Updating mco cr to inject WriteStorage")
+		templatePath := "../../../examples/export/v1beta2"
+		if os.Getenv("IS_CANARY_ENV") != "true" {
+			templatePath = "../../../examples/export/v1beta2/custom-certs"
+		}
+		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: templatePath})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(
 			utils.Apply(

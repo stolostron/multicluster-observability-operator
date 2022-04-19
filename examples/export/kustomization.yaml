@@ -1,5 +1,4 @@
 resources:
 - custom-metrics-allowlist.yaml
 - endpoints.yaml
-- mco.yaml
 - victoriametrics.yaml
