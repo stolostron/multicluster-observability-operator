@@ -124,7 +124,7 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to get endpoint config secret due to %v", err)
 	}
-	endpointConfig := []mcoutil.RemoteWriteEndpoint{}
+	endpointConfig := []mcoutil.RemoteWriteEndpointWithSecret{}
 	err = yaml.Unmarshal(endpointS.Data[endpointsKey], &endpointConfig)
 	if err != nil {
 		t.Errorf("Failed to unmarshal endpoint secret due to %v", err)
