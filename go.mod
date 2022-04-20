@@ -31,7 +31,6 @@ require (
 	github.com/prometheus/prometheus v2.3.2+incompatible
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
-	github.com/stolostron/multicloud-operators-foundation v0.0.0-20220112005209-c7d642306a99
 	github.com/stolostron/multiclusterhub-operator v0.0.0-20220106205009-2af6f43fd562
 	github.com/stolostron/observatorium-operator v0.0.0-20220307015247-f9eb849e218e
 	github.com/stretchr/testify v1.7.0
@@ -170,25 +169,12 @@ replace (
 	github.com/go-openapi/loads => github.com/go-openapi/loads v0.19.5
 	github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.5
 	github.com/hashicorp/consul => github.com/hashicorp/consul v1.10.6
-	github.com/kubevirt/terraform-provider-kubevirt => github.com/nirarg/terraform-provider-kubevirt v0.0.0-20201222125919-101cee051ed3
-	github.com/metal3-io/baremetal-operator => github.com/openshift/baremetal-operator v0.0.0-20200715132148-0f91f62a41fe
-	github.com/metal3-io/cluster-api-provider-baremetal => github.com/openshift/cluster-api-provider-baremetal v0.0.0-20190821174549-a2a477909c1d
 	github.com/nats-io/nats-server/v2 => github.com/nats-io/nats-server/v2 v2.7.2
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20210331193751-3acddb19d360
-	github.com/openshift/hive/apis => github.com/openshift/hive/apis v0.0.0-20210802140536-4d8d83dcd464
 	github.com/prometheus/prometheus => github.com/prometheus/prometheus v1.8.2-0.20210811141203-dcb07e8eac34
-	github.com/terraform-providers/terraform-provider-aws => github.com/openshift/terraform-provider-aws v1.60.1-0.20200630224953-76d1fb4e5699
-	github.com/terraform-providers/terraform-provider-azurerm => github.com/openshift/terraform-provider-azurerm v1.40.1-0.20200707062554-97ea089cc12a
-	github.com/terraform-providers/terraform-provider-ignition/v2 => github.com/community-terraform-providers/terraform-provider-ignition/v2 v2.1.0
 	golang.org/x/text => golang.org/x/text v0.3.5
 	k8s.io/client-go => k8s.io/client-go v0.22.1
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
-	kubevirt.io/client-go => kubevirt.io/client-go v0.29.0
-	// HiveConfig import dependancies
-	sigs.k8s.io/cluster-api-provider-aws => github.com/openshift/cluster-api-provider-aws v0.2.1-0.20201022175424-d30c7a274820
-	sigs.k8s.io/cluster-api-provider-azure => github.com/openshift/cluster-api-provider-azure v0.1.0-alpha.3.0.20201016155852-4090a6970205
-	sigs.k8s.io/cluster-api-provider-openstack => github.com/openshift/cluster-api-provider-openstack v0.0.0-20201116051540-155384b859c5
-	sigs.k8s.io/kube-storage-version-migrator => github.com/openshift/kubernetes-kube-storage-version-migrator v0.0.3-0.20210302135122-481bd04dbc78
 )
 
 // needed because otherwise installer fetches a library-go version that requires bitbucket.com/ww/goautoneg which is dead

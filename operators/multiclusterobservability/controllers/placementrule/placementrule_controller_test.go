@@ -23,7 +23,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	imageregistryv1alpha1 "github.com/stolostron/multicloud-operators-foundation/pkg/apis/imageregistry/v1alpha1"
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -71,9 +70,6 @@ func initSchema(t *testing.T) {
 	}
 	if err := mchv1.SchemeBuilder.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add mchv1 scheme: (%v)", err)
-	}
-	if err := imageregistryv1alpha1.AddToScheme(s); err != nil {
-		t.Fatalf("Unable to add imageregistryv1alpha1 scheme: (%v)", err)
 	}
 }
 
