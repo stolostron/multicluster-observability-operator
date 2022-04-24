@@ -369,7 +369,8 @@ var _ = Describe("", func() {
 
 			sort.Strings(clusterIDsInAlerts)
 			sort.Strings(expectClusterIdentifiers)
-			if !reflect.DeepEqual(clusterIDsInAlerts, expectClusterIdentifiers) {
+			sort.Strings(expectedOCPClusterIDs)
+			if !reflect.DeepEqual(clusterIDsInAlerts, expectClusterIdentifiers) && !reflect.DeepEqual(clusterIDsInAlerts, expectedOCPClusterIDs) {
 				return fmt.Errorf("Not all openshift managedclusters >=4.8.0 forward Watchdog alert to hub cluster")
 			}
 
