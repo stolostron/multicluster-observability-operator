@@ -180,6 +180,17 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
+	imagePullSecret := config.GetImagePullSecret(instance.Spec)
+	if _, ok := config.BackupResourceMap[imagePullSecret]; !ok {
+		log.Info("Adding backup label", "Secret", imagePullSecret)
+		config.BackupResourceMap[imagePullSecret] = config.ResourceTypeSecret
+		err = util.AddBackupLabelToSecret(r.Client, imagePullSecret, config.GetDefaultNamespace())
+		if err != nil {
+			log.Error(err, "Failed to add backup label", "Secret", imagePullSecret)
+			return ctrl.Result{}, err
+		}
+	}
+
 	storageClassSelected, err := getStorageClass(instance, r.Client)
 	if err != nil {
 		return ctrl.Result{}, err
