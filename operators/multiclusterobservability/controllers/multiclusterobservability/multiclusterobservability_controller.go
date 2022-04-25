@@ -57,6 +57,11 @@ const (
 	certFinalizer = "observability.open-cluster-management.io/cert-cleanup"
 )
 
+const (
+	infoAddingBackupLabel  = "adding backup label"
+	errorAddingBackupLabel = "failed to add backup label"
+)
+
 var (
 	log                              = logf.Log.WithName("controller_multiclustermonitoring")
 	enableHubRemoteWrite             = os.Getenv("ENABLE_HUB_REMOTEWRITE")
@@ -96,7 +101,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	reqLogger.Info("Reconciling MultiClusterObservability")
 
 	if res, ok := config.BackupResourceMap[req.Name]; ok {
-		reqLogger.Info("Adding backup label")
+		reqLogger.Info(infoAddingBackupLabel)
 		var err error = nil
 		switch res {
 		case config.ResourceTypeConfigMap:
@@ -109,7 +114,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 
 		if err != nil {
-			reqLogger.Error(err, "Failed to add backup label")
+			reqLogger.Error(err, errorAddingBackupLabel)
 			return ctrl.Result{}, err
 		}
 	}
@@ -171,22 +176,22 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	if _, ok := config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Name]; !ok {
-		log.Info("Adding backup label", "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Name)
+		log.Info(infoAddingBackupLabel, "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Name)
 		config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Name] = config.ResourceTypeSecret
 		err = util.AddBackupLabelToSecret(r.Client, instance.Spec.StorageConfig.MetricObjectStorage.Name, config.GetDefaultNamespace())
 		if err != nil {
-			log.Error(err, "Failed to add backup label", "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Name)
+			log.Error(err, errorAddingBackupLabel, "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Name)
 			return ctrl.Result{}, err
 		}
 	}
 
 	imagePullSecret := config.GetImagePullSecret(instance.Spec)
 	if _, ok := config.BackupResourceMap[imagePullSecret]; !ok {
-		log.Info("Adding backup label", "Secret", imagePullSecret)
+		log.Info(infoAddingBackupLabel, "Secret", imagePullSecret)
 		config.BackupResourceMap[imagePullSecret] = config.ResourceTypeSecret
 		err = util.AddBackupLabelToSecret(r.Client, imagePullSecret, config.GetDefaultNamespace())
 		if err != nil {
-			log.Error(err, "Failed to add backup label", "Secret", imagePullSecret)
+			log.Error(err, errorAddingBackupLabel, "Secret", imagePullSecret)
 			return ctrl.Result{}, err
 		}
 	}
