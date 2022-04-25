@@ -296,6 +296,7 @@ var (
 		AlertmanagerRouteBYOCERTName: ResourceTypeSecret,
 		ProxyRouteBYOCAName:          ResourceTypeSecret,
 		ProxyRouteBYOCERTName:        ResourceTypeSecret,
+		DefaultImagePullSecret:       ResourceTypeSecret,
 	}
 
 	multicloudConsoleRouteHost = ""
