@@ -48,6 +48,31 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
+	It("RHACM4K-1449 - Observability - Verify metrics data consistency [P2][Sev2][Observability][Integration] (metrics/g1)", func() {
+		metricList := utils.GetDefaultMetricList(testOptions)
+		ignoreMetricMap := utils.GetIgnoreMetricMap()
+		_, etcdPodList := utils.GetPodList(
+			testOptions,
+			true,
+			"openshift-etcd",
+			"app=etcd",
+		)
+		// ignore etcd network peer metrics for SNO cluster
+		if etcdPodList != nil && len(etcdPodList.Items) <= 0 {
+			ignoreMetricMap["etcd_network_peer_received_bytes_total"] = true
+			ignoreMetricMap["etcd_network_peer_sent_bytes_total"] = true
+		}
+		for _, name := range metricList {
+			_, ok := ignoreMetricMap[name]
+			if !ok {
+				Eventually(func() error {
+					err, _ := utils.ContainManagedClusterMetric(testOptions, name, []string{name})
+					return err
+				}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*3).Should(Succeed())
+			}
+		}
+	})
+
 	It("RHACM4K-1658: Observability: Customized metrics data are collected [P2][Sev2][Observability][Integration] (metrics/g0)", func() {
 		By("Adding custom metrics allowlist configmap")
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/metrics/allowlist"})
