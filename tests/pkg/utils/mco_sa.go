@@ -47,3 +47,20 @@ func CreateSA(opt TestOptions, isHub bool, namespace string,
 	}
 	return nil
 }
+
+func GetSAWithLabel(opt TestOptions, isHub bool, label string,
+	namespace string) (*v1.ServiceAccountList, error) {
+	clientKube := getKubeClient(opt, isHub)
+	klog.V(1).Infof("Get get sa with label selector <%v> in namespace <%v>, isHub: <%v>",
+		label,
+		namespace,
+		isHub)
+	sas, err := clientKube.CoreV1().ServiceAccounts(namespace).List(context.TODO(), metav1.ListOptions{
+		LabelSelector: label,
+	})
+	if err != nil {
+		klog.Errorf("Failed to get ServiceAccount with label selector %s in namespace %s due to %v", label, namespace, err)
+	}
+
+	return sas, err
+}

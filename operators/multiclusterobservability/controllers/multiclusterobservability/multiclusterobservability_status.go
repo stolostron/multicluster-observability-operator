@@ -100,8 +100,6 @@ func updateStatus(c client.Client) {
 			return
 		}
 	}
-
-	return
 }
 
 // fillup the status if there is no status and lastTransitionTime in upgrade case
@@ -348,8 +346,8 @@ func checkObjStorageStatus(
 
 func checkAddonSpecStatus(mco *mcov1beta2.MultiClusterObservability) *mcoshared.Condition {
 	addonSpec := mco.Spec.ObservabilityAddonSpec
-	if addonSpec != nil && addonSpec.EnableMetrics == false {
-		log.Info("Disable metrics collocter")
+	if addonSpec != nil && !addonSpec.EnableMetrics {
+		log.Info("Disable metrics collector")
 		return newMetricsDisabledCondition()
 	}
 	return nil

@@ -37,6 +37,7 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
@@ -52,8 +53,8 @@ const (
 )
 
 var (
-	log                             = logf.Log.WithName("controller_placementrule")
-	watchNamespace                  = config.GetDefaultNamespace()
+	log = logf.Log.WithName("controller_placementrule")
+	//watchNamespace                  = config.GetDefaultNamespace()
 	isCRoleCreated                  = false
 	isClusterManagementAddonCreated = false
 	isplacementControllerRunnning   = false
@@ -120,7 +121,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	// check if the MCH CRD exists
-	mchCrdExists, _ := r.CRDMap[config.MCHCrdName]
+	mchCrdExists := r.CRDMap[config.MCHCrdName]
 	// requeue after 10 seconds if the mch crd exists and image image manifests map is empty
 	if mchCrdExists && len(config.GetImageManifests()) == 0 {
 		// if the mch CR is not ready, then requeue the request after 10s
@@ -160,7 +161,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			req,
 			mco,
 			obsAddonList,
-			r.CRDMap[config.IngressControllerCRD],
+			r.CRDMap,
 		)
 		if err != nil {
 			return res, err
@@ -267,7 +268,7 @@ func createAllRelatedRes(
 	request ctrl.Request,
 	mco *mcov1beta2.MultiClusterObservability,
 	obsAddonList *mcov1beta1.ObservabilityAddonList,
-	ingressCtlCrdExists bool) (ctrl.Result, error) {
+	CRDMap map[string]bool) (ctrl.Result, error) {
 
 	// create the clusterrole if not there
 	if !isCRoleCreated {
@@ -283,7 +284,7 @@ func createAllRelatedRes(
 	}
 	//Check if ClusterManagementAddon is created or create it
 	if !isClusterManagementAddonCreated {
-		err := util.CreateClusterManagementAddon(c)
+		err := util.CreateClusterManagementAddon(c, !CRDMap[config.MCHCrdName])
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -309,7 +310,7 @@ func createAllRelatedRes(
 	// regenerate the hubinfo secret if empty
 	if hubInfoSecret == nil {
 		var err error
-		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists); err != nil {
+		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap[config.IngressControllerCRD]); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -373,7 +374,7 @@ func createAllRelatedRes(
 	}
 
 	if failedCreateManagedClusterRes || failedDeleteOba {
-		return ctrl.Result{}, errors.New("Failed to create managedcluster resources or" +
+		return ctrl.Result{}, errors.New("failed to create managedcluster resources or" +
 			" failed to delete observabilityaddon, skip and reconcile later")
 	}
 
@@ -482,7 +483,7 @@ func updateManagedClusterList(obj client.Object) {
 // SetupWithManager sets up the controller with the Manager.
 func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	c := mgr.GetClient()
-	ingressCtlCrdExists, _ := r.CRDMap[config.IngressControllerCRD]
+	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
 	clusterPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			log.Info("CreateFunc", "managedCluster", e.Object.GetName())
@@ -582,33 +583,36 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 
-	customAllowlistPred := predicate.Funcs{
+	allowlistPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == config.AllowlistCustomConfigMapName &&
+			if (e.Object.GetName() == config.AllowlistCustomConfigMapName ||
+				e.Object.GetName() == operatorconfig.AllowlistConfigMapName) &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				// generate the metrics allowlist configmap
-				log.Info("generate metric allow list configmap for custom configmap CREATE")
+				log.Info("generate metric allow list configmap for allowlist configmap CREATE")
 				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == config.AllowlistCustomConfigMapName &&
+			if (e.ObjectNew.GetName() == config.AllowlistCustomConfigMapName ||
+				e.ObjectNew.GetName() == operatorconfig.AllowlistConfigMapName) &&
 				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				// regenerate the metrics allowlist configmap
-				log.Info("generate metric allow list configmap for custom configmap UPDATE")
+				log.Info("generate metric allow list configmap for allowlist configmap UPDATE")
 				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetName() == config.AllowlistCustomConfigMapName &&
+			if (e.Object.GetName() == config.AllowlistCustomConfigMapName ||
+				e.Object.GetName() == operatorconfig.AllowlistConfigMapName) &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				// regenerate the metrics allowlist configmap
-				log.Info("generate metric allow list configmap for custom configmap UPDATE")
+				log.Info("generate metric allow list configmap for allowlist configmap UPDATE")
 				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
@@ -826,7 +830,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}), builder.WithPredicates(mcoPred)).
 
 		// secondary watch for custom allowlist configmap
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(customAllowlistPred)).
+		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(allowlistPred)).
 
 		// secondary watch for certificate secrets
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(certSecretPred)).
@@ -917,7 +921,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(routeCASecretPred))
 		}
 
-		mchCrdExists, _ := r.CRDMap[config.MCHCrdName]
+		mchCrdExists := r.CRDMap[config.MCHCrdName]
 		if mchCrdExists {
 			// secondary watch for MCH
 			ctrBuilder = ctrBuilder.Watches(

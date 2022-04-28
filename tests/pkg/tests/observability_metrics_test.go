@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
@@ -92,7 +93,7 @@ var _ = Describe("Observability:", func() {
 				}
 			}
 			return metricslistError
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have no metrics which have been marked for deletion in matches section (metrics/g0)", func() {
@@ -110,7 +111,7 @@ var _ = Describe("Observability:", func() {
 				}
 			}
 			return metricslistError
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have no metrics after custom metrics allowlist deleted (metrics/g0)", func() {
@@ -136,11 +137,11 @@ var _ = Describe("Observability:", func() {
 				}
 			}
 			return metricslistError
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have metrics which used grafana dashboard (ssli/g1)", func() {
-		metricList := utils.GetDefaultMetricList(testOptions)
+		metricList, dynamicMetricList := utils.GetDefaultMetricList(testOptions)
 		ignoreMetricMap := utils.GetIgnoreMetricMap()
 		_, etcdPodList := utils.GetPodList(
 			testOptions,
@@ -153,11 +154,17 @@ var _ = Describe("Observability:", func() {
 			ignoreMetricMap["etcd_network_peer_received_bytes_total"] = true
 			ignoreMetricMap["etcd_network_peer_sent_bytes_total"] = true
 		}
+		for _, name := range dynamicMetricList {
+			ignoreMetricMap[name] = true
+		}
 		for _, name := range metricList {
 			_, ok := ignoreMetricMap[name]
 			if !ok {
 				Eventually(func() error {
 					err, _ := utils.ContainManagedClusterMetric(testOptions, name, []string{name})
+					if err != nil {
+						klog.V(1).Infof("failed to get metrics %s", name)
+					}
 					return err
 				}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*3).Should(Succeed())
 			}

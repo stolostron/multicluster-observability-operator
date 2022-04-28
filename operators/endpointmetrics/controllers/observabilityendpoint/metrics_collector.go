@@ -6,8 +6,10 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -46,27 +48,18 @@ var (
 	promURL    = "https://prometheus-k8s:9091"
 )
 
-type MetricsAllowlist struct {
-	NameList  []string          `yaml:"names"`
-	MatchList []string          `yaml:"matches"`
-	RenameMap map[string]string `yaml:"renames"`
-	RuleList  []Rule            `yaml:"rules"`
-}
-
-// Rule is the struct for recording rules and alert rules
-type Rule struct {
-	Record string `yaml:"record"`
-	Expr   string `yaml:"expr"`
-}
-
 func createDeployment(clusterID string, clusterType string,
 	obsAddonSpec oashared.ObservabilityAddonSpec,
-	hubInfo operatorconfig.HubInfo, allowlist MetricsAllowlist,
+	hubInfo operatorconfig.HubInfo, allowlist operatorconfig.MetricsAllowlist,
 	nodeSelector map[string]string, tolerations []corev1.Toleration,
 	replicaCount int32) *appsv1.Deployment {
 	interval := fmt.Sprint(obsAddonSpec.Interval) + "s"
 	if fmt.Sprint(obsAddonSpec.Interval) == "" {
 		interval = defaultInterval
+	}
+	evaluateInterval := "30s"
+	if obsAddonSpec.Interval < 30 {
+		evaluateInterval = interval
 	}
 
 	volumes := []corev1.Volume{
@@ -127,6 +120,7 @@ func createDeployment(clusterID string, clusterType string,
 		"--to-upload-cert=/tlscerts/certs/tls.crt",
 		"--to-upload-key=/tlscerts/certs/tls.key",
 		"--interval=" + interval,
+		"--evaluate-interval=" + evaluateInterval,
 		"--limit-bytes=" + strconv.Itoa(limitBytes),
 		fmt.Sprintf("--label=\"cluster=%s\"", hubInfo.ClusterName),
 		fmt.Sprintf("--label=\"clusterID=%s\"", clusterID),
@@ -138,10 +132,49 @@ func createDeployment(clusterID string, clusterType string,
 	if clusterType != "" {
 		commands = append(commands, fmt.Sprintf("--label=\"clusterType=%s\"", clusterType))
 	}
+
+	dynamicMetricList := map[string]bool{}
+	for _, group := range allowlist.CollectRuleGroupList {
+		if group.Selector.MatchExpression != nil {
+			for _, expr := range group.Selector.MatchExpression {
+				if !evluateMatchExpression(expr, clusterID, clusterType, obsAddonSpec, hubInfo,
+					allowlist, nodeSelector, tolerations, replicaCount) {
+					continue
+				}
+				for _, rule := range group.CollectRuleList {
+					matchList := []string{}
+					for _, match := range rule.Metrics.MatchList {
+						matchList = append(matchList, `"`+strings.ReplaceAll(match, `"`, `\"`)+`"`)
+						if name := getNameInMatch(match); name != "" {
+							dynamicMetricList[name] = false
+						}
+					}
+					for _, name := range rule.Metrics.NameList {
+						dynamicMetricList[name] = false
+					}
+					matchListStr := "[" + strings.Join(matchList, ",") + "]"
+					nameListStr := `["` + strings.Join(rule.Metrics.NameList, `","`) + `"]`
+					commands = append(
+						commands,
+						fmt.Sprintf("--collectrule={\"name\":\"%s\",\"expr\":\"%s\",\"for\":\"%s\",\"names\":%v,\"matches\":%v}",
+							rule.Collect, rule.Expr, rule.For, nameListStr, matchListStr),
+					)
+				}
+			}
+		}
+	}
+
 	for _, metrics := range allowlist.NameList {
-		commands = append(commands, fmt.Sprintf("--match={__name__=\"%s\"}", metrics))
+		if _, ok := dynamicMetricList[metrics]; !ok {
+			commands = append(commands, fmt.Sprintf("--match={__name__=\"%s\"}", metrics))
+		}
 	}
 	for _, match := range allowlist.MatchList {
+		if name := getNameInMatch(match); name != "" {
+			if _, ok := dynamicMetricList[name]; ok {
+				continue
+			}
+		}
 		commands = append(commands, fmt.Sprintf("--match={%s}", match))
 	}
 
@@ -153,12 +186,13 @@ func createDeployment(clusterID string, clusterType string,
 	for _, k := range renamekeys {
 		commands = append(commands, fmt.Sprintf("--rename=\"%s=%s\"", k, allowlist.RenameMap[k]))
 	}
-	for _, rule := range allowlist.RuleList {
+	for _, rule := range allowlist.RecordingRuleList {
 		commands = append(
 			commands,
 			fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr),
 		)
 	}
+
 	from := promURL
 	if !installPrometheus {
 		from = ocpPromURL
@@ -222,7 +256,10 @@ func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonS
 	hubInfo operatorconfig.HubInfo, clusterID string, clusterType string,
 	replicaCount int32, forceRestart bool) (bool, error) {
 
-	list := getMetricsAllowlist(ctx, client, clusterType)
+	list, err := getMetricsAllowlist(ctx, client, clusterType)
+	if err != nil {
+		return false, err
+	}
 	endpointDeployment := getEndpointDeployment(ctx, client)
 	deployment := createDeployment(
 		clusterID,
@@ -235,7 +272,7 @@ func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonS
 		replicaCount,
 	)
 	found := &appsv1.Deployment{}
-	err := client.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
+	err = client.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
 		Namespace: namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -291,8 +328,9 @@ func deleteMetricsCollector(ctx context.Context, client client.Client) error {
 
 func int32Ptr(i int32) *int32 { return &i }
 
-func getMetricsAllowlist(ctx context.Context, client client.Client, clusterType string) MetricsAllowlist {
-	l := &MetricsAllowlist{}
+func getMetricsAllowlist(ctx context.Context, client client.Client,
+	clusterType string) (operatorconfig.MetricsAllowlist, error) {
+	l := &operatorconfig.MetricsAllowlist{}
 	cm := &corev1.ConfigMap{}
 	err := client.Get(ctx, types.NamespacedName{Name: operatorconfig.AllowlistConfigMapName,
 		Namespace: namespace}, cm)
@@ -307,10 +345,11 @@ func getMetricsAllowlist(ctx context.Context, client client.Client, clusterType 
 			err = yaml.Unmarshal([]byte(cm.Data[configmapKey]), l)
 			if err != nil {
 				log.Error(err, "Failed to unmarshal data in configmap")
+				return *l, err
 			}
 		}
 	}
-	return *l
+	return *l, nil
 }
 
 func getEndpointDeployment(ctx context.Context, client client.Client) appsv1.Deployment {
@@ -320,4 +359,13 @@ func getEndpointDeployment(ctx context.Context, client client.Client) appsv1.Dep
 		log.Error(err, "Failed to get deployment")
 	}
 	return *d
+}
+
+func getNameInMatch(match string) string {
+	r := regexp.MustCompile(`__name__="([^,]*)"`)
+	m := r.FindAllStringSubmatch(match, -1)
+	if m != nil {
+		return m[0][1]
+	}
+	return ""
 }

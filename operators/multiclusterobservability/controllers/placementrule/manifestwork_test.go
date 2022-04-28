@@ -6,6 +6,7 @@ package placementrule
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"os"
 	"path"
 	"reflect"
@@ -20,7 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/stolostron/multicloud-operators-foundation/pkg/apis/imageregistry/v1alpha1"
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -102,9 +102,44 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
     - b
   renames:
     a: c
-  rules:
+  recording_rules:
     - record: f
       expr: g
+  collect_rules:
+    - group: keepGroup
+      annotations:
+        description:
+      selector:
+        matchExpressions:
+          - key: clusterType
+            operator: NotIn
+            values: ["SNO"]
+      rules:
+      - collect: c
+        annotations:
+          description:
+        expr: e
+        for: 2m
+        dynamic_metrics:
+          matches:
+            - __name__="foo"
+    - group: discardGroup
+      annotations:
+        description:
+      selector:
+        matchExpressions:
+          - key: clusterType
+            operator: In
+            values: ["SNO"]
+        rules:
+        - collect: d
+          annotations:
+            description:
+          expr: d
+          for: 2m
+          dynamic_metrics:
+            names:
+              - foobar_metric
 `,
 			"ocp311_metrics_list.yaml": `
   names:
@@ -112,7 +147,7 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
     - b
   renames:
     a: c
-  rules:
+  recording_rules:
     - record: f
       expr: g
 `},
@@ -134,6 +169,8 @@ func NewMetricsCustomAllowListCM() *corev1.ConfigMap {
   rules:
     - record: h
       expr: i
+  collect_rules:
+    - name: -discard
 `},
 	}
 }
@@ -162,11 +199,11 @@ func NewAmAccessorTokenSecret() *corev1.Secret {
 	}
 }
 
-func newCluster(name string, labels map[string]string) *clusterv1.ManagedCluster {
+func newCluster(name string, annotation map[string]string) *clusterv1.ManagedCluster {
 	return &clusterv1.ManagedCluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
-			Labels: labels,
+			Name:        name,
+			Annotations: annotation,
 		},
 	}
 }
@@ -189,20 +226,6 @@ func newPullSecret(name, namespace string, data []byte) *corev1.Secret {
 	}
 }
 
-func newImageRegistry(name, namespace, registryAddress, pullSecret string) *v1alpha1.ManagedClusterImageRegistry {
-	return &v1alpha1.ManagedClusterImageRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Spec: v1alpha1.ImageRegistrySpec{
-			Registry:     registryAddress,
-			PullSecret:   corev1.LocalObjectReference{Name: pullSecret},
-			PlacementRef: v1alpha1.PlacementRef{},
-		},
-	}
-}
-
 func TestManifestWork(t *testing.T) {
 	initSchema(t)
 	objs := []runtime.Object{
@@ -216,11 +239,13 @@ func TestManifestWork(t *testing.T) {
 		NewMetricsCustomAllowListCM(),
 		NewAmAccessorSA(),
 		NewAmAccessorTokenSecret(),
-		newCluster(clusterName, map[string]string{v1alpha1.ClusterImageRegistryLabel: namespace + ".image_registry"}),
-		newImageRegistry("image_registry", namespace, "registry_server", "custorm_pull_secret"),
+		newCluster(clusterName, map[string]string{
+			ClusterImageRegistriesAnnotation: newAnnotationRegistries([]Registry{
+				{Source: "quay.io/stolostron", Mirror: "registry_server/stolostron"}},
+				fmt.Sprintf("%s.%s", namespace, "custorm_pull_secret"))}),
 		newPullSecret("custorm_pull_secret", namespace, []byte("custorm")),
 	}
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get work dir: (%v)", err)
@@ -235,7 +260,7 @@ func TestManifestWork(t *testing.T) {
 	}
 	works, crdWork, _, err := generateGlobalManifestResources(c, newTestMCO())
 	if err != nil {
-		t.Fatalf("Failed to get global manifestwork resourc: (%v)", err)
+		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
 	t.Logf("work size is %d", len(works))
 	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true); err != nil {
@@ -263,7 +288,7 @@ func TestManifestWork(t *testing.T) {
 	pullSecret = nil
 	works, crdWork, _, err = generateGlobalManifestResources(c, newTestMCO())
 	if err != nil {
-		t.Fatalf("Failed to get global manifestwork resourc: (%v)", err)
+		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
 	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, false)
 	if err != nil {
@@ -301,7 +326,7 @@ func TestManifestWork(t *testing.T) {
 
 	works, crdWork, _, err = generateGlobalManifestResources(c, newTestMCO())
 	if err != nil {
-		t.Fatalf("Failed to get global manifestwork resourc: (%v)", err)
+		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
 
 	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true); err != nil {

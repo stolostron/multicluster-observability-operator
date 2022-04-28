@@ -31,29 +31,39 @@ spec:
           cpu: 1
           memory: 1Gi
       replicas: 3
+      serviceAccountAnnotations:
+        test.com/role-arn: 's3_role'
     compact:
       resources:
         limits:
           cpu: 1
           memory: 2Gi
+      serviceAccountAnnotations:
+        test.com/role-arn: 's3_role'
     receive:
       resources:
         limits:
           cpu: 1
           memory: 4Gi
       replicas: 2
+      serviceAccountAnnotations:
+        test.com/role-arn: 's3_role'
     rule:
       resources:
         limits:
           cpu: 1
           memory: 1Gi
       replicas: 1
+      serviceAccountAnnotations:
+        test.com/role-arn: 's3_role'
     store:
       resources:
         limits:
           cpu: 1
           memory: 2Gi
       replicas: 3
+      serviceAccountAnnotations:
+        test.com/role-arn: 's3_role'
     storeMemcached:
       resources:
         limits:

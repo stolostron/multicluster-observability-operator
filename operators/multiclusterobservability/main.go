@@ -32,6 +32,7 @@ import (
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -45,7 +46,6 @@ import (
 	ctrlruntimescheme "sigs.k8s.io/controller-runtime/pkg/scheme"
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
 
-	imageregistryv1alpha1 "github.com/stolostron/multicloud-operators-foundation/pkg/apis/imageregistry/v1alpha1"
 	observabilityv1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	observabilityv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability"
@@ -75,6 +75,7 @@ func init() {
 	utilruntime.Must(observabilityv1beta1.AddToScheme(scheme))
 	utilruntime.Must(observabilityv1beta2.AddToScheme(scheme))
 	utilruntime.Must(observatoriumAPIs.AddToScheme(scheme))
+	utilruntime.Must(prometheusv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -117,11 +118,6 @@ func main() {
 	}
 
 	if err := operatorv1.AddToScheme(scheme); err != nil {
-		setupLog.Error(err, "")
-		os.Exit(1)
-	}
-
-	if err := imageregistryv1alpha1.AddToScheme(scheme); err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}

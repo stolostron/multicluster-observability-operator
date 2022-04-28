@@ -18,11 +18,11 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
 
-const (
-	secretName = "test-secret"
-	token      = "test-token"
-	ca         = "test-ca"
-)
+// const (
+// 	secretName = "test-secret"
+// 	token      = "test-token"
+// 	ca         = "test-ca"
+// )
 
 func TestCreateClusterRole(t *testing.T) {
 	role := &rbacv1.ClusterRole{
@@ -60,7 +60,7 @@ func TestCreateClusterRole(t *testing.T) {
 		},
 	}
 	objs := []runtime.Object{role}
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	err := createClusterRole(c)
 	if err != nil {
 		t.Fatalf("createRole: (%v)", err)
@@ -97,7 +97,7 @@ func TestCreateClusterRoleBinding(t *testing.T) {
 		},
 	}
 	objs := []runtime.Object{rb}
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	err := createClusterRoleBinding(c, namespace, namespace)
 	if err != nil {
 		t.Fatalf("createRoleBinding: (%v)", err)
@@ -114,7 +114,7 @@ func TestCreateClusterRoleBinding(t *testing.T) {
 }
 
 func TestCreateRole(t *testing.T) {
-	c := fake.NewFakeClient()
+	c := fake.NewClientBuilder().Build()
 	err := createResourceRole(c)
 	if err != nil {
 		t.Fatalf("createRole: (%v)", err)
@@ -154,7 +154,7 @@ func TestCreateRole(t *testing.T) {
 		},
 	}
 	objs := []runtime.Object{role}
-	c = fake.NewFakeClient(objs...)
+	c = fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	err = createResourceRole(c)
 	if err != nil {
 		t.Fatalf("createRole: (%v)", err)
@@ -170,7 +170,7 @@ func TestCreateRole(t *testing.T) {
 }
 
 func TestCreateRoleBinding(t *testing.T) {
-	c := fake.NewFakeClient()
+	c := fake.NewClientBuilder().Build()
 	err := createResourceRoleBinding(c, namespace, namespace)
 	if err != nil {
 		t.Fatalf("createRole: (%v)", err)
@@ -207,7 +207,7 @@ func TestCreateRoleBinding(t *testing.T) {
 		},
 	}
 	objs := []runtime.Object{rb}
-	c = fake.NewFakeClient(objs...)
+	c = fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	err = createResourceRoleBinding(c, namespace, namespace)
 	if err != nil {
 		t.Fatalf("createRoleBinding: (%v)", err)

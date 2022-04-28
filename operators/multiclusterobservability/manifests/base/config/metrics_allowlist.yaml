@@ -146,7 +146,7 @@ data:
       namespace:kube_pod_container_resource_requests_cpu_cores:sum: namespace_cpu:kube_pod_container_resource_requests:sum
       node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate: node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate
       etcd_mvcc_db_total_size_in_bytes: etcd_debugging_mvcc_db_total_size_in_bytes
-    rules:
+    recording_rules:
       - record: apiserver_request_duration_seconds:histogram_quantile_99
         expr: histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le))
       - record: apiserver_request_duration_seconds:histogram_quantile_99:instance
@@ -167,6 +167,62 @@ data:
         expr: sum(sum(sum(kube_pod_container_resource_requests{resource=\"memory\"}) by (pod,namespace,container) * on(pod,namespace) group_left(phase) max(kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"} >0) by (pod,namespace,phase)) by (pod,namespace,phase))
       - record: sli:apiserver_request_duration_seconds:trend:1m
         expr: sum(increase(apiserver_request_duration_seconds_bucket{job=\"apiserver\",service=\"kubernetes\",le=\"1\",verb=~\"POST|PUT|DELETE|PATCH\"}[1m])) / sum(increase(apiserver_request_duration_seconds_count{job=\"apiserver\",service=\"kubernetes\",verb=~\"POST|PUT|DELETE|PATCH\"}[1m]))
+      - record: container_memory_rss:sum
+        expr: sum(container_memory_rss) by (container, namespace)
+      - record: kube_pod_container_resource_limits:sum
+        expr: sum(kube_pod_container_resource_limits) by (resource, namespace)
+      - record: kube_pod_container_resource_requests:sum
+        expr: sum(kube_pod_container_resource_requests{container!=\"\"}) by (resource, namespace)
+      - record: namespace_workload_pod:kube_pod_owner:relabel:avg
+        expr: count(avg(namespace_workload_pod:kube_pod_owner:relabel{pod!=\"\"}) by (workload, namespace)) by (namespace)
+      - record: node_namespace_pod_container:container_cpu_usage_seconds_total:sum
+        expr: sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{container!=\"\"}) by (namespace) or sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{container!=\"\"}) by (namespace)
+    collect_rules:
+      - group: SNOResourceUsage
+        annotations:
+          description: >
+            By default, a SNO cluster does not collect pod and container resource metrics. Once a SNO cluster 
+            reaches a level of resource consumption, these granular metrics are collected dynamically. 
+            When the cluster resource consumption is consistently less than the threshold for a period of time, 
+            collection of the granular metrics stops.
+        selector:
+          matchExpressions:
+            - key: clusterType
+              operator: In
+              values: ["SNO"]
+        rules:
+        - collect: SNOHighCPUUsage
+          annotations:
+            description: >
+              Collects the dynamic metrics specified if the cluster cpu usage is constantly more than 70% for 2 minutes
+          expr: (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))) * 100 > 70
+          for: 2m
+          dynamic_metrics:
+            names:
+              - container_cpu_cfs_periods_total
+              - container_cpu_cfs_throttled_periods_total
+              - kube_pod_container_resource_limits 
+              - kube_pod_container_resource_requests   
+              - namespace_workload_pod:kube_pod_owner:relabel 
+              - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate 
+              - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate 
+        - collect: SNOHighMemoryUsage
+          annotations:
+            description: >
+              Collects the dynamic metrics specified if the cluster memory usage is constantly more than 70% for 2 minutes
+          expr: (1 - sum(:node_memory_MemAvailable_bytes:sum) / sum(kube_node_status_allocatable{resource=\"memory\"})) * 100 > 70
+          for: 2m
+          dynamic_metrics:
+            names:
+              - kube_pod_container_resource_limits 
+              - kube_pod_container_resource_requests 
+              - namespace_workload_pod:kube_pod_owner:relabel
+            matches:
+              - __name__="container_memory_cache",container!=""
+              - __name__="container_memory_rss",container!=""
+              - __name__="container_memory_swap",container!=""
+              - __name__="container_memory_working_set_bytes",container!=""
+ 
   ocp311_metrics_list.yaml: |
     names:
       - :node_memory_MemAvailable_bytes:sum
@@ -269,7 +325,7 @@ data:
       namespace:kube_pod_container_resource_requests_cpu_cores:sum: namespace_cpu:kube_pod_container_resource_requests:sum
       node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate: node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate
       etcd_mvcc_db_total_size_in_bytes: etcd_debugging_mvcc_db_total_size_in_bytes
-    rules:
+    recording_rules:
       - record: apiserver_request_duration_seconds:histogram_quantile_99
         expr: (histogram_quantile(0.99,sum(rate(apiserver_request_latencies_bucket{job=\"apiserver\", verb!=\"WATCH\"}[5m])) by (le)))/1000000
       - record: apiserver_request_duration_seconds:histogram_quantile_99:instance
@@ -300,63 +356,3 @@ data:
         expr: sum(rate(node_network_receive_drop_total{job=\"node-exporter\", device!=\"lo\"}[1m])) without(device)
       - record: instance:node_network_transmit_drop_excluding_lo:rate1m
         expr: sum(rate(node_network_transmit_drop_total{job=\"node-exporter\", device!=\"lo\"}[1m])) without(device)
-  collect_rules: |
-    - name: NamespaceHighCPUUsage
-      expr: (sum(kube_resourcequota{resource=\"limits.cpu\", type=\"used\"}) by (namespace, resourcequota) / sum(kube_resourcequota{resource=\"limits.cpu\", type=\"hard\"}) by (namespace, resourcequota)) * 100 > 70
-      for: 2m
-      matches:
-        - __name__="container_cpu_cfs_periods_total",namespace="{{ $labels.namespace }}"
-        - __name__="container_cpu_cfs_throttled_periods_total",namespace="{{ $labels.namespace }}"
-        - __name__="kube_pod_container_resource_limits",namespace="{{ $labels.namespace }}"
-        - __name__="kube_pod_container_resource_requests",namespace="{{ $labels.namespace }}"
-        - __name__="kube_resourcequota",namespace="{{ $labels.namespace }}"
-        - __name__="mixin_pod_workload",namespace="{{ $labels.namespace }}"
-        - __name__="namespace_workload_pod:kube_pod_owner:relabel",namespace="{{ $labels.namespace }}"
-        - __name__="node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate",namespace="{{ $labels.namespace }}"
-        - __name__="node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate",namespace="{{ $labels.namespace }}"
-
-    - name: NamespaceHighMemoryUsage
-      expr: (sum(kube_resourcequota{resource=\"limits.memory\", type=\"used\"}) by (namespace, resourcequota) / sum(kube_resourcequota{resource=\"limits.memory\", type=\"hard\"}) by (namespace, resourcequota)) * 100 > 70
-      for: 2m
-      matches:
-        - __name__="container_memory_cache",namespace="{{ $labels.namespace }}"
-        - __name__="container_memory_rss",namespace="{{ $labels.namespace }}"
-        - __name__="container_memory_swap",namespace="{{ $labels.namespace }}"
-        - __name__="container_memory_working_set_bytes",namespace="{{ $labels.namespace }}"
-        - __name__="kube_pod_container_resource_limits",namespace="{{ $labels.namespace }}"
-        - __name__="kube_pod_container_resource_requests",namespace="{{ $labels.namespace }}"
-        - __name__="kube_resourcequota",namespace="{{ $labels.namespace }}"
-        - __name__="mixin_pod_workload",namespace="{{ $labels.namespace }}"
-        - __name__="namespace_workload_pod:kube_pod_owner:relabel",namespace="{{ $labels.namespace }}"
-
-    - name: SNOHighCPUUsage
-      expr: cluster:container_cpu_usage:ratio * 100 > 70
-      for: 2m
-      selector:
-        clusterType: "SNO"
-      names:
-        - container_cpu_cfs_periods_total
-        - container_cpu_cfs_throttled_periods_total
-        - kube_pod_container_resource_limits 
-        - kube_pod_container_resource_requests 
-        - kube_resourcequota 
-        - mixin_pod_workload 
-        - namespace_workload_pod:kube_pod_owner:relabel 
-        - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate 
-        - node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate 
-
-    - name: SNOHighMemoryUsage
-      expr: cluster:memory_usage:ratio * 100 > 70
-      for: 2m
-      selector:
-        clusterType: "SNO"
-      names:
-        - container_memory_cache 
-        - container_memory_rss 
-        - container_memory_swap 
-        - container_memory_working_set_bytes 
-        - kube_pod_container_resource_limits 
-        - kube_pod_container_resource_requests 
-        - kube_resourcequota 
-        - mixin_pod_workload 
-        - namespace_workload_pod:kube_pod_owner:relabel 

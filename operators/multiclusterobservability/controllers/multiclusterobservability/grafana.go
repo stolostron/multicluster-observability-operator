@@ -7,10 +7,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"time"
 
 	"gopkg.in/yaml.v2"
-	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,6 +20,7 @@ import (
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (
@@ -72,6 +71,12 @@ func GenerateGrafanaDataSource(
 	scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
 
+	DynamicTimeInterval := mco.Spec.ObservabilityAddonSpec.Interval
+
+	if DynamicTimeInterval > 30 {
+		DynamicTimeInterval = 30
+	}
+
 	grafanaDatasources, err := yaml.Marshal(GrafanaDatasources{
 		APIVersion: 1,
 		Datasources: []*GrafanaDatasource{
@@ -88,6 +93,21 @@ func GenerateGrafanaDataSource(
 				JSONData: &JsonData{
 					QueryTimeout: "300s",
 					TimeInterval: fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval),
+				},
+			},
+			{
+				Name:      "Observatorium-Dynamic",
+				Type:      "prometheus",
+				Access:    "proxy",
+				IsDefault: false,
+				URL: fmt.Sprintf(
+					"http://%s.%s.svc.cluster.local:8080",
+					config.ProxyServiceName,
+					config.GetDefaultNamespace(),
+				),
+				JSONData: &JsonData{
+					QueryTimeout: "300s",
+					TimeInterval: fmt.Sprintf("%ds", DynamicTimeInterval),
 				},
 			},
 		},
@@ -148,37 +168,12 @@ func GenerateGrafanaDataSource(
 			log.Error(err, "Failed to update grafana datasource secret")
 			return &ctrl.Result{}, err
 		}
-		err = updateDeployLabel(c)
+		err = util.UpdateDeployLabel(c, config.GetOperandName(config.Grafana),
+			config.GetDefaultNamespace(), restartLabel)
 		if err != nil {
 			return &ctrl.Result{}, err
 		}
 	}
 
 	return nil, nil
-}
-
-func updateDeployLabel(c client.Client) error {
-	name := config.GetOperandName(config.Grafana)
-	dep := &appv1.Deployment{}
-	err := c.Get(context.TODO(), types.NamespacedName{
-		Name:      name,
-		Namespace: config.GetDefaultNamespace(),
-	}, dep)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			log.Error(err, "Failed to check the deployment", "name", name)
-		}
-		return err
-	}
-	if dep.Status.ReadyReplicas != 0 {
-		dep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
-		err = c.Update(context.TODO(), dep)
-		if err != nil {
-			log.Error(err, "Failed to update the deployment", "name", name)
-			return err
-		} else {
-			log.Info("Update deployment datasource/restart label", "name", name)
-		}
-	}
-	return nil
 }

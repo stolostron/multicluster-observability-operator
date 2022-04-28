@@ -303,6 +303,7 @@ spec:
           - addon.open-cluster-management.io
           resources:
           - clustermanagementaddons
+          - clustermanagementaddons/finalizers
           verbs:
           - create
           - update
@@ -315,6 +316,7 @@ spec:
           resources:
           - managedclusteraddons
           - managedclusteraddons/status
+          - managedclusteraddons/finalizers
           verbs:
           - watch
           - create
@@ -415,6 +417,18 @@ spec:
           verbs:
           - get
           - list
+          - watch
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - prometheusrules
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
           - watch
         serviceAccountName: multicluster-observability-operator
       deployments:

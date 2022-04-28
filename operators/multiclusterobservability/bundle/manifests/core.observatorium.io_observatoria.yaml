@@ -374,6 +374,23 @@ spec:
               api:
                 description: API
                 properties:
+                  additionalWriteEndpoints:
+                    description: AdditionalWriteEndpoints is a slice of additional write endpoint for the Observatorium API.
+                    properties:
+                      endpointsConfigSecret:
+                        description: Secret name for the endpoints configuration
+                        type: string
+                      mountPath:
+                        description: Mount path for the secrets
+                        type: string
+                      mountSecrets:
+                        description: Secret list to be mounted
+                        items:
+                          type: string
+                        type: array
+                    required:
+                    - endpointsConfigSecret
+                    type: object
                   image:
                     description: API image
                     type: string
@@ -481,9 +498,6 @@ spec:
                   serviceMonitor:
                     description: ServiceMonitor enables servicemonitor.
                     type: boolean
-                  tenantHeader:
-                    description: TenantHeader is the http header for tenant id.
-                    type: string
                   tenants:
                     description: Tenants is a slice of tenants for the Observatorium API.
                     items:
@@ -557,9 +571,6 @@ spec:
                     type: object
                   version:
                     description: Version describes the version of API to use.
-                    type: string
-                  writeEndpoint:
-                    description: WriteEndpoint is the write endpoint.
                     type: string
                 required:
                 - rbac
@@ -888,6 +899,11 @@ spec:
                       retentionResolutionRaw:
                         description: RetentionResolutionRaw
                         type: string
+                      serviceAccountAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is an unstructured key value map stored with a service account
+                        type: object
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.
                         type: boolean
@@ -1026,6 +1042,11 @@ spec:
                               x-kubernetes-int-or-string: true
                             description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
+                        type: object
+                      serviceAccountAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is an unstructured key value map stored with a service account
                         type: object
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.
@@ -1222,12 +1243,14 @@ spec:
                       retention:
                         description: How long to retain raw samples on local storage
                         type: string
+                      serviceAccountAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is an unstructured key value map stored with a service account
+                        type: object
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.
                         type: boolean
-                      tenantHeader:
-                        description: TenantHeader is the http header for tenant id.
-                        type: string
                       volumeClaimTemplate:
                         description: VolumeClaimTemplate
                         properties:
@@ -1445,6 +1468,11 @@ spec:
                           - name
                           type: object
                         type: array
+                      serviceAccountAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is an unstructured key value map stored with a service account
+                        type: object
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.
                         type: boolean
@@ -1651,6 +1679,11 @@ spec:
                               x-kubernetes-int-or-string: true
                             description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
+                        type: object
+                      serviceAccountAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: Annotations is an unstructured key value map stored with a service account
                         type: object
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.

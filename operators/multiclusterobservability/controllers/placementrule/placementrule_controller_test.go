@@ -23,7 +23,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	imageregistryv1alpha1 "github.com/stolostron/multicloud-operators-foundation/pkg/apis/imageregistry/v1alpha1"
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -72,9 +71,6 @@ func initSchema(t *testing.T) {
 	if err := mchv1.SchemeBuilder.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add mchv1 scheme: (%v)", err)
 	}
-	if err := imageregistryv1alpha1.AddToScheme(s); err != nil {
-		t.Fatalf("Unable to add imageregistryv1alpha1 scheme: (%v)", err)
-	}
 }
 
 var testImagemanifestsMap = map[string]string{
@@ -110,6 +106,18 @@ func newMCHInstanceWithVersion(namespace, version string) *mchv1.MultiClusterHub
 	}
 }
 
+func newConsoleRoute() *routev1.Route {
+	return &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "multicloud-console",
+			Namespace: config.GetMCONamespace(),
+		},
+		Spec: routev1.RouteSpec{
+			Host: "console",
+		},
+	}
+}
+
 func TestObservabilityAddonController(t *testing.T) {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
@@ -126,9 +134,9 @@ func TestObservabilityAddonController(t *testing.T) {
 			},
 		},
 	}
-	objs := []runtime.Object{mco, pull, newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
+	objs := []runtime.Object{mco, pull, newConsoleRoute(), newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
 		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newManagedClusterAddon(), deprecatedRole}
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &PlacementRuleReconciler{Client: c, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
 
 	wd, err := os.Getwd()
@@ -140,9 +148,11 @@ func TestObservabilityAddonController(t *testing.T) {
 	manifestsPath := path.Join(wd, "../../manifests")
 	os.Setenv("TEMPLATES_PATH", testManifestsPath)
 	templates.ResetTemplates()
-	err = os.Symlink(manifestsPath, testManifestsPath)
-	if err != nil {
-		t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
+	if _, err := os.Stat(testManifestsPath); err == os.ErrNotExist {
+		err = os.Symlink(manifestsPath, testManifestsPath)
+		if err != nil {
+			t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
+		}
 	}
 
 	req := ctrl.Request{
@@ -312,8 +322,11 @@ func TestObservabilityAddonController(t *testing.T) {
 	}
 
 	// remove the testing manifests directory
-	if err = os.Remove(testManifestsPath); err != nil {
-		t.Fatalf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
+	_, err = os.Stat(testManifestsPath)
+	if err == nil {
+		if err = os.Remove(testManifestsPath); err != nil {
+			t.Fatalf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
+		}
 	}
 	os.Remove(path.Join(wd, "../../placementrule-tests"))
 }
