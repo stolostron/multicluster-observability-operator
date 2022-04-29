@@ -6,7 +6,7 @@ You must enable the observability service by creating a MultiClusterObservabilit
 
 ## Setup grafana develop instance
 
-Firstly, you should use this script `setup-grafana-dev.sh` to setup your grafana instance.
+Firstly, you should use this script `setup-grafana-dev.sh` to setup your grafana instance. You need to run this as a kubeadmin user.
 
 ```
 $ ./setup-grafana-dev.sh --deploy
@@ -23,6 +23,16 @@ Secondly, you need to ask a user to login `https://$ACM_URL/grafana-dev/` before
 ```
 $ ./switch-to-grafana-admin.sh kube:admin
 User <kube:admin> switched to be grafana admin
+```
+The above example shows a kubeadmin user. However, let us say the following user is logged in:
+```
+oc whoami
+frank
+```
+Now, if we want to make `frank` Grafana admin, we will simply run:
+```
+$ ./switch-to-grafana-admin.sh frank
+User frank switched to be grafana admin
 ```
 
 ## Design your grafana dashboard
