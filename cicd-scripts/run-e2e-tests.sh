@@ -33,7 +33,10 @@ kubectl logs --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-addon-obs
 
 kubectl get pods --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-agent
 
-kubectl logs --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-agent $(kubectl get po --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-agent|grep work|awk '{split($0, a, " "); print a[1]}')
+kubectl logs --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-agent $(kubectl get po --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-agent|grep work|sed -n 1p|awk '{split($0, a, " "); print a[1]}')
+kubectl logs --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-agent $(kubectl get po --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-agent|grep work|sed -n 2p|awk '{split($0, a, " "); print a[1]}')
+kubectl logs --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-agent $(kubectl get po --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-agent|grep work|sed -n 3p|awk '{split($0, a, " "); print a[1]}')
+
 kubectl get deployment --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-addon-observability -oyaml $(kubectl get po --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-addon-observability|grep endpoint|awk '{split($0, a, " "); print a[1]}')
 
 # run test cases
