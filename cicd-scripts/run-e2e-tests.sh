@@ -22,11 +22,16 @@ cd observability-e2e-test
 HUB_KUBECONFIG=$HOME/.kube/kind-config-hub
 SPOKE_KUBECONFIG=$HOME/.kube/kind-config-spoke
 
-kubectl get manifestworks --kubeconfig $HUB_KUBECONFIG -A
+kubectl get manifestworks endpoint-observability-work -n cluster1 --kubeconfig $HUB_KUBECONFIG -oyaml
 
 kubectl logs --kubeconfig $HUB_KUBECONFIG -n open-cluster-management $(kubectl get po --kubeconfig $HUB_KUBECONFIG -n open-cluster-management|grep observability|awk '{split($0, a, " "); print a[1]}')
+
+sleep 120
+
 kubectl logs --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-addon-observability $(kubectl get po --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-addon-observability|grep endpoint|awk '{split($0, a, " "); print a[1]}')
 kubectl logs --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-addon-observability $(kubectl get po --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-addon-observability|grep collector|awk '{split($0, a, " "); print a[1]}')
+
+kubectl get pods --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-agent
 
 kubectl logs --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-agent $(kubectl get po --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-agent|grep work|awk '{split($0, a, " "); print a[1]}')
 kubectl get deployment --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-addon-observability -oyaml $(kubectl get po --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-addon-observability|grep endpoint|awk '{split($0, a, " "); print a[1]}')
