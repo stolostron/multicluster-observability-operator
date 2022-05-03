@@ -19,6 +19,13 @@ cd ${WORKDIR}/..
 git clone --depth 1 -b release-2.2 https://github.com/stolostron/observability-e2e-test.git
 cd observability-e2e-test
 
+HUB_KUBECONFIG=$HOME/.kube/kind-config-hub
+SPOKE_KUBECONFIG=$HOME/.kube/kind-config-spoke
+
+kubectl logs --kubeconfig $HUB_KUBECONFIG -n open-cluster-management $(kubectl get po --kubeconfig $HUB_KUBECONFIG -n open-cluster-management|grep observability|awk '{split($0, a, " "); print a[1]}')
+kubectl logs --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-addon-observability $(kubectl get po --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-addon-observability|grep endpoint|awk '{split($0, a, " "); print a[1]}')
+kubectl logs --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-addon-observability $(kubectl get po --kubeconfig $SPOKE_KUBECONFIG -n open-cluster-management-addon-observability|grep collector|awk '{split($0, a, " "); print a[1]}')
+
 # run test cases
 ./cicd-scripts/tests.sh
 if [ $? -ne 0 ]; then
