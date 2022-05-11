@@ -77,7 +77,7 @@ kubectl -n open-cluster-management-observability apply -k examples/minio
 make deploy IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-observability-operator:latest
 ```
 
-4. Deploy the multicluster-observability-operator CR
+4. Deploy the multicluster-observability-operator CR:
 
 ```bash
 kubectl apply -f operators/multiclusterobservability/config/samples/observability_v1beta2_multiclusterobservability.yaml
