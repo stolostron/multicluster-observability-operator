@@ -65,25 +65,25 @@ make docker-build docker-push IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-o
 kubectl create ns open-cluster-management-observability
 ```
 
-1. Deploy the minio service which acts as storage service of the multicluster observability:
+2. Deploy the minio service which acts as storage service of the multicluster observability:
 
 ```bash
 kubectl -n open-cluster-management-observability apply -k examples/minio
 ```
 
-1. Replace the operator image and deploy the multicluster-observability-operator:
+3. Replace the operator image and deploy the multicluster-observability-operator:
 
 ```bash
 make deploy IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-observability-operator:latest
 ```
 
-1. Deploy the multicluster-observability-operator CR
+4. Deploy the multicluster-observability-operator CR
 
 ```bash
 kubectl apply -f operators/multiclusterobservability/config/samples/observability_v1beta2_multiclusterobservability.yaml
 ```
 
-1. Verify all the components for the Multicluster Observability are starting up and runing:
+5. Verify all the components for the Multicluster Observability are starting up and runing:
 
 ```bash
 kubectl -n open-cluster-management-observability get pod
@@ -176,12 +176,12 @@ make undeploy
 
 3. Delete the minio service:
 
-```
+```bash
 kubectl -n open-cluster-management-observability delete -k examples/minio
 ```
 
 4. Delete the `open-cluster-management-observability` namespace:
 
-```
+```bash
 kubectl delete ns open-cluster-management-observability
 ```
