@@ -3,7 +3,6 @@
 [![Build](https://img.shields.io/badge/build-Prow-informational)](https://prow.ci.openshift.org/?repo=stolostron%2F${multicluster-observability-operator})
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=stolostron_multicluster-observability-operator&metric=alert_status&token=3452dcca82a98e4aa297c1b31fd21939288db4c0)](https://sonarcloud.io/dashboard?id=stolostron_multicluster-observability-operator)
 
-
 This document attempts to explain how the different components in Open Cluster Management Observabilty come together to deliver multicluster fleet observability. We do leverage several open source projects: [Grafana](https://github.com/grafana/grafana), [Alertmanager](https://github.com/prometheus/alertmanager), [Thanos](https://github.com/thanos-io/thanos/), [Observatorium Operator and API Gateway](https://github.com/observatorium), [Prometheus](https://github.com/prometheus/prometheus); We also leverage a few [Open Cluster Mangement projects](https://open-cluster-management.io/) namely - [Cluster Manager or Registration Operator](https://github.com/stolostron/registration-operator), [Klusterlet](https://github.com/stolostron/registration-operator). The multicluster-observability operator is the root operator which pulls in all things needed.
 
 ## Conceptual Diagram
@@ -45,7 +44,7 @@ Use the following quick start commands for building and testing the multicluster
 
 Check out the multicluster-observability-operator repository.
 
-```
+```bash
 git clone git@github.com:stolostron/multicluster-observability-operator.git
 cd multicluster-observability-operator
 ```
@@ -54,34 +53,39 @@ cd multicluster-observability-operator
 
 Build the multicluster-observability-operator image and push it to a public registry, such as quay.io:
 
-```
+```bash
 make docker-build docker-push IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-observability-operator:latest
 ```
 
 ### Run the Operator in the Cluster
 
 1. Create the `open-cluster-management-observability` namespace if it doesn't exist:
-```
+
+```bash
 kubectl create ns open-cluster-management-observability
 ```
 
 2. Deploy the minio service which acts as storage service of the multicluster observability:
-```
+
+```bash
 kubectl -n open-cluster-management-observability apply -k examples/minio
 ```
 
 3. Replace the operator image and deploy the multicluster-observability-operator:
-```
+
+```bash
 make deploy IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-observability-operator:latest
 ```
 
 4. Deploy the multicluster-observability-operator CR:
-```
+
+```bash
 kubectl apply -f operators/multiclusterobservability/config/samples/observability_v1beta2_multiclusterobservability.yaml
 ```
 
 5. Verify all the components for the Multicluster Observability are starting up and runing:
-```
+
+```bash
 kubectl -n open-cluster-management-observability get pod
 NAME                                                       READY   STATUS    RESTARTS   AGE
 minio-79c7ff488d-72h65                                     1/1     Running   0          9m38s
@@ -122,20 +126,23 @@ observability-thanos-store-shard-2-0                       1/1     Running   2  
 
 After a successful deployment, you can run the following command to check if you have OCP cluster as a managed cluster.
 
-```
+```bash
 kubectl get managedcluster --show-labels
 ```
+
 If there is no `vendor=OpenShift` label exists in your managed cluster, you can manually add this label with this command `kubectl label managedcluster <managed cluster name> vendor=OpenShift`
 
 Then you should be able to have `metrics-collector` pod is running:
-```
+
+```bash
 kubectl -n open-cluster-management-addon-observability get pod
 endpoint-observability-operator-5c95cb9df9-4cphg   1/1     Running   0          97m
 metrics-collector-deployment-6c7c8f9447-brpjj      1/1     Running   0          96m
 ```
 
 Expose the thanos query frontend via route by running this command:
-```
+
+```bash
 cat << EOF | kubectl -n open-cluster-management-observability apply -f -
 kind: Route
 apiVersion: route.openshift.io/v1
@@ -150,31 +157,31 @@ spec:
     name: observability-thanos-query-frontend
 EOF
 ```
+
 You can access the thanos query UI via browser by inputting the host from `oc get route -n open-cluster-management-observability query-frontend`. There should have metrics available when you search the metrics `:node_memory_MemAvailable_bytes:sum`. The available metrics are listed [here](https://github.com/stolostron/multicluster-observability-operator/blob/main/operators/multiclusterobservability/manifests/base/config/metrics_allowlist.yaml)
 
 ### Uninstall the Operator in the Cluster
 
 1. Delete the multicluster-observability-operator CR:
 
-```
+```bash
 kubectl -n open-cluster-management-observability delete -f operators/multiclusterobservability/config/samples/observability_v1beta2_multiclusterobservability.yaml
 ```
 
 2. Delete the multicluster-observability-operator:
 
-```
+```bash
 make undeploy
 ```
 
 3. Delete the minio service:
 
-```
+```bash
 kubectl -n open-cluster-management-observability delete -k examples/minio
 ```
 
 4. Delete the `open-cluster-management-observability` namespace:
 
-```
+```bash
 kubectl delete ns open-cluster-management-observability
 ```
-
