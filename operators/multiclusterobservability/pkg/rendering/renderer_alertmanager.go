@@ -4,6 +4,7 @@
 package rendering
 
 import (
+	"os"
 	"strconv"
 
 	v1 "k8s.io/api/apps/v1"
@@ -72,6 +73,25 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource,
 	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.Alertmanager, r.cr.Spec.AdvancedConfig)
 
 	spec.Containers[1].ImagePullPolicy = imagePullPolicy
+	if util.ProxyEnvVarsAreSet() {
+		proxyEnv := []corev1.EnvVar{
+			{
+				Name:  "HTTP_PROXY",
+				Value: os.Getenv("HTTP_PROXY"),
+			},
+			{
+				Name:  "HTTPS_PROXY",
+				Value: os.Getenv("HTTPS_PROXY"),
+			},
+			{
+				Name:  "NO_PROXY",
+				Value: os.Getenv("NO_PROXY"),
+			},
+		}
+		spec.Containers[0].Env = append(spec.Containers[0].Env, proxyEnv...)
+	}
+
+	spec.Containers[1].ImagePullPolicy = mcoconfig.GetImagePullPolicy(r.cr.Spec)
 	spec.NodeSelector = r.cr.Spec.NodeSelector
 	spec.Tolerations = r.cr.Spec.Tolerations
 	spec.ImagePullSecrets = []corev1.LocalObjectReference{
