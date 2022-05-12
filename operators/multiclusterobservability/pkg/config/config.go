@@ -114,7 +114,7 @@ const (
 	ThanosReceiveControllerImgName = "thanos-receive-controller"
 	//ThanosReceiveControllerKey is used to get from mch-image-manifest.xxx configmap
 	ThanosReceiveControllerKey    = "thanos_receive_controller"
-	ThanosReceiveControllerImgTag = "master-2021-04-28-ee165b6"
+	ThanosReceiveControllerImgTag = "master-2022-04-01-b58820f"
 	ThanosImgName                 = "thanos"
 
 	MemcachedImgRepo = "quay.io/ocm-observability"
