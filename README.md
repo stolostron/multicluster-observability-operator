@@ -185,3 +185,4 @@ kubectl -n open-cluster-management-observability delete -k examples/minio
 ```bash
 kubectl delete ns open-cluster-management-observability
 ```
+
