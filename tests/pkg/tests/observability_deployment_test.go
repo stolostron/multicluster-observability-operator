@@ -27,7 +27,7 @@ var _ = Describe("", func() {
 	})
 
 	It("RHACM4K-1064: Observability: Verify MCO deployment - [P1][Sev1][Observability][Stable] (deployment/g0)", func() {
-		By("Waiting for MCO ready status")
+		By("Check MCO in ready status")
 		Eventually(func() error {
 			err = utils.CheckMCOComponents(testOptions)
 			if err != nil {
