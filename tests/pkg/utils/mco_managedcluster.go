@@ -61,7 +61,6 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 				if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok {
 					obsControllerStr = obsController.(string)
 				}
-				klog.V(5).Infof("obsControllerStr is %s\n", obsControllerStr)
 				if obsControllerStr != "unreachable" {
 					clusterNames = append(clusterNames, name)
 				}
