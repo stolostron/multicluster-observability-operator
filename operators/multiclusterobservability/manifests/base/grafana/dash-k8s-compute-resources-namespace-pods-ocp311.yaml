@@ -1580,7 +1580,51 @@ data:
             "sort": 0,
             "value_type": "individual"
           },
-          "transform": "table",
+          "transform": "timeseries_to_rows",
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "Value #A",
+                "renamePattern": "Current Receive Bandwidth"
+              }
+            },
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "Value #B",
+                "renamePattern": "Current Transmit Bandwidth"
+              }
+            },
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "Value #C",
+                "renamePattern": "Rate of Received Packets"
+              }
+            },
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "Value #D",
+                "renamePattern": "Rate of Transmitted Packets"
+              }
+            },
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "Value #E",
+                "renamePattern": "Rate of Received Packets Dropped"
+              }
+            },
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "Value #F",
+                "renamePattern": "Rate of Transmitted Packets Dropped"
+              }
+            }
+          ],
           "type": "table-old",
           "xaxis": {
             "buckets": null,
