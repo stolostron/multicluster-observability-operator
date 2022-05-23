@@ -52,12 +52,19 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 		name := metadata["name"].(string)
 		labels := metadata["labels"].(map[string]interface{})
 		if labels != nil {
-			obsControllerStr := ""
-			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok {
-				obsControllerStr = obsController.(string)
+			workerManagerAddonStr := ""
+			if workerManagerAddon, ok := labels["feature.open-cluster-management.io/addon-work-manager"]; ok {
+				workerManagerAddonStr = workerManagerAddon.(string)
 			}
-			if obsControllerStr != "unreachable" && obsControllerStr != "" {
-				clusterNames = append(clusterNames, name)
+			if workerManagerAddonStr != "unreachable" {
+				obsControllerStr := ""
+				if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok {
+					obsControllerStr = obsController.(string)
+				}
+				klog.V(5).Infof("obsControllerStr is %s\n", obsControllerStr)
+				if obsControllerStr != "unreachable" {
+					clusterNames = append(clusterNames, name)
+				}
 			}
 		}
 	}
