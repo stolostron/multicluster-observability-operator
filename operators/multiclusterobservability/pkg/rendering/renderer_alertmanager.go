@@ -61,7 +61,7 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource,
 	if *dep.Spec.Replicas > 1 {
 		for i := int32(0); i < *dep.Spec.Replicas; i++ {
 			args = append(args, "--cluster.peer="+
-				mcoconfig.GetOperandNamePrefix()+"alertmanager-"+
+				mcoconfig.GetOperandName(mcoconfig.Alertmanager)+"-"+
 				strconv.Itoa(int(i))+".alertmanager-operated."+
 				mcoconfig.GetDefaultNamespace()+".svc:9094")
 		}
