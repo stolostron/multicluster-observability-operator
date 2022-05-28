@@ -56,7 +56,7 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 			if workerManagerAddon, ok := labels["feature.open-cluster-management.io/addon-work-manager"]; ok {
 				workerManagerAddonStr = workerManagerAddon.(string)
 			}
-			if workerManagerAddonStr != "unreachable" {
+			if workerManagerAddonStr == "available" {
 				obsControllerStr := ""
 				if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok {
 					obsControllerStr = obsController.(string)
