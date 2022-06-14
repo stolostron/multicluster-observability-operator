@@ -1,18 +1,18 @@
 ## Dynamic Metric Collection (Custom Metrics Collection)
 
-Dynamic metrics collection refers to the ability to trigger collecting metrics on managed clusters based on specific conditions. Collecting metrics consumes resources on hub cluster. This is especially important when considering collecting metrics across a large fleet of clusters. It makes sense to start collect certain metrics only when they are likely going to be needed for optmially using resources. When problems occur on a managed cluster, it may be necessary to collect metrics at a higher rate to help analyze the problems. Dynamic metrics collection enables both these use cases. Metrics collection stops automatically 15 minutes after the underlying condition no longer exists.
+Dynamic metrics collection refers to the ability to initiate metrics collection on managed clusters based on specific conditions. Collecting metrics consumes resources on your hub cluster. This is especially important when you considering metric collection across a large fleet of clusters. It makes sense to start collecting certain metrics only when they are likely going to be needed optimally using resources. When problems occur on a managed cluster, it may be necessary to collect metrics at a higher rate to help analyze the problems. Dynamic metrics collection enables both these use cases. Metrics collection stops automatically 15 minutes after the underlying condition no longer exists.
 
-Dynamic metric collection is supported with a group of collection rules (`collection_rules`). A collection rule is a named entity that specifies
+Dynamic metric collection is supported with a group of collection rules (`collection_rules`). A collection rule is a named entity that specifies the following attributes:
 
 * `expr` - A collection rule condition in the form of a PromQL expression
 * `dynamic_metrics` - A list of metrics or recording rules that must be collected when the rule persists
 * `for` - The interval of time the rule must be active before the metrics collection could begin
 
-The collection rules are grouped together as a parameter section named `collect_rules`, where it can be enabled or disabled as a group. A collection rule group also can specify a cluster selector match expression `selector.matchExpressions` and it allows for a collect rule group to be applied only on managed clusters that match the criteria.
+The collection rules are grouped together as a parameter section named `collect_rules`, where it can be enabled or disabled as a group. A collection rule group also can specify a cluster selector match expression, `selector.matchExpressions`, and it allows for a collection_rule group to be applied only on managed clusters that match the criteria.
 
-By default, collection rules are evaluated continuously on managed clusters every 30 seconds, or at the time interval that is specified in MCO custom resource, whichever is less. Once the collection rule condition persists for the duration specified by the `for` attribute, the collection rule starts and the metrics specified by the rule are automatically collected on the managed cluster. Metrics collection stops automatically after the collection rule condition no longer exists on the managed cluster, at least 15 minutes after it starts.
+By default, collection rules are evaluated continuously on managed clusters every 30 seconds or at the time interval that is specified in MulticlusterObservability custom resource, whichever is less. Once the collection rule condition persists for the duration specified by the for attribute, the collection rule starts and the metrics specified by the rule are automatically collected on the managed cluster. Metrics collection stops automatically after the collection rule condition no longer exists on the managed cluster, at least 15 minutes after it starts.
 
-You can specify collection rules via custom_metrics ConfigMap. The process is similar to how custom metrics are added to an existing deployment. Below are the collection rules for single-node OpenShift clusters shipped with the release that you can use as a reference to design your own custom rules.
+You can specify collection rules in the custom_metrics ConfigMap. The process is similar to how custom metrics are added to an existing deployment. In the following YAML, there are collection rules for single-node OpenShift clusters shipped with the release that you can use as a reference to design your own custom rules.
 
 ```
 ----
@@ -65,4 +65,4 @@ collect_rules:
 
 ### Installation
 
-No special installation is necessary to use this feature
+No special installation is necessary to use this feature.
