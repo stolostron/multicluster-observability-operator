@@ -11,15 +11,15 @@ This document attempts to explain how the different components in Open Cluster M
 
 ## Associated Github Repositories
 
-Component |Git Repo	| Description	
+Component |Git Repo | Description
 ---  | ------ | ----  
 MCO Operator | [multicluster-observability-operator](https://github.com/stolostron/multicluster-observability-operator) | Operator for monitoring. This is the root repo. If we follow the Readme instructions here to install, the code from all other repos mentioned below are used/referenced.
 Endpoint Operator | [endpoint-metrics-operator](https://github.com/stolostron/multicluster-observability-operator/tree/main/operators/endpointmetrics) | Operator that manages  setting up observability and data collection at the managed clusters.
 Observatorium Operator | [observatorium-operator](https://github.com/stolostron/observatorium-operator) | Operator to deploy the Observatorium project. Inside the open cluster management, at this time, it means metrics using Thanos. Forked from main observatorium-operator repo.
-Metrics collector | [metrics-collector](https://github.com/stolostron/multicluster-observability-operator/tree/main/collectors/metrics) | Scrapes metrics from Prometheus at managed clusters, the metric collection being shaped by configuring allow-list. 
+Metrics collector | [metrics-collector](https://github.com/stolostron/multicluster-observability-operator/tree/main/collectors/metrics) | Scrapes metrics from Prometheus at managed clusters, the metric collection being shaped by configuring allow-list.
 RBAC Proxy | [rbac_query_proxy](https://github.com/stolostron/multicluster-observability-operator/tree/main/proxy) | Helper service that acts a multicluster metrics RBAC proxy.
 Grafana | [grafana](https://github.com/stolostron/grafana) | Grafana repo -  for  dashboarding and metric analytics. Forked from main grafana repo.
-Dashboard Loader | [grafana-dashboard-loader](https://github.com/stolostron/multicluster-observability-operator/tree/main/loaders/dashboards) | Sidecar proxy to load grafana dashboards from configmaps. 
+Dashboard Loader | [grafana-dashboard-loader](https://github.com/stolostron/multicluster-observability-operator/tree/main/loaders/dashboards) | Sidecar proxy to load grafana dashboards from configmaps.
 Management Ingress | [management-ingress](https://github.com/stolostron/management-ingress) | NGINX based ingress controller to serve Open Cluster Management services.
 Observatorium API | [observatorium](https://github.com/stolostron/observatorium) | API Gateway which controls reading, writing of the Observability data to the backend infrastructure. Forked from main observatorium API repo.
 Thanos Ecosystem | [kube-thanos](https://github.com/stolostron/kube-thanos) | Kubernetes specific configuration for deploying Thanos. The observatorium operator leverages this configuration to deploy the backend Thanos components.
@@ -186,4 +186,4 @@ kubectl -n open-cluster-management-observability delete -k examples/minio
 kubectl delete ns open-cluster-management-observability
 ```
 
-Tue May 17 14:49:25 EDT 2022
+Rebuild Image: Mon Jun 27 10:14:44 EDT 2022
