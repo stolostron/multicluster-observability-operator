@@ -69,9 +69,10 @@ const (
 	GrafanaCN        = "grafana"
 	ManagedClusterOU = "acm"
 
-	GrafanaRouteName         = "grafana"
-	GrafanaServiceName       = "grafana"
-	GrafanaOauthClientName   = "grafana-proxy-client"
+	GrafanaRouteName       = "grafana"
+	GrafanaServiceName     = "grafana"
+	GrafanaOauthClientName = "grafana-proxy-client"
+	/* #nosec */
 	GrafanaOauthClientSecret = "grafana-proxy-client"
 
 	AlertmanagerAccessorSAName = "observability-alertmanager-accessor"
