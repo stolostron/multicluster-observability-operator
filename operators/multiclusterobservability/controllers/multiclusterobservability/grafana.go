@@ -8,12 +8,15 @@ import (
 	"context"
 	"fmt"
 
+	oauthv1 "github.com/openshift/api/oauth/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -175,5 +178,98 @@ func GenerateGrafanaDataSource(
 		}
 	}
 
+	return nil, nil
+}
+
+func GenerateGrafanaRoute(
+	c client.Client, scheme *runtime.Scheme,
+	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
+	grafanaRoute := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.GrafanaRouteName,
+			Namespace: config.GetDefaultNamespace(),
+		},
+		Spec: routev1.RouteSpec{
+			Port: &routev1.RoutePort{
+				TargetPort: intstr.FromString("oauth-proxy"),
+			},
+			To: routev1.RouteTargetReference{
+				Kind: "Service",
+				Name: config.GrafanaServiceName,
+			},
+			TLS: &routev1.TLSConfig{
+				Termination:                   routev1.TLSTerminationReencrypt,
+				InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+			},
+		},
+	}
+
+	// Set MultiClusterObservability instance as the owner and controller
+	if err := controllerutil.SetControllerReference(mco, grafanaRoute, scheme); err != nil {
+		return &ctrl.Result{}, err
+	}
+
+	found := &routev1.Route{}
+	err := c.Get(
+		context.TODO(),
+		types.NamespacedName{Name: grafanaRoute.Name, Namespace: grafanaRoute.Namespace},
+		found,
+	)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info(
+			"Creating a new route to expose grafana",
+			"grafanaRoute.Namespace",
+			grafanaRoute.Namespace,
+			"grafanaRoute.Name",
+			grafanaRoute.Name,
+		)
+		err = c.Create(context.TODO(), grafanaRoute)
+		if err != nil {
+			return &ctrl.Result{}, err
+		}
+		return nil, nil
+	}
+	return nil, nil
+}
+
+func GenerateGrafanaOauthClient(
+	c client.Client, scheme *runtime.Scheme,
+	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
+	host, err := config.GetRouteHost(c, config.GrafanaRouteName, config.GetDefaultNamespace())
+	if err != nil {
+		return nil, err
+	}
+	oauthClient := &oauthv1.OAuthClient{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: config.GrafanaOauthClientName,
+		},
+		Secret:       config.GrafanaOauthClientSecret,
+		RedirectURIs: []string{"https://" + host},
+		GrantMethod:  oauthv1.GrantHandlerAuto,
+	}
+
+	// Set MultiClusterObservability instance as the owner and controller
+	if err := controllerutil.SetControllerReference(mco, oauthClient, scheme); err != nil {
+		return &ctrl.Result{}, err
+	}
+
+	found := &oauthv1.OAuthClient{}
+	err = c.Get(
+		context.TODO(),
+		types.NamespacedName{Name: config.GrafanaOauthClientName},
+		found,
+	)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info(
+			"Creating a new oauthclient for grafana",
+			"GrafanaOauthClientName",
+			config.GrafanaOauthClientName,
+		)
+		err = c.Create(context.TODO(), oauthClient)
+		if err != nil {
+			return &ctrl.Result{}, err
+		}
+		return nil, nil
+	}
 	return nil, nil
 }

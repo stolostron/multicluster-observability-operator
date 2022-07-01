@@ -270,6 +270,16 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		if result != nil {
 			return *result, err
 		}
+
+		// expose grafana through route
+		result, err = GenerateGrafanaRoute(r.Client, r.Scheme, instance)
+		if result != nil {
+			return *result, err
+		}
+		result, err = GenerateGrafanaOauthClient(r.Client, r.Scheme, instance)
+		if result != nil {
+			return *result, err
+		}
 	}
 
 	// create the certificates
