@@ -234,7 +234,7 @@ var _ = Describe("", func() {
 		}
 	})
 
-	It("[P2][Sev2][observability][Integration] Checking service account annotations is set for store/query/rule/compact/receive (config/g0)", func() {
+	It("RHACM4K-11169: Observability: Verify ACM Observability with Security Service Token credentials - [P2][Sev2][observability][Integration] Checking service account annotations is set for store/query/rule/compact/receive (config/g0)", func() {
 
 		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
