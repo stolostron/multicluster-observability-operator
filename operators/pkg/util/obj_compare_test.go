@@ -20,6 +20,19 @@ var (
 	replicas2 int32 = 2
 )
 
+func TestGetK8sObj(t *testing.T) {
+	kind1 := "Deployment"
+	kind2 := "Secret"
+
+	if GetK8sObj(kind1) == nil {
+		t.Errorf("Failed to get the deployment object.")
+	}
+
+	if GetK8sObj(kind2) == nil {
+		t.Errorf("Failed to get the secret object.")
+	}
+}
+
 func TestCompareObject(t *testing.T) {
 
 	cases := []struct {
@@ -30,15 +43,15 @@ func TestCompareObject(t *testing.T) {
 		validateResults func(re1, re2 runtime.RawExtension)
 	}{
 		{
-			name: "Compare namespaces",
+			name: "Compare Namespaces",
 			rawObj1: runtime.RawExtension{
 				Raw: []byte(`{
-	"apiVersion": "v1",
-	"kind": "Namespace",
-	"metadata": {
-		"name": "test-ns-1"
-	}
-}`),
+					"apiVersion": "v1",
+					"kind": "Namespace",
+					"metadata": {
+						"name": "test-ns-1"
+					}
+				}`),
 			},
 			rawObj2: runtime.RawExtension{
 				Object: &corev1.Namespace{
@@ -54,7 +67,7 @@ func TestCompareObject(t *testing.T) {
 			},
 		},
 		{
-			name: "Compare serviceaccount",
+			name: "Compare Serviceaccount",
 			rawObj1: runtime.RawExtension{
 				Object: &corev1.ServiceAccount{
 					TypeMeta: metav1.TypeMeta{
@@ -97,6 +110,56 @@ func TestCompareObject(t *testing.T) {
 					ImagePullSecrets: []corev1.LocalObjectReference{
 						{
 							Name: "test-image-pull-secret-3",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Compare Service",
+			rawObj1: runtime.RawExtension{
+				Object: &corev1.Service{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "v1",
+						Kind:       "Service",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-svc-1",
+						Namespace: "ns1",
+					},
+					Spec: corev1.ServiceSpec{
+						Selector: map[string]string{
+							"label": "test-label-1",
+						},
+					},
+				},
+			},
+			rawObj2: runtime.RawExtension{
+				Object: &corev1.Service{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "v1",
+						Kind:       "Service",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-svc-2",
+						Namespace: "ns1",
+					},
+					Spec: corev1.ServiceSpec{},
+				},
+			},
+			rawObj3: runtime.RawExtension{
+				Object: &corev1.Service{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "v1",
+						Kind:       "Service",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-svc-1",
+						Namespace: "ns1",
+					},
+					Spec: corev1.ServiceSpec{
+						Selector: map[string]string{
+							"label": "test-label-3",
 						},
 					},
 				},
@@ -357,6 +420,95 @@ func TestCompareObject(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Compare CRD V1Beta1",
+			rawObj1: runtime.RawExtension{
+				Object: &apiextensionsv1beta1.CustomResourceDefinition{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "v1beta1",
+						Kind:       "CustomResourceDefinition",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-crd-1",
+					},
+					Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
+						Group: "group1",
+					},
+				},
+			},
+			rawObj2: runtime.RawExtension{
+				Object: &apiextensionsv1beta1.CustomResourceDefinition{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "v1beta1",
+						Kind:       "CustomResourceDefinition",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-crd-2",
+					},
+					Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{},
+				},
+			},
+			rawObj3: runtime.RawExtension{
+				Object: &apiextensionsv1beta1.CustomResourceDefinition{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "v1beta1",
+						Kind:       "CustomResourceDefinition",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-crd-3",
+					},
+					Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
+						Group: "group2",
+					},
+				},
+			},
+		},
+		// {
+		// 	name: "Compare Configmap",
+		// 	rawObj1: runtime.RawExtension{
+		// 		Object: &corev1.ConfigMap{
+		// 			TypeMeta: metav1.TypeMeta{
+		// 				APIVersion: "v1",
+		// 				Kind:       "Configmap",
+		// 			},
+		// 			ObjectMeta: metav1.ObjectMeta{
+		// 				Name:      "test-cm-1",
+		// 				Namespace: "ns1",
+		// 			},
+		// 			Data: map[string]string{
+		// 				"sslmode": "true",
+		// 			},
+		// 		},
+		// 	},
+		// 	rawObj2: runtime.RawExtension{
+		// 		Object: &corev1.ConfigMap{
+		// 			TypeMeta: metav1.TypeMeta{
+		// 				APIVersion: "v1",
+		// 				Kind:       "Configmap",
+		// 			},
+		// 			ObjectMeta: metav1.ObjectMeta{
+		// 				Name:      "test-cm-2",
+		// 				Namespace: "ns2",
+		// 			},
+		// 			Data: map[string]string{},
+		// 		},
+		// 	},
+		// 	rawObj3: runtime.RawExtension{
+		// 		Object: &corev1.ConfigMap{
+		// 			TypeMeta: metav1.TypeMeta{
+		// 				APIVersion: "v1",
+		// 				Kind:       "Configmap",
+		// 			},
+		// 			ObjectMeta: metav1.ObjectMeta{
+		// 				Name:      "test-cm-1",
+		// 				Namespace: "ns1",
+		// 			},
+		// 			Data: map[string]string{
+		// 				"sslmode": "false",
+		// 			},
+		// 		},
+		// 	},
+		// },
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
