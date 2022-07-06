@@ -1,0 +1,48 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: victoriametrics
+  namespace: open-cluster-management-observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: victoriametrics
+  template:
+    metadata:
+      labels:
+        app: victoriametrics
+    spec:
+      containers:
+        - name: victoriametrics
+          image: >-
+            victoriametrics/victoria-metrics
+          ports:
+            - name: http
+              containerPort: 8428
+              protocol: TCP
+          args:
+            - '--httpAuth.username=test'
+            - '--httpAuth.password=test'
+          volumeMounts:
+            - name: data
+              mountPath: /victoria-metrics-data
+      volumes:
+        - name: data
+          emptyDir: {}
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: victoriametrics
+  namespace: open-cluster-management-observability
+spec:
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8428
+      targetPort: http
+  type: ClusterIP
+  selector:
+    app: victoriametrics
