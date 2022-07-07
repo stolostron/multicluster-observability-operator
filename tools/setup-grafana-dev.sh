@@ -93,6 +93,16 @@ deploy() {
   $sed_command 's/{"kind":"Route","name":"grafana"}/{"kind":"Route","name":"grafana-dev"}/g' grafana-dev-sa.yaml
   kubectl apply -f grafana-dev-sa.yaml
 
+  kubectl get clusterrolebinding open-cluster-management:grafana-crb -o yaml > grafana-dev-crb.yaml
+  if [ $? -ne 0 ]; then
+      echo "Failed to get grafana cluster role binding"
+      exit 1
+  fi
+  $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-crb.yaml
+  $sed_command "s~name: open-cluster-management:grafana-crb$~name: open-cluster-management:grafana-crb-dev~g" grafana-dev-crb.yaml
+  cat grafana-dev-crb.yaml
+  kubectl apply -f grafana-dev-crb.yaml
+
   kubectl get route -n "$obs_namespace" grafana -o yaml > grafana-dev-route.yaml
   if [ $? -ne 0 ]; then
       echo "Failed to get grafana route"
@@ -135,13 +145,14 @@ EOL
   kubectl apply -f grafana-dev-oauthclient.yaml
 
   # clean all tmp files
-  rm -rf grafana-dev-deploy.yaml* grafana-dev-svc.yaml* grafana-dev-sa.yaml* grafana-dev-route.yaml* grafana-dev-oauthclient.yaml* grafana-dev-config.ini* grafana-pvc.yaml*
+  rm -rf grafana-dev-deploy.yaml* grafana-dev-svc.yaml* grafana-dev-sa.yaml* grafana-dev-route.yaml* grafana-dev-crb.yaml* grafana-dev-oauthclient.yaml* grafana-dev-config.ini* grafana-pvc.yaml*
 
   # delete ownerReferences
   kubectl -n "$obs_namespace" patch deployment grafana-dev -p '{"metadata": {"ownerReferences":null}}'
   kubectl -n "$obs_namespace" patch svc grafana-dev -p '{"metadata": {"ownerReferences":null}}'
   kubectl -n "$obs_namespace" patch route grafana-dev -p '{"metadata": {"ownerReferences":null}}'
   kubectl patch oauthclient grafana-proxy-client-dev -p '{"metadata": {"ownerReferences":null}}'
+  kubectl patch clusterrolebinding open-cluster-management:grafana-crb-dev -p '{"metadata": {"ownerReferences":null}}'
 }
 
 clean() {
@@ -152,6 +163,7 @@ clean() {
   kubectl delete route -n "$obs_namespace" grafana-dev
   kubectl delete pvc -n "$obs_namespace" grafana-dev
   kubectl delete oauthclient grafana-proxy-client-dev
+  kubectl delete clusterrolebinding open-cluster-management:grafana-crb-dev
 }
 
 msg() {

@@ -14,13 +14,15 @@ secret/grafana-dev-config created
 deployment.apps/grafana-dev created
 service/grafana-dev created
 serviceaccount/grafana-dev created
+clusterrolebinding.rbac.authorization.k8s.io/open-cluster-management:grafana-crb-dev created
 route.route.openshift.io/grafana-dev created
 persistentvolumeclaim/grafana-dev created
 oauthclient.oauth.openshift.io/grafana-proxy-client-dev created
 deployment.apps/grafana-dev patched
 service/grafana-dev patched
 route.route.openshift.io/grafana-dev patched
-oauthclient.oauth.openshift.io/grafana-proxy-client-dev patche
+oauthclient.oauth.openshift.io/grafana-proxy-client-dev patched
+clusterrolebinding.rbac.authorization.k8s.io/open-cluster-management:grafana-crb-dev patched
 ```
 
 ## Switch user to be grafana admin
@@ -105,4 +107,5 @@ serviceaccount "grafana-dev" deleted
 route.route.openshift.io "grafana-dev" deleted
 persistentvolumeclaim "grafana-dev" deleted
 oauthclient.oauth.openshift.io "grafana-proxy-client-dev" deleted
+clusterrolebinding.rbac.authorization.k8s.io "open-cluster-management:grafana-crb-dev" deleted
 ```

@@ -931,5 +931,5 @@ func cleanUpClusterScopedResources(cl client.Client, mco *mcov1beta2.MultiCluste
 		}
 	}
 
-	return nil
+	return DeleteGrafanaOauthClient(cl)
 }
