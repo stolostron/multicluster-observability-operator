@@ -44,7 +44,7 @@ require (
 	open-cluster-management.io/addon-framework v0.0.0-20211014025435-1f42884cdd53
 	open-cluster-management.io/api v0.0.0-20210916013819-2e58cdb938f9
 	sigs.k8s.io/controller-runtime v0.10.0
-	sigs.k8s.io/kube-storage-version-migrator v0.0.4
+	sigs.k8s.io/kube-storage-version-migrator v0.0.5
 	sigs.k8s.io/kustomize/api v0.8.8
 	sigs.k8s.io/kustomize/v3 v3.3.1
 	sigs.k8s.io/yaml v1.2.0
