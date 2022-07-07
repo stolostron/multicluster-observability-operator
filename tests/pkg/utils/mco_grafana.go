@@ -4,11 +4,11 @@
 package utils
 
 func GetGrafanaURL(opt TestOptions) string {
-	grafanaConsoleURL := "https://multicloud-console.apps." + opt.HubCluster.BaseDomain + "/grafana/"
+	grafanaConsoleURL := "https://grafana-open-cluster-management-observability.apps." + opt.HubCluster.BaseDomain
 	if opt.HubCluster.GrafanaURL != "" {
 		grafanaConsoleURL = opt.HubCluster.GrafanaURL
 	} else {
-		opt.HubCluster.GrafanaHost = "multicloud-console.apps." + opt.HubCluster.BaseDomain
+		opt.HubCluster.GrafanaHost = "grafana-open-cluster-management-observability.apps." + opt.HubCluster.BaseDomain
 	}
 	return grafanaConsoleURL
 }

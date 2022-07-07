@@ -58,6 +58,11 @@ deploy() {
   if [[ ${GROUP_ID} == "grafana" ]]; then
     GROUP_ID=472
   fi
+  $sed_command "s~serviceAccount:.*$~serviceAccount: grafana-dev~g" grafana-dev-deploy.yaml
+  $sed_command "s~serviceAccountName:.*$~serviceAccountName: grafana-dev~g" grafana-dev-deploy.yaml
+  $sed_command "s~secretName: grafana-tls$~secretName: grafana-tls-dev~g" grafana-dev-deploy.yaml
+  $sed_command "s~--client-id=.*$~--client-id=grafana-proxy-client-dev~g" grafana-dev-deploy.yaml
+  $sed_command "s~--client-secret=.*$~--client-secret=grafana-proxy-client-dev~g" grafana-dev-deploy.yaml
   $sed_command "s~  securityContext:.*$~  securityContext: {fsGroup: ${GROUP_ID}}~g" grafana-dev-deploy.yaml
   sed "s~- emptyDir: {}$~- persistentVolumeClaim:$            claimName: grafana-dev~g" grafana-dev-deploy.yaml > grafana-dev-deploy.yaml.bak
   tr $ '\n' < grafana-dev-deploy.yaml.bak > grafana-dev-deploy.yaml
@@ -74,17 +79,28 @@ deploy() {
   # For OCP 4.7, we should remove clusterIPs filed and IPs
   $sed_command "s~clusterIPs:.*$~ ~g" grafana-dev-svc.yaml
   $sed_command 's/\- [0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}//g' grafana-dev-svc.yaml
+  $sed_command "s~service.alpha.openshift.io/serving-cert-secret-name:.*$~service.alpha.openshift.io/serving-cert-secret-name: grafana-tls-dev~g" grafana-dev-svc.yaml
+  $sed_command "s~service.alpha.openshift.io/serving-cert-signed-by:.*$~~g" grafana-dev-svc.yaml
+  $sed_command "s~service.beta.openshift.io/serving-cert-signed-by:.*$~~g" grafana-dev-svc.yaml
   kubectl apply -f grafana-dev-svc.yaml
 
-  kubectl get ingress -n "$obs_namespace" grafana -o yaml > grafana-dev-ingress.yaml
+  kubectl get sa -n "$obs_namespace" grafana -o yaml > grafana-dev-sa.yaml
   if [ $? -ne 0 ]; then
-      echo "Failed to get grafana ingress"
+      echo "Failed to get grafana serviceaccount"
       exit 1
   fi
-  $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-ingress.yaml
-  $sed_command "s~serviceName: grafana$~serviceName: grafana-dev~g" grafana-dev-ingress.yaml
-  $sed_command "s~path: /grafana$~path: /grafana-dev~g" grafana-dev-ingress.yaml
-  kubectl apply -f grafana-dev-ingress.yaml
+  $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-sa.yaml
+  $sed_command 's/{"kind":"Route","name":"grafana"}/{"kind":"Route","name":"grafana-dev"}/g' grafana-dev-sa.yaml
+  kubectl apply -f grafana-dev-sa.yaml
+
+  kubectl get route -n "$obs_namespace" grafana -o yaml > grafana-dev-route.yaml
+  if [ $? -ne 0 ]; then
+      echo "Failed to get grafana route"
+      exit 1
+  fi
+  $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-route.yaml
+  $sed_command "s~host:.*$~~g" grafana-dev-route.yaml
+  kubectl apply -f grafana-dev-route.yaml
   
   cat >grafana-pvc.yaml <<EOL
 kind: PersistentVolumeClaim
@@ -108,21 +124,34 @@ EOL
   $sed_command "s~gp2$~${storage_class}~g" grafana-pvc.yaml
   kubectl apply -f grafana-pvc.yaml
 
+  kubectl get oauthclient grafana-proxy-client -o yaml > grafana-dev-oauthclient.yaml
+  if [ $? -ne 0 ]; then
+      echo "Failed to get grafana oauthclient"
+      exit 1
+  fi
+  $sed_command "s~name: grafana-proxy-client$~name: grafana-proxy-client-dev~g" grafana-dev-oauthclient.yaml
+  $sed_command "s/https:\/\/grafana-/https:\/\/grafana-dev-/g" grafana-dev-oauthclient.yaml
+  $sed_command "s~secret: .*$~secret: grafana-proxy-client-dev~g" grafana-dev-oauthclient.yaml
+  kubectl apply -f grafana-dev-oauthclient.yaml
+
   # clean all tmp files
-  rm -rf grafana-dev-deploy.yaml* grafana-dev-svc.yaml* grafana-dev-ingress.yaml* grafana-dev-config.ini* grafana-pvc.yaml*
+  rm -rf grafana-dev-deploy.yaml* grafana-dev-svc.yaml* grafana-dev-sa.yaml* grafana-dev-route.yaml* grafana-dev-oauthclient.yaml* grafana-dev-config.ini* grafana-pvc.yaml*
 
   # delete ownerReferences
   kubectl -n "$obs_namespace" patch deployment grafana-dev -p '{"metadata": {"ownerReferences":null}}'
   kubectl -n "$obs_namespace" patch svc grafana-dev -p '{"metadata": {"ownerReferences":null}}'
-  kubectl -n "$obs_namespace" patch ingress grafana-dev -p '{"metadata": {"ownerReferences":null}}'
+  kubectl -n "$obs_namespace" patch route grafana-dev -p '{"metadata": {"ownerReferences":null}}'
+  kubectl patch oauthclient grafana-proxy-client-dev -p '{"metadata": {"ownerReferences":null}}'
 }
 
 clean() {
   kubectl delete secret -n "$obs_namespace" grafana-dev-config
   kubectl delete deployment -n "$obs_namespace" grafana-dev
   kubectl delete svc -n "$obs_namespace" grafana-dev
-  kubectl delete ingress -n "$obs_namespace" grafana-dev
+  kubectl delete sa -n "$obs_namespace" grafana-dev
+  kubectl delete route -n "$obs_namespace" grafana-dev
   kubectl delete pvc -n "$obs_namespace" grafana-dev
+  kubectl delete oauthclient grafana-proxy-client-dev
 }
 
 msg() {

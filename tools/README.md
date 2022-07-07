@@ -13,12 +13,19 @@ $ ./setup-grafana-dev.sh --deploy
 secret/grafana-dev-config created
 deployment.apps/grafana-dev created
 service/grafana-dev created
-ingress.extensions/grafana-dev created
+serviceaccount/grafana-dev created
+route.route.openshift.io/grafana-dev created
+persistentvolumeclaim/grafana-dev created
+oauthclient.oauth.openshift.io/grafana-proxy-client-dev created
+deployment.apps/grafana-dev patched
+service/grafana-dev patched
+route.route.openshift.io/grafana-dev patched
+oauthclient.oauth.openshift.io/grafana-proxy-client-dev patche
 ```
 
 ## Switch user to be grafana admin
 
-Secondly, you need to ask a user to login `https://$ACM_URL/grafana-dev/` before use this script `switch-to-grafana-admin.sh` to switch the user to be a grafana admin.
+Secondly, you need to ask a user to login grafana-dev host before use this script `switch-to-grafana-admin.sh` to switch the user to be a grafana admin.
 
 ```
 $ ./switch-to-grafana-admin.sh kube:admin
@@ -93,6 +100,9 @@ You can use the following command to uninstall your grafana instance.
 $ ./setup-grafana-dev.sh --clean
 secret "grafana-dev-config" deleted
 deployment.apps "grafana-dev" deleted
-service "grafana-dev" deleted
-ingress.extensions "grafana-dev" deleted
+Error from server (NotFound): services "grafana-dev" not found
+serviceaccount "grafana-dev" deleted
+route.route.openshift.io "grafana-dev" deleted
+persistentvolumeclaim "grafana-dev" deleted
+oauthclient.oauth.openshift.io "grafana-proxy-client-dev" deleted
 ```
