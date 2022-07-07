@@ -101,6 +101,7 @@ spec:
           - '--upstream=http://localhost:3001'
           - '--https-address=:9443'
           - '--cookie-secret-file=/etc/proxy/secrets/session_secret'
+          - '--openshift-delegate-urls={"/": {"resource": "projects", "verb": "list"}}'          
           - '--tls-cert=/etc/tls/private/tls.crt'
           - '--tls-key=/etc/tls/private/tls.key'
           - '--openshift-service-account=grafana'
