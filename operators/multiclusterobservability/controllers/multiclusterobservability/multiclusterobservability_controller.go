@@ -326,7 +326,7 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 	if mco.GetDeletionTimestamp() != nil && commonutil.Contains(mco.GetFinalizers(), resFinalizer) {
 		log.Info("To delete resources across namespaces")
 		// clean up the cluster resources, eg. clusterrole, clusterrolebinding, etc
-		if err := cleanUpClusterScopedResources(r.Client, mco); err != nil {
+		if err := cleanUpClusterScopedResources(r, mco); err != nil {
 			log.Error(err, "Failed to remove cluster scoped resources")
 			return false, err
 		}
@@ -901,35 +901,40 @@ func GenerateProxyRoute(
 
 // cleanUpClusterScopedResources delete the cluster scoped resources created by the MCO operator
 // The cluster scoped resources need to be deleted manually because they don't have ownerrefenence set as the MCO CR
-func cleanUpClusterScopedResources(cl client.Client, mco *mcov1beta2.MultiClusterObservability) error {
+func cleanUpClusterScopedResources(r *MultiClusterObservabilityReconciler, mco *mcov1beta2.MultiClusterObservability) error {
 	matchLabels := map[string]string{config.GetCrLabelKey(): mco.Name}
 	listOpts := []client.ListOption{
 		client.MatchingLabels(matchLabels),
 	}
 
 	clusterRoleList := &rbacv1.ClusterRoleList{}
-	err := cl.List(context.TODO(), clusterRoleList, listOpts...)
+	err := r.Client.List(context.TODO(), clusterRoleList, listOpts...)
 	if err != nil {
 		return err
 	}
 	for idx := range clusterRoleList.Items {
-		err := cl.Delete(context.TODO(), &clusterRoleList.Items[idx], &client.DeleteOptions{})
+		err := r.Client.Delete(context.TODO(), &clusterRoleList.Items[idx], &client.DeleteOptions{})
 		if err != nil {
 			return err
 		}
 	}
 
 	clusterRoleBindingList := &rbacv1.ClusterRoleBindingList{}
-	err = cl.List(context.TODO(), clusterRoleBindingList, listOpts...)
+	err = r.Client.List(context.TODO(), clusterRoleBindingList, listOpts...)
 	if err != nil {
 		return err
 	}
 	for idx := range clusterRoleBindingList.Items {
-		err := cl.Delete(context.TODO(), &clusterRoleBindingList.Items[idx], &client.DeleteOptions{})
+		err := r.Client.Delete(context.TODO(), &clusterRoleBindingList.Items[idx], &client.DeleteOptions{})
 		if err != nil {
 			return err
 		}
 	}
 
-	return DeleteGrafanaOauthClient(cl)
+	ingressCtlCrdExists, _ := r.CRDMap[config.IngressControllerCRD]
+	if ingressCtlCrdExists {
+		return DeleteGrafanaOauthClient(r.Client)
+	}
+
+	return nil
 }
