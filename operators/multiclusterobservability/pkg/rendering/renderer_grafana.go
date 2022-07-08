@@ -67,6 +67,13 @@ func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
 	}
 	spec.Containers[1].ImagePullPolicy = imagePullPolicy
 
+	found, image = config.ReplaceImage(nil, config.OauthProxyImgRepo,
+		config.OauthProxyKey)
+	if found {
+		spec.Containers[2].Image = image
+	}
+	spec.Containers[2].ImagePullPolicy = imagePullPolicy
+
 	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 	if err != nil {
 		return nil, err

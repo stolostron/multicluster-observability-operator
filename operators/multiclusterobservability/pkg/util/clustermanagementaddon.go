@@ -20,7 +20,7 @@ import (
 
 const (
 	ObservabilityController = "observability-controller"
-	grafanaLink             = "/grafana/d/2b679d600f3b9e7676a7c5ac3643d448/acm-clusters-overview"
+	grafanaLink             = "/d/2b679d600f3b9e7676a7c5ac3643d448/acm-clusters-overview"
 )
 
 type clusterManagementAddOnSpec struct {
@@ -80,7 +80,7 @@ func DeleteClusterManagementAddon(client client.Client) error {
 }
 
 func newClusterManagementAddon(c client.Client, isStandalone bool) (*addonv1alpha1.ClusterManagementAddOn, error) {
-	host, err := config.GetMulticloudConsoleHost(c, isStandalone)
+	host, err := config.GetRouteHost(c, config.GrafanaRouteName, config.GetDefaultNamespace())
 	if err != nil {
 		return nil, err
 	}
