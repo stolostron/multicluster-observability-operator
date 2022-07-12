@@ -12,6 +12,7 @@ import (
 	"time"
 
 	configv1 "github.com/openshift/api/config/v1"
+	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"gopkg.in/yaml.v2"
@@ -309,6 +310,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
 	routev1.AddToScheme(s)
+	oauthv1.AddToScheme(s)
 	clusterv1.AddToScheme(s)
 	addonv1alpha1.AddToScheme(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
@@ -693,6 +695,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
 	routev1.AddToScheme(s)
+	oauthv1.AddToScheme(s)
 	clusterv1.AddToScheme(s)
 	addonv1alpha1.AddToScheme(s)
 	mchv1.SchemeBuilder.AddToScheme(s)
@@ -759,6 +762,8 @@ func TestImageReplaceForMCO(t *testing.T) {
 			switch container.Name {
 			case "oauth-proxy":
 				// TODO: add oauth-proxy image to image manifests
+				continue
+			case "grafana-proxy":
 				continue
 			case "config-reloader":
 				imageKey = "prometheus-config-reloader"

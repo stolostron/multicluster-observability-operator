@@ -4,7 +4,6 @@ resources:
 - service-account.yaml
 - config.yaml
 - deployment.yaml
-- ingress.yaml
 - service.yaml
 - dash-acm-optimization-overview.yaml
 - dash-acm-clusters-overview.yaml

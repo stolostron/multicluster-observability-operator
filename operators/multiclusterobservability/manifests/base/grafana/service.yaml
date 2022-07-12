@@ -5,12 +5,14 @@ metadata:
     app: multicluster-observability-grafana
   name: grafana
   namespace: open-cluster-management-observability
+  annotations:
+    service.alpha.openshift.io/serving-cert-secret-name: grafana-tls
 spec:
   ports:
-  - name: grafana-http
-    port: 3001
+  - name: oauth-proxy
+    port: 9443
     protocol: TCP
-    targetPort: 3001
+    targetPort: 9443
   selector:
     app: multicluster-observability-grafana
   type: ClusterIP

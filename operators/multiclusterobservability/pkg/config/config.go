@@ -69,6 +69,12 @@ const (
 	GrafanaCN        = "grafana"
 	ManagedClusterOU = "acm"
 
+	GrafanaRouteName       = "grafana"
+	GrafanaServiceName     = "grafana"
+	GrafanaOauthClientName = "grafana-proxy-client"
+	/* #nosec */
+	GrafanaOauthClientSecret = "grafana-proxy-client"
+
 	AlertmanagerAccessorSAName = "observability-alertmanager-accessor"
 	/* #nosec */
 	AlertmanagerAccessorSecretName = "observability-alertmanager-accessor"
@@ -459,11 +465,15 @@ func GetDefaultTenantName() string {
 
 // GetObsAPIHost is used to get the URL for observartium api gateway
 func GetObsAPIHost(client client.Client, namespace string) (string, error) {
+	return GetRouteHost(client, obsAPIGateway, namespace)
+}
+
+func GetRouteHost(client client.Client, name string, namespace string) (string, error) {
 	found := &routev1.Route{}
 
-	err := client.Get(context.TODO(), types.NamespacedName{Name: obsAPIGateway, Namespace: namespace}, found)
+	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		// if the observatorium-api router is not created yet, fallback to get host
+		// if the router is not created yet, fallback to get host
 		// from the domain of ingresscontroller
 		domain, err := getDomainForIngressController(
 			client,
@@ -473,7 +483,7 @@ func GetObsAPIHost(client client.Client, namespace string) (string, error) {
 		if err != nil {
 			return "", nil
 		}
-		return obsAPIGateway + "-" + namespace + "." + domain, nil
+		return name + "-" + namespace + "." + domain, nil
 	} else if err != nil {
 		return "", err
 	}
