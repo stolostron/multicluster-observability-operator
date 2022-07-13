@@ -15,7 +15,7 @@ require (
 	github.com/golang/snappy v0.0.4
 	github.com/hashicorp/go-version v1.3.0
 	github.com/oklog/run v1.1.0
-	github.com/onsi/ginkgo v1.16.4
+	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.16.0
 	github.com/openshift/api v3.9.1-0.20191111211345-a27ff30ebf09+incompatible
 	github.com/openshift/client-go v0.0.0-20210916133943-9acee1a0fb83
