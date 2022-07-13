@@ -9,7 +9,8 @@ updates:
     # Check the go registry for updates every day (weekdays)
     schedule:
       interval: "daily"
-    assignees:
-      - "clyang82"
+    reviewer:
+      - "dislbenn"
       - "marcolan018"
-    open-pull-requests-limit: 5
+      - "subbarao-meduri"
+    open-pull-requests-limit: 2
