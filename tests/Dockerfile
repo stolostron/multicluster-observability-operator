@@ -1,4 +1,4 @@
-FROM registry.ci.openshift.org/stolostron/builder:go1.17-linux AS builder
+FROM registry.ci.openshift.org/stolostron/builder:go1.18-linux AS builder
 
 # install oc into build image
 RUN curl -fksSL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.6.3/openshift-client-linux-4.6.3.tar.gz | tar -xvz -C /usr/local/ oc
