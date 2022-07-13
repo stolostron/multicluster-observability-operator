@@ -130,6 +130,9 @@ data:
       - cluster:policy_governance_info:propagated_noncompliant_count
       - policy:policy_governance_info:propagated_count
       - policy:policy_governance_info:propagated_noncompliant_count
+      - config_policies_evaluation_duration_seconds_bucket
+      - config_policies_evaluation_duration_seconds_sum
+      - config_policies_evaluation_duration_seconds_count
     matches:
       - __name__="workqueue_queue_duration_seconds_bucket",job="apiserver"
       - __name__="workqueue_adds_total",job="apiserver"
