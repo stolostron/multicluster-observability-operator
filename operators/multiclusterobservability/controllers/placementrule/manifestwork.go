@@ -362,9 +362,9 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 
 // generateAmAccessorTokenSecret generates the secret that contains the access_token
 // for the Alertmanager in the Hub cluster
-func generateAmAccessorTokenSecret(client client.Client) (*corev1.Secret, error) {
+func generateAmAccessorTokenSecret(cl client.Client) (*corev1.Secret, error) {
 	amAccessorSA := &corev1.ServiceAccount{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: config.AlertmanagerAccessorSAName,
+	err := cl.Get(context.TODO(), types.NamespacedName{Name: config.AlertmanagerAccessorSAName,
 		Namespace: config.GetDefaultNamespace()}, amAccessorSA)
 	if err != nil {
 		log.Error(err, "Failed to get Alertmanager accessor serviceaccount", "name", config.AlertmanagerAccessorSAName)
@@ -376,6 +376,27 @@ func generateAmAccessorTokenSecret(client client.Client) (*corev1.Secret, error)
 		if strings.HasPrefix(secretRef.Name, config.AlertmanagerAccessorSAName+"-token") {
 			tokenSrtName = secretRef.Name
 			break
+		}
+	}
+
+	if tokenSrtName == "" {
+		// Starting with kube 1.24 (ocp 4.11), the k8s won't generate secrets any longer
+		// automatically for ServiceAccounts, for OCP, when a service account is created,
+		// the OCP will create two secrets, one stores dockercfg with name format (<sa name>-dockercfg-<random>)
+		// and the other stores the servcie account token  with name format (<sa name>-token-<random>),
+		// but the service account secrets won't list in the service account any longger.
+		secretList := &corev1.SecretList{}
+		err = cl.List(context.TODO(), secretList, &client.ListOptions{})
+		if err != nil {
+			return nil, err
+		}
+
+		for _, secret := range secretList.Items {
+			if secret.Type == corev1.SecretTypeServiceAccountToken &&
+				strings.HasPrefix(secret.Name, config.AlertmanagerAccessorSAName+"-token") {
+				tokenSrtName = secret.Name
+				break
+			}
 		}
 	}
 
@@ -393,7 +414,7 @@ func generateAmAccessorTokenSecret(client client.Client) (*corev1.Secret, error)
 	}
 
 	tokenSrt := &corev1.Secret{}
-	err = client.Get(context.TODO(), types.NamespacedName{Name: tokenSrtName,
+	err = cl.Get(context.TODO(), types.NamespacedName{Name: tokenSrtName,
 		Namespace: config.GetDefaultNamespace()}, tokenSrt)
 	if err != nil {
 		log.Error(err, "Failed to get token secret for Alertmanager accessor serviceaccount", "name", tokenSrtName)

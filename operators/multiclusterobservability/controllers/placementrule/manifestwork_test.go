@@ -182,7 +182,8 @@ func NewAmAccessorSA() *corev1.ServiceAccount {
 			Namespace: mcoNamespace,
 		},
 		Secrets: []corev1.ObjectReference{
-			{Name: config.AlertmanagerAccessorSecretName + "-token-xxx"},
+			// Test ocp 4.11 behavior where the service accounts won't list service account secrets any longger
+			// {Name: config.AlertmanagerAccessorSecretName + "-token-xxx"},
 		},
 	}
 }
@@ -196,6 +197,7 @@ func NewAmAccessorTokenSecret() *corev1.Secret {
 		Data: map[string][]byte{
 			"token": []byte("xxxxx"),
 		},
+		Type: corev1.SecretTypeServiceAccountToken,
 	}
 }
 
