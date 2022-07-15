@@ -101,6 +101,8 @@ spec:
           - '--upstream=http://localhost:3001'
           - '--https-address=:9443'
           - '--cookie-secret-file=/etc/proxy/secrets/session_secret'
+          - '--cookie-expire=12h0m0s'
+          - '--cookie-refresh=8h0m0s'
           - '--openshift-delegate-urls={"/": {"resource": "projects", "verb": "list"}}'          
           - '--tls-cert=/etc/tls/private/tls.crt'
           - '--tls-key=/etc/tls/private/tls.key'
