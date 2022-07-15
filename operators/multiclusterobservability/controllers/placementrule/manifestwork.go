@@ -386,7 +386,7 @@ func generateAmAccessorTokenSecret(cl client.Client) (*corev1.Secret, error) {
 		// and the other stores the servcie account token  with name format (<sa name>-token-<random>),
 		// but the service account secrets won't list in the service account any longger.
 		secretList := &corev1.SecretList{}
-		err = cl.List(context.TODO(), secretList, &client.ListOptions{})
+		err = cl.List(context.TODO(), secretList, &client.ListOptions{Namespace: config.GetDefaultNamespace()})
 		if err != nil {
 			return nil, err
 		}
