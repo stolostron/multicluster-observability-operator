@@ -262,6 +262,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
+	works = injectIntoWork(works, metricsAllowlistConfigMap)
 	t.Logf("work size is %d", len(works))
 	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true); err != nil {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
