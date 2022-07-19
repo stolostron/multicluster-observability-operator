@@ -182,7 +182,8 @@ func NewAmAccessorSA() *corev1.ServiceAccount {
 			Namespace: mcoNamespace,
 		},
 		Secrets: []corev1.ObjectReference{
-			{Name: config.AlertmanagerAccessorSecretName + "-token-xxx"},
+			// Test ocp 4.11 behavior where the service accounts won't list service account secrets any longger
+			// {Name: config.AlertmanagerAccessorSecretName + "-token-xxx"},
 		},
 	}
 }
@@ -196,6 +197,7 @@ func NewAmAccessorTokenSecret() *corev1.Secret {
 		Data: map[string][]byte{
 			"token": []byte("xxxxx"),
 		},
+		Type: corev1.SecretTypeServiceAccountToken,
 	}
 }
 
@@ -262,6 +264,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
+	works = injectIntoWork(works, metricsAllowlistConfigMap)
 	t.Logf("work size is %d", len(works))
 	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true); err != nil {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
@@ -290,6 +293,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
+	works = injectIntoWork(works, metricsAllowlistConfigMap)
 	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, false)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
@@ -328,7 +332,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
-
+	works = injectIntoWork(works, metricsAllowlistConfigMap)
 	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true); err != nil {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
 	}

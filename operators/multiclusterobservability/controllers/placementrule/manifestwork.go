@@ -39,11 +39,12 @@ const (
 
 // intermidiate resources for the manifest work
 var (
-	hubInfoSecret             *corev1.Secret
-	pullSecret                *corev1.Secret
-	managedClusterObsCert     *corev1.Secret
-	metricsAllowlistConfigMap *corev1.ConfigMap
-	amAccessorTokenSecret     *corev1.Secret
+	hubInfoSecret                   *corev1.Secret
+	pullSecret                      *corev1.Secret
+	managedClusterObsCert           *corev1.Secret
+	metricsAllowlistConfigMap       *corev1.ConfigMap
+	ocp311metricsAllowlistConfigMap *corev1.ConfigMap
+	amAccessorTokenSecret           *corev1.Secret
 
 	obsAddonCRDv1                 *apiextensionsv1.CustomResourceDefinition
 	obsAddonCRDv1beta1            *apiextensionsv1beta1.CustomResourceDefinition
@@ -219,14 +220,13 @@ func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClust
 	}
 	works = injectIntoWork(works, managedClusterObsCert)
 
-	// inject the metrics allowlist configmap
-	if metricsAllowlistConfigMap == nil {
+	// generate the metrics allowlist configmap
+	if metricsAllowlistConfigMap == nil || ocp311metricsAllowlistConfigMap == nil {
 		var err error
-		if metricsAllowlistConfigMap, err = generateMetricsListCM(c); err != nil {
+		if metricsAllowlistConfigMap, ocp311metricsAllowlistConfigMap, err = generateMetricsListCM(c); err != nil {
 			return nil, nil, nil, err
 		}
 	}
-	works = injectIntoWork(works, metricsAllowlistConfigMap)
 
 	// inject the alertmanager accessor bearer token secret
 	if amAccessorTokenSecret == nil {
@@ -362,9 +362,9 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 
 // generateAmAccessorTokenSecret generates the secret that contains the access_token
 // for the Alertmanager in the Hub cluster
-func generateAmAccessorTokenSecret(client client.Client) (*corev1.Secret, error) {
+func generateAmAccessorTokenSecret(cl client.Client) (*corev1.Secret, error) {
 	amAccessorSA := &corev1.ServiceAccount{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: config.AlertmanagerAccessorSAName,
+	err := cl.Get(context.TODO(), types.NamespacedName{Name: config.AlertmanagerAccessorSAName,
 		Namespace: config.GetDefaultNamespace()}, amAccessorSA)
 	if err != nil {
 		log.Error(err, "Failed to get Alertmanager accessor serviceaccount", "name", config.AlertmanagerAccessorSAName)
@@ -376,6 +376,27 @@ func generateAmAccessorTokenSecret(client client.Client) (*corev1.Secret, error)
 		if strings.HasPrefix(secretRef.Name, config.AlertmanagerAccessorSAName+"-token") {
 			tokenSrtName = secretRef.Name
 			break
+		}
+	}
+
+	if tokenSrtName == "" {
+		// Starting with kube 1.24 (ocp 4.11), the k8s won't generate secrets any longer
+		// automatically for ServiceAccounts, for OCP, when a service account is created,
+		// the OCP will create two secrets, one stores dockercfg with name format (<sa name>-dockercfg-<random>)
+		// and the other stores the servcie account token  with name format (<sa name>-token-<random>),
+		// but the service account secrets won't list in the service account any longger.
+		secretList := &corev1.SecretList{}
+		err = cl.List(context.TODO(), secretList, &client.ListOptions{Namespace: config.GetDefaultNamespace()})
+		if err != nil {
+			return nil, err
+		}
+
+		for _, secret := range secretList.Items {
+			if secret.Type == corev1.SecretTypeServiceAccountToken &&
+				strings.HasPrefix(secret.Name, config.AlertmanagerAccessorSAName+"-token") {
+				tokenSrtName = secret.Name
+				break
+			}
 		}
 	}
 
@@ -393,7 +414,7 @@ func generateAmAccessorTokenSecret(client client.Client) (*corev1.Secret, error)
 	}
 
 	tokenSrt := &corev1.Secret{}
-	err = client.Get(context.TODO(), types.NamespacedName{Name: tokenSrtName,
+	err = cl.Get(context.TODO(), types.NamespacedName{Name: tokenSrtName,
 		Namespace: config.GetDefaultNamespace()}, tokenSrt)
 	if err != nil {
 		log.Error(err, "Failed to get token secret for Alertmanager accessor serviceaccount", "name", tokenSrtName)
@@ -472,8 +493,8 @@ func generateObservabilityServerCACerts(client client.Client) (*corev1.Secret, e
 }
 
 // generateMetricsListCM generates the configmap that contains the metrics allowlist
-func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
-	metricsAllowlist := &corev1.ConfigMap{
+func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.ConfigMap, error) {
+	metricsAllowlistCM := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
 			Kind:       "ConfigMap",
@@ -485,10 +506,12 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 		Data: map[string]string{},
 	}
 
+	ocp311AllowlistCM := metricsAllowlistCM.DeepCopy()
+
 	allowlist, ocp3Allowlist, err := getAllowList(client, operatorconfig.AllowlistConfigMapName)
 	if err != nil {
 		log.Error(err, "Failed to get metrics allowlist configmap "+operatorconfig.AllowlistConfigMapName)
-		return nil, err
+		return nil, nil, err
 	}
 
 	customAllowlist, _, err := getAllowList(client, config.AllowlistCustomConfigMapName)
@@ -518,16 +541,16 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, error) {
 	data, err := yaml.Marshal(allowlist)
 	if err != nil {
 		log.Error(err, "Failed to marshal allowlist data")
-		return nil, err
+		return nil, nil, err
 	}
-	metricsAllowlist.Data["metrics_list.yaml"] = string(data)
+	metricsAllowlistCM.Data["metrics_list.yaml"] = string(data)
 	data, err = yaml.Marshal(ocp3Allowlist)
 	if err != nil {
 		log.Error(err, "Failed to marshal allowlist data")
-		return nil, err
+		return nil, nil, err
 	}
-	metricsAllowlist.Data["ocp311_metrics_list.yaml"] = string(data)
-	return metricsAllowlist, nil
+	ocp311AllowlistCM.Data["ocp311_metrics_list.yaml"] = string(data)
+	return metricsAllowlistCM, ocp311AllowlistCM, nil
 }
 
 func getAllowList(client client.Client, name string) (*operatorconfig.MetricsAllowlist, *operatorconfig.MetricsAllowlist, error) {
