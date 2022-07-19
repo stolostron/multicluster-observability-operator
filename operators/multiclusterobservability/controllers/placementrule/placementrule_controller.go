@@ -340,14 +340,17 @@ func createAllRelatedRes(
 				request.Namespace,
 			)
 			if openshiftVersion == "3" {
+				works = injectIntoWork(works, ocp311metricsAllowlistConfigMap)
 				err = createManagedClusterRes(c, restMapper, mco,
 					managedCluster, managedCluster,
 					works, crdv1beta1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
 			} else if openshiftVersion == nonOCP {
+				works = injectIntoWork(works, metricsAllowlistConfigMap)
 				err = createManagedClusterRes(c, restMapper, mco,
 					managedCluster, managedCluster,
 					works, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, true)
 			} else {
+				works = injectIntoWork(works, metricsAllowlistConfigMap)
 				err = createManagedClusterRes(c, restMapper, mco,
 					managedCluster, managedCluster,
 					works, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
@@ -413,28 +416,28 @@ func deleteGlobalResource(c client.Client) error {
 	return nil
 }
 
-func createManagedClusterRes(client client.Client, restMapper meta.RESTMapper,
+func createManagedClusterRes(c client.Client, restMapper meta.RESTMapper,
 	mco *mcov1beta2.MultiClusterObservability, name string, namespace string,
-	works []workv1.Manifest, crdWork *workv1.Manifest, dep *appsv1.Deployment,
-	hubInfo *corev1.Secret, installProm bool) error {
-	err := createObsAddon(client, namespace)
+	works []workv1.Manifest, crdWork *workv1.Manifest,
+	dep *appsv1.Deployment, hubInfo *corev1.Secret, installProm bool) error {
+	err := createObsAddon(c, namespace)
 	if err != nil {
 		log.Error(err, "Failed to create observabilityaddon")
 		return err
 	}
 
-	err = createRolebindings(client, namespace, name)
+	err = createRolebindings(c, namespace, name)
 	if err != nil {
 		return err
 	}
 
-	err = createManifestWorks(client, restMapper, namespace, name, mco, works, crdWork, dep, hubInfo, installProm)
+	err = createManifestWorks(c, restMapper, namespace, name, mco, works, crdWork, dep, hubInfo, installProm)
 	if err != nil {
 		log.Error(err, "Failed to create manifestwork")
 		return err
 	}
 
-	err = util.CreateManagedClusterAddonCR(client, namespace, ownerLabelKey, ownerLabelValue)
+	err = util.CreateManagedClusterAddonCR(c, namespace, ownerLabelKey, ownerLabelValue)
 	if err != nil {
 		log.Error(err, "Failed to create ManagedClusterAddon")
 		return err
@@ -590,7 +593,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				// generate the metrics allowlist configmap
 				log.Info("generate metric allow list configmap for allowlist configmap CREATE")
-				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
+				metricsAllowlistConfigMap, ocp311metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
 			return false
@@ -602,7 +605,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				// regenerate the metrics allowlist configmap
 				log.Info("generate metric allow list configmap for allowlist configmap UPDATE")
-				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
+				metricsAllowlistConfigMap, ocp311metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
 			return false
@@ -613,7 +616,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				// regenerate the metrics allowlist configmap
 				log.Info("generate metric allow list configmap for allowlist configmap UPDATE")
-				metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
+				metricsAllowlistConfigMap, ocp311metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
 				return true
 			}
 			return false
