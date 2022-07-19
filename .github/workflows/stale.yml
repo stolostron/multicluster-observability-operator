@@ -1,14 +1,7 @@
 name: Mark stale issues and pull requests
-<<<<<<< HEAD
 on:
   schedule:
     - cron: '0 12 * * Mon-Fri' # Github Actions job run in UTC. Running at 12PM UTC, will schedule the job for 8AM EST.
-=======
-
-on:
-  schedule:
-    - cron: '0 8 * * Mon-Fri'
->>>>>>> main
 
 jobs:
   stale:
@@ -20,7 +13,6 @@ jobs:
     steps:
       - uses: actions/stale@v3
         with:
-<<<<<<< HEAD
           close-pr-label: 'no-pr-activity'
           close-pr-message: 'Closing pull-request due to lack of activity.'
           days-before-close: 7
@@ -28,11 +20,3 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           stale-pr-label: 'stale'
           stale-pr-message: "This pr has been automatically marked as stale because it has not had recent activity. It will be closed in 7 days (1 week), if no further activity occurs."
-=======
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          close-pr-message: '@${{ github.event.pull_request.user.login }} Closing pr due to lack of activity.'
-          days-before-pr-stale: 7
-          days-before-pr-close: 14
-          stale-pr-message: "@${{ github.event.pull_request.user.login }} This pr has been automatically marked as stale because it has not had recent activity. It will be closed in 14 days (2 weeks), if no further activity occurs. @${{ join(github.event.pull_request.requested_reviewers.*.login, ' @') }} please help to get the pr reviewed."
-          stale-pr-label: 'stale'
->>>>>>> main
