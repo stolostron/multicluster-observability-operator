@@ -8,7 +8,7 @@ require (
 	github.com/cloudflare/cfssl v1.6.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-kit/kit v0.11.0
-	github.com/go-kit/log v0.1.0
+	github.com/go-kit/log v0.2.1
 	github.com/go-logr/logr v0.4.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
@@ -79,7 +79,7 @@ require (
 	github.com/form3tech-oss/jwt-go v3.2.5+incompatible // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-errors/errors v1.0.1 // indirect
-	github.com/go-logfmt/logfmt v0.5.0 // indirect
+	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-logr/zapr v0.4.0 // indirect
 	github.com/go-openapi/analysis v0.20.0 // indirect
 	github.com/go-openapi/errors v0.20.0 // indirect
