@@ -55,7 +55,7 @@ if ! command -v jq &> /dev/null; then
 fi
 
 # install gojsontoyaml
-GOBIN=${WORK_DIR}/bin go get github.com/brancz/gojsontoyaml
+GOBIN=${WORK_DIR}/bin go install github.com/brancz/gojsontoyaml
 GOJSONTOYAML_BIN=${WORK_DIR}/bin/gojsontoyaml
 
 function get_metrics_list() {

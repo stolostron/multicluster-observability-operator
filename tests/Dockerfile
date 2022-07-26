@@ -9,7 +9,7 @@ COPY go.sum go.mod ./
 COPY ./tests ./tests
 
 # compile go tests in build image
-RUN go get github.com/onsi/ginkgo/ginkgo@v1.14.2 && go mod vendor && ginkgo build ./tests/pkg/tests/
+RUN go install github.com/onsi/ginkgo/ginkgo@v1.14.2 && go mod vendor && ginkgo build ./tests/pkg/tests/
 
 # create new docker image to hold built artifacts
 FROM registry.fedoraproject.org/fedora-minimal:32
