@@ -1,6 +1,7 @@
 package util
 
 import (
+	"encoding/base64"
 	"os"
 	"testing"
 )
@@ -87,7 +88,7 @@ func TestGeneratePassword(t *testing.T) {
 	type testCaseList struct {
 		name     string
 		n        int
-		expected error
+		expected error //for both encoding and decoding
 	}
 
 	var testCaseLists = []testCaseList{
@@ -96,9 +97,13 @@ func TestGeneratePassword(t *testing.T) {
 	}
 
 	for _, test := range testCaseLists {
-		_, err := GeneratePassword(test.n)
+		output, err := GeneratePassword(test.n)
 
 		if err != nil {
+			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", test.name, err, test.expected)
+		}
+		_, err1 := base64.StdEncoding.DecodeString(output)
+		if err1 != nil {
 			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", test.name, err, test.expected)
 		}
 	}
