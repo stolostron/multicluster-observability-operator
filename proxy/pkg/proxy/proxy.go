@@ -36,6 +36,7 @@ var (
 // HandleRequestAndRedirect is used to init proxy handler
 func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
 	if preCheckRequest(req) != nil {
+		klog.Infof("Writing a newEmptyMatrixHTTPBody")
 		_, err := res.Write(newEmptyMatrixHTTPBody())
 		if err != nil {
 			klog.Errorf("failed to write response: %v", err)
@@ -71,6 +72,7 @@ func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
 func errorHandle(rw http.ResponseWriter, req *http.Request, err error) {
 	token := req.Header.Get("X-Forwarded-Access-Token")
 	if token == "" {
+		klog.Infof("X-Forwarded-Access-Token header not present")
 		rw.WriteHeader(http.StatusUnauthorized)
 	}
 }
@@ -80,8 +82,10 @@ func preCheckRequest(req *http.Request) error {
 	if token == "" {
 		token = req.Header.Get("Authorization")
 		if token == "" {
+			klog.Infof("found unauthorized user")
 			return errors.New("found unauthorized user")
 		} else {
+			klog.Infof("Treating Authorization header value as X-Forwarded-Access-Token")
 			req.Header.Set("X-Forwarded-Access-Token", token)
 		}
 	}
@@ -90,8 +94,10 @@ func preCheckRequest(req *http.Request) error {
 	if userName == "" {
 		userName = util.GetUserName(token, config.GetConfigOrDie().Host+userAPIPath)
 		if userName == "" {
-			return errors.New("failed to found user name")
+			klog.Infof("ailed to find user name")
+			return errors.New("failed to find user name")
 		} else {
+			klog.Infof("Setting User %s as X-Forwarded-User", userName)
 			req.Header.Set("X-Forwarded-User", userName)
 		}
 	}
