@@ -21,7 +21,7 @@ fi
 n=0
 until [ "$n" -ge 30 ]
 do
-   kubectl get pods -n "$obs_namespace" -l app=multicluster-observability-grafana-dev | grep "2/2" | grep "Running" && break
+   kubectl get pods -n "$obs_namespace" -l app=multicluster-observability-grafana-dev | grep "3/3" | grep "Running" && break
    n=$((n+1))
    echo "Retrying in 10s for waiting for grafana-dev pod ready ..."
    sleep 10
