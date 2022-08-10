@@ -65,7 +65,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/brancz/locutus v0.0.0-20210511124350-7a84f4d1bcb3 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
-	github.com/containerd/containerd v1.5.10 // indirect
+	github.com/containerd/containerd v1.5.13 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dennwc/varint v1.0.0 // indirect
 	github.com/docker/distribution v2.8.0+incompatible // indirect
