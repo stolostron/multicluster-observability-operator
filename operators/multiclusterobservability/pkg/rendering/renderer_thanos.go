@@ -72,7 +72,8 @@ func (r *MCORenderer) RenderThanosConfig(res *resource.Resource,
 		}
 		addr := []string{}
 		for i := 0; i < int(*mcoconfig.GetReplicas("alertmanager", r.cr.Spec.AdvancedConfig)); i++ {
-			addr = append(addr, "observability-alertmanager-"+strconv.Itoa(i)+".alertmanager-operated.open-cluster-management-observability.svc:9095")
+			addr = append(addr, "observability-alertmanager-"+strconv.Itoa(i)+
+				".alertmanager-operated.open-cluster-management-observability.svc:9095")
 		}
 		alertingConfig.Alertmanagers[0].EndpointsConfig.StaticAddresses = addr
 		updateConfig, err := yaml.Marshal(alertingConfig)
