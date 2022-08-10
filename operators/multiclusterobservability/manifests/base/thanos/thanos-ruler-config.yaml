@@ -10,7 +10,7 @@ data:
           insecure_skip_verify: false
       scheme: https
       static_configs:
-      - alertmanager.open-cluster-management-observability.svc:9095
+      - observability-alertmanager-0.alertmanager-operated.open-cluster-management-observability.svc:9095
       api_version: v2
 kind: ConfigMap
 metadata:
