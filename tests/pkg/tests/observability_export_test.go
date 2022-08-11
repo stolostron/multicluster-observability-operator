@@ -14,7 +14,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
-var _ = Describe("Observability:", func() {
+var _ = Describe("", func() {
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
@@ -66,35 +66,35 @@ var _ = Describe("Observability:", func() {
 
 		By("Waiting for metrics acm_remote_write_requests_total on grafana console")
 		Eventually(func() error {
-			for _, cluster := range clusters {
-				query := fmt.Sprintf("acm_remote_write_requests_total{cluster=\"%s\"} offset 1m", cluster)
-				err, _ := utils.ContainManagedClusterMetric(
-					testOptions,
-					query,
-					[]string{`"__name__":"acm_remote_write_requests_total"`},
-				)
-				if err != nil {
-					return err
-				}
-				err, _ = utils.ContainManagedClusterMetric(
-					testOptions,
-					query,
-					[]string{`"__name__":"acm_remote_write_requests_total"`,
-						`"code":"200`, `"name":"thanos-receiver"`},
-				)
-				if err != nil {
-					return fmt.Errorf("metrics not forwarded to thanos-receiver")
-				}
-				err, _ = utils.ContainManagedClusterMetric(
-					testOptions,
-					query,
-					[]string{`"__name__":"acm_remote_write_requests_total"`,
-						`"code":"204`, `"name":"victoriametrics"`},
-				)
-				if err != nil {
-					return fmt.Errorf("metrics not forwarded to victoriametrics")
-				}
+			//for _, cluster := range clusters {
+			query := fmt.Sprintf("acm_remote_write_requests_total{cluster=\"%s\"} offset 1m", "local-cluster")
+			err, _ := utils.ContainManagedClusterMetric(
+				testOptions,
+				query,
+				[]string{`"__name__":"acm_remote_write_requests_total"`},
+			)
+			if err != nil {
+				return err
 			}
+			err, _ = utils.ContainManagedClusterMetric(
+				testOptions,
+				query,
+				[]string{`"__name__":"acm_remote_write_requests_total"`,
+					`"code":"200`, `"name":"thanos-receiver"`},
+			)
+			if err != nil {
+				return fmt.Errorf("metrics not forwarded to thanos-receiver")
+			}
+			err, _ = utils.ContainManagedClusterMetric(
+				testOptions,
+				query,
+				[]string{`"__name__":"acm_remote_write_requests_total"`,
+					`"code":"204`, `"name":"victoriametrics"`},
+			)
+			if err != nil {
+				return fmt.Errorf("metrics not forwarded to victoriametrics")
+			}
+			//}
 			return nil
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
