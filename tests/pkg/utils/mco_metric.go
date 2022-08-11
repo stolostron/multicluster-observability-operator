@@ -78,6 +78,7 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 
 	contained := true
 	for _, label := range matchedLabels {
+		klog.V(5).Infof("label is: %s\n", label)
 		if !strings.Contains(string(metricResult), label) {
 			contained = false
 			break
