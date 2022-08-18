@@ -17,3 +17,7 @@
 ### Wed Aug 10 09:16:33 EDT 2022
 
 - <https://github.com/stolostron/multicluster-observability-operator/pull/1082>
+
+### Thu Aug 18 15:00:45 EDT 2022
+
+- <https://github.com/stolostron/backlog/issues/24877>
