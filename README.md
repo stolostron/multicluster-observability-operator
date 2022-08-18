@@ -186,4 +186,4 @@ kubectl -n open-cluster-management-observability delete -k examples/minio
 kubectl delete ns open-cluster-management-observability
 ```
 
-Rebuild Image: Tue Aug 16 14:18:41 EDT 2022
+Rebuild Image: Thu Aug 18 13:22:40 EDT 2022
