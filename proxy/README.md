@@ -8,8 +8,10 @@ The rbac-query-proxy is a small HTTP reverse proxy, that can perform RBAC author
 
 ## How to build image
 
-```
-$ docker build -f Dockerfile.prow -t rbac-query-proxy:latest .
+```bash
+docker build -f Dockerfile.prow -t rbac-query-proxy:latest .
 ```
 
 Now, you can use this image to replace the rbac-query-proxy component and verify your PRs.
+
+Rebuild Image: Thu Aug 18 15:00:45 EDT 2022
