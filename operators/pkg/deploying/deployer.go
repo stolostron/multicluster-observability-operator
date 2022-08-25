@@ -5,6 +5,7 @@ package deploying
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -200,7 +201,31 @@ func (d *Deployer) updateSecret(desiredObj, runtimeObj *unstructured.Unstructure
 		log.Error(err, fmt.Sprintf("Failed to Unmarshal desired Secret %s", desiredObj.GetName()))
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredSecret.Data, runtimeSecret.Data) {
+	update := false
+	if desiredSecret.Data != nil {
+		if !apiequality.Semantic.DeepDerivative(desiredSecret.Data, runtimeSecret.Data) {
+			update = true
+		}
+	} else {
+		if desiredSecret.StringData == nil {
+			update = true
+		} else {
+			for k, v := range desiredSecret.StringData {
+				var data []byte
+				_, err = base64.StdEncoding.Decode(data, runtimeSecret.Data[k])
+				if err != nil {
+					update = true
+					break
+				}
+				if !apiequality.Semantic.DeepDerivative(v, string(data)) {
+					update = true
+					break
+				}
+			}
+		}
+	}
+
+	if update {
 		log.Info("Update", "Kind:", desiredObj.GroupVersionKind(), "Name:", desiredObj.GetName())
 		return d.client.Update(context.TODO(), desiredSecret)
 	}
