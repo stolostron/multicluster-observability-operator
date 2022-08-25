@@ -200,7 +200,8 @@ func (d *Deployer) updateSecret(desiredObj, runtimeObj *unstructured.Unstructure
 		log.Error(err, fmt.Sprintf("Failed to Unmarshal desired Secret %s", desiredObj.GetName()))
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredSecret.Data, runtimeSecret.Data) {
+	if desiredSecret.Data == nil ||
+		!apiequality.Semantic.DeepDerivative(desiredSecret.Data, runtimeSecret.Data) {
 		log.Info("Update", "Kind:", desiredObj.GroupVersionKind(), "Name:", desiredObj.GetName())
 		return d.client.Update(context.TODO(), desiredSecret)
 	}
