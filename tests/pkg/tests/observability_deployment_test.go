@@ -38,7 +38,7 @@ var _ = Describe("", func() {
 			testFailed = false
 			return nil
 		}, EventuallyTimeoutMinute*25, EventuallyIntervalSecond*10).Should(Succeed())
-	
+
 		By("Check clustermanagementaddon CR is created")
 		Eventually(func() error {
 			_, err := dynClient.Resource(utils.NewMCOClusterManagementAddonsGVR()).Get(context.TODO(), "observability-controller", metav1.GetOptions{})
@@ -52,10 +52,10 @@ var _ = Describe("", func() {
 
 	})
 
-	It("RHACM4K-1288: Observability: Verify Observability function working on the hub cluster - [P1][Sev1][Observability][Stable] (deployment/g0)", func() {	
+	It("RHACM4K-1288: Observability: Verify Observability function working on the hub cluster - [P1][Sev1][Observability][Stable] (deployment/g0)", func() {
 		By("Check endpoint-operator and metrics-collector pods are ready")
 		Eventually(func() error {
-			err = utils.CheckAllOBAsEnabled(testOptions)
+			err = utils.CheckAllOBAsEnabledLocal(testOptions)
 			if err != nil {
 				testFailed = true
 				return err

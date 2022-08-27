@@ -89,6 +89,31 @@ func CheckAllOBAsEnabled(opt TestOptions) error {
 	return nil
 }
 
+func CheckAllOBAsEnabledLocal(opt TestOptions) error {
+	clusters, err := ListManagedClusters(opt)
+	if err != nil {
+		return err
+	}
+	klog.V(1).Infof("Have the following managedclusters: <%v>", clusters)
+
+	for _, cluster := range clusters {
+		if cluster == `local-cluster` {
+			klog.V(1).Infof("Check OBA status for cluster <%v>", cluster)
+			err = CheckOBAStatus(opt, cluster, ManagedClusterAddOnEnabledMessage)
+			if err != nil {
+				return err
+			}
+
+			klog.V(1).Infof("Check managedcluster addon status for cluster <%v>", cluster)
+			err = CheckManagedClusterAddonsStatus(opt, cluster, ManagedClusterAddOnEnabledMessage)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func CheckAllOBADisabled(opt TestOptions) error {
 	clusters, err := ListManagedClusters(opt)
 	if err != nil {
