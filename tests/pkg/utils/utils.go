@@ -11,6 +11,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ghodss/yaml"
 
@@ -732,7 +733,16 @@ func IsOpenshift(client *rest.RESTClient) bool {
 
 // IntegrityChecking checks to ensure all required conditions are met when completing the specs
 func IntegrityChecking(opt TestOptions) error {
-	return CheckMCOComponents(opt)
+	var err error
+	for i := 0; i < 60; i++ { // wait at most 5 minutes
+		err = CheckMCOComponents(opt)
+		if err != nil {
+			time.Sleep(5 * time.Second)
+		} else {
+			return nil
+		}
+	}
+	return err
 }
 
 // GetPullSecret checks the secret from MCH CR and return the secret name
