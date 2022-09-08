@@ -21,3 +21,11 @@
 ### Thu Aug 18 15:00:45 EDT 2022
 
 - <https://github.com/stolostron/backlog/issues/24877>
+
+### Thu Sep  8 13:29:43 EDT 2022
+
+- <https://github.com/stolostron/backlog/issues/25335>
+- <https://github.com/stolostron/backlog/issues/25453>
+- <https://github.com/stolostron/backlog/issues/25454>
+- <https://github.com/stolostron/backlog/issues/25385>
+
