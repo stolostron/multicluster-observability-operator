@@ -136,7 +136,7 @@ var _ = Describe("", func() {
 		Expect(len(alertmans.Items)).NotTo(Equal(0))
 
 		Eventually(func() error {
-			err := utils.CheckStorageResize(testOptions, (*alertmans).Items[0].Name, "2Gi")
+			err := utils.CheckStorageResize(testOptions, (*alertmans).Items[0].Name, "3Gi")
 			if err != nil {
 				return err
 			}

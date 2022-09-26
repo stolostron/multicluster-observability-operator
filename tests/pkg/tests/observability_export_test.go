@@ -6,6 +6,7 @@ package tests
 import (
 	"fmt"
 	"os"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -67,6 +68,8 @@ var _ = Describe("", func() {
 		By("Waiting for metrics acm_remote_write_requests_total on grafana console")
 		Eventually(func() error {
 			//for _, cluster := range clusters {
+			// wait for pod restarting
+			time.Sleep(60 * time.Second)
 			query := fmt.Sprintf("acm_remote_write_requests_total{cluster=\"%s\"} offset 1m", "local-cluster")
 			err, _ := utils.ContainManagedClusterMetric(
 				testOptions,
@@ -100,7 +103,9 @@ var _ = Describe("", func() {
 	})
 
 	JustAfterEach(func() {
+
 		Expect(utils.CleanExportResources(testOptions)).NotTo(HaveOccurred())
+		time.Sleep(120 * time.Second)
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 	})
 
