@@ -196,4 +196,7 @@ replace (
 
 // needed because otherwise installer fetches a library-go version that requires bitbucket.com/ww/goautoneg which is dead
 // Tagged version fetches github.com/munnerz/goautoneg instead
-replace github.com/openshift/library-go => github.com/openshift/library-go v0.0.0-20200918101923-1e4c94603efe
+replace (
+	github.com/modern-go/reflect2 => github.com/modern-go/reflect2 v1.0.1
+	github.com/openshift/library-go => github.com/openshift/library-go v0.0.0-20200918101923-1e4c94603efe
+)
