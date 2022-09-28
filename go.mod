@@ -25,7 +25,7 @@ require (
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.48.1
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.47.1
 	github.com/prometheus/alertmanager v0.22.2
-	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/client_golang v1.11.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.30.0
 	github.com/prometheus/prometheus v2.3.2+incompatible
@@ -100,7 +100,6 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect
-	github.com/hashicorp/consul/api v1.10.0 // indirect
 	github.com/hashicorp/go-hclog v0.14.1 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
@@ -137,7 +136,7 @@ require (
 	go.uber.org/goleak v1.1.10 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.19.0 // indirect
-	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce // indirect
+	golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/net v0.0.0-20211209124913-491a49abca63 // indirect
 	golang.org/x/oauth2 v0.0.0-20210628180205-a41e5a781914 // indirect
@@ -169,10 +168,10 @@ replace (
 	github.com/go-openapi/loads => github.com/go-openapi/loads v0.19.5
 	github.com/go-openapi/spec => github.com/go-openapi/spec v0.19.5
 	github.com/hashicorp/consul => github.com/hashicorp/consul v1.10.10
-	github.com/nats-io/nats-server/v2 => github.com/nats-io/nats-server/v2 v2.7.2
+	github.com/nats-io/nats-server/v2 => github.com/nats-io/nats-server/v2 v2.8.2
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20210331193751-3acddb19d360
 	github.com/prometheus/prometheus => github.com/prometheus/prometheus v1.8.2-0.20210811141203-dcb07e8eac34
-	golang.org/x/text => golang.org/x/text v0.3.5
+	golang.org/x/text => golang.org/x/text v0.3.7
 	k8s.io/client-go => k8s.io/client-go v0.22.1
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
 )
