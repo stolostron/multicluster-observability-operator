@@ -150,6 +150,11 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
   recording_rules:
     - record: f
       expr: g
+`,
+			"uwl_metrics_list.yaml": `
+  names:
+    - a
+    - b
 `},
 	}
 }
@@ -171,6 +176,11 @@ func NewMetricsCustomAllowListCM() *corev1.ConfigMap {
       expr: i
   collect_rules:
     - name: -discard
+`,
+			"uwl_metrics_list.yaml": `
+  names:
+    - c
+    - d
 `},
 	}
 }
