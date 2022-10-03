@@ -181,6 +181,21 @@ func NewMetricsCustomAllowListCM() *corev1.ConfigMap {
   names:
     - c
     - d
+  renames:
+    a: c
+`},
+	}
+}
+
+func NewCorruptMetricsCustomAllowListCM() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.AllowlistCustomConfigMapName,
+			Namespace: mcoNamespace,
+		},
+		Data: map[string]string{"uwl_metrics_list.yaml": `
+  names:
+    d: e
 `},
 	}
 }
@@ -235,6 +250,20 @@ func newPullSecret(name, namespace string, data []byte) *corev1.Secret {
 		},
 		StringData: nil,
 		Type:       corev1.SecretTypeDockerConfigJson,
+	}
+}
+
+func TestGetAllowList(t *testing.T) {
+	initSchema(t)
+	objs := []runtime.Object{
+		NewMetricsAllowListCM(),
+		NewCorruptMetricsCustomAllowListCM(),
+	}
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	_, _, cc, err := getAllowList(c, config.AllowlistCustomConfigMapName)
+	if err == nil {
+		t.Fatalf("the cm is %v", cc)
+		t.Fatalf("The yaml marshall error is ignored")
 	}
 }
 
