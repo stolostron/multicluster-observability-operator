@@ -2,7 +2,7 @@
 
 [![Build](https://img.shields.io/badge/build-Prow-informational)](https://prow.ci.openshift.org/?repo=stolostron%2F${observability-e2e-test})
 
-This is modeled after: https://github.com/stolostron/open-cluster-management-e2e
+This is modeled after: <https://github.com/stolostron/open-cluster-management-e2e>
 
 This is a container which will be called from:
 
@@ -28,7 +28,7 @@ The observability e2e testing can be running automatically in KinD cluster or OC
 
 1. clone this repository and enter its root directory:
 
-```
+```bash
 git clone git@github.com:stolostron/multicluster-observability-operator.git && cd multicluster-observability-operator
 ```
 
@@ -45,7 +45,7 @@ git clone git@github.com:stolostron/multicluster-observability-operator.git && c
 
 For example, if you want to test `metrics-collector` image from `quay.io/<your_username_in_quay>/metrics-collector:test`, then execute the following command:
 
-```
+```bash
 export METRICS_COLLECTOR_IMAGE_REF=quay.io/<your_username_in_quay>/metrics-collector:test
 ```
 
@@ -53,7 +53,7 @@ export METRICS_COLLECTOR_IMAGE_REF=quay.io/<your_username_in_quay>/metrics-colle
 
 3. Then simply execute the following command to run e2e testing in a KinD cluster:
 
-```
+```bash
 make e2e-tests-in-kind
 ```
 
@@ -63,13 +63,13 @@ If you only have an OCP cluster with ACM installed, then you can run observabili
 
 1. clone this repository and enter its root directory:
 
-```
+```bash
 git clone git@github.com:stolostron/multicluster-observability-operator.git && cd multicluster-observability-operator
 ```
 
 2. export `KUBECONFIG` environment variable to the kubeconfig of the OCP cluster:
 
-```
+```bash
 export KUBECONFIG=<kubeconfig-file-of-the-ocp-cluster>
 ```
 
@@ -86,7 +86,7 @@ export KUBECONFIG=<kubeconfig-file-of-the-ocp-cluster>
 
 4. Then simply execute the following command to run e2e testing:
 
-```
+```bash
 make e2e-tests
 ```
 
@@ -98,19 +98,19 @@ If you want to run observability e2e testing manually, make sure you have cluste
 
 1. clone this repository and enter its root directory:
 
-```
+```bash
 git clone git@github.com:stolostron/multicluster-observability-operator.git && cd multicluster-observability-operator
 ```
 
 2. Before running the e2e testing, make sure [ginkgo](https://github.com/onsi/ginkgo) is installed:
 
-```
+```bash
 go install github.com/onsi/ginkgo/ginkgo@latest
 ```
 
 3. Then copy `tests/resources/options.yaml.template` to `tests/resources/options.yaml`, and update values specific to your environment:
 
-```
+```bash
 cp tests/resources/options.yaml.template tests/resources/options.yaml
 cat tests/resources/options.yaml
 options:
@@ -121,7 +121,7 @@ options:
 
 (optional) If there is an imported cluster in the test environment, need to add the cluster info into `options.yaml`:
 
-```
+```bash
 cat tests/resources/options.yaml
 options:
   hub:
@@ -135,7 +135,7 @@ options:
 
 4. Then run e2e testing manually by executing the following command:
 
-```
+```bash
 export BUCKET=YOUR_S3_BUCKET
 export REGION=YOUR_S3_REGION
 export AWS_ACCESS_KEY_ID=YOUR_S3_AWS_ACCESS_KEY_ID
@@ -146,7 +146,7 @@ ginkgo -v tests/pkg/tests/ -- -options=../../resources/options.yaml -v=3
 
 (optional) If there is an imported cluster in the test environment, need to set more environment.
 
-```
+```bash
 export IMPORT_KUBECONFIG=~/.kube/import-cluster-config
 ```
 
@@ -154,19 +154,19 @@ export IMPORT_KUBECONFIG=~/.kube/import-cluster-config
 
 1. clone this repository and enter its root directory:
 
-```
+```bash
 git clone git@github.com:stolostron/multicluster-observability-operator.git && cd multicluster-observability-operator
 ```
 
 2. Optionally build docker image for observability e2e testing:
 
-```
+```bash
 docker build -t observability-e2e-test:latest -f tests/Dockerfile .
 ```
 
 3. Then copy `tests/resources/options.yaml.template` to `tests/resources/options.yaml`, and update values specific to your environment:
 
-```
+```bash
 cp tests/resources/options.yaml.template tests/resources/options.yaml
 cat tests/resources/options.yaml
 options:
@@ -177,7 +177,7 @@ options:
 
 (optional)If there is an imported cluster in the test environment, need to add the cluster info into `options.yaml`:
 
-```
+```bash
 cat tests/resources/options.yaml
 options:
   hub:
@@ -191,7 +191,7 @@ options:
 
 4. copy `tests/resources/env.list.template` to `tests/resources/env.list`, and update values specific to your s3 configuration:
 
-```
+```bash
 cp tests/resources/env.list.template tests/resources/env.list
 cat tests/resources/env.list
 BUCKET=YOUR_S3_BUCKET
@@ -202,20 +202,20 @@ AWS_SECRET_ACCESS_KEY=YOUR_S3_AWS_SECRET_ACCESS_KEY
 
 5. login to your cluster in which observability is enabled - and make sure that the kubeconfig is located as file `~/.kube/config`:
 
-```
+```bash
 kubectl config current-context
 admin
 ```
 
 6. (optional) If there is an imported cluster in the test environment, you need to copy the kubeconfig file into as `~/.kube/` as `import-kubeconfig`:
 
-```
+```bash
 cp {IMPORT_CLUSTER_KUBE_CONFIG_PATH} ~/.kube/import-kubeconfig
 ```
 
 7. start to run e2e testing in docker container with the following command:
 
-```
+```bash
 docker run -v ~/.kube/:/opt/.kube -v $(pwd)/tests/results:/results -v $(pwd)/tests/resources:/resources --env-file $(pwd)/tests/resources/env.list observability-e2e-test:latest
 ```
 
@@ -236,7 +236,7 @@ For developing and testing purposes, you can set the following env to skip the i
 
 For example, run the following command will skip the install and uninstall step:
 
-```
+```bash
 export SKIP_INSTALL_STEP=true
 export SKIP_UNINSTALL_STEP=true
 export BUCKET=YOUR_S3_BUCKET
@@ -249,14 +249,14 @@ ginkgo -v -- -options=resources/options.yaml -v=3
 
 ### Focus Labels
 
-* Each `It` specification should end with a label which helps automation segregate running of specs.
-* The choice of labels is up to the contributor, with the one guideline, that the second label, be `g0-gN`, to indicate the `run level`, with `g0` denoting that this test runs within a few minutes, and `g5` denotes a testcase that will take > 30 minutes to complete. See examples below:
+- Each `It` specification should end with a label which helps automation segregate running of specs.
+- The choice of labels is up to the contributor, with the one guideline, that the second label, be `g0-gN`, to indicate the `run level`, with `g0` denoting that this test runs within a few minutes, and `g5` denotes a testcase that will take > 30 minutes to complete. See examples below:
 
-`	It("should have not the expected MCO addon pods (addon/g0)", func() {`
+`It("should have not the expected MCO addon pods (addon/g0)", func() {`
 
 Examples:
 
-```yaml
+```bash
   It("should have the expected args in compact pod (reconcile/g0)", func() {
   It("should work in basic mode (reconcile/g0)", func() {
   It("should have not the expected MCO addon pods (addon/g0)", func() {
@@ -266,11 +266,11 @@ Examples:
     ....
 ```
 
-* The `--focus` and `--skip` are ginkgo directives that allow you to choose what tests to run, by providing a REGEX express to match. Examples of using the focus:
+- The `--focus` and `--skip` are ginkgo directives that allow you to choose what tests to run, by providing a REGEX express to match. Examples of using the focus:
 
-  * `ginkgo --focus="g0"`
-  * `ginkgo --focus="grafana/g0"`
-  * `ginkgo --focus="addon"`
+  - `ginkgo --focus="g0"`
+  - `ginkgo --focus="grafana/g0"`
+  - `ginkgo --focus="addon"`
 
-* To run with verbose ginkgo logging pass the `--v`
-* To run with klog verbosity, pass the `--focus="g0" -- -v=3` where 3 is the log level: 1-3
+- To run with verbose ginkgo logging pass the `--v`
+- To run with klog verbosity, pass the `--focus="g0" -- -v=3` where 3 is the log level: 1-3
