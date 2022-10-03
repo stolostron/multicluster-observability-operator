@@ -155,6 +155,8 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
   names:
     - a
     - b
+  renames:
+    b: d
 `},
 	}
 }
