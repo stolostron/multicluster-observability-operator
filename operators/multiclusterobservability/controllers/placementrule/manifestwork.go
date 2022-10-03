@@ -537,7 +537,7 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.Con
 		uwlAllowlist.NameList = mergeMetrics(uwlAllowlist.NameList, customUwlAllowlist.NameList)
 		uwlAllowlist.MatchList = mergeMetrics(uwlAllowlist.MatchList, customUwlAllowlist.MatchList)
 		uwlAllowlist.RuleList = append(uwlAllowlist.RuleList, customUwlAllowlist.RuleList...)
-		for k, v := range customAllowlist.RenameMap {
+		for k, v := range customUwlAllowlist.RenameMap {
 			uwlAllowlist.RenameMap[k] = v
 		}
 	} else {
