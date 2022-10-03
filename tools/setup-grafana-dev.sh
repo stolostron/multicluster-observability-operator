@@ -153,6 +153,7 @@ EOL
   kubectl -n "$obs_namespace" patch route grafana-dev -p '{"metadata": {"ownerReferences":null}}'
   kubectl patch oauthclient grafana-proxy-client-dev -p '{"metadata": {"ownerReferences":null}}'
   kubectl patch clusterrolebinding open-cluster-management:grafana-crb-dev -p '{"metadata": {"ownerReferences":null}}'
+  echo -e "\nGrafana dev URL: $(kubectl get route grafana-dev -n open-cluster-management-observability --no-headers | awk '{print $2}')"
 }
 
 clean() {
