@@ -1,0 +1,64 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: policy-hub-alertmanager-routing
+  namespace: openshift-ingress
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+spec:
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: policy-hub-alertmanager-routing-define
+        spec:
+          namespaceSelector:
+            exclude:
+              - kube-*
+            include:
+              - default
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                data:
+                  service-ca.crt: '{{hub fromSecret "openshift-ingress" "router-certs-default" "tls.crt"  hub}}'
+                kind: Secret
+                metadata:
+                  name: hub-alertmanager-router-ca
+                  namespace: openshift-monitoring
+                type: Opaque                
+          remediationAction: enforce
+          severity: low
+  remediationAction: enforce
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: policy-create-hub-alertmanager-router-ca-placement
+  namespace: open-cluster-management-observability
+spec:
+  clusterConditions: []
+  clusterSelector:
+    matchExpressions:
+      - key: name
+        operator: In
+        values:
+          - "jb-sno-bb"
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: policy-create-hub-alertmanager-router-ca-placement-binding
+  namespace: open-cluster-management-observability
+placementRef:
+  name: policy-create-hub-alertmanager-router-ca-placement
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+subjects:
+  - name: policy-hub-alertmanager-routing
+    apiGroup: policy.open-cluster-management.io
+    kind: Policy

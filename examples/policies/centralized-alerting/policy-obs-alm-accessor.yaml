@@ -1,0 +1,67 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: policy-obs-alm-accessor
+  namespace: open-cluster-management-observability
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+spec:
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: policy-observability-alertmanager-accessor-define
+        spec:
+          namespaceSelector:
+            exclude:
+              - kube-*
+            include:
+              - default
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                data:
+                  # {{hub (lookup "v1" "ServiceAccount" "open-cluster-management-observability" "observability-alertmanager-accessor").secrets.name 1 hub}}
+                  #token: '{{hub fromSecret "open-cluster-management-observability" "observability-alertmanager-accessor-token-52r4l" "token"  hub}}'
+                  token: '{{hub fromSecret "open-cluster-management-observability" (printf "%s" (index (lookup "v1" "ServiceAccount" "open-cluster-management-observability" "observability-alertmanager-accessor") "secrets" 1 "name" )) "token"  hub}}'
+                kind: Secret
+                metadata:
+                  name: observability-alertmanager-accessor
+                  namespace: openshift-monitoring
+                type: Opaque
+          remediationAction: enforce
+          severity: low
+  remediationAction: enforce
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: policy-create-observability-alertmanager-accessor-placement
+  namespace: open-cluster-management-observability
+spec:
+  clusterConditions: []
+  clusterSelector:
+    matchExpressions:
+      - key: name
+        operator: In
+        values:
+          - "jb-sno-bb"
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: policy-create-observability-alertmanager-accessor-placement-binding
+  namespace: open-cluster-management-observability
+placementRef:
+  name: policy-create-observability-alertmanager-accessor-placement
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+subjects:
+  - name: policy-obs-alm-accessor
+    apiGroup: policy.open-cluster-management.io
+    kind: Policy

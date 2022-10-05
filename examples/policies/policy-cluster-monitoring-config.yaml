@@ -1,0 +1,81 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: policy-cm-config
+  namespace: open-cluster-management-observability
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+spec:
+  disabled: false
+  policy-templates:           
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: policy-cm-config-define
+        spec:
+          namespaceSelector:
+            exclude:
+              - kube-*
+            include:
+              - default
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                kind: ConfigMap
+                apiVersion: v1
+                metadata:
+                  name: cluster-monitoring-config
+                  namespace: openshift-monitoring
+                data:
+                  config.yaml: |
+                    prometheusK8s:
+                        additionalAlertManagerConfigs:
+                        - apiVersion: v2
+                          bearerToken:
+                            key: token
+                            name: observability-alertmanager-accessor
+                          pathPrefix: /
+                          scheme: https
+                          staticConfigs:
+                          - {{hub (lookup "route.openshift.io/v1" "Route" "open-cluster-management-observability" "alertmanager").spec.host hub}}
+                          tlsConfig:
+                            ServerName: ""
+                            ca:
+                              key: service-ca.crt
+                              name: hub-alertmanager-router-ca
+                            insecureSkipVerify: false
+                        externalLabels:
+                          cluster: '{{ fromClusterClaim "id.openshift.io" }}'
+          remediationAction: enforce
+          severity: low
+  remediationAction: enforce
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: policy-create-cm-config-placement
+  namespace: open-cluster-management-observability
+spec:
+  clusterConditions: []
+  clusterSelector:
+    matchExpressions:
+      - key: name
+        operator: In
+        values:
+          - "jb-sno-bb"
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: policy-create-cm-config-placement-binding
+  namespace: open-cluster-management-observability
+placementRef:
+  name: policy-create-cm-config-placement
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+subjects:
+  - name: policy-create-cm-config
+    apiGroup: policy.open-cluster-management.io
+    kind: Policy
