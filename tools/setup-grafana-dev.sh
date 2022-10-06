@@ -100,7 +100,6 @@ deploy() {
   fi
   $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-crb.yaml
   $sed_command "s~name: open-cluster-management:grafana-crb$~name: open-cluster-management:grafana-crb-dev~g" grafana-dev-crb.yaml
-  cat grafana-dev-crb.yaml
   kubectl apply -f grafana-dev-crb.yaml
 
   kubectl get route -n "$obs_namespace" grafana -o yaml > grafana-dev-route.yaml
@@ -153,6 +152,7 @@ EOL
   kubectl -n "$obs_namespace" patch route grafana-dev -p '{"metadata": {"ownerReferences":null}}'
   kubectl patch oauthclient grafana-proxy-client-dev -p '{"metadata": {"ownerReferences":null}}'
   kubectl patch clusterrolebinding open-cluster-management:grafana-crb-dev -p '{"metadata": {"ownerReferences":null}}'
+  echo -e "\nGrafana dev URL: $(kubectl get route grafana-dev -n open-cluster-management-observability --no-headers | awk '{print $2}')"
 }
 
 clean() {

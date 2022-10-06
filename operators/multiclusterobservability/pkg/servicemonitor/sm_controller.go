@@ -89,8 +89,8 @@ func onDelete(promClient promclientset.Interface) func(obj interface{}) {
 	}
 }
 
-func onUpdate(promClient promclientset.Interface) func(newObj interface{}, oldObj interface{}) {
-	return func(newObj interface{}, oldObj interface{}) {
+func onUpdate(promClient promclientset.Interface) func(oldObj interface{}, newObj interface{}) {
+	return func(oldObj interface{}, newObj interface{}) {
 		newSm := newObj.(*promv1.ServiceMonitor)
 		oldSm := oldObj.(*promv1.ServiceMonitor)
 		if newSm.ObjectMeta.OwnerReferences != nil && newSm.ObjectMeta.OwnerReferences[0].Kind == "Observatorium" &&
