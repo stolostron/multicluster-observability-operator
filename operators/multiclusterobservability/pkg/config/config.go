@@ -27,6 +27,7 @@ import (
 
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	observabilityv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (
@@ -50,6 +51,7 @@ const (
 	AnnotationMCOPause                    = "mco-pause"
 	AnnotationMCOWithoutResourcesRequests = "mco-thanos-without-resources-requests"
 	AnnotationCertDuration                = "mco-cert-duration"
+	AnnotationDisableMCOAlerting          = "mco-disable-alerting"
 
 	MCHUpdatedRequestName               = "mch-updated-request"
 	MCOUpdatedRequestName               = "mco-updated-request"
@@ -268,6 +270,7 @@ var (
 	hasCustomRuleConfigMap      = false
 	hasCustomAlertmanagerConfig = false
 	certDuration                = time.Hour * 24 * 365
+	isAlertingDisabled          = false
 
 	Replicas1 int32 = 1
 	Replicas2 int32 = 2
@@ -1174,4 +1177,25 @@ func GetMulticloudConsoleHost(client client.Client, isStandalone bool) (string, 
 		return "", err
 	}
 	return found.Spec.Host, nil
+}
+
+// Set AnnotationMCOAlerting
+func SetAlertingStatus(status bool) {
+	isAlertingDisabled = status
+}
+
+func GetAlertingStatus() bool {
+	return isAlertingDisabled
+}
+
+// Get AnnotationMCOAlerting
+func GetMCOAlertingStatus(mco *observabilityv1beta2.MultiClusterObservability) bool {
+
+	value := false
+	if mco != nil {
+		// get the annotation
+		value = util.GetAnnotation(mco.GetAnnotations(), AnnotationDisableMCOAlerting) == "true"
+	}
+
+	return value
 }

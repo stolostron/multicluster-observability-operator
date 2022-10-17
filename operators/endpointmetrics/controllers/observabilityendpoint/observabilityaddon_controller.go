@@ -192,8 +192,12 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	// create or update the cluster-monitoring-config configmap and relevant resources
-	if err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, clusterID, r.Client, installPrometheus); err != nil {
-		return ctrl.Result{}, err
+	if hubInfo.AlertmanagerEndpoint != "" {
+		if err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, clusterID, r.Client, installPrometheus); err != nil {
+			return ctrl.Result{}, err
+		}
+	} else {
+		revertClusterMonitoringConfig(ctx, r.Client, installPrometheus)
 	}
 
 	if obsAddon.Spec.EnableMetrics {

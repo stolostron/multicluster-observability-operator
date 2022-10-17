@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 )
@@ -18,9 +19,9 @@ import (
 // generateHubInfoSecret generates the secret that contains hubInfo.
 // this function should only called when the watched resources are created/updated
 func generateHubInfoSecret(client client.Client, obsNamespace string,
-	namespace string, ingressCtlCrdExists bool) (*corev1.Secret, error) {
-
+	namespace string, ingressCtlCrdExists bool, mco *mcov1beta2.MultiClusterObservability) (*corev1.Secret, error) {
 	obsApiRouteHost := ""
+
 	alertmanagerEndpoint := ""
 	alertmanagerRouterCA := ""
 
@@ -32,10 +33,20 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 			return nil, err
 		}
 
-		alertmanagerEndpoint, err = config.GetAlertmanagerEndpoint(client, obsNamespace)
-		if err != nil {
-			log.Error(err, "Failed to get alertmanager endpoint")
-			return nil, err
+		// if the anotation doesn't exist, get the alert manager endpoint per normal
+		// otherwise, the defautl "" will remain
+
+		// TODO: ask Marco what the global flag was for, as we always work in the context
+		// of an mco object
+
+		if !config.GetMCOAlertingStatus(mco) {
+			alertmanagerEndpoint, err = config.GetAlertmanagerEndpoint(client, obsNamespace)
+			if err != nil {
+				log.Error(err, "Failed to get alertmanager endpoint")
+				return nil, err
+			}
+		} else {
+			config.SetAlertingStatus(true)
 		}
 
 		alertmanagerRouterCA, err = config.GetAlertmanagerRouterCA(client)
@@ -63,6 +74,9 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 	if !obsApiURL.IsAbs() {
 		obsApiURL.Scheme = "https"
 	}
+
+	// TODO: check for mco here,
+	// if mco exists then check for annotation
 
 	hubInfo := &operatorconfig.HubInfo{
 		ObservatoriumAPIEndpoint: obsApiURL.String(),

@@ -310,7 +310,7 @@ func createAllRelatedRes(
 	// regenerate the hubinfo secret if empty
 	if hubInfoSecret == nil {
 		var err error
-		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap[config.IngressControllerCRD]); err != nil {
+		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap[config.IngressControllerCRD], nil); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -563,9 +563,36 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				c,
 				config.GetImagePullSecret(e.Object.(*mcov1beta2.MultiClusterObservability).Spec),
 			)
+
+			mco := e.Object.(*mcov1beta2.MultiClusterObservability)
+			alertingStatus := config.GetMCOAlertingStatus(mco)
+			config.SetAlertingStatus(alertingStatus)
+			var err error = nil
+			hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, false, mco)
+			if err != nil {
+				log.Error(err, "unable to get HubInfoSecret", "controller", "PlacementRule")
+			}
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
+
+			mco := e.ObjectNew.(*mcov1beta2.MultiClusterObservability)
+			oldAlertingStatus := config.GetAlertingStatus()
+			newAlertingStatus := config.GetMCOAlertingStatus(mco)
+			// if value changed, then mustReconcile is true
+			if oldAlertingStatus != newAlertingStatus {
+				config.SetAlertingStatus(newAlertingStatus)
+				var err error = nil
+
+				hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, false, mco)
+
+				if err != nil {
+					log.Error(err, "unable to get HubInfoSecret", "controller", "PlacementRule")
+				}
+
+				return true
+			}
+
 			// only reconcile when ObservabilityAddonSpec updated
 			if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
 				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.ObservabilityAddonSpec,
@@ -660,6 +687,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					config.GetDefaultNamespace(),
 					spokeNameSpace,
 					ingressCtlCrdExists,
+					nil,
 				)
 				return true
 			}
@@ -675,6 +703,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					config.GetDefaultNamespace(),
 					spokeNameSpace,
 					ingressCtlCrdExists,
+					nil,
 				)
 				return true
 			}
@@ -689,6 +718,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					config.GetDefaultNamespace(),
 					spokeNameSpace,
 					ingressCtlCrdExists,
+					nil,
 				)
 				return true
 			}
@@ -707,6 +737,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					config.GetDefaultNamespace(),
 					spokeNameSpace,
 					ingressCtlCrdExists,
+					nil,
 				)
 				return true
 			}
@@ -723,6 +754,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					config.GetDefaultNamespace(),
 					spokeNameSpace,
 					ingressCtlCrdExists,
+					nil,
 				)
 				return true
 			}
@@ -738,6 +770,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					config.GetDefaultNamespace(),
 					spokeNameSpace,
 					ingressCtlCrdExists,
+					nil,
 				)
 				return true
 			}
@@ -757,6 +790,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					config.GetDefaultNamespace(),
 					spokeNameSpace,
 					ingressCtlCrdExists,
+					nil,
 				)
 				return true
 			}
@@ -774,6 +808,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					config.GetDefaultNamespace(),
 					spokeNameSpace,
 					ingressCtlCrdExists,
+					nil,
 				)
 				return true
 			}
