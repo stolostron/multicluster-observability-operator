@@ -6,6 +6,7 @@ package proxy
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -16,7 +17,13 @@ import (
 	"path"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
@@ -26,6 +33,12 @@ const (
 	basePath        = "/api/metrics/v1/default"
 	projectsAPIPath = "/apis/project.openshift.io/v1/projects"
 	userAPIPath     = "/apis/user.openshift.io/v1/users/~"
+
+	managedClusterLabelConfigMapKey  = "managed_cluster.yaml"
+	managedClusterLabelConfigMapName = "observability-managed-cluster-label-names"
+	managedClusterLabelMetricName    = "managed_cluster_labels"
+
+	proxyMetricName = "acm_label_names"
 )
 
 var (
@@ -141,8 +154,47 @@ func gzipWrite(w io.Writer, data []byte) error {
 }
 
 func proxyRequest(r *http.Request) {
+	var client client.Client
+
 	r.URL.Scheme = serverScheme
 	r.URL.Host = serverHost
+
+	body, err := ioutil.ReadAll(r.Body)
+
+	if err != nil {
+		klog.Errorf("Error reading body: %v", err)
+	}
+
+	if strings.Contains(string(body), managedClusterLabelMetricName) {
+
+		found := &corev1.ConfigMap{}
+		err := client.Get(context.TODO(), types.NamespacedName{
+			Namespace: "open-cluster-management-observability",
+			Name:      managedClusterLabelConfigMapName}, found)
+
+		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				klog.Errorf("Configmap: %s does not exist", managedClusterLabelConfigMapName)
+
+				cm := &corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      managedClusterLabelConfigMapName,
+						Namespace: "open-cluster-management-observability",
+					},
+					Data: map[string]string{managedClusterLabelConfigMapKey: ""},
+				}
+				err = client.Create(context.TODO(), cm)
+			} else {
+				klog.Error(err)
+			}
+		} else {
+			klog.Infof("Fetching labels from configmap: %s", found.Name)
+			labels := found.Data[managedClusterLabelConfigMapKey]
+
+			klog.Infof("Labels: %v", labels)
+		}
+	}
+
 	if r.Method == http.MethodGet {
 		if strings.HasSuffix(r.URL.Path, "/api/v1/query") ||
 			strings.HasSuffix(r.URL.Path, "/api/v1/query_range") ||
@@ -151,5 +203,7 @@ func proxyRequest(r *http.Request) {
 			r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			r.Body = ioutil.NopCloser(strings.NewReader(r.URL.RawQuery))
 		}
+	} else {
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 	}
 }
