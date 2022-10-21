@@ -27,21 +27,18 @@ import (
 )
 
 const (
-	metricsConfigMapKey       = "metrics_list.yaml"
-	uwlMetricsConfigMapKey    = "uwl_metrics_list.yaml"
-	metricsOcp311ConfigMapKey = "ocp311_metrics_list.yaml"
-	metricsCollectorName      = "metrics-collector-deployment"
-	uwlMetricsCollectorName   = "uwl-metrics-collector-deployment"
-	selectorKey               = "component"
-	selectorValue             = "metrics-collector"
-	caMounthPath              = "/etc/serving-certs-ca-bundle"
-	caVolName                 = "serving-certs-ca-bundle"
-	mtlsCertName              = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
-	mtlsCaName                = "observability-managed-cluster-certs"
-	limitBytes                = 1073741824
-	defaultInterval           = "30s"
-	uwlNamespace              = "openshift-user-workload-monitoring"
-	uwlSts                    = "prometheus-user-workload"
+	metricsCollectorName    = "metrics-collector-deployment"
+	uwlMetricsCollectorName = "uwl-metrics-collector-deployment"
+	selectorKey             = "component"
+	selectorValue           = "metrics-collector"
+	caMounthPath            = "/etc/serving-certs-ca-bundle"
+	caVolName               = "serving-certs-ca-bundle"
+	mtlsCertName            = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
+	mtlsCaName              = "observability-managed-cluster-certs"
+	limitBytes              = 1073741824
+	defaultInterval         = "30s"
+	uwlNamespace            = "openshift-user-workload-monitoring"
+	uwlSts                  = "prometheus-user-workload"
 )
 
 const (
@@ -391,16 +388,16 @@ func getMetricsAllowlist(ctx context.Context, c client.Client,
 		log.Error(err, "Failed to get configmap")
 	} else {
 		if cm.Data != nil {
-			configmapKey := metricsConfigMapKey
+			configmapKey := operatorconfig.MetricsCollectorKey
 			if clusterType == "ocp3" {
-				configmapKey = metricsOcp311ConfigMapKey
+				configmapKey = operatorconfig.MetricsOcp311ConfigMapKey
 			}
 			err = yaml.Unmarshal([]byte(cm.Data[configmapKey]), l)
 			if err != nil {
 				log.Error(err, "Failed to unmarshal data in configmap")
 				return *l, *ul, err
 			}
-			if uwlData, ok := cm.Data[uwlMetricsConfigMapKey]; ok {
+			if uwlData, ok := cm.Data[operatorconfig.UwlMetricsConfigMapKey]; ok {
 				err = yaml.Unmarshal([]byte(uwlData), ul)
 				if err != nil {
 					log.Error(err, "Failed to unmarshal uwl data in configmap")

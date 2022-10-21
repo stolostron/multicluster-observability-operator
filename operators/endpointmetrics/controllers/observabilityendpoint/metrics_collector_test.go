@@ -24,7 +24,7 @@ func getAllowlistCM() *corev1.ConfigMap {
 			Namespace: namespace,
 		},
 		Data: map[string]string{
-			metricsConfigMapKey: `
+			operatorconfig.MetricsConfigMapKey: `
 names:
   - a
   - b
@@ -48,6 +48,25 @@ collect_rules:
           - c
         matches:
           - __name__="a"
+`,
+			operatorconfig.UwlMetricsConfigMapKey: `
+names:
+  - uwl_a
+  - uwl_b
+`},
+	}
+}
+
+func getCustomAllowlistCM() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      operatorconfig.AllowlistCustomConfigMapName,
+			Namespace: namespace,
+		},
+		Data: map[string]string{
+			operatorconfig.UwlMetricsConfigMapKey: `
+names:
+  - custom_c
 `},
 	}
 }
@@ -74,7 +93,7 @@ func TestMetricsCollector(t *testing.T) {
 
 	ctx := context.TODO()
 	c := fake.NewFakeClient(allowlistCM)
-	list, _, err := getMetricsAllowlist(ctx, c, "")
+	list, uwlList, err := getMetricsAllowlist(ctx, c, "")
 	if err != nil {
 		t.Fatalf("Failed to get allowlist: (%v)", err)
 	}
@@ -112,8 +131,20 @@ func TestMetricsCollector(t *testing.T) {
 		t.Fatalf("Failed to update metrics collector deployment: (%v)", err)
 	}
 
+	params.isUWL = true
+	params.allowlist = uwlList
+	_, err = updateMetricsCollector(ctx, c, params, true)
+	if err != nil {
+		t.Fatalf("Failed to create uwl metrics collector deployment: (%v)", err)
+	}
+
 	err = deleteMetricsCollector(ctx, c, metricsCollectorName)
 	if err != nil {
 		t.Fatalf("Failed to delete metrics collector deployment: (%v)", err)
+	}
+
+	err = deleteMetricsCollector(ctx, c, uwlMetricsCollectorName)
+	if err != nil {
+		t.Fatalf("Failed to delete uwl metrics collector deployment: (%v)", err)
 	}
 }

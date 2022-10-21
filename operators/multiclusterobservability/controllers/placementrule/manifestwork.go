@@ -534,15 +534,15 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.Con
 		log.Error(err, "Failed to marshal allowlist uwlAllowlist")
 		return nil, nil, err
 	}
-	metricsAllowlistCM.Data["metrics_list.yaml"] = string(data)
-	metricsAllowlistCM.Data["uwl_metrics_list.yaml"] = string(uwlData)
+	metricsAllowlistCM.Data[operatorconfig.MetricsConfigMapKey] = string(data)
+	metricsAllowlistCM.Data[operatorconfig.UwlMetricsConfigMapKey] = string(uwlData)
 
 	data, err = yaml.Marshal(ocp3Allowlist)
 	if err != nil {
 		log.Error(err, "Failed to marshal allowlist data")
 		return nil, nil, err
 	}
-	ocp311AllowlistCM.Data["ocp311_metrics_list.yaml"] = string(data)
+	ocp311AllowlistCM.Data[operatorconfig.MetricsOcp311ConfigMapKey] = string(data)
 	return metricsAllowlistCM, ocp311AllowlistCM, nil
 }
 
