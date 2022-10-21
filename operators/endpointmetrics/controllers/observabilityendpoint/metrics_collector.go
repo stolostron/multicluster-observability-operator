@@ -388,7 +388,7 @@ func getMetricsAllowlist(ctx context.Context, c client.Client,
 		log.Error(err, "Failed to get configmap")
 	} else {
 		if cm.Data != nil {
-			configmapKey := operatorconfig.MetricsCollectorKey
+			configmapKey := operatorconfig.MetricsConfigMapKey
 			if clusterType == "ocp3" {
 				configmapKey = operatorconfig.MetricsOcp311ConfigMapKey
 			}
