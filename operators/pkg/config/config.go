@@ -10,11 +10,12 @@ const (
 	ObservatoriumAPIRemoteWritePath = "/api/metrics/v1/default/api/v1/receive"
 	AnnotationSkipCreation          = "skip-creation-if-exist"
 
-	CollectorImage         = "COLLECTOR_IMAGE"
-	InstallPrometheus      = "INSTALL_PROM"
-	PullSecret             = "PULL_SECRET"
-	ImageConfigMap         = "images-list"
-	AllowlistConfigMapName = "observability-metrics-allowlist"
+	CollectorImage               = "COLLECTOR_IMAGE"
+	InstallPrometheus            = "INSTALL_PROM"
+	PullSecret                   = "PULL_SECRET"
+	ImageConfigMap               = "images-list"
+	AllowlistConfigMapName       = "observability-metrics-allowlist"
+	AllowlistCustomConfigMapName = "observability-metrics-custom-allowlist"
 )
 
 const (

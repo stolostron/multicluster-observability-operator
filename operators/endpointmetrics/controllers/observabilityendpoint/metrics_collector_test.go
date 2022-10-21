@@ -74,28 +74,45 @@ func TestMetricsCollector(t *testing.T) {
 
 	ctx := context.TODO()
 	c := fake.NewFakeClient(allowlistCM)
+	list, _, err := getMetricsAllowlist(ctx, c, "")
+	if err != nil {
+		t.Fatalf("Failed to get allowlist: (%v)", err)
+	}
 	// Default deployment with instance count 1
-	_, err := updateMetricsCollector(ctx, c, obsAddon, *hubInfo, testClusterID, "", 1, false)
+	params := CollectorParams{
+		isUWL:        false,
+		clusterID:    testClusterID,
+		clusterType:  "",
+		obsAddonSpec: obsAddon,
+		hubInfo:      *hubInfo,
+		allowlist:    list,
+		replicaCount: 1,
+	}
+	_, err = updateMetricsCollector(ctx, c, params, false)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
 	// Update deployment to reduce instance count to zero
-	_, err = updateMetricsCollector(ctx, c, obsAddon, *hubInfo, testClusterID, "", 0, false)
+	params.replicaCount = 0
+	_, err = updateMetricsCollector(ctx, c, params, false)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
 
-	_, err = updateMetricsCollector(ctx, c, obsAddon, *hubInfo, testClusterID+"-update", "SNO", 1, false)
+	params.replicaCount = 1
+	params.clusterID = testClusterID + "-update"
+	params.clusterType = "SNO"
+	_, err = updateMetricsCollector(ctx, c, params, false)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
 
-	_, err = updateMetricsCollector(ctx, c, obsAddon, *hubInfo, testClusterID+"-update", "SNO", 1, true)
+	_, err = updateMetricsCollector(ctx, c, params, true)
 	if err != nil {
 		t.Fatalf("Failed to update metrics collector deployment: (%v)", err)
 	}
 
-	err = deleteMetricsCollector(ctx, c)
+	err = deleteMetricsCollector(ctx, c, metricsCollectorName)
 	if err != nil {
 		t.Fatalf("Failed to delete metrics collector deployment: (%v)", err)
 	}
