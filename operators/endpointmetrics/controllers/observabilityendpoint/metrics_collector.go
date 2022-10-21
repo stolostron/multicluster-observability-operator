@@ -66,7 +66,7 @@ type CollectorParams struct {
 	replicaCount int32
 }
 
-func createDeployment(params CollectorParams) *appsv1.Deployment {
+func getCommands(params CollectorParams) []string {
 	interval := fmt.Sprint(params.obsAddonSpec.Interval) + "s"
 	if fmt.Sprint(params.obsAddonSpec.Interval) == "" {
 		interval = defaultInterval
@@ -75,58 +75,13 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 	if params.obsAddonSpec.Interval < 30 {
 		evaluateInterval = interval
 	}
-
-	volumes := []corev1.Volume{
-		{
-			Name: "mtlscerts",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: mtlsCertName,
-				},
-			},
-		},
-		{
-			Name: "mtlsca",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: mtlsCaName,
-				},
-			},
-		},
-	}
-	mounts := []corev1.VolumeMount{
-		{
-			Name:      "mtlscerts",
-			MountPath: "/tlscerts/certs",
-		},
-		{
-			Name:      "mtlsca",
-			MountPath: "/tlscerts/ca",
-		},
-	}
 	caFile := caMounthPath + "/service-ca.crt"
 	clusterID := params.clusterID
 	if params.clusterID == "" {
 		clusterID = params.hubInfo.ClusterName
 		// deprecated ca bundle, only used for ocp 3.11 env
 		caFile = "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
-	} else {
-		volumes = append(volumes, corev1.Volume{
-			Name: caVolName,
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: caConfigmapName,
-					},
-				},
-			},
-		})
-		mounts = append(mounts, corev1.VolumeMount{
-			Name:      caVolName,
-			MountPath: caMounthPath,
-		})
 	}
-
 	commands := []string{
 		"/usr/bin/metrics-collector",
 		"--from=$(FROM)",
@@ -207,6 +162,56 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr),
 		)
 	}
+	return commands
+}
+
+func createDeployment(params CollectorParams) *appsv1.Deployment {
+	volumes := []corev1.Volume{
+		{
+			Name: "mtlscerts",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: mtlsCertName,
+				},
+			},
+		},
+		{
+			Name: "mtlsca",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: mtlsCaName,
+				},
+			},
+		},
+	}
+	mounts := []corev1.VolumeMount{
+		{
+			Name:      "mtlscerts",
+			MountPath: "/tlscerts/certs",
+		},
+		{
+			Name:      "mtlsca",
+			MountPath: "/tlscerts/ca",
+		},
+	}
+	if params.clusterID != "" {
+		volumes = append(volumes, corev1.Volume{
+			Name: caVolName,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: caConfigmapName,
+					},
+				},
+			},
+		})
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      caVolName,
+			MountPath: caMounthPath,
+		})
+	}
+
+	commands := getCommands(params)
 
 	from := promURL
 	if !installPrometheus {
@@ -310,7 +315,8 @@ func updateMetricsCollectors(ctx context.Context, c client.Client, obsAddonSpec 
 	return result, err
 }
 
-func updateMetricsCollector(ctx context.Context, c client.Client, params CollectorParams, forceRestart bool) (bool, error) {
+func updateMetricsCollector(ctx context.Context, c client.Client, params CollectorParams,
+	forceRestart bool) (bool, error) {
 	name := metricsCollectorName
 	if params.isUWL {
 		name = uwlMetricsCollectorName
@@ -408,10 +414,12 @@ func getMetricsAllowlist(ctx context.Context, c client.Client,
 	err = c.List(ctx, cmList, &client.ListOptions{})
 	for _, allowlistCM := range cmList.Items {
 		if allowlistCM.ObjectMeta.Name == operatorconfig.AllowlistCustomConfigMapName {
-			log.Info("Parse custom allowlist configmap", "namespace", allowlistCM.ObjectMeta.Namespace, "name", allowlistCM.ObjectMeta.Name)
+			log.Info("Parse custom allowlist configmap", "namespace", allowlistCM.ObjectMeta.Namespace,
+				"name", allowlistCM.ObjectMeta.Name)
 			customAllowlist, _, customUwlAllowlist, err := util.ParseAllowlistConfigMap(allowlistCM)
 			if err != nil {
-				log.Error(err, "Failed to parse data in configmap", "namespace", allowlistCM.ObjectMeta.Namespace, "name", allowlistCM.ObjectMeta.Name)
+				log.Error(err, "Failed to parse data in configmap", "namespace", allowlistCM.ObjectMeta.Namespace,
+					"name", allowlistCM.ObjectMeta.Name)
 			}
 			l, _, ul = util.MergeAllowlist(l, customAllowlist, nil, ul, customUwlAllowlist)
 		}

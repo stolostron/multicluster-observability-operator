@@ -74,20 +74,21 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	namespace := os.Getenv("WATCH_NAMESPACE")
+	namespaceSelector := fmt.Sprintf("metadata.namespace==%s", os.Getenv("WATCH_NAMESPACE"))
 	gvkLabelMap := map[schema.GroupVersionKind][]filteredcache.Selector{
 		v1.SchemeGroupVersion.WithKind("Secret"): []filteredcache.Selector{
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", namespace)},
+			{FieldSelector: namespaceSelector},
 		},
 		v1.SchemeGroupVersion.WithKind("ConfigMap"): []filteredcache.Selector{
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", namespace)},
-			{FieldSelector: fmt.Sprintf("metadata.name==%s,metadata.namespace!=%s", operatorconfig.AllowlistCustomConfigMapName, "open-cluster-management-observability")},
+			{FieldSelector: namespaceSelector},
+			{FieldSelector: fmt.Sprintf("metadata.name==%s,metadata.namespace!=%s",
+				operatorconfig.AllowlistCustomConfigMapName, "open-cluster-management-observability")},
 		},
 		appsv1.SchemeGroupVersion.WithKind("Deployment"): []filteredcache.Selector{
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", namespace)},
+			{FieldSelector: namespaceSelector},
 		},
 		oav1beta1.GroupVersion.WithKind("ObservabilityAddon"): []filteredcache.Selector{
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", namespace)},
+			{FieldSelector: namespaceSelector},
 		},
 	}
 

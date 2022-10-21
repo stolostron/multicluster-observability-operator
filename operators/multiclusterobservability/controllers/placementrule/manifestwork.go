@@ -508,15 +508,18 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.Con
 
 	ocp311AllowlistCM := metricsAllowlistCM.DeepCopy()
 
-	allowlist, ocp3Allowlist, uwlAllowlist, err := util.GetAllowList(client, operatorconfig.AllowlistConfigMapName, config.GetDefaultNamespace())
+	allowlist, ocp3Allowlist, uwlAllowlist, err := util.GetAllowList(client,
+		operatorconfig.AllowlistConfigMapName, config.GetDefaultNamespace())
 	if err != nil {
 		log.Error(err, "Failed to get metrics allowlist configmap "+operatorconfig.AllowlistConfigMapName)
 		return nil, nil, err
 	}
 
-	customAllowlist, _, customUwlAllowlist, err := util.GetAllowList(client, config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
+	customAllowlist, _, customUwlAllowlist, err := util.GetAllowList(client,
+		config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
 	if err == nil {
-		allowlist, ocp3Allowlist, uwlAllowlist = util.MergeAllowlist(allowlist, customAllowlist, ocp3Allowlist, uwlAllowlist, customUwlAllowlist)
+		allowlist, ocp3Allowlist, uwlAllowlist = util.MergeAllowlist(allowlist,
+			customAllowlist, ocp3Allowlist, uwlAllowlist, customUwlAllowlist)
 	} else {
 		log.Info("There is no custom metrics allowlist configmap in the cluster")
 	}

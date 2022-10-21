@@ -35,29 +35,34 @@ func ParseAllowlistConfigMap(cm corev1.ConfigMap) (*operatorconfig.MetricsAllowl
 	allowlist := &operatorconfig.MetricsAllowlist{}
 	err := yaml.Unmarshal([]byte(cm.Data["metrics_list.yaml"]), allowlist)
 	if err != nil {
-		log.Error(err, "Failed to unmarshal metrics_list.yaml data in configmap ", "namespace", cm.ObjectMeta.Namespace, "name", cm.ObjectMeta.Name)
+		log.Error(err, "Failed to unmarshal metrics_list.yaml data in configmap ",
+			"namespace", cm.ObjectMeta.Namespace, "name", cm.ObjectMeta.Name)
 		return nil, nil, nil, err
 	}
 	ocp3Allowlist := &operatorconfig.MetricsAllowlist{}
 	err = yaml.Unmarshal([]byte(cm.Data["ocp311_metrics_list.yaml"]), ocp3Allowlist)
 	if err != nil {
-		log.Error(err, "Failed to unmarshal ocp311_metrics_list data in configmap ", "namespace", cm.ObjectMeta.Namespace, "name", cm.ObjectMeta.Name)
+		log.Error(err, "Failed to unmarshal ocp311_metrics_list data in configmap ",
+			"namespace", cm.ObjectMeta.Namespace, "name", cm.ObjectMeta.Name)
 		return nil, nil, nil, err
 	}
 	uwlAllowlist := &operatorconfig.MetricsAllowlist{}
 	err = yaml.Unmarshal([]byte(cm.Data["uwl_metrics_list.yaml"]), uwlAllowlist)
 	if err != nil {
-		log.Error(err, "Failed to unmarshal uwl_metrics_list data in configmap ", "namespace", cm.ObjectMeta.Namespace, "name", cm.ObjectMeta.Name)
+		log.Error(err, "Failed to unmarshal uwl_metrics_list data in configmap ",
+			"namespace", cm.ObjectMeta.Namespace, "name", cm.ObjectMeta.Name)
 		return nil, nil, nil, err
 	}
 	return allowlist, ocp3Allowlist, uwlAllowlist, nil
 }
 
-func MergeAllowlist(allowlist, customAllowlist, ocp3Allowlist, uwlAllowlist, customUwlAllowlist *operatorconfig.MetricsAllowlist) (*operatorconfig.MetricsAllowlist,
+func MergeAllowlist(allowlist, customAllowlist, ocp3Allowlist, uwlAllowlist,
+	customUwlAllowlist *operatorconfig.MetricsAllowlist) (*operatorconfig.MetricsAllowlist,
 	*operatorconfig.MetricsAllowlist, *operatorconfig.MetricsAllowlist) {
 	allowlist.NameList = mergeMetrics(allowlist.NameList, customAllowlist.NameList)
 	allowlist.MatchList = mergeMetrics(allowlist.MatchList, customAllowlist.MatchList)
-	allowlist.CollectRuleGroupList = mergeCollectorRuleGroupList(allowlist.CollectRuleGroupList, customAllowlist.CollectRuleGroupList)
+	allowlist.CollectRuleGroupList = mergeCollectorRuleGroupList(allowlist.CollectRuleGroupList,
+		customAllowlist.CollectRuleGroupList)
 	if customAllowlist.RecordingRuleList != nil {
 		allowlist.RecordingRuleList = append(allowlist.RecordingRuleList, customAllowlist.RecordingRuleList...)
 	} else {
@@ -113,7 +118,8 @@ func mergeMetrics(defaultAllowlist []string, customAllowlist []string) []string 
 	return mergedMetrics
 }
 
-func mergeCollectorRuleGroupList(defaultCollectRuleGroupList []operatorconfig.CollectRuleGroup, customCollectRuleGroupList []operatorconfig.CollectRuleGroup) []operatorconfig.CollectRuleGroup {
+func mergeCollectorRuleGroupList(defaultCollectRuleGroupList []operatorconfig.CollectRuleGroup,
+	customCollectRuleGroupList []operatorconfig.CollectRuleGroup) []operatorconfig.CollectRuleGroup {
 	deletedCollectRuleGroups := map[string]bool{}
 	mergedCollectRuleGroups := []operatorconfig.CollectRuleGroup{}
 
