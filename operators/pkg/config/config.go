@@ -10,11 +10,15 @@ const (
 	ObservatoriumAPIRemoteWritePath = "/api/metrics/v1/default/api/v1/receive"
 	AnnotationSkipCreation          = "skip-creation-if-exist"
 
-	CollectorImage         = "COLLECTOR_IMAGE"
-	InstallPrometheus      = "INSTALL_PROM"
-	PullSecret             = "PULL_SECRET"
-	ImageConfigMap         = "images-list"
-	AllowlistConfigMapName = "observability-metrics-allowlist"
+	CollectorImage               = "COLLECTOR_IMAGE"
+	InstallPrometheus            = "INSTALL_PROM"
+	PullSecret                   = "PULL_SECRET"
+	ImageConfigMap               = "images-list"
+	AllowlistConfigMapName       = "observability-metrics-allowlist"
+	AllowlistCustomConfigMapName = "observability-metrics-custom-allowlist"
+	MetricsConfigMapKey          = "metrics_list.yaml"
+	UwlMetricsConfigMapKey       = "uwl_metrics_list.yaml"
+	MetricsOcp311ConfigMapKey    = "ocp311_metrics_list.yaml"
 )
 
 const (
@@ -50,4 +54,3 @@ var (
 		PrometheusConfigmapReloaderKey: PrometheusConfigmapReloaderImgName,
 	}
 )
-
