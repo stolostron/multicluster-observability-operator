@@ -7,6 +7,9 @@ import (
 	"os"
 	"reflect"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -14,8 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-
-	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
 
 var (
@@ -49,9 +50,20 @@ func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// Fetch the ObservabilityAddon instance in hub cluster
 	hubObsAddon := &oav1beta1.ObservabilityAddon{}
 	err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
-	if err != nil {
-		log.Error(err, "Failed to get observabilityaddon in hub cluster", "namespace", hubNamespace)
-		return ctrl.Result{}, err
+	if err != nil && !apierrors.IsNotFound(err) {
+		// hub kubeconfig could become invalid if the managed cluster is restored to connect to a different hub
+		log.Info("refresh hub client")
+		r.HubClient, err = util.GetOrCreateHubClient(true)
+		if err != nil {
+			log.Error(err, "Failed to create the hub client")
+			return ctrl.Result{}, err
+		}
+
+		err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
+		if err != nil {
+			log.Error(err, "Failed to get observabilityaddon in hub cluster", "namespace", hubNamespace)
+			return ctrl.Result{}, err
+		}
 	}
 
 	// Fetch the ObservabilityAddon instance in local cluster

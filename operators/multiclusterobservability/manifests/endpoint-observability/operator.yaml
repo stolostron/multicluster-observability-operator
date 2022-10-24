@@ -54,7 +54,6 @@ spec:
           volumeMounts:
             - name: hub-kubeconfig-secret
               mountPath: "/spoke/hub-kubeconfig"
-              readOnly: true
       volumes:
         - name: hub-kubeconfig-secret
           secret:

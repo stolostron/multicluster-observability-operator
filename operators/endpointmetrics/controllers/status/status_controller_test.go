@@ -69,7 +69,7 @@ func TestStatusController(t *testing.T) {
 		t.Fatalf("reconcile: miss the error for missing obervabilityaddon")
 	}
 
-	// test status in local pushed to hub
+	// tes:99in local pushed to hub
 	err = hubClient.Create(ctx, newObservabilityAddon(name, testHubNamspace))
 	if err != nil {
 		t.Fatalf("failed to create hub oba to install: (%v)", err)

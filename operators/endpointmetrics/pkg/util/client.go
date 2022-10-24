@@ -25,9 +25,9 @@ const (
 	hubKubeConfigPath = "/spoke/hub-kubeconfig/kubeconfig"
 )
 
-// GetOrCreateOCPClient get an existing hub client or create new one if it doesn't exist
-func GetOrCreateHubClient() (client.Client, error) {
-	if hubClient != nil {
+// GetOrCreateOCPClient get an existing hub client or create new one if it doesn't exist.
+func GetOrCreateHubClient(refresh bool) (client.Client, error) {
+	if !refresh && hubClient != nil {
 		return hubClient, nil
 	}
 	// create the config from the path
