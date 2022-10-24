@@ -508,38 +508,18 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.Con
 
 	ocp311AllowlistCM := metricsAllowlistCM.DeepCopy()
 
-	allowlist, ocp3Allowlist, uwlAllowlist, err := getAllowList(client, operatorconfig.AllowlistConfigMapName)
+	allowlist, ocp3Allowlist, uwlAllowlist, err := util.GetAllowList(client,
+		operatorconfig.AllowlistConfigMapName, config.GetDefaultNamespace())
 	if err != nil {
 		log.Error(err, "Failed to get metrics allowlist configmap "+operatorconfig.AllowlistConfigMapName)
 		return nil, nil, err
 	}
 
-	customAllowlist, _, customUwlAllowlist, err := getAllowList(client, config.AllowlistCustomConfigMapName)
+	customAllowlist, _, customUwlAllowlist, err := util.GetAllowList(client,
+		config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
 	if err == nil {
-		allowlist.NameList = mergeMetrics(allowlist.NameList, customAllowlist.NameList)
-		allowlist.MatchList = mergeMetrics(allowlist.MatchList, customAllowlist.MatchList)
-		allowlist.CollectRuleGroupList = mergeCollectorRuleGroupList(allowlist.CollectRuleGroupList, customAllowlist.CollectRuleGroupList)
-		if customAllowlist.RecordingRuleList != nil {
-			allowlist.RecordingRuleList = append(allowlist.RecordingRuleList, customAllowlist.RecordingRuleList...)
-		} else {
-			//check if rules are specified for backward compatibility
-			allowlist.RecordingRuleList = append(allowlist.RecordingRuleList, customAllowlist.RuleList...)
-		}
-		for k, v := range customAllowlist.RenameMap {
-			allowlist.RenameMap[k] = v
-		}
-		ocp3Allowlist.NameList = mergeMetrics(ocp3Allowlist.NameList, customAllowlist.NameList)
-		ocp3Allowlist.MatchList = mergeMetrics(ocp3Allowlist.MatchList, customAllowlist.MatchList)
-		ocp3Allowlist.RuleList = append(ocp3Allowlist.RuleList, customAllowlist.RuleList...)
-		for k, v := range customAllowlist.RenameMap {
-			ocp3Allowlist.RenameMap[k] = v
-		}
-		uwlAllowlist.NameList = mergeMetrics(uwlAllowlist.NameList, customUwlAllowlist.NameList)
-		uwlAllowlist.MatchList = mergeMetrics(uwlAllowlist.MatchList, customUwlAllowlist.MatchList)
-		uwlAllowlist.RuleList = append(uwlAllowlist.RuleList, customUwlAllowlist.RuleList...)
-		for k, v := range customUwlAllowlist.RenameMap {
-			uwlAllowlist.RenameMap[k] = v
-		}
+		allowlist, ocp3Allowlist, uwlAllowlist = util.MergeAllowlist(allowlist,
+			customAllowlist, ocp3Allowlist, uwlAllowlist, customUwlAllowlist)
 	} else {
 		log.Info("There is no custom metrics allowlist configmap in the cluster")
 	}
@@ -554,97 +534,16 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.Con
 		log.Error(err, "Failed to marshal allowlist uwlAllowlist")
 		return nil, nil, err
 	}
-	metricsAllowlistCM.Data["metrics_list.yaml"] = string(data)
-	metricsAllowlistCM.Data["uwl_metrics_list.yaml"] = string(uwlData)
+	metricsAllowlistCM.Data[operatorconfig.MetricsConfigMapKey] = string(data)
+	metricsAllowlistCM.Data[operatorconfig.UwlMetricsConfigMapKey] = string(uwlData)
 
 	data, err = yaml.Marshal(ocp3Allowlist)
 	if err != nil {
 		log.Error(err, "Failed to marshal allowlist data")
 		return nil, nil, err
 	}
-	ocp311AllowlistCM.Data["ocp311_metrics_list.yaml"] = string(data)
+	ocp311AllowlistCM.Data[operatorconfig.MetricsOcp311ConfigMapKey] = string(data)
 	return metricsAllowlistCM, ocp311AllowlistCM, nil
-}
-
-func getAllowList(client client.Client, name string) (*operatorconfig.MetricsAllowlist,
-	*operatorconfig.MetricsAllowlist, *operatorconfig.MetricsAllowlist, error) {
-	found := &corev1.ConfigMap{}
-	namespacedName := types.NamespacedName{
-		Name:      name,
-		Namespace: config.GetDefaultNamespace(),
-	}
-	err := client.Get(context.TODO(), namespacedName, found)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	allowlist := &operatorconfig.MetricsAllowlist{}
-	err = yaml.Unmarshal([]byte(found.Data["metrics_list.yaml"]), allowlist)
-	if err != nil {
-		log.Error(err, "Failed to unmarshal metrics_list.yaml data in configmap "+name)
-		return nil, nil, nil, err
-	}
-	ocp3Allowlist := &operatorconfig.MetricsAllowlist{}
-	err = yaml.Unmarshal([]byte(found.Data["ocp311_metrics_list.yaml"]), ocp3Allowlist)
-	if err != nil {
-		log.Error(err, "Failed to unmarshal ocp311_metrics_list data in configmap "+name)
-		return nil, nil, nil, err
-	}
-	uwlAllowlist := &operatorconfig.MetricsAllowlist{}
-	err = yaml.Unmarshal([]byte(found.Data["uwl_metrics_list.yaml"]), uwlAllowlist)
-	if err != nil {
-		log.Error(err, "Failed to unmarshal uwl_metrics_list data in configmap "+name)
-		return nil, nil, nil, err
-	}
-	return allowlist, ocp3Allowlist, uwlAllowlist, nil
-}
-
-func mergeMetrics(defaultAllowlist []string, customAllowlist []string) []string {
-	customMetrics := []string{}
-	deletedMetrics := map[string]bool{}
-	for _, name := range customAllowlist {
-		if !strings.HasPrefix(name, "-") {
-			customMetrics = append(customMetrics, name)
-		} else {
-			deletedMetrics[strings.TrimPrefix(name, "-")] = true
-		}
-	}
-
-	metricsRecorder := map[string]bool{}
-	mergedMetrics := []string{}
-	defaultAllowlist = append(defaultAllowlist, customMetrics...)
-	for _, name := range defaultAllowlist {
-		if metricsRecorder[name] {
-			continue
-		}
-
-		if !deletedMetrics[name] {
-			mergedMetrics = append(mergedMetrics, name)
-			metricsRecorder[name] = true
-		}
-	}
-
-	return mergedMetrics
-}
-
-func mergeCollectorRuleGroupList(defaultCollectRuleGroupList []operatorconfig.CollectRuleGroup, customCollectRuleGroupList []operatorconfig.CollectRuleGroup) []operatorconfig.CollectRuleGroup {
-	deletedCollectRuleGroups := map[string]bool{}
-	mergedCollectRuleGroups := []operatorconfig.CollectRuleGroup{}
-
-	for _, collectRuleGroup := range customCollectRuleGroupList {
-		if strings.HasPrefix(collectRuleGroup.Name, "-") {
-			deletedCollectRuleGroups[strings.TrimPrefix(collectRuleGroup.Name, "-")] = true
-		} else {
-			mergedCollectRuleGroups = append(mergedCollectRuleGroups, collectRuleGroup)
-		}
-	}
-
-	for _, collectRuleGroup := range defaultCollectRuleGroupList {
-		if !deletedCollectRuleGroups[collectRuleGroup.Name] {
-			mergedCollectRuleGroups = append(mergedCollectRuleGroups, collectRuleGroup)
-		}
-	}
-
-	return mergedCollectRuleGroups
 }
 
 func getObservabilityAddon(c client.Client, namespace string,

@@ -211,7 +211,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		if req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == caConfigmapName {
 			forceRestart = true
 		}
-		created, err := updateMetricsCollector(
+		created, err := updateMetricsCollectors(
 			ctx,
 			r.Client,
 			obsAddon.Spec,
@@ -228,7 +228,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			util.ReportStatus(ctx, r.Client, obsAddon, "Deployed")
 		}
 	} else {
-		deleted, err := updateMetricsCollector(ctx, r.Client, obsAddon.Spec, *hubInfo, clusterID, clusterType, 0, false)
+		deleted, err := updateMetricsCollectors(ctx, r.Client, obsAddon.Spec, *hubInfo, clusterID, clusterType, 0, false)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -245,11 +245,14 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 	ctx context.Context, delete bool, hubObsAddon *oav1beta1.ObservabilityAddon) (bool, error) {
 	if delete && contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
 		log.Info("To clean observability components/configurations in the cluster")
-		err := deleteMetricsCollector(ctx, r.Client)
+		err := deleteMetricsCollector(ctx, r.Client, metricsCollectorName)
 		if err != nil {
 			return false, err
 		}
-
+		err = deleteMetricsCollector(ctx, r.Client, uwlMetricsCollectorName)
+		if err != nil {
+			return false, err
+		}
 		// revert the change to cluster monitoring stack
 		err = revertClusterMonitoringConfig(ctx, r.Client, installPrometheus)
 		if err != nil {
@@ -334,6 +337,11 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			&source.Kind{Type: &corev1.ConfigMap{}},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.AllowlistConfigMapName, namespace, true, true, false)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.ConfigMap{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(operatorconfig.AllowlistCustomConfigMapName, "", true, true, true)),
 		).
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},

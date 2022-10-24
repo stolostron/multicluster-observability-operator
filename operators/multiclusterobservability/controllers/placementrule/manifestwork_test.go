@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -25,6 +24,7 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	workv1 "open-cluster-management.io/api/work/v1"
 )
@@ -262,7 +262,7 @@ func TestGetAllowList(t *testing.T) {
 		NewCorruptMetricsCustomAllowListCM(),
 	}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	_, _, cc, err := getAllowList(c, config.AllowlistCustomConfigMapName)
+	_, _, cc, err := util.GetAllowList(c, config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
 	if err == nil {
 		t.Fatalf("the cm is %v", cc)
 		t.Fatalf("The yaml marshall error is ignored")
@@ -416,90 +416,4 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
 	}
 	os.Remove(path.Join(wd, "../../tests"))
-}
-
-func TestMergeMetrics(t *testing.T) {
-	testCaseList := []struct {
-		name             string
-		defaultAllowlist []string
-		customAllowlist  []string
-		want             []string
-	}{
-		{
-			name:             "no deleted metrics",
-			defaultAllowlist: []string{"a", "b"},
-			customAllowlist:  []string{"c"},
-			want:             []string{"a", "b", "c"},
-		},
-
-		{
-			name:             "no default metrics",
-			defaultAllowlist: []string{},
-			customAllowlist:  []string{"a"},
-			want:             []string{"a"},
-		},
-
-		{
-			name:             "no metrics",
-			defaultAllowlist: []string{},
-			customAllowlist:  []string{},
-			want:             []string{},
-		},
-
-		{
-			name:             "have deleted metrics",
-			defaultAllowlist: []string{"a", "b"},
-			customAllowlist:  []string{"c", "-b"},
-			want:             []string{"a", "c"},
-		},
-
-		{
-			name:             "have deleted matches",
-			defaultAllowlist: []string{"__name__=\"a\",job=\"a\"", "__name__=\"b\",job=\"b\""},
-			customAllowlist:  []string{"-__name__=\"b\",job=\"b\"", "__name__=\"c\",job=\"c\""},
-			want:             []string{"__name__=\"a\",job=\"a\"", "__name__=\"c\",job=\"c\""},
-		},
-
-		{
-			name:             "deleted metrics is no exist",
-			defaultAllowlist: []string{"a", "b"},
-			customAllowlist:  []string{"c", "-d"},
-			want:             []string{"a", "b", "c"},
-		},
-
-		{
-			name:             "deleted all metrics",
-			defaultAllowlist: []string{"a", "b"},
-			customAllowlist:  []string{"-a", "-b"},
-			want:             []string{},
-		},
-
-		{
-			name:             "delete custorm metrics",
-			defaultAllowlist: []string{"a", "b"},
-			customAllowlist:  []string{"a", "-a"},
-			want:             []string{"b"},
-		},
-
-		{
-			name:             "have repeated default metrics",
-			defaultAllowlist: []string{"a", "a"},
-			customAllowlist:  []string{"a", "-b"},
-			want:             []string{"a"},
-		},
-
-		{
-			name:             "have repeated custom metrics",
-			defaultAllowlist: []string{"a"},
-			customAllowlist:  []string{"b", "b", "-a"},
-			want:             []string{"b"},
-		},
-	}
-
-	for _, c := range testCaseList {
-		got := mergeMetrics(c.defaultAllowlist, c.customAllowlist)
-		if !reflect.DeepEqual(got, c.want) {
-			t.Errorf("%v: mergeMetrics() = %v, want %v", c.name, got, c.want)
-		}
-	}
 }

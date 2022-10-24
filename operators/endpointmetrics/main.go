@@ -30,6 +30,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/version"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	operatorsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	// +kubebuilder:scaffold:imports
 )
@@ -73,19 +74,21 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	namespace := os.Getenv("WATCH_NAMESPACE")
-	gvkLabelMap := map[schema.GroupVersionKind]filteredcache.Selector{
-		v1.SchemeGroupVersion.WithKind("Secret"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", namespace),
+	namespaceSelector := fmt.Sprintf("metadata.namespace==%s", os.Getenv("WATCH_NAMESPACE"))
+	gvkLabelMap := map[schema.GroupVersionKind][]filteredcache.Selector{
+		v1.SchemeGroupVersion.WithKind("Secret"): []filteredcache.Selector{
+			{FieldSelector: namespaceSelector},
 		},
-		v1.SchemeGroupVersion.WithKind("ConfigMap"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", namespace),
+		v1.SchemeGroupVersion.WithKind("ConfigMap"): []filteredcache.Selector{
+			{FieldSelector: namespaceSelector},
+			{FieldSelector: fmt.Sprintf("metadata.name==%s,metadata.namespace!=%s",
+				operatorconfig.AllowlistCustomConfigMapName, "open-cluster-management-observability")},
 		},
-		appsv1.SchemeGroupVersion.WithKind("Deployment"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", namespace),
+		appsv1.SchemeGroupVersion.WithKind("Deployment"): []filteredcache.Selector{
+			{FieldSelector: namespaceSelector},
 		},
-		oav1beta1.GroupVersion.WithKind("ObservabilityAddon"): {
-			FieldSelector: fmt.Sprintf("metadata.namespace==%s", namespace),
+		oav1beta1.GroupVersion.WithKind("ObservabilityAddon"): []filteredcache.Selector{
+			{FieldSelector: namespaceSelector},
 		},
 	}
 
@@ -96,7 +99,7 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "7c30ca38.open-cluster-management.io",
-		NewCache:               filteredcache.NewFilteredCacheBuilder(gvkLabelMap),
+		NewCache:               filteredcache.NewEnhancedFilteredCacheBuilder(gvkLabelMap),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

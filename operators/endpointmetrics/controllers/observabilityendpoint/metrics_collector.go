@@ -23,20 +23,22 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (
-	metricsConfigMapKey       = "metrics_list.yaml"
-	metricsOcp311ConfigMapKey = "ocp311_metrics_list.yaml"
-	metricsCollectorName      = "metrics-collector-deployment"
-	selectorKey               = "component"
-	selectorValue             = "metrics-collector"
-	caMounthPath              = "/etc/serving-certs-ca-bundle"
-	caVolName                 = "serving-certs-ca-bundle"
-	mtlsCertName              = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
-	mtlsCaName                = "observability-managed-cluster-certs"
-	limitBytes                = 1073741824
-	defaultInterval           = "30s"
+	metricsCollectorName    = "metrics-collector-deployment"
+	uwlMetricsCollectorName = "uwl-metrics-collector-deployment"
+	selectorKey             = "component"
+	selectorValue           = "metrics-collector"
+	caMounthPath            = "/etc/serving-certs-ca-bundle"
+	caVolName               = "serving-certs-ca-bundle"
+	mtlsCertName            = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
+	mtlsCaName              = "observability-managed-cluster-certs"
+	limitBytes              = 1073741824
+	defaultInterval         = "30s"
+	uwlNamespace            = "openshift-user-workload-monitoring"
+	uwlSts                  = "prometheus-user-workload"
 )
 
 const (
@@ -45,23 +47,122 @@ const (
 
 var (
 	ocpPromURL = "https://prometheus-k8s.openshift-monitoring.svc:9091"
+	uwlPromURL = "https://prometheus-user-workload.openshift-user-workload-monitoring.svc:9092"
 	promURL    = "https://prometheus-k8s:9091"
 )
 
-func createDeployment(clusterID string, clusterType string,
-	obsAddonSpec oashared.ObservabilityAddonSpec,
-	hubInfo operatorconfig.HubInfo, allowlist operatorconfig.MetricsAllowlist,
-	nodeSelector map[string]string, tolerations []corev1.Toleration,
-	replicaCount int32) *appsv1.Deployment {
-	interval := fmt.Sprint(obsAddonSpec.Interval) + "s"
-	if fmt.Sprint(obsAddonSpec.Interval) == "" {
+type CollectorParams struct {
+	isUWL        bool
+	clusterID    string
+	clusterType  string
+	obsAddonSpec oashared.ObservabilityAddonSpec
+	hubInfo      operatorconfig.HubInfo
+	allowlist    operatorconfig.MetricsAllowlist
+	nodeSelector map[string]string
+	tolerations  []corev1.Toleration
+	replicaCount int32
+}
+
+func getCommands(params CollectorParams) []string {
+	interval := fmt.Sprint(params.obsAddonSpec.Interval) + "s"
+	if fmt.Sprint(params.obsAddonSpec.Interval) == "" {
 		interval = defaultInterval
 	}
 	evaluateInterval := "30s"
-	if obsAddonSpec.Interval < 30 {
+	if params.obsAddonSpec.Interval < 30 {
 		evaluateInterval = interval
 	}
+	caFile := caMounthPath + "/service-ca.crt"
+	clusterID := params.clusterID
+	if params.clusterID == "" {
+		clusterID = params.hubInfo.ClusterName
+		// deprecated ca bundle, only used for ocp 3.11 env
+		caFile = "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
+	}
+	commands := []string{
+		"/usr/bin/metrics-collector",
+		"--from=$(FROM)",
+		"--to-upload=$(TO)",
+		"--to-upload-ca=/tlscerts/ca/ca.crt",
+		"--to-upload-cert=/tlscerts/certs/tls.crt",
+		"--to-upload-key=/tlscerts/certs/tls.key",
+		"--interval=" + interval,
+		"--evaluate-interval=" + evaluateInterval,
+		"--limit-bytes=" + strconv.Itoa(limitBytes),
+		fmt.Sprintf("--label=\"cluster=%s\"", params.hubInfo.ClusterName),
+		fmt.Sprintf("--label=\"clusterID=%s\"", clusterID),
+	}
+	commands = append(commands, "--from-token-file=/var/run/secrets/kubernetes.io/serviceaccount/token")
+	if !installPrometheus {
+		commands = append(commands, "--from-ca-file="+caFile)
+	}
+	if params.clusterType != "" {
+		commands = append(commands, fmt.Sprintf("--label=\"clusterType=%s\"", params.clusterType))
+	}
 
+	dynamicMetricList := map[string]bool{}
+	for _, group := range params.allowlist.CollectRuleGroupList {
+		if group.Selector.MatchExpression != nil {
+			for _, expr := range group.Selector.MatchExpression {
+				if !evluateMatchExpression(expr, clusterID, params.clusterType, params.obsAddonSpec, params.hubInfo,
+					params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount) {
+					continue
+				}
+				for _, rule := range group.CollectRuleList {
+					matchList := []string{}
+					for _, match := range rule.Metrics.MatchList {
+						matchList = append(matchList, `"`+strings.ReplaceAll(match, `"`, `\"`)+`"`)
+						if name := getNameInMatch(match); name != "" {
+							dynamicMetricList[name] = false
+						}
+					}
+					for _, name := range rule.Metrics.NameList {
+						dynamicMetricList[name] = false
+					}
+					matchListStr := "[" + strings.Join(matchList, ",") + "]"
+					nameListStr := `["` + strings.Join(rule.Metrics.NameList, `","`) + `"]`
+					commands = append(
+						commands,
+						fmt.Sprintf("--collectrule={\"name\":\"%s\",\"expr\":\"%s\",\"for\":\"%s\",\"names\":%v,\"matches\":%v}",
+							rule.Collect, rule.Expr, rule.For, nameListStr, matchListStr),
+					)
+				}
+			}
+		}
+	}
+
+	for _, metrics := range params.allowlist.NameList {
+		if _, ok := dynamicMetricList[metrics]; !ok {
+			commands = append(commands, fmt.Sprintf("--match={__name__=\"%s\"}", metrics))
+		}
+	}
+	for _, match := range params.allowlist.MatchList {
+		if name := getNameInMatch(match); name != "" {
+			if _, ok := dynamicMetricList[name]; ok {
+				continue
+			}
+		}
+		commands = append(commands, fmt.Sprintf("--match={%s}", match))
+	}
+
+	renamekeys := make([]string, 0, len(params.allowlist.RenameMap))
+	for k := range params.allowlist.RenameMap {
+		renamekeys = append(renamekeys, k)
+	}
+	sort.Strings(renamekeys)
+	for _, k := range renamekeys {
+		commands = append(commands, fmt.Sprintf("--rename=\"%s=%s\"", k, params.allowlist.RenameMap[k]))
+	}
+	for _, rule := range params.allowlist.RecordingRuleList {
+		commands = append(
+			commands,
+			fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr),
+		)
+	}
+	return commands
+}
+
+func createDeployment(params CollectorParams) *appsv1.Deployment {
 	volumes := []corev1.Volume{
 		{
 			Name: "mtlscerts",
@@ -90,12 +191,7 @@ func createDeployment(clusterID string, clusterType string,
 			MountPath: "/tlscerts/ca",
 		},
 	}
-	caFile := caMounthPath + "/service-ca.crt"
-	if clusterID == "" {
-		clusterID = hubInfo.ClusterName
-		// deprecated ca bundle, only used for ocp 3.11 env
-		caFile = "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
-	} else {
+	if params.clusterID != "" {
 		volumes = append(volumes, corev1.Volume{
 			Name: caVolName,
 			VolumeSource: corev1.VolumeSource{
@@ -112,101 +208,29 @@ func createDeployment(clusterID string, clusterType string,
 		})
 	}
 
-	commands := []string{
-		"/usr/bin/metrics-collector",
-		"--from=$(FROM)",
-		"--to-upload=$(TO)",
-		"--to-upload-ca=/tlscerts/ca/ca.crt",
-		"--to-upload-cert=/tlscerts/certs/tls.crt",
-		"--to-upload-key=/tlscerts/certs/tls.key",
-		"--interval=" + interval,
-		"--evaluate-interval=" + evaluateInterval,
-		"--limit-bytes=" + strconv.Itoa(limitBytes),
-		fmt.Sprintf("--label=\"cluster=%s\"", hubInfo.ClusterName),
-		fmt.Sprintf("--label=\"clusterID=%s\"", clusterID),
-	}
-	commands = append(commands, "--from-token-file=/var/run/secrets/kubernetes.io/serviceaccount/token")
-	if !installPrometheus {
-		commands = append(commands, "--from-ca-file="+caFile)
-	}
-	if clusterType != "" {
-		commands = append(commands, fmt.Sprintf("--label=\"clusterType=%s\"", clusterType))
-	}
-
-	dynamicMetricList := map[string]bool{}
-	for _, group := range allowlist.CollectRuleGroupList {
-		if group.Selector.MatchExpression != nil {
-			for _, expr := range group.Selector.MatchExpression {
-				if !evluateMatchExpression(expr, clusterID, clusterType, obsAddonSpec, hubInfo,
-					allowlist, nodeSelector, tolerations, replicaCount) {
-					continue
-				}
-				for _, rule := range group.CollectRuleList {
-					matchList := []string{}
-					for _, match := range rule.Metrics.MatchList {
-						matchList = append(matchList, `"`+strings.ReplaceAll(match, `"`, `\"`)+`"`)
-						if name := getNameInMatch(match); name != "" {
-							dynamicMetricList[name] = false
-						}
-					}
-					for _, name := range rule.Metrics.NameList {
-						dynamicMetricList[name] = false
-					}
-					matchListStr := "[" + strings.Join(matchList, ",") + "]"
-					nameListStr := `["` + strings.Join(rule.Metrics.NameList, `","`) + `"]`
-					commands = append(
-						commands,
-						fmt.Sprintf("--collectrule={\"name\":\"%s\",\"expr\":\"%s\",\"for\":\"%s\",\"names\":%v,\"matches\":%v}",
-							rule.Collect, rule.Expr, rule.For, nameListStr, matchListStr),
-					)
-				}
-			}
-		}
-	}
-
-	for _, metrics := range allowlist.NameList {
-		if _, ok := dynamicMetricList[metrics]; !ok {
-			commands = append(commands, fmt.Sprintf("--match={__name__=\"%s\"}", metrics))
-		}
-	}
-	for _, match := range allowlist.MatchList {
-		if name := getNameInMatch(match); name != "" {
-			if _, ok := dynamicMetricList[name]; ok {
-				continue
-			}
-		}
-		commands = append(commands, fmt.Sprintf("--match={%s}", match))
-	}
-
-	renamekeys := make([]string, 0, len(allowlist.RenameMap))
-	for k := range allowlist.RenameMap {
-		renamekeys = append(renamekeys, k)
-	}
-	sort.Strings(renamekeys)
-	for _, k := range renamekeys {
-		commands = append(commands, fmt.Sprintf("--rename=\"%s=%s\"", k, allowlist.RenameMap[k]))
-	}
-	for _, rule := range allowlist.RecordingRuleList {
-		commands = append(
-			commands,
-			fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr),
-		)
-	}
+	commands := getCommands(params)
 
 	from := promURL
 	if !installPrometheus {
 		from = ocpPromURL
+		if params.isUWL {
+			from = uwlPromURL
+		}
+	}
+	name := metricsCollectorName
+	if params.isUWL {
+		name = uwlMetricsCollectorName
 	}
 	metricsCollectorDep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      metricsCollectorName,
+			Name:      name,
 			Namespace: namespace,
 			Annotations: map[string]string{
 				ownerLabelKey: ownerLabelValue,
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: int32Ptr(replicaCount),
+			Replicas: int32Ptr(params.replicaCount),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					selectorKey: selectorValue,
@@ -232,7 +256,7 @@ func createDeployment(clusterID string, clusterType string,
 								},
 								{
 									Name:  "TO",
-									Value: hubInfo.ObservatoriumAPIEndpoint,
+									Value: params.hubInfo.ObservatoriumAPIEndpoint,
 								},
 							},
 							VolumeMounts:    mounts,
@@ -240,50 +264,75 @@ func createDeployment(clusterID string, clusterType string,
 						},
 					},
 					Volumes:      volumes,
-					NodeSelector: nodeSelector,
-					Tolerations:  tolerations,
+					NodeSelector: params.nodeSelector,
+					Tolerations:  params.tolerations,
 				},
 			},
 		},
 	}
-	if obsAddonSpec.Resources != nil {
-		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *obsAddonSpec.Resources
+	if params.obsAddonSpec.Resources != nil {
+		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *params.obsAddonSpec.Resources
 	}
 	return metricsCollectorDep
 }
 
-func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonSpec oashared.ObservabilityAddonSpec,
+func updateMetricsCollectors(ctx context.Context, c client.Client, obsAddonSpec oashared.ObservabilityAddonSpec,
 	hubInfo operatorconfig.HubInfo, clusterID string, clusterType string,
 	replicaCount int32, forceRestart bool) (bool, error) {
 
-	list, err := getMetricsAllowlist(ctx, client, clusterType)
+	list, uwlList, err := getMetricsAllowlist(ctx, c, clusterType)
 	if err != nil {
 		return false, err
 	}
-	endpointDeployment := getEndpointDeployment(ctx, client)
-	deployment := createDeployment(
-		clusterID,
-		clusterType,
-		obsAddonSpec,
-		hubInfo,
-		list,
-		endpointDeployment.Spec.Template.Spec.NodeSelector,
-		endpointDeployment.Spec.Template.Spec.Tolerations,
-		replicaCount,
-	)
+	endpointDeployment := getEndpointDeployment(ctx, c)
+	params := CollectorParams{
+		isUWL:        false,
+		clusterID:    clusterID,
+		clusterType:  clusterType,
+		obsAddonSpec: obsAddonSpec,
+		hubInfo:      hubInfo,
+		allowlist:    list,
+		replicaCount: replicaCount,
+		nodeSelector: endpointDeployment.Spec.Template.Spec.NodeSelector,
+		tolerations:  endpointDeployment.Spec.Template.Spec.Tolerations,
+	}
+	result, err := updateMetricsCollector(ctx, c, params, forceRestart)
+	if err != nil || !result {
+		return result, err
+	}
+	isUwl, err := isUWLMonitoringEnabled(ctx, c)
+	if err != nil {
+		return result, err
+	}
+	if isUwl && len(uwlList.NameList) != 0 {
+		params.isUWL = true
+		params.allowlist = uwlList
+		result, err = updateMetricsCollector(ctx, c, params, forceRestart)
+	}
+	return result, err
+}
+
+func updateMetricsCollector(ctx context.Context, c client.Client, params CollectorParams,
+	forceRestart bool) (bool, error) {
+	name := metricsCollectorName
+	if params.isUWL {
+		name = uwlMetricsCollectorName
+	}
+	log.Info("updateMetricsCollector", "name", name)
+	deployment := createDeployment(params)
 	found := &appsv1.Deployment{}
-	err = client.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
+	err := c.Get(ctx, types.NamespacedName{Name: name,
 		Namespace: namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			err = client.Create(ctx, deployment)
+			err = c.Create(ctx, deployment)
 			if err != nil {
-				log.Error(err, "Failed to create metrics-collector deployment")
+				log.Error(err, "Failed to create deployment", "name", name)
 				return false, err
 			}
-			log.Info("Created metrics-collector deployment ")
+			log.Info("Created deployment ", "name", name)
 		} else {
-			log.Error(err, "Failed to check the metrics-collector deployment")
+			log.Error(err, "Failed to check the deployment", "name", name)
 			return false, err
 		}
 	} else {
@@ -294,67 +343,91 @@ func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonS
 			if forceRestart && found.Status.ReadyReplicas != 0 {
 				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
 			}
-			err = client.Update(ctx, deployment)
+			err = c.Update(ctx, deployment)
 			if err != nil {
-				log.Error(err, "Failed to update metrics-collector deployment")
+				log.Error(err, "Failed to update deployment", "name", name)
 				return false, err
 			}
-			log.Info("Updated metrics-collector deployment ")
+			log.Info("Updated deployment ", "name", name)
 		}
 	}
 	return true, nil
 }
 
-func deleteMetricsCollector(ctx context.Context, client client.Client) error {
+func deleteMetricsCollector(ctx context.Context, c client.Client, name string) error {
 	found := &appsv1.Deployment{}
-	err := client.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
+	err := c.Get(ctx, types.NamespacedName{Name: name,
 		Namespace: namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("The metrics collector deployment does not exist")
+			log.Info("The metrics collector deployment does not exist", "name", name)
 			return nil
 		}
-		log.Error(err, "Failed to check the metrics collector deployment")
+		log.Error(err, "Failed to check the metrics collector deployment", "name", name)
 		return err
 	}
-	err = client.Delete(ctx, found)
+	err = c.Delete(ctx, found)
 	if err != nil {
-		log.Error(err, "Failed to delete the metrics collector deployment")
+		log.Error(err, "Failed to delete the metrics collector deployment", "name", name)
 		return err
 	}
-	log.Info("metrics collector deployment deleted")
+	log.Info("metrics collector deployment deleted", "name", name)
 	return nil
 }
 
 func int32Ptr(i int32) *int32 { return &i }
 
-func getMetricsAllowlist(ctx context.Context, client client.Client,
-	clusterType string) (operatorconfig.MetricsAllowlist, error) {
+func getMetricsAllowlist(ctx context.Context, c client.Client,
+	clusterType string) (operatorconfig.MetricsAllowlist, operatorconfig.MetricsAllowlist, error) {
 	l := &operatorconfig.MetricsAllowlist{}
+	ul := &operatorconfig.MetricsAllowlist{}
 	cm := &corev1.ConfigMap{}
-	err := client.Get(ctx, types.NamespacedName{Name: operatorconfig.AllowlistConfigMapName,
+	err := c.Get(ctx, types.NamespacedName{Name: operatorconfig.AllowlistConfigMapName,
 		Namespace: namespace}, cm)
 	if err != nil {
 		log.Error(err, "Failed to get configmap")
 	} else {
 		if cm.Data != nil {
-			configmapKey := metricsConfigMapKey
+			configmapKey := operatorconfig.MetricsConfigMapKey
 			if clusterType == "ocp3" {
-				configmapKey = metricsOcp311ConfigMapKey
+				configmapKey = operatorconfig.MetricsOcp311ConfigMapKey
 			}
 			err = yaml.Unmarshal([]byte(cm.Data[configmapKey]), l)
 			if err != nil {
 				log.Error(err, "Failed to unmarshal data in configmap")
-				return *l, err
+				return *l, *ul, err
+			}
+			if uwlData, ok := cm.Data[operatorconfig.UwlMetricsConfigMapKey]; ok {
+				err = yaml.Unmarshal([]byte(uwlData), ul)
+				if err != nil {
+					log.Error(err, "Failed to unmarshal uwl data in configmap")
+					return *l, *ul, err
+				}
 			}
 		}
 	}
-	return *l, nil
+
+	cmList := &corev1.ConfigMapList{}
+	err = c.List(ctx, cmList, &client.ListOptions{})
+	for _, allowlistCM := range cmList.Items {
+		if allowlistCM.ObjectMeta.Name == operatorconfig.AllowlistCustomConfigMapName {
+			log.Info("Parse custom allowlist configmap", "namespace", allowlistCM.ObjectMeta.Namespace,
+				"name", allowlistCM.ObjectMeta.Name)
+			customAllowlist, _, customUwlAllowlist, err := util.ParseAllowlistConfigMap(allowlistCM)
+			if err != nil {
+				log.Error(err, "Failed to parse data in configmap", "namespace", allowlistCM.ObjectMeta.Namespace,
+					"name", allowlistCM.ObjectMeta.Name)
+			}
+			l, _, ul = util.MergeAllowlist(l, customAllowlist, nil, ul, customUwlAllowlist)
+		}
+	}
+
+	return *l, *ul, nil
 }
 
-func getEndpointDeployment(ctx context.Context, client client.Client) appsv1.Deployment {
+func getEndpointDeployment(ctx context.Context, c client.Client) appsv1.Deployment {
 	d := &appsv1.Deployment{}
-	err := client.Get(ctx, types.NamespacedName{Name: "endpoint-observability-operator", Namespace: namespace}, d)
+	err := c.Get(ctx, types.NamespacedName{Name: "endpoint-observability-operator", Namespace: namespace}, d)
 	if err != nil {
 		log.Error(err, "Failed to get deployment")
 	}
@@ -368,4 +441,18 @@ func getNameInMatch(match string) string {
 		return m[0][1]
 	}
 	return ""
+}
+
+func isUWLMonitoringEnabled(ctx context.Context, c client.Client) (bool, error) {
+	sts := &appsv1.StatefulSet{}
+	err := c.Get(ctx, types.NamespacedName{Namespace: uwlNamespace, Name: uwlSts}, sts)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			log.Error(err, "Failed to get uwl prometheus statefulset")
+			return false, err
+		} else {
+			return false, nil
+		}
+	}
+	return true, nil
 }
