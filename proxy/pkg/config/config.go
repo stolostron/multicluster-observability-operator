@@ -12,6 +12,9 @@ import (
 const (
 	managedClusterLabelConfigMapKey  = "managed_cluster.yaml"
 	managedClusterLabelConfigMapName = "observability-managed-cluster-label-names"
+
+	managedClusterLabelMetricName = "managed_cluster_labels"
+	rbacProxyLabelMetricName      = "acm_label_names"
 )
 
 var (
@@ -26,6 +29,16 @@ func GetManagedClusterLabelConfigMapKey() string {
 // GetManagedClusterLabelConfigMapName returns the name of the for the cluster label configmap
 func GetManagedClusterLabelConfigMapName() string {
 	return managedClusterLabelConfigMapName
+}
+
+// GetManagedClusterLabelMetricName returns the name of the manged cluster label metric name
+func GetManagedClusterLabelMetricName() string {
+	return managedClusterLabelMetricName
+}
+
+// GetRBACProxyLabelMetricName returns the name of the rbac query proxy label metric
+func GetRBACProxyLabelMetricName() string {
+	return rbacProxyLabelMetricName
 }
 
 func CreateClusterLabelConfigmap() *corev1.ConfigMap {

@@ -20,6 +20,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
+	proxyCfg "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
 )
 
@@ -27,12 +28,6 @@ const (
 	basePath        = "/api/metrics/v1/default"
 	projectsAPIPath = "/apis/project.openshift.io/v1/projects"
 	userAPIPath     = "/apis/user.openshift.io/v1/users/~"
-
-	managedClusterLabelConfigMapKey  = "managed_cluster.yaml"
-	managedClusterLabelConfigMapName = "observability-managed-cluster-label-names"
-	managedClusterLabelMetricName    = "managed_cluster_labels"
-
-	proxyMetricName = "acm_label_names"
 )
 
 var (
@@ -157,9 +152,10 @@ func proxyRequest(r *http.Request) {
 		klog.Errorf("Error reading body: %v", err)
 	}
 
-	// if strings.Contains(string(body), managedClusterLabelMetricName) {
-
-	// }
+	if strings.Contains(string(body), proxyCfg.GetManagedClusterLabelMetricName()) {
+		labelList := proxyCfg.GetClusterLabelList()
+		klog.Infof("LabelList: %v", labelList)
+	}
 
 	if r.Method == http.MethodGet {
 		if strings.HasSuffix(r.URL.Path, "/api/v1/query") ||
