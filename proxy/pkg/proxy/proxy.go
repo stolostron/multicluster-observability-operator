@@ -6,7 +6,6 @@ package proxy
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -17,13 +16,8 @@ import (
 	"path"
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
@@ -154,8 +148,6 @@ func gzipWrite(w io.Writer, data []byte) error {
 }
 
 func proxyRequest(r *http.Request) {
-	var client client.Client
-
 	r.URL.Scheme = serverScheme
 	r.URL.Host = serverHost
 
@@ -165,35 +157,9 @@ func proxyRequest(r *http.Request) {
 		klog.Errorf("Error reading body: %v", err)
 	}
 
-	if strings.Contains(string(body), managedClusterLabelMetricName) {
+	// if strings.Contains(string(body), managedClusterLabelMetricName) {
 
-		found := &corev1.ConfigMap{}
-		err := client.Get(context.TODO(), types.NamespacedName{
-			Namespace: "open-cluster-management-observability",
-			Name:      managedClusterLabelConfigMapName}, found)
-
-		if err != nil {
-			if k8serrors.IsNotFound(err) {
-				klog.Errorf("Configmap: %s does not exist", managedClusterLabelConfigMapName)
-
-				cm := &corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      managedClusterLabelConfigMapName,
-						Namespace: "open-cluster-management-observability",
-					},
-					Data: map[string]string{managedClusterLabelConfigMapKey: ""},
-				}
-				err = client.Create(context.TODO(), cm)
-			} else {
-				klog.Error(err)
-			}
-		} else {
-			klog.Infof("Fetching labels from configmap: %s", found.Name)
-			labels := found.Data[managedClusterLabelConfigMapKey]
-
-			klog.Infof("Labels: %v", labels)
-		}
-	}
+	// }
 
 	if r.Method == http.MethodGet {
 		if strings.HasSuffix(r.URL.Path, "/api/v1/query") ||
