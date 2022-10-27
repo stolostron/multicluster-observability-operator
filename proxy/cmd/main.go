@@ -18,7 +18,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 
-	"gopkg.in/yaml.v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
@@ -79,28 +78,26 @@ func main() {
 		klog.Fatalf("failed to initialize client: %v", err)
 	}
 
-	configmap := proxyCfg.CreateClusterLabelConfigmap()
-
-	found := &corev1.ConfigMap{}
+	cm := &corev1.ConfigMap{}
 	err = c.Get(context.TODO(), types.NamespacedName{
 		Namespace: "open-cluster-management-observability",
-		Name:      proxyCfg.GetManagedClusterLabelConfigMapName()}, found)
+		Name:      proxyCfg.GetManagedClusterLabelConfigMapName()}, cm)
 
 	if err != nil {
 		if k8serror.IsNotFound(err) {
-			err = c.Create(context.TODO(), configmap)
+			cm = proxyCfg.CreateClusterLabelConfigmap()
+			err = c.Create(context.TODO(), cm)
 
 			if err != nil {
-				klog.Errorf("Failed to get %s configmap", proxyCfg.GetManagedClusterLabelConfigMapName())
+				klog.Errorf("failed to get configmap: %s", proxyCfg.GetManagedClusterLabelConfigMapName())
+			} else {
+				klog.Infof("created configmap: %s", cm.Name)
 			}
 		}
 	}
 
-	labelList := proxyCfg.GetClusterLabelList()
-	err = yaml.Unmarshal([]byte(found.Data[proxyCfg.GetManagedClusterLabelConfigMapKey()]), labelList)
-
 	// watch all managed clusters
-	go util.WatchManagedCluster(clusterClient)
+	go util.WatchManagedCluster(clusterClient, cm)
 	go util.CleanExpiredProjectInfo(24 * 60 * 60)
 
 	http.HandleFunc("/", proxy.HandleRequestAndRedirect)

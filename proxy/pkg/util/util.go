@@ -13,16 +13,20 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	projectv1 "github.com/openshift/api/project/v1"
 	userv1 "github.com/openshift/api/user/v1"
+	"gopkg.in/yaml.v2"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 
+	proxyCfg "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/rewrite"
 	clusterclientset "open-cluster-management.io/api/client/cluster/clientset/versioned"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -33,14 +37,36 @@ const (
 	caPath                = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 )
 
-var allManagedClusterNames map[string]string
+var (
+	allManagedClusterNames  map[string]string
+	allManagedClusterLabels map[string]bool
 
+	regexLabelList = []string{}
+)
+
+// GetAllManagedClusterNames will return all managed cluster names
 func GetAllManagedClusterNames() map[string]string {
 	return allManagedClusterNames
 }
 
+// GetAllManagedClusterLabels will return all managed cluster labels
+func GetAllManagedClusterLabels() map[string]bool {
+	return allManagedClusterLabels
+}
+
+// GetRegexLabelLabels will return the regex managed cluster label list
+func GetRegexLabelList() []string {
+	return regexLabelList
+}
+
+// InitAllManagedClusterNames will initialize the allManagedClusterNames map
 func InitAllManagedClusterNames() {
 	allManagedClusterNames = map[string]string{}
+}
+
+// InitAllManagedClusterLabels will initialize the allManagedClusterLabels map
+func InitAllManagedClusterLabels() {
+	allManagedClusterLabels = map[string]bool{}
 }
 
 // ModifyMetricsQueryParams will modify request url params for query metrics
@@ -111,14 +137,35 @@ func ModifyMetricsQueryParams(req *http.Request, reqUrl string) {
 }
 
 // WatchManagedCluster will watch and save managedcluster when create/update/delete managedcluster
-func WatchManagedCluster(clusterClient clusterclientset.Interface) {
+func WatchManagedCluster(clusterClient clusterclientset.Interface, cm *v1.ConfigMap) {
 	InitAllManagedClusterNames()
+	InitAllManagedClusterLabels()
+
 	watchlist := cache.NewListWatchFromClient(
 		clusterClient.ClusterV1().RESTClient(),
 		"managedclusters",
 		v1.NamespaceAll,
 		fields.Everything(),
 	)
+
+	labelList := proxyCfg.GetClusterLabelList()
+	err := yaml.Unmarshal([]byte(cm.Data[proxyCfg.GetManagedClusterLabelConfigMapKey()]), labelList)
+
+	if err != nil {
+		klog.Fatalf("failed to unmarshal configmap: %s data to the labelList", proxyCfg.GetManagedClusterLabelConfigMapName())
+	}
+
+	regex := regexp.MustCompile(`[^\w]+`)
+	for _, key := range labelList.LabelList {
+		if _, ok := allManagedClusterLabels[key]; !ok {
+			allManagedClusterLabels[key] = true
+
+			regexLabelList = append(regexLabelList, regex.ReplaceAllString(key, "_"))
+			klog.Infof("added a managedcluster label: %s", key)
+		}
+	}
+	labelList.LabelList = regexLabelList
+
 	_, controller := cache.NewInformer(
 		watchlist,
 		&clusterv1.ManagedCluster{},
@@ -128,6 +175,21 @@ func WatchManagedCluster(clusterClient clusterclientset.Interface) {
 				clusterName := obj.(*clusterv1.ManagedCluster).Name
 				klog.Infof("added a managedcluster: %s \n", obj.(*clusterv1.ManagedCluster).Name)
 				allManagedClusterNames[clusterName] = clusterName
+
+				for _, key := range obj.(*clusterv1.ManagedCluster).Labels {
+					if _, ok := allManagedClusterLabels[key]; !ok {
+						allManagedClusterLabels[key] = true
+
+						regexLabelList = append(regexLabelList, regex.ReplaceAllString(key, "_"))
+						klog.Infof("added a managedcluster label: %s", key)
+
+						cm.Data[proxyCfg.GetManagedClusterLabelConfigMapKey()] += fmt.Sprintf(`
+  - %s`, key)
+					}
+				}
+
+				// TODO: Update Configmap to contain changes
+				labelList.LabelList = regexLabelList
 			},
 
 			DeleteFunc: func(obj interface{}) {
@@ -140,6 +202,21 @@ func WatchManagedCluster(clusterClient clusterclientset.Interface) {
 				clusterName := newObj.(*clusterv1.ManagedCluster).Name
 				klog.Infof("changed a managedcluster: %s \n", newObj.(*clusterv1.ManagedCluster).Name)
 				allManagedClusterNames[clusterName] = clusterName
+
+				for key := range newObj.(*clusterv1.ManagedCluster).Labels {
+					if _, ok := allManagedClusterLabels[key]; !ok {
+						allManagedClusterLabels[key] = true
+
+						regexLabelList = append(regexLabelList, regex.ReplaceAllString(key, "_"))
+						klog.Infof("added a managedcluster label: %s", key)
+
+						cm.Data[proxyCfg.GetManagedClusterLabelConfigMapKey()] += fmt.Sprintf(`
+  - %s`, key)
+					}
+				}
+
+				// TODO: Update Configmap to contain changes
+				labelList.LabelList = regexLabelList
 			},
 		},
 	)

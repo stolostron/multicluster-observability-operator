@@ -21,6 +21,11 @@ var (
 	labelList ClusterLabelList
 )
 
+// GetClusterLabelList will return the current cluster label list
+func GetClusterLabelList() *ClusterLabelList {
+	return &labelList
+}
+
 // GetManagedClusterLabelConfigMapKey returns the key for the cluster label
 func GetManagedClusterLabelConfigMapKey() string {
 	return managedClusterLabelConfigMapKey
@@ -56,8 +61,4 @@ labels:
 	}
 
 	return cm
-}
-
-func GetClusterLabelList() *ClusterLabelList {
-	return &labelList
 }
