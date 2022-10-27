@@ -45,6 +45,34 @@ func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if strings.HasSuffix(req.URL.Path, "/api/v1/series") {
+		body, err := ioutil.ReadAll(req.Body)
+
+		if err != nil {
+			klog.Errorf("failed to read body: %v", err)
+		}
+
+		if strings.Contains(string(body), proxyCfg.GetRBACProxyLabelMetricName()) {
+			labelList := proxyCfg.GetClusterLabelList()
+
+			query := `{"status":"success","data":[`
+			for index, label := range labelList.LabelList {
+				query += `{"__name__":"` + proxyCfg.GetRBACProxyLabelMetricName() + `","label_name":"` + label + `"}`
+
+				if index != len(labelList.LabelList)-1 {
+					query += ","
+				}
+			}
+			query += `]}`
+
+			_, err = res.Write([]byte(query))
+			return
+		}
+
+		req.Body = ioutil.NopCloser(strings.NewReader(string(body)))
+		req.ContentLength = int64(len([]rune(string(body))))
+	}
+
 	serverURL, err := url.Parse(os.Getenv("METRICS_SERVER"))
 	if err != nil {
 		klog.Errorf("failed to parse url: %v", err)
@@ -146,17 +174,6 @@ func proxyRequest(r *http.Request) {
 	r.URL.Scheme = serverScheme
 	r.URL.Host = serverHost
 
-	body, err := ioutil.ReadAll(r.Body)
-
-	if err != nil {
-		klog.Errorf("Error reading body: %v", err)
-	}
-
-	if strings.Contains(string(body), proxyCfg.GetManagedClusterLabelMetricName()) {
-		labelList := proxyCfg.GetClusterLabelList()
-		klog.Infof("LabelList: %v", labelList)
-	}
-
 	if r.Method == http.MethodGet {
 		if strings.HasSuffix(r.URL.Path, "/api/v1/query") ||
 			strings.HasSuffix(r.URL.Path, "/api/v1/query_range") ||
@@ -165,7 +182,5 @@ func proxyRequest(r *http.Request) {
 			r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			r.Body = ioutil.NopCloser(strings.NewReader(r.URL.RawQuery))
 		}
-	} else {
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 	}
 }

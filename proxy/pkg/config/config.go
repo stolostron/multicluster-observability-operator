@@ -4,7 +4,7 @@
 package config
 
 import (
-	mcoConfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	// mcoConfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -45,13 +45,14 @@ func CreateClusterLabelConfigmap() *corev1.ConfigMap {
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      GetManagedClusterLabelConfigMapName(),
-			Namespace: mcoConfig.GetDefaultNamespace(),
+			Namespace: "open-cluster-management-observability",
 		},
 		Data: map[string]string{
-			GetManagedClusterLabelConfigMapKey(): `labels:
-		- cloud
-		- vendor`,
-		},
+			GetManagedClusterLabelConfigMapKey(): `
+labels:
+  - cloud
+  - vendor
+`},
 	}
 
 	return cm

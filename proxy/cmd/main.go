@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	mcoConfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	// mcoConfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	proxyCfg "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/proxy"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
@@ -83,7 +83,7 @@ func main() {
 
 	found := &corev1.ConfigMap{}
 	err = c.Get(context.TODO(), types.NamespacedName{
-		Namespace: mcoConfig.GetDefaultNamespace(),
+		Namespace: "open-cluster-management-observability",
 		Name:      proxyCfg.GetManagedClusterLabelConfigMapName()}, found)
 
 	if err != nil {
@@ -96,13 +96,8 @@ func main() {
 		}
 	}
 
-	labels := found.Data[proxyCfg.GetManagedClusterLabelConfigMapKey()]
-	klog.Infof("Labels: %v", labels)
-
 	labelList := proxyCfg.GetClusterLabelList()
 	err = yaml.Unmarshal([]byte(found.Data[proxyCfg.GetManagedClusterLabelConfigMapKey()]), labelList)
-
-	klog.Infof("ClusterLabelList: %v", labelList)
 
 	// watch all managed clusters
 	go util.WatchManagedCluster(clusterClient)
