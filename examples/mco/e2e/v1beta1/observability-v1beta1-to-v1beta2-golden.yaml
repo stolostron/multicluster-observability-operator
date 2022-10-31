@@ -17,12 +17,12 @@ spec:
     enableMetrics: true
     interval: 300
   storageConfig:
-    alertmanagerStorageSize: 1Gi
-    compactStorageSize: 1Gi
+    alertmanagerStorageSize: 2Gi
+    compactStorageSize: 2Gi
     metricObjectStorage:
       key: thanos.yaml
       name: thanos-object-storage
-    receiveStorageSize: 1Gi
-    ruleStorageSize: 1Gi
+    receiveStorageSize: 2Gi
+    ruleStorageSize: 2Gi
     storageClass: gp2
-    storeStorageSize: 1Gi
+    storeStorageSize: 2Gi
