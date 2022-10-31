@@ -472,7 +472,7 @@ func ModifyMCOCR(opt TestOptions) error {
 	}
 	spec := mco.Object["spec"].(map[string]interface{})
 	storageConfig := spec["storageConfig"].(map[string]interface{})
-	storageConfig["alertmanagerStorageSize"] = "2Gi"
+	storageConfig["alertmanagerStorageSize"] = "3Gi"
 
 	advRetentionCon, _ := CheckAdvRetentionConfig(opt)
 	if advRetentionCon {
