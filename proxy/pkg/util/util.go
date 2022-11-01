@@ -176,7 +176,7 @@ func WatchManagedCluster(clusterClient clusterclientset.Interface, cm *v1.Config
 				klog.Infof("added a managedcluster: %s \n", obj.(*clusterv1.ManagedCluster).Name)
 				allManagedClusterNames[clusterName] = clusterName
 
-				for _, key := range obj.(*clusterv1.ManagedCluster).Labels {
+				for key := range obj.(*clusterv1.ManagedCluster).Labels {
 					if _, ok := allManagedClusterLabels[key]; !ok {
 						allManagedClusterLabels[key] = true
 
@@ -190,6 +190,9 @@ func WatchManagedCluster(clusterClient clusterclientset.Interface, cm *v1.Config
 
 				// TODO: Update Configmap to contain changes
 				labelList.LabelList = regexLabelList
+				klog.Infof("LabelList: %v", labelList.LabelList)
+
+				klog.Infof("Data: %v", cm.Data[proxyCfg.GetManagedClusterLabelConfigMapKey()])
 			},
 
 			DeleteFunc: func(obj interface{}) {
@@ -217,6 +220,9 @@ func WatchManagedCluster(clusterClient clusterclientset.Interface, cm *v1.Config
 
 				// TODO: Update Configmap to contain changes
 				labelList.LabelList = regexLabelList
+				klog.Infof("LabelList: %v", labelList.LabelList)
+
+				klog.Infof("Data: %v", cm.Data[proxyCfg.GetManagedClusterLabelConfigMapKey()])
 			},
 		},
 	)
