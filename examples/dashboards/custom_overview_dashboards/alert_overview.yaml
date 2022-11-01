@@ -1,0 +1,277 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: grafana-dashboard-custom-alert-overview
+  namespace: open-cluster-management-observability
+  labels:
+    grafana-custom-dashboard: 'true'
+data:
+  alert-overview.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "gnetId": null,
+      "graphTooltip": 0,
+      "id": 2,
+      "iteration": 1665676192692,
+      "links": [],
+      "panels": [
+        {
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "displayMode": "color-background",
+                "filterable": true
+              },
+              "links": [
+                {
+                  "targetBlank": true,
+                  "title": "",
+                  "url": "${console}/monitoring/alerts"
+                }
+              ],
+              "mappings": [
+                {
+                  "options": {
+                    "critical": {
+                      "color": "red",
+                      "index": 2
+                    },
+                    "info": {
+                      "color": "green",
+                      "index": 1
+                    },
+                    "warning": {
+                      "color": "yellow",
+                      "index": 0
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "transparent",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 28,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "id": 19,
+          "links": [
+            {
+              "targetBlank": true,
+              "title": "OpenShift Alert Dashboard",
+              "url": "https://console-openshift-console.apps.${cluster}.xxx.fr/monitoring/alerts"
+            }
+          ],
+          "options": {
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": false,
+                "displayName": "severity"
+              }
+            ]
+          },
+          "pluginVersion": "7.5.16",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "ALERTS{alertstate=\"firing\", cluster=\"$cluster\"}",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Alerts firing",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Value": true,
+                  "__name__": true,
+                  "alertstate": true,
+                  "cluster": true,
+                  "clusterID": true,
+                  "condition": true,
+                  "container": true,
+                  "endpoint": true,
+                  "environment": true,
+                  "instance": true,
+                  "job": true,
+                  "job_name": false,
+                  "metrics_path": true,
+                  "name": true,
+                  "namespace": false,
+                  "node": false,
+                  "persistentvolumeclaim": false,
+                  "pod": false,
+                  "poddisruptionbudget": true,
+                  "receive": true,
+                  "region": true,
+                  "resource": true,
+                  "service": true,
+                  "severity": false,
+                  "tenant_id": true,
+                  "version": true,
+                  "workload": true
+                },
+                "indexByName": {
+                  "Time": 1,
+                  "Value": 25,
+                  "__name__": 2,
+                  "alertname": 3,
+                  "alertstate": 4,
+                  "cluster": 5,
+                  "clusterID": 6,
+                  "condition": 7,
+                  "container": 8,
+                  "endpoint": 9,
+                  "environment": 10,
+                  "group": 11,
+                  "job": 12,
+                  "job_name": 13,
+                  "name": 14,
+                  "namespace": 15,
+                  "node": 16,
+                  "poddisruptionbudget": 17,
+                  "receive": 18,
+                  "region": 19,
+                  "resource": 20,
+                  "service": 21,
+                  "severity": 0,
+                  "tenant_id": 22,
+                  "version": 23,
+                  "workload": 24
+                },
+                "renameByName": {}
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "refresh": "10s",
+      "schemaVersion": 27,
+      "style": "dark",
+      "tags": [],
+      "templating": {
+        "list": [
+          {
+            "allValue": null,
+            "current": {
+              "selected": false,
+              "text": "cnb-test",
+              "value": "cnb-test"
+            },
+            "datasource": null,
+            "definition": "cluster_version{cluster=~\".*\", type=\"current\"}",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": false,
+            "label": "Cluster",
+            "multi": false,
+            "name": "cluster",
+            "options": [],
+            "query": {
+              "query": "cluster_version{cluster=~\".*\", type=\"current\"}",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "/.*{cluster=\"([^\"]*).*/",
+            "skipUrlSync": false,
+            "sort": 1,
+            "tagValuesQuery": "",
+            "tags": [],
+            "tagsQuery": "",
+            "type": "query",
+            "useTags": false
+          },
+          {
+            "allValue": null,
+            "current": {
+              "selected": false,
+              "text": "",
+              "value": ""
+            },
+            "datasource": null,
+            "definition": "console_url{url=~\".*\", cluster=\"$cluster\"}",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": false,
+            "label": null,
+            "multi": false,
+            "name": "console",
+            "options": [
+              {
+                "selected": true,
+                "text": "",
+                "value": ""
+              }
+            ],
+            "query": {
+              "query": "console_url{url=~\".*\", cluster=\"$cluster\"}",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 0,
+            "regex": "/.*url=\"([^\"]*).*/",
+            "skipUrlSync": false,
+            "sort": 0,
+            "tagValuesQuery": "",
+            "tags": [],
+            "tagsQuery": "",
+            "type": "query",
+            "useTags": false
+          }
+        ]
+      },
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "Details - Alerts",
+      "uid": "1WC7mqX7z",
+      "version": 5
+    }
