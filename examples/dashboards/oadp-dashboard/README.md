@@ -8,7 +8,7 @@ oc create -f oadp-dash.yaml
 
 &nbsp;
 
-- Mai metrics used in this dashboard
+- Main metrics used in this dashboard
 
 ```bash
 velero_backup_total
