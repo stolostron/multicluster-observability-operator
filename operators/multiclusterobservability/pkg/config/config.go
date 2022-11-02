@@ -99,8 +99,8 @@ const (
 	AllowlistCustomConfigMapName = "observability-metrics-custom-allowlist"
 
 	ManagedClusterLabelConfigMapName         = "observability-managed-cluster-label-names"
-	ManagedClusterLabelConfigMapKey          = "managed_cluster.yaml"
 	ManagedClusterLabelBlackListConfigMapKey = "blacklist_label.yaml"
+	ManagedClusterLabelConfigMapKey          = "managed_cluster.yaml"
 	ManagedClusterLabelMetricName            = "managed_cluster_labels"
 
 	ProxyServiceName      = "rbac-query-proxy"
@@ -416,6 +416,11 @@ func ReadImageManifestConfigMap(c client.Client, version string) (bool, error) {
 // GetImageManifests...
 func GetImageManifests() map[string]string {
 	return imageManifests
+}
+
+// GetManagedClusterLabelConfigMapKey return the key name for the managedcluster blacklisted labels
+func GetManagedClusterLabelBlackListConfigMapKey() string {
+	return ManagedClusterLabelBlackListConfigMapKey
 }
 
 // GetManagedClusterLabelConfigMapKey return the key name for the managedcluster labels

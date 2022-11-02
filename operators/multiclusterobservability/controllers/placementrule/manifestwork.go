@@ -575,14 +575,21 @@ func generateManagedClusterLabelListCM(client client.Client) (*corev1.ConfigMap,
 			Namespace: config.GetDefaultNamespace(),
 		},
 		Data: map[string]string{
-			"managed_cluster.yaml": found.Data[config.ManagedClusterLabelConfigMapKey],
-			"blacklist_label.yaml": found.Data[config.ManagedClusterLabelBlackListConfigMapKey],
+			"managed_cluster.yaml": found.Data[config.GetManagedClusterLabelConfigMapKey()],
+			"blacklist_label.yaml": found.Data[config.GetManagedClusterLabelBlackListConfigMapKey()],
 		},
 	}
 
-	err = yaml.Unmarshal([]byte(managedClusterLabelListCM.Data[config.ManagedClusterLabelConfigMapKey]), proxyconfig.GetClusterLabelList())
+	err = yaml.Unmarshal([]byte(managedClusterLabelListCM.Data[config.GetManagedClusterLabelConfigMapKey()]), proxyconfig.GetClusterLabelList())
 	if err != nil {
 		log.Error(err, "Failed to unmarshal managed_cluster data in configmap ",
+			"namespace", managedClusterLabelListCM.ObjectMeta.Namespace, "name", managedClusterLabelListCM.ObjectMeta.Name)
+		return nil, err
+	}
+
+	err = yaml.Unmarshal([]byte(managedClusterLabelListCM.Data[config.GetManagedClusterLabelBlackListConfigMapKey()]), proxyconfig.GetClusterLabelList())
+	if err != nil {
+		log.Error(err, "Failed to unmarshal blacklist_label data in configmap ",
 			"namespace", managedClusterLabelListCM.ObjectMeta.Namespace, "name", managedClusterLabelListCM.ObjectMeta.Name)
 		return nil, err
 	}
