@@ -27,7 +27,6 @@ import (
 
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	observabilityv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (
@@ -262,15 +261,15 @@ type ObjectStorgeConf struct {
 }
 
 var (
-	log                         = logf.Log.WithName("config")
-	monitoringCRName            = ""
-	tenantUID                   = ""
-	imageManifests              = map[string]string{}
-	imageManifestConfigMapName  = ""
-	hasCustomRuleConfigMap      = false
-	hasCustomAlertmanagerConfig = false
-	certDuration                = time.Hour * 24 * 365
-	isAlertingDisabled          = false
+	log                        = logf.Log.WithName("config")
+	monitoringCRName           = ""
+	tenantUID                  = ""
+	imageManifests             = map[string]string{}
+	imageManifestConfigMapName = ""
+	hasCustomRuleConfigMap     = false
+	//hasCustomAlertmanagerConfig = false
+	certDuration       = time.Hour * 24 * 365
+	isAlertingDisabled = false
 
 	Replicas1 int32 = 1
 	Replicas2 int32 = 2
@@ -398,7 +397,7 @@ func ReadImageManifestConfigMap(c client.Client, version string) (bool, error) {
 	imageCMList := &corev1.ConfigMapList{}
 	err := c.List(context.TODO(), imageCMList, listOpts...)
 	if err != nil {
-		return false, fmt.Errorf("Failed to list mch-image-manifest configmaps: %v", err)
+		return false, fmt.Errorf("failed to list mch-image-manifest configmaps: %v", err)
 	}
 
 	if len(imageCMList.Items) != 1 {
@@ -424,7 +423,7 @@ func SetImageManifests(images map[string]string) {
 // ReplaceImage is used to replace the image with specified annotation or imagemanifest configmap
 func ReplaceImage(annotations map[string]string, imageRepo, componentName string) (bool, string) {
 	if annotations != nil {
-		annotationImageRepo, _ := annotations[AnnotationKeyImageRepository]
+		annotationImageRepo := annotations[AnnotationKeyImageRepository]
 		if annotationImageRepo == "" {
 			annotationImageRepo = DefaultImgRepository
 		}
@@ -532,7 +531,7 @@ func getDomainForIngressController(client client.Client, name, namespace string)
 	}
 	domain := ingressOperatorInstance.Status.Domain
 	if domain == "" {
-		return "", fmt.Errorf("no domain found in the ingressOperator: %s/%s.", namespace, name)
+		return "", fmt.Errorf("no domain found in the ingressOperator: %s/%s", namespace, name)
 	}
 	return domain, nil
 }
@@ -1180,21 +1179,24 @@ func GetMulticloudConsoleHost(client client.Client, isStandalone bool) (string, 
 }
 
 // Set AnnotationMCOAlerting
-func SetAlertingStatus(status bool) {
+func SetAlertingDisabledStatus(status bool) {
 	isAlertingDisabled = status
 }
 
-func GetAlertingStatus() bool {
+func GetAlertingDisabledStatus() bool {
 	return isAlertingDisabled
 }
 
 // Get AnnotationMCOAlerting
-func GetMCOAlertingStatus(mco *observabilityv1beta2.MultiClusterObservability) bool {
+func IsAlertingDisabledInSpec(mco *observabilityv1beta2.MultiClusterObservability) bool {
 
 	value := false
 	if mco != nil {
 		// get the annotation
-		value = util.GetAnnotation(mco.GetAnnotations(), AnnotationDisableMCOAlerting) == "true"
+		annotations := mco.GetAnnotations()
+		if annotations != nil && annotations[AnnotationDisableMCOAlerting] == "true" {
+			value = true
+		}
 	}
 
 	return value

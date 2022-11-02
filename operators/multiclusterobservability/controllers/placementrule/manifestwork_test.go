@@ -394,7 +394,7 @@ func TestManifestWork(t *testing.T) {
 		obj := &unstructured.Unstructured{}
 		obj.UnmarshalJSON(manifest.Raw)
 		if obj.GetKind() == "Secret" && obj.GetName() == "multiclusterhub-operator-pull-secret" {
-			if !strings.Contains(string(manifest.Raw), base64.StdEncoding.EncodeToString([]byte("custorm"))) {
+			if !strings.Contains(string(manifest.Raw), base64.StdEncoding.EncodeToString([]byte("custom"))) {
 				t.Errorf("multiclusterhub-operator-pull-secret should use the custom pull secret")
 			}
 		}

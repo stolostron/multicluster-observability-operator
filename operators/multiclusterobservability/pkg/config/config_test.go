@@ -26,9 +26,9 @@ import (
 )
 
 var (
-	apiServerURL           = "http://example.com"
-	clusterID              = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-	version                = "2.1.1"
+	apiServerURL = "http://example.com"
+	clusterID    = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+	//version                = "2.1.1"
 	DefaultDSImgRepository = "quay.io:443/acm-d"
 )
 
@@ -217,7 +217,7 @@ func TestGetKubeAPIServerAddress(t *testing.T) {
 	}
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypes(configv1.GroupVersion, inf)
-	client := fake.NewFakeClientWithScheme(scheme, inf)
+	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(inf).Build()
 	apiURL, _ := GetKubeAPIServerAddress(client)
 	if apiURL != apiServerURL {
 		t.Errorf("Kubenetes API Server Address (%v) is not the expected (%v)", apiURL, apiServerURL)
@@ -264,7 +264,7 @@ func TestGetObsAPIHost(t *testing.T) {
 	}
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypes(routev1.GroupVersion, route)
-	client := fake.NewFakeClientWithScheme(scheme, route)
+	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(route).Build()
 
 	host, _ := GetObsAPIHost(client, "default")
 	if host == apiServerURL {
@@ -329,12 +329,11 @@ func NewFakeClient(mco *mcov1beta2.MultiClusterObservability,
 	s.AddKnownTypes(mcov1beta2.GroupVersion, mco)
 	s.AddKnownTypes(observatoriumv1alpha1.GroupVersion, obs)
 	objs := []runtime.Object{mco, obs}
-	return fake.NewFakeClientWithScheme(s, objs...)
+	return fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 }
 
 func TestReadImageManifestConfigMap(t *testing.T) {
-	var buildTestImageManifestCM func(ns, version string) *corev1.ConfigMap
-	buildTestImageManifestCM = func(ns, version string) *corev1.ConfigMap {
+	buildTestImageManifestCM := func(ns, version string) *corev1.ConfigMap {
 		return &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      ImageManifestConfigMapNamePrefix + version,
@@ -430,7 +429,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 			for _, cmName := range c.inputCMList {
 				initObjs = append(initObjs, buildTestImageManifestCM(ns, cmName))
 			}
-			client := fake.NewFakeClientWithScheme(scheme, initObjs...)
+			client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(initObjs...).Build()
 
 			gotRet, err := ReadImageManifestConfigMap(client, c.version)
 			if err != nil {
@@ -468,7 +467,7 @@ func Test_checkIsIBMCloud(t *testing.T) {
 		{
 			name: "is normal ocp",
 			args: args{
-				client: fake.NewFakeClientWithScheme(s, []runtime.Object{nodeOther}...),
+				client: fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects([]runtime.Object{nodeOther}...).Build(),
 				name:   "test-secret",
 			},
 			want:    false,
@@ -477,7 +476,7 @@ func Test_checkIsIBMCloud(t *testing.T) {
 		{
 			name: "is ibm",
 			args: args{
-				client: fake.NewFakeClientWithScheme(s, []runtime.Object{nodeIBM}...),
+				client: fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects([]runtime.Object{nodeIBM}...).Build(),
 				name:   "test-secret",
 			},
 			want:    true,
@@ -882,7 +881,7 @@ func TestGetOperandName(t *testing.T) {
 			name:          "No Observatorium CR",
 			componentName: Alertmanager,
 			prepare: func() {
-				SetOperandNames(fake.NewFakeClientWithScheme(runtime.NewScheme()))
+				SetOperandNames(fake.NewClientBuilder().WithScheme(runtime.NewScheme()).Build())
 			},
 			result: func() bool {
 				return GetOperandName(Alertmanager) == GetOperandNamePrefix()+"alertmanager"
@@ -920,7 +919,7 @@ func TestGetOperandName(t *testing.T) {
 				s := scheme.Scheme
 				mcov1beta2.SchemeBuilder.AddToScheme(s)
 				observatoriumv1alpha1.AddToScheme(s)
-				client := fake.NewFakeClientWithScheme(s, []runtime.Object{mco, observatorium}...)
+				client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects([]runtime.Object{mco, observatorium}...).Build()
 				SetMonitoringCRName(GetDefaultCRName())
 				SetOperandNames(client)
 			},
@@ -968,7 +967,7 @@ func TestGetOperandName(t *testing.T) {
 				s := scheme.Scheme
 				mcov1beta2.SchemeBuilder.AddToScheme(s)
 				observatoriumv1alpha1.AddToScheme(s)
-				client := fake.NewFakeClientWithScheme(s, []runtime.Object{mco, observatorium}...)
+				client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects([]runtime.Object{mco, observatorium}...).Build()
 
 				SetMonitoringCRName(GetDefaultCRName())
 				SetOperandNames(client)
@@ -1017,7 +1016,7 @@ func TestGetOperandName(t *testing.T) {
 				s := scheme.Scheme
 				mcov1beta2.SchemeBuilder.AddToScheme(s)
 				observatoriumv1alpha1.AddToScheme(s)
-				client := fake.NewFakeClientWithScheme(s, []runtime.Object{mco, observatorium}...)
+				client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects([]runtime.Object{mco, observatorium}...).Build()
 
 				SetMonitoringCRName(GetDefaultCRName())
 				SetOperandNames(client)

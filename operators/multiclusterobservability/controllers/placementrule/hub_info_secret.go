@@ -34,19 +34,15 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		}
 
 		// if the anotation doesn't exist, get the alert manager endpoint per normal
-		// otherwise, the defautl "" will remain
-
-		// TODO: ask Marco what the global flag was for, as we always work in the context
-		// of an mco object
-
-		if !config.GetMCOAlertingStatus(mco) {
+		// otherwise, the default "" will remain
+		if !config.IsAlertingDisabledInSpec(mco) {
 			alertmanagerEndpoint, err = config.GetAlertmanagerEndpoint(client, obsNamespace)
 			if err != nil {
 				log.Error(err, "Failed to get alertmanager endpoint")
 				return nil, err
 			}
 		} else {
-			config.SetAlertingStatus(true)
+			config.SetAlertingDisabledStatus(true)
 		}
 
 		alertmanagerRouterCA, err = config.GetAlertmanagerRouterCA(client)
@@ -74,9 +70,6 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 	if !obsApiURL.IsAbs() {
 		obsApiURL.Scheme = "https"
 	}
-
-	// TODO: check for mco here,
-	// if mco exists then check for annotation
 
 	hubInfo := &operatorconfig.HubInfo{
 		ObservatoriumAPIEndpoint: obsApiURL.String(),

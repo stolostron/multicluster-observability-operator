@@ -310,7 +310,7 @@ func createAllRelatedRes(
 	// regenerate the hubinfo secret if empty
 	if hubInfoSecret == nil {
 		var err error
-		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap[config.IngressControllerCRD], nil); err != nil {
+		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap[config.IngressControllerCRD], mco); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -565,8 +565,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			)
 
 			mco := e.Object.(*mcov1beta2.MultiClusterObservability)
-			alertingStatus := config.GetMCOAlertingStatus(mco)
-			config.SetAlertingStatus(alertingStatus)
+			alertingStatus := config.IsAlertingDisabledInSpec(mco)
+			config.SetAlertingDisabledStatus(alertingStatus)
 			var err error = nil
 			hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, false, mco)
 			if err != nil {
@@ -577,15 +577,14 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 
 			mco := e.ObjectNew.(*mcov1beta2.MultiClusterObservability)
-			oldAlertingStatus := config.GetAlertingStatus()
-			newAlertingStatus := config.GetMCOAlertingStatus(mco)
+			oldAlertingStatus := config.GetAlertingDisabledStatus()
+			newAlertingStatus := config.IsAlertingDisabledInSpec(mco)
 			// if value changed, then mustReconcile is true
 			if oldAlertingStatus != newAlertingStatus {
-				config.SetAlertingStatus(newAlertingStatus)
+				config.SetAlertingDisabledStatus(newAlertingStatus)
 				var err error = nil
 
 				hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, false, mco)
-
 				if err != nil {
 					log.Error(err, "unable to get HubInfoSecret", "controller", "PlacementRule")
 				}

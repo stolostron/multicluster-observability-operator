@@ -499,7 +499,10 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 	}
 
 	if len(o.ElideLabels) == 0 {
-		o.ElideLabels = []string{"prometheus", "prometheus_replica"}
+		// While forwarding alerts from managed clusters to ACM alert manager on the hub,
+		// prometheus on managed clusters is configured to add a "managed_cluster" label
+		// to alerts and metrics. Strip this label from metrics to conserve resources.
+		o.ElideLabels = []string{"prometheus", "prometheus_replica", "managed_cluster"}
 	}
 	transformer.WithFunc(func() metricfamily.Transformer {
 		return metricfamily.NewElide(o.ElideLabels...)
