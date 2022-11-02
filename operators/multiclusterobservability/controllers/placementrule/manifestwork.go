@@ -576,6 +576,7 @@ func generateManagedClusterLabelListCM(client client.Client) (*corev1.ConfigMap,
 		},
 		Data: map[string]string{
 			"managed_cluster.yaml": found.Data[config.ManagedClusterLabelConfigMapKey],
+			"blacklist_label.yaml": found.Data[config.ManagedClusterLabelBlackListConfigMapKey],
 		},
 	}
 

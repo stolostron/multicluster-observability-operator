@@ -19,6 +19,7 @@ import (
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
+	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
 )
 
@@ -41,6 +42,34 @@ func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
 			klog.Errorf("failed to write response: %v", err)
 		}
 		return
+	}
+
+	if strings.HasSuffix(req.URL.Path, "/api/v1/series") {
+		body, err := ioutil.ReadAll(req.Body)
+
+		if err != nil {
+			klog.Errorf("failed to read body: %v", err)
+		}
+
+		if strings.Contains(string(body), proxyconfig.GetRBACProxyLabelMetricName()) {
+			labelList := proxyconfig.GetClusterLabelList()
+
+			query := `{"status":"success","data":[`
+			for index, label := range labelList.LabelList {
+				query += `{"__name__":"` + proxyconfig.GetRBACProxyLabelMetricName() + `","label_name":"` + label + `"}`
+
+				if index != len(labelList.LabelList)-1 {
+					query += ","
+				}
+			}
+			query += `]}`
+
+			_, err = res.Write([]byte(query))
+			return
+		}
+
+		req.Body = ioutil.NopCloser(strings.NewReader(string(body)))
+		req.ContentLength = int64(len([]rune(string(body))))
 	}
 
 	serverURL, err := url.Parse(os.Getenv("METRICS_SERVER"))

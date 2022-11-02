@@ -98,9 +98,10 @@ const (
 
 	AllowlistCustomConfigMapName = "observability-metrics-custom-allowlist"
 
-	ManagedClusterLabelConfigMapName = "observability-managed-cluster-label-names"
-	ManagedClusterLabelConfigMapKey  = "managed_cluster.yaml"
-	ManagedClusterLabelMetricName    = "managed_cluster_labels"
+	ManagedClusterLabelConfigMapName         = "observability-managed-cluster-label-names"
+	ManagedClusterLabelConfigMapKey          = "managed_cluster.yaml"
+	ManagedClusterLabelBlackListConfigMapKey = "blacklist_label.yaml"
+	ManagedClusterLabelMetricName            = "managed_cluster_labels"
 
 	ProxyServiceName      = "rbac-query-proxy"
 	ProxyRouteName        = "rbac-query-proxy"
