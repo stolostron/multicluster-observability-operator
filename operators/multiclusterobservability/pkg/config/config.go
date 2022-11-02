@@ -100,6 +100,7 @@ const (
 
 	ManagedClusterLabelConfigMapName = "observability-managed-cluster-label-names"
 	ManagedClusterLabelConfigMapKey  = "managed_cluster.yaml"
+	ManagedClusterLabelMetricName    = "managed_cluster_labels"
 
 	ProxyServiceName      = "rbac-query-proxy"
 	ProxyRouteName        = "rbac-query-proxy"
@@ -414,6 +415,21 @@ func ReadImageManifestConfigMap(c client.Client, version string) (bool, error) {
 // GetImageManifests...
 func GetImageManifests() map[string]string {
 	return imageManifests
+}
+
+// GetManagedClusterLabelConfigMapKey return the key name for the managedcluster labels
+func GetManagedClusterLabelConfigMapKey() string {
+	return ManagedClusterLabelConfigMapKey
+}
+
+// GetManagedClusterLabelConfigMapName return the name for the managedcluster labels configmap
+func GetManagedClusterLabelConfigMapName() string {
+	return ManagedClusterLabelConfigMapName
+}
+
+// GetManagedClusterLabelMetricName return the name of the managedcluster label metric
+func GetManagedClusterLabelMetricName() string {
+	return ManagedClusterLabelMetricName
 }
 
 // SetImageManifests sets imageManifests

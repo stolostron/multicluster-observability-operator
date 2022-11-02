@@ -6,12 +6,11 @@ package config
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
 
 const (
-	managedClusterLabelConfigMapKey  = "managed_cluster.yaml"
-	managedClusterLabelConfigMapName = "observability-managed-cluster-label-names"
-
 	managedClusterLabelMetricName = "managed_cluster_labels"
 	rbacProxyLabelMetricName      = "acm_label_names"
 )
@@ -23,16 +22,6 @@ var (
 // GetClusterLabelList will return the current cluster label list
 func GetClusterLabelList() *ClusterLabelList {
 	return &labelList
-}
-
-// GetManagedClusterLabelConfigMapKey returns the key for the cluster label
-func GetManagedClusterLabelConfigMapKey() string {
-	return managedClusterLabelConfigMapKey
-}
-
-// GetManagedClusterLabelConfigMapName returns the name of the for the cluster label configmap
-func GetManagedClusterLabelConfigMapName() string {
-	return managedClusterLabelConfigMapName
 }
 
 // GetManagedClusterLabelMetricName returns the name of the manged cluster label metric name
@@ -48,11 +37,11 @@ func GetRBACProxyLabelMetricName() string {
 func CreateClusterLabelConfigmap() *corev1.ConfigMap {
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      GetManagedClusterLabelConfigMapName(),
-			Namespace: "open-cluster-management-observability",
+			Name:      mcoconfig.GetManagedClusterLabelConfigMapName(),
+			Namespace: mcoconfig.GetDefaultNamespace(),
 		},
 		Data: map[string]string{
-			GetManagedClusterLabelConfigMapKey(): `
+			mcoconfig.GetManagedClusterLabelConfigMapKey(): `
 labels:
   - cloud
   - vendor
