@@ -197,7 +197,10 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, err
 		}
 	} else {
-		revertClusterMonitoringConfig(ctx, r.Client, installPrometheus)
+		if err := revertClusterMonitoringConfig(ctx, r.Client, installPrometheus); err != nil {
+			log.Error(err, "failed to revert changes to cluster-monitoring-config")
+			return ctrl.Result{}, err
+		}
 	}
 
 	if obsAddon.Spec.EnableMetrics {

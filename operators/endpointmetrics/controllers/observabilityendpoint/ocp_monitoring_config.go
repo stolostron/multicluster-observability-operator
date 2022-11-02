@@ -248,7 +248,6 @@ func createOrUpdateClusterMonitoringConfig(
 
 	// init the prometheus k8s config
 	newExternalLabels := map[string]string{clusterLabelKeyForAlerts: clusterID}
-	log.Info("be advised, external labels are overwritten by this process.")
 	newAlertmanagerConfigs := []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig(hubInfo)}
 	newPmK8sConfig := &cmomanifests.PrometheusK8sConfig{
 		// add cluster label for alerts from managed cluster

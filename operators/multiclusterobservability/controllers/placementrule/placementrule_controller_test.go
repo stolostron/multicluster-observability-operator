@@ -23,7 +23,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -139,10 +138,11 @@ func TestObservabilityPlacementController(t *testing.T) {
 		},
 	}
 
-	opts := zap.Options{
-		Development: true,
-	}
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	// Uncomment these lines to log controller
+	// opts := zap.Options{
+	// 	Development: true,
+	// }
+	// ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	objs := []runtime.Object{mco, pull, newConsoleRoute(), newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
 		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newManagedClusterAddon(), deprecatedRole}
@@ -305,7 +305,7 @@ func TestObservabilityPlacementController(t *testing.T) {
 
 	// 2. Set mco-disable-alerting annotation in mco
 	// Verify that alertmanager-endpoint in secret hub-info-secret in the ManifestWork is null
-	t.Logf("check alertmanager endpoint is null after disabling alert fowarding through annotation")
+	t.Logf("check alertmanager endpoint is null after disabling alerts through annotation")
 	mco.Annotations = map[string]string{config.AnnotationDisableMCOAlerting: "true"}
 	c.Update(context.TODO(), mco)
 	if err != nil {

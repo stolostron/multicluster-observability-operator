@@ -145,3 +145,26 @@ func TestNewBYOSecret(t *testing.T) {
 		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA, clusterName+" "+"https://test-host"+" "+"test-host"+" "+routerBYOCA)
 	}
 }
+
+func TestMCOWithAlertDisableAnnotation(t *testing.T) {
+	initSchema(t)
+
+	mco := newTestMCOWithAlertDisableAnnotation()
+	objs := []runtime.Object{mco, newTestObsApiRoute(),
+		newTestAlertmanagerRoute(), newTestAmRouteBYOCA(), newTestAmRouteBYOCert()}
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+
+	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true, mco)
+	if err != nil {
+		t.Fatalf("Failed to initial the hub info secret: (%v)", err)
+	}
+	hub := &operatorconfig.HubInfo{}
+	err = yaml.Unmarshal(hubInfo.Data[operatorconfig.HubInfoSecretKey], &hub)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
+	}
+
+	if hub.AlertmanagerEndpoint != "" {
+		t.Fatalf("Alert manager endpoint is not set to null after disabling alerts")
+	}
+}
