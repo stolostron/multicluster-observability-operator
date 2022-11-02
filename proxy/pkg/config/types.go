@@ -3,9 +3,9 @@
 
 package config
 
-// ClusterLabelList is the struct that contains the
+// ManagedClusterLabelList is the struct that contains the
 // list of labels that are assigned to the managed clusters
-type ClusterLabelList struct {
+type ManagedClusterLabelList struct {
 	LabelList []string `yaml:"labels"`
 	BlackList []string `yaml:"labels"`
 }
