@@ -1,4 +1,7 @@
 pipeline {
+    options {
+        buildDiscarder(logRotator(daysToKeepStr: '30'))
+    }
     agent {
         docker {
 	    image 'quay.io/vboulos/acmqe-automation/ginkgo_1_14_2-linux-go'
