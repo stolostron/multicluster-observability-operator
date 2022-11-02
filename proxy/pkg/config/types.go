@@ -7,4 +7,5 @@ package config
 // list of labels that are assigned to the managed clusters
 type ClusterLabelList struct {
 	LabelList []string `yaml:"labels"`
+	BlackList []string `yaml:"labels"`
 }
