@@ -83,7 +83,8 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 	found := false
 	conditions := []oav1beta1.StatusCondition{}
 	lastestC := oav1beta1.StatusCondition{}
-	message, conditionType, reason := mergeCondtion(isUwl, t, r, m, addon.Status.Conditions[len(addon.Status.Conditions)-1])
+	message, conditionType, reason := mergeCondtion(isUwl, t, r, m,
+		addon.Status.Conditions[len(addon.Status.Conditions)-1])
 	for _, c := range addon.Status.Conditions {
 		if c.Status == metav1.ConditionTrue {
 			if c.Type != conditionType {
