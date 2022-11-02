@@ -28,6 +28,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
+	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	workv1 "open-cluster-management.io/api/work/v1"
 )
 
@@ -39,12 +40,13 @@ const (
 
 // intermidiate resources for the manifest work
 var (
-	hubInfoSecret                   *corev1.Secret
-	pullSecret                      *corev1.Secret
-	managedClusterObsCert           *corev1.Secret
-	metricsAllowlistConfigMap       *corev1.ConfigMap
-	ocp311metricsAllowlistConfigMap *corev1.ConfigMap
-	amAccessorTokenSecret           *corev1.Secret
+	hubInfoSecret                    *corev1.Secret
+	pullSecret                       *corev1.Secret
+	managedClusterObsCert            *corev1.Secret
+	managedClusterLabelListConfigMap *corev1.ConfigMap
+	metricsAllowlistConfigMap        *corev1.ConfigMap
+	ocp311metricsAllowlistConfigMap  *corev1.ConfigMap
+	amAccessorTokenSecret            *corev1.Secret
 
 	obsAddonCRDv1                 *apiextensionsv1.CustomResourceDefinition
 	obsAddonCRDv1beta1            *apiextensionsv1beta1.CustomResourceDefinition
@@ -544,6 +546,46 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.Con
 	}
 	ocp311AllowlistCM.Data[operatorconfig.MetricsOcp311ConfigMapKey] = string(data)
 	return metricsAllowlistCM, ocp311AllowlistCM, nil
+}
+
+// generateManagedClusterLabelListCM generates the configmap that contains the managedcluster label list
+func generateManagedClusterLabelListCM(client client.Client) (*corev1.ConfigMap, error) {
+	found := &corev1.ConfigMap{}
+
+	err := client.Get(context.TODO(), types.NamespacedName{
+		Name:      config.ManagedClusterLabelConfigMapName,
+		Namespace: config.GetDefaultNamespace(),
+	}, found)
+
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil, nil
+		}
+		log.Error(err, "Failed to get the configmap", "name", config.ManagedClusterLabelConfigMapName)
+		return nil, err
+	}
+
+	managedClusterLabelListCM := &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "ConfigMap",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.ManagedClusterLabelConfigMapName,
+			Namespace: config.GetDefaultNamespace(),
+		},
+		Data: map[string]string{
+			"managed_cluster.yaml": found.Data[config.ManagedClusterLabelConfigMapKey],
+		},
+	}
+
+	err = yaml.Unmarshal([]byte(managedClusterLabelListCM.Data[config.ManagedClusterLabelConfigMapKey]), proxyconfig.GetClusterLabelList())
+	if err != nil {
+		log.Error(err, "Failed to unmarshal managed_cluster data in configmap ",
+			"namespace", managedClusterLabelListCM.ObjectMeta.Namespace, "name", managedClusterLabelListCM.ObjectMeta.Name)
+		return nil, err
+	}
+	return managedClusterLabelListCM, nil
 }
 
 func getObservabilityAddon(c client.Client, namespace string,

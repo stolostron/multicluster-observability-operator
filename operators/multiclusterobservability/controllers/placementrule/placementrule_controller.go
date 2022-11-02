@@ -623,6 +623,36 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 
+	managedClusterLabelListPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Object.GetName() == config.ManagedClusterLabelConfigMapName && e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				// regenerate the managedcluster label list configmap
+				log.Info("generate managedcluster label list configmap for managedcluster label list configmap CREATE")
+				managedClusterLabelListConfigMap, _ = generateManagedClusterLabelListCM(c)
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.ObjectNew.GetName() == config.ManagedClusterLabelConfigMapName && e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
+				// regenerate the managedcluster label list configmap
+				log.Info("generate managedcluster label list configmap for cluster label list configmap UPDATE")
+				managedClusterLabelListConfigMap, _ = generateManagedClusterLabelListCM(c)
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Object.GetName() == config.ManagedClusterLabelConfigMapName && e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				// regenerate the managedcluster label list configmap
+				log.Info("generate managedcluster label list configmap for cluster label list configmap UPDATE")
+				managedClusterLabelListConfigMap, _ = generateManagedClusterLabelListCM(c)
+				return true
+			}
+			return false
+		},
+	}
+
 	certSecretPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == config.ServerCACerts &&
@@ -834,6 +864,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 		// secondary watch for custom allowlist configmap
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(allowlistPred)).
+
+		// secondary watch for managedcluster labels configmap
+		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(managedClusterLabelListPred)).
 
 		// secondary watch for certificate secrets
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(certSecretPred)).
