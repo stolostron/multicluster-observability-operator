@@ -5,7 +5,9 @@ package status
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -21,8 +23,9 @@ import (
 )
 
 const (
-	name      = "observability-addon"
-	namespace = "open-cluster-management-addon-observability"
+	name       = "observability-addon"
+	namespace  = "open-cluster-management-addon-observability"
+	uwlPromURL = "https://prometheus-user-workload.openshift-user-workload-monitoring.svc:9092"
 )
 
 type StatusReport struct {
@@ -63,6 +66,10 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 	if s.statusClient == nil {
 		return nil
 	}
+	isUwl := false
+	if os.Getenv("FROM") == uwlPromURL {
+		isUwl = true
+	}
 	addon := &oav1beta1.ObservabilityAddon{}
 	err := s.statusClient.Get(context.TODO(), types.NamespacedName{
 		Name:      name,
@@ -76,15 +83,16 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 	found := false
 	conditions := []oav1beta1.StatusCondition{}
 	lastestC := oav1beta1.StatusCondition{}
+	message, conditionType, reason := mergeCondtion(isUwl, t, r, m, addon.Status.Conditions[len(addon.Status.Conditions)-1])
 	for _, c := range addon.Status.Conditions {
 		if c.Status == metav1.ConditionTrue {
-			if c.Type != t {
+			if c.Type != conditionType {
 				c.Status = metav1.ConditionFalse
 			} else {
 				found = true
-				if c.Reason != r || c.Message != m {
-					c.Reason = r
-					c.Message = m
+				if c.Reason != reason || c.Message != message {
+					c.Reason = reason
+					c.Message = message
 					c.LastTransitionTime = metav1.NewTime(time.Now())
 					update = true
 					lastestC = c
@@ -92,11 +100,11 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 				}
 			}
 		} else {
-			if c.Type == t {
+			if c.Type == conditionType {
 				found = true
 				c.Status = metav1.ConditionTrue
-				c.Reason = r
-				c.Message = m
+				c.Reason = reason
+				c.Message = message
 				c.LastTransitionTime = metav1.NewTime(time.Now())
 				update = true
 				lastestC = c
@@ -109,6 +117,9 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 		conditions = append(conditions, lastestC)
 	}
 	if !found {
+		if isUwl {
+			m = fmt.Sprintf("%s ; ", m)
+		}
 		conditions = append(conditions, oav1beta1.StatusCondition{
 			Type:               t,
 			Status:             metav1.ConditionTrue,
@@ -117,8 +128,16 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 			LastTransitionTime: metav1.NewTime(time.Now()),
 		})
 		update = true
+		lastestC = oav1beta1.StatusCondition{
+			Type:               t,
+			Status:             metav1.ConditionTrue,
+			Reason:             r,
+			Message:            m,
+			LastTransitionTime: metav1.NewTime(time.Now()),
+		}
 	}
 	if update {
+		logger.Log(s.logger, logger.Info, "t", lastestC.Type, "r", lastestC.Reason, "m", lastestC.Message)
 		addon.Status.Conditions = conditions
 		err = s.statusClient.Status().Update(context.TODO(), addon)
 		if err != nil {
@@ -126,6 +145,25 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 		}
 		return err
 	}
-
 	return nil
+}
+
+func mergeCondtion(isUwl bool, t, r, m string, condition oav1beta1.StatusCondition) (string, string, string) {
+	messages := strings.Split(condition.Message, " ; ")
+	if len(messages) == 1 {
+		messages = append(messages, "")
+	}
+	if isUwl {
+		messages[1] = fmt.Sprintf("User Workload: %s", m)
+	} else {
+		messages[0] = m
+	}
+	message := strings.Join(messages, " ; ")
+	conditionType := "Available"
+	reason := "Available"
+	if strings.Contains(message, "Failed") {
+		conditionType = "Degraded"
+		reason = "Degraded"
+	}
+	return message, conditionType, reason
 }
