@@ -470,7 +470,8 @@ func injectNamespaceLabel(allowlist *operatorconfig.MetricsAllowlist,
 		MatchList: []string{},
 	}
 	for _, name := range allowlist.NameList {
-		updatedList.MatchList = append(updatedList.MatchList, fmt.Sprintf("__name__=\"%s\",namespace=\"%s\"", name, namespace))
+		updatedList.MatchList = append(updatedList.MatchList,
+			fmt.Sprintf("__name__=\"%s\",namespace=\"%s\"", name, namespace))
 	}
 	for _, match := range allowlist.MatchList {
 		updatedList.MatchList = append(updatedList.MatchList, fmt.Sprintf("%s,namespace=\"%s\"", match, namespace))
