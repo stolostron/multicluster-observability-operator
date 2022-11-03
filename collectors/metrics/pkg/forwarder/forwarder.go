@@ -63,6 +63,7 @@ func init() {
 // The only required field is `From`.
 type Config struct {
 	From          *url.URL
+	FromQuery     *url.URL
 	ToUpload      *url.URL
 	FromToken     string
 	FromTokenFile string
@@ -97,6 +98,7 @@ type Worker struct {
 	fromClient *metricsclient.Client
 	toClient   *metricsclient.Client
 	from       *url.URL
+	fromQuery  *url.URL
 	to         *url.URL
 
 	interval       time.Duration
@@ -225,6 +227,7 @@ func New(cfg Config) (*Worker, error) {
 	rlogger.Log(logger, rlogger.Warn, "msg", cfg.ToUpload)
 	w := Worker{
 		from:                    cfg.From,
+		fromQuery:               cfg.FromQuery,
 		interval:                cfg.Interval,
 		reconfigure:             make(chan struct{}),
 		to:                      cfg.ToUpload,
@@ -457,13 +460,7 @@ func (w *Worker) getRecordingMetrics(ctx context.Context) ([]*clientmodel.Metric
 	var families []*clientmodel.MetricFamily
 	var e error
 
-	from := w.from
-	originPath := from.Path
-	from.Path = "/api/v1/query"
-	// Path /api/v1/query is only used in getRecordingMetrics(), reset to origin path before return.
-	defer func() {
-		w.from.Path = originPath
-	}()
+	from := w.fromQuery
 
 	for _, rule := range w.recordingRules {
 		var r map[string]string
@@ -478,14 +475,14 @@ func (w *Worker) getRecordingMetrics(ctx context.Context) ([]*clientmodel.Metric
 
 		// reset query from last invocation, otherwise match rules will be appended
 		from.RawQuery = ""
-		v := w.from.Query()
+		v := w.fromQuery.Query()
 		v.Add("query", rquery)
 		from.RawQuery = v.Encode()
 
 		req := &http.Request{Method: "GET", URL: from}
 		rfamilies, err := w.fromClient.RetrievRecordingMetrics(ctx, req, rname)
 		if err != nil {
-			rlogger.Log(w.logger, rlogger.Warn, "msg", "Failed to retrieve recording metrics", "err", err)
+			rlogger.Log(w.logger, rlogger.Warn, "msg", "Failed to retrieve recording metrics", "err", err, "url", from)
 			e = err
 			continue
 		} else {

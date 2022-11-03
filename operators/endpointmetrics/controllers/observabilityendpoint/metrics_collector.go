@@ -46,9 +46,10 @@ const (
 )
 
 var (
-	ocpPromURL = "https://prometheus-k8s.openshift-monitoring.svc:9091"
-	uwlPromURL = "https://prometheus-user-workload.openshift-user-workload-monitoring.svc:9092"
-	promURL    = "https://prometheus-k8s:9091"
+	ocpPromURL  = "https://prometheus-k8s.openshift-monitoring.svc:9091"
+	uwlPromURL  = "https://prometheus-user-workload.openshift-user-workload-monitoring.svc:9092"
+	uwlQueryURL = "https://thanos-querier.openshift-monitoring.svc:9091"
+	promURL     = "https://prometheus-k8s:9091"
 )
 
 type CollectorParams struct {
@@ -82,6 +83,7 @@ func getCommands(params CollectorParams) []string {
 	commands := []string{
 		"/usr/bin/metrics-collector",
 		"--from=$(FROM)",
+		"--from-query=$(FROM_QUERY)",
 		"--to-upload=$(TO)",
 		"--to-upload-ca=/tlscerts/ca/ca.crt",
 		"--to-upload-cert=/tlscerts/certs/tls.crt",
@@ -217,6 +219,10 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			from = uwlPromURL
 		}
 	}
+	fromQuery := from
+	if params.isUWL {
+		fromQuery = uwlQueryURL
+	}
 	name := metricsCollectorName
 	if params.isUWL {
 		name = uwlMetricsCollectorName
@@ -253,6 +259,10 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 								{
 									Name:  "FROM",
 									Value: from,
+								},
+								{
+									Name:  "FROM_QUERY",
+									Value: fromQuery,
 								},
 								{
 									Name:  "TO",
