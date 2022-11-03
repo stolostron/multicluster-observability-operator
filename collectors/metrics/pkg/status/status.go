@@ -82,7 +82,7 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 	update := false
 	found := false
 	conditions := []oav1beta1.StatusCondition{}
-	lastestC := oav1beta1.StatusCondition{}
+	latestC := oav1beta1.StatusCondition{}
 	message, conditionType, reason := mergeCondtion(isUwl, t, r, m,
 		addon.Status.Conditions[len(addon.Status.Conditions)-1])
 	for _, c := range addon.Status.Conditions {
@@ -96,7 +96,7 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 					c.Message = message
 					c.LastTransitionTime = metav1.NewTime(time.Now())
 					update = true
-					lastestC = c
+					latestC = c
 					continue
 				}
 			}
@@ -108,14 +108,14 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 				c.Message = message
 				c.LastTransitionTime = metav1.NewTime(time.Now())
 				update = true
-				lastestC = c
+				latestC = c
 				continue
 			}
 		}
 		conditions = append(conditions, c)
 	}
 	if update {
-		conditions = append(conditions, lastestC)
+		conditions = append(conditions, latestC)
 	}
 	if !found {
 		if isUwl {
@@ -129,16 +129,8 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 			LastTransitionTime: metav1.NewTime(time.Now()),
 		})
 		update = true
-		lastestC = oav1beta1.StatusCondition{
-			Type:               t,
-			Status:             metav1.ConditionTrue,
-			Reason:             r,
-			Message:            m,
-			LastTransitionTime: metav1.NewTime(time.Now()),
-		}
 	}
 	if update {
-		logger.Log(s.logger, logger.Info, "t", lastestC.Type, "r", lastestC.Reason, "m", lastestC.Message)
 		addon.Status.Conditions = conditions
 		err = s.statusClient.Status().Update(context.TODO(), addon)
 		if err != nil {
