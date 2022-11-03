@@ -418,6 +418,9 @@ func getMetricsAllowlist(ctx context.Context, c client.Client,
 				log.Error(err, "Failed to parse data in configmap", "namespace", allowlistCM.ObjectMeta.Namespace,
 					"name", allowlistCM.ObjectMeta.Name)
 			}
+			if allowlistCM.ObjectMeta.Namespace != namespace {
+				customUwlAllowlist = injectNamespaceLabel(customUwlAllowlist, allowlistCM.ObjectMeta.Namespace)
+			}
 			l, _, ul = util.MergeAllowlist(l, customAllowlist, nil, ul, customUwlAllowlist)
 		}
 	}
@@ -455,4 +458,22 @@ func isUWLMonitoringEnabled(ctx context.Context, c client.Client) (bool, error) 
 		}
 	}
 	return true, nil
+}
+
+// for custom uwl allowlist:
+// 1. only support "names" and "matches"
+// 2. inject namespace label filter for all entries in the allowlist
+func injectNamespaceLabel(allowlist *operatorconfig.MetricsAllowlist,
+	namespace string) *operatorconfig.MetricsAllowlist {
+	updatedList := &operatorconfig.MetricsAllowlist{
+		NameList:  []string{},
+		MatchList: []string{},
+	}
+	for _, name := range allowlist.NameList {
+		updatedList.MatchList = append(updatedList.MatchList, fmt.Sprintf("__name__=\"%s\",namespace=\"%s\"", name, namespace))
+	}
+	for _, match := range allowlist.MatchList {
+		updatedList.MatchList = append(updatedList.MatchList, fmt.Sprintf("%s,namespace=\"%s\"", match, namespace))
+	}
+	return updatedList
 }
