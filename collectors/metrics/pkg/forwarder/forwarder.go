@@ -140,7 +140,7 @@ func CreateFromClient(cfg Config, interval time.Duration, name string,
 		if fromTransport.TLSClientConfig == nil {
 			/* #nosec G402*/
 			fromTransport.TLSClientConfig = &tls.Config{
-				MinVersion:         tls.VersionTLS12,
+				MinVersion: tls.VersionTLS12,
 				InsecureSkipVerify: true,
 			}
 		}
@@ -372,7 +372,6 @@ func (w *Worker) forward(ctx context.Context) error {
 			if statusErr != nil {
 				rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
 			}
-			return err
 		} else {
 			families = append(families, rfamilies...)
 		}

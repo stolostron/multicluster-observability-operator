@@ -62,30 +62,4 @@ func TestUpdateStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to update status: (%v)", err)
 	}
-
-	err = s.UpdateStatus("Available", "Available", "Cluster metrics sent successfully")
-	if err != nil {
-		t.Fatalf("Failed to update status: (%v)", err)
-	}
-
-	os.Setenv("FROM", uwlPromURL)
-	err = s.UpdateStatus("Degraded", "Degraded", "Failed to retrieve metrics")
-	if err != nil {
-		t.Fatalf("Failed to update status: (%v)", err)
-	}
-
-	err = s.UpdateStatus("Degraded", "Degraded", "Failed to send metrics")
-	if err != nil {
-		t.Fatalf("Failed to update status: (%v)", err)
-	}
-
-	err = s.UpdateStatus("Available", "Available", "Cluster metrics sent successfully")
-	if err != nil {
-		t.Fatalf("Failed to update status: (%v)", err)
-	}
-	os.Setenv("FROM", "")
-	err = s.UpdateStatus("Available", "Available", "Cluster metrics sent successfully")
-	if err != nil {
-		t.Fatalf("Failed to update status: (%v)", err)
-	}
 }
