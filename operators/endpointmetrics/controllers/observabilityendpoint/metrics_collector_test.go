@@ -61,12 +61,14 @@ func getCustomAllowlistCM() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      operatorconfig.AllowlistCustomConfigMapName,
-			Namespace: namespace,
+			Namespace: "default",
 		},
 		Data: map[string]string{
 			operatorconfig.UwlMetricsConfigMapKey: `
 names:
   - custom_c
+matches:
+  - __name__=test
 `},
 	}
 }
@@ -85,14 +87,13 @@ func TestMetricsCollector(t *testing.T) {
 		ClusterName:              "test-cluster",
 		ObservatoriumAPIEndpoint: "http://test-endpoint",
 	}
-	allowlistCM := getAllowlistCM()
 	obsAddon := oashared.ObservabilityAddonSpec{
 		EnableMetrics: true,
 		Interval:      60,
 	}
 
 	ctx := context.TODO()
-	c := fake.NewFakeClient(allowlistCM)
+	c := fake.NewFakeClient(getAllowlistCM(), getCustomAllowlistCM())
 	list, uwlList, err := getMetricsAllowlist(ctx, c, "")
 	if err != nil {
 		t.Fatalf("Failed to get allowlist: (%v)", err)
