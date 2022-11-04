@@ -23,6 +23,7 @@ const (
 	routeHost        = "test-host"
 	routerCA         = "test-ca"
 	routerBYOCA      = "test-ca"
+	routerDefaultCA  = "test-ca"
 	routerBYOCert    = "test-cert"
 	routerBYOCertKey = "test-key"
 )
@@ -106,13 +107,26 @@ func newTestAmRouteBYOCert() *corev1.Secret {
 	}
 }
 
+func newTestAmDefaultCA() *corev1.ConfigMap {
+	configYamlMap := map[string]string{"service-ca.crt": routerDefaultCA}
+	//configYamlMap["service-ca.crt"] = []byte(routerDefaultCA)
+
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.AlertmanagersDefaultCaBundleName,
+			Namespace: mcoNamespace,
+		},
+		Data: configYamlMap,
+	}
+}
+
 func TestNewSecret(t *testing.T) {
 	initSchema(t)
 
 	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret()}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
-	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true, nil)
+	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true)
 	if err != nil {
 		t.Fatalf("Failed to initial the hub info secret: (%v)", err)
 	}
@@ -132,7 +146,7 @@ func TestNewBYOSecret(t *testing.T) {
 	objs := []runtime.Object{newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestAmRouteBYOCA(), newTestAmRouteBYOCert()}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
-	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true, nil)
+	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true)
 	if err != nil {
 		t.Fatalf("Failed to initial the hub info secret: (%v)", err)
 	}
@@ -150,11 +164,12 @@ func TestMCOWithAlertDisableAnnotation(t *testing.T) {
 	initSchema(t)
 
 	mco := newTestMCOWithAlertDisableAnnotation()
+	config.SetAlertingDisabled(true)
 	objs := []runtime.Object{mco, newTestObsApiRoute(),
 		newTestAlertmanagerRoute(), newTestAmRouteBYOCA(), newTestAmRouteBYOCert()}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
-	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true, mco)
+	hubInfo, err := generateHubInfoSecret(c, mcoNamespace, namespace, true)
 	if err != nil {
 		t.Fatalf("Failed to initial the hub info secret: (%v)", err)
 	}

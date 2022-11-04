@@ -6,7 +6,6 @@ package placementrule
 import (
 	"context"
 	"errors"
-	"reflect"
 	"sync"
 	"time"
 
@@ -21,15 +20,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -37,7 +33,6 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
@@ -311,7 +306,7 @@ func createAllRelatedRes(
 	if hubInfoSecret == nil {
 		var err error
 		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace,
-			CRDMap[config.IngressControllerCRD], mco); err != nil {
+			CRDMap[config.IngressControllerCRD]); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -488,475 +483,55 @@ func updateManagedClusterList(obj client.Object) {
 func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	c := mgr.GetClient()
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
-	clusterPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			log.Info("CreateFunc", "managedCluster", e.Object.GetName())
-			updateManagedClusterList(e.Object)
-			updateManagedClusterImageRegistry(e.Object)
-			return true
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			log.Info("UpdateFunc", "managedCluster", e.ObjectNew.GetName())
-			if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				if e.ObjectNew.GetDeletionTimestamp() != nil {
-					log.Info("managedcluster is in terminating state", "managedCluster", e.ObjectNew.GetName())
-					managedClusterListMutex.Lock()
-					delete(managedClusterList, e.ObjectNew.GetName())
-					managedClusterListMutex.Unlock()
-					managedClusterImageRegistryMutex.Lock()
-					delete(managedClusterImageRegistry, e.ObjectNew.GetName())
-					managedClusterImageRegistryMutex.Unlock()
-				} else {
-					updateManagedClusterList(e.ObjectNew)
-					updateManagedClusterImageRegistry(e.ObjectNew)
-				}
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			log.Info("DeleteFunc", "managedCluster", e.Object.GetName())
-			managedClusterListMutex.Lock()
-			delete(managedClusterList, e.Object.GetName())
-			managedClusterListMutex.Unlock()
-			managedClusterImageRegistryMutex.Lock()
-			delete(managedClusterImageRegistry, e.Object.GetName())
-			managedClusterImageRegistryMutex.Unlock()
-			return true
-		},
-	}
-
-	obsAddonPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == obsAddonName &&
-				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Status.Conditions,
-					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Status.Conditions) {
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetName() == obsAddonName &&
-				e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue {
-				log.Info(
-					"DeleteFunc",
-					"obsAddonNamespace",
-					e.Object.GetNamespace(),
-					"obsAddonName",
-					e.Object.GetName(),
-				)
-				/* #nosec */
-				removePostponeDeleteAnnotationForManifestwork(c, e.Object.GetNamespace())
-				return true
-			}
-			return false
-		},
-	}
-
-	mcoPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			// generate the image pull secret
-			pullSecret, _ = generatePullSecret(
-				c,
-				config.GetImagePullSecret(e.Object.(*mcov1beta2.MultiClusterObservability).Spec),
-			)
-
-			mco := e.Object.(*mcov1beta2.MultiClusterObservability)
-			alertingStatus := config.IsAlertingDisabledInSpec(mco)
-			config.SetAlertingDisabledStatus(alertingStatus)
-			var err error = nil
-			hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, false, mco)
-			if err != nil {
-				log.Error(err, "unable to get HubInfoSecret", "controller", "PlacementRule")
-			}
-			return true
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-
-			mco := e.ObjectNew.(*mcov1beta2.MultiClusterObservability)
-			oldAlertingStatus := config.GetAlertingDisabledStatus()
-			newAlertingStatus := config.IsAlertingDisabledInSpec(mco)
-			// if value changed, then mustReconcile is true
-			if oldAlertingStatus != newAlertingStatus {
-				config.SetAlertingDisabledStatus(newAlertingStatus)
-				var err error = nil
-
-				hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, false, mco)
-				if err != nil {
-					log.Error(err, "unable to get HubInfoSecret", "controller", "PlacementRule")
-				}
-
-				return true
-			}
-
-			// only reconcile when ObservabilityAddonSpec updated
-			if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
-				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.ObservabilityAddonSpec,
-					e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.ObservabilityAddonSpec) {
-				if e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.ImagePullSecret != e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.ImagePullSecret {
-					// regenerate the image pull secret
-					pullSecret, _ = generatePullSecret(
-						c,
-						config.GetImagePullSecret(e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec),
-					)
-				}
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return true
-		},
-	}
-
-	allowlistPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if (e.Object.GetName() == config.AllowlistCustomConfigMapName ||
-				e.Object.GetName() == operatorconfig.AllowlistConfigMapName) &&
-				e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				// generate the metrics allowlist configmap
-				log.Info("generate metric allow list configmap for allowlist configmap CREATE")
-				metricsAllowlistConfigMap, ocp311metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
-				return true
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if (e.ObjectNew.GetName() == config.AllowlistCustomConfigMapName ||
-				e.ObjectNew.GetName() == operatorconfig.AllowlistConfigMapName) &&
-				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() &&
-				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				// regenerate the metrics allowlist configmap
-				log.Info("generate metric allow list configmap for allowlist configmap UPDATE")
-				metricsAllowlistConfigMap, ocp311metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if (e.Object.GetName() == config.AllowlistCustomConfigMapName ||
-				e.Object.GetName() == operatorconfig.AllowlistConfigMapName) &&
-				e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				// regenerate the metrics allowlist configmap
-				log.Info("generate metric allow list configmap for allowlist configmap UPDATE")
-				metricsAllowlistConfigMap, ocp311metricsAllowlistConfigMap, _ = generateMetricsListCM(c)
-				return true
-			}
-			return false
-		},
-	}
-
-	certSecretPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == config.ServerCACerts &&
-				e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				// generate the certificate for managed cluster
-				log.Info("generate managedcluster observability certificate for server certificate CREATE")
-				managedClusterObsCert, _ = generateObservabilityServerCACerts(c)
-				return true
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if (e.ObjectNew.GetName() == config.ServerCACerts &&
-				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace()) &&
-				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				// regenerate the certificate for managed cluster
-				log.Info("generate managedcluster observability certificate for server certificate UPDATE")
-				managedClusterObsCert, _ = generateObservabilityServerCACerts(c)
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return false
-		},
-	}
-
-	ingressControllerPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == config.OpenshiftIngressOperatorCRName &&
-				e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
-				// generate the hubInfo secret
-				hubInfoSecret, _ = generateHubInfoSecret(
-					c,
-					config.GetDefaultNamespace(),
-					spokeNameSpace,
-					ingressCtlCrdExists,
-					nil,
-				)
-				return true
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == config.OpenshiftIngressOperatorCRName &&
-				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
-				e.ObjectNew.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
-				// regenerate the hubInfo secret
-				hubInfoSecret, _ = generateHubInfoSecret(
-					c,
-					config.GetDefaultNamespace(),
-					spokeNameSpace,
-					ingressCtlCrdExists,
-					nil,
-				)
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetName() == config.OpenshiftIngressOperatorCRName &&
-				e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace {
-				// regenerate the hubInfo secret
-				hubInfoSecret, _ = generateHubInfoSecret(
-					c,
-					config.GetDefaultNamespace(),
-					spokeNameSpace,
-					ingressCtlCrdExists,
-					nil,
-				)
-				return true
-			}
-			return false
-		},
-	}
-
-	amRouterCertSecretPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
-				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				// generate the hubInfo secret
-				hubInfoSecret, _ = generateHubInfoSecret(
-					c,
-					config.GetDefaultNamespace(),
-					spokeNameSpace,
-					ingressCtlCrdExists,
-					nil,
-				)
-				return true
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() &&
-				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
-				(e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				// regenerate the hubInfo secret
-				hubInfoSecret, _ = generateHubInfoSecret(
-					c,
-					config.GetDefaultNamespace(),
-					spokeNameSpace,
-					ingressCtlCrdExists,
-					nil,
-				)
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
-				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName) {
-				// regenerate the hubInfo secret
-				hubInfoSecret, _ = generateHubInfoSecret(
-					c,
-					config.GetDefaultNamespace(),
-					spokeNameSpace,
-					ingressCtlCrdExists,
-					nil,
-				)
-				return true
-			}
-			return false
-		},
-	}
-
-	routeCASecretPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if (e.Object.GetNamespace() == config.OpenshiftIngressOperatorNamespace &&
-				e.Object.GetName() == config.OpenshiftIngressRouteCAName) ||
-				(e.Object.GetNamespace() == config.OpenshiftIngressNamespace &&
-					e.Object.GetName() == config.OpenshiftIngressDefaultCertName) {
-				// generate the hubInfo secret
-				hubInfoSecret, _ = generateHubInfoSecret(
-					c,
-					config.GetDefaultNamespace(),
-					spokeNameSpace,
-					ingressCtlCrdExists,
-					nil,
-				)
-				return true
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if ((e.ObjectNew.GetNamespace() == config.OpenshiftIngressOperatorNamespace &&
-				e.ObjectNew.GetName() == config.OpenshiftIngressRouteCAName) ||
-				(e.ObjectNew.GetNamespace() == config.OpenshiftIngressNamespace &&
-					e.ObjectNew.GetName() == config.OpenshiftIngressDefaultCertName)) &&
-				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				// regenerate the hubInfo secret
-				hubInfoSecret, _ = generateHubInfoSecret(
-					c,
-					config.GetDefaultNamespace(),
-					spokeNameSpace,
-					ingressCtlCrdExists,
-					nil,
-				)
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return false
-		},
-	}
-
-	amAccessorSAPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == config.AlertmanagerAccessorSAName &&
-				e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				// wait 10s for access_token of alertmanager and generate the secret that contains the access_token
-				/* #nosec */
-				wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
-					var err error
-					log.Info("generate amAccessorTokenSecret for alertmanager access serviceaccount CREATE")
-					if amAccessorTokenSecret, err = generateAmAccessorTokenSecret(c); err == nil {
-						return true, nil
-					}
-					return false, err
-				})
-				return true
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if (e.ObjectNew.GetName() == config.AlertmanagerAccessorSAName &&
-				e.ObjectNew.GetNamespace() == config.GetDefaultNamespace()) &&
-				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				// regenerate the secret that contains the access_token for the Alertmanager in the Hub cluster
-				amAccessorTokenSecret, _ = generateAmAccessorTokenSecret(c)
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return false
-		},
-	}
 
 	ctrBuilder := ctrl.NewControllerManagedBy(mgr).
 		// Watch for changes to primary resource ManagedCluster with predicate
-		For(&clusterv1.ManagedCluster{}, builder.WithPredicates(clusterPred)).
+		For(&clusterv1.ManagedCluster{}, builder.WithPredicates(getClusterPred(c, ingressCtlCrdExists))).
 		// secondary watch for observabilityaddon
-		Watches(&source.Kind{Type: &mcov1beta1.ObservabilityAddon{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(obsAddonPred)).
-
+		Watches(&source.Kind{Type: &mcov1beta1.ObservabilityAddon{}}, &handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getObsAddonPred(c, ingressCtlCrdExists))).
 		// secondary watch for MCO
-		Watches(&source.Kind{Type: &mcov1beta2.MultiClusterObservability{}}, handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
-			return []reconcile.Request{
-				{NamespacedName: types.NamespacedName{
-					Name: config.MCOUpdatedRequestName,
-				}},
-			}
-		}), builder.WithPredicates(mcoPred)).
-
+		Watches(&source.Kind{Type: &mcov1beta2.MultiClusterObservability{}},
+			handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+				return []reconcile.Request{
+					{NamespacedName: types.NamespacedName{
+						Name: config.MCOUpdatedRequestName,
+					}},
+				}
+			}), builder.WithPredicates(getMCOPred(c, ingressCtlCrdExists))).
 		// secondary watch for custom allowlist configmap
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(allowlistPred)).
-
+		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getAllowlistPred(c, ingressCtlCrdExists))).
 		// secondary watch for certificate secrets
-		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(certSecretPred)).
-
+		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getCertSecretPred(c, ingressCtlCrdExists))).
 		// secondary watch for alertmanager accessor serviceaccount
-		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred))
+		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getAlertManagerAccessorSAPred(c, ingressCtlCrdExists)))
 
 	manifestWorkGroupKind := schema.GroupKind{Group: workv1.GroupVersion.Group, Kind: "ManifestWork"}
 	if _, err := r.RESTMapper.RESTMapping(manifestWorkGroupKind, workv1.GroupVersion.Version); err == nil {
-		workPred := predicate.Funcs{
-			CreateFunc: func(e event.CreateEvent) bool {
-				return false
-			},
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				if e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-					e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
-					!reflect.DeepEqual(e.ObjectNew.(*workv1.ManifestWork).Spec.Workload.Manifests,
-						e.ObjectOld.(*workv1.ManifestWork).Spec.Workload.Manifests) {
-					return true
-				}
-				return false
-			},
-			DeleteFunc: func(e event.DeleteEvent) bool {
-				return e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue
-			},
-		}
-
 		// secondary watch for manifestwork
 		ctrBuilder = ctrBuilder.Watches(
 			&source.Kind{Type: &workv1.ManifestWork{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(workPred),
+			builder.WithPredicates(getWorkPred()),
 		)
 	}
 
 	mchGroupKind := schema.GroupKind{Group: mchv1.GroupVersion.Group, Kind: "MultiClusterHub"}
 	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.GroupVersion.Version); err == nil {
-		mchPred := predicate.Funcs{
-			CreateFunc: func(e event.CreateEvent) bool {
-				// this is for operator restart, the mch CREATE event will be caught and the mch should be ready
-				if e.Object.GetNamespace() == config.GetMCONamespace() &&
-					e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
-					e.Object.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion {
-					// only read the image manifests configmap and enqueue the request when the MCH is
-					// installed/upgraded successfully
-					ok, err := config.ReadImageManifestConfigMap(
-						c,
-						e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion,
-					)
-					if err != nil {
-						return false
-					}
-					return ok
-				}
-				return false
-			},
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
-					e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
-					e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
-					e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
-					// / only read the image manifests configmap and enqueue the request when the MCH is
-					// installed/upgraded successfully
-					ok, err := config.ReadImageManifestConfigMap(
-						c,
-						e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion,
-					)
-					if err != nil {
-						return false
-					}
-					return ok
-				}
-				return false
-			},
-			DeleteFunc: func(e event.DeleteEvent) bool {
-				return false
-			},
-		}
-
 		if ingressCtlCrdExists {
 			// secondary watch for default ingresscontroller
-			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &operatorv1.IngressController{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(ingressControllerPred)).
-
+			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &operatorv1.IngressController{}},
+				&handler.EnqueueRequestForObject{},
+				builder.WithPredicates(getIngressControllerPred(c, ingressCtlCrdExists))).
 				// secondary watch for alertmanager route byo cert secrets
-				Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amRouterCertSecretPred)).
-
+				Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{},
+					builder.WithPredicates(getAlertManagerRouterCertSecretPred(c, ingressCtlCrdExists))).
 				// secondary watch for openshift route ca secret
-				Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(routeCASecretPred))
+				Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{},
+					builder.WithPredicates(getRouterCASecretPred(c, ingressCtlCrdExists)))
 		}
 
 		mchCrdExists := r.CRDMap[config.MCHCrdName]
@@ -972,7 +547,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 						}},
 					}
 				}),
-				builder.WithPredicates(mchPred),
+				builder.WithPredicates(getMCHPred(c)),
 			)
 		}
 	}

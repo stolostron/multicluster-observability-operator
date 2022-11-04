@@ -1179,25 +1179,20 @@ func GetMulticloudConsoleHost(client client.Client, isStandalone bool) (string, 
 }
 
 // Set AnnotationMCOAlerting
-func SetAlertingDisabledStatus(status bool) {
+func SetAlertingDisabled(status bool) {
 	isAlertingDisabled = status
 }
 
-func GetAlertingDisabledStatus() bool {
+func IsAlertingDisabled() bool {
 	return isAlertingDisabled
 }
 
 // Get AnnotationMCOAlerting
 func IsAlertingDisabledInSpec(mco *observabilityv1beta2.MultiClusterObservability) bool {
-
-	value := false
-	if mco != nil {
-		// get the annotation
-		annotations := mco.GetAnnotations()
-		if annotations != nil && annotations[AnnotationDisableMCOAlerting] == "true" {
-			value = true
-		}
+	if mco == nil {
+		return false
 	}
 
-	return value
+	annotations := mco.GetAnnotations()
+	return annotations != nil && annotations[AnnotationDisableMCOAlerting] == "true"
 }

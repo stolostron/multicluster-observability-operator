@@ -11,7 +11,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 )
@@ -19,7 +18,7 @@ import (
 // generateHubInfoSecret generates the secret that contains hubInfo.
 // this function should only called when the watched resources are created/updated
 func generateHubInfoSecret(client client.Client, obsNamespace string,
-	namespace string, ingressCtlCrdExists bool, mco *mcov1beta2.MultiClusterObservability) (*corev1.Secret, error) {
+	namespace string, ingressCtlCrdExists bool) (*corev1.Secret, error) {
 	obsApiRouteHost := ""
 
 	alertmanagerEndpoint := ""
@@ -33,16 +32,13 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 			return nil, err
 		}
 
-		// if the anotation doesn't exist, get the alert manager endpoint per normal
-		// otherwise, the default "" will remain
-		if !config.IsAlertingDisabledInSpec(mco) {
+		// if alerting is disabled, do not set alertmanagerEndpoint
+		if !config.IsAlertingDisabled() {
 			alertmanagerEndpoint, err = config.GetAlertmanagerEndpoint(client, obsNamespace)
 			if err != nil {
 				log.Error(err, "Failed to get alertmanager endpoint")
 				return nil, err
 			}
-		} else {
-			config.SetAlertingDisabledStatus(true)
 		}
 
 		alertmanagerRouterCA, err = config.GetAlertmanagerRouterCA(client)
@@ -54,7 +50,10 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		// for KinD support, the managedcluster and hub cluster are assumed in the same cluster, the observatorium-api
 		// will be accessed through k8s service FQDN + port
 		obsApiRouteHost = config.GetOperandNamePrefix() + "observatorium-api" + "." + config.GetDefaultNamespace() + ".svc.cluster.local:8080"
-		alertmanagerEndpoint = config.AlertmanagerServiceName + "." + config.GetDefaultNamespace() + ".svc.cluster.local:9095"
+		// if alerting is disabled, do not set alertmanagerEndpoint
+		if !config.IsAlertingDisabled() {
+			alertmanagerEndpoint = config.AlertmanagerServiceName + "." + config.GetDefaultNamespace() + ".svc.cluster.local:9095"
+		}
 		var err error
 		alertmanagerRouterCA, err = config.GetAlertmanagerCA(client)
 		if err != nil {

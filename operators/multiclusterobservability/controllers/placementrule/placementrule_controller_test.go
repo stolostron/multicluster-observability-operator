@@ -23,6 +23,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -122,6 +123,7 @@ func newConsoleRoute() *routev1.Route {
 }
 
 func TestObservabilityPlacementController(t *testing.T) {
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: true})))
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
 	initSchema(t)
@@ -137,12 +139,6 @@ func TestObservabilityPlacementController(t *testing.T) {
 			},
 		},
 	}
-
-	// Uncomment these lines to log controller
-	// opts := zap.Options{
-	// 	Development: true,
-	// }
-	// ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	objs := []runtime.Object{mco, pull, newConsoleRoute(), newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
 		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newManagedClusterAddon(), deprecatedRole}
@@ -271,6 +267,15 @@ func TestObservabilityPlacementController(t *testing.T) {
 		t.Fatalf("Invalid manifestwork not removed")
 	}
 
+	// Cannot trigger predicate logic, explicitly enable alert forwarding
+	config.SetAlertingDisabled(false)
+	hubInfoSecret = nil
+
+	_, err = r.Reconcile(context.TODO(), req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+
 	// test mco-disable-alerting annotation
 	// 1. Verify that alertmanager-endpoint in secret hub-info-secret in the ManifestWork is not null
 	t.Logf("check alertmanager endpoint is not null")
@@ -311,7 +316,8 @@ func TestObservabilityPlacementController(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to update mco after adding annotation %s: (%v)", config.AnnotationDisableMCOAlerting, err)
 	}
-	// force hubInfoSecret to be regenerated
+	// Cannot trigger predicate logic, explicitly disabling alert forwarding
+	config.SetAlertingDisabled(true)
 	hubInfoSecret = nil
 
 	_, err = r.Reconcile(context.TODO(), req)
@@ -340,7 +346,6 @@ func TestObservabilityPlacementController(t *testing.T) {
 				if hubInfo.AlertmanagerEndpoint != "" {
 					t.Fatalf("alert manager endpoint is not null after disabling alerts  %s: ", operatorconfig.HubInfoSecretKey)
 				}
-				t.Logf("AlertmanagerEndpoint is null")
 				valid = true
 			}
 		}
@@ -357,7 +362,8 @@ func TestObservabilityPlacementController(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to update mco after removing annotation %s: (%v)", config.AnnotationDisableMCOAlerting, err)
 	}
-	// force hubInfoSecret to be regenerated
+	// Cannot trigger predicate logic, explicitly enabling alert forwaring
+	config.SetAlertingDisabled(false)
 	hubInfoSecret = nil
 
 	_, err = r.Reconcile(context.TODO(), req)

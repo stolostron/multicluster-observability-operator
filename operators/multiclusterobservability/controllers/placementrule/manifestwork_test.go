@@ -323,7 +323,7 @@ func TestManifestWork(t *testing.T) {
 	}
 	works = injectIntoWork(works, metricsAllowlistConfigMap)
 	t.Logf("work size is %d", len(works))
-	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true, nil); err != nil {
+	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true); err != nil {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
 	}
 	err = createManifestWorks(c, nil, namespace, clusterName, newTestMCO(), works, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, false)
@@ -390,7 +390,7 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
 	works = injectIntoWork(works, metricsAllowlistConfigMap)
-	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true, nil); err != nil {
+	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true); err != nil {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
 	}
 
