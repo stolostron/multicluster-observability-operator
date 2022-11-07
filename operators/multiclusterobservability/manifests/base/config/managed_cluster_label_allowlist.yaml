@@ -10,8 +10,7 @@ data:
       - cloud
       - vendor
 
-  black_list.yaml: |
-    labels:
+    blacklist_label:
       - clusterID
       - cluster.open-cluster-management.io/clusterset
       - feature.open-cluster-management.io/addon-application-manager
