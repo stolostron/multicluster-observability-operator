@@ -65,6 +65,35 @@ func InitAllManagedClusterLabelNames() {
 	allManagedClusterLabelNames = map[string]bool{}
 }
 
+func UpdateClusterLabelsStatus(managedLabelList *proxyconfig.ManagedClusterLabelList) {
+	for _, key := range managedLabelList.LabelList {
+		if _, ok := allManagedClusterLabelNames[key]; !ok {
+			klog.Infof("added managedcluster label: %s", key)
+		} else if isNotBlackListed := allManagedClusterLabelNames[key]; !isNotBlackListed {
+			klog.Infof("enabled managedcluster label: %s", key)
+		}
+		allManagedClusterLabelNames[key] = true
+	}
+
+	for _, key := range managedLabelList.BlackList {
+		if _, ok := allManagedClusterLabelNames[key]; !ok {
+			klog.Infof("blacklisted managedcluster label: %s", key)
+		} else if isNotBlackListed := allManagedClusterLabelNames[key]; isNotBlackListed {
+			klog.Infof("disabled managedcluster label: %s", key)
+		}
+		allManagedClusterLabelNames[key] = false
+	}
+
+	managedLabelList.RegexLabelList = []string{}
+	regex := regexp.MustCompile(`[^\w]+`)
+
+	for key, isNotBlackListed := range allManagedClusterLabelNames {
+		if isNotBlackListed {
+			managedLabelList.RegexLabelList = append(managedLabelList.RegexLabelList, regex.ReplaceAllString(key, "_"))
+		}
+	}
+}
+
 // ModifyMetricsQueryParams will modify request url params for query metrics
 func ModifyMetricsQueryParams(req *http.Request, reqUrl string) {
 	userName := req.Header.Get("X-Forwarded-User")
@@ -177,7 +206,6 @@ func WatchManagedCluster(clusterClient clusterclientset.Interface) {
 // WatchManagedClusterLabelNames will watch and save managedcluster label allowlist when create/update/delete manadedcluster labels configmap
 func WatchManagedClusterLabelNames(kubeClient kubernetes.Interface) {
 	managedLabelList := proxyconfig.GetManagedClusterLabelList()
-	regex := regexp.MustCompile(`[^\w]+`)
 
 	watchlist := cache.NewListWatchFromClient(kubeClient.CoreV1().RESTClient(),
 		"configmaps",
@@ -198,23 +226,7 @@ func WatchManagedClusterLabelNames(kubeClient kubernetes.Interface) {
 					if err != nil {
 						klog.Fatalf("failed to unmarshal configmap: %s data to the managedLabelList", proxyconfig.GetManagedClusterLabelConfigMapName())
 					}
-
-					for _, key := range managedLabelList.LabelList {
-						klog.Infof("added managedcluster label: %s", key)
-						allManagedClusterLabelNames[key] = true
-					}
-
-					for _, key := range managedLabelList.BlackList {
-						klog.Infof("blacklisted managedcluster label: %s", key)
-						allManagedClusterLabelNames[key] = false
-					}
-
-					managedLabelList.RegexLabelList = []string{}
-					for key, isNotBlackListed := range allManagedClusterLabelNames {
-						if isNotBlackListed {
-							managedLabelList.RegexLabelList = append(managedLabelList.RegexLabelList, regex.ReplaceAllString(key, "_"))
-						}
-					}
+					UpdateClusterLabelsStatus(managedLabelList)
 				}
 			},
 
@@ -240,31 +252,7 @@ func WatchManagedClusterLabelNames(kubeClient kubernetes.Interface) {
 							delete(allManagedClusterLabelNames, key)
 						}
 					}
-
-					for _, key := range managedLabelList.LabelList {
-						if _, ok := allManagedClusterLabelNames[key]; !ok {
-							klog.Infof("added managedcluster label: %s", key)
-						} else if isNotBlackListed := allManagedClusterLabelNames[key]; !isNotBlackListed {
-							klog.Infof("enabled managedcluster label: %s", key)
-						}
-						allManagedClusterLabelNames[key] = true
-					}
-
-					for _, key := range managedLabelList.BlackList {
-						if _, ok := allManagedClusterLabelNames[key]; !ok {
-							klog.Infof("blacklisted managedcluster label: %s", key)
-						} else if isNotBlackListed := allManagedClusterLabelNames[key]; isNotBlackListed {
-							klog.Infof("disabled managedcluster label: %s", key)
-						}
-						allManagedClusterLabelNames[key] = false
-					}
-
-					managedLabelList.RegexLabelList = []string{}
-					for key, isNotBlackListed := range allManagedClusterLabelNames {
-						if isNotBlackListed {
-							managedLabelList.RegexLabelList = append(managedLabelList.RegexLabelList, regex.ReplaceAllString(key, "_"))
-						}
-					}
+					UpdateClusterLabelsStatus(managedLabelList)
 				}
 			},
 		},
