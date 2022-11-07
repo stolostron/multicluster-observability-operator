@@ -4,9 +4,9 @@
 package config
 
 const (
-	ManagedClusterLabelConfigMapName         = "observability-managed-cluster-label-allowlist"
-	ManagedClusterLabelConfigMapLabelListKey = "managed_cluster.yaml"
-	ManagedClusterLabelMetricName            = "managed_cluster_labels"
+	ManagedClusterLabelAllowListConfigMapName = "observability-managed-cluster-label-allowlist"
+	ManagedClusterLabelAllowListConfigMapKey  = "managed_cluster.yaml"
+	ManagedClusterLabelMetricName             = "managed_cluster_labels"
 
 	RBACProxyLabelMetricName = "acm_label_names"
 )
@@ -15,14 +15,14 @@ var (
 	ManagedLabelList ManagedClusterLabelList
 )
 
-// GetManagedClusterLabelConfigMapLabelListKey return the key name for the managedcluster labels
-func GetManagedClusterLabelConfigMapLabelListKey() string {
-	return ManagedClusterLabelConfigMapLabelListKey
+// GetManagedClusterLabelAllowListConfigMapKey return the key name for the managedcluster labels
+func GetManagedClusterLabelAllowListConfigMapKey() string {
+	return ManagedClusterLabelAllowListConfigMapKey
 }
 
 // GetManagedClusterLabelConfigMapName return the name for the managedcluster labels configmap
-func GetManagedClusterLabelConfigMapName() string {
-	return ManagedClusterLabelConfigMapName
+func GetManagedClusterLabelAllowListConfigMapName() string {
+	return ManagedClusterLabelAllowListConfigMapName
 }
 
 // GetManagedClusterLabelMetricName return the name of the managedcluster label metric

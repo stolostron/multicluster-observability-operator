@@ -96,7 +96,8 @@ const (
 	AlertmanagersDefaultCaBundleName      = "alertmanager-ca-bundle"
 	AlertmanagersDefaultCaBundleKey       = "service-ca.crt"
 
-	AllowlistCustomConfigMapName = "observability-metrics-custom-allowlist"
+	AllowlistCustomConfigMapName              = "observability-metrics-custom-allowlist"
+	ManagedClusterLabelAllowListConfigMapName = "observability-managed-cluster-label-allowlist"
 
 	ProxyServiceName      = "rbac-query-proxy"
 	ProxyRouteName        = "rbac-query-proxy"
@@ -294,8 +295,9 @@ var (
 	MaxItemSize     = "1m"
 
 	BackupResourceMap = map[string]string{
-		AllowlistCustomConfigMapName: ResourceTypeConfigMap,
-		AlertRuleCustomConfigMapName: ResourceTypeConfigMap,
+		AllowlistCustomConfigMapName:              ResourceTypeConfigMap,
+		AlertRuleCustomConfigMapName:              ResourceTypeConfigMap,
+		ManagedClusterLabelAllowListConfigMapName: ResourceTypeConfigMap,
 
 		AlertmanagerConfigName:       ResourceTypeSecret,
 		AlertmanagerRouteBYOCAName:   ResourceTypeSecret,

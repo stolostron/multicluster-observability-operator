@@ -65,6 +65,7 @@ func InitAllManagedClusterLabelNames() {
 	allManagedClusterLabelNames = map[string]bool{}
 }
 
+// UpdateClusterLabelsStatus updates the managed cluster labels status for the label allowlist
 func UpdateClusterLabelsStatus(managedLabelList *proxyconfig.ManagedClusterLabelList) {
 	for _, key := range managedLabelList.LabelList {
 		if _, ok := allManagedClusterLabelNames[key]; !ok {
@@ -218,32 +219,32 @@ func WatchManagedClusterLabelNames(kubeClient kubernetes.Interface) {
 		time.Second*0,
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				if obj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelConfigMapName() {
-					klog.Infof("added a configmap: %s", proxyconfig.GetManagedClusterLabelConfigMapName())
+				if obj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
+					klog.Infof("added configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
 					InitAllManagedClusterLabelNames()
 
-					err := yaml.Unmarshal([]byte(obj.(*v1.ConfigMap).Data[proxyconfig.GetManagedClusterLabelConfigMapLabelListKey()]), managedLabelList)
+					err := yaml.Unmarshal([]byte(obj.(*v1.ConfigMap).Data[proxyconfig.GetManagedClusterLabelAllowListConfigMapKey()]), managedLabelList)
 					if err != nil {
-						klog.Fatalf("failed to unmarshal configmap: %s data to the managedLabelList", proxyconfig.GetManagedClusterLabelConfigMapName())
+						klog.Fatalf("failed to unmarshal configmap: %s data to the managedLabelList", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
 					}
 					UpdateClusterLabelsStatus(managedLabelList)
 				}
 			},
 
 			DeleteFunc: func(obj interface{}) {
-				if obj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelConfigMapName() {
-					klog.Infof("deleted a configmap: %s", proxyconfig.GetManagedClusterLabelConfigMapName())
+				if obj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
+					klog.Warning("deleted configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
 				}
 			},
 
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				if oldObj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelConfigMapName() &&
-					newObj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelConfigMapName() {
-					klog.Infof("updated configmap: %s", proxyconfig.GetManagedClusterLabelConfigMapName())
+				if oldObj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() &&
+					newObj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
+					klog.Infof("updated configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
 
-					err := yaml.Unmarshal([]byte(newObj.(*v1.ConfigMap).Data[proxyconfig.GetManagedClusterLabelConfigMapLabelListKey()]), managedLabelList)
+					err := yaml.Unmarshal([]byte(newObj.(*v1.ConfigMap).Data[proxyconfig.GetManagedClusterLabelAllowListConfigMapKey()]), managedLabelList)
 					if err != nil {
-						klog.Fatalf("failed to unmarshal configmap: %s data to the managedLabelList", proxyconfig.GetManagedClusterLabelConfigMapName())
+						klog.Fatalf("failed to unmarshal configmap: %s data to the managedLabelList", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
 					}
 
 					for key := range allManagedClusterLabelNames {
