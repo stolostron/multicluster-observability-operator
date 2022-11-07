@@ -1,2 +1,3 @@
 resources:
+- managed_cluster_label_allowlist.yaml
 - metrics_allowlist.yaml

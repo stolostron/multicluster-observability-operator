@@ -52,13 +52,13 @@ func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
 		}
 
 		if strings.Contains(string(body), proxyconfig.GetRBACProxyLabelMetricName()) {
-			labelList := proxyconfig.GetClusterLabelList()
+			managedLabelList := proxyconfig.GetManagedClusterLabelList()
 
 			query := `{"status":"success","data":[`
-			for index, label := range labelList.LabelList {
+			for index, label := range managedLabelList.RegexLabelList {
 				query += `{"__name__":"` + proxyconfig.GetRBACProxyLabelMetricName() + `","label_name":"` + label + `"}`
 
-				if index != len(labelList.LabelList)-1 {
+				if index != len(managedLabelList.RegexLabelList)-1 {
 					query += ","
 				}
 			}

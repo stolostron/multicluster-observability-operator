@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/spf13/pflag"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
@@ -56,11 +57,17 @@ func main() {
 
 	clusterClient, err := clusterclientset.NewForConfig(config.GetConfigOrDie())
 	if err != nil {
-		klog.Fatalf("failed to new cluster clientset: %v", err)
+		klog.Fatalf("failed to initialize new cluster clientset: %v", err)
+	}
+
+	kubeClient, err := kubernetes.NewForConfig(config.GetConfigOrDie())
+	if err != nil {
+		klog.Fatalf("failed to initialize new kubernetes client: %v", err)
 	}
 
 	// watch all managed clusters
 	go util.WatchManagedCluster(clusterClient)
+	go util.WatchManagedClusterLabelNames(kubeClient)
 	go util.CleanExpiredProjectInfo(24 * 60 * 60)
 
 	http.HandleFunc("/", proxy.HandleRequestAndRedirect)
