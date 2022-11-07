@@ -64,6 +64,11 @@ func main() {
 		opt.From,
 		"The Prometheus server to federate from.")
 	cmd.Flags().StringVar(
+		&opt.FromQuery,
+		"from-query",
+		opt.From,
+		"The Prometheus server to query from.")
+	cmd.Flags().StringVar(
 		&opt.FromToken,
 		"from-token",
 		opt.FromToken,
@@ -231,6 +236,7 @@ type Options struct {
 	Verbose    bool
 
 	From          string
+	FromQuery     string
 	ToUpload      string
 	FromCAFile    string
 	FromToken     string
@@ -386,6 +392,7 @@ func runMultiWorkers(o *Options) error {
 	for i := 1; i < int(o.WorkerNum); i++ {
 		opt := &Options{
 			From:                    o.From,
+			FromQuery:               o.FromQuery,
 			ToUpload:                o.ToUpload,
 			FromCAFile:              o.FromCAFile,
 			FromTokenFile:           o.FromTokenFile,
@@ -472,6 +479,15 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 		from.Path = "/federate"
 	}
 
+	fromQuery, err := url.Parse(o.FromQuery)
+	if err != nil {
+		return fmt.Errorf("--from-query is not a valid URL: %v", err), nil
+	}
+	fromQuery.Path = strings.TrimRight(fromQuery.Path, "/")
+	if len(fromQuery.Path) == 0 {
+		fromQuery.Path = "/api/v1/query"
+	}
+
 	var toUpload *url.URL
 	if len(o.ToUpload) > 0 {
 		toUpload, err = url.Parse(o.ToUpload)
@@ -514,6 +530,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 
 	return nil, &forwarder.Config{
 		From:          from,
+		FromQuery:     fromQuery,
 		ToUpload:      toUpload,
 		FromToken:     o.FromToken,
 		FromTokenFile: o.FromTokenFile,
