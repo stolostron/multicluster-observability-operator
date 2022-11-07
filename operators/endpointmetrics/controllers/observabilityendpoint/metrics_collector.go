@@ -46,9 +46,10 @@ const (
 )
 
 var (
-	ocpPromURL = "https://prometheus-k8s.openshift-monitoring.svc:9091"
-	uwlPromURL = "https://prometheus-user-workload.openshift-user-workload-monitoring.svc:9092"
-	promURL    = "https://prometheus-k8s:9091"
+	ocpPromURL  = "https://prometheus-k8s.openshift-monitoring.svc:9091"
+	uwlPromURL  = "https://prometheus-user-workload.openshift-user-workload-monitoring.svc:9092"
+	uwlQueryURL = "https://thanos-querier.openshift-monitoring.svc:9091"
+	promURL     = "https://prometheus-k8s:9091"
 )
 
 type CollectorParams struct {
@@ -82,6 +83,7 @@ func getCommands(params CollectorParams) []string {
 	commands := []string{
 		"/usr/bin/metrics-collector",
 		"--from=$(FROM)",
+		"--from-query=$(FROM_QUERY)",
 		"--to-upload=$(TO)",
 		"--to-upload-ca=/tlscerts/ca/ca.crt",
 		"--to-upload-cert=/tlscerts/certs/tls.crt",
@@ -217,6 +219,10 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			from = uwlPromURL
 		}
 	}
+	fromQuery := from
+	if params.isUWL {
+		fromQuery = uwlQueryURL
+	}
 	name := metricsCollectorName
 	if params.isUWL {
 		name = uwlMetricsCollectorName
@@ -253,6 +259,10 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 								{
 									Name:  "FROM",
 									Value: from,
+								},
+								{
+									Name:  "FROM_QUERY",
+									Value: fromQuery,
 								},
 								{
 									Name:  "TO",
@@ -418,6 +428,9 @@ func getMetricsAllowlist(ctx context.Context, c client.Client,
 				log.Error(err, "Failed to parse data in configmap", "namespace", allowlistCM.ObjectMeta.Namespace,
 					"name", allowlistCM.ObjectMeta.Name)
 			}
+			if allowlistCM.ObjectMeta.Namespace != namespace {
+				customUwlAllowlist = injectNamespaceLabel(customUwlAllowlist, allowlistCM.ObjectMeta.Namespace)
+			}
 			l, _, ul = util.MergeAllowlist(l, customAllowlist, nil, ul, customUwlAllowlist)
 		}
 	}
@@ -455,4 +468,23 @@ func isUWLMonitoringEnabled(ctx context.Context, c client.Client) (bool, error) 
 		}
 	}
 	return true, nil
+}
+
+// for custom uwl allowlist:
+// 1. only support "names" and "matches"
+// 2. inject namespace label filter for all entries in the allowlist
+func injectNamespaceLabel(allowlist *operatorconfig.MetricsAllowlist,
+	namespace string) *operatorconfig.MetricsAllowlist {
+	updatedList := &operatorconfig.MetricsAllowlist{
+		NameList:  []string{},
+		MatchList: []string{},
+	}
+	for _, name := range allowlist.NameList {
+		updatedList.MatchList = append(updatedList.MatchList,
+			fmt.Sprintf("__name__=\"%s\",namespace=\"%s\"", name, namespace))
+	}
+	for _, match := range allowlist.MatchList {
+		updatedList.MatchList = append(updatedList.MatchList, fmt.Sprintf("%s,namespace=\"%s\"", match, namespace))
+	}
+	return updatedList
 }

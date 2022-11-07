@@ -202,8 +202,9 @@ func TestReconfigure(t *testing.T) {
 func TestRun(t *testing.T) {
 	c := Config{
 		// Use a dummy URL.
-		From:   &url.URL{},
-		Logger: log.NewNopLogger(),
+		From:      &url.URL{},
+		FromQuery: &url.URL{},
+		Logger:    log.NewNopLogger(),
 	}
 	w, err := New(c)
 	if err != nil {
@@ -233,7 +234,7 @@ func TestRun(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to parse second test server URL: %v", err)
 			}
-			if err := w.Reconfigure(Config{From: from, Logger: log.NewNopLogger()}); err != nil {
+			if err := w.Reconfigure(Config{From: from, FromQuery: from, Logger: log.NewNopLogger()}); err != nil {
 				t.Fatalf("failed to reconfigure worker with second test server url: %v", err)
 			}
 		}()
@@ -244,7 +245,9 @@ func TestRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to parse first test server URL: %v", err)
 	}
-	if err := w.Reconfigure(Config{From: from, Logger: log.NewNopLogger()}); err != nil {
+	if err := w.Reconfigure(Config{From: from, FromQuery: from,
+		RecordingRules: []string{"{\"name\":\"test\",\"query\":\"test\"}"},
+		Logger:         log.NewNopLogger()}); err != nil {
 		t.Fatalf("failed to reconfigure worker with first test server url: %v", err)
 	}
 
