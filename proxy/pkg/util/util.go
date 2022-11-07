@@ -233,7 +233,7 @@ func WatchManagedClusterLabelNames(kubeClient kubernetes.Interface) {
 
 			DeleteFunc: func(obj interface{}) {
 				if obj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
-					klog.Warning("deleted configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
+					klog.Warningf("deleted configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
 				}
 			},
 
