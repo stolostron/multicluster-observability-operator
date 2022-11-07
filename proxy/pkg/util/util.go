@@ -22,6 +22,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
+	"k8s.io/kubectl/pkg/util/slice"
 
 	projectv1 "github.com/openshift/api/project/v1"
 	userv1 "github.com/openshift/api/user/v1"
@@ -190,7 +191,7 @@ func WatchManagedClusterLabelNames(kubeClient kubernetes.Interface) {
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				if obj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelConfigMapName() {
-					klog.Infof("added a configmap %s", proxyconfig.GetManagedClusterLabelConfigMapName())
+					klog.Infof("added a configmap: %s", proxyconfig.GetManagedClusterLabelConfigMapName())
 					InitAllManagedClusterLabelNames()
 
 					err := yaml.Unmarshal([]byte(obj.(*v1.ConfigMap).Data[proxyconfig.GetManagedClusterLabelConfigMapLabelListKey()]), managedLabelList)
@@ -204,7 +205,7 @@ func WatchManagedClusterLabelNames(kubeClient kubernetes.Interface) {
 					}
 
 					for _, key := range managedLabelList.BlackList {
-						klog.Infof("added managedcluster label to blacklist: %s", key)
+						klog.Infof("blacklisted managedcluster label: %s", key)
 						allManagedClusterLabelNames[key] = false
 					}
 
@@ -214,9 +215,6 @@ func WatchManagedClusterLabelNames(kubeClient kubernetes.Interface) {
 							managedLabelList.RegexLabelList = append(managedLabelList.RegexLabelList, regex.ReplaceAllString(key, "_"))
 						}
 					}
-
-					klog.Infof("ManagedLabelList: %v", managedLabelList)
-					klog.Infof("allManagedClusterLabelNames: %v", allManagedClusterLabelNames)
 				}
 			},
 
@@ -230,20 +228,34 @@ func WatchManagedClusterLabelNames(kubeClient kubernetes.Interface) {
 				if oldObj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelConfigMapName() &&
 					newObj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelConfigMapName() {
 					klog.Infof("updated configmap: %s", proxyconfig.GetManagedClusterLabelConfigMapName())
-					InitAllManagedClusterLabelNames()
 
 					err := yaml.Unmarshal([]byte(newObj.(*v1.ConfigMap).Data[proxyconfig.GetManagedClusterLabelConfigMapLabelListKey()]), managedLabelList)
 					if err != nil {
 						klog.Fatalf("failed to unmarshal configmap: %s data to the managedLabelList", proxyconfig.GetManagedClusterLabelConfigMapName())
 					}
 
+					for key := range allManagedClusterLabelNames {
+						if !slice.ContainsString(managedLabelList.LabelList, key, nil) && !slice.ContainsString(managedLabelList.BlackList, key, nil) {
+							klog.Infof("removed managedcluster label: %s", key)
+							delete(allManagedClusterLabelNames, key)
+						}
+					}
+
 					for _, key := range managedLabelList.LabelList {
-						klog.Infof("added managedcluster label: %s", key)
+						if _, ok := allManagedClusterLabelNames[key]; !ok {
+							klog.Infof("added managedcluster label: %s", key)
+						} else if isNotBlackListed := allManagedClusterLabelNames[key]; !isNotBlackListed {
+							klog.Infof("enabled managedcluster label: %s", key)
+						}
 						allManagedClusterLabelNames[key] = true
 					}
 
 					for _, key := range managedLabelList.BlackList {
-						klog.Infof("added managedcluster label to blacklist: %s", key)
+						if _, ok := allManagedClusterLabelNames[key]; !ok {
+							klog.Infof("blacklisted managedcluster label: %s", key)
+						} else if isNotBlackListed := allManagedClusterLabelNames[key]; isNotBlackListed {
+							klog.Infof("disabled managedcluster label: %s", key)
+						}
 						allManagedClusterLabelNames[key] = false
 					}
 
@@ -253,11 +265,7 @@ func WatchManagedClusterLabelNames(kubeClient kubernetes.Interface) {
 							managedLabelList.RegexLabelList = append(managedLabelList.RegexLabelList, regex.ReplaceAllString(key, "_"))
 						}
 					}
-
-					klog.Infof("ManagedLabelList: %v", managedLabelList)
-					klog.Infof("allManagedClusterLabelNames: %v", allManagedClusterLabelNames)
 				}
-
 			},
 		},
 	)

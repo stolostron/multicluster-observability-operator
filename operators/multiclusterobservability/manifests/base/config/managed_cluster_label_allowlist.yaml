@@ -14,10 +14,6 @@ data:
     labels:
       - clusterID
       - cluster.open-cluster-management.io/clusterset
-      - installer.name
-      - installer.namespace
-      - name
-      - local-cluster
       - feature.open-cluster-management.io/addon-application-manager
       - feature.open-cluster-management.io/addon-cert-policy-controller
       - feature.open-cluster-management.io/addon-cluster-proxy
@@ -26,4 +22,7 @@ data:
       - feature.open-cluster-management.io/addon-iam-policy-controller
       - feature.open-cluster-management.io/addon-observability-controller
       - feature.open-cluster-management.io/addon-work-manager
-      - :node_memory_MemAvailable_bytes:sum
+      - installer.name
+      - installer.namespace
+      - local-cluster
+      - name
