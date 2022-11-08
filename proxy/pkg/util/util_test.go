@@ -131,6 +131,8 @@ func TestGetAllManagedClusterNames(t *testing.T) {
 	}
 	go createFakeServer("3002", t)
 	time.Sleep(time.Second)
+
+	InitAllManagedClusterNames()
 	for _, c := range testCaseList {
 		allManagedClusterNames = c.clusters
 		req := newHTTPRequest()
@@ -160,6 +162,18 @@ func TestGetAllManagedClusterLabelNames(t *testing.T) {
 
 	if isEnabled := GetAllManagedClusterLabelNames()["vendor"]; !isEnabled {
 		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, testCaseList.expected)
+	}
+
+	testCaseList.managedLabelList.LabelList = []string{"cloud", "name"}
+	testCaseList.managedLabelList.BlackList = []string{"clusterID", "vendor"}
+	UpdateClusterLabelsStatus(testCaseList.managedLabelList)
+
+	if isEnabled := GetAllManagedClusterLabelNames()["name"]; !isEnabled {
+		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, testCaseList.expected)
+	}
+
+	if isEnabled := GetAllManagedClusterLabelNames()["vendor"]; isEnabled {
+		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, false)
 	}
 }
 
