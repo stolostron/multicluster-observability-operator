@@ -67,30 +67,30 @@ func InitAllManagedClusterLabelNames() {
 
 // UpdateClusterLabelsStatus updates the managed cluster labels status for the label allowlist
 func UpdateClusterLabelsStatus(managedLabelList *proxyconfig.ManagedClusterLabelList) {
-	for _, key := range managedLabelList.LabelList {
-		if _, ok := allManagedClusterLabelNames[key]; !ok {
-			klog.Infof("added managedcluster label: %s", key)
-		} else if isNotBlackListed := allManagedClusterLabelNames[key]; !isNotBlackListed {
-			klog.Infof("enabled managedcluster label: %s", key)
+	for _, label := range managedLabelList.LabelList {
+		if _, ok := allManagedClusterLabelNames[label]; !ok {
+			klog.Infof("added managedcluster label: %s", label)
+		} else if isEnabled := allManagedClusterLabelNames[label]; !isEnabled {
+			klog.Infof("enabled managedcluster label: %s", label)
 		}
-		allManagedClusterLabelNames[key] = true
+		allManagedClusterLabelNames[label] = true
 	}
 
-	for _, key := range managedLabelList.BlackList {
-		if _, ok := allManagedClusterLabelNames[key]; !ok {
-			klog.Infof("blacklisted managedcluster label: %s", key)
-		} else if isNotBlackListed := allManagedClusterLabelNames[key]; isNotBlackListed {
-			klog.Infof("disabled managedcluster label: %s", key)
+	for _, label := range managedLabelList.BlackList {
+		if _, ok := allManagedClusterLabelNames[label]; !ok {
+			klog.Infof("blacklisted managedcluster label: %s", label)
+		} else if isEnabled := allManagedClusterLabelNames[label]; isEnabled {
+			klog.Infof("disabled managedcluster label: %s", label)
 		}
-		allManagedClusterLabelNames[key] = false
+		allManagedClusterLabelNames[label] = false
 	}
 
 	managedLabelList.RegexLabelList = []string{}
 	regex := regexp.MustCompile(`[^\w]+`)
 
-	for key, isNotBlackListed := range allManagedClusterLabelNames {
-		if isNotBlackListed {
-			managedLabelList.RegexLabelList = append(managedLabelList.RegexLabelList, regex.ReplaceAllString(key, "_"))
+	for label, isEnabled := range allManagedClusterLabelNames {
+		if isEnabled {
+			managedLabelList.RegexLabelList = append(managedLabelList.RegexLabelList, regex.ReplaceAllString(label, "_"))
 		}
 	}
 }
@@ -247,10 +247,10 @@ func WatchManagedClusterLabelNames(kubeClient kubernetes.Interface) {
 						klog.Fatalf("failed to unmarshal configmap: %s data to the managedLabelList", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
 					}
 
-					for key := range allManagedClusterLabelNames {
-						if !slice.ContainsString(managedLabelList.LabelList, key, nil) && !slice.ContainsString(managedLabelList.BlackList, key, nil) {
-							klog.Infof("removed managedcluster label: %s", key)
-							delete(allManagedClusterLabelNames, key)
+					for label := range allManagedClusterLabelNames {
+						if !slice.ContainsString(managedLabelList.LabelList, label, nil) && !slice.ContainsString(managedLabelList.BlackList, label, nil) {
+							klog.Infof("removed managedcluster label: %s", label)
+							delete(allManagedClusterLabelNames, label)
 						}
 					}
 					UpdateClusterLabelsStatus(managedLabelList)

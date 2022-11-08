@@ -10,9 +10,11 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 )
 
-func newTTPRequest() *http.Request {
+func newHTTPRequest() *http.Request {
 	req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
 	req.Header.Set("X-Forwarded-User", "test")
 	return req
@@ -131,11 +133,33 @@ func TestGetAllManagedClusterNames(t *testing.T) {
 	time.Sleep(time.Second)
 	for _, c := range testCaseList {
 		allManagedClusterNames = c.clusters
-		req := newTTPRequest()
+		req := newHTTPRequest()
 		ModifyMetricsQueryParams(req, "http://127.0.0.1:3002/")
 		if req.URL.RawQuery != c.expected {
 			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", c.name, req.URL.RawQuery, c.expected)
 		}
+	}
+}
+
+func TestGetAllManagedClusterLabelNames(t *testing.T) {
+	testCaseList := struct {
+		name             string
+		managedLabelList *proxyconfig.ManagedClusterLabelList
+		expected         bool
+	}{"should contain enabled labels", &proxyconfig.ManagedClusterLabelList{
+		LabelList: []string{"cloud", "vendor"},
+		BlackList: []string{"clusterID", "name"},
+	}, true}
+
+	InitAllManagedClusterLabelNames()
+	UpdateClusterLabelsStatus(testCaseList.managedLabelList)
+
+	if isEnabled := GetAllManagedClusterLabelNames()["cloud"]; !isEnabled {
+		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, testCaseList.expected)
+	}
+
+	if isEnabled := GetAllManagedClusterLabelNames()["vendor"]; !isEnabled {
+		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, testCaseList.expected)
 	}
 }
 
