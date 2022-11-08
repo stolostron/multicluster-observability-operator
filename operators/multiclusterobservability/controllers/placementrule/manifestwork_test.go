@@ -49,6 +49,22 @@ func newTestMCO() *mcov1beta2.MultiClusterObservability {
 	}
 }
 
+func newTestMCOWithAlertDisableAnnotation() *mcov1beta2.MultiClusterObservability {
+	return &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        mcoName,
+			Annotations: map[string]string{config.AnnotationDisableMCOAlerting: "true"},
+		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			ImagePullSecret: pullSecretName,
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: true,
+				Interval:      1,
+			},
+		},
+	}
+}
+
 func newTestPullSecret() *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

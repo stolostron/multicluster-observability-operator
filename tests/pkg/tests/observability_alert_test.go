@@ -192,18 +192,18 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Stable] Should modify the SECRET: alertmanager-config (alert/g0)", func() {
-		By("Editing the secret, we should be able to add the third partying tools integrations")
-		secret := utils.CreateCustomAlertConfigYaml(testOptions.HubCluster.BaseDomain)
+	// It("[P2][Sev2][observability][Stable] Should modify the SECRET: alertmanager-config (alert/g0)", func() {
+	// 	By("Editing the secret, we should be able to add the third partying tools integrations")
+	// 	secret := utils.CreateCustomAlertConfigYaml(testOptions.HubCluster.BaseDomain)
 
-		Expect(
-			utils.Apply(
-				testOptions.HubCluster.ClusterServerURL,
-				testOptions.KubeConfig,
-				testOptions.HubCluster.KubeContext,
-				secret)).NotTo(HaveOccurred())
-		klog.V(3).Infof("Successfully modified the secret: alertmanager-config")
-	})
+	// 	Expect(
+	// 		utils.Apply(
+	// 			testOptions.HubCluster.ClusterServerURL,
+	// 			testOptions.KubeConfig,
+	// 			testOptions.HubCluster.KubeContext,
+	// 			secret)).NotTo(HaveOccurred())
+	// 	klog.V(3).Infof("Successfully modified the secret: alertmanager-config")
+	// })
 
 	It("[P2][Sev2][observability][Stable] Should have custom alert updated (alert/g0)", func() {
 		By("Updating custom alert rules")
@@ -362,7 +362,7 @@ var _ = Describe("Observability:", func() {
 			for _, alt := range postableAlerts {
 				if alt.Labels != nil {
 					labelSets := map[string]string(alt.Labels)
-					clusterID := labelSets["cluster"]
+					clusterID := labelSets["managed_cluster"]
 					if clusterID != "" {
 						clusterIDsInAlerts = append(clusterIDsInAlerts, clusterID)
 					}

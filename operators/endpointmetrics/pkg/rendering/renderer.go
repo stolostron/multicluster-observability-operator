@@ -124,8 +124,17 @@ func Render(
 			spec.ImagePullSecrets = []corev1.LocalObjectReference{
 				{Name: os.Getenv(operatorconfig.PullSecret)},
 			}
-			spec.ExternalLabels["cluster"] = hubInfo.ClusterName
-
+			spec.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts] = hubInfo.ClusterName
+			if hubInfo.AlertmanagerEndpoint == "" {
+				spec.AdditionalAlertManagerConfigs = nil
+			} else {
+				spec.AdditionalAlertManagerConfigs = &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "prometheus-alertmanager",
+					},
+					Key: "alertmanager.yaml",
+				}
+			}
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 			if err != nil {
 				return nil, err
@@ -198,7 +207,7 @@ func Render(
 					s.GetName(),
 				)
 			}
-			// replace the hub alertmanager address
+			// replace the hub alertmanager address. Address will be set to null when alerts are disabled
 			hubAmEp := strings.TrimLeft(hubInfo.AlertmanagerEndpoint, "https://")
 			amConfig = strings.ReplaceAll(amConfig, "_ALERTMANAGER_ENDPOINT_", hubAmEp)
 			s.StringData["alertmanager.yaml"] = amConfig
