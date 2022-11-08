@@ -118,14 +118,11 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 		conditions = append(conditions, latestC)
 	}
 	if !found {
-		if isUwl {
-			m = fmt.Sprintf("%s ; ", m)
-		}
 		conditions = append(conditions, oav1beta1.StatusCondition{
-			Type:               t,
+			Type:               conditionType,
 			Status:             metav1.ConditionTrue,
-			Reason:             r,
-			Message:            m,
+			Reason:             reason,
+			Message:            message,
 			LastTransitionTime: metav1.NewTime(time.Now()),
 		})
 		update = true
