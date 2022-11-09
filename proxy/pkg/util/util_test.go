@@ -4,7 +4,6 @@
 package util
 
 import (
-	"context"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -13,10 +12,6 @@ import (
 	"time"
 
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"k8s.io/client-go/kubernetes/fake"
 )
 
 func newHTTPRequest() *http.Request {
@@ -320,82 +315,5 @@ func TestWriteError(t *testing.T) {
 	data, _ := ioutil.ReadFile("/tmp/health")
 	if !strings.Contains(string(data), "test") {
 		t.Errorf("failed to find the health file")
-	}
-}
-
-func TestGetManagedClusterLabelAllowListConfigmap(t *testing.T) {
-	testCase := struct {
-		name      string
-		namespace string
-		expected  error
-	}{"should get managedclsuter label allowlist configmap", "ns1", nil}
-
-	client := fake.NewSimpleClientset().CoreV1()
-	_, err := client.ConfigMaps(testCase.namespace).Create(
-		context.TODO(),
-		proxyconfig.CreateManagedClusterLabelAllowListCM(),
-		metav1.CreateOptions{},
-	)
-	if err != nil {
-		t.Errorf("failed to create configmap: %v", err)
-	}
-
-	_, err = GetManagedClusterLabelAllowListConfigmap(client, testCase.namespace)
-	if err != nil {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, err, testCase.expected)
-	}
-
-	testCase.name = "should not get managedcluster label allowlist configmap"
-	testCase.namespace = "ns2"
-
-	_, err = GetManagedClusterLabelAllowListConfigmap(client, "ns2")
-	if err == nil {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, nil, err)
-	}
-}
-
-func TestModifyManagedClusterLabelAllowListConfigMapData(t *testing.T) {
-	testCase := struct {
-		name      string
-		configmap *corev1.ConfigMap
-		expected  bool
-	}{
-		"should modify managedcluster label allowlist data",
-		proxyconfig.CreateManagedClusterLabelAllowListCM(),
-		false,
-	}
-
-	clusterLabels := map[string]string{"environment": "dev", "department": "finance"}
-	err := ModifyManagedClusterLabelAllowListConfigMapData(testCase.configmap, clusterLabels)
-	if err != nil {
-		t.Errorf("case: (%v) output: (%v) is not the expected (%v)", testCase.name, err, testCase.expected)
-	}
-}
-
-func TestUpdateManagedClusterLabelAllowListConfigMap(t *testing.T) {
-	testCase := struct {
-		name      string
-		namespace string
-		expected  error
-	}{"should update the managedcluster label allowlist data", "ns1", nil}
-	cm := proxyconfig.CreateManagedClusterLabelAllowListCM()
-
-	client := fake.NewSimpleClientset().CoreV1()
-	_, err := client.ConfigMaps("ns1").Create(context.TODO(), cm, metav1.CreateOptions{})
-	if err != nil {
-		t.Errorf("failed to create configmap: %v", err)
-	}
-
-	err = UpdateManagedClusterLabelAllowListConfigMap(client, testCase.namespace, cm)
-	if err != nil {
-		t.Errorf("case: (%v) output: (%v) is not the expected (%v)", testCase.name, err, testCase.expected)
-	}
-
-	testCase.name = "should not update managedcluster label allowlist configmap"
-	testCase.namespace = "ns2"
-
-	err = UpdateManagedClusterLabelAllowListConfigMap(client, testCase.namespace, cm)
-	if err == nil {
-		t.Errorf("case: (%v) output: (%v) is not the expected (%v)", testCase.name, nil, err)
 	}
 }
