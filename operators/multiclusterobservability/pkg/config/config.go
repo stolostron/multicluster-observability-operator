@@ -50,6 +50,7 @@ const (
 	AnnotationMCOPause                    = "mco-pause"
 	AnnotationMCOWithoutResourcesRequests = "mco-thanos-without-resources-requests"
 	AnnotationCertDuration                = "mco-cert-duration"
+	AnnotationDisableMCOAlerting          = "mco-disable-alerting"
 
 	MCHUpdatedRequestName               = "mch-updated-request"
 	MCOUpdatedRequestName               = "mco-updated-request"
@@ -268,6 +269,7 @@ var (
 	hasCustomRuleConfigMap      = false
 	hasCustomAlertmanagerConfig = false
 	certDuration                = time.Hour * 24 * 365
+	isAlertingDisabled          = false
 
 	Replicas1 int32 = 1
 	Replicas2 int32 = 2
@@ -1174,4 +1176,23 @@ func GetMulticloudConsoleHost(client client.Client, isStandalone bool) (string, 
 		return "", err
 	}
 	return found.Spec.Host, nil
+}
+
+// Set AnnotationMCOAlerting
+func SetAlertingDisabled(status bool) {
+	isAlertingDisabled = status
+}
+
+func IsAlertingDisabled() bool {
+	return isAlertingDisabled
+}
+
+// Get AnnotationMCOAlerting
+func IsAlertingDisabledInSpec(mco *observabilityv1beta2.MultiClusterObservability) bool {
+	if mco == nil {
+		return false
+	}
+
+	annotations := mco.GetAnnotations()
+	return annotations != nil && annotations[AnnotationDisableMCOAlerting] == "true"
 }
