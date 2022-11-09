@@ -66,8 +66,8 @@ func main() {
 	}
 
 	// watch all managed clusters
-	go util.WatchManagedCluster(clusterClient)
-	go util.WatchManagedClusterLabelNames(kubeClient)
+	go util.WatchManagedCluster(clusterClient, kubeClient)
+	go util.WatchManagedClusterLabelAllowList(kubeClient)
 	go util.CleanExpiredProjectInfo(24 * 60 * 60)
 
 	http.HandleFunc("/", proxy.HandleRequestAndRedirect)

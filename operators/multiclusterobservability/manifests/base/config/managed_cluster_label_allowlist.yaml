@@ -6,9 +6,7 @@ metadata:
     skip-creation-if-exist: “true”
 data:
   managed_cluster.yaml: |
-    labels:
-      - cloud
-      - vendor
+    labels: []
 
     blacklist_labels:
       - clusterID
@@ -20,6 +18,7 @@ data:
       - feature.open-cluster-management.io/addon-governance-policy-framework
       - feature.open-cluster-management.io/addon-iam-policy-controller
       - feature.open-cluster-management.io/addon-observability-controller
+      - feature.open-cluster-management.io/addon-search-collector
       - feature.open-cluster-management.io/addon-work-manager
       - installer.name
       - installer.namespace

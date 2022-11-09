@@ -7,6 +7,6 @@ package config
 // list of labels that are assigned to the managed clusters
 type ManagedClusterLabelList struct {
 	BlackList      []string `yaml:"blacklist_labels,omitempty"`
-	LabelList      []string `yaml:"labels,omitempty"`
+	LabelList      []string `yaml:"labels"`
 	RegexLabelList []string
 }
