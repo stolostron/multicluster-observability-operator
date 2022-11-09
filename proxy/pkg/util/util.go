@@ -22,8 +22,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+
 	"k8s.io/client-go/kubernetes"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
+
 	"k8s.io/klog"
 	"k8s.io/kubectl/pkg/util/slice"
 
@@ -138,14 +141,15 @@ func ModifyMetricsQueryParams(req *http.Request, reqUrl string) {
 }
 
 // GetManagedClusterLabelAllowListConfigmap returns the managedcluster label allowlist configmap
-func GetManagedClusterLabelAllowListConfigmap(kubeClient kubernetes.Interface) (*v1.ConfigMap, error) {
-	configmap, err := kubeClient.CoreV1().ConfigMaps("open-cluster-management-observability").Get(
+func GetManagedClusterLabelAllowListConfigmap(CoreV1Interface corev1.CoreV1Interface, namespace string) (*v1.ConfigMap,
+	error) {
+	configmap, err := CoreV1Interface.ConfigMaps(namespace).Get(
 		context.TODO(),
 		proxyconfig.GetManagedClusterLabelAllowListConfigMapName(),
 		metav1.GetOptions{},
 	)
 	if err != nil {
-		klog.Fatalf("failed to get managedcluster label allowlist configmap: %v", err)
+		klog.Errorf("failed to get managedcluster label allowlist configmap: %v", err)
 		return nil, err
 	}
 	return configmap, nil
@@ -160,7 +164,7 @@ func ModifyManagedClusterLabelAllowListConfigMapData(cm *v1.ConfigMap, clusterLa
 		clusterLabelList,
 	)
 	if err != nil {
-		klog.Fatalf("failed to unmarshal configmap <%s> data to the clusterLabelList: %v",
+		klog.Errorf("failed to unmarshal configmap <%s> data to the clusterLabelList: %v",
 			proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), err)
 		return err
 	}
@@ -175,7 +179,7 @@ func ModifyManagedClusterLabelAllowListConfigMapData(cm *v1.ConfigMap, clusterLa
 
 	data, err := yaml.Marshal(clusterLabelList)
 	if err != nil {
-		klog.Fatalf("failed to marshal data to clusterLabelList: %v", err)
+		klog.Errorf("failed to marshal data to clusterLabelList: %v", err)
 		return err
 	}
 	cm.Data = map[string]string{proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(): string(data)}
@@ -215,14 +219,18 @@ func UpdateClusterLabelsStatus(managedLabelList *proxyconfig.ManagedClusterLabel
 	}
 }
 
-func UpdateManagedClusterLabelAllowListConfigMap(kubeClient kubernetes.Interface, cm *v1.ConfigMap) error {
-	_, err := kubeClient.CoreV1().ConfigMaps("open-cluster-management-observability").Update(
+func UpdateManagedClusterLabelAllowListConfigMap(
+	CoreV1Interface corev1.CoreV1Interface,
+	namespace string,
+	cm *v1.ConfigMap,
+) error {
+	_, err := CoreV1Interface.ConfigMaps(namespace).Update(
 		context.TODO(),
 		cm,
 		metav1.UpdateOptions{},
 	)
 	if err != nil {
-		klog.Fatalf("failed to update managedcluster label allowlist: %v", err)
+		klog.Errorf("failed to update managedcluster label allowlist: %v", err)
 		return err
 	}
 	return nil
@@ -238,7 +246,7 @@ func WatchManagedCluster(clusterClient clusterclientset.Interface, kubeClient ku
 		fields.Everything(),
 	)
 
-	found, _ := GetManagedClusterLabelAllowListConfigmap(kubeClient)
+	found, _ := GetManagedClusterLabelAllowListConfigmap(kubeClient.CoreV1(), "open-cluster-management-observability")
 	_, controller := cache.NewInformer(
 		watchlist,
 		&clusterv1.ManagedCluster{},
@@ -250,9 +258,12 @@ func WatchManagedCluster(clusterClient clusterclientset.Interface, kubeClient ku
 				allManagedClusterNames[clusterName] = clusterName
 
 				managedLabelListMutex.Lock()
-				_ = ModifyManagedClusterLabelAllowListConfigMapData(found, obj.(*clusterv1.ManagedCluster).Labels)
-				_ = UpdateManagedClusterLabelAllowListConfigMap(kubeClient, found)
-				managedLabelListMutex.Unlock()
+				ModifyManagedClusterLabelAllowListConfigMapData(found, obj.(*clusterv1.ManagedCluster).Labels)
+				UpdateManagedClusterLabelAllowListConfigMap(
+					kubeClient.CoreV1(),
+					"open-cluster-management-observability",
+					found,
+				)
 			},
 
 			DeleteFunc: func(obj interface{}) {
@@ -266,10 +277,12 @@ func WatchManagedCluster(clusterClient clusterclientset.Interface, kubeClient ku
 				klog.Infof("changed a managedcluster: %s \n", newObj.(*clusterv1.ManagedCluster).Name)
 				allManagedClusterNames[clusterName] = clusterName
 
-				managedLabelListMutex.Lock()
-				_ = ModifyManagedClusterLabelAllowListConfigMapData(found, newObj.(*clusterv1.ManagedCluster).Labels)
-				_ = UpdateManagedClusterLabelAllowListConfigMap(kubeClient, found)
-				managedLabelListMutex.Unlock()
+				ModifyManagedClusterLabelAllowListConfigMapData(found, newObj.(*clusterv1.ManagedCluster).Labels)
+				UpdateManagedClusterLabelAllowListConfigMap(
+					kubeClient.CoreV1(),
+					"open-cluster-management-observability",
+					found,
+				)
 			},
 		},
 	)
@@ -307,7 +320,7 @@ func WatchManagedClusterLabelAllowList(kubeClient kubernetes.Interface) {
 						managedLabelList,
 					)
 					if err != nil {
-						klog.Fatalf("failed to unmarshal configmap <%s> data to the managedLabelList: %v",
+						klog.Errorf("failed to unmarshal configmap <%s> data to the managedLabelList: %v",
 							proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), err)
 					}
 					UpdateClusterLabelsStatus(managedLabelList)
@@ -330,7 +343,7 @@ func WatchManagedClusterLabelAllowList(kubeClient kubernetes.Interface) {
 						managedLabelList,
 					)
 					if err != nil {
-						klog.Fatalf("failed to unmarshal configmap <%s> data to the managedLabelList: %v",
+						klog.Errorf("failed to unmarshal configmap <%s> data to the managedLabelList: %v",
 							proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), err)
 					}
 

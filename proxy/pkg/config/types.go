@@ -8,5 +8,5 @@ package config
 type ManagedClusterLabelList struct {
 	BlackList      []string `yaml:"blacklist_labels,omitempty"`
 	LabelList      []string `yaml:"labels"`
-	RegexLabelList []string
+	RegexLabelList []string `yaml:"-"`
 }

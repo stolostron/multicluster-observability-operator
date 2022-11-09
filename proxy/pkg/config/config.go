@@ -3,6 +3,11 @@
 
 package config
 
+import (
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
 const (
 	ManagedClusterLabelAllowListConfigMapName = "observability-managed-cluster-label-allowlist"
 	ManagedClusterLabelAllowListConfigMapKey  = "managed_cluster.yaml"
@@ -38,4 +43,32 @@ func GetManagedClusterLabelList() *ManagedClusterLabelList {
 // GetRBACProxyLabelMetricName returns the name of the rbac query proxy label metric
 func GetRBACProxyLabelMetricName() string {
 	return RBACProxyLabelMetricName
+}
+
+// CreateManagedClusterLabelAllowListCM creates a managedcluster label allowlist configmap object
+func CreateManagedClusterLabelAllowListCM() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: GetManagedClusterLabelAllowListConfigMapName(),
+		},
+		Data: map[string]string{
+			GetManagedClusterLabelAllowListConfigMapKey(): `labels: []
+
+blacklist_labels:
+- clusterID
+- cluster.open-cluster-management.io/clusterset
+- feature.open-cluster-management.io/addon-application-manager
+- feature.open-cluster-management.io/addon-cert-policy-controller
+- feature.open-cluster-management.io/addon-cluster-proxy
+- feature.open-cluster-management.io/addon-config-policy-controller
+- feature.open-cluster-management.io/addon-governance-policy-framework
+- feature.open-cluster-management.io/addon-iam-policy-controller
+- feature.open-cluster-management.io/addon-observability-controller
+- feature.open-cluster-management.io/addon-search-collector
+- feature.open-cluster-management.io/addon-work-manager
+- installer.name
+- installer.namespace
+- local-cluster
+- name
+`}}
 }
