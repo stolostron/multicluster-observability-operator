@@ -55,14 +55,16 @@ func GetRBACProxyLabelMetricName() string {
 }
 
 // CreateManagedClusterLabelAllowListCM creates a managedcluster label allowlist configmap object
-func CreateManagedClusterLabelAllowListCM() *v1.ConfigMap {
+func CreateManagedClusterLabelAllowListCM(namespace string) *v1.ConfigMap {
 	return &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      GetManagedClusterLabelAllowListConfigMapName(),
-			Namespace: ManagedClusterLabelAllowListNamespace,
+			Namespace: namespace,
 		},
 		Data: map[string]string{
-			GetManagedClusterLabelAllowListConfigMapKey(): `labels: []
+			GetManagedClusterLabelAllowListConfigMapKey(): `labels:
+- cloud
+- vendor
 
 ignore_labels:
 - clusterID

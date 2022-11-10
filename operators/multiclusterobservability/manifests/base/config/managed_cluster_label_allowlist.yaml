@@ -6,7 +6,9 @@ metadata:
     skip-creation-if-exist: “true”
 data:
   managed_cluster.yaml: |
-    labels: []
+    labels:
+      - cloud
+      - vendor
 
     ignore_labels:
       - clusterID

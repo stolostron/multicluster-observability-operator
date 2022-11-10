@@ -40,7 +40,7 @@ func TestGetManagedClusterLabelMetricName(t *testing.T) {
 
 func TestGetManagedClusterLabelList(t *testing.T) {
 	managedLabelList := GetManagedClusterLabelList()
-	cm := CreateManagedClusterLabelAllowListCM()
+	cm := CreateManagedClusterLabelAllowListCM("ns1")
 
 	err := yaml.Unmarshal([]byte(cm.Data[GetManagedClusterLabelAllowListConfigMapKey()]), managedLabelList)
 	if err != nil {
@@ -66,7 +66,7 @@ func TestGetManagedClusterLabelAllowListConfigmap(t *testing.T) {
 	client := fake.NewSimpleClientset().CoreV1()
 	_, err := client.ConfigMaps(testCase.namespace).Create(
 		context.TODO(),
-		CreateManagedClusterLabelAllowListCM(),
+		CreateManagedClusterLabelAllowListCM(testCase.namespace),
 		metav1.CreateOptions{},
 	)
 	if err != nil {
@@ -94,7 +94,7 @@ func TestModifyManagedClusterLabelAllowListConfigMapData(t *testing.T) {
 		expected  error
 	}{
 		"should modify managedcluster label allowlist data",
-		CreateManagedClusterLabelAllowListCM(),
+		CreateManagedClusterLabelAllowListCM("ns1"),
 		nil,
 	}
 
@@ -121,7 +121,7 @@ func TestUpdateManagedClusterLabelAllowListConfigMap(t *testing.T) {
 		name     string
 		expected error
 	}{"should update the managedcluster label allowlist data", nil}
-	cm := CreateManagedClusterLabelAllowListCM()
+	cm := CreateManagedClusterLabelAllowListCM("ns1")
 
 	client := fake.NewSimpleClientset().CoreV1()
 	_, err := client.ConfigMaps(cm.Namespace).Create(context.TODO(), cm, metav1.CreateOptions{})

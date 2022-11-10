@@ -4,6 +4,7 @@
 package util
 
 import (
+	"context"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -12,6 +13,11 @@ import (
 	"time"
 
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
+	"gopkg.in/yaml.v2"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/klog"
 	"k8s.io/kubectl/pkg/util/slice"
 )
@@ -358,7 +364,7 @@ func TestMarshalClusterLabelAllowListConfigMapData(t *testing.T) {
 		expected error
 	}{
 		"should marshal configmap object data correctly",
-		proxyconfig.CreateManagedClusterLabelAllowListCM(),
+		proxyconfig.CreateManagedClusterLabelAllowListCM("ns1"),
 		nil,
 	}
 
@@ -368,4 +374,49 @@ func TestMarshalClusterLabelAllowListConfigMapData(t *testing.T) {
 	if err != nil {
 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, nil, nil)
 	}
+}
+
+func TestNewManagedLabelConfigmapInformer(t *testing.T) {
+	testCase := struct {
+		name   string
+		oldObj interface{}
+		newObj interface{}
+	}{
+		"should execute eventHandler",
+		proxyconfig.CreateManagedClusterLabelAllowListCM("ns1"),
+		proxyconfig.CreateManagedClusterLabelAllowListCM("ns1"),
+	}
+
+	client := fake.NewSimpleClientset()
+	_, err := client.CoreV1().ConfigMaps("ns1").Create(
+		context.TODO(),
+		proxyconfig.CreateManagedClusterLabelAllowListCM("ns1"),
+		metav1.CreateOptions{},
+	)
+	if err != nil {
+		t.Errorf("failed to create managedcluster label allowlist configmap: %v", err)
+	}
+
+	eventHandler := GetManagedClusterLabelAllowListEventHandler()
+	eventHandler.AddFunc(testCase.oldObj)
+	if GetAllManagedClusterLabelNames() == nil {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, nil, nil)
+	}
+
+	managedLabelList := proxyconfig.GetManagedClusterLabelList()
+	managedLabelList.LabelList = []string{"cloud"}
+	data, err := yaml.Marshal(managedLabelList)
+	if err != nil {
+		t.Errorf("failed to marshal new label list: %v", err)
+	}
+
+	testCase.newObj.(*corev1.ConfigMap).Data = map[string]string{
+		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(): string(data),
+	}
+	eventHandler.UpdateFunc(testCase.oldObj, testCase.newObj)
+	if ok := GetAllManagedClusterLabelNames()["vendor"]; ok {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, false)
+	}
+
+	eventHandler.DeleteFunc(testCase.newObj)
 }
