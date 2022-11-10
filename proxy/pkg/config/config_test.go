@@ -118,27 +118,26 @@ labels:
 
 func TestUpdateManagedClusterLabelAllowListConfigMap(t *testing.T) {
 	testCase := struct {
-		name      string
-		namespace string
-		expected  error
-	}{"should update the managedcluster label allowlist data", "ns1", nil}
+		name     string
+		expected error
+	}{"should update the managedcluster label allowlist data", nil}
 	cm := CreateManagedClusterLabelAllowListCM()
 
 	client := fake.NewSimpleClientset().CoreV1()
-	_, err := client.ConfigMaps("ns1").Create(context.TODO(), cm, metav1.CreateOptions{})
+	_, err := client.ConfigMaps(cm.Namespace).Create(context.TODO(), cm, metav1.CreateOptions{})
 	if err != nil {
 		t.Errorf("failed to create configmap: %v", err)
 	}
 
-	err = UpdateManagedClusterLabelAllowListConfigMap(client, testCase.namespace, cm)
+	err = UpdateManagedClusterLabelAllowListConfigMap(client, cm)
 	if err != nil {
 		t.Errorf("case: (%v) output: (%v) is not the expected (%v)", testCase.name, err, testCase.expected)
 	}
 
 	testCase.name = "should not update managedcluster label allowlist configmap"
-	testCase.namespace = "ns2"
+	cm.Namespace = "test-ns"
 
-	err = UpdateManagedClusterLabelAllowListConfigMap(client, testCase.namespace, cm)
+	err = UpdateManagedClusterLabelAllowListConfigMap(client, cm)
 	if err == nil {
 		t.Errorf("case: (%v) output: (%v) is not the expected (%v)", testCase.name, nil, err)
 	}

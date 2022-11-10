@@ -12,6 +12,8 @@ import (
 	"time"
 
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
+	"k8s.io/klog"
+	"k8s.io/kubectl/pkg/util/slice"
 )
 
 func newHTTPRequest() *http.Request {
@@ -149,12 +151,12 @@ func TestGetAllManagedClusterLabelNames(t *testing.T) {
 		managedLabelList *proxyconfig.ManagedClusterLabelList
 		expected         bool
 	}{"should contain enabled labels", &proxyconfig.ManagedClusterLabelList{
-		LabelList: []string{"cloud", "vendor"},
-		BlackList: []string{"clusterID", "name"},
+		IgnoreList: []string{"clusterID", "name"},
+		LabelList:  []string{"cloud", "vendor"},
 	}, true}
 
 	InitAllManagedClusterLabelNames()
-	UpdateClusterLabelsStatus(testCaseList.managedLabelList)
+	UpdateClusterLabelStatus(testCaseList.managedLabelList)
 
 	if isEnabled := GetAllManagedClusterLabelNames()["cloud"]; !isEnabled {
 		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, testCaseList.expected)
@@ -164,9 +166,9 @@ func TestGetAllManagedClusterLabelNames(t *testing.T) {
 		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, testCaseList.expected)
 	}
 
+	testCaseList.managedLabelList.IgnoreList = []string{"clusterID", "vendor"}
 	testCaseList.managedLabelList.LabelList = []string{"cloud", "name"}
-	testCaseList.managedLabelList.BlackList = []string{"clusterID", "vendor"}
-	UpdateClusterLabelsStatus(testCaseList.managedLabelList)
+	UpdateClusterLabelStatus(testCaseList.managedLabelList)
 
 	if isEnabled := GetAllManagedClusterLabelNames()["name"]; !isEnabled {
 		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, testCaseList.expected)
@@ -315,5 +317,55 @@ func TestWriteError(t *testing.T) {
 	data, _ := ioutil.ReadFile("/tmp/health")
 	if !strings.Contains(string(data), "test") {
 		t.Errorf("failed to find the health file")
+	}
+}
+
+func TestRemoveUnusedClusterLabelStatus(t *testing.T) {
+	testCase := struct {
+		name             string
+		managedLabelList *proxyconfig.ManagedClusterLabelList
+		expected         bool
+	}{
+		"should remove label: environment",
+		&proxyconfig.ManagedClusterLabelList{
+			IgnoreList: []string{"clusterID", "name"},
+			LabelList:  []string{"cloud", "vendor", "environment"},
+		},
+		false,
+	}
+
+	InitAllManagedClusterLabelNames()
+	UpdateClusterLabelStatus(testCase.managedLabelList)
+
+	testCase.managedLabelList.LabelList = []string{"cloud", "vendor"}
+	klog.Info(testCase.managedLabelList)
+
+	for label := range GetAllManagedClusterLabelNames() {
+		RemoveUnusedClusterLabelStatus(testCase.managedLabelList, label)
+	}
+
+	if exist := slice.ContainsString(testCase.managedLabelList.IgnoreList, "environment", nil) ||
+		slice.ContainsString(testCase.managedLabelList.LabelList, "environment", nil); exist {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)",
+			testCase.name, exist, testCase.expected)
+	}
+}
+
+func TestMarshalClusterLabelAllowListConfigMapData(t *testing.T) {
+	testCase := struct {
+		name     string
+		obj      interface{}
+		expected error
+	}{
+		"should marshal configmap object data correctly",
+		proxyconfig.CreateManagedClusterLabelAllowListCM(),
+		nil,
+	}
+
+	err := MarshalClusterLabelAllowListConfigMapData(testCase.obj,
+		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), proxyconfig.GetManagedClusterLabelList())
+
+	if err != nil {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, nil, nil)
 	}
 }

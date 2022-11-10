@@ -20,6 +20,7 @@ const (
 	ManagedClusterLabelAllowListConfigMapName = "observability-managed-cluster-label-allowlist"
 	ManagedClusterLabelAllowListConfigMapKey  = "managed_cluster.yaml"
 	ManagedClusterLabelMetricName             = "managed_cluster_labels"
+	ManagedClusterLabelAllowListNamespace     = "open-cluster-management-observability"
 
 	RBACProxyLabelMetricName = "acm_label_names"
 )
@@ -57,12 +58,13 @@ func GetRBACProxyLabelMetricName() string {
 func CreateManagedClusterLabelAllowListCM() *v1.ConfigMap {
 	return &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: GetManagedClusterLabelAllowListConfigMapName(),
+			Name:      GetManagedClusterLabelAllowListConfigMapName(),
+			Namespace: ManagedClusterLabelAllowListNamespace,
 		},
 		Data: map[string]string{
 			GetManagedClusterLabelAllowListConfigMapKey(): `labels: []
 
-blacklist_labels:
+ignore_labels:
 - clusterID
 - cluster.open-cluster-management.io/clusterset
 - feature.open-cluster-management.io/addon-application-manager
@@ -111,7 +113,7 @@ func ModifyManagedClusterLabelAllowListConfigMapData(cm *v1.ConfigMap, clusterLa
 	}
 
 	for key := range clusterLabels {
-		if !slice.ContainsString(clusterLabelList.BlackList, key, nil) &&
+		if !slice.ContainsString(clusterLabelList.IgnoreList, key, nil) &&
 			!slice.ContainsString(clusterLabelList.LabelList, key, nil) {
 			clusterLabelList.LabelList = append(clusterLabelList.LabelList, key)
 			klog.Infof("added label <%s> to managedcluster label allowlist", key)
@@ -130,10 +132,9 @@ func ModifyManagedClusterLabelAllowListConfigMapData(cm *v1.ConfigMap, clusterLa
 // UpdateManagedClusterLabelAllowListConfigMap updates the managedcluster label allowlist configmap
 func UpdateManagedClusterLabelAllowListConfigMap(
 	CoreV1Interface corev1.CoreV1Interface,
-	namespace string,
 	cm *v1.ConfigMap,
 ) error {
-	_, err := CoreV1Interface.ConfigMaps(namespace).Update(
+	_, err := CoreV1Interface.ConfigMaps(cm.Namespace).Update(
 		context.TODO(),
 		cm,
 		metav1.UpdateOptions{},
