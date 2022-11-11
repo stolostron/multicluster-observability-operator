@@ -13,13 +13,12 @@ import (
 	"time"
 
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
-	"gopkg.in/yaml.v2"
 
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/klog"
-	"k8s.io/kubectl/pkg/util/slice"
+
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
 func newHTTPRequest() *http.Request {
@@ -162,7 +161,7 @@ func TestGetAllManagedClusterLabelNames(t *testing.T) {
 	}, true}
 
 	InitAllManagedClusterLabelNames()
-	UpdateClusterLabelStatus(testCaseList.managedLabelList)
+	updateAllManagedClusterLabelNames(testCaseList.managedLabelList)
 
 	if isEnabled := GetAllManagedClusterLabelNames()["cloud"]; !isEnabled {
 		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, testCaseList.expected)
@@ -174,7 +173,7 @@ func TestGetAllManagedClusterLabelNames(t *testing.T) {
 
 	testCaseList.managedLabelList.IgnoreList = []string{"clusterID", "vendor"}
 	testCaseList.managedLabelList.LabelList = []string{"cloud", "name"}
-	UpdateClusterLabelStatus(testCaseList.managedLabelList)
+	updateAllManagedClusterLabelNames(testCaseList.managedLabelList)
 
 	if isEnabled := GetAllManagedClusterLabelNames()["name"]; !isEnabled {
 		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, testCaseList.expected)
@@ -326,38 +325,7 @@ func TestWriteError(t *testing.T) {
 	}
 }
 
-func TestRemoveUnusedClusterLabelStatus(t *testing.T) {
-	testCase := struct {
-		name             string
-		managedLabelList *proxyconfig.ManagedClusterLabelList
-		expected         bool
-	}{
-		"should remove label: environment",
-		&proxyconfig.ManagedClusterLabelList{
-			IgnoreList: []string{"clusterID", "name"},
-			LabelList:  []string{"cloud", "vendor", "environment"},
-		},
-		false,
-	}
-
-	InitAllManagedClusterLabelNames()
-	UpdateClusterLabelStatus(testCase.managedLabelList)
-
-	testCase.managedLabelList.LabelList = []string{"cloud", "vendor"}
-	klog.Info(testCase.managedLabelList)
-
-	for label := range GetAllManagedClusterLabelNames() {
-		RemoveUnusedClusterLabelStatus(testCase.managedLabelList, label)
-	}
-
-	if exist := slice.ContainsString(testCase.managedLabelList.IgnoreList, "environment", nil) ||
-		slice.ContainsString(testCase.managedLabelList.LabelList, "environment", nil); exist {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)",
-			testCase.name, exist, testCase.expected)
-	}
-}
-
-func TestMarshalClusterLabelAllowListConfigMapData(t *testing.T) {
+func TestMarshalLabelListToConfigMap(t *testing.T) {
 	testCase := struct {
 		name     string
 		obj      interface{}
@@ -368,15 +336,86 @@ func TestMarshalClusterLabelAllowListConfigMapData(t *testing.T) {
 		nil,
 	}
 
-	err := MarshalClusterLabelAllowListConfigMapData(testCase.obj,
+	err := unmarshalDataToManagedClusterLabelList(testCase.obj.(*v1.ConfigMap).Data,
 		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), proxyconfig.GetManagedClusterLabelList())
-
 	if err != nil {
-		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, nil, nil)
+		t.Errorf("failed to unmarshal configmap <%s> data to the managedLabelList: %v",
+			proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), err)
+	}
+
+	err = marshalLabelListToConfigMap(testCase.obj, proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(),
+		proxyconfig.GetManagedClusterLabelList())
+	if err != nil {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, err, testCase.expected)
 	}
 }
 
-func TestNewManagedLabelConfigmapInformer(t *testing.T) {
+func TestUnmarshalDataToManagedClusterLabelList(t *testing.T) {
+	testCase := struct {
+		name     string
+		cm       *v1.ConfigMap
+		expected error
+	}{
+		"should unmarshal configmap object data correctly",
+		proxyconfig.CreateManagedClusterLabelAllowListCM("ns1"),
+		nil,
+	}
+
+	err := unmarshalDataToManagedClusterLabelList(testCase.cm.Data,
+		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), proxyconfig.GetManagedClusterLabelList())
+
+	if err != nil {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, err, testCase.expected)
+	}
+}
+
+func TestGetManagedClusterEventHandler(t *testing.T) {
+	testCase := struct {
+		name     string
+		oldObj   interface{}
+		newObj   interface{}
+		expected bool
+	}{
+		"should execute eventHandler",
+		&clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "cluster1",
+				Namespace: "ns1",
+			},
+		},
+		&clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "cluster2",
+				Namespace: "ns2",
+			},
+		},
+		false,
+	}
+
+	InitAllManagedClusterNames()
+	InitAllManagedClusterLabelNames()
+
+	eventHandler := GetManagedClusterEventHandler()
+	testCase.oldObj.(*clusterv1.ManagedCluster).Labels = map[string]string{
+		"name":        testCase.oldObj.(*clusterv1.ManagedCluster).Name,
+		"environment": "dev",
+	}
+
+	eventHandler.AddFunc(testCase.oldObj)
+	testCase.newObj.(*clusterv1.ManagedCluster).Labels = map[string]string{
+		"name":        testCase.oldObj.(*clusterv1.ManagedCluster).Name,
+		"environment": "dev",
+		"cloud":       "Amazon",
+	}
+	eventHandler.UpdateFunc(testCase.oldObj, testCase.newObj)
+	eventHandler.DeleteFunc(testCase.newObj)
+
+	if ok := GetAllManagedClusterLabelNames()["cluster2"]; ok {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, testCase.expected)
+	}
+}
+
+func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
 	testCase := struct {
 		name   string
 		oldObj interface{}
@@ -388,7 +427,7 @@ func TestNewManagedLabelConfigmapInformer(t *testing.T) {
 	}
 
 	client := fake.NewSimpleClientset()
-	_, err := client.CoreV1().ConfigMaps("ns1").Create(
+	cm, err := client.CoreV1().ConfigMaps("ns1").Create(
 		context.TODO(),
 		proxyconfig.CreateManagedClusterLabelAllowListCM("ns1"),
 		metav1.CreateOptions{},
@@ -397,22 +436,22 @@ func TestNewManagedLabelConfigmapInformer(t *testing.T) {
 		t.Errorf("failed to create managedcluster label allowlist configmap: %v", err)
 	}
 
+	InitAllManagedClusterLabelNames()
+	err = unmarshalDataToManagedClusterLabelList(cm.Data,
+		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), managedLabelList)
+
+	if err != nil {
+		t.Errorf("failed to unmarshal managedcluster label allowlist configmap key: %s: %v",
+			proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), err)
+	}
+
 	eventHandler := GetManagedClusterLabelAllowListEventHandler()
 	eventHandler.AddFunc(testCase.oldObj)
 	if GetAllManagedClusterLabelNames() == nil {
 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, nil, nil)
 	}
 
-	managedLabelList := proxyconfig.GetManagedClusterLabelList()
-	managedLabelList.LabelList = []string{"cloud"}
-	data, err := yaml.Marshal(managedLabelList)
-	if err != nil {
-		t.Errorf("failed to marshal new label list: %v", err)
-	}
-
-	testCase.newObj.(*corev1.ConfigMap).Data = map[string]string{
-		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(): string(data),
-	}
+	managedLabelList.IgnoreList = []string{"vendor"}
 	eventHandler.UpdateFunc(testCase.oldObj, testCase.newObj)
 	if ok := GetAllManagedClusterLabelNames()["vendor"]; ok {
 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, false)
