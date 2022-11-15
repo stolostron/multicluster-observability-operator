@@ -51,7 +51,6 @@ import (
 	observabilityv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/webhook"
 	operatorsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
@@ -101,7 +100,7 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	crdClient, err := util.GetOrCreateCRDClient()
+	crdClient, err := operatorsutil.GetOrCreateCRDClient()
 	if err != nil {
 		setupLog.Error(err, "Failed to create the CRD client")
 		os.Exit(1)
@@ -138,13 +137,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	ingressCtlCrdExists, err := util.CheckCRDExist(crdClient, config.IngressControllerCRD)
+	ingressCtlCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.IngressControllerCRD)
 	if err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
 
-	mchCrdExists, err := util.CheckCRDExist(crdClient, config.MCHCrdName)
+	mchCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.MCHCrdName)
 	if err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
@@ -249,7 +248,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = util.UpdateCRDWebhookNS(crdClient, mcoNamespace, config.MCOCrdName); err != nil {
+	if err = operatorsutil.UpdateCRDWebhookNS(crdClient, mcoNamespace, config.MCOCrdName); err != nil {
 		setupLog.Error(
 			err,
 			"unable to update webhook service namespace in MCO CRD",
@@ -258,7 +257,7 @@ func main() {
 		)
 	}
 
-	svmCrdExists, err := util.CheckCRDExist(crdClient, config.StorageVersionMigrationCrdName)
+	svmCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.StorageVersionMigrationCrdName)
 	if err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)

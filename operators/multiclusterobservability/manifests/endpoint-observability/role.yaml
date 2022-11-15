@@ -203,4 +203,12 @@ rules:
   - prometheusrules
   verbs:
   - '*'
+- apiGroups:
+  - hypershift.openshift.io
+  resources:
+  - hostedclusters
+  verbs:
+  - get
+  - list
+  - watch
   
