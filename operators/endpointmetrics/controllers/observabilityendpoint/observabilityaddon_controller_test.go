@@ -4,6 +4,7 @@ package observabilityendpoint
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 
@@ -32,6 +33,10 @@ const (
 	testHubNamspace = "test-hub-ns"
 	testBearerToken = "test-bearer-token"
 )
+
+func init() {
+	os.Setenv("UNIT_TEST", "true")
+}
 
 func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon {
 	return &oav1beta1.ObservabilityAddon{

@@ -4,6 +4,7 @@ package metricfamily
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/go-kit/kit/log"
 	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
@@ -74,14 +75,9 @@ func (h *hypershiftTransformer) Transform(family *prom.MetricFamily) (bool, erro
 			if family.Metric[i].Label[j].GetName() == HYPERSHIFT_ID {
 				isHypershift = true
 				id := family.Metric[i].Label[j].GetValue()
-				clusterName, ok := h.hostedClusters[id]
-				if !ok {
-					clusters, err := getHostedClusters(h.kubeClient, h.logger)
-					h.hostedClusters = clusters
-					if err != nil {
-						return false, err
-					}
-					clusterName, _ = h.hostedClusters[id]
+				clusterName, err := getClusterName(h, id)
+				if err != nil {
+					return false, err
 				}
 				labels = append(labels,
 					&clientmodel.LabelPair{Name: &MANAGEMENT_CLUSTER_LABEL, Value: &h.managementCluster})
@@ -107,6 +103,22 @@ func (h *hypershiftTransformer) Transform(family *prom.MetricFamily) (bool, erro
 	}
 
 	return true, nil
+}
+
+func getClusterName(h *hypershiftTransformer, id string) (string, error) {
+	clusterName, ok := h.hostedClusters[id]
+	if !ok {
+		clusters, err := getHostedClusters(h.kubeClient, h.logger)
+		h.hostedClusters = clusters
+		if err != nil {
+			return "", err
+		}
+		clusterName, ok = h.hostedClusters[id]
+		if !ok {
+			return "", errors.New(fmt.Sprintf("Failed to find HosteCluster with id: %s", id))
+		}
+	}
+	return clusterName, nil
 }
 
 func CheckCRDExist(l log.Logger) (bool, error) {

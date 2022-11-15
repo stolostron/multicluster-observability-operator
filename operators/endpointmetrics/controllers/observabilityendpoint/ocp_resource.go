@@ -29,6 +29,7 @@ const (
 	etcdSecName            = "etcd-client-tls"
 	kubeApiServiceMonitor  = "acm-kube-apiserver"
 	kubeApiSecName         = "metrics-client"
+	kubeComponent          = "kube-apiserver"
 )
 
 var (
@@ -366,7 +367,7 @@ func getKubeServiceMonitor(namespace, id string) *promv1.ServiceMonitor {
 					},
 					TLSConfig: &promv1.TLSConfig{
 						SafeTLSConfig: promv1.SafeTLSConfig{
-							ServerName: "kube-apiserver",
+							ServerName: kubeComponent,
 							CA: promv1.SecretOrConfigMap{
 								Secret: &v1.SecretKeySelector{
 									LocalObjectReference: v1.LocalObjectReference{
@@ -420,8 +421,8 @@ func getKubeServiceMonitor(namespace, id string) *promv1.ServiceMonitor {
 			},
 			Selector: metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": "kube-apiserver",
-					"hypershift.openshift.io/control-plane-component": "kube-apiserver",
+					"app": kubeComponent,
+					"hypershift.openshift.io/control-plane-component": kubeComponent,
 				},
 			},
 			NamespaceSelector: promv1.NamespaceSelector{

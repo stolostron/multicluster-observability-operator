@@ -97,13 +97,16 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if obsAddon == nil {
 		deleteFlag = true
 	}
-	crdClient, err := operatorutil.GetOrCreateCRDClient()
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	isHypershift, err := operatorutil.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
-	if err != nil {
-		return ctrl.Result{}, err
+	isHypershift := true
+	if os.Getenv("UNIT_TEST") != "true" {
+		crdClient, err := operatorutil.GetOrCreateCRDClient()
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		isHypershift, err = operatorutil.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 	deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift)
 	if err != nil {
