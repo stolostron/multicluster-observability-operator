@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/go-kit/kit/log"
 	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
@@ -13,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
@@ -36,26 +38,34 @@ type hypershiftTransformer struct {
 
 func NewHypershiftTransformer(l log.Logger, labels map[string]string) (Transformer, error) {
 
-	config, err := clientcmd.BuildConfigFromFlags("", "")
-	if err != nil {
-		return nil, errors.New("Failed to create the kube config")
-	}
-	s := scheme.Scheme
-	if err := hyperv1.AddToScheme(s); err != nil {
-		return nil, errors.New("Failed to add observabilityaddon into scheme")
-	}
-	c, err := client.New(config, client.Options{Scheme: s})
-	if err != nil {
-		return nil, errors.New("Failed to create the kube client")
+	clusters := map[string]string{}
+	var hClient client.Client
+	if os.Getenv("UNIT_TEST") != "true" {
+		config, err := clientcmd.BuildConfigFromFlags("", "")
+		if err != nil {
+			return nil, errors.New("Failed to create the kube config")
+		}
+		s := scheme.Scheme
+		if err := hyperv1.AddToScheme(s); err != nil {
+			return nil, errors.New("Failed to add observabilityaddon into scheme")
+		}
+		hClient, err = client.New(config, client.Options{Scheme: s})
+		if err != nil {
+			return nil, errors.New("Failed to create the kube client")
+		}
+	} else {
+		s := scheme.Scheme
+		hyperv1.AddToScheme(s)
+		hClient = fake.NewFakeClient()
 	}
 
-	clusters, err := getHostedClusters(c, l)
+	clusters, err := getHostedClusters(hClient, l)
 	if err != nil {
 		return nil, err
 	}
 
 	return &hypershiftTransformer{
-		kubeClient:          c,
+		kubeClient:          hClient,
 		logger:              l,
 		hostedClusters:      clusters,
 		managementCluster:   labels[CLUSTER_LABEL],
@@ -122,6 +132,9 @@ func getClusterName(h *hypershiftTransformer, id string) (string, error) {
 }
 
 func CheckCRDExist(l log.Logger) (bool, error) {
+	if os.Getenv("UNIT_TEST") == "true" {
+		return true, nil
+	}
 	c, err := util.GetOrCreateCRDClient()
 	if err != nil {
 		return false, nil
