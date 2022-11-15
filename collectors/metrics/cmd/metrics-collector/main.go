@@ -533,7 +533,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 		return err, nil
 	}
 	if isHypershift {
-		hyperTransformer, err := metricfamily.NewHypershiftTransformer(o.Logger, o.Labels)
+		hyperTransformer, err := metricfamily.NewHypershiftTransformer(o.Logger, nil, o.Labels)
 		if err != nil {
 			return err, nil
 		}

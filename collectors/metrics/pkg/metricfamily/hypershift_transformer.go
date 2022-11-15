@@ -36,27 +36,32 @@ type hypershiftTransformer struct {
 	managementClusterID string
 }
 
-func NewHypershiftTransformer(l log.Logger, labels map[string]string) (Transformer, error) {
+func NewHypershiftTransformer(l log.Logger, c client.Client, labels map[string]string) (Transformer, error) {
 
 	clusters := map[string]string{}
-	var hClient client.Client
-	if os.Getenv("UNIT_TEST") != "true" {
-		config, err := clientcmd.BuildConfigFromFlags("", "")
-		if err != nil {
-			return nil, errors.New("Failed to create the kube config")
+	hClient := c
+	if hClient == nil {
+		if os.Getenv("UNIT_TEST") != "true" {
+			config, err := clientcmd.BuildConfigFromFlags("", "")
+			if err != nil {
+				return nil, errors.New("Failed to create the kube config")
+			}
+			s := scheme.Scheme
+			if err := hyperv1.AddToScheme(s); err != nil {
+				return nil, errors.New("Failed to add observabilityaddon into scheme")
+			}
+			hClient, err = client.New(config, client.Options{Scheme: s})
+			if err != nil {
+				return nil, errors.New("Failed to create the kube client")
+			}
+		} else {
+			s := scheme.Scheme
+			err := hyperv1.AddToScheme(s)
+			if err != nil {
+				return nil, err
+			}
+			hClient = fake.NewFakeClient()
 		}
-		s := scheme.Scheme
-		if err := hyperv1.AddToScheme(s); err != nil {
-			return nil, errors.New("Failed to add observabilityaddon into scheme")
-		}
-		hClient, err = client.New(config, client.Options{Scheme: s})
-		if err != nil {
-			return nil, errors.New("Failed to create the kube client")
-		}
-	} else {
-		s := scheme.Scheme
-		hyperv1.AddToScheme(s)
-		hClient = fake.NewFakeClient()
 	}
 
 	clusters, err := getHostedClusters(hClient, l)
@@ -149,7 +154,7 @@ func getHostedClusters(c client.Client, l log.Logger) (map[string]string, error)
 		logger.Log(l, logger.Error, "msg", "Failed to list HyperShiftDeployment", "error", err)
 		return nil, err
 	}
-	logger.Log(l, logger.Info, "msg", "NewHypershiftTransformer", "HosteClusters size", len(hList.Items))
+	logger.Log(l, logger.Info, "msg", "NewHypershiftTransformer", "HostedCluster size", len(hList.Items))
 	clusters := map[string]string{}
 	for _, hCluster := range hList.Items {
 		clusters[hCluster.Spec.ClusterID] = hCluster.ObjectMeta.Name

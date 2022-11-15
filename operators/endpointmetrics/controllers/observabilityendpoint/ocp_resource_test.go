@@ -4,16 +4,21 @@ package observabilityendpoint
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
+	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const (
-	testClusterID = "kind-cluster-id"
+	testClusterID     = "kind-cluster-id"
+	hostedClusterName = "test-hosted-cluster"
 )
 
 var (
@@ -29,7 +34,28 @@ var (
 			ControlPlaneTopology: ocinfrav1.SingleReplicaTopologyMode,
 		},
 	}
+	hCluster = &hyperv1.HostedCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: hostedClusterName,
+		},
+		Spec: hyperv1.HostedClusterSpec{
+			ClusterID: "test-hosted-cluster-id",
+		},
+	}
+	sm = &promv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      etcdServiceMonitor,
+			Namespace: fmt.Sprintf("clusters-%s", hostedClusterName),
+		},
+		Spec: promv1.ServiceMonitorSpec{},
+	}
 )
+
+func init() {
+	s := scheme.Scheme
+	hyperv1.AddToScheme(s)
+	promv1.AddToScheme(s)
+}
 
 func TestCreateDeleteCAConfigmap(t *testing.T) {
 	ctx := context.TODO()
@@ -103,5 +129,27 @@ func TestGetClusterID(t *testing.T) {
 	}
 	if found != testClusterID {
 		t.Fatalf("Got wrong cluster id" + found)
+	}
+}
+
+func TestServiceMonitors(t *testing.T) {
+	ctx := context.TODO()
+	c := fake.NewFakeClient(hCluster, sm)
+	err := createServiceMonitors(ctx, c)
+	if err != nil {
+		t.Fatalf("Failed to create ServiceMonitors: (%v)", err)
+	}
+	err = deleteServiceMonitors(ctx, c)
+	if err != nil {
+		t.Fatalf("Failed to delete ServiceMonitors: (%v)", err)
+	}
+}
+
+func TestDeleteServiceMonitor(t *testing.T) {
+	ctx := context.TODO()
+	c := fake.NewFakeClient()
+	err := deleteServiceMonitor(ctx, c, "test", "test")
+	if err != nil {
+		t.Fatalf("Failed to delete ServiceMonitors: (%v)", err)
 	}
 }
