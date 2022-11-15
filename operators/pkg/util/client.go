@@ -20,6 +20,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const ConfigErrorMessage = "Failed to create the config"
+
 var log = logf.Log.WithName("util")
 
 var (
@@ -37,7 +39,7 @@ func GetOrCreateKubeClient() (kubernetes.Interface, error) {
 	// create the config from the path
 	config, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
-		log.Error(err, "Failed to create the config")
+		log.Error(err, ConfigErrorMessage)
 		return nil, err
 	}
 
@@ -59,7 +61,7 @@ func GetOrCreateOCPClient() (ocpClientSet.Interface, error) {
 	// create the config from the path
 	config, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
-		log.Error(err, "Failed to create the config")
+		log.Error(err, ConfigErrorMessage)
 		return nil, err
 	}
 
@@ -81,7 +83,7 @@ func GetOrCreateCRDClient() (crdClientSet.Interface, error) {
 	// create the config from the path
 	config, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
-		log.Error(err, "Failed to create the config")
+		log.Error(err, ConfigErrorMessage)
 		return nil, err
 	}
 
@@ -103,7 +105,7 @@ func GetOrCreatePromClient() (promClientSet.Interface, error) {
 	// create the config from the path
 	config, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
-		log.Error(err, "Failed to create the config")
+		log.Error(err, ConfigErrorMessage)
 		return nil, err
 	}
 

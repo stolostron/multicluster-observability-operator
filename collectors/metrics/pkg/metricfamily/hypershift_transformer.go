@@ -96,7 +96,9 @@ func (h *hypershiftTransformer) Transform(family *prom.MetricFamily) (bool, erro
 		}
 		if isHypershift {
 			for j := range family.Metric[i].Label {
-				if family.Metric[i].Label[j].GetName() != CLUSTER_LABEL && family.Metric[i].Label[j].GetName() != CLUSTER_ID_LABEL && family.Metric[i].Label[j].GetName() != HYPERSHIFT_ID {
+				if family.Metric[i].Label[j].GetName() != CLUSTER_LABEL &&
+					family.Metric[i].Label[j].GetName() != CLUSTER_ID_LABEL &&
+					family.Metric[i].Label[j].GetName() != HYPERSHIFT_ID {
 					labels = append(labels, family.Metric[i].Label[j])
 				}
 			}
@@ -119,10 +121,10 @@ func getHostedClusters(c client.Client, l log.Logger) (map[string]string, error)
 	hList := &hyperv1.HostedClusterList{}
 	err := c.List(context.TODO(), hList, &client.ListOptions{})
 	if err != nil {
-		l.Log(l, logger.Error, "Failed to list HyperShiftDeployment", "error", err)
+		logger.Log(l, logger.Error, "msg", "Failed to list HyperShiftDeployment", "error", err)
 		return nil, err
 	}
-	l.Log(l, logger.Info, "msg", "NewHypershiftTransformer", "HosteClusters size", len(hList.Items))
+	logger.Log(l, logger.Info, "msg", "NewHypershiftTransformer", "HosteClusters size", len(hList.Items))
 	clusters := map[string]string{}
 	for _, hCluster := range hList.Items {
 		clusters[hCluster.Spec.ClusterID] = hCluster.ObjectMeta.Name

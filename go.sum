@@ -760,6 +760,7 @@ github.com/gobuffalo/gitgen v0.0.0-20190315122116-cc086187d211/go.mod h1:vEHJk/E
 github.com/gobuffalo/gogen v0.0.0-20190315121717-8f38393713f5/go.mod h1:V9QVDIxsgKNZs6L2IYiGR8datgMhB577vzTDqypH360=
 github.com/gobuffalo/gogen v0.1.0/go.mod h1:8NTelM5qd8RZ15VjQTFkAW6qOMx5wBbW4dSCS3BY8gg=
 github.com/gobuffalo/gogen v0.1.1/go.mod h1:y8iBtmHmGc4qa3urIyo1shvOD8JftTtfcKi+71xfDNE=
+github.com/gobuffalo/here v0.6.0/go.mod h1:wAG085dHOYqUpf+Ap+WOdrPTp5IYcDAs/x7PLa8Y5fM=
 github.com/gobuffalo/logger v0.0.0-20190315122211-86e12af44bc2/go.mod h1:QdxcLw541hSGtBnhUc4gaNIXRjiDppFGaDqzbrBd3v8=
 github.com/gobuffalo/mapi v1.0.1/go.mod h1:4VAGh89y6rVOvm5A8fKFxYG+wIW6LO1FMTG9hnKStFc=
 github.com/gobuffalo/mapi v1.0.2/go.mod h1:4VAGh89y6rVOvm5A8fKFxYG+wIW6LO1FMTG9hnKStFc=
@@ -1220,6 +1221,7 @@ github.com/mailru/easyjson v0.7.6/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJ
 github.com/mailru/easyjson v0.7.7 h1:UGYAvKxe3sBsEDzO8ZeWOSlIQfWFlxbzLZe7hwFURr0=
 github.com/mailru/easyjson v0.7.7/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=
 github.com/markbates/oncer v0.0.0-20181203154359-bf2de49a0be2/go.mod h1:Ld9puTsIW75CHf65OeIOkyKbteujpZVXDpWK6YGZbxE=
+github.com/markbates/pkger v0.17.1/go.mod h1:0JoVlrol20BSywW79rN3kdFFsE5xYM+rSCQDXbLhiuI=
 github.com/markbates/safe v1.0.1/go.mod h1:nAqgmRi7cY2nqMc92/bSEeQA+R4OheNU2T1kNSCBdG0=
 github.com/marstr/guid v1.1.0/go.mod h1:74gB1z2wpxxInTG6yaqA7KrtM0NZ+RbrcqDvYHefzho=
 github.com/matoous/godox v0.0.0-20190910121045-032ad8106c86/go.mod h1:1BELzlh859Sh1c6+90blK8lbYy0kwQf1bYlBhBysy1s=
@@ -2770,10 +2772,14 @@ sigs.k8s.io/controller-tools v0.2.8/go.mod h1:9VKHPszmf2DHz/QmHkcfZoewO6BL7pPs9u
 sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2/go.mod h1:B+TnT182UBxE84DiCz4CVE26eOSDAeYCpfDnC2kdKMY=
 sigs.k8s.io/kube-storage-version-migrator v0.0.4 h1:qsCecgZHgdismlTt8xCmS/3numvpxrj58RWJeIg76wc=
 sigs.k8s.io/kube-storage-version-migrator v0.0.4/go.mod h1:mXfSLkx9xbJHQsgNDDUZK/iQTs2tMbx/hsJlWe6Fthw=
+sigs.k8s.io/kustomize/api v0.8.8 h1:G2z6JPSSjtWWgMeWSoHdXqyftJNmMmyxXpwENGoOtGE=
+sigs.k8s.io/kustomize/api v0.8.8/go.mod h1:He1zoK0nk43Pc6NlV085xDXDXTNprtcyKZVm3swsdNY=
 sigs.k8s.io/kustomize/api v0.11.4 h1:/0Mr3kfBBNcNPOW5Qwk/3eb8zkswCwnqQxxKtmrTkRo=
 sigs.k8s.io/kustomize/api v0.11.4/go.mod h1:k+8RsqYbgpkIrJ4p9jcdPqe8DprLxFUUO0yNOq8C+xI=
 sigs.k8s.io/kustomize/cmd/config v0.10.6/go.mod h1:/S4A4nUANUa4bZJ/Edt7ZQTyKOY9WCER0uBS1SW2Rco=
 sigs.k8s.io/kustomize/kustomize/v4 v4.5.4/go.mod h1:Zo/Xc5FKD6sHl0lilbrieeGeZHVYCA4BzxeAaLI05Bg=
+sigs.k8s.io/kustomize/kyaml v0.10.17 h1:4zrV0ym5AYa0e512q7K3Wp1u7mzoWW0xR3UHJcGWGIg=
+sigs.k8s.io/kustomize/kyaml v0.10.17/go.mod h1:mlQFagmkm1P+W4lZJbJ/yaxMd8PqMRSC4cPcfUVt5Hg=
 sigs.k8s.io/kustomize/kyaml v0.13.6 h1:eF+wsn4J7GOAXlvajv6OknSunxpcOBQQqsnPxObtkGs=
 sigs.k8s.io/kustomize/kyaml v0.13.6/go.mod h1:yHP031rn1QX1lr/Xd934Ri/xdVNG8BE2ECa78Ht/kEg=
 sigs.k8s.io/kustomize/pluginator v1.0.0/go.mod h1:i8HdU5FdH1zDjCKiFf5CNl7slsc0QffyKsY2OuPynJ0=

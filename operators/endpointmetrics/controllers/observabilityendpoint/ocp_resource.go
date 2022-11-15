@@ -26,7 +26,9 @@ const (
 	clusterRoleBindingName = "metrics-collector-view"
 	caConfigmapName        = "metrics-collector-serving-certs-ca-bundle"
 	etcdServiceMonitor     = "acm-etcd"
+	etcdSecName            = "etcd-client-tls"
 	kubeApiServiceMonitor  = "acm-kube-apiserver"
+	kubeApiSecName         = "metrics-client"
 )
 
 var (
@@ -232,7 +234,8 @@ func createServiceMonitors(ctx context.Context, c client.Client) error {
 	return nil
 }
 
-func createOrUpdateSM(ctx context.Context, c client.Client, updateSm *promv1.ServiceMonitor, smList *promv1.ServiceMonitorList) error {
+func createOrUpdateSM(ctx context.Context, c client.Client, updateSm *promv1.ServiceMonitor,
+	smList *promv1.ServiceMonitorList) error {
 	found := false
 	for _, sm := range smList.Items {
 		if sm.ObjectMeta.Name == updateSm.ObjectMeta.Name {
@@ -281,7 +284,7 @@ func getEtcdServiceMonitor(namespace, id string) *promv1.ServiceMonitor {
 							CA: promv1.SecretOrConfigMap{
 								Secret: &v1.SecretKeySelector{
 									LocalObjectReference: v1.LocalObjectReference{
-										Name: "etcd-client-tls",
+										Name: etcdSecName,
 									},
 									Key: "etcd-client-ca.crt",
 								},
@@ -289,14 +292,14 @@ func getEtcdServiceMonitor(namespace, id string) *promv1.ServiceMonitor {
 							Cert: promv1.SecretOrConfigMap{
 								Secret: &v1.SecretKeySelector{
 									LocalObjectReference: v1.LocalObjectReference{
-										Name: "etcd-client-tls",
+										Name: etcdSecName,
 									},
 									Key: "etcd-client.crt",
 								},
 							},
 							KeySecret: &v1.SecretKeySelector{
 								LocalObjectReference: v1.LocalObjectReference{
-									Name: "etcd-client-tls",
+									Name: etcdSecName,
 								},
 								Key: "etcd-client.key",
 							},
@@ -367,7 +370,7 @@ func getKubeServiceMonitor(namespace, id string) *promv1.ServiceMonitor {
 							CA: promv1.SecretOrConfigMap{
 								Secret: &v1.SecretKeySelector{
 									LocalObjectReference: v1.LocalObjectReference{
-										Name: "metrics-client",
+										Name: kubeApiSecName,
 									},
 									Key: "ca.crt",
 								},
@@ -375,14 +378,14 @@ func getKubeServiceMonitor(namespace, id string) *promv1.ServiceMonitor {
 							Cert: promv1.SecretOrConfigMap{
 								Secret: &v1.SecretKeySelector{
 									LocalObjectReference: v1.LocalObjectReference{
-										Name: "metrics-client",
+										Name: kubeApiSecName,
 									},
 									Key: "tls.crt",
 								},
 							},
 							KeySecret: &v1.SecretKeySelector{
 								LocalObjectReference: v1.LocalObjectReference{
-									Name: "metrics-client",
+									Name: kubeApiSecName,
 								},
 								Key: "tls.key",
 							},

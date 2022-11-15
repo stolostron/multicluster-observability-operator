@@ -184,6 +184,8 @@ replace (
 	k8s.io/klog/v2 => k8s.io/klog/v2 v2.10.0
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
 	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.10.0
+	sigs.k8s.io/kustomize/api => sigs.k8s.io/kustomize/api v0.8.8
+	sigs.k8s.io/kustomize/kyaml => sigs.k8s.io/kustomize/kyaml v0.10.17
 
 )
 
