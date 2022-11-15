@@ -6,6 +6,7 @@ package util
 import (
 	"testing"
 
+	restclient "k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -30,20 +31,29 @@ func TestGetPVCList(t *testing.T) {
 }
 
 func TestCreateClient(t *testing.T) {
-	_, err := GetOrCreateCRDClient()
+
+	inCluster := false
+	errMsg := "Failed to catch error"
+	_, err := restclient.InClusterConfig()
 	if err == nil {
-		t.Fatalf("Failed to catch error")
+		inCluster = true
+		errMsg = "Failed to create client"
+	}
+
+	_, err = GetOrCreateCRDClient()
+	if (!inCluster && err == nil) || (inCluster && err != nil) {
+		t.Fatalf(errMsg)
 	}
 	_, err = GetOrCreatePromClient()
-	if err == nil {
-		t.Fatalf("Failed to catch error")
+	if (!inCluster && err == nil) || (inCluster && err != nil) {
+		t.Fatalf(errMsg)
 	}
 	_, err = GetOrCreateKubeClient()
-	if err == nil {
-		t.Fatalf("Failed to catch error")
+	if (!inCluster && err == nil) || (inCluster && err != nil) {
+		t.Fatalf(errMsg)
 	}
 	_, err = GetOrCreateOCPClient()
-	if err == nil {
-		t.Fatalf("Failed to catch error")
+	if (!inCluster && err == nil) || (inCluster && err != nil) {
+		t.Fatalf(errMsg)
 	}
 }
