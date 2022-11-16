@@ -3,7 +3,7 @@
 # Copyright (c) 2021 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project
 
-set -exo pipefail
+#set -exo pipefail
 
 ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
 
@@ -81,7 +81,10 @@ else
     GINKGO_CMD="$(go env GOPATH)/bin/ginkgo"
 fi
 
+pwd
+go version
 go mod vendor
+sleep 3600
 ${GINKGO_CMD} -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=5
 
 cat ${ROOTDIR}/tests/pkg/tests/results.xml | grep failures=\"0\" | grep errors=\"0\"
