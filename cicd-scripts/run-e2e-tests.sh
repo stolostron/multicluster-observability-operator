@@ -77,14 +77,16 @@ if command -v ginkgo &> /dev/null; then
     GINKGO_CMD=ginkgo
 else
     # just for Prow KinD vm
+
+    # uninstall old go version(1.16) and install new version
+    wget https://go.dev/dl/go1.18.8.linux-amd64.tar.gz
+    sudo rm -fr /usr/local/go && tar -C /usr/local -xzf go1.18.8.linux-amd64.tar.gz
+
     go install github.com/onsi/ginkgo/ginkgo@latest
     GINKGO_CMD="$(go env GOPATH)/bin/ginkgo"
 fi
 
-pwd
-go version
 go mod vendor
-sleep 3600
 ${GINKGO_CMD} -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=5
 
 cat ${ROOTDIR}/tests/pkg/tests/results.xml | grep failures=\"0\" | grep errors=\"0\"
