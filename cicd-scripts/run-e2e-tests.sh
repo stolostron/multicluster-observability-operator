@@ -80,7 +80,8 @@ else
 
     # uninstall old go version(1.16) and install new version
     wget https://go.dev/dl/go1.18.8.linux-amd64.tar.gz
-    sudo rm -fr /usr/local/go && tar -C /usr/local -xzf go1.18.8.linux-amd64.tar.gz
+    sudo rm -fr /usr/local/go
+    sudo tar -C /usr/local -xzf go1.18.8.linux-amd64.tar.gz
 
     go install github.com/onsi/ginkgo/ginkgo@latest
     GINKGO_CMD="$(go env GOPATH)/bin/ginkgo"
