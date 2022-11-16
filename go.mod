@@ -204,6 +204,7 @@ replace (
 	k8s.io/mount-utils => k8s.io/mount-utils v0.23.3
 	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.23.3
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.23.3
+	sigs.k8s.io/apiserver-network-proxy/konnectivity-client => sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.22
 	sigs.k8s.io/cluster-api-provider-kubevirt => github.com/openshift/cluster-api-provider-kubevirt v0.0.0-20211223062810-ef64d5ff1cde
 	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.10.0
 	sigs.k8s.io/kustomize/api => sigs.k8s.io/kustomize/api v0.8.8
