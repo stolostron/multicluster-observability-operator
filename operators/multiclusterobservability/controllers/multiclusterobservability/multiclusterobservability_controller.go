@@ -676,12 +676,12 @@ func updateStorageSizeChange(c client.Client, matchLabels map[string]string, sto
 	pvcList := []corev1.PersistentVolumeClaim{}
 	stsList := []appsv1.StatefulSet{}
 
-	pvcList, err := util.GetPVCList(c, matchLabels)
+	pvcList, err := commonutil.GetPVCList(c, config.GetDefaultNamespace(), matchLabels)
 	if err != nil {
 		return err
 	}
 
-	stsList, err = util.GetStatefulSetList(c, matchLabels)
+	stsList, err = commonutil.GetStatefulSetList(c, config.GetDefaultNamespace(), matchLabels)
 	if err != nil {
 		return err
 	}

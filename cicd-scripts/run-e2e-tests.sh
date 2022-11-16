@@ -3,7 +3,7 @@
 # Copyright (c) 2021 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project
 
-set -exo pipefail
+#set -exo pipefail
 
 ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
 
@@ -77,6 +77,12 @@ if command -v ginkgo &> /dev/null; then
     GINKGO_CMD=ginkgo
 else
     # just for Prow KinD vm
+
+    # uninstall old go version(1.16) and install new version
+    wget https://go.dev/dl/go1.18.8.linux-amd64.tar.gz
+    sudo rm -fr /usr/local/go
+    sudo tar -C /usr/local -xzf go1.18.8.linux-amd64.tar.gz
+
     go install github.com/onsi/ginkgo/ginkgo@latest
     GINKGO_CMD="$(go env GOPATH)/bin/ginkgo"
 fi

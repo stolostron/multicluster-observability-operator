@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -22,6 +23,7 @@ const (
 )
 
 var (
+	log            = logf.Log.WithName("util")
 	spokeNameSpace = os.Getenv("SPOKE_NAMESPACE")
 )
 

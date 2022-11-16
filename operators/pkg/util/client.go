@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
+	promClientSet "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	crdClientSet "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -17,9 +18,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
+
+const ConfigErrorMessage = "Failed to create the config"
 
 var log = logf.Log.WithName("util")
 
@@ -27,6 +28,7 @@ var (
 	kubeClient kubernetes.Interface
 	crdClient  crdClientSet.Interface
 	ocpClient  ocpClientSet.Interface
+	promClient promClientSet.Interface
 )
 
 // GetOrCreateKubeClient gets existing kubeclient or creates new one if it doesn't exist
@@ -37,7 +39,7 @@ func GetOrCreateKubeClient() (kubernetes.Interface, error) {
 	// create the config from the path
 	config, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
-		log.Error(err, "Failed to create the config")
+		log.Error(err, ConfigErrorMessage)
 		return nil, err
 	}
 
@@ -59,7 +61,7 @@ func GetOrCreateOCPClient() (ocpClientSet.Interface, error) {
 	// create the config from the path
 	config, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
-		log.Error(err, "Failed to create the config")
+		log.Error(err, ConfigErrorMessage)
 		return nil, err
 	}
 
@@ -81,7 +83,7 @@ func GetOrCreateCRDClient() (crdClientSet.Interface, error) {
 	// create the config from the path
 	config, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
-		log.Error(err, "Failed to create the config")
+		log.Error(err, ConfigErrorMessage)
 		return nil, err
 	}
 
@@ -93,6 +95,28 @@ func GetOrCreateCRDClient() (crdClientSet.Interface, error) {
 	}
 
 	return crdClient, err
+}
+
+// GetOrCreatePromClient creates prometheus client
+func GetOrCreatePromClient() (promClientSet.Interface, error) {
+	if promClient != nil {
+		return promClient, nil
+	}
+	// create the config from the path
+	config, err := clientcmd.BuildConfigFromFlags("", "")
+	if err != nil {
+		log.Error(err, ConfigErrorMessage)
+		return nil, err
+	}
+
+	// generate the client based off of the config
+	promClient, err = promClientSet.NewForConfig(config)
+	if err != nil {
+		log.Error(err, "Failed to create prom client")
+		return nil, err
+	}
+
+	return promClient, err
 }
 
 func CheckCRDExist(crdClient crdClientSet.Interface, crdName string) (bool, error) {
@@ -142,10 +166,11 @@ func UpdateCRDWebhookNS(crdClient crdClientSet.Interface, namespace, crdName str
 }
 
 // GetPVCList get pvc with matched labels
-func GetPVCList(c client.Client, matchLabels map[string]string) ([]corev1.PersistentVolumeClaim, error) {
+func GetPVCList(c client.Client, namespace string,
+	matchLabels map[string]string) ([]corev1.PersistentVolumeClaim, error) {
 	pvcList := &corev1.PersistentVolumeClaimList{}
 	pvcListOpts := []client.ListOption{
-		client.InNamespace(config.GetDefaultNamespace()),
+		client.InNamespace(namespace),
 		client.MatchingLabels(matchLabels),
 	}
 
@@ -157,10 +182,11 @@ func GetPVCList(c client.Client, matchLabels map[string]string) ([]corev1.Persis
 }
 
 // GetStatefulSetList get sts with matched labels
-func GetStatefulSetList(c client.Client, matchLabels map[string]string) ([]appsv1.StatefulSet, error) {
+func GetStatefulSetList(c client.Client, namespace string,
+	matchLabels map[string]string) ([]appsv1.StatefulSet, error) {
 	stsList := &appsv1.StatefulSetList{}
 	stsListOpts := []client.ListOption{
-		client.InNamespace(config.GetDefaultNamespace()),
+		client.InNamespace(namespace),
 		client.MatchingLabels(matchLabels),
 	}
 

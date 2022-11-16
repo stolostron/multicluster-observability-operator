@@ -528,6 +528,20 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 	transformer.With(metricfamily.TransformerFunc(metricfamily.PackMetrics))
 	transformer.With(metricfamily.TransformerFunc(metricfamily.SortMetrics))
 
+	isHypershift, err := metricfamily.CheckCRDExist(o.Logger)
+	if err != nil {
+		return err, nil
+	}
+	if isHypershift {
+		hyperTransformer, err := metricfamily.NewHypershiftTransformer(o.Logger, nil, o.Labels)
+		if err != nil {
+			return err, nil
+		}
+		transformer.WithFunc(func() metricfamily.Transformer {
+			return hyperTransformer
+		})
+	}
+
 	return nil, &forwarder.Config{
 		From:          from,
 		FromQuery:     fromQuery,

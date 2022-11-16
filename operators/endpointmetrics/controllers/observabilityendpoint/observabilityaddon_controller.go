@@ -29,6 +29,7 @@ import (
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
+	operatorutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 var (
@@ -96,7 +97,18 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if obsAddon == nil {
 		deleteFlag = true
 	}
-	deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon)
+	isHypershift := true
+	if os.Getenv("UNIT_TEST") != "true" {
+		crdClient, err := operatorutil.GetOrCreateCRDClient()
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		isHypershift, err = operatorutil.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+	deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -134,6 +146,13 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 	rendering.Images = imagesCM.Data
+
+	if isHypershift {
+		err = createServiceMonitors(ctx, r.Client)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 
 	if !installPrometheus {
 		// If no prometheus service found, set status as NotSupported
@@ -232,7 +251,8 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 }
 
 func (r *ObservabilityAddonReconciler) initFinalization(
-	ctx context.Context, delete bool, hubObsAddon *oav1beta1.ObservabilityAddon) (bool, error) {
+	ctx context.Context, delete bool, hubObsAddon *oav1beta1.ObservabilityAddon,
+	isHypershift bool) (bool, error) {
 	if delete && contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
 		log.Info("To clean observability components/configurations in the cluster")
 		err := deleteMetricsCollector(ctx, r.Client, metricsCollectorName)
@@ -248,7 +268,12 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		if err != nil {
 			return false, err
 		}
-
+		if isHypershift {
+			err = deleteServiceMonitors(ctx, r.Client)
+			if err != nil {
+				return false, err
+			}
+		}
 		// Should we return bool from the delete functions for crb and cm? What
 		// is it used for? Should we use the bool before removing finalizer?
 		// SHould we return true if metricscollector is not found as that means

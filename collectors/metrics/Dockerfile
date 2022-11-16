@@ -5,6 +5,7 @@ FROM registry.ci.openshift.org/stolostron/builder:go1.18-linux AS builder
 WORKDIR /workspace
 COPY go.sum go.mod ./
 COPY ./collectors/metrics ./collectors/metrics
+COPY ./operators/pkg ./operators/pkg
 COPY ./operators/multiclusterobservability/api ./operators/multiclusterobservability/api
 RUN CGO_ENABLED=0 go build -a -installsuffix cgo -v -i -o metrics-collector ./collectors/metrics/cmd/metrics-collector/main.go
 
