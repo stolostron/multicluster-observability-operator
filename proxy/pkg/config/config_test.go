@@ -85,3 +85,14 @@ func TestGetManagedClusterLabelAllowListConfigmap(t *testing.T) {
 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, nil, err)
 	}
 }
+
+func TestGetSyncLabelList(t *testing.T) {
+	syncLabelList := GetSyncLabelList()
+	cm := CreateManagedClusterLabelAllowListCM("ns1")
+
+	err := yaml.Unmarshal([]byte(cm.Data[GetManagedClusterLabelAllowListConfigMapKey()]), syncLabelList)
+	if err != nil {
+		t.Errorf("failed to unmarshal configmap: %s data to the syncLabelList",
+			GetManagedClusterLabelAllowListConfigMapName())
+	}
+}
