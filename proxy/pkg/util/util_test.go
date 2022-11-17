@@ -17,6 +17,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/klog/v2"
 
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
@@ -477,4 +478,96 @@ func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, false)
 	}
 	eventHandler.DeleteFunc(testCase.newObj)
+}
+
+func TestStopScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
+	testCase := struct {
+		name     string
+		expected bool
+	}{
+		"should stop scheduler from running",
+		true,
+	}
+
+	scheduler.Every(1).Seconds().Do(func() {
+		klog.Info("hello world")
+	})
+
+	go scheduler.StartAsync()
+	time.Sleep(6 * time.Second)
+
+	StopScheduleManagedClusterLabelAllowlistResync()
+	if ok := scheduler.IsRunning(); ok {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, testCase.expected)
+	}
+}
+
+func TestScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
+	testCase := struct {
+		name      string
+		namespace string
+		expected  int
+	}{
+		"should schedule a resync job for managedcluster label allowlist",
+		proxyconfig.ManagedClusterLabelAllowListNamespace,
+		1,
+	}
+	InitAllManagedClusterLabelNames()
+	managedLabelList = proxyconfig.GetManagedClusterLabelList()
+	managedLabelList.LabelList = []string{"cloud", "environment"}
+
+	client := fake.NewSimpleClientset()
+	client.CoreV1().ConfigMaps(testCase.namespace).Create(context.TODO(),
+		proxyconfig.CreateManagedClusterLabelAllowListCM(testCase.namespace), metav1.CreateOptions{})
+
+	go ScheduleManagedClusterLabelAllowlistResync(client)
+	time.Sleep(2 * time.Second)
+	updateAllManagedClusterLabelNames(managedLabelList)
+
+	if ok := scheduler.IsRunning(); !ok {
+		t.Errorf("failed to start scheduler")
+	}
+
+	jobs, err := scheduler.FindJobsByTag(resyncTag)
+	if err != nil {
+		t.Errorf("failed to find jobs for: %s - %v", resyncTag, err)
+	}
+
+	for _, job := range jobs {
+		if count := job.RunCount(); count < 1 {
+			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, count, testCase.expected)
+		}
+	}
+
+	StopScheduleManagedClusterLabelAllowlistResync()
+	if ok := scheduler.IsRunning(); ok {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, false)
+	}
+}
+
+func TestSortManagedLabelList(t *testing.T) {
+	testCase := struct {
+		name      string
+		configmap *v1.ConfigMap
+		expected  error
+	}{
+		"should be able to sort managed labels list",
+		proxyconfig.CreateManagedClusterLabelAllowListCM("ns1"),
+		nil,
+	}
+	InitAllManagedClusterLabelNames()
+	var managedLabelList *proxyconfig.ManagedClusterLabelList
+
+	sortManagedLabelList(managedLabelList)
+	managedLabelList = proxyconfig.GetManagedClusterLabelList()
+
+	err := unmarshalDataToManagedClusterLabelList(testCase.configmap.Data,
+		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), managedLabelList)
+
+	if err != nil {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, err, testCase.expected)
+	}
+
+	updateAllManagedClusterLabelNames(managedLabelList)
+	sortManagedLabelList(managedLabelList)
 }

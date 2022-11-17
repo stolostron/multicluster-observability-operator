@@ -293,13 +293,17 @@ func WatchManagedCluster(clusterClient clusterclientset.Interface, kubeClient ku
 
 // ScheduleManagedClusterLabelAllowlistResync ...
 func ScheduleManagedClusterLabelAllowlistResync(kubeClient kubernetes.Interface) {
-	scheduler.Tag(resyncTag).Every(30).Second().Do(resyncManagedClusterLabelAllowList, kubeClient)
+	_, err := scheduler.Tag(resyncTag).Every(30).Second().Do(resyncManagedClusterLabelAllowList, kubeClient)
+	if err != nil {
+		klog.Errorf("failed to schedule job for managedcluster allowlist resync: %v", err)
+	}
+
 	scheduler.StartAsync()
 }
 
 // StopScheduleManagedClusterLabelAllowlistResync ...
 func StopScheduleManagedClusterLabelAllowlistResync() {
-	scheduler.Clear()
+	scheduler.Stop()
 }
 
 // GetManagedClusterLabelAllowListEventHandler return event handler for managedcluster label allow list watch event
@@ -517,8 +521,8 @@ func resyncManagedClusterLabelAllowList(kubeClient kubernetes.Interface) error {
 		return err
 	}
 
-	sortLabelList(managedLabelList)
-	sortLabelList(syncLabelList)
+	sortManagedLabelList(managedLabelList)
+	sortManagedLabelList(syncLabelList)
 
 	if ok := reflect.DeepEqual(syncLabelList, managedLabelList); !ok {
 		klog.Infof("resyncing required for managedcluster label allowlist: %v",
@@ -578,8 +582,8 @@ func unmarshalDataToManagedClusterLabelList(data map[string]string, key string,
 	return nil
 }
 
-// sortLabelList ...
-func sortLabelList(managedLabelList *proxyconfig.ManagedClusterLabelList) {
+// sortManagedLabelList ...
+func sortManagedLabelList(managedLabelList *proxyconfig.ManagedClusterLabelList) {
 	if managedLabelList != nil {
 		sort.Strings(managedLabelList.IgnoreList)
 		sort.Strings(managedLabelList.LabelList)

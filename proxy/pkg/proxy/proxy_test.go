@@ -6,6 +6,7 @@ package proxy
 import (
 	"bytes"
 	"compress/gzip"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
 )
 
@@ -182,4 +184,19 @@ func TestProxyRequest(t *testing.T) {
 			t.Errorf("(%v) is not the expected \"\"", req.URL.Host)
 		}
 	}
+}
+
+func TestModifyAPISeriesResponse(t *testing.T) {
+	req := http.Request{}
+	req.URL = &url.URL{}
+	req.URL.Path = "/api/v1/series"
+	req.Header = http.Header(map[string][]string{})
+
+	stringReader := strings.NewReader(config.GetRBACProxyLabelMetricName())
+	stringReadClose := io.NopCloser(stringReader)
+	req.Body = stringReadClose
+
+	resp := NewFakeResponse(t)
+	config.GetManagedClusterLabelList().RegexLabelList = []string{"cloud", "vendor"}
+	shouldModifyAPISeriesResponse(resp, &req)
 }

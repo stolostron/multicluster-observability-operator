@@ -9,7 +9,6 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 )
@@ -84,61 +83,5 @@ func TestGetManagedClusterLabelAllowListConfigmap(t *testing.T) {
 	_, err = GetManagedClusterLabelAllowListConfigmap(client, "ns2")
 	if err == nil {
 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, nil, err)
-	}
-}
-
-func TestModifyManagedClusterLabelAllowListConfigMapData(t *testing.T) {
-	testCase := struct {
-		name      string
-		configmap *corev1.ConfigMap
-		expected  error
-	}{
-		"should modify managedcluster label allowlist data",
-		CreateManagedClusterLabelAllowListCM("ns1"),
-		nil,
-	}
-
-	clusterLabels := map[string]string{"environment": "dev", "department": "finance"}
-	err := ModifyManagedClusterLabelAllowListConfigMapData(testCase.configmap, clusterLabels)
-	if err != nil {
-		t.Errorf("case: (%v) output: (%v) is not the expected (%v)", testCase.name, err, testCase.expected)
-	}
-
-	testCase.configmap.Data[GetManagedClusterLabelAllowListConfigMapKey()] += `
-labels:
-- app
-	- source
-`
-
-	err = ModifyManagedClusterLabelAllowListConfigMapData(testCase.configmap, clusterLabels)
-	if err == nil {
-		t.Errorf("case: (%v) output: (%v) is not the expected (%v)", testCase.name, nil, err)
-	}
-}
-
-func TestUpdateManagedClusterLabelAllowListConfigMap(t *testing.T) {
-	testCase := struct {
-		name     string
-		expected error
-	}{"should update the managedcluster label allowlist data", nil}
-	cm := CreateManagedClusterLabelAllowListCM("ns1")
-
-	client := fake.NewSimpleClientset().CoreV1()
-	_, err := client.ConfigMaps(cm.Namespace).Create(context.TODO(), cm, metav1.CreateOptions{})
-	if err != nil {
-		t.Errorf("failed to create configmap: %v", err)
-	}
-
-	err = UpdateManagedClusterLabelAllowListConfigMap(client, cm)
-	if err != nil {
-		t.Errorf("case: (%v) output: (%v) is not the expected (%v)", testCase.name, err, testCase.expected)
-	}
-
-	testCase.name = "should not update managedcluster label allowlist configmap"
-	cm.Namespace = "test-ns"
-
-	err = UpdateManagedClusterLabelAllowListConfigMap(client, cm)
-	if err == nil {
-		t.Errorf("case: (%v) output: (%v) is not the expected (%v)", testCase.name, nil, err)
 	}
 }
