@@ -479,27 +479,27 @@ func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
 	eventHandler.DeleteFunc(testCase.newObj)
 }
 
-// func TestStopScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
-// 	testCase := struct {
-// 		name     string
-// 		expected bool
-// 	}{
-// 		"should stop scheduler from running",
-// 		true,
-// 	}
+func TestStopScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
+	testCase := struct {
+		name     string
+		expected bool
+	}{
+		"should stop scheduler from running",
+		true,
+	}
 
-// 	scheduler.Every(1).Seconds().Do(func() {
-// 		t.Info("hello world")
-// 	})
+	scheduler.Every(1).Seconds().Do(func() {
+		t.Log("hello world")
+	})
 
-// 	go scheduler.StartAsync()
-// 	time.Sleep(6 * time.Second)
+	go scheduler.StartAsync()
+	time.Sleep(6 * time.Second)
 
-// 	StopScheduleManagedClusterLabelAllowlistResync()
-// 	if ok := scheduler.IsRunning(); ok {
-// 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, testCase.expected)
-// 	}
-// }
+	StopScheduleManagedClusterLabelAllowlistResync()
+	if ok := scheduler.IsRunning(); ok {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, testCase.expected)
+	}
+}
 
 // func TestScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
 // 	testCase := struct {
@@ -543,6 +543,49 @@ func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
 // 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, false)
 // 	}
 // }
+
+func TestResyncManagedClusterLabelAllowList(t *testing.T) {
+	testCase := struct {
+		name      string
+		namespace string
+		configmap *v1.ConfigMap
+		expected  error
+	}{
+		"should resync managedcluster labels",
+		proxyconfig.ManagedClusterLabelAllowListNamespace,
+		proxyconfig.CreateManagedClusterLabelAllowListCM(proxyconfig.ManagedClusterLabelAllowListNamespace),
+		nil,
+	}
+
+	InitAllManagedClusterLabelNames()
+	managedLabelList = proxyconfig.GetManagedClusterLabelList()
+	managedLabelList.LabelList = []string{"cloud", "environment"}
+
+	client := fake.NewSimpleClientset()
+	client.CoreV1().ConfigMaps(testCase.namespace).Create(context.TODO(), testCase.configmap, metav1.CreateOptions{})
+
+	err := resyncManagedClusterLabelAllowList(client)
+	if err != nil {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, err, testCase.expected)
+	}
+}
+
+func TestUpdateAllManagedClusterLabelNames(t *testing.T) {
+	testCase := struct {
+		name     string
+		expected bool
+	}{
+		"should update empty managedcluster label list",
+		false,
+	}
+
+	managedLabelList := &proxyconfig.ManagedClusterLabelList{}
+	updateAllManagedClusterLabelNames(managedLabelList)
+
+	if ok := managedLabelList != nil; !ok {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, false)
+	}
+}
 
 func TestSortManagedLabelList(t *testing.T) {
 	testCase := struct {
