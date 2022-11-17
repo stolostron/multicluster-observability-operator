@@ -1,12 +1,13 @@
 module github.com/stolostron/multicluster-observability-operator
 
-go 1.18
+go 1.17
 
 require (
 	github.com/IBM/controller-filtered-cache v0.3.3
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cloudflare/cfssl v1.6.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
+	github.com/go-co-op/gocron v1.18.0
 	github.com/go-kit/kit v0.11.0
 	github.com/go-kit/log v0.2.1
 	github.com/go-logr/logr v0.4.0
@@ -33,7 +34,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stolostron/multiclusterhub-operator v0.0.0-20220106205009-2af6f43fd562
 	github.com/stolostron/observatorium-operator v0.0.0-20220307015247-f9eb849e218e
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/thanos-io/thanos v0.23.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.22.1
@@ -123,6 +124,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
+	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/uber/jaeger-client-go v2.29.1+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/weppos/publicsuffix-go v0.13.0 // indirect
