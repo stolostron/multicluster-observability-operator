@@ -187,6 +187,13 @@ func TestProxyRequest(t *testing.T) {
 }
 
 func TestModifyAPISeriesResponse(t *testing.T) {
+	testCase := struct {
+		name     string
+		expected bool
+	}{
+		"should modify the api series response",
+		true,
+	}
 	req := http.Request{}
 	req.URL = &url.URL{}
 	req.URL.Path = "/api/v1/series"
@@ -198,5 +205,15 @@ func TestModifyAPISeriesResponse(t *testing.T) {
 
 	resp := NewFakeResponse(t)
 	config.GetManagedClusterLabelList().RegexLabelList = []string{"cloud", "vendor"}
-	shouldModifyAPISeriesResponse(resp, &req)
+	if ok := shouldModifyAPISeriesResponse(resp, &req); !ok {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, testCase.expected)
+	}
+
+	stringReader = strings.NewReader("kube_pod_info")
+	stringReadClose = io.NopCloser(stringReader)
+	req.Body = stringReadClose
+
+	if ok := shouldModifyAPISeriesResponse(resp, &req); ok {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, !testCase.expected)
+	}
 }

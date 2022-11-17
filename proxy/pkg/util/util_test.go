@@ -501,48 +501,38 @@ func TestStopScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
 	}
 }
 
-// func TestScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
-// 	testCase := struct {
-// 		name      string
-// 		namespace string
-// 		expected  int
-// 	}{
-// 		"should schedule a resync job for managedcluster label allowlist",
-// 		proxyconfig.ManagedClusterLabelAllowListNamespace,
-// 		1,
-// 	}
-// 	InitAllManagedClusterLabelNames()
-// 	managedLabelList = proxyconfig.GetManagedClusterLabelList()
-// 	managedLabelList.LabelList = []string{"cloud", "environment"}
+func TestScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
+	testCase := struct {
+		name      string
+		namespace string
+		expected  int
+	}{
+		"should schedule a resync job for managedcluster label allowlist",
+		proxyconfig.ManagedClusterLabelAllowListNamespace,
+		1,
+	}
+	InitAllManagedClusterLabelNames()
+	managedLabelList = proxyconfig.GetManagedClusterLabelList()
+	managedLabelList.LabelList = []string{"cloud", "environment"}
 
-// 	client := fake.NewSimpleClientset()
-// 	client.CoreV1().ConfigMaps(testCase.namespace).Create(context.TODO(),
-// 		proxyconfig.CreateManagedClusterLabelAllowListCM(testCase.namespace), metav1.CreateOptions{})
+	client := fake.NewSimpleClientset()
+	client.CoreV1().ConfigMaps(testCase.namespace).Create(context.TODO(),
+		proxyconfig.CreateManagedClusterLabelAllowListCM(testCase.namespace), metav1.CreateOptions{})
 
-// 	go ScheduleManagedClusterLabelAllowlistResync(client)
-// 	time.Sleep(2 * time.Second)
-// 	updateAllManagedClusterLabelNames(managedLabelList)
+	// go ScheduleManagedClusterLabelAllowlistResync(client)
+	scheduler.Every(1).Seconds().Do(func() {
+		t.Log("hello world")
+	})
 
-// 	if ok := scheduler.IsRunning(); !ok {
-// 		t.Errorf("failed to start scheduler")
-// 	}
+	go scheduler.StartAsync()
+	time.Sleep(6 * time.Second)
+	updateAllManagedClusterLabelNames(managedLabelList)
 
-// 	jobs, err := scheduler.FindJobsByTag(resyncTag)
-// 	if err != nil {
-// 		t.Errorf("failed to find jobs for: %s - %v", resyncTag, err)
-// 	}
-
-// 	for _, job := range jobs {
-// 		if count := job.RunCount(); count < 1 {
-// 			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, count, testCase.expected)
-// 		}
-// 	}
-
-// 	StopScheduleManagedClusterLabelAllowlistResync()
-// 	if ok := scheduler.IsRunning(); ok {
-// 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, false)
-// 	}
-// }
+	StopScheduleManagedClusterLabelAllowlistResync()
+	if ok := scheduler.IsRunning(); ok {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, false)
+	}
+}
 
 func TestResyncManagedClusterLabelAllowList(t *testing.T) {
 	testCase := struct {
