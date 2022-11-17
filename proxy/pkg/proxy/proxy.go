@@ -34,19 +34,9 @@ var (
 	serverHost   = ""
 )
 
-// HandleRequestAndRedirect is used to init proxy handler
-func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
-	if preCheckRequest(req) != nil {
-		_, err := res.Write(newEmptyMatrixHTTPBody())
-		if err != nil {
-			klog.Errorf("failed to write response: %v", err)
-		}
-		return
-	}
-
+func shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) bool {
 	if strings.HasSuffix(req.URL.Path, "/api/v1/series") {
 		body, err := ioutil.ReadAll(req.Body)
-
 		if err != nil {
 			klog.Errorf("failed to read body: %v", err)
 		}
@@ -65,11 +55,32 @@ func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
 			query += `]}`
 
 			_, err = res.Write([]byte(query))
-			return
+			if err == nil {
+				return true
+			} else {
+				klog.Errorf("failed to write query: %v", err)
+			}
 		}
 
 		req.Body = ioutil.NopCloser(strings.NewReader(string(body)))
 		req.ContentLength = int64(len([]rune(string(body))))
+	}
+
+	return false
+}
+
+// HandleRequestAndRedirect is used to init proxy handler
+func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
+	if preCheckRequest(req) != nil {
+		_, err := res.Write(newEmptyMatrixHTTPBody())
+		if err != nil {
+			klog.Errorf("failed to write response: %v", err)
+		}
+		return
+	}
+
+	if ok := shouldModifyAPISeriesResponse(res, req); ok {
+		return
 	}
 
 	serverURL, err := url.Parse(os.Getenv("METRICS_SERVER"))

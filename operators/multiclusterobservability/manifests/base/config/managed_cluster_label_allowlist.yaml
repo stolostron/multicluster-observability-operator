@@ -6,10 +6,6 @@ metadata:
     skip-creation-if-exist: “true”
 data:
   managed_cluster.yaml: |
-    labels:
-      - cloud
-      - vendor
-
     ignore_labels:
       - clusterID
       - cluster.open-cluster-management.io/clusterset
@@ -26,3 +22,4 @@ data:
       - installer.namespace
       - local-cluster
       - name
+    labels: []

@@ -27,6 +27,7 @@ const (
 
 var (
 	ManagedLabelList ManagedClusterLabelList
+	SyncLabelList    ManagedClusterLabelList
 )
 
 // GetManagedClusterLabelAllowListConfigMapKey return the key name for the managedcluster labels
@@ -47,6 +48,11 @@ func GetManagedClusterLabelMetricName() string {
 // GetManagedClusterLabelList will return the current cluster label list
 func GetManagedClusterLabelList() *ManagedClusterLabelList {
 	return &ManagedLabelList
+}
+
+// GetSyncLabelList will return the synced label list
+func GetSyncLabelList() *ManagedClusterLabelList {
+	return &SyncLabelList
 }
 
 // GetRBACProxyLabelMetricName returns the name of the rbac query proxy label metric

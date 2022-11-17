@@ -4,6 +4,7 @@
 package util
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -15,10 +16,20 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/go-co-op/gocron"
+	projectv1 "github.com/openshift/api/project/v1"
+	userv1 "github.com/openshift/api/user/v1"
+	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/rewrite"
+
+	"gopkg.in/yaml.v2"
+
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 
 	"k8s.io/client-go/kubernetes"
@@ -26,13 +37,6 @@ import (
 
 	"k8s.io/klog"
 	"k8s.io/kubectl/pkg/util/slice"
-
-	projectv1 "github.com/openshift/api/project/v1"
-	userv1 "github.com/openshift/api/user/v1"
-	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/rewrite"
-
-	"gopkg.in/yaml.v2"
 
 	clusterclientset "open-cluster-management.io/api/client/cluster/clientset/versioned"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -48,7 +52,13 @@ var (
 	allManagedClusterLabelNames map[string]bool
 
 	managedLabelList = proxyconfig.GetManagedClusterLabelList()
-	syncLabelList    = &proxyconfig.ManagedClusterLabelList{}
+	syncLabelList    = proxyconfig.GetSyncLabelList()
+)
+
+// resources for the gocron scheduler
+var (
+	resyncTag = "managed-cluster-label-allowlist-resync"
+	scheduler = gocron.NewScheduler(time.UTC)
 )
 
 // GetAllManagedClusterNames returns all managed cluster names
@@ -69,6 +79,94 @@ func InitAllManagedClusterNames() {
 // InitAllManagedClusterLabelNames initializes all managed cluster labels map
 func InitAllManagedClusterLabelNames() {
 	allManagedClusterLabelNames = map[string]bool{}
+}
+
+// shouldUpdateManagedClusterLabelNames determine whether the managedcluster label names map should be updated
+func shouldUpdateManagedClusterLabelNames(clusterLabels map[string]string,
+	managedLabelList *proxyconfig.ManagedClusterLabelList) bool {
+	updateRequired := false
+
+	for key := range clusterLabels {
+		if !slice.ContainsString(managedLabelList.LabelList, key, nil) {
+			managedLabelList.LabelList = append(managedLabelList.LabelList, key)
+			updateRequired = true
+		}
+	}
+
+	klog.Infof("managedcluster label names update required: %v", updateRequired)
+	return updateRequired
+}
+
+// addManagedClusterLabelNames set key to enable within the managedcluster label names map
+func addManagedClusterLabelNames(managedLabelList *proxyconfig.ManagedClusterLabelList) {
+	for _, key := range managedLabelList.LabelList {
+		if _, ok := allManagedClusterLabelNames[key]; !ok {
+			klog.Infof("added managedcluster label: %s", key)
+			allManagedClusterLabelNames[key] = true
+
+		} else if slice.ContainsString(managedLabelList.IgnoreList, key, nil) {
+			klog.Warningf("managedcluster label <%s> set to ignore, remove label from ignore list to enable.", key)
+
+		} else if isEnabled := allManagedClusterLabelNames[key]; !isEnabled {
+			klog.Infof("enabled managedcluster label: %s", key)
+			allManagedClusterLabelNames[key] = true
+		}
+	}
+
+	managedLabelList.RegexLabelList = []string{}
+	regex := regexp.MustCompile(`[^\w]+`)
+
+	for key, isEnabled := range allManagedClusterLabelNames {
+		if isEnabled {
+			managedLabelList.RegexLabelList = append(
+				managedLabelList.RegexLabelList,
+				regex.ReplaceAllString(key, "_"),
+			)
+		}
+	}
+	syncLabelList.RegexLabelList = managedLabelList.RegexLabelList
+}
+
+// ignoreManagedClusterLabelNames set key to ignore within the managedcluster label names map
+func ignoreManagedClusterLabelNames(managedLabelList *proxyconfig.ManagedClusterLabelList) {
+	for _, key := range managedLabelList.IgnoreList {
+		if _, ok := allManagedClusterLabelNames[key]; !ok {
+			klog.Infof("ignoring managedcluster label: %s", key)
+
+		} else if isEnabled := allManagedClusterLabelNames[key]; isEnabled {
+			klog.Infof("disabled managedcluster label: %s", key)
+		}
+
+		allManagedClusterLabelNames[key] = false
+	}
+
+	managedLabelList.RegexLabelList = []string{}
+	regex := regexp.MustCompile(`[^\w]+`)
+
+	for key, isEnabled := range allManagedClusterLabelNames {
+		if isEnabled {
+			managedLabelList.RegexLabelList = append(
+				managedLabelList.RegexLabelList,
+				regex.ReplaceAllString(key, "_"),
+			)
+		}
+	}
+	syncLabelList.RegexLabelList = managedLabelList.RegexLabelList
+}
+
+// updateAllManagedClusterLabelNames updates all managed cluster label names status within the map
+func updateAllManagedClusterLabelNames(managedLabelList *proxyconfig.ManagedClusterLabelList) {
+	if managedLabelList.LabelList != nil {
+		addManagedClusterLabelNames(managedLabelList)
+	} else {
+		klog.Infof("managed label list is empty")
+	}
+
+	if managedLabelList.IgnoreList != nil {
+		ignoreManagedClusterLabelNames(managedLabelList)
+	} else {
+		klog.Infof("managed ignore list is empty")
+	}
 }
 
 // ModifyMetricsQueryParams will modify request url params for query metrics
@@ -146,9 +244,9 @@ func GetManagedClusterEventHandler() cache.ResourceEventHandlerFuncs {
 			klog.Infof("added a managedcluster: %s \n", obj.(*clusterv1.ManagedCluster).Name)
 			allManagedClusterNames[clusterName] = clusterName
 
-			if ok := shouldUpdateAllManagedClusterLabelNames(
-				obj.(*clusterv1.ManagedCluster).Labels, managedLabelList); ok {
-				updateAllManagedClusterLabelNames(managedLabelList)
+			clusterLabels := obj.(*clusterv1.ManagedCluster).Labels
+			if ok := shouldUpdateManagedClusterLabelNames(clusterLabels, managedLabelList); ok {
+				addManagedClusterLabelNames(managedLabelList)
 			}
 		},
 
@@ -163,9 +261,9 @@ func GetManagedClusterEventHandler() cache.ResourceEventHandlerFuncs {
 			klog.Infof("changed a managedcluster: %s \n", newObj.(*clusterv1.ManagedCluster).Name)
 			allManagedClusterNames[clusterName] = clusterName
 
-			if ok := shouldUpdateAllManagedClusterLabelNames(
-				newObj.(*clusterv1.ManagedCluster).Labels, managedLabelList); ok {
-				updateAllManagedClusterLabelNames(managedLabelList)
+			clusterLabels := newObj.(*clusterv1.ManagedCluster).Labels
+			if ok := shouldUpdateManagedClusterLabelNames(clusterLabels, managedLabelList); ok {
+				addManagedClusterLabelNames(managedLabelList)
 			}
 		},
 	}
@@ -182,13 +280,6 @@ func WatchManagedCluster(clusterClient clusterclientset.Interface, kubeClient ku
 		fields.Everything(),
 	)
 
-	found, _ := proxyconfig.GetManagedClusterLabelAllowListConfigmap(kubeClient.CoreV1(),
-		proxyconfig.ManagedClusterLabelAllowListNamespace)
-
-	_ = unmarshalDataToManagedClusterLabelList(found.Data, proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(),
-		managedLabelList)
-
-	updateAllManagedClusterLabelNames(managedLabelList)
 	_, controller := cache.NewInformer(watchlist, &clusterv1.ManagedCluster{}, time.Second*0,
 		GetManagedClusterEventHandler())
 
@@ -200,34 +291,23 @@ func WatchManagedCluster(clusterClient clusterclientset.Interface, kubeClient ku
 	}
 }
 
+// ScheduleManagedClusterLabelAllowlistResync ...
+func ScheduleManagedClusterLabelAllowlistResync(kubeClient kubernetes.Interface) {
+	scheduler.Tag(resyncTag).Every(30).Second().Do(resyncManagedClusterLabelAllowList, kubeClient)
+	scheduler.StartAsync()
+}
+
+// StopScheduleManagedClusterLabelAllowlistResync ...
+func StopScheduleManagedClusterLabelAllowlistResync() {
+	scheduler.Clear()
+}
+
 // GetManagedClusterLabelAllowListEventHandler return event handler for managedcluster label allow list watch event
-func GetManagedClusterLabelAllowListEventHandler() cache.ResourceEventHandlerFuncs {
+func GetManagedClusterLabelAllowListEventHandler(kubeClient kubernetes.Interface) cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if obj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
 				klog.Infof("added configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
-
-				_ = unmarshalDataToManagedClusterLabelList(obj.(*v1.ConfigMap).Data,
-					proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), syncLabelList)
-
-				if ok := reflect.DeepEqual(syncLabelList, managedLabelList); !ok {
-					klog.Infof("resyncing required for managedcluster label allowlist: %v",
-						proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
-
-					// Sync the managedLabelList ignore list to the ignore list within the configmap.
-					managedLabelList.IgnoreList = syncLabelList.IgnoreList
-
-					// Resync the configmap data to the labelList stored in memory.
-					syncLabelList = managedLabelList
-
-					_ = marshalLabelListToConfigMap(obj,
-						proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), syncLabelList)
-
-					klog.Info("TODO: Update the managedcluster label allowlist configmap")
-					if syncLabelList == managedLabelList {
-						klog.Infof("resync completed")
-					}
-				}
 			}
 		},
 
@@ -238,28 +318,9 @@ func GetManagedClusterLabelAllowListEventHandler() cache.ResourceEventHandlerFun
 		},
 
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			if oldObj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() &&
-				newObj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
+			if newObj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
 				klog.Infof("updated configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
-
-				_ = unmarshalDataToManagedClusterLabelList(newObj.(*v1.ConfigMap).Data,
-					proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), syncLabelList)
-
-				if ok := reflect.DeepEqual(syncLabelList, managedLabelList); !ok {
-					klog.Infof("resyncing required for managedcluster label allowlist: %v",
-						proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
-
-					managedLabelList.IgnoreList = syncLabelList.IgnoreList
-					syncLabelList = managedLabelList
-
-					_ = marshalLabelListToConfigMap(newObj,
-						proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), syncLabelList)
-
-					klog.Info("TODO: Update the managedcluster label allowlist configmap")
-					if syncLabelList == managedLabelList {
-						klog.Infof("resync completed")
-					}
-				}
+				updateAllManagedClusterLabelNames(managedLabelList)
 			}
 		},
 	}
@@ -272,7 +333,7 @@ func WatchManagedClusterLabelAllowList(kubeClient kubernetes.Interface) {
 		proxyconfig.ManagedClusterLabelAllowListNamespace, fields.Everything())
 
 	_, controller := cache.NewInformer(watchlist, &v1.ConfigMap{}, time.Second*0,
-		GetManagedClusterLabelAllowListEventHandler())
+		GetManagedClusterLabelAllowListEventHandler(kubeClient))
 
 	stop := make(chan struct{})
 	go controller.Run(stop)
@@ -326,9 +387,9 @@ func FetchUserProjectList(token string, url string) []string {
 	if err != nil {
 		klog.Errorf("failed to send http request: %v", err)
 		/*
-			This is adhoc step to make sure that if this error happens,
-			we can automatically restart the POD using liveness probe which checks for this file.
-			Once the real cause is determined and fixed, we will remove this.
+		   This is adhoc step to make sure that if this error happens,
+		   we can automatically restart the POD using liveness probe which checks for this file.
+		   Once the real cause is determined and fixed, we will remove this.
 		*/
 		writeError(fmt.Sprintf("failed to send http request: %v", err))
 		return []string{}
@@ -440,6 +501,57 @@ func writeError(msg string) {
 	_ = f.Close()
 }
 
+// resyncManagedClusterLabelAllowList resync the managedcluster Label allowlist configmap data.
+func resyncManagedClusterLabelAllowList(kubeClient kubernetes.Interface) error {
+	found, err := proxyconfig.GetManagedClusterLabelAllowListConfigmap(kubeClient.CoreV1(),
+		proxyconfig.ManagedClusterLabelAllowListNamespace)
+
+	if err != nil {
+		return err
+	}
+
+	err = unmarshalDataToManagedClusterLabelList(found.Data,
+		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), syncLabelList)
+
+	if err != nil {
+		return err
+	}
+
+	sortLabelList(managedLabelList)
+	sortLabelList(syncLabelList)
+
+	if ok := reflect.DeepEqual(syncLabelList, managedLabelList); !ok {
+		klog.Infof("resyncing required for managedcluster label allowlist: %v",
+			proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
+
+		if ok := reflect.DeepEqual(syncLabelList.IgnoreList, managedLabelList.IgnoreList); !ok {
+			managedLabelList.IgnoreList = syncLabelList.IgnoreList
+			ignoreManagedClusterLabelNames(managedLabelList)
+		}
+
+		if ok := reflect.DeepEqual(syncLabelList.LabelList, managedLabelList.LabelList); !ok {
+			*syncLabelList = *managedLabelList
+
+			_ = marshalLabelListToConfigMap(found,
+				proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), syncLabelList)
+
+			_, err := kubeClient.CoreV1().ConfigMaps(proxyconfig.ManagedClusterLabelAllowListNamespace).Update(
+				context.TODO(),
+				found,
+				metav1.UpdateOptions{},
+			)
+			if err != nil {
+				klog.Errorf("failed to update managedcluster label allowlist configmap: %v", err)
+				return err
+			}
+		}
+	} else {
+		klog.Info("managedcluster label allowlist is in sync")
+	}
+
+	return nil
+}
+
 // marshalLabelListToConfigMap marshal managedcluster label list data to configmap data key
 func marshalLabelListToConfigMap(obj interface{}, key string,
 	managedLabelList *proxyconfig.ManagedClusterLabelList) error {
@@ -453,67 +565,10 @@ func marshalLabelListToConfigMap(obj interface{}, key string,
 	return nil
 }
 
-// shouldUpdateAllManagedClusterLabelNames determines whether the cluster label names map should be updated
-func shouldUpdateAllManagedClusterLabelNames(clusterLabels map[string]string,
-	managedLabelList *proxyconfig.ManagedClusterLabelList) bool {
-	updateRequired := false
-
-	for key := range clusterLabels {
-		if !slice.ContainsString(managedLabelList.LabelList, key, nil) &&
-			!slice.ContainsString(managedLabelList.IgnoreList, key, nil) {
-			managedLabelList.LabelList = append(managedLabelList.LabelList, key)
-			updateRequired = true
-		}
-	}
-
-	klog.Infof("managedcluster label update required: %v", updateRequired)
-	return updateRequired
-}
-
-// updateAllManagedClusterLabelNames updates the managedcluster label names status
-func updateAllManagedClusterLabelNames(managedLabelList *proxyconfig.ManagedClusterLabelList) {
-	for _, key := range managedLabelList.LabelList {
-		if _, ok := allManagedClusterLabelNames[key]; !ok {
-			klog.Infof("added managedcluster label: %s", key)
-			allManagedClusterLabelNames[key] = true
-
-		} else if slice.ContainsString(managedLabelList.IgnoreList, key, nil) {
-			klog.Warningf("managedcluster label <%s> set to ignore, remove label from ignore list to enable.", key)
-
-		} else if isEnabled := allManagedClusterLabelNames[key]; !isEnabled {
-			klog.Infof("enabled managedcluster label: %s", key)
-			allManagedClusterLabelNames[key] = true
-		}
-	}
-
-	for _, key := range managedLabelList.IgnoreList {
-		if _, ok := allManagedClusterLabelNames[key]; !ok {
-			klog.Infof("ignoring managedcluster label: %s", key)
-
-		} else if isEnabled := allManagedClusterLabelNames[key]; isEnabled {
-			klog.Infof("disabled managedcluster label: %s", key)
-		}
-
-		allManagedClusterLabelNames[key] = false
-	}
-
-	managedLabelList.RegexLabelList = []string{}
-	regex := regexp.MustCompile(`[^\w]+`)
-
-	for key, isEnabled := range allManagedClusterLabelNames {
-		if isEnabled {
-			managedLabelList.RegexLabelList = append(
-				managedLabelList.RegexLabelList,
-				regex.ReplaceAllString(key, "_"),
-			)
-		}
-	}
-}
-
 // unmarshalDataToManagedClusterLabelList unmarshal managedcluster label allowlist
 func unmarshalDataToManagedClusterLabelList(data map[string]string, key string,
-	labelList *proxyconfig.ManagedClusterLabelList) error {
-	err := yaml.Unmarshal([]byte(data[key]), labelList)
+	managedLabelList *proxyconfig.ManagedClusterLabelList) error {
+	err := yaml.Unmarshal([]byte(data[key]), managedLabelList)
 
 	if err != nil {
 		klog.Errorf("failed to unmarshal configmap <%s> data to the managedLabelList: %v", key, err)
@@ -521,4 +576,15 @@ func unmarshalDataToManagedClusterLabelList(data map[string]string, key string,
 	}
 
 	return nil
+}
+
+// sortLabelList ...
+func sortLabelList(managedLabelList *proxyconfig.ManagedClusterLabelList) {
+	if managedLabelList != nil {
+		sort.Strings(managedLabelList.IgnoreList)
+		sort.Strings(managedLabelList.LabelList)
+		sort.Strings(managedLabelList.RegexLabelList)
+	} else {
+		klog.Infof("managedLabelList is empty: %v", managedLabelList)
+	}
 }

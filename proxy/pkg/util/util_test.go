@@ -156,7 +156,7 @@ func TestGetAllManagedClusterLabelNames(t *testing.T) {
 		managedLabelList *proxyconfig.ManagedClusterLabelList
 		expected         bool
 	}{"should contain enabled labels", &proxyconfig.ManagedClusterLabelList{
-		IgnoreList: []string{"clusterID", "name"},
+		IgnoreList: []string{"clusterID", "name", "environment"},
 		LabelList:  []string{"cloud", "vendor"},
 	}, true}
 
@@ -171,8 +171,8 @@ func TestGetAllManagedClusterLabelNames(t *testing.T) {
 		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, testCaseList.expected)
 	}
 
-	testCaseList.managedLabelList.IgnoreList = []string{"clusterID", "vendor"}
-	testCaseList.managedLabelList.LabelList = []string{"cloud", "name"}
+	testCaseList.managedLabelList.IgnoreList = []string{"clusterID", "vendor", "environment"}
+	testCaseList.managedLabelList.LabelList = []string{"cloud", "name", "environment"}
 	updateAllManagedClusterLabelNames(testCaseList.managedLabelList)
 
 	if isEnabled := GetAllManagedClusterLabelNames()["name"]; !isEnabled {
@@ -180,6 +180,10 @@ func TestGetAllManagedClusterLabelNames(t *testing.T) {
 	}
 
 	if isEnabled := GetAllManagedClusterLabelNames()["vendor"]; isEnabled {
+		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, false)
+	}
+
+	if isEnabled := GetAllManagedClusterLabelNames()["environment"]; isEnabled {
 		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, false)
 	}
 }
@@ -367,6 +371,18 @@ func TestUnmarshalDataToManagedClusterLabelList(t *testing.T) {
 	if err != nil {
 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, err, testCase.expected)
 	}
+
+	testCase.cm.Data[proxyconfig.GetManagedClusterLabelAllowListConfigMapKey()] += `
+	labels:
+	- app
+		- source
+	`
+
+	err = unmarshalDataToManagedClusterLabelList(testCase.cm.Data,
+		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), proxyconfig.GetManagedClusterLabelList())
+	if err == nil {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, err, "unmarshal error")
+	}
 }
 
 func TestGetManagedClusterEventHandler(t *testing.T) {
@@ -422,14 +438,14 @@ func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
 		newObj interface{}
 	}{
 		"should execute eventHandler",
-		proxyconfig.CreateManagedClusterLabelAllowListCM("ns1"),
-		proxyconfig.CreateManagedClusterLabelAllowListCM("ns1"),
+		proxyconfig.CreateManagedClusterLabelAllowListCM("open-cluster-management-observability"),
+		proxyconfig.CreateManagedClusterLabelAllowListCM("open-cluster-management-observability"),
 	}
 
 	client := fake.NewSimpleClientset()
-	cm, err := client.CoreV1().ConfigMaps("ns1").Create(
+	cm, err := client.CoreV1().ConfigMaps("open-cluster-management-observability").Create(
 		context.TODO(),
-		proxyconfig.CreateManagedClusterLabelAllowListCM("ns1"),
+		proxyconfig.CreateManagedClusterLabelAllowListCM("open-cluster-management-observability"),
 		metav1.CreateOptions{},
 	)
 	if err != nil {
@@ -437,6 +453,8 @@ func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
 	}
 
 	InitAllManagedClusterLabelNames()
+	managedLabelList := proxyconfig.GetManagedClusterLabelList()
+
 	err = unmarshalDataToManagedClusterLabelList(cm.Data,
 		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), managedLabelList)
 
@@ -445,17 +463,18 @@ func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
 			proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), err)
 	}
 
-	eventHandler := GetManagedClusterLabelAllowListEventHandler()
+	eventHandler := GetManagedClusterLabelAllowListEventHandler(client)
 	eventHandler.AddFunc(testCase.oldObj)
 	if GetAllManagedClusterLabelNames() == nil {
 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, nil, nil)
 	}
+
+	time.Sleep(5 * time.Second)
 
 	managedLabelList.IgnoreList = []string{"vendor"}
 	eventHandler.UpdateFunc(testCase.oldObj, testCase.newObj)
 	if ok := GetAllManagedClusterLabelNames()["vendor"]; ok {
 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, false)
 	}
-
 	eventHandler.DeleteFunc(testCase.newObj)
 }
