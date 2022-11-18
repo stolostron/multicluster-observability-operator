@@ -305,11 +305,14 @@ func ScheduleManagedClusterLabelAllowlistResync(kubeClient kubernetes.Interface)
 	if err != nil {
 		klog.Errorf("failed to schedule job for managedcluster allowlist resync: %v", err)
 	}
+
+	klog.Info("starting scheduler for managedcluster allowlist resync")
 	scheduler.StartAsync()
 }
 
 // StopScheduleManagedClusterLabelAllowlistResync ...
 func StopScheduleManagedClusterLabelAllowlistResync() {
+	klog.Info("stopping scheduler for managedcluster allowlist resync")
 	scheduler.Stop()
 
 	if ok := scheduler.IsRunning(); !ok {

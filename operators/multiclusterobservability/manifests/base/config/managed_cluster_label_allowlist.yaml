@@ -22,4 +22,6 @@ data:
       - installer.namespace
       - local-cluster
       - name
-    labels: []
+    labels:
+      - cloud
+      - vendor
