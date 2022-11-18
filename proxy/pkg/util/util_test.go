@@ -464,6 +464,8 @@ func TestGetManagedClusterLabelAllowListEventHandler(t *testing.T) {
 	}
 
 	eventHandler := GetManagedClusterLabelAllowListEventHandler(client)
+	InitScheduler()
+
 	eventHandler.AddFunc(testCase.oldObj)
 	if GetAllManagedClusterLabelNames() == nil {
 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, nil, nil)
@@ -488,9 +490,8 @@ func TestStopScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
 		true,
 	}
 
-	scheduler.Every(1).Seconds().Do(func() {
-		t.Log("hello world")
-	})
+	InitScheduler()
+	scheduler.Every(1).Seconds().Do(func() {})
 
 	go scheduler.StartAsync()
 	time.Sleep(6 * time.Second)
@@ -519,18 +520,21 @@ func TestScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
 	client.CoreV1().ConfigMaps(testCase.namespace).Create(context.TODO(),
 		proxyconfig.CreateManagedClusterLabelAllowListCM(testCase.namespace), metav1.CreateOptions{})
 
-	// go ScheduleManagedClusterLabelAllowlistResync(client)
-	scheduler.Every(1).Seconds().Do(func() {
-		t.Log("hello world")
-	})
+	go ScheduleManagedClusterLabelAllowlistResync(client)
+	time.Sleep(4 * time.Second)
 
-	go scheduler.StartAsync()
-	time.Sleep(6 * time.Second)
 	updateAllManagedClusterLabelNames(managedLabelList)
-
 	StopScheduleManagedClusterLabelAllowlistResync()
 	if ok := scheduler.IsRunning(); ok {
 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, false)
+	}
+
+	go ScheduleManagedClusterLabelAllowlistResync(client)
+	time.Sleep(4 * time.Second)
+
+	StopScheduleManagedClusterLabelAllowlistResync()
+	if ok := scheduler.IsRunning(); ok {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, testCase.expected)
 	}
 }
 

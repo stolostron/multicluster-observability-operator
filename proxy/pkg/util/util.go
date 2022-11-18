@@ -58,7 +58,7 @@ var (
 // resources for the gocron scheduler
 var (
 	resyncTag = "managed-cluster-label-allowlist-resync"
-	scheduler = gocron.NewScheduler(time.UTC)
+	scheduler *gocron.Scheduler
 )
 
 // GetAllManagedClusterNames returns all managed cluster names
@@ -79,6 +79,10 @@ func InitAllManagedClusterNames() {
 // InitAllManagedClusterLabelNames initializes all managed cluster labels map
 func InitAllManagedClusterLabelNames() {
 	allManagedClusterLabelNames = map[string]bool{}
+}
+
+func InitScheduler() {
+	scheduler = gocron.NewScheduler(time.UTC)
 }
 
 // shouldUpdateManagedClusterLabelNames determine whether the managedcluster label names map should be updated
@@ -293,17 +297,24 @@ func WatchManagedCluster(clusterClient clusterclientset.Interface, kubeClient ku
 
 // ScheduleManagedClusterLabelAllowlistResync ...
 func ScheduleManagedClusterLabelAllowlistResync(kubeClient kubernetes.Interface) {
+	if scheduler == nil {
+		InitScheduler()
+	}
+
 	_, err := scheduler.Tag(resyncTag).Every(30).Second().Do(resyncManagedClusterLabelAllowList, kubeClient)
 	if err != nil {
 		klog.Errorf("failed to schedule job for managedcluster allowlist resync: %v", err)
 	}
-
 	scheduler.StartAsync()
 }
 
 // StopScheduleManagedClusterLabelAllowlistResync ...
 func StopScheduleManagedClusterLabelAllowlistResync() {
 	scheduler.Stop()
+
+	if ok := scheduler.IsRunning(); !ok {
+		InitScheduler()
+	}
 }
 
 // GetManagedClusterLabelAllowListEventHandler return event handler for managedcluster label allow list watch event
@@ -312,12 +323,19 @@ func GetManagedClusterLabelAllowListEventHandler(kubeClient kubernetes.Interface
 		AddFunc: func(obj interface{}) {
 			if obj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
 				klog.Infof("added configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
+
+				if ok := scheduler != nil; ok {
+					if ok := scheduler.IsRunning(); !ok {
+						go ScheduleManagedClusterLabelAllowlistResync(kubeClient)
+					}
+				}
 			}
 		},
 
 		DeleteFunc: func(obj interface{}) {
 			if obj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
 				klog.Warningf("deleted configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
+				StopScheduleManagedClusterLabelAllowlistResync()
 			}
 		},
 
