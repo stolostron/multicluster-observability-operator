@@ -528,7 +528,7 @@ func writeError(msg string) {
 
 // resyncManagedClusterLabelAllowList resync the managedcluster Label allowlist configmap data.
 func resyncManagedClusterLabelAllowList(kubeClient kubernetes.Interface) error {
-	found, err := proxyconfig.GetManagedClusterLabelAllowListConfigmap(kubeClient.CoreV1(),
+	found, err := proxyconfig.GetManagedClusterLabelAllowListConfigmap(kubeClient,
 		proxyconfig.ManagedClusterLabelAllowListNamespace)
 
 	if err != nil {
@@ -570,8 +570,6 @@ func resyncManagedClusterLabelAllowList(kubeClient kubernetes.Interface) error {
 				return err
 			}
 		}
-	} else {
-		klog.Info("managedcluster label allowlist is in sync")
 	}
 
 	return nil

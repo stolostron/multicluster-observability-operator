@@ -7,6 +7,7 @@ data:
     names:
       - :node_memory_MemAvailable_bytes:sum
       - ALERTS
+      - acm_managed_cluster_labels
       - authenticated_user_requests
       - authentication_attempts
       - assisted_installer_cluster_creations  # counter

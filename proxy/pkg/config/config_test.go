@@ -62,8 +62,8 @@ func TestGetManagedClusterLabelAllowListConfigmap(t *testing.T) {
 		expected  error
 	}{"should get managedclsuter label allowlist configmap", "ns1", nil}
 
-	client := fake.NewSimpleClientset().CoreV1()
-	_, err := client.ConfigMaps(testCase.namespace).Create(
+	client := fake.NewSimpleClientset()
+	_, err := client.CoreV1().ConfigMaps(testCase.namespace).Create(
 		context.TODO(),
 		CreateManagedClusterLabelAllowListCM(testCase.namespace),
 		metav1.CreateOptions{},

@@ -8,7 +8,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/kubernetes"
 
 	"k8s.io/klog"
 )
@@ -16,7 +16,7 @@ import (
 const (
 	ManagedClusterLabelAllowListConfigMapName = "observability-managed-cluster-label-allowlist"
 	ManagedClusterLabelAllowListConfigMapKey  = "managed_cluster.yaml"
-	ManagedClusterLabelMetricName             = "managed_cluster_labels"
+	ManagedClusterLabelMetricName             = "acm_managed_cluster_labels"
 	ManagedClusterLabelAllowListNamespace     = "open-cluster-management-observability"
 
 	RBACProxyLabelMetricName = "acm_label_names"
@@ -89,9 +89,9 @@ ignore_labels:
 }
 
 // GetManagedClusterLabelAllowListConfigmap returns the managedcluster label allowlist configmap
-func GetManagedClusterLabelAllowListConfigmap(CoreV1Interface corev1.CoreV1Interface, namespace string) (*v1.ConfigMap,
+func GetManagedClusterLabelAllowListConfigmap(kubeClient kubernetes.Interface, namespace string) (*v1.ConfigMap,
 	error) {
-	configmap, err := CoreV1Interface.ConfigMaps(namespace).Get(
+	configmap, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(
 		context.TODO(),
 		GetManagedClusterLabelAllowListConfigMapName(),
 		metav1.GetOptions{},
