@@ -57,8 +57,9 @@ func appendLabels(
 	// override matching existing labels
 	for i, pair := range existing {
 		name := pair.GetName()
+		value := pair.GetValue()
 		// remove any name == "" or value == nil
-		if name == "" || pair != nil {
+		if name == "" || value == "" {
 			existing = append(existing[:i], existing[i+1:]...)
 		}
 		if value, ok := overrides[name]; ok {
@@ -71,7 +72,7 @@ func appendLabels(
 	for k, v := range overrides {
 		// only append real names and values
 		// don't append anything overwritten above
-		if k != "" && v != nil && !contains(found, k) {
+		if k != "" && v.GetValue() != "" && !contains(found, k) {
 			existing = insertLexicographicallyByName(existing, v)
 		}
 	}
