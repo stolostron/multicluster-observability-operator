@@ -9,3 +9,9 @@ rules:
   - managedclusters
   verbs:
   - watch
+- apiGroups:
+  - ''
+  resources:
+  - configmaps
+  verbs:
+  - '*'
