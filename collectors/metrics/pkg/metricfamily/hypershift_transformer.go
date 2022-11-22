@@ -94,14 +94,15 @@ func (h *hypershiftTransformer) Transform(family *prom.MetricFamily) (bool, erro
 				if err != nil {
 					return false, err
 				}
-				labels = insertLexicographicallyByName(labels,
-					&clientmodel.LabelPair{Name: &MANAGEMENT_CLUSTER_LABEL, Value: &h.managementCluster})
-				labels = insertLexicographicallyByName(labels,
-					&clientmodel.LabelPair{Name: &MANAGEMENT_CLUSTER_ID_LABEL, Value: &h.managementClusterID})
-				labels = insertLexicographicallyByName(labels,
-					&clientmodel.LabelPair{Name: &CLUSTER_ID_LABEL, Value: &id})
-				labels = insertLexicographicallyByName(labels,
-					&clientmodel.LabelPair{Name: &CLUSTER_LABEL, Value: &clusterName})
+				overrides := map[string]*clientmodel.LabelPair{
+					MANAGEMENT_CLUSTER_LABEL:    {Name: &MANAGEMENT_CLUSTER_LABEL, Value: &h.managementCluster},
+					MANAGEMENT_CLUSTER_ID_LABEL: {Name: &MANAGEMENT_CLUSTER_ID_LABEL, Value: &h.managementClusterID},
+					CLUSTER_ID_LABEL:            {Name: &CLUSTER_ID_LABEL, Value: &id},
+					CLUSTER_LABEL:               {Name: &CLUSTER_LABEL, Value: &clusterName},
+				}
+
+				labels = appendLabels(labels, overrides)
+
 				break
 			}
 		}
