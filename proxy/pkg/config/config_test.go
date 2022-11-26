@@ -29,14 +29,6 @@ func TestGetManagedClusterLabelAllowListConfigMapName(t *testing.T) {
 	}
 }
 
-func TestGetManagedClusterLabelMetricName(t *testing.T) {
-	metricName := GetManagedClusterLabelMetricName()
-
-	if metricName != ManagedClusterLabelMetricName {
-		t.Errorf("managedcluster label metric name (%v) is not the expected (%v)", metricName, ManagedClusterLabelMetricName)
-	}
-}
-
 func TestGetManagedClusterLabelList(t *testing.T) {
 	managedLabelList := GetManagedClusterLabelList()
 	cm := CreateManagedClusterLabelAllowListCM("ns1")

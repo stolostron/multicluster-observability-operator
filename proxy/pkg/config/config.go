@@ -16,7 +16,6 @@ import (
 const (
 	ManagedClusterLabelAllowListConfigMapName = "observability-managed-cluster-label-allowlist"
 	ManagedClusterLabelAllowListConfigMapKey  = "managed_cluster.yaml"
-	ManagedClusterLabelMetricName             = "acm_managed_cluster_labels"
 	ManagedClusterLabelAllowListNamespace     = "open-cluster-management-observability"
 
 	RBACProxyLabelMetricName = "acm_label_names"
@@ -35,11 +34,6 @@ func GetManagedClusterLabelAllowListConfigMapKey() string {
 // GetManagedClusterLabelConfigMapName return the name for the managedcluster labels configmap
 func GetManagedClusterLabelAllowListConfigMapName() string {
 	return ManagedClusterLabelAllowListConfigMapName
-}
-
-// GetManagedClusterLabelMetricName return the name of the managedcluster label metric
-func GetManagedClusterLabelMetricName() string {
-	return ManagedClusterLabelMetricName
 }
 
 // GetManagedClusterLabelList will return the current cluster label list
