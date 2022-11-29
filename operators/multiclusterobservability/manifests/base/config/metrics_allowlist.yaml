@@ -360,6 +360,7 @@ data:
 
   uwl_metrics_list.yaml: |
     names:
+      - ALERTS
       - etcd_debugging_mvcc_db_total_size_in_bytes
       - etcd_mvcc_db_total_size_in_bytes
       - etcd_debugging_snap_save_total_duration_seconds_sum
@@ -381,8 +382,14 @@ data:
       - etcd_server_proposals_committed_total
       - etcd_server_proposals_applied_total
       - etcd_server_quota_backend_bytes
+      - up
     matches: []
-    renames: {}
+    renames:
+      etcd_mvcc_db_total_size_in_bytes: etcd_debugging_mvcc_db_total_size_in_bytes
     rules: []
-    recording_rules: []
+    recording_rules:
+      - record: apiserver_request_duration_seconds:histogram_quantile_99
+        expr: histogram_quantile(0.99,sum(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\", verb!=\"WATCH\", _id!=\"\"}[5m])) by (le, _id))
+      - record: sum:apiserver_request_total:1h
+        expr: sum(rate(apiserver_request_total{job=\"apiserver\", _id!=\"\"}[1h])) by(code, instance, _id)
     collect_rules: []

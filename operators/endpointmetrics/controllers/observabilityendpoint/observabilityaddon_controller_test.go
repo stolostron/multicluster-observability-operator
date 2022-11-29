@@ -4,10 +4,12 @@ package observabilityendpoint
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
+	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -31,6 +33,10 @@ const (
 	testHubNamspace = "test-hub-ns"
 	testBearerToken = "test-bearer-token"
 )
+
+func init() {
+	os.Setenv("UNIT_TEST", "true")
+}
 
 func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon {
 	return &oav1beta1.ObservabilityAddon{
@@ -108,6 +114,7 @@ func init() {
 	addonv1alpha1.AddToScheme(s)
 	oav1beta1.AddToScheme(s)
 	ocinfrav1.AddToScheme(s)
+	hyperv1.AddToScheme(s)
 
 	namespace = testNamespace
 	hubNamespace = testHubNamspace
