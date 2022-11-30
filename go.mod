@@ -45,7 +45,7 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.24.2
 	open-cluster-management.io/addon-framework v0.0.0-20211014025435-1f42884cdd53
-	open-cluster-management.io/api v0.0.0-20210916013819-2e58cdb938f9
+	open-cluster-management.io/api v0.0.0-20221020065149-a1b824343e58
 	sigs.k8s.io/controller-runtime v0.12.2
 	sigs.k8s.io/kube-storage-version-migrator v0.0.4
 	sigs.k8s.io/kustomize/api v0.11.4
@@ -161,6 +161,7 @@ require (
 	sigs.k8s.io/cluster-api v1.1.4 // indirect
 	sigs.k8s.io/cluster-api-provider-aws v1.1.0 // indirect
 	sigs.k8s.io/cluster-api-provider-ibmcloud v0.2.4 // indirect
+	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.13.6 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
@@ -178,11 +179,11 @@ replace (
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring => github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.48.1
 	github.com/prometheus/prometheus => github.com/prometheus/prometheus v1.8.2-0.20210811141203-dcb07e8eac34
 	golang.org/x/text => golang.org/x/text v0.3.5
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.22.1
-	k8s.io/apimachinery => k8s.io/apimachinery v0.22.1
-	k8s.io/apiserver => k8s.io/apiserver v0.22.1
-	k8s.io/client-go => k8s.io/client-go v0.22.1
-	k8s.io/component-base => k8s.io/component-base v0.22.1
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.23.0
+	k8s.io/apimachinery => k8s.io/apimachinery v0.23.0
+	k8s.io/apiserver => k8s.io/apiserver v0.23.0
+	k8s.io/client-go => k8s.io/client-go v0.23.0
+	k8s.io/component-base => k8s.io/component-base v0.23.0
 	k8s.io/klog/v2 => k8s.io/klog/v2 v2.10.0
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
 	sigs.k8s.io/cluster-api-provider-kubevirt => github.com/openshift/cluster-api-provider-kubevirt v0.0.0-20211223062810-ef64d5ff1cde

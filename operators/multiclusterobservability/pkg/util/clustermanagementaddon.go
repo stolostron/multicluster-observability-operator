@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"reflect"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -19,8 +18,10 @@ import (
 )
 
 const (
-	ObservabilityController = "observability-controller"
-	grafanaLink             = "/d/2b679d600f3b9e7676a7c5ac3643d448/acm-clusters-overview"
+	ObservabilityController       = "observability-controller"
+	AddonGroup                    = "addon.open-cluster-management.io"
+	AddonDeploymentConfigResource = "addondeploymentconfigs"
+	grafanaLink                   = "/d/2b679d600f3b9e7676a7c5ac3643d448/acm-clusters-overview"
 )
 
 type clusterManagementAddOnSpec struct {
@@ -29,39 +30,28 @@ type clusterManagementAddOnSpec struct {
 	CRDName     string `json:"crdName"`
 }
 
-func CreateClusterManagementAddon(c client.Client, isStandalone bool) error {
+func CreateClusterManagementAddon(c client.Client, isStandalone bool) (
+	*addonv1alpha1.ClusterManagementAddOn, error) {
 	clusterManagementAddon, err := newClusterManagementAddon(c, isStandalone)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	found := &addonv1alpha1.ClusterManagementAddOn{}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: ObservabilityController}, found)
 	if err != nil && errors.IsNotFound(err) {
 		if err := c.Create(context.TODO(), clusterManagementAddon); err != nil {
 			log.Error(err, "Failed to create observability-controller clustermanagementaddon ")
-			return err
+			return nil, err
 		}
 		log.Info("Created observability-controller clustermanagementaddon")
-		return nil
+		return clusterManagementAddon, nil
 	} else if err != nil {
 		log.Error(err, "Cannot create observability-controller clustermanagementaddon")
-		return err
-	}
-
-	if !reflect.DeepEqual(found.Spec, clusterManagementAddon.Spec) ||
-		!reflect.DeepEqual(found.ObjectMeta.Annotations, clusterManagementAddon.ObjectMeta.Annotations) {
-		log.Info("Updating observability-controller clustermanagementaddon")
-		clusterManagementAddon.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-		err = c.Update(context.TODO(), clusterManagementAddon)
-		if err != nil {
-			log.Error(err, "Failed to update observability-controller clustermanagementaddon")
-			return err
-		}
-		return nil
+		return nil, err
 	}
 
 	log.Info(fmt.Sprintf("%s clustermanagementaddon is present ", ObservabilityController))
-	return nil
+	return found, nil
 }
 
 func DeleteClusterManagementAddon(client client.Client) error {
@@ -113,6 +103,14 @@ func newClusterManagementAddon(c client.Client, isStandalone bool) (*addonv1alph
 			},
 			AddOnConfiguration: addonv1alpha1.ConfigCoordinates{
 				CRDName: clusterManagementAddOnSpec.CRDName,
+			},
+			SupportedConfigs: []addonv1alpha1.ConfigMeta{
+				{
+					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+						Group:    AddonGroup,
+						Resource: AddonDeploymentConfigResource,
+					},
+				},
 			},
 		},
 	}, nil
