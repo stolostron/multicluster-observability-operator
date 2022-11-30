@@ -55,11 +55,12 @@ const (
 var (
 	log = logf.Log.WithName("controller_placementrule")
 	//watchNamespace                  = config.GetDefaultNamespace()
-	isCRoleCreated                  = false
-	isClusterManagementAddonCreated = false
-	isplacementControllerRunnning   = false
-	managedClusterList              = map[string]string{}
-	managedClusterListMutex         = &sync.RWMutex{}
+	isCRoleCreated                = false
+	clusterAddon                  = &addonv1alpha1.ClusterManagementAddOn{}
+	defaultAddonDeploymentConfig  = &addonv1alpha1.AddOnDeploymentConfig{}
+	isplacementControllerRunnning = false
+	managedClusterList            = map[string]string{}
+	managedClusterListMutex       = &sync.RWMutex{}
 )
 
 // PlacementRuleReconciler reconciles a PlacementRule object
@@ -270,9 +271,10 @@ func createAllRelatedRes(
 	obsAddonList *mcov1beta1.ObservabilityAddonList,
 	CRDMap map[string]bool) (ctrl.Result, error) {
 
+	var err error
 	// create the clusterrole if not there
 	if !isCRoleCreated {
-		err := createClusterRole(c)
+		err = createClusterRole(c)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -282,13 +284,32 @@ func createAllRelatedRes(
 		}
 		isCRoleCreated = true
 	}
-	//Check if ClusterManagementAddon is created or create it
-	if !isClusterManagementAddonCreated {
-		err := util.CreateClusterManagementAddon(c, !CRDMap[config.MCHCrdName])
-		if err != nil {
-			return ctrl.Result{}, err
+
+	//Get or create ClusterManagementAddon
+	clusterAddon, err = util.CreateClusterManagementAddon(c, !CRDMap[config.MCHCrdName])
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	for _, config := range clusterAddon.Spec.SupportedConfigs {
+		if config.ConfigGroupResource.Group == util.AddonGroup &&
+			config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
+			if config.DefaultConfig != nil {
+				addonConfig := &addonv1alpha1.AddOnDeploymentConfig{}
+				err = c.Get(context.TODO(),
+					types.NamespacedName{
+						Name:      config.DefaultConfig.Name,
+						Namespace: config.DefaultConfig.Namespace,
+					},
+					addonConfig,
+				)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				log.Info("There is default AddonDeploymentConfig for current addon")
+				defaultAddonDeploymentConfig = addonConfig
+				break
+			}
 		}
-		isClusterManagementAddonCreated = true
 	}
 
 	currentClusters := []string{}
@@ -319,17 +340,7 @@ func createAllRelatedRes(
 	managedClusterListMutex.RLock()
 	for managedCluster, openshiftVersion := range managedClusterList {
 		currentClusters = commonutil.Remove(currentClusters, managedCluster)
-		// enter the loop for the following reconcile requests:
-		// 1. MCO CR change(request name is "mco-updated-request")
-		// 2. MCH resource change(request name is "mch-updated-request"), to handle image replacement in upgrade case.
-		// 3. configmap/secret... resource change from observability namespace
-		// 4. managedcluster change(request namespace is emprt string and request name is managedcluster name)
-		// 5. manifestwork/observabilityaddon/managedclusteraddon/rolebinding... change from managedcluster namespace
-		if request.Name == config.MCOUpdatedRequestName ||
-			request.Name == config.MCHUpdatedRequestName ||
-			request.Namespace == config.GetDefaultNamespace() ||
-			(request.Namespace == "" && request.Name == managedCluster) ||
-			request.Namespace == managedCluster {
+		if isReconcileRequired(request, managedCluster) {
 			log.Info(
 				"Monitoring operator should be installed in cluster",
 				"cluster_name",
@@ -412,7 +423,6 @@ func deleteGlobalResource(c client.Client) error {
 	if err != nil {
 		return err
 	}
-	isClusterManagementAddonCreated = false
 	return nil
 }
 
@@ -431,15 +441,38 @@ func createManagedClusterRes(c client.Client, restMapper meta.RESTMapper,
 		return err
 	}
 
-	err = createManifestWorks(c, restMapper, namespace, name, mco, works, crdWork, dep, hubInfo, installProm)
-	if err != nil {
-		log.Error(err, "Failed to create manifestwork")
-		return err
-	}
-
-	err = util.CreateManagedClusterAddonCR(c, namespace, ownerLabelKey, ownerLabelValue)
+	addon, err := util.CreateManagedClusterAddonCR(c, namespace, ownerLabelKey, ownerLabelValue)
 	if err != nil {
 		log.Error(err, "Failed to create ManagedClusterAddon")
+		return err
+	}
+	addonConfig := &addonv1alpha1.AddOnDeploymentConfig{}
+	isCustomConfig := false
+	for _, config := range addon.Spec.Configs {
+		if config.ConfigGroupResource.Group == util.AddonGroup &&
+			config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
+			err = c.Get(context.TODO(),
+				types.NamespacedName{
+					Name:      config.ConfigReferent.Name,
+					Namespace: config.ConfigReferent.Namespace,
+				},
+				addonConfig,
+			)
+			if err != nil {
+				return err
+			}
+			isCustomConfig = true
+			log.Info("There is AddonDeploymentConfig for current addon", "namespace", namespace)
+			break
+		}
+	}
+	if !isCustomConfig {
+		addonConfig = defaultAddonDeploymentConfig
+	}
+
+	err = createManifestWorks(c, restMapper, namespace, name, mco, works, crdWork, dep, hubInfo, addonConfig, installProm)
+	if err != nil {
+		log.Error(err, "Failed to create manifestwork")
 		return err
 	}
 
@@ -843,24 +876,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	manifestWorkGroupKind := schema.GroupKind{Group: workv1.GroupVersion.Group, Kind: "ManifestWork"}
 	if _, err := r.RESTMapper.RESTMapping(manifestWorkGroupKind, workv1.GroupVersion.Version); err == nil {
-		workPred := predicate.Funcs{
-			CreateFunc: func(e event.CreateEvent) bool {
-				return false
-			},
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				if e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-					e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
-					!reflect.DeepEqual(e.ObjectNew.(*workv1.ManifestWork).Spec.Workload.Manifests,
-						e.ObjectOld.(*workv1.ManifestWork).Spec.Workload.Manifests) {
-					return true
-				}
-				return false
-			},
-			DeleteFunc: func(e event.DeleteEvent) bool {
-				return e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue
-			},
-		}
-
+		workPred := getManifestworkPred()
 		// secondary watch for manifestwork
 		ctrBuilder = ctrBuilder.Watches(
 			&source.Kind{Type: &workv1.ManifestWork{}},
@@ -869,49 +885,39 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		)
 	}
 
+	clusterMgmtGroupKind := schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "ClusterManagementAddOn"}
+	if _, err := r.RESTMapper.RESTMapping(clusterMgmtGroupKind, addonv1alpha1.GroupVersion.Version); err == nil {
+		clusterMgmtPred := getClusterMgmtAddonPredFunc()
+
+		// secondary watch for clustermanagementaddon
+		ctrBuilder = ctrBuilder.Watches(
+			&source.Kind{Type: &addonv1alpha1.ClusterManagementAddOn{}},
+			handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+				return []reconcile.Request{
+					{NamespacedName: types.NamespacedName{
+						Name: config.ClusterManagementAddOnUpdateName,
+					}},
+				}
+			}),
+			builder.WithPredicates(clusterMgmtPred),
+		)
+	}
+
+	mgClusterGroupKind := schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "ManagedClusterAddOn"}
+	if _, err := r.RESTMapper.RESTMapping(mgClusterGroupKind, addonv1alpha1.GroupVersion.Version); err == nil {
+		mgClusterGroupKindPred := getMgClusterAddonPredFunc()
+
+		// secondary watch for managedclusteraddon
+		ctrBuilder = ctrBuilder.Watches(
+			&source.Kind{Type: &addonv1alpha1.ManagedClusterAddOn{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(mgClusterGroupKindPred),
+		)
+	}
+
 	mchGroupKind := schema.GroupKind{Group: mchv1.GroupVersion.Group, Kind: "MultiClusterHub"}
 	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.GroupVersion.Version); err == nil {
-		mchPred := predicate.Funcs{
-			CreateFunc: func(e event.CreateEvent) bool {
-				// this is for operator restart, the mch CREATE event will be caught and the mch should be ready
-				if e.Object.GetNamespace() == config.GetMCONamespace() &&
-					e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
-					e.Object.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion {
-					// only read the image manifests configmap and enqueue the request when the MCH is
-					// installed/upgraded successfully
-					ok, err := config.ReadImageManifestConfigMap(
-						c,
-						e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion,
-					)
-					if err != nil {
-						return false
-					}
-					return ok
-				}
-				return false
-			},
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
-					e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
-					e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
-					e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
-					// / only read the image manifests configmap and enqueue the request when the MCH is
-					// installed/upgraded successfully
-					ok, err := config.ReadImageManifestConfigMap(
-						c,
-						e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion,
-					)
-					if err != nil {
-						return false
-					}
-					return ok
-				}
-				return false
-			},
-			DeleteFunc: func(e event.DeleteEvent) bool {
-				return false
-			},
-		}
+		mchPred := getMchPred(c)
 
 		if ingressCtlCrdExists {
 			// secondary watch for default ingresscontroller
@@ -964,4 +970,25 @@ func StartPlacementController(mgr manager.Manager, crdMap map[string]bool) error
 	}
 
 	return nil
+}
+
+// enter the loop for the following reconcile requests:
+// 1. MCO CR change(request name is "mco-updated-request")
+// 2. MCH resource change(request name is "mch-updated-request"), to handle image replacement in upgrade case.
+// 3. ClusterManagementAddon change(request name is "clustermgmtaddon-updated-request")
+// 4. configmap/secret... resource change from observability namespace
+// 5. managedcluster change(request namespace is emprt string and request name is managedcluster name)
+// 6. manifestwork/observabilityaddon/managedclusteraddon/rolebinding... change from managedcluster namespace
+func isReconcileRequired(request ctrl.Request, managedCluster string) bool {
+	if request.Name == config.MCOUpdatedRequestName ||
+		request.Name == config.MCHUpdatedRequestName ||
+		request.Name == config.ClusterManagementAddOnUpdateName {
+		return true
+	}
+	if request.Namespace == config.GetDefaultNamespace() ||
+		(request.Namespace == "" && request.Name == managedCluster) ||
+		request.Namespace == managedCluster {
+		return true
+	}
+	return false
 }

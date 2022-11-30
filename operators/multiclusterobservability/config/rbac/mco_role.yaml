@@ -361,3 +361,11 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - addon.open-cluster-management.io
+  resources:
+  - addondeploymentconfigs
+  verbs:
+  - get
+  - list
+  - watch

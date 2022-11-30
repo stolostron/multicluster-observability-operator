@@ -28,6 +28,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	workv1 "open-cluster-management.io/api/work/v1"
 )
 
@@ -264,7 +265,7 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	clusterNamespace string, clusterName string,
 	mco *mcov1beta2.MultiClusterObservability,
 	works []workv1.Manifest, crdWork *workv1.Manifest, dep *appsv1.Deployment,
-	hubInfo *corev1.Secret, installProm bool) error {
+	hubInfo *corev1.Secret, addonConfig *addonv1alpha1.AddOnDeploymentConfig, installProm bool) error {
 
 	work := newManifestwork(clusterNamespace+workNameSuffix, clusterNamespace)
 
@@ -292,7 +293,10 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 
 	// inject the endpoint operator deployment
 	spec := dep.Spec.Template.Spec
-	if clusterName == localClusterName {
+	if addonConfig.Spec.NodePlacement != nil {
+		spec.NodeSelector = addonConfig.Spec.NodePlacement.NodeSelector
+		spec.Tolerations = addonConfig.Spec.NodePlacement.Tolerations
+	} else if clusterName == localClusterName {
 		spec.NodeSelector = mco.Spec.NodeSelector
 		spec.Tolerations = mco.Spec.Tolerations
 	}

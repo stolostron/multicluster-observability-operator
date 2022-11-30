@@ -51,6 +51,7 @@ import (
 	observabilityv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/webhook"
 	operatorsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
@@ -193,6 +194,12 @@ func main() {
 		},
 		clusterv1.SchemeGroupVersion.WithKind("ManagedCluster"): []filteredcache.Selector{
 			{LabelSelector: "vendor!=auto-detect,observability!=disabled"},
+		},
+		addonv1alpha1.SchemeGroupVersion.WithKind("ClusterManagementAddOn"): []filteredcache.Selector{
+			{FieldSelector: fmt.Sprintf("metadata.name=%s", util.ObservabilityController)},
+		},
+		addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn"): []filteredcache.Selector{
+			{FieldSelector: fmt.Sprintf("metadata.name=%s", util.ManagedClusterAddonName)},
 		},
 	}
 
