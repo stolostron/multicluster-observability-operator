@@ -128,7 +128,8 @@ func getMchPred(c client.Client) predicate.Funcs {
 			if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
 				e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
-				e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
+				e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion ==
+					e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
 				// / only read the image manifests configmap and enqueue the request when the MCH is
 				// installed/upgraded successfully
 				ok, err := config.ReadImageManifestConfigMap(

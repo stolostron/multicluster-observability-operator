@@ -188,7 +188,7 @@ func TestGetMchPred(t *testing.T) {
 	de := event.DeleteEvent{
 		Object: mch,
 	}
-	if !pred.DeleteFunc(de) {
+	if pred.DeleteFunc(de) {
 		t.Fatal("reconcile triggered for mch delete event")
 	}
 

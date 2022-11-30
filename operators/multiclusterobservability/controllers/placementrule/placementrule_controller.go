@@ -305,6 +305,7 @@ func createAllRelatedRes(
 				if err != nil {
 					return ctrl.Result{}, err
 				}
+				log.Info("There is default AddonDeploymentConfig for current addon")
 				defaultAddonDeploymentConfig = addonConfig
 				break
 			}
@@ -461,6 +462,7 @@ func createManagedClusterRes(c client.Client, restMapper meta.RESTMapper,
 				return err
 			}
 			isCustomConfig = true
+			log.Info("There is AddonDeploymentConfig for current addon", "namespace", namespace)
 			break
 		}
 	}
