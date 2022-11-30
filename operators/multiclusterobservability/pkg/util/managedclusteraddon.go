@@ -6,7 +6,6 @@ package util
 import (
 	"context"
 	"os"
-	"reflect"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -27,7 +26,8 @@ var (
 	spokeNameSpace = os.Getenv("SPOKE_NAMESPACE")
 )
 
-func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValue string) error {
+func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValue string) (
+	*addonv1alpha1.ManagedClusterAddOn, error) {
 	newManagedClusterAddon := &addonv1alpha1.ManagedClusterAddOn{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
@@ -64,7 +64,7 @@ func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValu
 				"namespace",
 				namespace,
 			)
-			return err
+			return nil, err
 		}
 
 		// wait 10s for the created managedclusteraddon ready
@@ -89,7 +89,7 @@ func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValu
 				"namespace",
 				namespace,
 			)
-			return errPoll
+			return nil, errPoll
 		}
 
 		// got the created managedclusteraddon just now, uopdating its status
@@ -130,37 +130,12 @@ func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValu
 				"namespace",
 				namespace,
 			)
-			return err
+			return nil, err
 		}
-		return nil
+		return managedClusterAddon, nil
 	} else if err != nil {
 		log.Error(err, "failed to get managedclusteraddon", "name", ManagedClusterAddonName, "namespace", namespace)
-		return err
-	}
-
-	// managedclusteraddon already exists, updating...
-	if !reflect.DeepEqual(managedClusterAddon.Spec, newManagedClusterAddon.Spec) {
-		log.Info(
-			"found difference, updating managedClusterAddon",
-			"name",
-			ManagedClusterAddonName,
-			"namespace",
-			namespace,
-		)
-		newManagedClusterAddon.ObjectMeta.ResourceVersion = managedClusterAddon.ObjectMeta.ResourceVersion
-		err := c.Update(context.TODO(), newManagedClusterAddon)
-		if err != nil {
-			log.Error(
-				err,
-				"failed to update managedclusteraddon",
-				"name",
-				ManagedClusterAddonName,
-				"namespace",
-				namespace,
-			)
-			return err
-		}
-		return nil
+		return nil, err
 	}
 
 	log.Info(
@@ -170,5 +145,5 @@ func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValu
 		"namespace",
 		namespace,
 	)
-	return nil
+	return managedClusterAddon, nil
 }

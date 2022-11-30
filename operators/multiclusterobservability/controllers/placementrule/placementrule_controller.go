@@ -55,11 +55,12 @@ const (
 var (
 	log = logf.Log.WithName("controller_placementrule")
 	//watchNamespace                  = config.GetDefaultNamespace()
-	isCRoleCreated                  = false
-	isClusterManagementAddonCreated = false
-	isplacementControllerRunnning   = false
-	managedClusterList              = map[string]string{}
-	managedClusterListMutex         = &sync.RWMutex{}
+	isCRoleCreated                = false
+	clusterAddon                  = &addonv1alpha1.ClusterManagementAddOn{}
+	defaultAddonDeploymentConfig  = &addonv1alpha1.AddOnDeploymentConfig{}
+	isplacementControllerRunnning = false
+	managedClusterList            = map[string]string{}
+	managedClusterListMutex       = &sync.RWMutex{}
 )
 
 // PlacementRuleReconciler reconciles a PlacementRule object
@@ -270,9 +271,10 @@ func createAllRelatedRes(
 	obsAddonList *mcov1beta1.ObservabilityAddonList,
 	CRDMap map[string]bool) (ctrl.Result, error) {
 
+	var err error
 	// create the clusterrole if not there
 	if !isCRoleCreated {
-		err := createClusterRole(c)
+		err = createClusterRole(c)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -282,13 +284,31 @@ func createAllRelatedRes(
 		}
 		isCRoleCreated = true
 	}
-	//Check if ClusterManagementAddon is created or create it
-	if !isClusterManagementAddonCreated {
-		err := util.CreateClusterManagementAddon(c, !CRDMap[config.MCHCrdName])
-		if err != nil {
-			return ctrl.Result{}, err
+
+	//Get or create ClusterManagementAddon
+	clusterAddon, err = util.CreateClusterManagementAddon(c, !CRDMap[config.MCHCrdName])
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	for _, config := range clusterAddon.Spec.SupportedConfigs {
+		if config.ConfigGroupResource.Group == util.AddonGroup &&
+			config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
+			if config.DefaultConfig != nil {
+				addonConfig := &addonv1alpha1.AddOnDeploymentConfig{}
+				err = c.Get(context.TODO(),
+					types.NamespacedName{
+						Name:      config.DefaultConfig.Name,
+						Namespace: config.DefaultConfig.Namespace,
+					},
+					addonConfig,
+				)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				defaultAddonDeploymentConfig = addonConfig
+				break
+			}
 		}
-		isClusterManagementAddonCreated = true
 	}
 
 	currentClusters := []string{}
@@ -329,6 +349,7 @@ func createAllRelatedRes(
 			request.Name == config.MCHUpdatedRequestName ||
 			request.Namespace == config.GetDefaultNamespace() ||
 			(request.Namespace == "" && request.Name == managedCluster) ||
+			(request.Namespace == "" && request.Name == util.ObservabilityController) ||
 			request.Namespace == managedCluster {
 			log.Info(
 				"Monitoring operator should be installed in cluster",
@@ -412,7 +433,6 @@ func deleteGlobalResource(c client.Client) error {
 	if err != nil {
 		return err
 	}
-	isClusterManagementAddonCreated = false
 	return nil
 }
 
@@ -431,15 +451,37 @@ func createManagedClusterRes(c client.Client, restMapper meta.RESTMapper,
 		return err
 	}
 
-	err = createManifestWorks(c, restMapper, namespace, name, mco, works, crdWork, dep, hubInfo, installProm)
-	if err != nil {
-		log.Error(err, "Failed to create manifestwork")
-		return err
-	}
-
-	err = util.CreateManagedClusterAddonCR(c, namespace, ownerLabelKey, ownerLabelValue)
+	addon, err := util.CreateManagedClusterAddonCR(c, namespace, ownerLabelKey, ownerLabelValue)
 	if err != nil {
 		log.Error(err, "Failed to create ManagedClusterAddon")
+		return err
+	}
+	addonConfig := &addonv1alpha1.AddOnDeploymentConfig{}
+	isCustomConfig := false
+	for _, config := range addon.Spec.Configs {
+		if config.ConfigGroupResource.Group == util.AddonGroup &&
+			config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
+			err = c.Get(context.TODO(),
+				types.NamespacedName{
+					Name:      config.ConfigReferent.Name,
+					Namespace: config.ConfigReferent.Namespace,
+				},
+				addonConfig,
+			)
+			if err != nil {
+				return err
+			}
+			isCustomConfig = true
+			break
+		}
+	}
+	if !isCustomConfig {
+		addonConfig = defaultAddonDeploymentConfig
+	}
+
+	err = createManifestWorks(c, restMapper, namespace, name, mco, works, crdWork, dep, hubInfo, addonConfig, installProm)
+	if err != nil {
+		log.Error(err, "Failed to create manifestwork")
 		return err
 	}
 
@@ -866,6 +908,90 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			&source.Kind{Type: &workv1.ManifestWork{}},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(workPred),
+		)
+	}
+
+	clusterMgmtGroupKind := schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "ClusterManagementAddOn"}
+	if _, err := r.RESTMapper.RESTMapping(clusterMgmtGroupKind, addonv1alpha1.GroupVersion.Version); err == nil {
+		clusterMgmtPred := predicate.Funcs{
+			CreateFunc: func(e event.CreateEvent) bool {
+				return false
+			},
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				if e.ObjectOld.GetName() != util.ObservabilityController {
+					return false
+				}
+				oldDefault := &addonv1alpha1.ConfigReferent{}
+				newDefault := &addonv1alpha1.ConfigReferent{}
+				for _, config := range e.ObjectOld.(*addonv1alpha1.ClusterManagementAddOn).Spec.SupportedConfigs {
+					if config.ConfigGroupResource.Group == util.AddonGroup &&
+						config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
+						oldDefault = config.DefaultConfig
+					}
+				}
+				for _, config := range e.ObjectNew.(*addonv1alpha1.ClusterManagementAddOn).Spec.SupportedConfigs {
+					if config.ConfigGroupResource.Group == util.AddonGroup &&
+						config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
+						newDefault = config.DefaultConfig
+					}
+				}
+				if !reflect.DeepEqual(oldDefault, newDefault) {
+					return true
+				}
+				return false
+			},
+			DeleteFunc: func(e event.DeleteEvent) bool {
+				return false
+			},
+		}
+
+		// secondary watch for clustermanagementaddon
+		ctrBuilder = ctrBuilder.Watches(
+			&source.Kind{Type: &addonv1alpha1.ClusterManagementAddOn{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(clusterMgmtPred),
+		)
+	}
+
+	mgClusterGroupKind := schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "ManagedClusterAddOn"}
+	if _, err := r.RESTMapper.RESTMapping(mgClusterGroupKind, addonv1alpha1.GroupVersion.Version); err == nil {
+		mgClusterGroupKindPred := predicate.Funcs{
+			CreateFunc: func(e event.CreateEvent) bool {
+				return false
+			},
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				if e.ObjectOld.GetName() != util.ManagedClusterAddonName {
+					return false
+				}
+				oldConfig := addonv1alpha1.ConfigReferent{}
+				newConfig := addonv1alpha1.ConfigReferent{}
+				for _, config := range e.ObjectOld.(*addonv1alpha1.ManagedClusterAddOn).Spec.Configs {
+					if config.ConfigGroupResource.Group == util.AddonGroup &&
+						config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
+						oldConfig = config.ConfigReferent
+					}
+				}
+				for _, config := range e.ObjectNew.(*addonv1alpha1.ManagedClusterAddOn).Spec.Configs {
+					if config.ConfigGroupResource.Group == util.AddonGroup &&
+						config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
+						newConfig = config.ConfigReferent
+					}
+				}
+				if !reflect.DeepEqual(oldConfig, newConfig) {
+					return true
+				}
+				return false
+			},
+			DeleteFunc: func(e event.DeleteEvent) bool {
+				return false
+			},
+		}
+
+		// secondary watch for managedclusteraddon
+		ctrBuilder = ctrBuilder.Watches(
+			&source.Kind{Type: &addonv1alpha1.ManagedClusterAddOn{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(mgClusterGroupKindPred),
 		)
 	}
 
