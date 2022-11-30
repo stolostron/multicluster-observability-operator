@@ -27,6 +27,7 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -34,11 +35,13 @@ import (
 )
 
 const (
-	namespace    = "test-ns"
-	namespace2   = "test-ns-2"
-	clusterName  = "cluster1"
-	clusterName2 = "cluster2"
-	mcoName      = "test-mco"
+	namespace              = "test-ns"
+	namespace2             = "test-ns-2"
+	clusterName            = "cluster1"
+	clusterName2           = "cluster2"
+	mcoName                = "test-mco"
+	defaultAddonConfigName = "test-default"
+	addonConfigName        = "test"
 )
 
 var (
@@ -135,7 +138,8 @@ func TestObservabilityAddonController(t *testing.T) {
 		},
 	}
 	objs := []runtime.Object{mco, pull, newConsoleRoute(), newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
-		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newManagedClusterAddon(), deprecatedRole}
+		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newManagedClusterAddon(), deprecatedRole, newClusterMgmtAddon(),
+		newAddonDeploymentConfig(defaultAddonConfigName, namespace), newAddonDeploymentConfig(addonConfigName, namespace)}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &PlacementRuleReconciler{Client: c, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
 
@@ -338,8 +342,68 @@ func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
 			Kind:       "ManagedClusterAddOn",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "managedClusterAddonName",
+			Name:      "observability-controller",
 			Namespace: namespace,
+		},
+		Spec: addonv1alpha1.ManagedClusterAddOnSpec{
+			Configs: []addonv1alpha1.AddOnConfig{
+				{
+					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+						Group:    util.AddonGroup,
+						Resource: util.AddonDeploymentConfigResource,
+					},
+					ConfigReferent: addonv1alpha1.ConfigReferent{
+						Namespace: namespace,
+						Name:      addonConfigName,
+					},
+				},
+			},
+		},
+	}
+}
+
+func newClusterMgmtAddon() *addonv1alpha1.ClusterManagementAddOn {
+	return &addonv1alpha1.ClusterManagementAddOn{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
+			Kind:       "ClusterManagementAddOn",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "observability-controller",
+		},
+		Spec: addonv1alpha1.ClusterManagementAddOnSpec{
+			SupportedConfigs: []addonv1alpha1.ConfigMeta{
+				{
+					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
+						Group:    util.AddonGroup,
+						Resource: util.AddonDeploymentConfigResource,
+					},
+					DefaultConfig: &addonv1alpha1.ConfigReferent{
+						Namespace: namespace,
+						Name:      defaultAddonConfigName,
+					},
+				},
+			},
+		},
+	}
+}
+
+func newAddonDeploymentConfig(name, namespace string) *addonv1alpha1.AddOnDeploymentConfig {
+	return &addonv1alpha1.AddOnDeploymentConfig{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
+			Kind:       "AddonDeploymentConfig",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
+			NodePlacement: &addonv1alpha1.NodePlacement{
+				NodeSelector: map[string]string{
+					"kubernetes.io/os": "linux",
+				},
+			},
 		},
 	}
 }

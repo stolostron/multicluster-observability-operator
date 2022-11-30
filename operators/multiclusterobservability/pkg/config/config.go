@@ -53,6 +53,7 @@ const (
 
 	MCHUpdatedRequestName               = "mch-updated-request"
 	MCOUpdatedRequestName               = "mco-updated-request"
+	ClusterManagementAddOnUpdateName    = "clustermgmtaddon-updated-request"
 	MulticloudConsoleRouteName          = "multicloud-console"
 	ImageManifestConfigMapNamePrefix    = "mch-image-manifest-"
 	OCMManifestConfigMapTypeLabelKey    = "ocm-configmap-type"
