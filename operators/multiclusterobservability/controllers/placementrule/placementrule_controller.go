@@ -874,24 +874,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	manifestWorkGroupKind := schema.GroupKind{Group: workv1.GroupVersion.Group, Kind: "ManifestWork"}
 	if _, err := r.RESTMapper.RESTMapping(manifestWorkGroupKind, workv1.GroupVersion.Version); err == nil {
-		workPred := predicate.Funcs{
-			CreateFunc: func(e event.CreateEvent) bool {
-				return false
-			},
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				if e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-					e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
-					!reflect.DeepEqual(e.ObjectNew.(*workv1.ManifestWork).Spec.Workload.Manifests,
-						e.ObjectOld.(*workv1.ManifestWork).Spec.Workload.Manifests) {
-					return true
-				}
-				return false
-			},
-			DeleteFunc: func(e event.DeleteEvent) bool {
-				return e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue
-			},
-		}
-
+		workPred := getManifestworkPred()
 		// secondary watch for manifestwork
 		ctrBuilder = ctrBuilder.Watches(
 			&source.Kind{Type: &workv1.ManifestWork{}},

@@ -7,6 +7,7 @@ import (
 
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	workv1 "open-cluster-management.io/api/work/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
@@ -77,4 +78,25 @@ func getMgClusterAddonPredFunc() predicate.Funcs {
 			return false
 		},
 	}
+}
+
+func getManifestworkPred() predicate.Funcs {
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
+				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
+				!reflect.DeepEqual(e.ObjectNew.(*workv1.ManifestWork).Spec.Workload.Manifests,
+					e.ObjectOld.(*workv1.ManifestWork).Spec.Workload.Manifests) {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue
+		},
+	}
+
 }
