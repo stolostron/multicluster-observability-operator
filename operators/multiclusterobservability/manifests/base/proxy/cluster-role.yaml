@@ -22,3 +22,9 @@ rules:
   - subjectaccessreviews
   verbs:
   - create
+- apiGroups:
+  - ''
+  resources:
+  - configmaps
+  verbs:
+  - '*'
