@@ -27,7 +27,7 @@ type CollectRule struct {
 	Annotations map[string]string `yaml:"annotations"`
 	Expr        string            `yaml:"expr"`
 	For         string            `yaml:"for"`
-	Metrics    DynamicMetrics    `yaml:"dynamic_metrics"`
+	Metrics     DynamicMetrics    `yaml:"dynamic_metrics"`
 }
 
 type DynamicMetrics struct {

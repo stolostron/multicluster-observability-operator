@@ -6,6 +6,7 @@ package proxy
 import (
 	"bytes"
 	"compress/gzip"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
 )
 
@@ -181,5 +183,37 @@ func TestProxyRequest(t *testing.T) {
 		if req.URL.Host != "" {
 			t.Errorf("(%v) is not the expected \"\"", req.URL.Host)
 		}
+	}
+}
+
+func TestModifyAPISeriesResponse(t *testing.T) {
+	testCase := struct {
+		name     string
+		expected bool
+	}{
+		"should modify the api series response",
+		true,
+	}
+	req := http.Request{}
+	req.URL = &url.URL{}
+	req.URL.Path = "/api/v1/series"
+	req.Header = http.Header(map[string][]string{})
+
+	stringReader := strings.NewReader(config.GetRBACProxyLabelMetricName())
+	stringReadClose := io.NopCloser(stringReader)
+	req.Body = stringReadClose
+
+	resp := NewFakeResponse(t)
+	config.GetManagedClusterLabelList().RegexLabelList = []string{"cloud", "vendor"}
+	if ok := shouldModifyAPISeriesResponse(resp, &req); !ok {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, testCase.expected)
+	}
+
+	stringReader = strings.NewReader("kube_pod_info")
+	stringReadClose = io.NopCloser(stringReader)
+	req.Body = stringReadClose
+
+	if ok := shouldModifyAPISeriesResponse(resp, &req); ok {
+		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, ok, !testCase.expected)
 	}
 }
