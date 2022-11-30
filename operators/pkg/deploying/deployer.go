@@ -83,8 +83,10 @@ func (d *Deployer) Deploy(obj *unstructured.Unstructured) error {
 
 	deployerFn, ok := d.deployerFns[found.GetKind()]
 	if ok {
+		log.Info("deployerFn found", "kind:", found.GetKind(), "name:", found.GetName())
 		return deployerFn(obj, found)
 	}
+	log.Info("deployerFn not found", "kind:", found.GetKind(), "name:", found.GetName())
 	return nil
 }
 
@@ -289,6 +291,18 @@ func (d *Deployer) updatePrometheus(desiredObj, runtimeObj *unstructured.Unstruc
 	err = json.Unmarshal(desiredJSON, desiredPrometheus)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Failed to Unmarshal Prometheus %s", runtimeObj.GetName()))
+	}
+
+	// inherit resource version if not specified
+	log.Info("Desired Prometheus", "resourceVersion", desiredPrometheus.ResourceVersion)
+	log.Info("Runtime Prometheus", "resourceVersion", runtimePrometheus.ResourceVersion)
+	if desiredPrometheus.ResourceVersion != runtimePrometheus.ResourceVersion {
+		desiredPrometheus.ResourceVersion = runtimePrometheus.ResourceVersion
+	}
+
+	if desiredPrometheus.Spec.AdditionalAlertManagerConfigs != nil {
+		log.Info("AdditionalAlertManagerConfig", "key:", desiredPrometheus.Spec.AdditionalAlertManagerConfigs.Key,
+			"value: ", desiredPrometheus.Spec.AdditionalAlertManagerConfigs.Name)
 	}
 
 	if !apiequality.Semantic.DeepDerivative(desiredPrometheus.Spec, runtimePrometheus.Spec) {

@@ -126,6 +126,7 @@ func Render(
 			}
 			spec.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts] = hubInfo.ClusterName
 			if hubInfo.AlertmanagerEndpoint == "" {
+				log.Info("AlertManagerEndpoint is nil")
 				spec.AdditionalAlertManagerConfigs = nil
 			} else {
 				spec.AdditionalAlertManagerConfigs = &corev1.SecretKeySelector{
