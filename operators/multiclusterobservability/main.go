@@ -45,6 +45,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	ctrlruntimescheme "sigs.k8s.io/controller-runtime/pkg/scheme"
+	ctrlwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
 
 	observabilityv1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
@@ -249,6 +250,7 @@ func main() {
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b9d51391.open-cluster-management.io",
 		NewCache:               filteredcache.NewEnhancedFilteredCacheBuilder(gvkLabelsMap),
+		WebhookServer:          &ctrlwebhook.Server{TLSMinVersion: "1.2"},
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
