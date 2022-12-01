@@ -9,9 +9,13 @@ import (
 	"os"
 
 	"github.com/spf13/pflag"
+	"gopkg.in/yaml.v2"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
+	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/proxy"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
 	clusterclientset "open-cluster-management.io/api/client/cluster/clientset/versioned"
@@ -56,11 +60,32 @@ func main() {
 
 	clusterClient, err := clusterclientset.NewForConfig(config.GetConfigOrDie())
 	if err != nil {
-		klog.Fatalf("failed to new cluster clientset: %v", err)
+		klog.Fatalf("failed to initialize new cluster clientset: %v", err)
 	}
 
+	kubeClient, err := kubernetes.NewForConfig(config.GetConfigOrDie())
+	if err != nil {
+		klog.Fatalf("failed to initialize new kubernetes client: %v", err)
+	}
+
+	found, err := proxyconfig.GetManagedClusterLabelAllowListConfigmap(kubeClient,
+		proxyconfig.ManagedClusterLabelAllowListNamespace)
+
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			found = proxyconfig.CreateManagedClusterLabelAllowListCM(
+				proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(),
+			)
+		}
+	}
+
+	yaml.Unmarshal([]byte(found.Data[proxyconfig.GetManagedClusterLabelAllowListConfigMapKey()]),
+		proxyconfig.GetManagedClusterLabelList())
+
 	// watch all managed clusters
-	go util.WatchManagedCluster(clusterClient)
+	go util.WatchManagedCluster(clusterClient, kubeClient)
+	go util.WatchManagedClusterLabelAllowList(kubeClient)
+	go util.ScheduleManagedClusterLabelAllowlistResync(kubeClient)
 	go util.CleanExpiredProjectInfo(24 * 60 * 60)
 
 	http.HandleFunc("/", proxy.HandleRequestAndRedirect)

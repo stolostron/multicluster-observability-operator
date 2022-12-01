@@ -1,0 +1,27 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: observability-managed-cluster-label-allowlist
+  annotations:
+    skip-creation-if-exist: “true”
+data:
+  managed_cluster.yaml: |
+    ignore_labels:
+      - clusterID
+      - cluster.open-cluster-management.io/clusterset
+      - feature.open-cluster-management.io/addon-application-manager
+      - feature.open-cluster-management.io/addon-cert-policy-controller
+      - feature.open-cluster-management.io/addon-cluster-proxy
+      - feature.open-cluster-management.io/addon-config-policy-controller
+      - feature.open-cluster-management.io/addon-governance-policy-framework
+      - feature.open-cluster-management.io/addon-iam-policy-controller
+      - feature.open-cluster-management.io/addon-observability-controller
+      - feature.open-cluster-management.io/addon-search-collector
+      - feature.open-cluster-management.io/addon-work-manager
+      - installer.name
+      - installer.namespace
+      - local-cluster
+      - name
+    labels:
+      - cloud
+      - vendor

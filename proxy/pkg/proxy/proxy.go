@@ -19,6 +19,7 @@ import (
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
+	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/util"
 )
 
@@ -33,6 +34,41 @@ var (
 	serverHost   = ""
 )
 
+func shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) bool {
+	if strings.HasSuffix(req.URL.Path, "/api/v1/series") {
+		body, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			klog.Errorf("failed to read body: %v", err)
+		}
+
+		if strings.Contains(string(body), proxyconfig.GetRBACProxyLabelMetricName()) {
+			managedLabelList := proxyconfig.GetManagedClusterLabelList()
+
+			query := `{"status":"success","data":[`
+			for index, label := range managedLabelList.RegexLabelList {
+				query += `{"__name__":"` + proxyconfig.GetRBACProxyLabelMetricName() + `","label_name":"` + label + `"}`
+
+				if index != len(managedLabelList.RegexLabelList)-1 {
+					query += ","
+				}
+			}
+			query += `]}`
+
+			_, err = res.Write([]byte(query))
+			if err == nil {
+				return true
+			} else {
+				klog.Errorf("failed to write query: %v", err)
+			}
+		}
+
+		req.Body = ioutil.NopCloser(strings.NewReader(string(body)))
+		req.ContentLength = int64(len([]rune(string(body))))
+	}
+
+	return false
+}
+
 // HandleRequestAndRedirect is used to init proxy handler
 func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
 	if preCheckRequest(req) != nil {
@@ -40,6 +76,10 @@ func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			klog.Errorf("failed to write response: %v", err)
 		}
+		return
+	}
+
+	if ok := shouldModifyAPISeriesResponse(res, req); ok {
 		return
 	}
 

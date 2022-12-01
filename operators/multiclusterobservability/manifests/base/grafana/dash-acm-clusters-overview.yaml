@@ -250,7 +250,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "topk(50,  max(apiserver_request_duration_seconds:histogram_quantile_99{clusterType!=\"ocp3\"}) by (cluster))\n* on(cluster) group_left(api_up) count_values without() (\"api_up\", (sum(up{job=\"apiserver\",clusterType!=\"ocp3\"} == 1) by (cluster) / count(up{job=\"apiserver\",clusterType!=\"ocp3\"}) by (cluster)))",
+              "expr": "topk(50,  max(apiserver_request_duration_seconds:histogram_quantile_99{cluster=~\"$cluster\",clusterType!=\"ocp3\"}) by (cluster))\n* on(cluster) group_left(api_up) count_values without() (\"api_up\", (sum(up{cluster=~\"$cluster\",job=\"apiserver\",clusterType!=\"ocp3\"} == 1) by (cluster) / count(up{cluster=~\"$cluster\",job=\"apiserver\",clusterType!=\"ocp3\"}) by (cluster)))",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -259,7 +259,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "sum by (cluster)(sum:apiserver_request_total:1h{code=~\"5..\",clusterType!=\"ocp3\"})",
+              "expr": "sum by (cluster)(sum:apiserver_request_total:1h{cluster=~\"$cluster\",code=~\"5..\",clusterType!=\"ocp3\"})",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -451,7 +451,7 @@ data:
           "pluginVersion": "7.5.5",
           "targets": [
             {
-              "expr": "sum(changes(etcd_server_leader_changes_seen_total{job=\"etcd\"}[$__range])) by (cluster)\n* on(cluster) group_left(db_size) count_values without() (\"db_size\", max(etcd_debugging_mvcc_db_total_size_in_bytes{job=\"etcd\"}) by (cluster))\n* on(cluster) group_left(has_leader) count_values without() (\"has_leader\", max(etcd_server_has_leader{job=\"etcd\"}) by (cluster))",
+              "expr": "sum(changes(etcd_server_leader_changes_seen_total{cluster=~\"$cluster\",job=\"etcd\"}[$__range])) by (cluster)\n* on(cluster) group_left(db_size) count_values without() (\"db_size\", max(etcd_debugging_mvcc_db_total_size_in_bytes{cluster=~\"$cluster\",job=\"etcd\"}) by (cluster))\n* on(cluster) group_left(has_leader) count_values without() (\"has_leader\", max(etcd_server_has_leader{cluster=~\"$cluster\",job=\"etcd\"}) by (cluster))",
               "legendFormat": "",
               "interval": "",
               "exemplar": true,
@@ -690,7 +690,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "topk(50, cluster:cpu_requested:ratio - ignoring(usage) (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval])) by (cluster)))\n* on(cluster) group_left(cpu_requested) count_values without() (\"cpu_requested\", cluster:cpu_requested:ratio)\n* on(cluster) group_left(cpu_utilized) count_values without() (\"cpu_utilized\", (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval])) by (cluster)))",
+              "expr": "topk(50, cluster:cpu_requested:ratio - ignoring(usage) (1 - avg(rate(node_cpu_seconds_total{cluster=~\"$cluster\",mode=\"idle\"}[$__rate_interval])) by (cluster)))\n* on(cluster) group_left(cpu_requested) count_values without() (\"cpu_requested\", cluster:cpu_requested:ratio)\n* on(cluster) group_left(cpu_utilized) count_values without() (\"cpu_utilized\", (1 - avg(rate(node_cpu_seconds_total{cluster=~\"$cluster\",mode=\"idle\"}[$__rate_interval])) by (cluster)))",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -906,7 +906,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "topk(50, cluster:memory_requested:ratio - ignoring(usage) cluster:memory_utilized:ratio)\n* on(cluster) group_left(memory_requested) count_values without() (\"memory_requested\", cluster:memory_requested:ratio)\n* on(cluster) group_left(memory_utilized) count_values without() (\"memory_utilized\", cluster:memory_utilized:ratio)",
+              "expr": "topk(50, cluster:memory_requested:ratio{cluster=~\"$cluster\"} - ignoring(usage) cluster:memory_utilized:ratio{cluster=~\"$cluster\"})\n* on(cluster) group_left(memory_requested) count_values without() (\"memory_requested\", cluster:memory_requested:ratio)\n* on(cluster) group_left(memory_utilized) count_values without() (\"memory_utilized\", cluster:memory_utilized:ratio)",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -1123,7 +1123,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "topk(50, (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval])) by (cluster)))\n* on(cluster) group_left(machine_cpu_cores_sum) count_values without() (\"machine_cpu_cores_sum\", cluster:cpu_cores:sum)\n* on(cluster) group_left(node_allocatable_cpu_cores_sum) count_values without() (\"node_allocatable_cpu_cores_sum\", cluster:cpu_allocatable:sum)\n* on(cluster) group_left(cpu_requested) count_values without() (\"cpu_requested\", cluster:cpu_requested:ratio)",
+              "expr": "topk(50, (1 - avg(rate(node_cpu_seconds_total{cluster=~\"$cluster\",mode=\"idle\"}[$__rate_interval])) by (cluster)))\n* on(cluster) group_left(machine_cpu_cores_sum) count_values without() (\"machine_cpu_cores_sum\", cluster:cpu_cores:sum)\n* on(cluster) group_left(node_allocatable_cpu_cores_sum) count_values without() (\"node_allocatable_cpu_cores_sum\", cluster:cpu_allocatable:sum)\n* on(cluster) group_left(cpu_requested) count_values without() (\"cpu_requested\", cluster:cpu_requested:ratio)",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -1207,7 +1207,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "topk(5, (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\",clusterType!=\"ocp3\"}[$__rate_interval])) by (cluster)))",
+              "expr": "topk(5, (1 - avg(rate(node_cpu_seconds_total{cluster=~\"$cluster\",mode=\"idle\",clusterType!=\"ocp3\"}[$__rate_interval])) by (cluster)))",
               "hide": false,
               "interval": "",
               "intervalFactor": 1,
@@ -1407,7 +1407,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "topk(50, cluster:memory_utilized:ratio)\n* on(cluster) group_left(machine_memory_sum) count_values without() (\"machine_memory_sum\", cluster:machine_memory:sum)\n* on(cluster) group_left(machine_memory_requested) count_values without() (\"machine_memory_requested\", cluster:memory_requested:ratio)",
+              "expr": "topk(50, cluster:memory_utilized:ratio{cluster=~\"$cluster\"})\n* on(cluster) group_left(machine_memory_sum) count_values without() (\"machine_memory_sum\", cluster:machine_memory:sum)\n* on(cluster) group_left(machine_memory_requested) count_values without() (\"machine_memory_requested\", cluster:memory_requested:ratio)",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -1492,7 +1492,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "topk(5, (1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{resource=\"memory\"}) by (cluster)))",
+              "expr": "topk(5, (1 - sum(:node_memory_MemAvailable_bytes:sum) by (cluster) / sum(kube_node_status_allocatable{cluster=~\"$cluster\",resource=\"memory\"}) by (cluster)))",
               "format": "time_series",
               "instant": false,
               "interval": "",
@@ -1691,7 +1691,7 @@ data:
           "pluginVersion": "7.5.5",
           "targets": [
             {
-              "expr": "sum(instance:node_network_receive_bytes_excluding_lo:rate1m{job=\"node-exporter\",clusterType!=\"ocp3\"}) by (cluster)\n* on(cluster) group_left(node_transmit) count_values without() (\"node_transmit\", sum(instance:node_network_transmit_bytes_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster))\n* on(cluster) group_left(node_receive_drop) count_values without() (\"node_receive_drop\", sum(instance:node_network_receive_drop_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster))\n* on(cluster) group_left(node_transmit_drop) count_values without() (\"node_transmit_drop\", sum(instance:node_network_transmit_drop_excluding_lo:rate1m{job=\"node-exporter\"}) by (cluster))",
+              "expr": "sum(instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=~\"$cluster\",job=\"node-exporter\",clusterType!=\"ocp3\"}) by (cluster)\n* on(cluster) group_left(node_transmit) count_values without() (\"node_transmit\", sum(instance:node_network_transmit_bytes_excluding_lo:rate1m{cluster=~\"$cluster\",job=\"node-exporter\"}) by (cluster))\n* on(cluster) group_left(node_receive_drop) count_values without() (\"node_receive_drop\", sum(instance:node_network_receive_drop_excluding_lo:rate1m{cluster=~\"$cluster\",job=\"node-exporter\"}) by (cluster))\n* on(cluster) group_left(node_transmit_drop) count_values without() (\"node_transmit_drop\", sum(instance:node_network_transmit_drop_excluding_lo:rate1m{cluster=~\"$cluster\",job=\"node-exporter\"}) by (cluster))",
               "legendFormat": "",
               "interval": "",
               "exemplar": true,
@@ -1774,6 +1774,91 @@ data:
             "regex": "",
             "skipUrlSync": false,
             "type": "datasource"
+          },
+          {
+            "allValue": null,
+            "current": {
+              "selected": true,
+              "text": "cloud",
+              "value": "cloud"
+            },
+            "datasource": null,
+            "definition": "label_values(acm_label_names, label_name)",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": false,
+            "label": "Label",
+            "multi": false,
+            "name": "acm_label_names",
+            "options": [],
+            "query": {
+              "query": "label_values(acm_label_names, label_name)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 1,
+            "type": "query"
+          },
+          {
+            "allValue": null,
+            "current": {
+              "selected": false,
+              "text": "All",
+              "value": "$__all"
+            },
+            "datasource": null,
+            "definition": "label_values(acm_managed_cluster_labels, $acm_label_names)",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Value",
+            "multi": true,
+            "name": "value",
+            "options": [],
+            "query": {
+              "query": "label_values(acm_managed_cluster_labels, $acm_label_names)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          },
+          {
+            "allValue": null,
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "label_values(acm_managed_cluster_labels{$acm_label_names=~\"$value\"}, name)",
+            "description": null,
+            "error": null,
+            "hide": 2,
+            "includeAll": true,
+            "label": "Cluster",
+            "multi": true,
+            "name": "cluster",
+            "options": [],
+            "query": {
+              "query": "label_values(acm_managed_cluster_labels{$acm_label_names=~\"$value\"}, name)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
           }
         ]
       },
