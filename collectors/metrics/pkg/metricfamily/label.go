@@ -1,15 +1,11 @@
 package metricfamily
 
 import (
-	"fmt"
-	"os"
 	"sort"
 	"sync"
 
-	"github.com/go-kit/kit/log"
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/prompb"
-	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 )
 
 type LabelRetriever interface {
@@ -50,21 +46,17 @@ func (t *label) Transform(family *clientmodel.MetricFamily) (bool, error) {
 		}
 	}
 	for _, m := range family.Metric {
-		m.Label = AppendLabels(m.Label, t.labels)
+		m.Label = appendLabels(m.Label, t.labels)
 	}
 	return true, nil
 }
 
-func AppendLabels(
+func appendLabels(
 	existing []*clientmodel.LabelPair,
 	overrides map[string]*clientmodel.LabelPair) []*clientmodel.LabelPair {
 	var found []string
 
-	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
-
 	// remove blank names and values
-	logger.Log(l, logger.Info, "msg", fmt.Sprintf("Existing Labels Before Append: %v", existing))
-
 	var withoutEmpties []*clientmodel.LabelPair = make([]*clientmodel.LabelPair, 0)
 
 	for i, pair := range existing {

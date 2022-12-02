@@ -101,7 +101,7 @@ func (h *hypershiftTransformer) Transform(family *prom.MetricFamily) (bool, erro
 					CLUSTER_LABEL:               {Name: &CLUSTER_LABEL, Value: &clusterName},
 				}
 
-				labels = AppendLabels(labels, overrides)
+				labels = appendLabels(labels, overrides)
 
 				break
 			}
