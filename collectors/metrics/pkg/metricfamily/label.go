@@ -1,9 +1,15 @@
 package metricfamily
 
 import (
+	"fmt"
+	"os"
+	"sort"
 	"sync"
 
+	"github.com/go-kit/kit/log"
 	clientmodel "github.com/prometheus/client_model/go"
+	"github.com/prometheus/prometheus/prompb"
+	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 )
 
 type LabelRetriever interface {
@@ -44,24 +50,36 @@ func (t *label) Transform(family *clientmodel.MetricFamily) (bool, error) {
 		}
 	}
 	for _, m := range family.Metric {
-		m.Label = appendLabels(m.Label, t.labels)
+		m.Label = AppendLabels(m.Label, t.labels)
 	}
 	return true, nil
 }
 
-func appendLabels(
+func AppendLabels(
 	existing []*clientmodel.LabelPair,
 	overrides map[string]*clientmodel.LabelPair) []*clientmodel.LabelPair {
 	var found []string
 
-	// override matching existing labels
+	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+
+	// remove blank names and values
+	logger.Log(l, logger.Info, "msg", fmt.Sprintf("Existing Labels Before Append: %v", existing))
+
+	var withoutEmpties []*clientmodel.LabelPair = make([]*clientmodel.LabelPair, 0)
+
 	for i, pair := range existing {
 		name := pair.GetName()
 		value := pair.GetValue()
 		// remove any name == "" or value == nil
-		if name == "" || value == "" {
-			existing = append(existing[:i], existing[i+1:]...)
+		if name != "" && value != "" {
+			withoutEmpties = append(withoutEmpties, existing[i])
 		}
+	}
+	existing = withoutEmpties
+
+	// override matching existing labels
+	for i, pair := range existing {
+		name := pair.GetName()
 		if value, ok := overrides[name]; ok {
 			existing[i] = value
 			found = append(found, name)
@@ -76,6 +94,9 @@ func appendLabels(
 			existing = insertLexicographicallyByName(existing, v)
 		}
 	}
+	sort.SliceStable(existing, func(i, j int) bool {
+		return existing[i].GetName() < existing[j].GetName()
+	})
 	return existing
 }
 
@@ -99,4 +120,17 @@ func contains(values []string, s string) bool {
 		}
 	}
 	return false
+}
+
+func InsertLabelLexicographicallyByName(
+	existing []prompb.Label,
+	value prompb.Label) []prompb.Label {
+
+	existing = append(existing, value)
+	i := len(existing) - 1
+	for i > 0 && existing[i].GetName() < existing[i-1].GetName() {
+		existing[i], existing[i-1] = existing[i-1], existing[i]
+		i -= 1
+	}
+	return existing
 }
