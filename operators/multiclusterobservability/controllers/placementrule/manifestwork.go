@@ -5,6 +5,7 @@ package placementrule
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -152,6 +153,7 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 		err = c.Create(context.TODO(), work)
 		if err != nil {
 			log.Error(err, "Failed to create manifestwork", "namespace", namespace, "name", name)
+			logSizeErrorDetails(fmt.Sprint(err), work)
 			return err
 		}
 		return nil
@@ -184,6 +186,7 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 		err = c.Update(context.TODO(), found)
 		if err != nil {
 			log.Error(err, "Failed to update monitoring-endpoint-monitoring-work work")
+			logSizeErrorDetails(fmt.Sprint(err), work)
 			return err
 		}
 		return nil
@@ -613,4 +616,16 @@ func removeObservabilityAddon(client client.Client, namespace string) error {
 		}
 	}
 	return nil
+}
+
+func logSizeErrorDetails(str string, work *workv1.ManifestWork) {
+	if strings.Contains(str, "the size of manifests") {
+		var keyVal []interface{}
+		for _, manifest := range work.Spec.Workload.Manifests {
+			raw, _ := json.Marshal(manifest.RawExtension.Object)
+			keyVal = append(keyVal, "kind", manifest.RawExtension.Object.GetObjectKind().
+				GroupVersionKind().Kind, "size", len(raw))
+		}
+		log.Info("size of manifest", keyVal...)
+	}
 }
