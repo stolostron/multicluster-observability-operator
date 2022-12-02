@@ -417,6 +417,7 @@ func (w *Worker) forward(ctx context.Context) error {
 	}
 
 	req := &http.Request{Method: "POST", URL: w.to}
+	// TODO: maybe do stuff here
 	err = w.toClient.RemoteWrite(ctx, req, families, w.interval)
 	if err != nil {
 		statusErr := w.status.UpdateStatus("Degraded", "Degraded", "Failed to send metrics")
