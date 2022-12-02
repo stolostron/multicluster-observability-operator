@@ -436,3 +436,19 @@ func TestManifestWork(t *testing.T) {
 	}
 	os.Remove(path.Join(wd, "../../tests"))
 }
+
+func TestLogSizeErrorDetails(t *testing.T) {
+	logSizeErrorDetails("the size of manifests is 600000", &workv1.ManifestWork{
+		Spec: workv1.ManifestWorkSpec{
+			Workload: workv1.ManifestsTemplate{
+				Manifests: []workv1.Manifest{
+					{
+						RawExtension: runtime.RawExtension{
+							Object: NewMetricsAllowListCM(),
+						},
+					},
+				},
+			},
+		},
+	})
+}
