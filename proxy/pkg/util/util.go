@@ -549,26 +549,21 @@ func resyncManagedClusterLabelAllowList(kubeClient kubernetes.Interface) error {
 		klog.Infof("resyncing required for managedcluster label allowlist: %v",
 			proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
 
-		if ok := reflect.DeepEqual(syncLabelList.IgnoreList, managedLabelList.IgnoreList); !ok {
-			managedLabelList.IgnoreList = syncLabelList.IgnoreList
-			ignoreManagedClusterLabelNames(managedLabelList)
-		}
+		managedLabelList.IgnoreList = syncLabelList.IgnoreList
+		ignoreManagedClusterLabelNames(managedLabelList)
 
-		if ok := reflect.DeepEqual(syncLabelList.LabelList, managedLabelList.LabelList); !ok {
-			*syncLabelList = *managedLabelList
+		*syncLabelList = *managedLabelList
+		_ = marshalLabelListToConfigMap(found,
+			proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), syncLabelList)
 
-			_ = marshalLabelListToConfigMap(found,
-				proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), syncLabelList)
-
-			_, err := kubeClient.CoreV1().ConfigMaps(proxyconfig.ManagedClusterLabelAllowListNamespace).Update(
-				context.TODO(),
-				found,
-				metav1.UpdateOptions{},
-			)
-			if err != nil {
-				klog.Errorf("failed to update managedcluster label allowlist configmap: %v", err)
-				return err
-			}
+		_, err := kubeClient.CoreV1().ConfigMaps(proxyconfig.ManagedClusterLabelAllowListNamespace).Update(
+			context.TODO(),
+			found,
+			metav1.UpdateOptions{},
+		)
+		if err != nil {
+			klog.Errorf("failed to update managedcluster label allowlist configmap: %v", err)
+			return err
 		}
 	}
 
