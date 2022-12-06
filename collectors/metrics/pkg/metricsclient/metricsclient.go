@@ -32,6 +32,7 @@ import (
 	"github.com/prometheus/prometheus/promql"
 
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
+	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/metricfamily"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/reader"
 )
 
@@ -427,10 +428,7 @@ func convertToTimeseries(p *PartitionedMetrics, now time.Time) ([]prompb.TimeSer
 		for _, m := range f.Metric {
 			var ts prompb.TimeSeries
 
-			labelpairs := []prompb.Label{{
-				Name:  nameLabelName,
-				Value: *f.Name,
-			}}
+			labelpairs := []prompb.Label{}
 
 			for _, l := range m.Label {
 				labelpairs = append(labelpairs, prompb.Label{
@@ -438,6 +436,11 @@ func convertToTimeseries(p *PartitionedMetrics, now time.Time) ([]prompb.TimeSer
 					Value: *l.Value,
 				})
 			}
+
+			labelpairs = metricfamily.InsertLabelLexicographicallyByName(labelpairs, prompb.Label{
+				Name:  nameLabelName,
+				Value: *f.Name,
+			})
 
 			s := prompb.Sample{
 				Timestamp: *m.TimestampMs,
