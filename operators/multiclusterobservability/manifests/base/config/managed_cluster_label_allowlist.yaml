@@ -3,7 +3,7 @@ apiVersion: v1
 metadata:
   name: observability-managed-cluster-label-allowlist
   annotations:
-    skip-creation-if-exist: “true”
+    skip-creation-if-exist: "true"
 data:
   managed_cluster.yaml: |
     ignore_labels:
