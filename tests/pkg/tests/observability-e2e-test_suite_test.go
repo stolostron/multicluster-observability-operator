@@ -77,9 +77,9 @@ func StringWithCharset(length int, charset string) string {
 	return string(b)
 }
 
-func randString(length int) string {
-	return StringWithCharset(length, charset)
-}
+// func randString(length int) string {
+// 	return StringWithCharset(length, charset)
+// }
 
 func init() {
 	klog.SetOutput(GinkgoWriter)

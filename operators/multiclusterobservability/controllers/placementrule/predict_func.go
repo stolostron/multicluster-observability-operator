@@ -38,10 +38,7 @@ func getClusterMgmtAddonPredFunc() predicate.Funcs {
 					newDefault = config.DefaultConfig
 				}
 			}
-			if !reflect.DeepEqual(oldDefault, newDefault) {
-				return true
-			}
-			return false
+			return !reflect.DeepEqual(oldDefault, newDefault)
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return false
@@ -72,10 +69,7 @@ func getMgClusterAddonPredFunc() predicate.Funcs {
 					newConfig = config.ConfigReferent
 				}
 			}
-			if !reflect.DeepEqual(oldConfig, newConfig) {
-				return true
-			}
-			return false
+			return !reflect.DeepEqual(oldConfig, newConfig)
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return false

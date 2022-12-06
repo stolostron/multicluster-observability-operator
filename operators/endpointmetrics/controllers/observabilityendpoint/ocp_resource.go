@@ -12,7 +12,6 @@ import (
 	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -136,7 +135,7 @@ func createCAConfigmap(ctx context.Context, client client.Client) error {
 		Namespace: namespace}, cm)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			cm := &v1.ConfigMap{
+			cm := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      caConfigmapName,
 					Namespace: namespace,
@@ -276,30 +275,30 @@ func getEtcdServiceMonitor(namespace, id string) *promv1.ServiceMonitor {
 					Scheme:   "https",
 					Interval: "15s",
 					Port:     "metrics",
-					BearerTokenSecret: v1.SecretKeySelector{
+					BearerTokenSecret: corev1.SecretKeySelector{
 						Key: "",
 					},
 					TLSConfig: &promv1.TLSConfig{
 						SafeTLSConfig: promv1.SafeTLSConfig{
 							ServerName: "etcd-client",
 							CA: promv1.SecretOrConfigMap{
-								Secret: &v1.SecretKeySelector{
-									LocalObjectReference: v1.LocalObjectReference{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
 										Name: etcdSecName,
 									},
 									Key: "etcd-client-ca.crt",
 								},
 							},
 							Cert: promv1.SecretOrConfigMap{
-								Secret: &v1.SecretKeySelector{
-									LocalObjectReference: v1.LocalObjectReference{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
 										Name: etcdSecName,
 									},
 									Key: "etcd-client.crt",
 								},
 							},
-							KeySecret: &v1.SecretKeySelector{
-								LocalObjectReference: v1.LocalObjectReference{
+							KeySecret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
 									Name: etcdSecName,
 								},
 								Key: "etcd-client.key",
@@ -362,30 +361,30 @@ func getKubeServiceMonitor(namespace, id string) *promv1.ServiceMonitor {
 					TargetPort: &intstr.IntOrString{
 						StrVal: "6443",
 					},
-					BearerTokenSecret: v1.SecretKeySelector{
+					BearerTokenSecret: corev1.SecretKeySelector{
 						Key: "",
 					},
 					TLSConfig: &promv1.TLSConfig{
 						SafeTLSConfig: promv1.SafeTLSConfig{
 							ServerName: kubeComponent,
 							CA: promv1.SecretOrConfigMap{
-								Secret: &v1.SecretKeySelector{
-									LocalObjectReference: v1.LocalObjectReference{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
 										Name: kubeApiSecName,
 									},
 									Key: "ca.crt",
 								},
 							},
 							Cert: promv1.SecretOrConfigMap{
-								Secret: &v1.SecretKeySelector{
-									LocalObjectReference: v1.LocalObjectReference{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
 										Name: kubeApiSecName,
 									},
 									Key: "tls.crt",
 								},
 							},
-							KeySecret: &v1.SecretKeySelector{
-								LocalObjectReference: v1.LocalObjectReference{
+							KeySecret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
 									Name: kubeApiSecName,
 								},
 								Key: "tls.key",
@@ -470,6 +469,6 @@ func deleteServiceMonitor(ctx context.Context, c client.Client, name, namespace 
 		log.Error(err, "Error deleting ServiceMonitor", namespace, "name", name)
 		return err
 	}
-	log.Info("ServiceMonitor deleted", namespace, "name", name)
+	log.Info("ServiceMonitor deleted", "namespace", namespace, "name", name)
 	return nil
 }
