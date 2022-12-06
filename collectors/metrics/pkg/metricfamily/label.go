@@ -1,7 +1,6 @@
 package metricfamily
 
 import (
-	"sort"
 	"sync"
 
 	clientmodel "github.com/prometheus/client_model/go"
@@ -64,7 +63,7 @@ func appendLabels(
 		value := pair.GetValue()
 		// remove any name == "" or value == nil
 		if name != "" && value != "" {
-			withoutEmpties = append(withoutEmpties, existing[i])
+			withoutEmpties = insertLexicographicallyByName(withoutEmpties, existing[i])
 		}
 	}
 	existing = withoutEmpties
@@ -86,9 +85,7 @@ func appendLabels(
 			existing = insertLexicographicallyByName(existing, v)
 		}
 	}
-	sort.SliceStable(existing, func(i, j int) bool {
-		return existing[i].GetName() < existing[j].GetName()
-	})
+
 	return existing
 }
 
