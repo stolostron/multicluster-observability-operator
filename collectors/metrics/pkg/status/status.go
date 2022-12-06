@@ -148,7 +148,10 @@ func mergeCondtion(isUwl bool, t, r, m string, condition oav1beta1.StatusConditi
 	} else {
 		messages[0] = m
 	}
-	message := strings.Join(messages, " ; ")
+	message := messages[0]
+	if messages[1] != "" {
+		message = strings.Join(messages, " ; ")
+	}
 	conditionType := "Available"
 	reason := "Available"
 	if strings.Contains(message, "Failed") {
