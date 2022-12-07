@@ -351,20 +351,17 @@ func createAllRelatedRes(
 				request.Namespace,
 			)
 			if openshiftVersion == "3" {
-				works = injectIntoWork(works, ocp311metricsAllowlistConfigMap)
 				err = createManagedClusterRes(c, restMapper, mco,
 					managedCluster, managedCluster,
-					works, crdv1beta1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
+					works, ocp311metricsAllowlistConfigMap, crdv1beta1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
 			} else if openshiftVersion == nonOCP {
-				works = injectIntoWork(works, metricsAllowlistConfigMap)
 				err = createManagedClusterRes(c, restMapper, mco,
 					managedCluster, managedCluster,
-					works, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, true)
+					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, true)
 			} else {
-				works = injectIntoWork(works, metricsAllowlistConfigMap)
 				err = createManagedClusterRes(c, restMapper, mco,
 					managedCluster, managedCluster,
-					works, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
+					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
 			}
 			if err != nil {
 				failedCreateManagedClusterRes = true
@@ -428,7 +425,7 @@ func deleteGlobalResource(c client.Client) error {
 
 func createManagedClusterRes(c client.Client, restMapper meta.RESTMapper,
 	mco *mcov1beta2.MultiClusterObservability, name string, namespace string,
-	works []workv1.Manifest, crdWork *workv1.Manifest,
+	works []workv1.Manifest, allowlist *corev1.ConfigMap, crdWork *workv1.Manifest,
 	dep *appsv1.Deployment, hubInfo *corev1.Secret, installProm bool) error {
 	err := createObsAddon(c, namespace)
 	if err != nil {
@@ -470,7 +467,8 @@ func createManagedClusterRes(c client.Client, restMapper meta.RESTMapper,
 		addonConfig = defaultAddonDeploymentConfig
 	}
 
-	err = createManifestWorks(c, restMapper, namespace, name, mco, works, crdWork, dep, hubInfo, addonConfig, installProm)
+	err = createManifestWorks(c, restMapper, namespace, name, mco, works, allowlist, crdWork, dep,
+		hubInfo, addonConfig, installProm)
 	if err != nil {
 		log.Error(err, "Failed to create manifestwork")
 		return err
