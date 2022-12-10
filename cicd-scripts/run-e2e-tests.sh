@@ -93,6 +93,7 @@ ${GINKGO_CMD} -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -op
 cat ${ROOTDIR}/tests/pkg/tests/results.xml | grep failures=\"0\" | grep errors=\"0\"
 if [ $? -ne 0 ]; then
     echo "Cannot pass all test cases."
+    sleep 3600
     cat ${ROOTDIR}/tests/pkg/tests/results.xml
     exit 1
 fi
