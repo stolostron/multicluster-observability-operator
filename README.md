@@ -1,5 +1,6 @@
 # Observability Overview
 
+
 [![Build](https://img.shields.io/badge/build-Prow-informational)](https://prow.ci.openshift.org/?repo=stolostron%2F${multicluster-observability-operator})
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=stolostron_multicluster-observability-operator&metric=alert_status&token=3452dcca82a98e4aa297c1b31fd21939288db4c0)](https://sonarcloud.io/dashboard?id=stolostron_multicluster-observability-operator)
 
