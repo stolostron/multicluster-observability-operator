@@ -202,6 +202,7 @@ func FetchBearerToken(opt TestOptions) (string, error) {
 			}
 		}
 	}
+	time.Sleep(time.Hour * 1)
 	return "", fmt.Errorf("failed to get bearer token")
 }
 
