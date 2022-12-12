@@ -26,9 +26,114 @@ const (
 	hubAmRouterCASecretName        = "hub-alertmanager-router-ca"
 	hubAmRouterCASecretKey         = "service-ca.crt"
 	clusterMonitoringConfigName    = "cluster-monitoring-config"
+	clusterMonitoringRevertedName  = "cluster-monitoring-reverted"
 	clusterMonitoringConfigDataKey = "config.yaml"
 	clusterLabelKeyForAlerts       = "cluster"
 )
+
+var (
+	clusterMonitoringConfigReverted = false
+	persistedRevertStateRead        = false
+)
+
+// initializes clusterMonitoringConfigReverted based on the presence of clusterMonitoringRevertedName
+// configmap in openshift-monitoring namespace
+func initPersistedRevertState(ctx context.Context, client client.Client) error {
+	if !persistedRevertStateRead {
+		// check if reverted configmap is present
+		found := &corev1.ConfigMap{}
+		err := client.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName,
+			Namespace: namespace}, found)
+		if err != nil {
+			// treat this as non-fatal error
+			if errors.IsNotFound(err) {
+				// configmap does not exist. Not reverted before
+				clusterMonitoringConfigReverted = false
+				persistedRevertStateRead = true
+			} else {
+				// treat the condition as transient error for retry
+				log.Error(err, "failed to lookup cluster-monitoring-reverted configmap")
+				return err
+			}
+		} else {
+			// marker configmap present
+			persistedRevertStateRead = true
+			clusterMonitoringConfigReverted = true
+		}
+	}
+
+	return nil
+}
+
+func isRevertedAlready(ctx context.Context, client client.Client) (bool, error) {
+	log.Info("in isRevertedAlready")
+	err := initPersistedRevertState(ctx, client)
+	if err != nil {
+		log.Info("isRevertedAlready: error from initPersistedRevertState", "error:", err.Error())
+		return clusterMonitoringConfigReverted, err
+	} else {
+		log.Info("isRevertedAlready", "clusterMonitoringConfigReverted:", clusterMonitoringConfigReverted)
+		return clusterMonitoringConfigReverted, nil
+	}
+}
+
+func setConfigReverted(ctx context.Context, client client.Client) error {
+	err := initPersistedRevertState(ctx, client)
+	if err != nil {
+		return err
+	}
+
+	// if not created already, set persistent state by creating configmap
+	c := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterMonitoringRevertedName,
+			Namespace: namespace,
+		},
+	}
+	err = client.Create(ctx, c)
+	log.Info("cluster-monitoring-reverted comfigmap created")
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			log.Info("persistent state already set. configmap cluster-monitoring-reverted already exists")
+		} else {
+			log.Error(err, "failed to set persistent state. could not cluster-monitoring-reverted configmap")
+			return err
+		}
+	}
+	clusterMonitoringConfigReverted = true
+	return nil
+}
+
+func unsetConfigReverted(ctx context.Context, client client.Client) error {
+	err := initPersistedRevertState(ctx, client)
+	if err != nil {
+		return err
+	}
+
+	// delete any persistent state if present
+	c := &corev1.ConfigMap{}
+	err = client.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName,
+		Namespace: namespace}, c)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("persistent state already set. cluster-monitoring-reverted configmap does not exist")
+		} else {
+			log.Error(err, "failed to set persistent state. error looking up cluster-monitoring-reverted configmap")
+			return nil
+		}
+	} else {
+		// delete configmap
+		err = client.Delete(ctx, c)
+		log.Info("cluster-monitoring-reverted configmap deleted")
+		if err != nil {
+			log.Error(err, "failed to delete persistent state. error deleting cluster-monitoring-reverted configmap")
+			return nil
+		}
+	}
+
+	clusterMonitoringConfigReverted = false
+	return nil
+}
 
 // createHubAmRouterCASecret creates the secret that contains CA of the Hub's Alertmanager Route
 func createHubAmRouterCASecret(
@@ -229,6 +334,27 @@ func createOrUpdateClusterMonitoringConfig(
 		targetNamespace = namespace
 	}
 
+	// create or update the cluster-monitoring-config configmap and relevant resources
+	if hubInfo.AlertmanagerEndpoint == "" {
+		log.Info("request to disable alert forwarding")
+		// only revert (once) if not done already and remember state
+		revertedAlready, err := isRevertedAlready(ctx, client)
+		if err != nil {
+			return err
+		}
+		if !revertedAlready {
+			if err = revertClusterMonitoringConfig(ctx, client, installProm); err != nil {
+				return err
+			}
+			if err = setConfigReverted(ctx, client); err != nil {
+				return err
+			}
+		} else {
+			log.Info("configuration reverted, nothing to do")
+		}
+		return nil
+	}
+
 	// create the hub-alertmanager-router-ca secret if it doesn't exist or update it if needed
 	if err := createHubAmRouterCASecret(ctx, hubInfo, client, targetNamespace); err != nil {
 		log.Error(err, "failed to create or update the hub-alertmanager-router-ca secret")
@@ -243,11 +369,11 @@ func createOrUpdateClusterMonitoringConfig(
 
 	if installProm {
 		// no need to create configmap cluster-monitoring-config for *KS
-		return nil
+		return unset(ctx, client)
 	}
 
 	// init the prometheus k8s config
-	newExternalLabels := map[string]string{clusterLabelKeyForAlerts: clusterID}
+	newExternalLabels := map[string]string{operatorconfig.ClusterLabelKeyForAlerts: clusterID}
 	newAlertmanagerConfigs := []cmomanifests.AdditionalAlertmanagerConfig{newAdditionalAlertmanagerConfig(hubInfo)}
 	newPmK8sConfig := &cmomanifests.PrometheusK8sConfig{
 		// add cluster label for alerts from managed cluster
@@ -294,7 +420,7 @@ func createOrUpdateClusterMonitoringConfig(
 				return err
 			}
 			log.Info("configmap created", "name", clusterMonitoringConfigName)
-			return nil
+			return unset(ctx, client)
 		} else {
 			log.Error(err, "failed to check configmap", "name", clusterMonitoringConfigName)
 			return err
@@ -319,7 +445,7 @@ func createOrUpdateClusterMonitoringConfig(
 			return err
 		}
 		log.Info("configmap updated", "name", clusterMonitoringConfigName)
-		return nil
+		return unset(ctx, client)
 	}
 
 	log.Info("configmap already exists and key config.yaml exists, check if the value needs update",
@@ -345,7 +471,7 @@ func createOrUpdateClusterMonitoringConfig(
 		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels == nil {
 			foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels = newExternalLabels
 		} else {
-			foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels[clusterLabelKeyForAlerts] = clusterID
+			foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts] = clusterID
 		}
 
 		// check if alertmanagerConfigs exists
@@ -390,12 +516,23 @@ func createOrUpdateClusterMonitoringConfig(
 		return err
 	}
 	log.Info("configmap updated", "name", clusterMonitoringConfigName)
-	return nil
+	return unset(ctx, client)
+}
+
+// unset config reverted flag after successfully updating cluster-monitoring-config
+func unset(ctx context.Context, client client.Client) error {
+	// if reverted before, reset so we can revert again
+	revertedAlready, err := isRevertedAlready(ctx, client)
+	if err == nil && revertedAlready {
+		err = unsetConfigReverted(ctx, client)
+	}
+	return err
 }
 
 // revertClusterMonitoringConfig reverts the configmap cluster-monitoring-config and relevant resources
 // (observability-alertmanager-accessor and hub-alertmanager-router-ca) for the openshift cluster monitoring stack
 func revertClusterMonitoringConfig(ctx context.Context, client client.Client, installProm bool) error {
+	log.Info("revertClusterMonitoringConfig called")
 	targetNamespace := promNamespace
 	if installProm {
 		// for *KS, the hub CA and alertmanager access token are not created in namespace:
@@ -473,8 +610,8 @@ func revertClusterMonitoringConfig(ctx context.Context, client client.Client, in
 	} else {
 		// check if externalLabels exists
 		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels != nil {
-			if _, ok := foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels[clusterLabelKeyForAlerts]; ok {
-				delete(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels, clusterLabelKeyForAlerts)
+			if _, ok := foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts]; ok {
+				delete(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterLabelKeyForAlerts)
 			}
 			if len(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels) == 0 {
 				foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels = nil

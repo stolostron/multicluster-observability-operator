@@ -587,36 +587,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}
 
-	mcoPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			// generate the image pull secret
-			pullSecret, _ = generatePullSecret(
-				c,
-				config.GetImagePullSecret(e.Object.(*mcov1beta2.MultiClusterObservability).Spec),
-			)
-			return true
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			// only reconcile when ObservabilityAddonSpec updated
-			if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() &&
-				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.ObservabilityAddonSpec,
-					e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.ObservabilityAddonSpec) {
-				if e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.ImagePullSecret != e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.ImagePullSecret {
-					// regenerate the image pull secret
-					pullSecret, _ = generatePullSecret(
-						c,
-						config.GetImagePullSecret(e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec),
-					)
-				}
-				return true
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return true
-		},
-	}
-
 	allowlistPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if (e.Object.GetName() == config.AllowlistCustomConfigMapName ||
@@ -861,7 +831,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					Name: config.MCOUpdatedRequestName,
 				}},
 			}
-		}), builder.WithPredicates(mcoPred)).
+		}), builder.WithPredicates(getMCOPred(c, ingressCtlCrdExists))).
 
 		// secondary watch for custom allowlist configmap
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(allowlistPred)).

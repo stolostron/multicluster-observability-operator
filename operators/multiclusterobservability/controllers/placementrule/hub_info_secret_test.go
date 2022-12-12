@@ -25,6 +25,7 @@ const (
 	routerBYOCA      = "test-ca"
 	routerBYOCert    = "test-cert"
 	routerBYOCertKey = "test-key"
+	routerDefaultCA  = "test-ca"
 )
 
 func newTestObsApiRoute() *routev1.Route {
@@ -100,6 +101,18 @@ func newTestAmRouteBYOCert() *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.AlertmanagerRouteBYOCERTName,
+			Namespace: mcoNamespace,
+		},
+		Data: configYamlMap,
+	}
+}
+
+func newTestAmDefaultCA() *corev1.ConfigMap {
+	configYamlMap := map[string]string{"service-ca.crt": routerDefaultCA}
+
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.AlertmanagersDefaultCaBundleName,
 			Namespace: mcoNamespace,
 		},
 		Data: configYamlMap,

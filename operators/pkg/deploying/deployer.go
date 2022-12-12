@@ -84,6 +84,8 @@ func (d *Deployer) Deploy(obj *unstructured.Unstructured) error {
 	deployerFn, ok := d.deployerFns[found.GetKind()]
 	if ok {
 		return deployerFn(obj, found)
+	} else {
+		log.Info("deployerFn not found", "kind:", found.GetKind())
 	}
 	return nil
 }
@@ -292,9 +294,39 @@ func (d *Deployer) updatePrometheus(desiredObj, runtimeObj *unstructured.Unstruc
 		log.Error(err, fmt.Sprintf("Failed to Unmarshal Prometheus %s", runtimeObj.GetName()))
 	}
 
+	// On GKE clusters, it was observed that the runtime object was not in sync with the object attributes
+	// seen via kube client. There may be an issue with caching inside the operator that may need to be
+	// investigated. For now, if the Prometheus attributes are not picked up by operator, by performing the
+	// the two operations, the object will be correctly regenetated.
+	// 1. delete Prometheus object
+	// 2. delete endpoint operator pod
+
+	// inherit resource version if not specified
+	log.Info("Desired Prometheus", "resourceVersion", desiredPrometheus.ResourceVersion)
+	log.Info("Runtime Prometheus", "resourceVersion", runtimePrometheus.ResourceVersion)
+	if desiredPrometheus.ResourceVersion != runtimePrometheus.ResourceVersion {
+		desiredPrometheus.ResourceVersion = runtimePrometheus.ResourceVersion
+	}
+
+	if runtimePrometheus.Spec.AdditionalAlertManagerConfigs != nil {
+		log.Info("Runtime Prometheus: AdditionalAlertManagerConfig", "object",
+			fmt.Sprintf("%v", runtimePrometheus.Spec.AdditionalAlertManagerConfigs))
+	} else {
+		log.Info("Runtime Prometheus: AdditionalAlertManagerConfig is null")
+	}
+
+	if desiredPrometheus.Spec.AdditionalAlertManagerConfigs != nil {
+		log.Info("Desired Prometheus: AdditionalAlertManagerConfig", "object:",
+			fmt.Sprintf("%v", desiredPrometheus.Spec.AdditionalAlertManagerConfigs))
+	} else {
+		log.Info("Desired Prometheus: AdditionalAlertManagerConfig is null")
+	}
+
 	if !apiequality.Semantic.DeepDerivative(desiredPrometheus.Spec, runtimePrometheus.Spec) {
 		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
 		return d.client.Update(context.TODO(), desiredPrometheus)
+	} else {
+		log.Info("Runtime Prometheus and Desired Prometheus are semantically equal!")
 	}
 	return nil
 }

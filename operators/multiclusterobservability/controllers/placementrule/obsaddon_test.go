@@ -45,9 +45,7 @@ func TestObsAddonCR(t *testing.T) {
 		t.Fatalf("Failed to get observabilityaddon: (%v)", err)
 	}
 	// inject the testing observabilityAddon
-	if testObservabilityAddon != nil {
-		testManifests = injectIntoWork(testManifests, testObservabilityAddon)
-	}
+	testManifests = injectIntoWork(testManifests, testObservabilityAddon)
 	testWork.Spec.Workload.Manifests = testManifests
 
 	err = c.Create(context.TODO(), testWork)

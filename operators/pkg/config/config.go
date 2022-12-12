@@ -10,6 +10,8 @@ const (
 	ObservatoriumAPIRemoteWritePath = "/api/metrics/v1/default/api/v1/receive"
 	AnnotationSkipCreation          = "skip-creation-if-exist"
 
+	ClusterLabelKeyForAlerts = "managed_cluster"
+
 	CollectorImage               = "COLLECTOR_IMAGE"
 	InstallPrometheus            = "INSTALL_PROM"
 	PullSecret                   = "PULL_SECRET"

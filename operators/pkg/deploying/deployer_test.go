@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -421,12 +422,59 @@ func TestDeploy(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "create and update the prometheus",
+			createObj: &prometheusv1.Prometheus{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "monitoring.coreos.com/v1",
+					Kind:       "Prometheus",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-prometheus",
+					Namespace: "ns1",
+				},
+				Spec: prometheusv1.PrometheusSpec{
+					AdditionalAlertManagerConfigs: &corev1.SecretKeySelector{
+						Key: "old",
+					},
+				},
+			},
+			updateObj: &prometheusv1.Prometheus{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "monitoring.coreos.com/v1",
+					Kind:       "Prometheus",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "test-prometheus",
+					Namespace:       "ns1",
+					ResourceVersion: "1",
+				},
+				Spec: prometheusv1.PrometheusSpec{
+					AdditionalAlertManagerConfigs: &corev1.SecretKeySelector{
+						Key: "new",
+					},
+				},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{
+					Name:      "test-prometheus",
+					Namespace: "ns1",
+				}
+				obj := &prometheusv1.Prometheus{}
+				client.Get(context.Background(), namespacedName, obj)
+
+				if obj.Spec.AdditionalAlertManagerConfigs.Key != "new" {
+					t.Fatalf("fail to update the prometheus")
+				}
+			},
+		},
 	}
 
 	scheme := runtime.NewScheme()
 	corev1.AddToScheme(scheme)
 	appsv1.AddToScheme(scheme)
 	rbacv1.AddToScheme(scheme)
+	prometheusv1.AddToScheme(scheme)
 	client := fake.NewFakeClientWithScheme(scheme, []runtime.Object{}...)
 
 	deployer := NewDeployer(client)

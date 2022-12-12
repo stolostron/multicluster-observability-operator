@@ -13,6 +13,7 @@ import (
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -27,7 +28,10 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+
+	operatorutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -273,6 +277,139 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("Failed to create the testing image manifest configmap: (%v)", err)
 	}
 
+	// Cannot trigger predicate logic, explicitly enable alert forwarding
+	config.SetAlertingDisabled(false)
+	hubInfoSecret = nil
+
+	_, err = r.Reconcile(context.TODO(), req)
+	if err != nil {
+		t.Fatalf("reconcile: (%v)", err)
+	}
+
+	// test mco-disable-alerting annotation
+	// 1. Verify that alertmanager-endpoint in secret hub-info-secret in the ManifestWork is not null
+	t.Logf("check alertmanager endpoint is not null")
+	foundManifestwork := &workv1.ManifestWork{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + workNameSuffix, Namespace: namespace}, foundManifestwork)
+	if err != nil {
+		t.Fatalf("Failed to get manifestwork %s: (%v)", namespace, err)
+	}
+
+	valid := false
+	for _, manifest := range foundManifestwork.Spec.Workload.Manifests {
+		obj, _ := util.GetObject(manifest.RawExtension)
+		if obj.GetObjectKind().GroupVersionKind().Kind == "Secret" {
+			s := obj.(*corev1.Secret)
+			if s.GetName() == operatorconfig.HubInfoSecretName {
+				hubInfo := operatorconfig.HubInfo{}
+				yaml.Unmarshal(s.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
+				if err != nil {
+					t.Fatalf("Failed to parse %s: (%v)", operatorconfig.HubInfoSecretKey, err)
+				}
+				if hubInfo.AlertmanagerEndpoint == "" {
+					t.Fatalf("Null alert manager endpoint found in %s: ", operatorconfig.HubInfoSecretKey)
+				}
+				t.Logf("AlertmanagerEndpoint %s not null", hubInfo.AlertmanagerEndpoint)
+				valid = true
+			}
+		}
+	}
+	if !valid {
+		t.Fatalf("Secret %s not found in ManifestWork", operatorconfig.HubInfoSecretName)
+	}
+
+	// 2. Set mco-disable-alerting annotation in mco
+	// Verify that alertmanager-endpoint in secret hub-info-secret in the ManifestWork is null
+	t.Logf("check alertmanager endpoint is null after disabling alerts through annotation")
+	mco.Annotations = map[string]string{config.AnnotationDisableMCOAlerting: "true"}
+	c.Update(context.TODO(), mco)
+	if err != nil {
+		t.Fatalf("Failed to update mco after adding annotation %s: (%v)", config.AnnotationDisableMCOAlerting, err)
+	}
+	// Cannot trigger predicate logic, explicitly disabling alert forwarding
+	config.SetAlertingDisabled(true)
+	hubInfoSecret = nil
+
+	_, err = r.Reconcile(context.TODO(), req)
+	if err != nil {
+		t.Fatalf("reconcile error after disabling alert forwarding through annotation: (%v)", err)
+	}
+
+	foundManifestwork = &workv1.ManifestWork{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + workNameSuffix, Namespace: namespace}, foundManifestwork)
+	if err != nil {
+		t.Fatalf("Failed to get manifestwork %s: (%v)", namespace, err)
+	}
+
+	valid = false
+	for _, manifest := range foundManifestwork.Spec.Workload.Manifests {
+		obj, _ := util.GetObject(manifest.RawExtension)
+		if obj.GetObjectKind().GroupVersionKind().Kind == "Secret" {
+			s := obj.(*corev1.Secret)
+			if s.GetName() == operatorconfig.HubInfoSecretName {
+				hubInfo := operatorconfig.HubInfo{}
+				yaml.Unmarshal(s.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
+				if err != nil {
+					t.Fatalf("Failed to parse %s: (%v)", operatorconfig.HubInfoSecretKey, err)
+				}
+				t.Logf("alert manager endpoint: %s", hubInfo.AlertmanagerEndpoint)
+				if hubInfo.AlertmanagerEndpoint != "" {
+					t.Fatalf("alert manager endpoint is not null after disabling alerts  %s: ", operatorconfig.HubInfoSecretKey)
+				}
+				valid = true
+			}
+		}
+	}
+	if !valid {
+		t.Fatalf("Secret %s not found in ManifestWork", operatorconfig.HubInfoSecretName)
+	}
+
+	// 3. Remove mco-disable-alerting annotation in mco
+	// Verify that alertmanager-endpoint in secret hub-info-secret in the ManifestWork is not null
+	t.Logf("check alert manager endpoint is restored after alert forwarding is reenabled by removing annotation")
+	delete(mco.Annotations, config.AnnotationDisableMCOAlerting)
+	c.Update(context.TODO(), mco)
+	if err != nil {
+		t.Fatalf("Failed to update mco after removing annotation %s: (%v)", config.AnnotationDisableMCOAlerting, err)
+	}
+	// Cannot trigger predicate logic, explicitly enabling alert forwaring
+	config.SetAlertingDisabled(false)
+	hubInfoSecret = nil
+
+	_, err = r.Reconcile(context.TODO(), req)
+	if err != nil {
+		t.Fatalf("reconcile after removing annotation to disable alert forwarding: (%v)", err)
+	}
+
+	foundManifestwork = &workv1.ManifestWork{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + workNameSuffix, Namespace: namespace}, foundManifestwork)
+	if err != nil {
+		t.Fatalf("Failed to get manifestwork %s: (%v)", namespace, err)
+	}
+
+	valid = false
+	for _, manifest := range foundManifestwork.Spec.Workload.Manifests {
+		obj, _ := util.GetObject(manifest.RawExtension)
+		if obj.GetObjectKind().GroupVersionKind().Kind == "Secret" {
+			s := obj.(*corev1.Secret)
+			if s.GetName() == operatorconfig.HubInfoSecretName {
+				hubInfo := operatorconfig.HubInfo{}
+				yaml.Unmarshal(s.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
+				if err != nil {
+					t.Fatalf("Failed to parse %s: (%v)", operatorconfig.HubInfoSecretKey, err)
+				}
+				if hubInfo.AlertmanagerEndpoint == "" {
+					t.Fatalf("Null alert manager endpoint found in %s: ", operatorconfig.HubInfoSecretKey)
+				}
+				t.Logf("AlertmanagerEndpoint: %s", hubInfo.AlertmanagerEndpoint)
+				valid = true
+			}
+		}
+	}
+	if !valid {
+		t.Fatalf("Secret %s not found in ManifestWork", operatorconfig.HubInfoSecretName)
+	}
+
 	testMCHInstance := newMCHInstanceWithVersion(config.GetMCONamespace(), version)
 	err = c.Create(context.TODO(), testMCHInstance)
 	if err != nil {
@@ -297,7 +434,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 
-	foundManifestwork := &workv1.ManifestWork{}
+	foundManifestwork = &workv1.ManifestWork{}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + workNameSuffix, Namespace: namespace}, foundManifestwork)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork %s: (%v)", namespace, err)
@@ -349,8 +486,8 @@ func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
 			Configs: []addonv1alpha1.AddOnConfig{
 				{
 					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
-						Group:    util.AddonGroup,
-						Resource: util.AddonDeploymentConfigResource,
+						Group:    operatorutil.AddonGroup,
+						Resource: operatorutil.AddonDeploymentConfigResource,
 					},
 					ConfigReferent: addonv1alpha1.ConfigReferent{
 						Namespace: namespace,
@@ -375,8 +512,8 @@ func newClusterMgmtAddon() *addonv1alpha1.ClusterManagementAddOn {
 			SupportedConfigs: []addonv1alpha1.ConfigMeta{
 				{
 					ConfigGroupResource: addonv1alpha1.ConfigGroupResource{
-						Group:    util.AddonGroup,
-						Resource: util.AddonDeploymentConfigResource,
+						Group:    operatorutil.AddonGroup,
+						Resource: operatorutil.AddonDeploymentConfigResource,
 					},
 					DefaultConfig: &addonv1alpha1.ConfigReferent{
 						Namespace: namespace,
