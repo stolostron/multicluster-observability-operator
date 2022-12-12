@@ -211,7 +211,7 @@ func createServiceMonitors(ctx context.Context, c client.Client) error {
 		return err
 	}
 	for _, cluster := range hList.Items {
-		namespace := fmt.Sprintf("clusters-%s", cluster.ObjectMeta.Name)
+		namespace := fmt.Sprintf("%s-%s", cluster.ObjectMeta.Namespace, cluster.ObjectMeta.Name)
 		id := cluster.Spec.ClusterID
 		etcdSM := getEtcdServiceMonitor(namespace, id)
 		kubeSM := getKubeServiceMonitor(namespace, id)
@@ -439,7 +439,7 @@ func deleteServiceMonitors(ctx context.Context, c client.Client) error {
 		return err
 	}
 	for _, cluster := range hList.Items {
-		namespace := fmt.Sprintf("clusters-%s", cluster.ObjectMeta.Name)
+		namespace := fmt.Sprintf("%s-%s", cluster.ObjectMeta.Namespace, cluster.ObjectMeta.Name)
 		err = deleteServiceMonitor(ctx, c, etcdServiceMonitor, namespace)
 		if err != nil {
 			return err
