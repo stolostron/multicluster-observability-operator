@@ -308,7 +308,7 @@ func (d *Deployer) updatePrometheus(desiredObj, runtimeObj *unstructured.Unstruc
 		desiredPrometheus.ResourceVersion = runtimePrometheus.ResourceVersion
 	}
 
-	if desiredPrometheus.Spec.AdditionalAlertManagerConfigs != nil {
+	if runtimePrometheus.Spec.AdditionalAlertManagerConfigs != nil {
 		log.Info("Runtime Prometheus: AdditionalAlertManagerConfig", "object",
 			fmt.Sprintf("%v", runtimePrometheus.Spec.AdditionalAlertManagerConfigs))
 	} else {
