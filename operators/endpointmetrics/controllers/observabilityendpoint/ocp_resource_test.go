@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	testClusterID     = "kind-cluster-id"
-	hostedClusterName = "test-hosted-cluster"
+	testClusterID         = "kind-cluster-id"
+	hostedClusterName     = "test-hosted-cluster"
+	hosteClusterNamespace = "clusters"
 )
 
 var (
@@ -36,7 +37,8 @@ var (
 	}
 	hCluster = &hyperv1.HostedCluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: hostedClusterName,
+			Name:      hostedClusterName,
+			Namespace: hosteClusterNamespace,
 		},
 		Spec: hyperv1.HostedClusterSpec{
 			ClusterID: "test-hosted-cluster-id",
@@ -45,7 +47,7 @@ var (
 	sm = &promv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      etcdServiceMonitor,
-			Namespace: fmt.Sprintf("clusters-%s", hostedClusterName),
+			Namespace: fmt.Sprintf("%s-%s", hosteClusterNamespace, hostedClusterName),
 		},
 		Spec: promv1.ServiceMonitorSpec{},
 	}
