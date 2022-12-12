@@ -110,6 +110,7 @@ approve_csr_joinrequest() {
             break
         fi
         if [[ ${i} -eq 60 ]]; then
+            sleep 3600
             echo "timeout wait for CSR is created."
             exit 1
         fi
