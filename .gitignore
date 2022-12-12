@@ -80,7 +80,8 @@ tags
 .history
 # End of https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 .build-harness-bootstrap
-
+### Helix Editor ###
+.helix
 # Kubernetes Generated files - skip generated files, except for vendored files
 
 !vendor/**/zz_generated.*

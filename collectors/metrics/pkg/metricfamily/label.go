@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	clientmodel "github.com/prometheus/client_model/go"
+	"github.com/prometheus/prometheus/prompb"
 )
 
 type LabelRetriever interface {
@@ -53,6 +54,21 @@ func appendLabels(
 	existing []*clientmodel.LabelPair,
 	overrides map[string]*clientmodel.LabelPair) []*clientmodel.LabelPair {
 	var found []string
+
+	// remove blank names and values
+	var withoutEmpties []*clientmodel.LabelPair = make([]*clientmodel.LabelPair, 0)
+
+	for i, pair := range existing {
+		name := pair.GetName()
+		value := pair.GetValue()
+		// remove any name == "" or value == nil
+		if name != "" && value != "" {
+			withoutEmpties = insertLexicographicallyByName(withoutEmpties, existing[i])
+		}
+	}
+	existing = withoutEmpties
+
+	// override matching existing labels
 	for i, pair := range existing {
 		name := pair.GetName()
 		if value, ok := overrides[name]; ok {
@@ -60,10 +76,28 @@ func appendLabels(
 			found = append(found, name)
 		}
 	}
+
+	// append any overrides that didn't already exist
 	for k, v := range overrides {
-		if !contains(found, k) {
-			existing = append(existing, v)
+		// only append real names and values
+		// don't append anything overwritten above
+		if k != "" && v.GetValue() != "" && !contains(found, k) {
+			existing = insertLexicographicallyByName(existing, v)
 		}
+	}
+
+	return existing
+}
+
+func insertLexicographicallyByName(
+	existing []*clientmodel.LabelPair,
+	value *clientmodel.LabelPair) []*clientmodel.LabelPair {
+
+	existing = append(existing, value)
+	i := len(existing) - 1
+	for i > 0 && existing[i].GetName() < existing[i-1].GetName() {
+		existing[i], existing[i-1] = existing[i-1], existing[i]
+		i -= 1
 	}
 	return existing
 }
@@ -75,4 +109,17 @@ func contains(values []string, s string) bool {
 		}
 	}
 	return false
+}
+
+func InsertLabelLexicographicallyByName(
+	existing []prompb.Label,
+	value prompb.Label) []prompb.Label {
+
+	existing = append(existing, value)
+	i := len(existing) - 1
+	for i > 0 && existing[i].GetName() < existing[i-1].GetName() {
+		existing[i], existing[i-1] = existing[i-1], existing[i]
+		i -= 1
+	}
+	return existing
 }

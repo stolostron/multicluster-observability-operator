@@ -193,8 +193,8 @@ func FetchBearerToken(opt TestOptions) (string, error) {
 		if secret.GetObjectMeta() != nil && len(secret.GetObjectMeta().GetAnnotations()) > 0 {
 			annos := secret.GetObjectMeta().GetAnnotations()
 			sa, saExists := annos["kubernetes.io/service-account.name"]
-			_, createByExists := annos["kubernetes.io/created-by"]
-			if saExists && !createByExists && sa == "mco-e2e-testing-sa" {
+			//_, createByExists := annos["kubernetes.io/created-by"]
+			if saExists && sa == "mco-e2e-testing-sa" {
 				data := secret.Data
 				if token, ok := data["token"]; ok {
 					return string(token), nil
