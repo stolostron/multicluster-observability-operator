@@ -5,6 +5,7 @@ package deploying
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -14,9 +15,19 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 )
+
+// uncomment for unit test tracing
+func init() {
+	ctrl.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(os.Stdout)))
+	os.Setenv("UNIT_TEST", "true")
+}
 
 var (
 	replicas1 int32 = 1
@@ -421,12 +432,116 @@ func TestDeploy(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "create and update Prometheus",
+			createObj: &prometheusv1.Prometheus{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "monitoring.coreos.com/v1",
+					Kind:       "Prometheus",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-prometheus",
+					Namespace: "ns1",
+				},
+				Spec: prometheusv1.PrometheusSpec{
+					AdditionalAlertManagerConfigs: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "prometheus-alertmanager",
+						},
+						Key: "alertmanager.yaml",
+					},
+				},
+			},
+			updateObj: &prometheusv1.Prometheus{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "monitoring.coreos.com/v1",
+					Kind:       "Prometheus",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-prometheus",
+					Namespace: "ns1",
+				},
+				Spec: prometheusv1.PrometheusSpec{
+					AdditionalAlertManagerConfigs: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "prometheus-alertmanager",
+						},
+						Key: "alertmanager-2.yaml",
+					},
+					Secrets: []string{"hub-alertmanager-router-ca", "observability-alertmanager-accessor"},
+				},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{
+					Name:      "test-prometheus",
+					Namespace: "ns1",
+				}
+				obj := &prometheusv1.Prometheus{}
+				client.Get(context.Background(), namespacedName, obj)
+				if obj.Spec.Secrets == nil {
+					t.Fatalf("failed to update prometheus")
+				}
+			},
+		},
+		{
+			name: "create and update Prometheus Rule",
+			createObj: &prometheusv1.PrometheusRule{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "monitoring.coreos.com/v1",
+					Kind:       "PrometheusRule",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-prometheus-rule",
+					Namespace: "ns1",
+				},
+				Spec: prometheusv1.PrometheusRuleSpec{
+					Groups: []prometheusv1.RuleGroup{
+						{
+							Name:     "test-rule",
+							Interval: "10",
+							Rules:    []prometheusv1.Rule{},
+						},
+					},
+				},
+			},
+			updateObj: &prometheusv1.PrometheusRule{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "monitoring.coreos.com/v1",
+					Kind:       "PrometheusRule",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-prometheus-rule",
+					Namespace: "ns1",
+				},
+				Spec: prometheusv1.PrometheusRuleSpec{
+					Groups: []prometheusv1.RuleGroup{
+						{
+							Name:     "test-rule",
+							Interval: "10",
+							Rules:    []prometheusv1.Rule{},
+						},
+					},
+				},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{
+					Name:      "test-prometheus-rule",
+					Namespace: "ns1",
+				}
+				obj := &prometheusv1.PrometheusRule{}
+				client.Get(context.Background(), namespacedName, obj)
+				if len(obj.Spec.Groups) == 0 {
+					t.Fatalf("failed to update prometheus rules")
+				}
+			},
+		},
 	}
 
 	scheme := runtime.NewScheme()
 	corev1.AddToScheme(scheme)
 	appsv1.AddToScheme(scheme)
 	rbacv1.AddToScheme(scheme)
+	prometheusv1.AddToScheme(scheme)
 	client := fake.NewFakeClientWithScheme(scheme, []runtime.Object{}...)
 
 	deployer := NewDeployer(client)

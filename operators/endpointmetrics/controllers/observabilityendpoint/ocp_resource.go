@@ -9,7 +9,6 @@ import (
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -127,7 +126,7 @@ func createCAConfigmap(ctx context.Context, client client.Client) error {
 		Namespace: namespace}, cm)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			cm := &v1.ConfigMap{
+			cm := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      caConfigmapName,
 					Namespace: namespace,

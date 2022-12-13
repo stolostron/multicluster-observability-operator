@@ -19,7 +19,7 @@ spec:
     requests:
       memory: 400Mi
   externalLabels:
-    cluster: CLUSTER
+    managed_cluster: CLUSTER
   listenLocal: true
   containers:
     - args:

@@ -32,10 +32,13 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 			return nil, err
 		}
 
-		alertmanagerEndpoint, err = config.GetAlertmanagerEndpoint(client, obsNamespace)
-		if err != nil {
-			log.Error(err, "Failed to get alertmanager endpoint")
-			return nil, err
+		// if alerting is disabled, do not set alertmanagerEndpoint
+		if !config.IsAlertingDisabled() {
+			alertmanagerEndpoint, err = config.GetAlertmanagerEndpoint(client, obsNamespace)
+			if err != nil {
+				log.Error(err, "Failed to get alertmanager endpoint")
+				return nil, err
+			}
 		}
 
 		alertmanagerRouterCA, err = config.GetAlertmanagerRouterCA(client)
@@ -47,7 +50,10 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		// for KinD support, the managedcluster and hub cluster are assumed in the same cluster, the observatorium-api
 		// will be accessed through k8s service FQDN + port
 		obsApiRouteHost = config.GetOperandNamePrefix() + "observatorium-api" + "." + config.GetDefaultNamespace() + ".svc.cluster.local:8080"
-		alertmanagerEndpoint = config.AlertmanagerServiceName + "." + config.GetDefaultNamespace() + ".svc.cluster.local:9095"
+		// if alerting is disabled, do not set alertmanagerEndpoint
+		if !config.IsAlertingDisabled() {
+			alertmanagerEndpoint = config.AlertmanagerServiceName + "." + config.GetDefaultNamespace() + ".svc.cluster.local:9095"
+		}
 		var err error
 		alertmanagerRouterCA, err = config.GetAlertmanagerCA(client)
 		if err != nil {

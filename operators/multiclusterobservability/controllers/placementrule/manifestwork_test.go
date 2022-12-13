@@ -49,6 +49,22 @@ func newTestMCO() *mcov1beta2.MultiClusterObservability {
 	}
 }
 
+func newTestMCOWithAlertDisableAnnotation() *mcov1beta2.MultiClusterObservability {
+	return &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        mcoName,
+			Annotations: map[string]string{config.AnnotationDisableMCOAlerting: "true"},
+		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			ImagePullSecret: pullSecretName,
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: true,
+				Interval:      1,
+			},
+		},
+	}
+}
+
 func newTestPullSecret() *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -461,4 +477,20 @@ func TestMergeMetrics(t *testing.T) {
 			t.Errorf("%v: mergeMetrics() = %v, want %v", c.name, got, c.want)
 		}
 	}
+}
+
+func TestLogSizeErrorDetails(t *testing.T) {
+	logSizeErrorDetails("the size of manifests is 600000", &workv1.ManifestWork{
+		Spec: workv1.ManifestWorkSpec{
+			Workload: workv1.ManifestsTemplate{
+				Manifests: []workv1.Manifest{
+					{
+						RawExtension: runtime.RawExtension{
+							Object: NewMetricsAllowListCM(),
+						},
+					},
+				},
+			},
+		},
+	})
 }
