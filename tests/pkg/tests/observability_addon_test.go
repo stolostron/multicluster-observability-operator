@@ -141,7 +141,7 @@ var _ = Describe("", func() {
 		By("Waiting for MCO addon components ready")
 		Eventually(func() bool {
 			err, podList := utils.GetPodList(testOptions, false, MCO_ADDON_NAMESPACE, "component=metrics-collector")
-			if len(podList.Items) == 1 && err == nil {
+			if len(podList.Items) >= 1 && err == nil {
 				return true
 			}
 			return false
@@ -204,7 +204,7 @@ var _ = Describe("", func() {
 					MCO_ADDON_NAMESPACE,
 					"component=metrics-collector",
 				)
-				if len(podList.Items) == 1 && err == nil {
+				if len(podList.Items) >= 1 && err == nil {
 					return true
 				}
 				return false
