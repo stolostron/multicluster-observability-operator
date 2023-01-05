@@ -360,7 +360,7 @@ var _ = Describe("", func() {
 			for _, alt := range postableAlerts {
 				if alt.Labels != nil {
 					labelSets := map[string]string(alt.Labels)
-					clusterID := labelSets["cluster"]
+					clusterID := labelSets["managed_cluster"]
 					if clusterID != "" {
 						clusterIDsInAlerts = append(clusterIDsInAlerts, clusterID)
 					}
