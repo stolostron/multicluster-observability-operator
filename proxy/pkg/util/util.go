@@ -247,6 +247,7 @@ func GetManagedClusterEventHandler() cache.ResourceEventHandlerFuncs {
 			clusterName := obj.(*clusterv1.ManagedCluster).Name
 			klog.Infof("added a managedcluster: %s \n", obj.(*clusterv1.ManagedCluster).Name)
 			allManagedClusterNames[clusterName] = clusterName
+			CleanExpiredProjectInfo(1)
 
 			clusterLabels := obj.(*clusterv1.ManagedCluster).Labels
 			if ok := shouldUpdateManagedClusterLabelNames(clusterLabels, managedLabelList); ok {
@@ -258,6 +259,7 @@ func GetManagedClusterEventHandler() cache.ResourceEventHandlerFuncs {
 			clusterName := obj.(*clusterv1.ManagedCluster).Name
 			klog.Infof("deleted a managedcluster: %s \n", obj.(*clusterv1.ManagedCluster).Name)
 			delete(allManagedClusterNames, clusterName)
+			CleanExpiredProjectInfo(1)
 		},
 
 		UpdateFunc: func(oldObj, newObj interface{}) {
