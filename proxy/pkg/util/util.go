@@ -109,7 +109,7 @@ func addManagedClusterLabelNames(managedLabelList *proxyconfig.ManagedClusterLab
 			allManagedClusterLabelNames[key] = true
 
 		} else if slice.ContainsString(managedLabelList.IgnoreList, key, nil) {
-			klog.Warningf("managedcluster label <%s> set to ignore, remove label from ignore list to enable.", key)
+			klog.V(2).Infof("managedcluster label <%s> set to ignore, remove label from ignore list to enable.", key)
 
 		} else if isEnabled := allManagedClusterLabelNames[key]; !isEnabled {
 			klog.Infof("enabled managedcluster label: %s", key)
@@ -345,6 +345,18 @@ func GetManagedClusterLabelAllowListEventHandler(kubeClient kubernetes.Interface
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			if newObj.(*v1.ConfigMap).Name == proxyconfig.GetManagedClusterLabelAllowListConfigMapName() {
 				klog.Infof("updated configmap: %s", proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
+
+				_ = unmarshalDataToManagedClusterLabelList(newObj.(*v1.ConfigMap).Data,
+					proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), syncLabelList)
+
+				sortManagedLabelList(managedLabelList)
+				sortManagedLabelList(syncLabelList)
+
+				if ok := reflect.DeepEqual(syncLabelList, managedLabelList); !ok {
+					managedLabelList.IgnoreList = syncLabelList.IgnoreList
+					*syncLabelList = *managedLabelList
+				}
+
 				updateAllManagedClusterLabelNames(managedLabelList)
 			}
 		},

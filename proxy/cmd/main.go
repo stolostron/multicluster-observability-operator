@@ -9,7 +9,6 @@ import (
 	"os"
 
 	"github.com/spf13/pflag"
-	"gopkg.in/yaml.v2"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
@@ -68,19 +67,16 @@ func main() {
 		klog.Fatalf("failed to initialize new kubernetes client: %v", err)
 	}
 
-	found, err := proxyconfig.GetManagedClusterLabelAllowListConfigmap(kubeClient,
+	_, err = proxyconfig.GetManagedClusterLabelAllowListConfigmap(kubeClient,
 		proxyconfig.ManagedClusterLabelAllowListNamespace)
 
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			found = proxyconfig.CreateManagedClusterLabelAllowListCM(
+			_ = proxyconfig.CreateManagedClusterLabelAllowListCM(
 				proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(),
 			)
 		}
 	}
-
-	yaml.Unmarshal([]byte(found.Data[proxyconfig.GetManagedClusterLabelAllowListConfigMapKey()]),
-		proxyconfig.GetManagedClusterLabelList())
 
 	// watch all managed clusters
 	go util.WatchManagedCluster(clusterClient, kubeClient)
