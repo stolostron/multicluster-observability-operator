@@ -82,7 +82,7 @@ func main() {
 	go util.WatchManagedCluster(clusterClient, kubeClient)
 	go util.WatchManagedClusterLabelAllowList(kubeClient)
 	go util.ScheduleManagedClusterLabelAllowlistResync(kubeClient)
-	go util.CleanExpiredProjectInfo(24 * 60 * 60)
+	go util.CleanExpiredProjectInfoJob(24 * 60 * 60)
 
 	http.HandleFunc("/", proxy.HandleRequestAndRedirect)
 	if err := http.ListenAndServe(cfg.listenAddress, nil); err != nil {

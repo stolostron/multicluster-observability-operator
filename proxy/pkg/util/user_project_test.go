@@ -98,7 +98,7 @@ func TestCleanExpiredProjectInfo(t *testing.T) {
 		},
 	}
 
-	go CleanExpiredProjectInfo(1)
+	go CleanExpiredProjectInfoJob(1)
 	for _, c := range testCaseList {
 		userProjectInfo = c.userProjectInfo
 		time.Sleep(time.Second * 2)
