@@ -67,7 +67,7 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 		return nil
 	}
 	isUwl := false
-	if os.Getenv("FROM") == uwlPromURL {
+	if strings.Contains(os.Getenv("FROM"), uwlPromURL) {
 		isUwl = true
 	}
 	addon := &oav1beta1.ObservabilityAddon{}

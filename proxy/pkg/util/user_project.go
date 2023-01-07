@@ -60,18 +60,22 @@ func GetUserProjectList(token string) ([]string, bool) {
 	return []string{}, false
 }
 
-func CleanExpiredProjectInfo(expiredTimeSeconds int64) {
+func CleanExpiredProjectInfoJob(expiredTimeSeconds int64) {
 	InitUserProjectInfo()
 	ticker := time.NewTicker(time.Duration(time.Second * time.Duration(expiredTimeSeconds)))
 	defer ticker.Stop()
 
 	for {
 		<-ticker.C
-		for _, up := range userProjectInfo.ProjectInfo {
-			if time.Now().Unix()-up.Timestamp >= expiredTimeSeconds {
-				klog.Infof("clean %v project info", up.UserName)
-				deleteUserProject(up)
-			}
+		CleanExpiredProjectInfo(expiredTimeSeconds)
+	}
+}
+
+func CleanExpiredProjectInfo(expiredTimeSeconds int64) {
+	for _, up := range userProjectInfo.ProjectInfo {
+		if time.Now().Unix()-up.Timestamp >= expiredTimeSeconds {
+			klog.Infof("clean %v project info", up.UserName)
+			deleteUserProject(up)
 		}
 	}
 }
