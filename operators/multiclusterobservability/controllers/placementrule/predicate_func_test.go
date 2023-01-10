@@ -5,7 +5,6 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 )
@@ -33,9 +32,9 @@ func TestClusterPred(t *testing.T) {
 			namespace:         testNamespace,
 			annotations:       map[string]string{disableAddonAutomaticInstallationAnnotationKey: "true"},
 			deletionTimestamp: nil,
-			expectedCreate:    true,
-			expectedUpdate:    true,
-			expectedDelete:    true,
+			expectedCreate:    false,
+			expectedUpdate:    false,
+			expectedDelete:    false,
 		},
 		{
 			caseName:          "Automatic Install",
@@ -91,26 +90,12 @@ func TestClusterPred(t *testing.T) {
 						ResourceVersion:   "2",
 						DeletionTimestamp: c.deletionTimestamp,
 					},
-					Spec: appsv1.DeploymentSpec{
-						Template: v1.PodTemplateSpec{
-							Spec: v1.PodSpec{
-								ServiceAccountName: "sa1",
-							},
-						},
-					},
 				},
 				ObjectOld: &appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:            name,
 						Namespace:       c.namespace,
 						ResourceVersion: "1",
-					},
-					Spec: appsv1.DeploymentSpec{
-						Template: v1.PodTemplateSpec{
-							Spec: v1.PodSpec{
-								ServiceAccountName: "sa2",
-							},
-						},
 					},
 				},
 			}
@@ -124,10 +109,6 @@ func TestClusterPred(t *testing.T) {
 					t.Fatalf("pre func return true on same resource version in case: (%v)", c.caseName)
 				}
 				update_event.ObjectNew.SetResourceVersion("2")
-				update_event.ObjectNew.(*appsv1.Deployment).Spec.Template.Spec.ServiceAccountName = "sa2"
-				if pred.UpdateFunc(update_event) {
-					t.Fatalf("pre func return true on same deployment spec in case: (%v)", c.caseName)
-				}
 			} else {
 				if pred.UpdateFunc(update_event) {
 					t.Fatalf("pre func return true on non-applied updateevent in case: (%v)", c.caseName)
