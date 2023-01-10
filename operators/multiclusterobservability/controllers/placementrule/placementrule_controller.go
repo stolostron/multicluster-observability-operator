@@ -118,15 +118,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
-	// Do not reconcile objects if this instance of mch has the
-	// `disableAddonAutomaticInstallationAnnotationKey` annotation
-	if value, ok := mco.GetAnnotations()[disableAddonAutomaticInstallationAnnotationKey]; ok &&
-		strings.EqualFold(value, "true") {
-
-		reqLogger.Info("Cluster has disable addon automatic installation annotation. Skip addon deploy")
-		return reconcile.Result{}, nil
-	}
-
 	if !deleteAll && !mco.Spec.ObservabilityAddonSpec.EnableMetrics {
 		reqLogger.Info("EnableMetrics is set to false. Delete Observability addons")
 		deleteAll = true
@@ -525,6 +516,17 @@ func updateManagedClusterList(obj client.Object) {
 	}
 }
 
+// Do not reconcile objects if this instance of mch has the
+// `disableAddonAutomaticInstallationAnnotationKey` annotation
+func isAutomaticAddonInstallationDisabled(obj client.Object) bool {
+	annotations := obj.GetAnnotations()
+	if val, ok := annotations[disableAddonAutomaticInstallationAnnotationKey]; ok && strings.EqualFold(val, "true") {
+		log.Info("Cluster has disable addon automatic installation annotation. Skip addon deploy")
+		return true
+	}
+	return false
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	c := mgr.GetClient()
@@ -532,37 +534,56 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	clusterPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			log.Info("CreateFunc", "managedCluster", e.Object.GetName())
+
 			updateManagedClusterList(e.Object)
 			updateManagedClusterImageRegistry(e.Object)
+
+			if isAutomaticAddonInstallationDisabled(e.Object) {
+				return false
+			}
+
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			log.Info("UpdateFunc", "managedCluster", e.ObjectNew.GetName())
-			if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
-				if e.ObjectNew.GetDeletionTimestamp() != nil {
-					log.Info("managedcluster is in terminating state", "managedCluster", e.ObjectNew.GetName())
-					managedClusterListMutex.Lock()
-					delete(managedClusterList, e.ObjectNew.GetName())
-					managedClusterListMutex.Unlock()
-					managedClusterImageRegistryMutex.Lock()
-					delete(managedClusterImageRegistry, e.ObjectNew.GetName())
-					managedClusterImageRegistryMutex.Unlock()
-				} else {
-					updateManagedClusterList(e.ObjectNew)
-					updateManagedClusterImageRegistry(e.ObjectNew)
-				}
-				return true
+
+			if e.ObjectNew.GetResourceVersion() == e.ObjectOld.GetResourceVersion() {
+				return false
 			}
-			return false
+
+			if e.ObjectNew.GetDeletionTimestamp() != nil {
+				log.Info("managedcluster is in terminating state", "managedCluster", e.ObjectNew.GetName())
+				managedClusterListMutex.Lock()
+				delete(managedClusterList, e.ObjectNew.GetName())
+				managedClusterListMutex.Unlock()
+				managedClusterImageRegistryMutex.Lock()
+				delete(managedClusterImageRegistry, e.ObjectNew.GetName())
+				managedClusterImageRegistryMutex.Unlock()
+			} else {
+				updateManagedClusterList(e.ObjectNew)
+				updateManagedClusterImageRegistry(e.ObjectNew)
+			}
+
+			if isAutomaticAddonInstallationDisabled(e.ObjectNew) {
+				return false
+			}
+
+			return true
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			log.Info("DeleteFunc", "managedCluster", e.Object.GetName())
+
 			managedClusterListMutex.Lock()
 			delete(managedClusterList, e.Object.GetName())
 			managedClusterListMutex.Unlock()
 			managedClusterImageRegistryMutex.Lock()
 			delete(managedClusterImageRegistry, e.Object.GetName())
 			managedClusterImageRegistryMutex.Unlock()
+
+			if isAutomaticAddonInstallationDisabled(e.Object) {
+				return false
+			}
+
 			return true
 		},
 	}
