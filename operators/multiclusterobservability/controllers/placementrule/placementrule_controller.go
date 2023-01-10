@@ -118,15 +118,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
-	// Do not reconcile objects if this instance of mch has the
-	// `disableAddonAutomaticInstallationAnnotationKey` annotation
-	if value, ok := mco.GetAnnotations()[disableAddonAutomaticInstallationAnnotationKey]; ok &&
-		strings.EqualFold(value, "true") {
-
-		reqLogger.Info("Cluster has disable addon automatic installation annotation. Skip addon deploy")
-		return reconcile.Result{}, nil
-	}
-
 	if !deleteAll && !mco.Spec.ObservabilityAddonSpec.EnableMetrics {
 		reqLogger.Info("EnableMetrics is set to false. Delete Observability addons")
 		deleteAll = true
