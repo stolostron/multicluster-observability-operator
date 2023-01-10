@@ -437,6 +437,7 @@ func ReplaceImage(annotations map[string]string, imageRepo, componentName string
 		sameOrg := strings.Contains(imageRepo, DefaultImgRepository)
 
 		if hasComponentImage {
+			log.V(1).Info("image replacement: custom image found", "componentImage", componentImage)
 			return true, componentImage
 		} else if hasTagSuffix && sameOrg {
 			repoSlice := strings.Split(imageRepo, "/")
