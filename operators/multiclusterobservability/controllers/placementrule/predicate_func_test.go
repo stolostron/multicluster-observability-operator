@@ -28,7 +28,7 @@ func TestClusterPred(t *testing.T) {
 		{
 			caseName:       "Disable Automatic Install",
 			namespace:      testNamespace,
-			annotations:    map[string]string{"disableAddonAutomaticInstallationAnnotationKey": "true"},
+			annotations:    map[string]string{disableAddonAutomaticInstallationAnnotationKey: "true"},
 			expectedCreate: false,
 			expectedUpdate: false,
 			expectedDelete: false,
