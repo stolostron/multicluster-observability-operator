@@ -528,65 +528,12 @@ func isAutomaticAddonInstallationDisabled(obj client.Object) bool {
 }
 
 // SetupWithManager sets up the controller with the Manager.
+// TODO refactor (if possible) to match format of observabilityaddon_controller.go
 func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	c := mgr.GetClient()
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
-	clusterPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			log.Info("CreateFunc", "managedCluster", e.Object.GetName())
 
-			updateManagedClusterList(e.Object)
-			updateManagedClusterImageRegistry(e.Object)
-
-			if isAutomaticAddonInstallationDisabled(e.Object) {
-				return false
-			}
-
-			return true
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			log.Info("UpdateFunc", "managedCluster", e.ObjectNew.GetName())
-
-			if e.ObjectNew.GetResourceVersion() == e.ObjectOld.GetResourceVersion() {
-				return false
-			}
-
-			if e.ObjectNew.GetDeletionTimestamp() != nil {
-				log.Info("managedcluster is in terminating state", "managedCluster", e.ObjectNew.GetName())
-				managedClusterListMutex.Lock()
-				delete(managedClusterList, e.ObjectNew.GetName())
-				managedClusterListMutex.Unlock()
-				managedClusterImageRegistryMutex.Lock()
-				delete(managedClusterImageRegistry, e.ObjectNew.GetName())
-				managedClusterImageRegistryMutex.Unlock()
-			} else {
-				updateManagedClusterList(e.ObjectNew)
-				updateManagedClusterImageRegistry(e.ObjectNew)
-			}
-
-			if isAutomaticAddonInstallationDisabled(e.ObjectNew) {
-				return false
-			}
-
-			return true
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			log.Info("DeleteFunc", "managedCluster", e.Object.GetName())
-
-			managedClusterListMutex.Lock()
-			delete(managedClusterList, e.Object.GetName())
-			managedClusterListMutex.Unlock()
-			managedClusterImageRegistryMutex.Lock()
-			delete(managedClusterImageRegistry, e.Object.GetName())
-			managedClusterImageRegistryMutex.Unlock()
-
-			if isAutomaticAddonInstallationDisabled(e.Object) {
-				return false
-			}
-
-			return true
-		},
-	}
+	clusterPred := getClusterPreds()
 
 	obsAddonPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
