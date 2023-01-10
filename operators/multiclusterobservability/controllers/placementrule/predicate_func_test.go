@@ -89,6 +89,7 @@ func TestClusterPred(t *testing.T) {
 						Namespace:         c.namespace,
 						ResourceVersion:   "2",
 						DeletionTimestamp: c.deletionTimestamp,
+						Annotations:       c.annotations,
 					},
 				},
 				ObjectOld: &appsv1.Deployment{
@@ -118,8 +119,9 @@ func TestClusterPred(t *testing.T) {
 			delete_event := event.DeleteEvent{
 				Object: &appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      name,
-						Namespace: c.namespace,
+						Name:        name,
+						Namespace:   c.namespace,
+						Annotations: c.annotations,
 					},
 					Spec: appsv1.DeploymentSpec{
 						Replicas: int32Ptr(2),
