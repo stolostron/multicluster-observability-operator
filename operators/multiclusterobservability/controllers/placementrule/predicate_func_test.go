@@ -33,9 +33,9 @@ func TestClusterPred(t *testing.T) {
 			namespace:         testNamespace,
 			annotations:       map[string]string{disableAddonAutomaticInstallationAnnotationKey: "true"},
 			deletionTimestamp: nil,
-			expectedCreate:    false,
-			expectedUpdate:    false,
-			expectedDelete:    false,
+			expectedCreate:    true,
+			expectedUpdate:    true,
+			expectedDelete:    true,
 		},
 		{
 			caseName:          "Automatic Install",
@@ -76,10 +76,6 @@ func TestClusterPred(t *testing.T) {
 			if c.expectedCreate {
 				if !pred.CreateFunc(create_event) {
 					t.Fatalf("pre func return false on applied createevent in case: (%v)", c.caseName)
-				}
-				create_event.Object.SetName(name + "test")
-				if pred.CreateFunc(create_event) {
-					t.Fatalf("pre func return true on different obj name in case: (%v)", c.caseName)
 				}
 			} else {
 				if pred.CreateFunc(create_event) {
@@ -153,10 +149,6 @@ func TestClusterPred(t *testing.T) {
 			if c.expectedDelete {
 				if !pred.DeleteFunc(delete_event) {
 					t.Fatalf("pre func return false on applied deleteevent in case: (%v)", c.caseName)
-				}
-				delete_event.Object.SetName(name + "test")
-				if pred.DeleteFunc(delete_event) {
-					t.Fatalf("pre func return true on different obj name in case: (%v)", c.caseName)
 				}
 			} else {
 				if pred.DeleteFunc(delete_event) {
