@@ -2,6 +2,7 @@ package placementrule
 
 import (
 	"testing"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -13,33 +14,46 @@ const (
 	testNamespace = "test-ns"
 )
 
-func int32Ptr(i int32) *int32 { return &i }
+func int32Ptr(i int32) *int32            { return &i }
+func timePtr(t metav1.Time) *metav1.Time { return &t }
 
 func TestClusterPred(t *testing.T) {
 	name := "test-obj"
 	caseList := []struct {
-		caseName       string
-		namespace      string
-		annotations    map[string]string
-		expectedCreate bool
-		expectedUpdate bool
-		expectedDelete bool
+		caseName          string
+		namespace         string
+		annotations       map[string]string
+		deletionTimestamp *metav1.Time
+		expectedCreate    bool
+		expectedUpdate    bool
+		expectedDelete    bool
 	}{
 		{
-			caseName:       "Disable Automatic Install",
-			namespace:      testNamespace,
-			annotations:    map[string]string{disableAddonAutomaticInstallationAnnotationKey: "true"},
-			expectedCreate: false,
-			expectedUpdate: false,
-			expectedDelete: false,
+			caseName:          "Disable Automatic Install",
+			namespace:         testNamespace,
+			annotations:       map[string]string{disableAddonAutomaticInstallationAnnotationKey: "true"},
+			deletionTimestamp: nil,
+			expectedCreate:    false,
+			expectedUpdate:    false,
+			expectedDelete:    false,
 		},
 		{
-			caseName:       "Automatic Install",
-			namespace:      testNamespace,
-			annotations:    nil,
-			expectedCreate: true,
-			expectedUpdate: true,
-			expectedDelete: true,
+			caseName:          "Automatic Install",
+			namespace:         testNamespace,
+			annotations:       nil,
+			deletionTimestamp: nil,
+			expectedCreate:    true,
+			expectedUpdate:    true,
+			expectedDelete:    true,
+		},
+		{
+			caseName:          "Deletion Timestamp",
+			namespace:         testNamespace,
+			annotations:       nil,
+			deletionTimestamp: timePtr(metav1.NewTime(time.Now().Local().Add(time.Second * time.Duration(5)))),
+			expectedCreate:    true,
+			expectedUpdate:    true,
+			expectedDelete:    true,
 		},
 	}
 
@@ -76,9 +90,10 @@ func TestClusterPred(t *testing.T) {
 			update_event := event.UpdateEvent{
 				ObjectNew: &appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:            name,
-						Namespace:       c.namespace,
-						ResourceVersion: "2",
+						Name:              name,
+						Namespace:         c.namespace,
+						ResourceVersion:   "2",
+						DeletionTimestamp: c.deletionTimestamp,
 					},
 					Spec: appsv1.DeploymentSpec{
 						Template: v1.PodTemplateSpec{
