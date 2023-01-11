@@ -3,6 +3,8 @@
 package util
 
 import (
+	"os"
+
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -27,6 +29,10 @@ const (
 
 // GetOrCreateOCPClient get an existing hub client or create new one if it doesn't exist
 func GetOrCreateHubClient(renew bool) (client.Client, error) {
+	if os.Getenv("UNIT_TEST") == "true" {
+		return hubClient, nil
+	}
+
 	if !renew && hubClient != nil {
 		return hubClient, nil
 	}
@@ -73,4 +79,8 @@ func GetOrCreateOCPClient() (ocpClientSet.Interface, error) {
 	}
 
 	return ocpClient, err
+}
+
+func SetHubClient(c client.Client) {
+	hubClient = c
 }

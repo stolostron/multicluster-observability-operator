@@ -21,6 +21,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
@@ -138,6 +139,7 @@ alertmanager-router-ca: |
 	objs := []runtime.Object{hubInfo, amAccessSrt, allowList, images, cv, infra}
 
 	hubClient := fake.NewFakeClient(hubObjs...)
+	util.SetHubClient(hubClient)
 	c := fake.NewFakeClient(objs...)
 
 	r := &ObservabilityAddonReconciler{

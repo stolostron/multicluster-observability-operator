@@ -4,6 +4,7 @@ package status
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,6 +14,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
@@ -23,6 +25,10 @@ const (
 	testNamespace   = "test-ns"
 	testHubNamspace = "test-hub-ns"
 )
+
+func init() {
+	os.Setenv("UNIT_TEST", "true")
+}
 
 func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon {
 	return &oav1beta1.ObservabilityAddon{
@@ -49,6 +55,7 @@ func init() {
 func TestStatusController(t *testing.T) {
 
 	hubClient := fake.NewFakeClient()
+	util.SetHubClient(hubClient)
 	c := fake.NewFakeClient()
 
 	r := &StatusReconciler{
