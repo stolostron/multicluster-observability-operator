@@ -26,8 +26,8 @@ const (
 )
 
 // GetOrCreateOCPClient get an existing hub client or create new one if it doesn't exist
-func GetOrCreateHubClient() (client.Client, error) {
-	if hubClient != nil {
+func GetOrCreateHubClient(renew bool) (client.Client, error) {
+	if !renew && hubClient != nil {
 		return hubClient, nil
 	}
 	// create the config from the path

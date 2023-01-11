@@ -76,8 +76,20 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	hubObsAddon := &oav1beta1.ObservabilityAddon{}
 	err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
 	if err != nil {
-		log.Error(err, "Failed to get observabilityaddon", "namespace", hubNamespace)
-		return ctrl.Result{}, err
+
+		// try to renew the hub client
+		log.Info("renew hub client")
+		r.HubClient, err = util.GetOrCreateHubClient(true)
+		if err != nil {
+			log.Error(err, "Failed to create the hub client")
+			return ctrl.Result{}, err
+		}
+
+		err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
+		if err != nil {
+			log.Error(err, "Failed to get observabilityaddon in hub cluster", "namespace", hubNamespace)
+			return ctrl.Result{}, err
+		}
 	}
 
 	// Fetch the ObservabilityAddon instance in local cluster
