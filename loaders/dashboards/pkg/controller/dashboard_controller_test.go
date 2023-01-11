@@ -5,6 +5,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -28,7 +29,11 @@ func createDashboard() (*corev1.ConfigMap, error) {
 		panic(err)
 	}
 
-	var cm corev1.ConfigMap
+	var cm = corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
+		Name:      "networking-cluster",
+		Namespace: os.Getenv("POD_NAMESPACE"),
+	}}
+
 	err = yaml.Unmarshal(data, &cm)
 	return &cm, err
 }
@@ -104,6 +109,8 @@ func TestGrafanaDashboardController(t *testing.T) {
 	go informer.Run(stop)
 
 	cm, err := createDashboard()
+	cm.Namespace = os.Getenv("POD_NAMESPACE")
+
 	if err == nil {
 		_, err := coreClient.ConfigMaps("ns2").Create(context.TODO(), cm, metav1.CreateOptions{})
 		if err != nil {
@@ -120,7 +127,7 @@ func TestGrafanaDashboardController(t *testing.T) {
 		}
 		// wait for 2 second to trigger UpdateFunc of informer
 		time.Sleep(time.Second * 2)
-		updateDashboard(nil, nil, cm, false)
+		updateDashboard(coreClient, nil, cm, false)
 
 		cm, _ := createDashboard()
 		_, err = coreClient.ConfigMaps("ns2").Update(context.TODO(), cm, metav1.UpdateOptions{})
@@ -130,12 +137,45 @@ func TestGrafanaDashboardController(t *testing.T) {
 
 		// wait for 2 second to trigger UpdateFunc of informer
 		time.Sleep(time.Second * 2)
-		updateDashboard(nil, nil, cm, false)
+		updateDashboard(coreClient, nil, cm, false)
+
+		cm2, _ := createDashboard()
+		cm2.Name = fmt.Sprintf("%v-2", cm2.Name)
+
+		_, err = coreClient.ConfigMaps("ns2").Create(context.TODO(), cm2, metav1.CreateOptions{})
+		if err != nil {
+			t.Fatalf("fail to update configmap with %v", err)
+		}
+
+		// wait for 2 second to trigger UpdateFunc of informer
+		time.Sleep(time.Second * 2)
+		updateDashboard(coreClient, nil, cm2, false)
+
+		data, _ := ioutil.ReadFile("../../../../examples/dashboards/sample_custom_dashboard/custom-sample-dashboard.yaml")
+		cm3 := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
+			Name:      "sample-dashboard",
+			Namespace: os.Getenv("POD_NAMESPACE"),
+		}}
+		yaml.Unmarshal(data, &cm3)
+
+		_, err = coreClient.ConfigMaps("ns2").Create(context.TODO(), cm3, metav1.CreateOptions{})
+		if err != nil {
+			t.Fatalf("fail to update configmap with %v", err)
+		}
+
+		// wait for 2 second to trigger UpdateFunc of informer
+		time.Sleep(time.Second * 2)
+		updateDashboard(coreClient, nil, cm3, false)
 
 		coreClient.ConfigMaps("ns2").Delete(context.TODO(), cm.GetName(), metav1.DeleteOptions{})
-		time.Sleep(time.Second * 2)
-		deleteDashboard(cm)
+		coreClient.ConfigMaps("ns2").Delete(context.TODO(), cm2.GetName(), metav1.DeleteOptions{})
+		coreClient.ConfigMaps("ns2").Delete(context.TODO(), cm3.GetName(), metav1.DeleteOptions{})
 
+		time.Sleep(time.Second * 2)
+
+		deleteDashboard(cm)
+		deleteDashboard(cm2)
+		deleteDashboard(cm3)
 	}
 
 	close(stop)
