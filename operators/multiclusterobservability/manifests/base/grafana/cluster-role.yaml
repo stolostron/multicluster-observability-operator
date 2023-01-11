@@ -8,9 +8,7 @@ rules:
   resources:
   - configmaps
   verbs:
-  - get
-  - list
-  - watch
+  - '*'
 - verbs:
   - create
   apiGroups:

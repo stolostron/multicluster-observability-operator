@@ -43,10 +43,19 @@ type DashboardLoader struct {
 }
 
 var (
+	uidentifierList map[string]string
+)
+
+var (
 	grafanaURI = "http://127.0.0.1:3001"
 	//retry on errors
 	retry = 10
 )
+
+// InitUidentifierList ...
+func InitUidentifierList() {
+	uidentifierList = map[string]string{}
+}
 
 // RunGrafanaDashboardController ...
 func RunGrafanaDashboardController(stop <-chan struct{}) {
@@ -86,6 +95,8 @@ func isDesiredDashboardConfigmap(obj interface{}) bool {
 }
 
 func newKubeInformer(coreClient corev1client.CoreV1Interface) cache.SharedIndexInformer {
+	InitUidentifierList()
+
 	// get watched namespace
 	watchedNS := os.Getenv("POD_NAMESPACE")
 	watchlist := &cache.ListWatch{
@@ -109,7 +120,7 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) cache.SharedIndexI
 				return
 			}
 			klog.Infof("detect there is a new dashboard %v created", obj.(*corev1.ConfigMap).Name)
-			updateDashboard(nil, obj, false)
+			updateDashboard(coreClient, nil, obj, false)
 		},
 		UpdateFunc: func(old, new interface{}) {
 			if old.(*corev1.ConfigMap).ObjectMeta.ResourceVersion == new.(*corev1.ConfigMap).ObjectMeta.ResourceVersion {
@@ -119,7 +130,7 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) cache.SharedIndexI
 				return
 			}
 			klog.Infof("detect there is a dashboard %v updated", new.(*corev1.ConfigMap).Name)
-			updateDashboard(old, new, false)
+			updateDashboard(coreClient, old, new, false)
 		},
 		DeleteFunc: func(obj interface{}) {
 			if !isDesiredDashboardConfigmap(obj) {
@@ -248,7 +259,7 @@ func getDashboardCustomFolderTitle(obj interface{}) string {
 }
 
 // updateDashboard is used to update the customized dashboards via calling grafana api
-func updateDashboard(old, new interface{}, overwrite bool) {
+func updateDashboard(coreClient corev1client.CoreV1Interface, old, new interface{}, overwrite bool) {
 	folderID := 0.0
 	folderTitle := getDashboardCustomFolderTitle(new)
 	if folderTitle != "" {
@@ -259,17 +270,51 @@ func updateDashboard(old, new interface{}, overwrite bool) {
 		}
 	}
 
-	for _, value := range new.(*corev1.ConfigMap).Data {
-
+	for key, value := range new.(*corev1.ConfigMap).Data {
 		dashboard := map[string]interface{}{}
 		err := json.Unmarshal([]byte(value), &dashboard)
 		if err != nil {
-			klog.Error("Failed to unmarshall data", "error", err)
+			klog.Error("Failed to unmarshal data", "error", err)
 			return
 		}
-		if dashboard["uid"] == nil {
-			dashboard["uid"], _ = util.GenerateUID(new.(*corev1.ConfigMap).GetName(),
-				new.(*corev1.ConfigMap).GetNamespace())
+
+		name := new.(*corev1.ConfigMap).GetName()
+		namespace := new.(*corev1.ConfigMap).GetNamespace()
+
+		// Check to see if the dashboard contains a uid.
+		if dashboard["uid"] == nil || dashboard["uid"] == "" || dashboard["uid"] == "null" {
+			klog.Infof("no uid detected for dashboard %v. generating new uid for dashboard", name)
+			dashboard["uid"], _ = util.GenerateUID(namespace, name)
+
+			data, _ := json.Marshal(dashboard)
+			new.(*corev1.ConfigMap).Data[key] = string(data)
+
+			_, err := coreClient.ConfigMaps(namespace).Update(context.TODO(), new.(*corev1.ConfigMap),
+				metav1.UpdateOptions{})
+			if err != nil {
+				klog.Warningf("failed to update configmap: %v", err)
+			}
+		}
+
+		uid := dashboard["uid"].(string)
+
+		if _, ok := uidentifierList[uid]; !ok {
+			uidentifierList[uid] = name
+		} else if uidentifierList[uid] != name {
+			klog.Warningf("Dashboard named '%v' has the same uid. generating new uid for dashboard '%v'",
+				uidentifierList[uid], name)
+			dashboard["uid"], _ = util.GenerateUID(namespace, name)
+
+			data, _ := json.Marshal(dashboard)
+			new.(*corev1.ConfigMap).Data[key] = string(data)
+
+			_, err := coreClient.ConfigMaps(namespace).Update(context.TODO(), new.(*corev1.ConfigMap),
+				metav1.UpdateOptions{})
+			if err != nil {
+				klog.Warningf("failed to update configmap: %v", err)
+			} else {
+				uidentifierList[uid] = name
+			}
 		}
 		dashboard["id"] = nil
 		data := map[string]interface{}{
@@ -290,7 +335,7 @@ func updateDashboard(old, new interface{}, overwrite bool) {
 		if respStatusCode != http.StatusOK {
 			if respStatusCode == http.StatusPreconditionFailed {
 				if strings.Contains(string(body), "version-mismatch") {
-					updateDashboard(nil, new, true)
+					updateDashboard(coreClient, nil, new, true)
 				} else if strings.Contains(string(body), "name-exists") {
 					klog.Info("the dashboard name already existed")
 				} else {
@@ -330,7 +375,6 @@ func updateDashboard(old, new interface{}, overwrite bool) {
 // DeleteDashboard ...
 func deleteDashboard(obj interface{}) {
 	for _, value := range obj.(*corev1.ConfigMap).Data {
-
 		dashboard := map[string]interface{}{}
 		err := json.Unmarshal([]byte(value), &dashboard)
 		if err != nil {
@@ -338,7 +382,10 @@ func deleteDashboard(obj interface{}) {
 			return
 		}
 
-		uid, _ := util.GenerateUID(obj.(*corev1.ConfigMap).Name, obj.(*corev1.ConfigMap).Namespace)
+		name := obj.(*corev1.ConfigMap).GetName()
+		namespace := obj.(*corev1.ConfigMap).GetNamespace()
+
+		uid, _ := util.GenerateUID(namespace, name)
 		if dashboard["uid"] != nil {
 			uid = dashboard["uid"].(string)
 		}
@@ -350,6 +397,7 @@ func deleteDashboard(obj interface{}) {
 			klog.Errorf("failed to delete dashboard %v with %v", obj.(*corev1.ConfigMap).Name, respStatusCode)
 		} else {
 			klog.Info("Dashboard deleted")
+			delete(uidentifierList, uid)
 		}
 
 		folderTitle := getDashboardCustomFolderTitle(obj)
