@@ -3,8 +3,10 @@
 package util
 
 import (
+	"context"
 	"os"
 
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -14,9 +16,14 @@ import (
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
 
+const (
+	obAddonName = "observability-addon"
+)
+
 var (
-	hubClient client.Client
-	ocpClient ocpClientSet.Interface
+	hubNamespace = os.Getenv("HUB_NAMESPACE")
+	hubClient    client.Client
+	ocpClient    ocpClientSet.Interface
 )
 
 var (
@@ -83,4 +90,23 @@ func GetOrCreateOCPClient() (ocpClientSet.Interface, error) {
 
 func SetHubClient(c client.Client) {
 	hubClient = c
+}
+
+func RenewAndRetry(ctx context.Context) (client.Client, *oav1beta1.ObservabilityAddon, error) {
+	// try to renew the hub client
+	log.Info("renew hub client")
+	hubClient, err := GetOrCreateHubClient(true)
+	if err != nil {
+		log.Error(err, "Failed to create the hub client")
+		return nil, nil, err
+	}
+
+	hubObsAddon := &oav1beta1.ObservabilityAddon{}
+	err = hubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
+	if err != nil {
+		log.Error(err, "Failed to get observabilityaddon in hub cluster", "namespace", hubNamespace)
+		return nil, nil, err
+	}
+
+	return hubClient, hubObsAddon, nil
 }
