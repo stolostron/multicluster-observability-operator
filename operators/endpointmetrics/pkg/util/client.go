@@ -21,9 +21,8 @@ const (
 )
 
 var (
-	hubNamespace = os.Getenv("HUB_NAMESPACE")
-	hubClient    client.Client
-	ocpClient    ocpClientSet.Interface
+	hubClient client.Client
+	ocpClient ocpClientSet.Interface
 )
 
 var (
@@ -102,6 +101,7 @@ func RenewAndRetry(ctx context.Context) (client.Client, *oav1beta1.Observability
 	}
 
 	hubObsAddon := &oav1beta1.ObservabilityAddon{}
+	hubNamespace := os.Getenv("HUB_NAMESPACE")
 	err = hubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
 	if err != nil {
 		log.Error(err, "Failed to get observabilityaddon in hub cluster", "namespace", hubNamespace)

@@ -35,10 +35,6 @@ const (
 	testBearerToken = "test-bearer-token"
 )
 
-func init() {
-	os.Setenv("UNIT_TEST", "true")
-}
-
 func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon {
 	return &oav1beta1.ObservabilityAddon{
 		ObjectMeta: metav1.ObjectMeta{
@@ -111,6 +107,7 @@ func newImagesCM() *corev1.ConfigMap {
 }
 
 func init() {
+	os.Setenv("UNIT_TEST", "true")
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
 	oav1beta1.AddToScheme(s)

@@ -26,10 +26,6 @@ const (
 	testHubNamspace = "test-hub-ns"
 )
 
-func init() {
-	os.Setenv("UNIT_TEST", "true")
-}
-
 func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon {
 	return &oav1beta1.ObservabilityAddon{
 		ObjectMeta: v1.ObjectMeta{
@@ -44,6 +40,7 @@ func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon
 }
 
 func init() {
+	os.Setenv("UNIT_TEST", "true")
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
 	oav1beta1.AddToScheme(s)
