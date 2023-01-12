@@ -108,7 +108,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	hubClient, err := util.GetOrCreateHubClient()
+	hubClient, err := util.GetOrCreateHubClient(false)
 	if err != nil {
 		setupLog.Error(err, "Failed to create the hub client")
 		os.Exit(1)
