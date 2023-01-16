@@ -1,8 +1,5 @@
 FROM registry.ci.openshift.org/stolostron/builder:go1.18-linux AS builder
 
-# install oc into build image
-RUN curl -fksSL https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.6.3/openshift-client-linux-4.6.3.tar.gz | tar -xvz -C /usr/local/ oc
-
 WORKDIR /workspace
 # copy go tests into build image
 COPY go.sum go.mod ./
@@ -12,7 +9,7 @@ COPY ./tests ./tests
 RUN go install github.com/onsi/ginkgo/ginkgo@v1.14.2 && go mod vendor && ginkgo build ./tests/pkg/tests/
 
 # create new docker image to hold built artifacts
-FROM registry.fedoraproject.org/fedora-minimal:32
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
 # run as root
 USER root
@@ -33,8 +30,8 @@ ENV IS_CANARY_ENV="true"
 # install ginkgo into built image
 COPY --from=builder /go/bin/ /usr/local/bin
 
-# copy oc into built image
-COPY --from=builder /usr/local/oc /usr/local/bin/oc
+# oc exists in the base image. copy oc into built image
+COPY --from=builder /usr/local/bin/oc /usr/local/bin/oc
 RUN oc version
 
 WORKDIR /workspace/opt/tests/
