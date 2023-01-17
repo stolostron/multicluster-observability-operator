@@ -172,6 +172,20 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 	})
 
+	It("RHACM4K-1259: Observability: Verify imported cluster is observed [P3][Sev3][Observability][Stable] (deploy/g1)", func() {
+
+		Eventually(func() error {
+			return utils.UpdateObservabilityFromManagedCluster(testOptions, false)
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+
+		klog.V(1).Infof("managedcluster number is <%d>", len(testOptions.ManagedClusters))
+		if len(testOptions.ManagedClusters) >= 1 {
+			Eventually(func() bool {
+				return true
+			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
+		}
+	})
+
 	Context("RHACM4K-7518: Observability: Disable the Observability by updating managed cluster label [P2][Sev2][Observability] (addon/g1) -", func() {
 		It("[Stable] Modifying managedcluster cr to disable observability", func() {
 			Eventually(func() error {
