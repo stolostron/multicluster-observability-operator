@@ -123,5 +123,5 @@ spec:
       name: victoriametrics
     receiveStorageSize: 1Gi
     ruleStorageSize: 1Gi
-    storageClass: gp2
+    storageClass: gp3
     storeStorageSize: 1Gi
