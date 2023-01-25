@@ -120,5 +120,5 @@ spec:
       name: thanos-object-storage
     receiveStorageSize: 1Gi
     ruleStorageSize: 1Gi
-    storageClass: gp3
+    storageClass: gp2
     storeStorageSize: 1Gi
