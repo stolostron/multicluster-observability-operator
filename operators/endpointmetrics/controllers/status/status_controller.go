@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
 
@@ -50,8 +51,12 @@ func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	hubObsAddon := &oav1beta1.ObservabilityAddon{}
 	err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
 	if err != nil {
-		log.Error(err, "Failed to get observabilityaddon in hub cluster", "namespace", hubNamespace)
-		return ctrl.Result{}, err
+		hubClient, obsAddon, err := util.RenewAndRetry(ctx)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		r.HubClient = hubClient
+		hubObsAddon = obsAddon
 	}
 
 	// Fetch the ObservabilityAddon instance in local cluster

@@ -1,11 +1,12 @@
 approvers:
-- clyang82
-- marcolan018
-- morvencao
-- songleo
-- subbarao-meduri
 - dislbenn
+- marcolan018
+- ngraham20
+- subbarao-meduri
+- bjoydeep
 
 reviewers:
+- clyang82
 - haoqing0110
-- bjoydeep
+- morvencao
+- songleo
