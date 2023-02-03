@@ -6,6 +6,8 @@ package tests
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -129,6 +131,9 @@ var _ = Describe("", func() {
 	})
 
 	It("RHACM4K-2821: Observability: Customize the Observability components storage size [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
+		if strings.Contains(string(os.Getenv("CLOUD_PROVIDER")), "VMWARE") {
+			Skip("Skip the case due to it's not supported on the VMWARE")
+		}
 		By("Resizing alertmanager storage")
 		alertmans, _ := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
 			LabelSelector: ALERTMANAGER_LABEL,
@@ -145,6 +150,9 @@ var _ = Describe("", func() {
 	})
 
 	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - Revert MCO CR changes [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
+		if strings.Contains(string(os.Getenv("CLOUD_PROVIDER")), "VMWARE") {
+			Skip("Skip the case due to it's not supported on the VMWARE")
+		}
 		advRetentionCon, err := utils.CheckAdvRetentionConfig(testOptions)
 		if !advRetentionCon {
 			Skip("Skip the case since " + err.Error())
