@@ -50,7 +50,6 @@ pipeline {
                 export REGION="${params.REGION}"
                 export SKIP_INSTALL_STEP="${params.SKIP_INSTALL_STEP}"
                 export SKIP_UNINSTALL_STEP="${params.SKIP_UNINSTALL_STEP}"
-		echo $CLOUD_PROVIDER
                 
                 if [[ -n "${params.AWS_ACCESS_KEY_ID}" ]]; then
                     export AWS_ACCESS_KEY_ID="${params.AWS_ACCESS_KEY_ID}"
