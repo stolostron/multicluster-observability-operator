@@ -9,6 +9,7 @@ pipeline {
         }
     }
     parameters {
+        string(name:'CLOUD_PROVIDER', defaultValue: '', description: 'Cloud provider, OCP and ACM version information, like VMWARE-412-264, AWS-411')
         string(name:'HUB_CLUSTER_NAME', defaultValue: '', description: 'Name of Hub cluster')
         string(name:'BASE_DOMAIN', defaultValue: '', description: 'Base domain of Hub cluster')
         string(name:'OC_CLUSTER_USER', defaultValue: 'kubeadmin', description: 'OCP Hub User Name')
@@ -36,6 +37,7 @@ pipeline {
         stage('Test Run') {
             steps {
                 sh """
+                export CLOUD_PROVIDER="${params.CLOUD_PROVIDER}"
                 export OC_CLUSTER_USER="${params.OC_CLUSTER_USER}"
                 export OC_HUB_CLUSTER_PASS="${params.OC_HUB_CLUSTER_PASS}"
                 export OC_HUB_CLUSTER_API_URL="${params.OC_HUB_CLUSTER_API_URL}"
