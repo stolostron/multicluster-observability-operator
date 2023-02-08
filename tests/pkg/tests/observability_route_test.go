@@ -60,6 +60,7 @@ var _ = Describe("", func() {
 			client := &http.Client{}
 			if os.Getenv("IS_KIND_ENV") != "true" {
 				client.Transport = tr
+				BearerToken, err = utils.FetchBearerToken(testOptions)
 				req.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
 
@@ -85,7 +86,7 @@ var _ = Describe("", func() {
 				return fmt.Errorf("Failed to find metric name from response")
 			}
 			return nil
-		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	It("@BVT - [P1][Sev1][observability][Integration] Should access alert via alertmanager route (route/g0)", func() {
@@ -133,6 +134,7 @@ var _ = Describe("", func() {
 			client := &http.Client{}
 			if os.Getenv("IS_KIND_ENV") != "true" {
 				client.Transport = tr
+				BearerToken, err = utils.FetchBearerToken(testOptions)
 				alertPostReq.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
 			if !alertCreated {
@@ -161,6 +163,7 @@ var _ = Describe("", func() {
 			}
 
 			if os.Getenv("IS_KIND_ENV") != "true" {
+				BearerToken, err = utils.FetchBearerToken(testOptions)
 				alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
 
