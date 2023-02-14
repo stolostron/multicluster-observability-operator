@@ -29,3 +29,6 @@
 - <https://github.com/stolostron/backlog/issues/25454>
 - <https://github.com/stolostron/backlog/issues/25385>
 
+### Tue Feb 14 13:05:24 EST 2023
+
+- Triggered image rebuild for release 2.7
