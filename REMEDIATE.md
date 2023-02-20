@@ -17,3 +17,7 @@
 ### Wed Aug 10 09:16:33 EDT 2022
 
 - <https://github.com/stolostron/multicluster-observability-operator/pull/1082>
+
+### Mon Feb 20 11:47:44 EST 2023
+
+- Triggered image rebuild for release 2.6
