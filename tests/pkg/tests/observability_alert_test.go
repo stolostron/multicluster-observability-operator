@@ -378,6 +378,147 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
+	It("RHACM4K-22427: Observability: Disable the managedcluster's alerts forward to the Hub [P2][Sev2][Observability][Integration] (alertforward/g1)", func() {
+		amURL := url.URL{
+			Scheme: "https",
+			Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,
+			Path:   "/api/v2/alerts",
+		}
+		q := amURL.Query()
+		q.Set("filter", "alertname=Watchdog")
+		amURL.RawQuery = q.Encode()
+
+		caCrt, err := utils.GetRouterCA(hubClient)
+		Expect(err).NotTo(HaveOccurred())
+		pool := x509.NewCertPool()
+		pool.AppendCertsFromPEM(caCrt)
+
+		client := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{RootCAs: pool},
+			},
+		}
+
+		alertGetReq, err := http.NewRequest("GET", amURL.String(), nil)
+		Expect(err).NotTo(HaveOccurred())
+
+		if os.Getenv("IS_KIND_ENV") != "true" {
+			if BearerToken == "" {
+				BearerToken, err = utils.FetchBearerToken(testOptions)
+				Expect(err).NotTo(HaveOccurred())
+			}
+			alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
+		}
+
+		//expectedOCPClusterIDs, err := utils.ListOCPManagedClusterIDs(testOptions, "4.8.0")
+		//Expect(err).NotTo(HaveOccurred())
+		expectedKSClusterNames, err := utils.ListKSManagedClusterNames(testOptions)
+		Expect(err).NotTo(HaveOccurred())
+		// expectClusterIdentifiers := append(expectedOCPClusterIDs, expectedKSClusterNames...)
+
+		// install watchdog PrometheusRule to *KS clusters
+		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: watchDogRuleKustomizationPath})
+		Expect(err).NotTo(HaveOccurred())
+		for _, ks := range expectedKSClusterNames {
+			for idx, mc := range testOptions.ManagedClusters {
+				if mc.Name == ks {
+					err = utils.Apply(
+						testOptions.ManagedClusters[idx].ClusterServerURL,
+						testOptions.ManagedClusters[idx].KubeConfig,
+						testOptions.ManagedClusters[idx].KubeContext,
+						yamlB,
+					)
+					Expect(err).NotTo(HaveOccurred())
+				}
+			}
+		}
+
+		By("Add annotations to disable alert forward")
+		mco, getErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+		if getErr != nil {
+			klog.Errorf("err: %+v\n", err)
+		}
+		spec := mco.Object["metadata"].(map[string]interface{})
+		annotations, found := spec["annotations"].(map[string]interface{})
+		if !found {
+			annotations = make(map[string]interface{})
+		}
+		annotations["mco-disable-alerting"] = "true"
+		spec["annotations"] = annotations
+		_, updateErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
+		if updateErr != nil {
+			klog.Errorf("err: %+v\n", err)
+		}
+
+		By("Checking Watchdog alerts is not forwarded to the hub")
+		Eventually(func() bool {
+			resp, err := client.Do(alertGetReq)
+			if err != nil {
+				klog.Errorf("err: %+v\n", err)
+				return false
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				klog.Errorf("err: %+v\n", resp)
+				return false
+			}
+
+			alertResult, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return false
+			}
+
+			postableAlerts := models.PostableAlerts{}
+			err = json.Unmarshal(alertResult, &postableAlerts)
+			if err != nil {
+				return false
+			}
+			klog.V(3).Infof("postableAlerts is %+v", postableAlerts)
+
+			for _, alt := range postableAlerts {
+				klog.V(3).Infof("alt.Labels is %s", alt.Labels)
+				if alt.Labels != nil {
+					klog.V(3).Infof("waiting alerts are disappeared?")
+					return false
+				}
+			}
+
+			klog.V(3).Infof("before enable alert forward - spec is %s", spec)
+			mco, getErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			if getErr != nil {
+				klog.Errorf("err: %+v\n", err)
+			}
+			spec1 := mco.Object["metadata"].(map[string]interface{})
+			delete(spec1["annotations"].(map[string]interface{}), "mco-disable-alerting")
+			_, updateErr1 := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
+			if updateErr1 != nil {
+				klog.Errorf("err: %+v\n", updateErr1)
+			}
+			klog.V(3).Infof("enable alert forward - spec1 is %s", spec1)
+
+			return true
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*60).Should(BeTrue())
+		/*
+			By("Recover MCOCR to remove disable alert forward")
+
+					mco, getErr1 := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+					if getErr1 != nil {
+						klog.Errorf("err: %+v\n", getErr1)
+					}
+					spec2 := mco.Object["metadata"].(map[string]interface{})
+
+				klog.V(3).Infof("before enable alert forward - spec is %s", spec)
+				delete(spec["annotations"].(map[string]interface{}), "mco-disable-alerting")
+				_, updateErr1 := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
+				if updateErr1 != nil {
+					klog.Errorf("err: %+v\n", updateErr1)
+				}
+				klog.V(3).Infof("enable alert forward - spec is %s", spec)
+		*/
+	})
+
 	JustAfterEach(func() {
 		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 	})
