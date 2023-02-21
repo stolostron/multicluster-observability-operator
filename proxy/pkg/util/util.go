@@ -668,7 +668,7 @@ func getCommonNamespacesAcrossClusters(clusters []string, metricsAccess map[stri
 }
 
 // read clusters in the user's query
-func getClustersInQuery(queryValues url.Values) []string {
+func getClustersInQuery(queryValues url.Values, key string, userMetricsAccess map[string][]string) []string {
 
 	// parse the promql query and return the queries  set of cluster
 	// so that better namespace filtering can be done
@@ -677,8 +677,48 @@ func getClustersInQuery(queryValues url.Values) []string {
 	// result should be -- "devcluster1"
 
 	// stubbing to return "empty" i.e all clusters
-	return []string{}
 
+	query := queryValues.Get(key)
+	reg := regexp.MustCompile(`([{|,][ ]*)cluster(=|!=|=~|!~)([ ]*)"([^"]+)"`)
+	matches := reg.FindStringSubmatch(query)
+	if len(matches) == 0 {
+		return []string{}
+	}
+	operator := matches[2]
+	expr := matches[4]
+	clusters := []string{}
+	for cluster := range userMetricsAccess {
+		clusters = append(clusters, cluster)
+	}
+	queryClusters := []string{}
+	switch operator {
+	case "=":
+		return []string{expr}
+	case "!=":
+		for _, cluster := range clusters {
+			if cluster != expr {
+				queryClusters = append(queryClusters, cluster)
+			}
+		}
+		return queryClusters
+	case "=~":
+		reg = regexp.MustCompile(expr)
+		for _, cluster := range clusters {
+			if reg.MatchString(cluster) {
+				queryClusters = append(queryClusters, cluster)
+			}
+		}
+		return queryClusters
+	case "!~":
+		reg = regexp.MustCompile(expr)
+		for _, cluster := range clusters {
+			if !reg.MatchString(cluster) {
+				queryClusters = append(queryClusters, cluster)
+			}
+		}
+		return queryClusters
+	}
+	return []string{}
 }
 
 func rewriteQuery(queryValues url.Values, userMetricsAccess map[string][]string, key string) url.Values {
@@ -707,7 +747,7 @@ func rewriteQuery(queryValues url.Values, userMetricsAccess map[string][]string,
 
 	//get namespaces list for injecting namespaces label
 
-	queryClusters := getClustersInQuery(queryValues)
+	queryClusters := getClustersInQuery(queryValues, key, userMetricsAccess)
 
 	commonNsAcrossQueryClusters := getCommonNamespacesAcrossClusters(queryClusters, userMetricsAccess)
 
