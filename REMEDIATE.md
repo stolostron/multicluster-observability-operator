@@ -15,3 +15,9 @@
 - <https://github.com/stolostron/backlog/issues/22122>
 
 ### Wed Aug 10 09:55:30 EDT 2022
+
+- Triggered image rebuild for release 2.5
+
+### Mon Feb 20 11:47:44 EST 2023
+
+- Triggered image rebuild for release 2.5
