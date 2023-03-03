@@ -43,6 +43,9 @@ var _ = Describe("", func() {
 	})
 
 	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - tune retention settings in MCO CR [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
+		if strings.Contains(string(os.Getenv("CLOUD_PROVIDER")), "VMWARE") {
+			Skip("Skip the case due to it's not supported on the VMWARE")
+		}
 		By("Modifying MCO CR for reconciling")
 		err := utils.ModifyMCOCR(testOptions)
 		Expect(err).ToNot(HaveOccurred())
