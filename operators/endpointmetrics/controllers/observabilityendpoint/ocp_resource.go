@@ -307,7 +307,7 @@ func getEtcdServiceMonitor(namespace, id string) *promv1.ServiceMonitor {
 					},
 					MetricRelabelConfigs: []*promv1.RelabelConfig{
 						{
-							SourceLabels: []promv1.LabelName{"__name__"},
+							SourceLabels: []string{"__name__"},
 							Action:       "keep",
 							Regex: "(etcd_server_has_leader|etcd_disk_wal_fsync_duration_seconds_bucket|" +
 								"etcd_mvcc_db_total_size_in_bytes|etcd_network_peer_round_trip_time_seconds_bucket|" +
@@ -393,7 +393,7 @@ func getKubeServiceMonitor(namespace, id string) *promv1.ServiceMonitor {
 					},
 					MetricRelabelConfigs: []*promv1.RelabelConfig{
 						{
-							SourceLabels: []promv1.LabelName{"__name__"},
+							SourceLabels: []string{"__name__"},
 							Action:       "keep",
 							Regex: "(up|apiserver_request_duration_seconds_bucket|apiserver_storage_objects|" +
 								"apiserver_request_total|apiserver_current_inflight_requests)",

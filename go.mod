@@ -1,6 +1,6 @@
 module github.com/stolostron/multicluster-observability-operator
 
-go 1.19
+go 1.18
 
 require (
 	github.com/IBM/controller-filtered-cache v0.3.3
@@ -20,12 +20,12 @@ require (
 	github.com/onsi/gomega v1.23.0
 	github.com/openshift/api v3.9.1-0.20191111211345-a27ff30ebf09+incompatible
 	github.com/openshift/client-go v0.0.0-20230120202327-72f107311084
-	github.com/openshift/cluster-monitoring-operator v0.0.0-20230301102803-6b62af65812f
+	github.com/openshift/cluster-monitoring-operator v0.0.0-20230118025836-20fcb9f6ef4e
 	github.com/openshift/hypershift v0.0.0-20221111030913-c8ea5dd4c238
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus-community/prom-label-proxy v0.6.0
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.62.0
-	github.com/prometheus-operator/prometheus-operator/pkg/client v0.62.0
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.57.0
+	github.com/prometheus-operator/prometheus-operator/pkg/client v0.53.1
 	github.com/prometheus/alertmanager v0.25.0
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/client_model v0.3.0
@@ -71,7 +71,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dennwc/varint v1.0.0 // indirect
-	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/efficientgo/core v1.0.0-rc.0.0.20221201130417-ba593f67d2a4 // indirect
 	github.com/efficientgo/tools/core v0.0.0-20220817170617-6c25e3b627dd // indirect
@@ -121,11 +120,9 @@ require (
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
-	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/openshift/library-go v0.0.0-20230120214501-9bc305884fcb // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus-operator/prometheus-operator v0.62.0 // indirect
 	github.com/prometheus/common/sigv4 v0.1.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
@@ -195,6 +192,7 @@ replace (
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20220908185739-e518ece6c293
 	github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20220905192401-849f725bff84
 	github.com/prometheus-community/prom-label-proxy/injectproxy => github.com/prometheus-community/prom-label-proxy/injectproxy v0.6.0
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring => github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.53.1
 	github.com/prometheus/common => github.com/prometheus/common v0.37.1
 	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.40.1
 	golang.org/x/text => golang.org/x/text v0.3.5
