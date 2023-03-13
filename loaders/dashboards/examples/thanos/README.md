@@ -110,3 +110,5 @@ oc apply -f grafana-dashboard-acm-thanos-rule.yaml
 Alternatively, you can import the dashboard JSON files (*.json) directly via Grafana UI via `import -> Paste JSON` and set datasource to `Prometheus`. 
 
 The Thanos dashboards should appear in `Thanos` folder in Grafana.
+
+![Thanos Overview](Overview.jpg)
