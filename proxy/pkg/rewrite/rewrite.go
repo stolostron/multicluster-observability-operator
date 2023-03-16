@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/prometheus-community/prom-label-proxy/injectproxy"
-	"github.com/prometheus/prometheus/pkg/labels"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"k8s.io/klog"
 )
@@ -33,7 +33,7 @@ func InjectLabels(query string, label string, values []string) (string, error) {
 	if len(values) == 1 {
 		matchType = labels.MatchEqual
 	}
-	err = injectproxy.NewEnforcer([]*labels.Matcher{
+	err = injectproxy.NewEnforcer(false, []*labels.Matcher{
 		{
 			Name:  label,
 			Type:  matchType,
