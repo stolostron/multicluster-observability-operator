@@ -189,6 +189,8 @@ replace (
 	k8s.io/apimachinery => k8s.io/apimachinery v0.23.1
 	k8s.io/client-go => k8s.io/client-go v0.23.1
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
+	sigs.k8s.io/kustomize/api => sigs.k8s.io/kustomize/api v0.8.8
+	sigs.k8s.io/kustomize/kyaml => sigs.k8s.io/kustomize/kyaml v0.10.17
 )
 
 // needed because otherwise installer fetches a library-go version that requires bitbucket.com/ww/goautoneg which is dead
