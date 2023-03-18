@@ -265,7 +265,8 @@ func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClust
 func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	clusterNamespace string, clusterName string,
 	mco *mcov1beta2.MultiClusterObservability,
-	works []workv1.Manifest, crdWork *workv1.Manifest, dep *appsv1.Deployment,
+	works []workv1.Manifest, allowlist *corev1.ConfigMap,
+	crdWork *workv1.Manifest, dep *appsv1.Deployment,
 	hubInfo *corev1.Secret, installProm bool) error {
 
 	work := newManifestwork(clusterNamespace+workNameSuffix, clusterNamespace)
@@ -281,6 +282,7 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	}
 
 	manifests = append(manifests, works...)
+	manifests = injectIntoWork(manifests, allowlist)
 
 	if clusterName != localClusterName {
 		manifests = append(manifests, *crdWork)
