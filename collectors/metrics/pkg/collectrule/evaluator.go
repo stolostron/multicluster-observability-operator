@@ -16,7 +16,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	clientmodel "github.com/prometheus/client_model/go"
-	"github.com/prometheus/prometheus/pkg/labels"
+	"github.com/prometheus/prometheus/model/labels"
 
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/forwarder"
 	rlogger "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
