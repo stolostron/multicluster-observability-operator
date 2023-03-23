@@ -370,7 +370,7 @@ func (w *Worker) forward(ctx context.Context) error {
 		}
 
 		rfamilies, err := w.getRecordingMetrics(ctx)
-		if err != nil {
+		if err != nil && len(rfamilies) == 0 {
 			statusErr := w.status.UpdateStatus("Degraded", "Degraded", "Failed to retrieve recording metrics")
 			if statusErr != nil {
 				rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
@@ -466,7 +466,7 @@ func (w *Worker) getRecordingMetrics(ctx context.Context) ([]*clientmodel.Metric
 		var r map[string]string
 		err := json.Unmarshal(([]byte)(rule), &r)
 		if err != nil {
-			rlogger.Log(w.logger, rlogger.Warn, "msg", "Input error", "err", err)
+			rlogger.Log(w.logger, rlogger.Warn, "msg", "Input error", "rule", rule, "err", err)
 			e = err
 			continue
 		}
