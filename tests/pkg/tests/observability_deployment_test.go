@@ -5,6 +5,8 @@ package tests
 
 import (
 	"context"
+	"os"
+	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -64,6 +66,23 @@ var _ = Describe("", func() {
 			return nil
 		}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*10).Should(Succeed())
 
+	})
+
+	It("RHACM4K-30645: Observability: Verify setting in CM cluster-monitoring-config is not removed after MCO enabled - [P1][Sev1][Observability][Stable] (deployment/g1)", func() {
+		By("Check enableUserAlertmanagerConfig value is not replaced in the CM cluster-monitoring-config")
+		if os.Getenv("SKIP_INSTALL_STEP") == "true" {
+			Skip("Skip the case due to this case is only available before MCOCR deployment")
+		}
+		Eventually(func() bool {
+
+			cm, err := hubClient.CoreV1().ConfigMaps("openshift-monitoring").Get(context.TODO(), "cluster-monitoring-config", metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			if strings.Contains(cm.String(), "enableUserAlertmanagerConfig: true") {
+				return true
+			}
+			return false
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
 	})
 
 	AfterEach(func() {
