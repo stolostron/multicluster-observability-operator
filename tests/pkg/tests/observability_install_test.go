@@ -33,6 +33,18 @@ func installMCO() {
 		testOptions.KubeConfig,
 		testOptions.HubCluster.KubeContext)
 
+	By("Deploy CM cluster-monitoring-config")
+
+	yamlBc, _ := kustomize.Render(
+		kustomize.Options{KustomizationPath: "../../../examples/configmapcmc/cluster-monitoring-config"},
+	)
+	Expect(
+		utils.Apply(
+			testOptions.HubCluster.ClusterServerURL,
+			testOptions.KubeConfig,
+			testOptions.HubCluster.KubeContext,
+			yamlBc)).NotTo(HaveOccurred())
+
 	By("Checking MCO operator is started up and running")
 	podList, err := hubClient.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: MCO_LABEL})
 	Expect(len(podList.Items)).To(Equal(1))
