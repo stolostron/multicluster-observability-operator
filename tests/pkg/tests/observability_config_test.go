@@ -6,6 +6,8 @@ package tests
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 
+	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
@@ -27,6 +30,84 @@ var _ = Describe("", func() {
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
+	})
+
+	It("RHACM4K-31474: Observability: Verify memcached setting max_item_size is populated on thanos-store - [P1][Sev1][Observability][Stable](config/g1)", func() {
+
+		By("Updating mco cr to update values in storeMemcached")
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/maxitemsize/updatemcocr"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlB,
+			)).NotTo(HaveOccurred())
+
+		time.Sleep(60 * time.Second)
+
+		By("Check the value is effect in the sts observability-thanos-store-shard-0")
+		Eventually(func() bool {
+
+			thanosStoreMemSts, _ := utils.GetStatefulSet(testOptions, true, "observability-thanos-store-memcached", MCO_NAMESPACE)
+			//klog.V(3).Infof("STS thanosStoreSts is %s", thanosStoreMemSts)
+			containers := thanosStoreMemSts.Spec.Template.Spec.Containers
+
+			args := containers[0].Args
+			//klog.V(3).Infof("args is %s", args)
+
+			argsStr := strings.Join(args, " ")
+			//klog.V(3).Infof("argsStr is %s", argsStr)
+
+			if !strings.Contains(argsStr, "-I 10m") {
+				klog.V(3).Infof("maxItemSize is not effect in sts observability-thanos-store-memcached")
+				return false
+			}
+
+			klog.V(3).Infof("maxItemSize is effect in sts observability-thanos-store-memcached")
+			return true
+
+		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
+	})
+
+	It("RHACM4K-31475: Observability: Verify memcached setting max_item_size is populated on thanos-query-frontend - [P1][Sev1][Observability][Stable](config/g1)", func() {
+
+		By("Updating mco cr to update values in storeMemcached")
+		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/maxitemsize/updatemcocr"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(
+			utils.Apply(
+				testOptions.HubCluster.ClusterServerURL,
+				testOptions.KubeConfig,
+				testOptions.HubCluster.KubeContext,
+				yamlB,
+			)).NotTo(HaveOccurred())
+
+		time.Sleep(60 * time.Second)
+
+		By("Check the value is effect in the sts observability-thanos-store-shard-0")
+		Eventually(func() bool {
+
+			thanosQueFronMemSts, _ := utils.GetStatefulSet(testOptions, true, "observability-thanos-query-frontend-memcached", MCO_NAMESPACE)
+			//klog.V(3).Infof("STS thanosStoreSts is %s", thanosQueFronMemSts)
+			containers := thanosQueFronMemSts.Spec.Template.Spec.Containers
+
+			args := containers[0].Args
+			//klog.V(3).Infof("args is %s", args)
+
+			argsStr := strings.Join(args, " ")
+			//klog.V(3).Infof("argsStr is %s", argsStr)
+
+			if !strings.Contains(argsStr, "-I 10m") {
+				klog.V(3).Infof("maxItemSize is not effect in sts observability-thanos-query-frontend-memcached")
+				return false
+			}
+
+			klog.V(3).Infof("maxItemSize is effect in sts observability-thanos-query-frontend-memcached")
+			return true
+
+		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*10).Should(BeTrue())
 	})
 
 	It("RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster @BVT - [P1][Sev1][Observability][Stable](config/g0)", func() {
