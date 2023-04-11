@@ -754,6 +754,9 @@ spec:
                       name:
                         description: Object Store Config Secret Name
                         type: string
+                      serviceAccountProjection:
+                        description: Whether mount service account token in thanos store/ruler/compact/receiver
+                        type: boolean
                       tlsSecretMountPath:
                         description: TLS secret mount path in thanos store/ruler/compact/receiver
                         type: string

@@ -34,7 +34,7 @@ require (
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stolostron/multiclusterhub-operator v0.0.0-20220106205009-2af6f43fd562
-	github.com/stolostron/observatorium-operator v0.0.0-20220307015247-f9eb849e218e
+	github.com/stolostron/observatorium-operator v0.0.0-20230330150604-ae18caaaa723
 	github.com/stretchr/testify v1.8.1
 	github.com/thanos-io/thanos v0.30.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -133,7 +133,7 @@ require (
 	github.com/xlab/treeprint v1.1.0 // indirect
 	github.com/zmap/zcrypto v0.0.0-20201128221613-3719af1573cf // indirect
 	github.com/zmap/zlint/v3 v3.0.0 // indirect
-	go.mongodb.org/mongo-driver v1.11.0 // indirect
+	go.mongodb.org/mongo-driver v1.11.4 // indirect
 	go.opentelemetry.io/contrib/propagators/autoprop v0.34.0 // indirect
 	go.opentelemetry.io/contrib/propagators/aws v1.9.0 // indirect
 	go.opentelemetry.io/contrib/propagators/b3 v1.9.0 // indirect

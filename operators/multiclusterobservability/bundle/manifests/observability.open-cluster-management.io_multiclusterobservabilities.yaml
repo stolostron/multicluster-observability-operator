@@ -742,6 +742,9 @@ spec:
                       name:
                         description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names'
                         type: string
+                      serviceAccountProjection:
+                        description: serviceAccountProjection indicates whether mount service account token to thanos pods. Default is false.
+                        type: boolean
                       tlsSecretName:
                         description: TLS secret contains the custom certificate for the object store
                         type: string
