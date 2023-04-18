@@ -280,6 +280,8 @@ func newDefaultObservatoriumSpec(cl client.Client, mco *mcov1beta2.MultiClusterO
 		obs.ObjectStorageConfig.Thanos.Key = objStorageConf.Key
 		obs.ObjectStorageConfig.Thanos.TLSSecretName = objStorageConf.TLSSecretName
 		obs.ObjectStorageConfig.Thanos.TLSSecretMountPath = tlsSecretMountPath
+		obs.ObjectStorageConfig.Thanos.ServiceAccountProjection =
+			mco.Spec.StorageConfig.MetricObjectStorage.ServiceAccountProjection
 	}
 	return obs, nil
 }

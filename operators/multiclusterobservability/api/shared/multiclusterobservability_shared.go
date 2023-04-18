@@ -42,6 +42,9 @@ type PreConfiguredStorage struct {
 	// TLS secret contains the custom certificate for the object store
 	// +optional
 	TLSSecretName string `json:"tlsSecretName,omitempty"`
+	// serviceAccountProjection indicates whether mount service account token to thanos pods. Default is false.
+	// +optional
+	ServiceAccountProjection bool `json:"serviceAccountProjection,omitempty"`
 }
 
 // Condition is from metav1.Condition.
