@@ -996,7 +996,7 @@ data:
               "value": ""
             },
             "datasource": "$datasource",
-            "definition": "label_values(kube_pod_info{clusterType!=\"ocp3\"},cluster)",
+            "definition": "label_values(cluster_version{clusterType!=\"ocp3\"},cluster)",
             "hide": 0,
             "includeAll": false,
             "label": null,
@@ -1014,7 +1014,7 @@ data:
                 "value": ""
               }
             ],
-            "query": "label_values(kube_pod_info{clusterType!=\"ocp3\"},cluster)",
+            "query": "label_values(cluster_version{clusterType!=\"ocp3\"},cluster)",
             "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
