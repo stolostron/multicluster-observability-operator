@@ -11,6 +11,12 @@ data:
             "hide": true,
             "iconColor": "rgba(0, 211, 255, 1)",
             "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
             "type": "dashboard"
           }
         ]
@@ -19,8 +25,8 @@ data:
       "editable": true,
       "gnetId": 12136,
       "graphTooltip": 0,
-      "id": 13,
-      "iteration": 1601604476811,
+      "id": 24,
+      "iteration": 1682441679432,
       "links": [],
       "panels": [
         {
@@ -46,7 +52,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -54,7 +59,7 @@ data:
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 7,
+            "h": 8,
             "w": 12,
             "x": 0,
             "y": 1
@@ -62,11 +67,13 @@ data:
           "hiddenSeries": false,
           "id": 1,
           "legend": {
+            "alignAsTable": false,
             "avg": false,
             "current": false,
             "max": false,
             "min": false,
-            "show": false,
+            "rightSide": false,
+            "show": true,
             "total": false,
             "values": false
           },
@@ -74,8 +81,11 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "alertThreshold": true
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -85,11 +95,12 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "instance:node_cpu_utilisation:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=\"$instance\"}",
+              "exemplar": true,
+              "expr": "instance:node_cpu_utilisation:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "Utilisation",
+              "legendFormat": "{{ instance }}",
               "legendLink": null,
               "refId": "A",
               "step": 10
@@ -144,7 +155,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -152,7 +162,7 @@ data:
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 7,
+            "h": 8,
             "w": 12,
             "x": 12,
             "y": 1
@@ -165,7 +175,7 @@ data:
             "current": false,
             "max": false,
             "min": false,
-            "show": false,
+            "show": true,
             "total": false,
             "values": false
           },
@@ -173,8 +183,11 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "alertThreshold": true
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -184,11 +197,12 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "instance:node_load1_per_cpu:ratio{cluster=\"$cluster\", job=\"node-exporter\", instance=\"$instance\"}",
+              "exemplar": true,
+              "expr": "instance:node_load1_per_cpu:ratio{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "Saturation",
+              "legendFormat": "{{ instance }}",
               "legendLink": null,
               "refId": "A",
               "step": 10
@@ -242,7 +256,7 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 8
+            "y": 9
           },
           "id": 11,
           "panels": [],
@@ -258,7 +272,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -266,10 +279,10 @@ data:
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 7,
+            "h": 8,
             "w": 12,
             "x": 0,
-            "y": 9
+            "y": 10
           },
           "hiddenSeries": false,
           "id": 3,
@@ -287,8 +300,11 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "alertThreshold": true
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -298,11 +314,12 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "instance:node_memory_utilisation:ratio{cluster=\"$cluster\", job=\"node-exporter\", job=\"node-exporter\", instance=\"$instance\"}",
+              "exemplar": true,
+              "expr": "instance:node_memory_utilisation:ratio{cluster=\"$cluster\", job=\"node-exporter\", job=\"node-exporter\", instance=~\"$instance\"}",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "Memory",
+              "legendFormat": "{{ instance }}",
               "legendLink": null,
               "refId": "A",
               "step": 10
@@ -350,102 +367,96 @@ data:
           }
         },
         {
-          "aliasColors": {},
-          "bars": false,
-          "dashLength": 10,
-          "dashes": false,
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
-              "links": []
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "links": [],
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
             },
             "overrides": []
           },
-          "fill": 1,
-          "fillGradient": 0,
           "gridPos": {
-            "h": 7,
+            "h": 8,
             "w": 12,
             "x": 12,
-            "y": 9
+            "y": 10
           },
-          "hiddenSeries": false,
           "id": 4,
-          "legend": {
-            "avg": false,
-            "current": false,
-            "max": false,
-            "min": false,
-            "show": false,
-            "total": false,
-            "values": false
-          },
-          "lines": true,
-          "linewidth": 1,
           "links": [],
-          "nullPointMode": "null as zero",
-          "percentage": false,
-          "pluginVersion": "7.1.3",
-          "pointradius": 5,
-          "points": false,
-          "renderer": "flot",
-          "seriesOverrides": [],
-          "spaceLength": 10,
-          "stack": false,
-          "steppedLine": false,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "pluginVersion": "8.5.20",
           "targets": [
             {
-              "expr": "instance:node_vmstat_pgmajfault:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=\"$instance\"}",
+              "exemplar": true,
+              "expr": "instance:node_vmstat_pgmajfault:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "Major page faults",
+              "legendFormat": "{{ instance }}",
               "legendLink": null,
               "refId": "A",
               "step": 10
             }
           ],
-          "thresholds": [],
           "timeFrom": null,
-          "timeRegions": [],
           "timeShift": null,
           "title": "Memory Saturation (Major Page Faults)",
-          "tooltip": {
-            "shared": false,
-            "sort": 0,
-            "value_type": "individual"
-          },
-          "type": "graph",
-          "xaxis": {
-            "buckets": null,
-            "mode": "time",
-            "name": null,
-            "show": true,
-            "values": []
-          },
-          "yaxes": [
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": 0,
-              "show": true
-            },
-            {
-              "format": "short",
-              "label": null,
-              "logBase": 1,
-              "max": null,
-              "min": null,
-              "show": false
-            }
-          ],
-          "yaxis": {
-            "align": false,
-            "alignLevel": null
-          }
+          "type": "timeseries"
         },
         {
           "collapsed": false,
@@ -454,7 +465,7 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 16
+            "y": 18
           },
           "id": 12,
           "panels": [],
@@ -470,7 +481,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -478,10 +488,10 @@ data:
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 7,
+            "h": 8,
             "w": 12,
             "x": 0,
-            "y": 17
+            "y": 19
           },
           "hiddenSeries": false,
           "id": 5,
@@ -498,8 +508,11 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "alertThreshold": true
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -519,21 +532,24 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=\"$instance\"}",
+              "exemplar": true,
+              "expr": "instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}",
               "format": "time_series",
+              "hide": false,
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "Receive",
+              "legendFormat": "instance={{ instance }}, Receive",
               "legendLink": null,
               "refId": "A",
               "step": 10
             },
             {
-              "expr": "instance:node_network_transmit_bytes_excluding_lo:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=\"$instance\"}",
+              "exemplar": true,
+              "expr": "instance:node_network_transmit_bytes_excluding_lo:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "Transmit",
+              "legendFormat": "instance={{ instance }}, Transmit",
               "legendLink": null,
               "refId": "B",
               "step": 10
@@ -588,7 +604,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -596,10 +611,10 @@ data:
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 7,
+            "h": 8,
             "w": 12,
             "x": 12,
-            "y": 17
+            "y": 19
           },
           "hiddenSeries": false,
           "id": 6,
@@ -616,8 +631,11 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "alertThreshold": true
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -637,21 +655,23 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "instance:node_network_receive_drop_excluding_lo:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=\"$instance\"}",
+              "exemplar": true,
+              "expr": "instance:node_network_receive_drop_excluding_lo:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "Receive drops",
+              "legendFormat": "instance={{ instance }}, Receive drops",
               "legendLink": null,
               "refId": "A",
               "step": 10
             },
             {
-              "expr": "instance:node_network_transmit_drop_excluding_lo:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=\"$instance\"}",
+              "exemplar": true,
+              "expr": "instance:node_network_transmit_drop_excluding_lo:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "Transmit drops",
+              "legendFormat": "instance={{ instance }}, Transmit drops",
               "legendLink": null,
               "refId": "B",
               "step": 10
@@ -705,7 +725,7 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 24
+            "y": 27
           },
           "id": 13,
           "panels": [],
@@ -721,7 +741,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -729,10 +748,10 @@ data:
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 7,
+            "h": 8,
             "w": 12,
             "x": 0,
-            "y": 25
+            "y": 28
           },
           "hiddenSeries": false,
           "id": 7,
@@ -749,8 +768,11 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "alertThreshold": true
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -760,11 +782,12 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "instance_device:node_disk_io_time_seconds:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=\"$instance\"}",
+              "exemplar": true,
+              "expr": "sum(instance_device:node_disk_io_time_seconds:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}) by (device, instance)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "{{device}}",
+              "legendFormat": "instance={{ instance }}, device={{ device }}",
               "legendLink": null,
               "refId": "A",
               "step": 10
@@ -819,7 +842,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -827,10 +849,10 @@ data:
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 7,
+            "h": 8,
             "w": 12,
             "x": 12,
-            "y": 25
+            "y": 28
           },
           "hiddenSeries": false,
           "id": 8,
@@ -847,8 +869,11 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "alertThreshold": true
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -858,11 +883,12 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "instance_device:node_disk_io_time_weighted_seconds:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=\"$instance\"}",
+              "exemplar": true,
+              "expr": "sum(instance_device:node_disk_io_time_weighted_seconds:rate1m{cluster=\"$cluster\", job=\"node-exporter\", instance=~\"$instance\"}) by (instance, device)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "{{device}}",
+              "legendFormat": "instance={{ instance }}, device={{ device }}",
               "legendLink": null,
               "refId": "A",
               "step": 10
@@ -916,7 +942,7 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 32
+            "y": 36
           },
           "id": 14,
           "panels": [],
@@ -932,7 +958,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -940,10 +965,10 @@ data:
           "fill": 1,
           "fillGradient": 0,
           "gridPos": {
-            "h": 7,
+            "h": 8,
             "w": 24,
             "x": 0,
-            "y": 33
+            "y": 37
           },
           "hiddenSeries": false,
           "id": 9,
@@ -952,7 +977,7 @@ data:
             "current": false,
             "max": false,
             "min": false,
-            "show": false,
+            "show": true,
             "total": false,
             "values": false
           },
@@ -960,8 +985,11 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "alertThreshold": true
+          },
           "percentage": false,
-          "pluginVersion": "7.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -971,11 +999,12 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "1 -\n(\n  max without (mountpoint, fstype) (node_filesystem_avail_bytes{cluster=\"$cluster\", job=\"node-exporter\", fstype!=\"\", instance=\"$instance\"})\n/\n  max without (mountpoint, fstype) (node_filesystem_size_bytes{cluster=\"$cluster\", job=\"node-exporter\", fstype!=\"\", instance=\"$instance\"})\n)\n",
+              "exemplar": true,
+              "expr": "1 -\n(\n  max without (mountpoint, fstype) (node_filesystem_avail_bytes{cluster=\"$cluster\", job=\"node-exporter\", fstype!=\"\", instance=~\"$instance\"})\n/\n  max without (mountpoint, fstype) (node_filesystem_size_bytes{cluster=\"$cluster\", job=\"node-exporter\", fstype!=\"\", instance=~\"$instance\"})\n)\n",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "{{device}}",
+              "legendFormat": "instance={{ instance }}, {{ device }}",
               "legendLink": null,
               "refId": "A",
               "step": 10
@@ -1024,7 +1053,7 @@ data:
         }
       ],
       "refresh": "5m",
-      "schemaVersion": 26,
+      "schemaVersion": 30,
       "style": "dark",
       "tags": [],
       "templating": {
@@ -1032,9 +1061,11 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "",
-              "value": ""
+              "text": "Observatorium",
+              "value": "Observatorium"
             },
+            "description": null,
+            "error": null,
             "hide": 2,
             "includeAll": false,
             "label": null,
@@ -1052,24 +1083,28 @@ data:
             "allValue": null,
             "current": {
               "selected": true,
-              "text": "",
-              "value": ""
+              "text": "local-cluster",
+              "value": "local-cluster"
             },
             "datasource": "$datasource",
-            "definition": "label_values(cluster_version{clusterType!=\"ocp3\"},cluster)",
+            "definition": "label_values(kube_pod_info{clusterType!=\"ocp3\"},cluster)",
+            "description": null,
+            "error": null,
             "hide": 0,
             "includeAll": false,
             "label": "Cluster",
             "multi": false,
             "name": "cluster",
             "options": [],
-            "query": "label_values(cluster_version{clusterType!=\"ocp3\"},cluster)",
+            "query": {
+              "query": "label_values(kube_pod_info{clusterType!=\"ocp3\"},cluster)",
+              "refId": "Observatorium-cluster-Variable-Query"
+            },
             "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
             "sort": 1,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
@@ -1077,25 +1112,33 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
-              "text": "",
-              "value": ""
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
             },
             "datasource": "$datasource",
             "definition": "label_values(up{cluster=\"$cluster\", job=\"node-exporter\"}, instance)",
+            "description": null,
+            "error": null,
             "hide": 0,
-            "includeAll": false,
+            "includeAll": true,
             "label": "Instance",
-            "multi": false,
+            "multi": true,
             "name": "instance",
             "options": [],
-            "query": "label_values(up{cluster=\"$cluster\", job=\"node-exporter\"}, instance)",
+            "query": {
+              "query": "label_values(up{cluster=\"$cluster\", job=\"node-exporter\"}, instance)",
+              "refId": "Observatorium-instance-Variable-Query"
+            },
             "refresh": 2,
             "regex": "",
             "skipUrlSync": false,
-            "sort": 2,
+            "sort": 5,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
@@ -1131,7 +1174,7 @@ data:
       "timezone": "browser",
       "title": "USE Method / Node",
       "uid": "fac67cfbe174d3ef53eb473d73d9212f",
-      "version": 3
+      "version": 1
     }
 kind: ConfigMap
 metadata:
