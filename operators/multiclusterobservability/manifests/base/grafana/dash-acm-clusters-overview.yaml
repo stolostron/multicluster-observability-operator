@@ -11,6 +11,12 @@ data:
             "hide": true,
             "iconColor": "rgba(0, 211, 255, 1)",
             "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
             "type": "dashboard"
           }
         ]
@@ -19,8 +25,21 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 1,
-      "iteration": 1626109404690,
-      "links": [],
+      "iteration": 1682528664304,
+      "links": [
+        {
+          "asDropdown": true,
+          "icon": "external link",
+          "includeVars": false,
+          "keepTime": false,
+          "tags": [],
+          "targetBlank": true,
+          "title": "All Dashboards",
+          "tooltip": "",
+          "type": "dashboards",
+          "url": ""
+        }
+      ],
       "panels": [
         {
           "collapsed": false,
@@ -40,10 +59,15 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
               "custom": {
                 "align": null,
+                "displayMode": "auto",
                 "filterable": false
               },
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -56,10 +80,6 @@ data:
                     "value": 80
                   }
                 ]
-              },
-              "mappings": [],
-              "color": {
-                "mode": "thresholds"
               }
             },
             "overrides": [
@@ -91,15 +111,15 @@ data:
                       "mode": "absolute",
                       "steps": [
                         {
-                          "color": "rgba(50, 172, 45, 0.97)",
+                          "color": "green",
                           "value": null
                         },
                         {
-                          "color": "rgba(237, 129, 40, 0.89)",
+                          "color": "orange",
                           "value": 1
                         },
                         {
-                          "color": "rgba(245, 54, 54, 0.9)",
+                          "color": "red",
                           "value": 2
                         }
                       ]
@@ -135,15 +155,15 @@ data:
                       "mode": "absolute",
                       "steps": [
                         {
-                          "color": "rgba(50, 172, 45, 0.97)",
+                          "color": "green",
                           "value": null
                         },
                         {
-                          "color": "rgba(237, 129, 40, 0.89)",
+                          "color": "orange",
                           "value": 1
                         },
                         {
-                          "color": "rgba(245, 54, 54, 0.9)",
+                          "color": "red",
                           "value": 2
                         }
                       ]
@@ -183,15 +203,15 @@ data:
                       "mode": "absolute",
                       "steps": [
                         {
-                          "color": "rgba(245, 54, 54, 0.9)",
+                          "color": "red",
                           "value": null
                         },
                         {
-                          "color": "rgba(237, 129, 40, 0.89)",
+                          "color": "orange",
                           "value": 0
                         },
                         {
-                          "color": "rgba(50, 172, 45, 0.97)",
+                          "color": "green",
                           "value": 1
                         }
                       ]
@@ -223,7 +243,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to cluster",
-                        "url": "/d/09ec8aa1e996d6ffcd6817bbaff4db1b/kubernetes-api-server?var-cluster=${__data.fields.cluster}&var-instance=All"
+                        "url": "/d/09ec8aa1e996d6ffcd6817bbaff4db1b/kubernetes-api-server?${__url_time_range}&var-cluster=${__data.fields.cluster}&var-instance=All"
                       }
                     ]
                   },
@@ -246,7 +266,7 @@ data:
           "options": {
             "showHeader": true
           },
-          "pluginVersion": "7.5.5",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
@@ -294,20 +314,22 @@ data:
           "type": "table"
         },
         {
+          "datasource": null,
           "description": "Leader election changes per cluster over the time range selected for dashboard.",
           "fieldConfig": {
             "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
               "custom": {
                 "align": null,
+                "displayMode": "auto",
                 "filterable": false
               },
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": []
-              },
-              "mappings": [],
-              "color": {
-                "mode": "thresholds"
               }
             },
             "overrides": [
@@ -326,7 +348,7 @@ data:
                     "value": [
                       {
                         "title": "Drill down to cluster",
-                        "url": "/d/N8BxQ2jMz/kubernetes-etcd-cluster?var-cluster=${__data.fields.cluster}"
+                        "url": "/d/N8BxQ2jMz/kubernetes-etcd-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}"
                       }
                     ]
                   }
@@ -410,20 +432,15 @@ data:
                     "id": "mappings",
                     "value": [
                       {
-                        "from": "",
-                        "id": 1,
-                        "text": "Yes",
-                        "to": "",
-                        "type": 1,
-                        "value": "1"
-                      },
-                      {
-                        "from": "",
-                        "id": 2,
-                        "text": "No",
-                        "to": "",
-                        "type": 1,
-                        "value": "0"
+                        "options": {
+                          "0": {
+                            "text": "No"
+                          },
+                          "1": {
+                            "text": "Yes"
+                          }
+                        },
+                        "type": "value"
                       }
                     ]
                   },
@@ -444,19 +461,19 @@ data:
           "id": 150,
           "interval": "1m",
           "options": {
-            "showHeader": true,
             "frameIndex": 2,
+            "showHeader": true,
             "sortBy": []
           },
-          "pluginVersion": "7.5.5",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
-              "expr": "sum(changes(etcd_server_leader_changes_seen_total{cluster=~\"$cluster\",job=\"etcd\"}[$__range])) by (cluster)\n* on(cluster) group_left(db_size) count_values without() (\"db_size\", max(etcd_debugging_mvcc_db_total_size_in_bytes{cluster=~\"$cluster\",job=\"etcd\"}) by (cluster))\n* on(cluster) group_left(has_leader) count_values without() (\"has_leader\", max(etcd_server_has_leader{cluster=~\"$cluster\",job=\"etcd\"}) by (cluster))",
-              "legendFormat": "",
-              "interval": "",
               "exemplar": true,
+              "expr": "sum(changes(etcd_server_leader_changes_seen_total{cluster=~\"$cluster\",job=\"etcd\"}[$__range])) by (cluster)\n* on(cluster) group_left(db_size) count_values without() (\"db_size\", max(etcd_debugging_mvcc_db_total_size_in_bytes{cluster=~\"$cluster\",job=\"etcd\"}) by (cluster))\n* on(cluster) group_left(has_leader) count_values without() (\"has_leader\", max(etcd_server_has_leader{cluster=~\"$cluster\",job=\"etcd\"}) by (cluster))",
               "format": "table",
               "instant": true,
+              "interval": "",
+              "legendFormat": "",
               "refId": "A"
             }
           ],
@@ -480,17 +497,16 @@ data:
               "options": {
                 "excludeByName": {},
                 "indexByName": {
-                  "cluster": 0,
-                  "has_leader": 1,
                   "Value": 2,
-                  "db_size": 3
+                  "cluster": 0,
+                  "db_size": 3,
+                  "has_leader": 1
                 },
                 "renameByName": {}
               }
             }
           ],
-          "type": "table",
-          "datasource": null
+          "type": "table"
         },
         {
           "collapsed": false,
@@ -516,6 +532,7 @@ data:
               },
               "custom": {
                 "align": null,
+                "displayMode": "auto",
                 "filterable": false
               },
               "mappings": [],
@@ -658,7 +675,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to cluster",
-                        "url": "/d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=${__data.fields.cluster}"
+                        "url": "/d/8Qvi3edMz/acm-resource-optimization-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}"
                       }
                     ]
                   },
@@ -686,7 +703,7 @@ data:
             "showHeader": true,
             "sortBy": []
           },
-          "pluginVersion": "7.3.10",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
@@ -732,6 +749,7 @@ data:
               },
               "custom": {
                 "align": null,
+                "displayMode": "auto",
                 "filterable": false
               },
               "mappings": [],
@@ -770,7 +788,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to cluster",
-                        "url": "/d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=${__data.fields.cluster}"
+                        "url": "/d/8Qvi3edMz/acm-resource-optimization-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}"
                       }
                     ]
                   },
@@ -902,7 +920,7 @@ data:
             "showHeader": true,
             "sortBy": []
           },
-          "pluginVersion": "7.3.10",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
@@ -962,6 +980,7 @@ data:
               },
               "custom": {
                 "align": null,
+                "displayMode": "auto",
                 "filterable": false
               },
               "mappings": [],
@@ -996,7 +1015,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to cluster",
-                        "url": "/d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=${__data.fields.cluster}"
+                        "url": "/d/8Qvi3edMz/acm-resource-optimization-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}"
                       }
                     ]
                   },
@@ -1119,7 +1138,7 @@ data:
           "options": {
             "showHeader": true
           },
-          "pluginVersion": "7.3.10",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
@@ -1165,7 +1184,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -1197,7 +1215,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.3.10",
+          "pluginVersion": "8.5.20",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -1266,6 +1284,7 @@ data:
               },
               "custom": {
                 "align": null,
+                "displayMode": "auto",
                 "filterable": false
               },
               "mappings": [],
@@ -1300,7 +1319,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to cluster",
-                        "url": "/d/8Qvi3edMz/acm-resource-optimization-cluster?var-cluster=${__data.fields.cluster}"
+                        "url": "/d/8Qvi3edMz/acm-resource-optimization-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}"
                       }
                     ]
                   },
@@ -1403,7 +1422,7 @@ data:
           "options": {
             "showHeader": true
           },
-          "pluginVersion": "7.3.10",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
@@ -1448,7 +1467,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -1480,7 +1498,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.3.10",
+          "pluginVersion": "8.5.20",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -1544,12 +1562,19 @@ data:
           }
         },
         {
+          "datasource": null,
+          "description": "",
           "fieldConfig": {
             "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
               "custom": {
                 "align": null,
+                "displayMode": "auto",
                 "filterable": false
               },
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -1562,10 +1587,6 @@ data:
                     "value": 80
                   }
                 ]
-              },
-              "mappings": [],
-              "color": {
-                "mode": "thresholds"
               }
             },
             "overrides": [
@@ -1632,7 +1653,7 @@ data:
                     "value": [
                       {
                         "title": "Drill down to cluster",
-                        "url": "/d/ff635a025bcfea7bc3dd4f508990a3e9/kubernetes-networking-cluster?var-cluster=${__data.fields.cluster}﻿"
+                        "url": "/d/ff635a025bcfea7bc3dd4f508990a3e9/kubernetes-networking-cluster?${__url_time_range}&var-cluster=${__data.fields.cluster}﻿"
                       }
                     ]
                   }
@@ -1688,15 +1709,15 @@ data:
               }
             ]
           },
-          "pluginVersion": "7.5.5",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
-              "expr": "sum(instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=~\"$cluster\",job=\"node-exporter\",clusterType!=\"ocp3\"}) by (cluster)\n* on(cluster) group_left(node_transmit) count_values without() (\"node_transmit\", sum(instance:node_network_transmit_bytes_excluding_lo:rate1m{cluster=~\"$cluster\",job=\"node-exporter\"}) by (cluster))\n* on(cluster) group_left(node_receive_drop) count_values without() (\"node_receive_drop\", sum(instance:node_network_receive_drop_excluding_lo:rate1m{cluster=~\"$cluster\",job=\"node-exporter\"}) by (cluster))\n* on(cluster) group_left(node_transmit_drop) count_values without() (\"node_transmit_drop\", sum(instance:node_network_transmit_drop_excluding_lo:rate1m{cluster=~\"$cluster\",job=\"node-exporter\"}) by (cluster))",
-              "legendFormat": "",
-              "interval": "",
               "exemplar": true,
+              "expr": "sum(instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=~\"$cluster\",job=\"node-exporter\",clusterType!=\"ocp3\"}) by (cluster)\n* on(cluster) group_left(node_transmit) count_values without() (\"node_transmit\", sum(instance:node_network_transmit_bytes_excluding_lo:rate1m{cluster=~\"$cluster\",job=\"node-exporter\"}) by (cluster))\n* on(cluster) group_left(node_receive_drop) count_values without() (\"node_receive_drop\", sum(instance:node_network_receive_drop_excluding_lo:rate1m{cluster=~\"$cluster\",job=\"node-exporter\"}) by (cluster))\n* on(cluster) group_left(node_transmit_drop) count_values without() (\"node_transmit_drop\", sum(instance:node_network_transmit_drop_excluding_lo:rate1m{cluster=~\"$cluster\",job=\"node-exporter\"}) by (cluster))",
               "format": "table",
               "instant": true,
+              "interval": "",
+              "legendFormat": "",
               "refId": "A"
             }
           ],
@@ -1732,23 +1753,21 @@ data:
               "options": {
                 "excludeByName": {},
                 "indexByName": {
-                  "cluster": 0,
                   "Value": 1,
-                  "node_transmit": 2,
+                  "cluster": 0,
                   "node_receive_drop": 3,
+                  "node_transmit": 2,
                   "node_transmit_drop": 4
                 },
                 "renameByName": {}
               }
             }
           ],
-          "type": "table",
-          "description": "",
-          "datasource": null
+          "type": "table"
         }
       ],
       "refresh": "5m",
-      "schemaVersion": 26,
+      "schemaVersion": 30,
       "style": "light",
       "tags": [
         "ACM"
@@ -1758,8 +1777,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "",
-              "value": ""
+              "text": "Observatorium",
+              "value": "Observatorium"
             },
             "description": null,
             "error": null,
@@ -1778,7 +1797,7 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": true,
+              "selected": false,
               "text": "cloud",
               "value": "cloud"
             },
@@ -1881,7 +1900,7 @@ data:
       "timezone": "browser",
       "title": "ACM - Clusters Overview",
       "uid": "2b679d600f3b9e7676a7c5ac3643d448",
-      "version": 5
+      "version": 1
     }
 kind: ConfigMap
 metadata:

@@ -26,16 +26,12 @@ data:
       "gnetId": 12119,
       "graphTooltip": 0,
       "id": 13,
-      "iteration": 1647365265319,
+      "iteration": 1682529977328,
       "links": [],
       "panels": [
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -88,7 +84,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -151,10 +147,6 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -359,7 +351,7 @@ data:
           "options": {
             "showHeader": true
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\", node=\"$node\"}) by (pod)",
@@ -442,10 +434,6 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -497,7 +485,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -507,7 +495,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "sum(container_memory_working_set_bytes{cluster=\"$cluster\", node=\"$node\", container!=\"\",job=\"kubelet\", metrics_path=\"\/metrics\/cadvisor\", image!=\"\"}) by (pod)",
+              "expr": "sum(container_memory_working_set_bytes{cluster=\"$cluster\", node=\"$node\", container!=\"\",job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", image!=\"\"}) by (pod)",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{pod}}",
@@ -560,10 +548,6 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -844,10 +828,10 @@ data:
           "options": {
             "showHeader": true
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
-              "expr": "sum(container_memory_working_set_bytes{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"\/metrics\/cadvisor\", image!=\"\"}) by (pod)",
+              "expr": "sum(container_memory_working_set_bytes{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", image!=\"\"}) by (pod)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -866,7 +850,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(container_memory_working_set_bytes{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"\/metrics\/cadvisor\", image!=\"\"}) by (pod) / sum(kube_pod_container_resource_requests{node=\"$node\", resource=\"memory\"}) by (pod)",
+              "expr": "sum(container_memory_working_set_bytes{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", image!=\"\"}) by (pod) / sum(kube_pod_container_resource_requests{node=\"$node\", resource=\"memory\"}) by (pod)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -886,7 +870,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(container_memory_working_set_bytes{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"\/metrics\/cadvisor\", image!=\"\"}) by (pod) / sum(kube_pod_container_resource_limits{node=\"$node\", resource=\"memory\"}) by (pod)",
+              "expr": "sum(container_memory_working_set_bytes{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", image!=\"\"}) by (pod) / sum(kube_pod_container_resource_limits{node=\"$node\", resource=\"memory\"}) by (pod)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -896,7 +880,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(container_memory_rss{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"\/metrics\/cadvisor\", image!=\"\"}) by (pod)",
+              "expr": "sum(container_memory_rss{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", image!=\"\"}) by (pod)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -905,7 +889,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(container_memory_cache{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"\/metrics\/cadvisor\", image!=\"\"}) by (pod)",
+              "expr": "sum(container_memory_cache{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", image!=\"\"}) by (pod)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -914,7 +898,7 @@ data:
               "step": 10
             },
             {
-              "expr": "sum(container_memory_swap{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"\/metrics\/cadvisor\", image!=\"\"}) by (pod)",
+              "expr": "sum(container_memory_swap{cluster=\"$cluster\", node=\"$node\",container!=\"\",job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", image!=\"\"}) by (pod)",
               "format": "table",
               "instant": true,
               "intervalFactor": 2,
@@ -986,7 +970,7 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": true,
+              "selected": false,
               "text": "",
               "value": ""
             },
@@ -1016,7 +1000,7 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": true,
+              "selected": false,
               "text": "",
               "value": ""
             },
@@ -1074,7 +1058,7 @@ data:
       "timezone": "browser",
       "title": "Kubernetes / Compute Resources / Node (Pods)",
       "uid": "200ac8fdbfbb74b39aff88118e4d1c2c",
-      "version": 4
+      "version": 1
     }
 kind: ConfigMap
 metadata:

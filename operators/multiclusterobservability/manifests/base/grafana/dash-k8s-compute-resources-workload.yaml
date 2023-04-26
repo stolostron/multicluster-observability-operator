@@ -26,16 +26,12 @@ data:
       "gnetId": 12121,
       "graphTooltip": 0,
       "id": 16,
-      "iteration": 1647365265745,
+      "iteration": 1682530750698,
       "links": [],
       "panels": [
         {
           "collapsed": false,
           "datasource": "$dashboard",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -88,7 +84,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -152,10 +148,6 @@ data:
         {
           "collapsed": false,
           "datasource": "$dashboard",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -210,7 +202,7 @@ data:
                       {
                         "targetBlank": true,
                         "title": "Drill down to pod",
-                        "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=${__data.fields[pod]}"
+                        "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=${__data.fields[pod]}"
                       }
                     ]
                   }
@@ -261,7 +253,7 @@ data:
           "options": {
             "showHeader": true
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "sum(\n    node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate{cluster=\"$cluster\", namespace=\"$namespace\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n",
@@ -365,10 +357,6 @@ data:
         {
           "collapsed": false,
           "datasource": "$dashboard",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -420,7 +408,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -484,10 +472,6 @@ data:
         {
           "collapsed": false,
           "datasource": "$dashboard",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -543,7 +527,7 @@ data:
                       {
                         "targetBlank": true,
                         "title": "Drill down to pod",
-                        "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=${__data.fields[pod]}"
+                        "url": "/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-resources-pod?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-pod=${__data.fields[pod]}"
                       }
                     ]
                   }
@@ -594,7 +578,7 @@ data:
           "options": {
             "showHeader": true
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "sum(\n    container_memory_working_set_bytes{cluster=\"$cluster\", namespace=\"$namespace\", container!=\"\"}\n  * on(namespace,pod)\n    group_left(workload, workload_type) namespace_workload_pod:kube_pod_owner:relabel{cluster=\"$cluster\", namespace=\"$namespace\", workload=\"$workload\", workload_type=\"$type\"}\n) by (pod)\n",
@@ -705,8 +689,8 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "",
-              "value": ""
+              "text": "Observatorium",
+              "value": "Observatorium"
             },
             "description": null,
             "error": null,
@@ -726,8 +710,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "",
-              "value": ""
+              "text": "dbennett-hub-412",
+              "value": "dbennett-hub-412"
             },
             "datasource": "$datasource",
             "definition": "label_values(cluster_version{clusterType!=\"ocp3\"},cluster)",
@@ -755,7 +739,7 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": true,
+              "selected": false,
               "text": "",
               "value": ""
             },
@@ -785,7 +769,7 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": true,
+              "selected": false,
               "text": "",
               "value": ""
             },
@@ -815,7 +799,7 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": true,
+              "selected": false,
               "text": "",
               "value": ""
             },
@@ -873,7 +857,7 @@ data:
       "timezone": "browser",
       "title": "Kubernetes / Compute Resources / Workload",
       "uid": "a164a7f0339f99e89cea5cb47e9be617",
-      "version": 3
+      "version": 1
     }
 kind: ConfigMap
 metadata:

@@ -11,6 +11,12 @@ data:
             "hide": true,
             "iconColor": "rgba(0, 211, 255, 1)",
             "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
             "type": "dashboard"
           }
         ]
@@ -19,8 +25,8 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": 13,
-      "iteration": 1633958242996,
+      "id": 22,
+      "iteration": 1682530946800,
       "links": [
         {
           "icon": "dashboard",
@@ -38,6 +44,10 @@ data:
         {
           "collapsed": false,
           "datasource": null,
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -57,17 +67,19 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "custom": {},
               "mappings": [
                 {
-                  "from": "",
-                  "id": 1,
-                  "text": "N/A",
-                  "to": "",
-                  "type": 1,
-                  "value": "null"
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "special"
                 }
               ],
+              "max": 1,
+              "min": 0,
               "thresholds": {
                 "mode": "percentage",
                 "steps": [
@@ -107,7 +119,7 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}",
@@ -132,17 +144,19 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "custom": {},
               "mappings": [
                 {
-                  "from": "",
-                  "id": 1,
-                  "text": "N/A",
-                  "to": "",
-                  "type": 1,
-                  "value": "null"
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "special"
                 }
               ],
+              "max": 1,
+              "min": 0,
               "noValue": "-",
               "thresholds": {
                 "mode": "percentage",
@@ -193,7 +207,7 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])",
@@ -218,17 +232,19 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "custom": {},
               "mappings": [
                 {
-                  "from": "",
-                  "id": 1,
-                  "text": "N/A",
-                  "to": "",
-                  "type": 1,
-                  "value": "null"
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "special"
                 }
               ],
+              "max": 1,
+              "min": 0,
               "thresholds": {
                 "mode": "percentage",
                 "steps": [
@@ -278,7 +294,7 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])",
@@ -298,6 +314,10 @@ data:
         {
           "collapsed": false,
           "datasource": null,
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -317,15 +337,14 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "custom": {},
               "mappings": [
                 {
-                  "from": "",
-                  "id": 1,
-                  "text": "",
-                  "to": "",
-                  "type": 1,
-                  "value": ""
+                  "options": {
+                    "": {
+                      "text": ""
+                    }
+                  },
+                  "type": "value"
                 }
               ],
               "max": 7,
@@ -363,7 +382,7 @@ data:
             "showThresholdMarkers": true,
             "text": {}
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "day_of_week()",
@@ -383,8 +402,9 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "custom": {},
               "mappings": [],
+              "max": 1,
+              "min": 0,
               "thresholds": {
                 "mode": "percentage",
                 "steps": [
@@ -427,7 +447,7 @@ data:
             "showThresholdMarkers": true,
             "text": {}
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "((0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / 1)",
@@ -452,15 +472,15 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "custom": {},
               "mappings": [
                 {
-                  "from": "",
-                  "id": 1,
-                  "text": "N/A",
-                  "to": "0",
-                  "type": 1,
-                  "value": "null"
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "special"
                 }
               ],
               "thresholds": {
@@ -504,7 +524,7 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "(0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) * (7 * 24 * 60) * -1",
@@ -524,6 +544,10 @@ data:
         {
           "collapsed": false,
           "datasource": null,
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -543,7 +567,6 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "custom": {},
               "mappings": [],
               "max": 31,
               "min": 0,
@@ -580,7 +603,7 @@ data:
             "showThresholdMarkers": true,
             "text": {}
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "day_of_month()",
@@ -600,8 +623,9 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "custom": {},
               "mappings": [],
+              "max": 1,
+              "min": 0,
               "thresholds": {
                 "mode": "percentage",
                 "steps": [
@@ -644,7 +668,7 @@ data:
             "showThresholdMarkers": true,
             "text": {}
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "((0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / 1)",
@@ -669,15 +693,15 @@ data:
               "color": {
                 "mode": "thresholds"
               },
-              "custom": {},
               "mappings": [
                 {
-                  "from": "",
-                  "id": 1,
-                  "text": "N/A",
-                  "to": "",
-                  "type": 1,
-                  "value": "null"
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "special"
                 }
               ],
               "thresholds": {
@@ -721,7 +745,7 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "(0.9900 - floor(sum_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) / count_over_time(sli:apiserver_request_duration_seconds:bin:trend:1m{cluster=\"$cluster\"}[$__range])) * (30 * 24 * 60) * -1",
@@ -742,6 +766,10 @@ data:
         {
           "collapsed": false,
           "datasource": null,
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -762,12 +790,6 @@ data:
           "description": "Trending graph of the service-level indicators (SLI) over relative time period used to compute the service-level objective (SLO).",
           "fieldConfig": {
             "defaults": {
-              "color": {},
-              "custom": {},
-              "thresholds": {
-                "mode": "absolute",
-                "steps": []
-              },
               "unit": "percentunit"
             },
             "overrides": [
@@ -816,7 +838,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "pointradius": 1,
           "points": true,
           "renderer": "flot",
@@ -894,6 +916,7 @@ data:
               },
               "custom": {
                 "align": "left",
+                "displayMode": "auto",
                 "filterable": false
               },
               "mappings": [],
@@ -952,7 +975,7 @@ data:
               }
             ]
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "sli:apiserver_request_duration_seconds:trend:1m{cluster=\"$cluster\"}",
@@ -1005,7 +1028,7 @@ data:
         }
       ],
       "refresh": "5m",
-      "schemaVersion": 27,
+      "schemaVersion": 30,
       "style": "dark",
       "tags": [
         "SLI",
@@ -1039,7 +1062,6 @@ data:
             "skipUrlSync": false,
             "sort": 1,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
@@ -1054,7 +1076,7 @@ data:
       "timezone": "",
       "title": "Kubernetes / Service-Level Overview / API Server / Cluster",
       "uid": "3TwB9bRnnz",
-      "version": 4
+      "version": 1
     }
 kind: ConfigMap
 metadata:

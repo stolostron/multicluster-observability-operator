@@ -11,6 +11,12 @@ data:
             "hide": true,
             "iconColor": "rgba(0, 211, 255, 1)",
             "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
             "type": "dashboard"
           }
         ]
@@ -19,14 +25,18 @@ data:
       "editable": true,
       "gnetId": 12124,
       "graphTooltip": 0,
-      "id": 12,
-      "iteration": 1621460740486,
+      "id": 19,
+      "iteration": 1682530945799,
       "links": [],
       "panels": [
         {
           "collapse": false,
           "collapsed": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -51,12 +61,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "color": {},
-              "custom": {},
-              "thresholds": {
-                "mode": "absolute",
-                "steps": []
-              },
               "unit": "Bps"
             },
             "overrides": []
@@ -94,7 +98,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -166,12 +170,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "color": {},
-              "custom": {},
-              "thresholds": {
-                "mode": "absolute",
-                "steps": []
-              },
               "unit": "Bps"
             },
             "overrides": []
@@ -209,7 +207,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -281,6 +279,7 @@ data:
               },
               "custom": {
                 "align": null,
+                "displayMode": "auto",
                 "filterable": false
               },
               "mappings": [],
@@ -447,7 +446,7 @@ data:
             "showHeader": true,
             "sortBy": []
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "sum(instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=\"$cluster\"}) by (instance)",
@@ -523,6 +522,10 @@ data:
           "collapse": true,
           "collapsed": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -547,7 +550,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -586,7 +588,7 @@ data:
           },
           "paceLength": 10,
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -658,7 +660,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -697,7 +698,7 @@ data:
           },
           "paceLength": 10,
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -769,7 +770,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -813,7 +813,7 @@ data:
           },
           "paceLength": 10,
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -885,7 +885,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -930,7 +929,7 @@ data:
           },
           "paceLength": 10,
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -995,7 +994,7 @@ data:
         }
       ],
       "refresh": "5m",
-      "schemaVersion": 27,
+      "schemaVersion": 30,
       "style": "dark",
       "tags": [
         "kubernetes-mixin"
@@ -1028,7 +1027,6 @@ data:
             "skipUrlSync": false,
             "sort": 0,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
@@ -1064,7 +1062,6 @@ data:
             "skipUrlSync": false,
             "sort": 1,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "interval",
             "useTags": false
@@ -1111,7 +1108,6 @@ data:
             "skipUrlSync": false,
             "sort": 1,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "interval",
             "useTags": false
@@ -1167,7 +1163,7 @@ data:
       "timezone": "browser",
       "title": "Kubernetes / Networking / Cluster",
       "uid": "ff635a025bcfea7bc3dd4f508990a3e9",
-      "version": 19
+      "version": 1
     }
 kind: ConfigMap
 metadata:

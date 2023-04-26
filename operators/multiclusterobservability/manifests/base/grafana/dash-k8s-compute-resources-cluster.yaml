@@ -26,16 +26,12 @@ data:
       "gnetId": 12114,
       "graphTooltip": 0,
       "id": 9,
-      "iteration": 1646946627802,
+      "iteration": 1682530037463,
       "links": [],
       "panels": [
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -116,7 +112,7 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\", cluster=\"$cluster\"}[$__rate_interval]))",
@@ -199,7 +195,7 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
@@ -285,7 +281,7 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
@@ -371,7 +367,7 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "1 - sum(:node_memory_MemAvailable_bytes:sum{cluster=\"$cluster\"}) / sum(kube_node_status_allocatable{cluster=\"$cluster\", resource=\"memory\"})",
@@ -456,7 +452,7 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
@@ -542,7 +538,7 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
@@ -563,10 +559,6 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -618,7 +610,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -681,10 +673,6 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -873,7 +861,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to pods",
-                        "url": "/d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
+                        "url": "/d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
@@ -902,7 +890,7 @@ data:
                     "value": [
                       {
                         "title": "Drill down to pods",
-                        "url": "/d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
+                        "url": "/d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
@@ -945,7 +933,7 @@ data:
                     "value": [
                       {
                         "title": "Drill down to workloads",
-                        "url": "/d/a87fb0d919ec0ea5f6543124e16c42a5/k8s-resources-workloads-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
+                        "url": "/d/a87fb0d919ec0ea5f6543124e16c42a5/k8s-resources-workloads-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   }
@@ -964,7 +952,7 @@ data:
           "options": {
             "showHeader": true
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "sum(kube_pod_owner{cluster=\"$cluster\"}) by (namespace)",
@@ -1075,10 +1063,6 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -1130,7 +1114,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -1195,10 +1179,6 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -1387,7 +1367,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to pods",
-                        "url": "/d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
+                        "url": "/d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
@@ -1427,7 +1407,7 @@ data:
                     "value": [
                       {
                         "title": "Drill down to pods",
-                        "url": "/d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
+                        "url": "/d/85a562078cdf77779eaa1add43ccec1e/k8s-resources-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
@@ -1459,7 +1439,7 @@ data:
                     "value": [
                       {
                         "title": "Drill down to Workloads",
-                        "url": "/d/a87fb0d919ec0ea5f6543124e16c42a5/k8s-resources-workloads-namespace?var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
+                        "url": "/d/a87fb0d919ec0ea5f6543124e16c42a5/k8s-resources-workloads-namespace?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
@@ -1482,7 +1462,7 @@ data:
           "options": {
             "showHeader": true
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "sum(kube_pod_owner{cluster=\"$cluster\"}) by (namespace)",
@@ -1595,10 +1575,6 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -1759,7 +1735,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to pods",
-                        "url": "d/8b7a8b326d7a6f1f04244066368c67af/kubernetes-networking-namespace-pods?orgId=1&refresh=1m&var-namespace=${__data.fields.namespace}"
+                        "url": "d/8b7a8b326d7a6f1f04244066368c67af/kubernetes-networking-namespace-pods?${__url_time_range}&orgId=1&refresh=1m&var-namespace=${__data.fields.namespace}"
                       }
                     ]
                   },
@@ -1799,7 +1775,7 @@ data:
             "showHeader": true,
             "sortBy": []
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "sum(instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=\"$cluster\"}) by (instance)",
@@ -1916,7 +1892,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -2025,7 +2001,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 2,
           "points": false,
           "renderer": "flot",
@@ -2120,7 +2096,7 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": true,
+              "selected": false,
               "text": "",
               "value": ""
             },
@@ -2178,7 +2154,7 @@ data:
       "timezone": "browser",
       "title": "Kubernetes / Compute Resources / Cluster",
       "uid": "efa86fd1d0c121a26444b636a3f509a8",
-      "version": 5
+      "version": 1
     }
 kind: ConfigMap
 metadata:
