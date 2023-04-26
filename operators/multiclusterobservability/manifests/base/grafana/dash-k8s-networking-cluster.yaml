@@ -26,17 +26,13 @@ data:
       "gnetId": 12124,
       "graphTooltip": 0,
       "id": 19,
-      "iteration": 1682530945799,
+      "iteration": 1682532200483,
       "links": [],
       "panels": [
         {
           "collapse": false,
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -522,10 +518,6 @@ data:
           "collapse": true,
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -1002,6 +994,27 @@ data:
       "templating": {
         "list": [
           {
+            "current": {
+              "selected": false,
+              "text": "default",
+              "value": "default"
+            },
+            "description": null,
+            "error": null,
+            "hide": 2,
+            "includeAll": false,
+            "label": null,
+            "multi": false,
+            "name": "datasource",
+            "options": [],
+            "query": "prometheus",
+            "queryValue": "",
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "type": "datasource"
+          },
+          {
             "allValue": null,
             "current": {
               "selected": false,
@@ -1111,26 +1124,6 @@ data:
             "tagsQuery": "",
             "type": "interval",
             "useTags": false
-          },
-          {
-            "current": {
-              "selected": false,
-              "text": "",
-              "value": ""
-            },
-            "description": null,
-            "error": null,
-            "hide": 2,
-            "includeAll": false,
-            "label": null,
-            "multi": false,
-            "name": "datasource",
-            "options": [],
-            "query": "prometheus",
-            "refresh": 2,
-            "regex": "",
-            "skipUrlSync": false,
-            "type": "datasource"
           }
         ]
       },

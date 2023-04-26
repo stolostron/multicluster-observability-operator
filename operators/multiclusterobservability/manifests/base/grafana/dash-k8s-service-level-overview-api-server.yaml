@@ -26,7 +26,7 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 21,
-      "iteration": 1682530946237,
+      "iteration": 1682531905175,
       "links": [
         {
           "icon": "dashboard",
@@ -55,7 +55,7 @@ data:
           "type": "row"
         },
         {
-          "datasource": null,
+          "datasource": "${datasource}",
           "description": "A total number of the clusters that have exceeded their service-level objective (SLO) target.",
           "fieldConfig": {
             "defaults": {
@@ -136,7 +136,7 @@ data:
           "type": "stat"
         },
         {
-          "datasource": null,
+          "datasource": "${datasource}",
           "description": "A total number of clusters that haven't breached the service-level objective (SLO) target.",
           "fieldConfig": {
             "defaults": {
@@ -216,7 +216,7 @@ data:
           "type": "stat"
         },
         {
-          "datasource": null,
+          "datasource": "${datasource}",
           "description": "List of the topk cluster over a $window period. The results are sorted from worst offending clusters to passing clusters.",
           "fieldConfig": {
             "defaults": {
@@ -393,7 +393,7 @@ data:
           "bars": false,
           "dashLength": 10,
           "dashes": false,
-          "datasource": null,
+          "datasource": "${datasource}",
           "description": "The service-level indicator (SLI) trend of the topk clusters over a relative time. The results are sorted from worst offending clusters to passing clusters.",
           "fieldConfig": {
             "defaults": {
@@ -523,9 +523,30 @@ data:
       "templating": {
         "list": [
           {
+            "current": {
+              "selected": false,
+              "text": "default",
+              "value": "default"
+            },
+            "description": null,
+            "error": null,
+            "hide": 2,
+            "includeAll": false,
+            "label": null,
+            "multi": false,
+            "name": "datasource",
+            "options": [],
+            "query": "prometheus",
+            "queryValue": "",
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "type": "datasource"
+          },
+          {
             "allValue": null,
             "current": {
-              "selected": true,
+              "selected": false,
               "text": [
                 "All"
               ],
@@ -591,7 +612,7 @@ data:
           {
             "allValue": "100000",
             "current": {
-              "selected": true,
+              "selected": false,
               "text": "20",
               "value": "20"
             },
