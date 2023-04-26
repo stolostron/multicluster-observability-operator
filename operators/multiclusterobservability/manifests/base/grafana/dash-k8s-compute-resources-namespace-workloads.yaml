@@ -26,16 +26,12 @@ data:
       "gnetId": 12118,
       "graphTooltip": 0,
       "id": 12,
-      "iteration": 1647365264218,
+      "iteration": 1682530203988,
       "links": [],
       "panels": [
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -87,7 +83,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -195,10 +191,6 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -253,7 +245,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to workload",
-                        "url": "/d/a164a7f0339f99e89cea5cb47e9be617/k8s-resources-workload?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-workload=${__data.fields[workload]}&var-type=$type"
+                        "url": "/d/a164a7f0339f99e89cea5cb47e9be617/k8s-resources-workload?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-workload=${__data.fields[workload]}&var-type=$type"
                       }
                     ]
                   }
@@ -334,7 +326,7 @@ data:
               }
             ]
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "count(namespace_workload_pod:kube_pod_owner:relabel{cluster=\"$cluster\", namespace=\"$namespace\", workload_type=\"$type\"}) by (workload, workload_type)",
@@ -438,10 +430,6 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -493,7 +481,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -598,10 +586,6 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
-          "fieldConfig": {
-            "defaults": {},
-            "overrides": []
-          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -658,7 +642,7 @@ data:
                       {
                         "targetBlank": false,
                         "title": "Drill down to workload",
-                        "url": "/d/a164a7f0339f99e89cea5cb47e9be617/k8s-resources-workload?var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-workload=${__data.fields[workload]}&var-type=$type"
+                        "url": "/d/a164a7f0339f99e89cea5cb47e9be617/k8s-resources-workload?${__url_time_range}&var-datasource=$datasource&var-cluster=$cluster&var-namespace=$namespace&var-workload=${__data.fields[workload]}&var-type=$type"
                       }
                     ]
                   }
@@ -779,7 +763,7 @@ data:
               }
             ]
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "count(namespace_workload_pod:kube_pod_owner:relabel{cluster=\"$cluster\", namespace=\"$namespace\", workload_type=\"$type\"}) by (workload, workload_type)",
@@ -1028,7 +1012,7 @@ data:
       "timezone": "browser",
       "title": "Kubernetes / Compute Resources / Namespace (Workloads)",
       "uid": "a87fb0d919ec0ea5f6543124e16c42a5",
-      "version": 4
+      "version": 1
     }
 kind: ConfigMap
 metadata:

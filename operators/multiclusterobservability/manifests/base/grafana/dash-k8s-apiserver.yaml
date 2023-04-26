@@ -11,6 +11,12 @@ data:
             "hide": true,
             "iconColor": "rgba(0, 211, 255, 1)",
             "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
             "type": "dashboard"
           }
         ]
@@ -19,8 +25,8 @@ data:
       "editable": true,
       "gnetId": 12116,
       "graphTooltip": 0,
-      "id": 4,
-      "iteration": 1631050614206,
+      "id": 7,
+      "iteration": 1682530940182,
       "links": [],
       "panels": [
         {
@@ -32,16 +38,19 @@ data:
                 "fixedColor": "rgb(255, 255, 255)",
                 "mode": "fixed"
               },
-              "custom": {},
               "mappings": [
                 {
-                  "id": 0,
-                  "op": "=",
-                  "text": "N/A",
-                  "type": 1,
-                  "value": "null"
+                  "options": {
+                    "match": "null",
+                    "result": {
+                      "text": "N/A"
+                    }
+                  },
+                  "type": "special"
                 }
               ],
+              "max": 1,
+              "min": 0,
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -84,7 +93,7 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "expr": "(sum(up{job=\"apiserver\",cluster=\"$cluster\"} == 1) / count(up{job=\"apiserver\",cluster=\"$cluster\"}))",
@@ -105,7 +114,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -140,7 +148,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -215,12 +223,7 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
-              "links": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": []
-              }
+              "links": []
             },
             "overrides": []
           },
@@ -254,7 +257,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -348,7 +351,6 @@ data:
           "description": "The time it takes to fulfill the different actions to keep the desired status of the cluster.",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -385,7 +387,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -449,6 +451,10 @@ data:
         {
           "collapsed": false,
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -469,7 +475,6 @@ data:
           "description": "Number of actions waiting in the queue to be performed.",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -504,7 +509,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -573,7 +578,6 @@ data:
           "description": "How fast we are scheduling new actions to be  performed by controller.",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -608,7 +612,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -676,7 +680,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -711,7 +714,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -779,7 +782,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -814,7 +816,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -882,7 +884,6 @@ data:
           "datasource": "$datasource",
           "fieldConfig": {
             "defaults": {
-              "custom": {},
               "links": []
             },
             "overrides": []
@@ -917,7 +918,7 @@ data:
             "alertThreshold": true
           },
           "percentage": false,
-          "pluginVersion": "7.4.2",
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -979,7 +980,7 @@ data:
         }
       ],
       "refresh": "5m",
-      "schemaVersion": 27,
+      "schemaVersion": 30,
       "style": "dark",
       "tags": [
         "kubernetes-mixin"
@@ -1033,7 +1034,6 @@ data:
             "skipUrlSync": false,
             "sort": 1,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
@@ -1064,7 +1064,6 @@ data:
             "skipUrlSync": false,
             "sort": 1,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
@@ -1100,7 +1099,7 @@ data:
       "timezone": "browser",
       "title": "Kubernetes / API server",
       "uid": "09ec8aa1e996d6ffcd6817bbaff4db1b",
-      "version": 44
+      "version": 1
     }
 kind: ConfigMap
 metadata:
