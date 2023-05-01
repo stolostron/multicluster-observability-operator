@@ -24,8 +24,8 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": 37,
-      "iteration": 1682102040092,
+      "id": 2,
+      "iteration": 1682957987218,
       "links": [
         {
           "asDropdown": false,
@@ -77,7 +77,7 @@ data:
                 {
                   "targetBlank": true,
                   "title": "",
-                  "url": "d/UZJv0TJnz/clusters-by-alert?orgId=1&var-alert=All&var-severity=All&refresh=5m"
+                  "url": "d/UZJv0TJnz/clusters-by-alert?${__url_time_range}&orgId=1&var-alert=All&var-severity=All&refresh=5m"
                 }
               ],
               "mappings": [],
@@ -140,7 +140,7 @@ data:
                 {
                   "targetBlank": true,
                   "title": "",
-                  "url": "d/UZJv0TJnz/clusters-by-alert?orgId=1&var-alert=All&var-severity=critical"
+                  "url": "d/UZJv0TJnz/clusters-by-alert?${__url_time_range}&orgId=1&var-alert=All&var-severity=critical"
                 }
               ],
               "mappings": [],
@@ -203,7 +203,7 @@ data:
                 {
                   "targetBlank": true,
                   "title": "",
-                  "url": "d/UZJv0TJnz/clusters-by-alert?orgId=1&var-alert=All&var-severity=warning"
+                  "url": "d/UZJv0TJnz/clusters-by-alert?${__url_time_range}&orgId=1&var-alert=All&var-severity=warning"
                 }
               ],
               "mappings": [],
@@ -266,7 +266,7 @@ data:
                 {
                   "targetBlank": true,
                   "title": "",
-                  "url": "d/UZJv0TJnz/clusters-by-alert?orgId=1&var-alert=All&var-severity=moderate"
+                  "url": "d/UZJv0TJnz/clusters-by-alert?${__url_time_range}&orgId=1&var-alert=All&var-severity=moderate"
                 }
               ],
               "mappings": [],
@@ -329,7 +329,7 @@ data:
                 {
                   "targetBlank": true,
                   "title": "",
-                  "url": "d/UZJv0TJnz/clusters-by-alert?orgId=1&var-alert=All&var-severity=low"
+                  "url": "d/UZJv0TJnz/clusters-by-alert?${__url_time_range}&orgId=1&var-alert=All&var-severity=low"
                 }
               ],
               "mappings": [],
@@ -588,7 +588,7 @@ data:
                     "value": [
                       {
                         "title": "Drill down to Alerts on this Cluster",
-                        "url": "/d/7GMQIsJnz/alerts-by-cluster?orgId=1&var-cluster=${__data.fields.cluster}"
+                        "url": "/d/7GMQIsJnz/alerts-by-cluster?${__url_time_range}&orgId=1&var-cluster=${__data.fields.cluster}"
                       }
                     ]
                   }
@@ -605,7 +605,7 @@ data:
                     "value": [
                       {
                         "title": "Drill down to Clusters with this Alert",
-                        "url": "/d/UZJv0TJnz/clusters-by-alert?orgId=1&var-alert=${__data.fields.alertname}"
+                        "url": "/d/UZJv0TJnz/clusters-by-alert?${__url_time_range}&orgId=1&var-alert=${__data.fields.alertname}"
                       }
                     ]
                   }
@@ -802,18 +802,21 @@ data:
           {
             "allValue": null,
             "current": {
-              "isNone": true,
-              "selected": false,
-              "text": "None",
-              "value": ""
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
             },
             "datasource": null,
             "definition": "label_values(ALERTS, severity)",
-            "description": null,
+            "description": "Policy severity level",
             "error": null,
             "hide": 0,
-            "includeAll": false,
-            "label": null,
+            "includeAll": true,
+            "label": "Severity",
             "multi": true,
             "name": "severity",
             "options": [],
