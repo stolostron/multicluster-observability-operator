@@ -25,7 +25,7 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 2,
-      "iteration": 1682957987218,
+      "iteration": 1683311081111,
       "links": [
         {
           "asDropdown": false,
@@ -633,7 +633,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(ALERTS{alertstate=\"firing\"}) by (cluster,alertname,severity)",
+              "expr": "sum(ALERTS{alertstate=\"firing\", severity=~\"$severity\"}) by (cluster, alertname, severity)",
               "format": "table",
               "instant": true,
               "interval": "",
@@ -793,7 +793,7 @@ data:
           "type": "row"
         }
       ],
-      "refresh": "5m",
+      "refresh": "",
       "schemaVersion": 30,
       "style": "dark",
       "tags": [],
