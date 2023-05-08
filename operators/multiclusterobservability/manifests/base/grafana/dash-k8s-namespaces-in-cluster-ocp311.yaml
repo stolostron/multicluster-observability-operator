@@ -8,7 +8,6 @@ metadata:
 data:
   k8s-namespaces-in-cluster-ocp311.json: |
     {
-      "__inputs": [],
       "annotations": {
         "list": [
           {
@@ -18,6 +17,12 @@ data:
             "hide": true,
             "iconColor": "rgba(0, 211, 255, 1)",
             "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
             "type": "dashboard"
           }
         ]
@@ -25,8 +30,8 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": null,
-      "iteration": 1570200640181,
+      "id": 22,
+      "iteration": 1683553874355,
       "links": [],
       "panels": [
         {
@@ -36,12 +41,14 @@ data:
           "dashes": false,
           "datasource": "$datasource",
           "fill": 1,
+          "fillGradient": 0,
           "gridPos": {
             "h": 5,
             "w": 12,
             "x": 0,
             "y": 0
           },
+          "hiddenSeries": false,
           "id": 15,
           "legend": {
             "avg": false,
@@ -56,7 +63,11 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
           "percentage": false,
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -122,12 +133,14 @@ data:
           "dashes": false,
           "datasource": "$datasource",
           "fill": 1,
+          "fillGradient": 0,
           "gridPos": {
             "h": 5,
             "w": 12,
             "x": 12,
             "y": 0
           },
+          "hiddenSeries": false,
           "id": 17,
           "legend": {
             "avg": false,
@@ -142,7 +155,11 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null",
+          "options": {
+            "alertThreshold": true
+          },
           "percentage": false,
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -203,6 +220,11 @@ data:
         },
         {
           "collapsed": false,
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -222,12 +244,14 @@ data:
           "dashes": false,
           "datasource": "$datasource",
           "fill": 1,
+          "fillGradient": 0,
           "gridPos": {
             "h": 6,
             "w": 12,
             "x": 0,
             "y": 6
           },
+          "hiddenSeries": false,
           "id": 6,
           "legend": {
             "avg": false,
@@ -242,7 +266,11 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "alertThreshold": true
+          },
           "percentage": false,
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -331,7 +359,7 @@ data:
           "linewidth": 1,
           "links": [
             {
-              "type": "dashboard"
+              "url": "/"
             }
           ],
           "nullPointMode": "null as zero",
@@ -353,12 +381,14 @@ data:
           "styles": [
             {
               "alias": "Time",
+              "align": "auto",
               "dateFormat": "YYYY-MM-DD HH:mm:ss",
               "pattern": "Time",
               "type": "hidden"
             },
             {
               "alias": "CPU Usage",
+              "align": "auto",
               "colorMode": null,
               "colors": [],
               "dateFormat": "YYYY-MM-DD HH:mm:ss",
@@ -373,6 +403,7 @@ data:
             },
             {
               "alias": "CPU Requests",
+              "align": "auto",
               "colorMode": null,
               "colors": [],
               "dateFormat": "YYYY-MM-DD HH:mm:ss",
@@ -387,6 +418,7 @@ data:
             },
             {
               "alias": "CPU Requests %",
+              "align": "auto",
               "colorMode": null,
               "colors": [],
               "dateFormat": "YYYY-MM-DD HH:mm:ss",
@@ -401,6 +433,7 @@ data:
             },
             {
               "alias": "CPU Limits",
+              "align": "auto",
               "colorMode": null,
               "colors": [],
               "dateFormat": "YYYY-MM-DD HH:mm:ss",
@@ -415,6 +448,7 @@ data:
             },
             {
               "alias": "CPU Limits %",
+              "align": "auto",
               "colorMode": null,
               "colors": [],
               "dateFormat": "YYYY-MM-DD HH:mm:ss",
@@ -429,13 +463,14 @@ data:
             },
             {
               "alias": "Namespace",
+              "align": "auto",
               "colorMode": null,
               "colors": [],
               "dateFormat": "YYYY-MM-DD HH:mm:ss",
               "decimals": 2,
               "link": true,
               "linkTooltip": "Drill down to Namespaces",
-              "linkUrl": "/d/pods-in-namespaces/kubernetes-pods-in-namespace-ocp-3-11?var-datasource=$datasource&var-Namespace=$__cell&orgId=1&refresh=5m",
+              "linkUrl": "/d/pods-in-namespaces/kubernetes-pods-in-namespace-ocp-3-11?${__url_time_range}&var-datasource=$datasource&var-Namespace=$__cell&orgId=1&refresh=5m",
               "pattern": "namespace",
               "thresholds": [],
               "type": "number",
@@ -443,6 +478,7 @@ data:
             },
             {
               "alias": "",
+              "align": "auto",
               "colorMode": null,
               "colors": [],
               "dateFormat": "YYYY-MM-DD HH:mm:ss",
@@ -510,7 +546,7 @@ data:
             "value_type": "individual"
           },
           "transform": "table",
-          "type": "table",
+          "type": "table-old",
           "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -539,6 +575,11 @@ data:
         },
         {
           "collapsed": false,
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
           "gridPos": {
             "h": 1,
             "w": 24,
@@ -558,12 +599,14 @@ data:
           "dashes": false,
           "datasource": "$datasource",
           "fill": 1,
+          "fillGradient": 0,
           "gridPos": {
             "h": 6,
             "w": 12,
             "x": 0,
             "y": 13
           },
+          "hiddenSeries": false,
           "id": 8,
           "legend": {
             "avg": false,
@@ -578,7 +621,11 @@ data:
           "linewidth": 1,
           "links": [],
           "nullPointMode": "null as zero",
+          "options": {
+            "alertThreshold": true
+          },
           "percentage": false,
+          "pluginVersion": "8.5.20",
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
@@ -685,12 +732,14 @@ data:
           "styles": [
             {
               "alias": "Time",
+              "align": "auto",
               "dateFormat": "YYYY-MM-DD HH:mm:ss",
               "pattern": "Time",
               "type": "hidden"
             },
             {
               "alias": "Memory Usage",
+              "align": "auto",
               "colorMode": null,
               "colors": [],
               "dateFormat": "YYYY-MM-DD HH:mm:ss",
@@ -705,6 +754,7 @@ data:
             },
             {
               "alias": "Memory Requests",
+              "align": "auto",
               "colorMode": null,
               "colors": [],
               "dateFormat": "YYYY-MM-DD HH:mm:ss",
@@ -719,6 +769,7 @@ data:
             },
             {
               "alias": "Memory Requests %",
+              "align": "auto",
               "colorMode": null,
               "colors": [],
               "dateFormat": "YYYY-MM-DD HH:mm:ss",
@@ -733,6 +784,7 @@ data:
             },
             {
               "alias": "Memory Limits",
+              "align": "auto",
               "colorMode": null,
               "colors": [],
               "dateFormat": "YYYY-MM-DD HH:mm:ss",
@@ -747,6 +799,7 @@ data:
             },
             {
               "alias": "Memory Limits %",
+              "align": "auto",
               "colorMode": null,
               "colors": [],
               "dateFormat": "YYYY-MM-DD HH:mm:ss",
@@ -761,13 +814,14 @@ data:
             },
             {
               "alias": "Namespace",
+              "align": "auto",
               "colorMode": null,
               "colors": [],
               "dateFormat": "YYYY-MM-DD HH:mm:ss",
               "decimals": 2,
               "link": true,
               "linkTooltip": "Drill down to Namespaces",
-              "linkUrl": "/d/pods-in-namespaces/kubernetes-pods-in-namespace-ocp-3-11?var-datasource=$datasource&var-Namespace=$__cell&orgId=1&refresh=5m",
+              "linkUrl": "/d/pods-in-namespaces/kubernetes-pods-in-namespace-ocp-3-11?${__url_time_range}&var-datasource=$datasource&var-Namespace=$__cell&orgId=1&refresh=5m",
               "pattern": "namespace",
               "thresholds": [],
               "type": "string",
@@ -775,6 +829,7 @@ data:
             },
             {
               "alias": "",
+              "align": "auto",
               "colorMode": null,
               "colors": [],
               "dateFormat": "YYYY-MM-DD HH:mm:ss",
@@ -842,7 +897,7 @@ data:
             "value_type": "individual"
           },
           "transform": "table",
-          "type": "table",
+          "type": "table-old",
           "xaxis": {
             "buckets": null,
             "mode": "time",
@@ -871,7 +926,7 @@ data:
         }
       ],
       "refresh": "10s",
-      "schemaVersion": 16,
+      "schemaVersion": 30,
       "style": "dark",
       "tags": [
         "kubernetes-mixin"
@@ -880,55 +935,77 @@ data:
         "list": [
           {
             "allValue": null,
-            "current": {},
+            "current": {
+              "isNone": true,
+              "selected": false,
+              "text": "None",
+              "value": ""
+            },
             "datasource": "$datasource",
             "definition": "label_values(kube_pod_info{clusterType=\"ocp3\"},cluster)",
+            "description": null,
+            "error": null,
             "hide": 0,
             "includeAll": false,
             "label": null,
             "multi": false,
             "name": "cluster",
             "options": [],
-            "query": "label_values(kube_pod_info{clusterType=\"ocp3\"},cluster)",
+            "query": {
+              "query": "label_values(kube_pod_info{clusterType=\"ocp3\"},cluster)",
+              "refId": "Observatorium-cluster-Variable-Query"
+            },
             "refresh": 1,
             "regex": "",
             "skipUrlSync": false,
             "sort": 0,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
           },
           {
             "allValue": "",
-            "current": {},
+            "current": {
+              "selected": false,
+              "text": "All",
+              "value": "$__all"
+            },
             "datasource": "$datasource",
             "definition": "label_values(kube_namespace_labels{cluster=\"$cluster\"},namespace)",
+            "description": null,
+            "error": null,
             "hide": 0,
             "includeAll": true,
             "label": "Project",
             "multi": true,
             "name": "Namespace",
             "options": [],
-            "query": "label_values(kube_namespace_labels{cluster=\"$cluster\"},namespace)",
+            "query": {
+              "query": "label_values(kube_namespace_labels{cluster=\"$cluster\"},namespace)",
+              "refId": "Observatorium-Namespace-Variable-Query"
+            },
             "refresh": 1,
             "regex": "",
             "skipUrlSync": false,
             "sort": 1,
             "tagValuesQuery": "",
-            "tags": [],
             "tagsQuery": "",
             "type": "query",
             "useTags": false
           },
           {
             "current": {
-              "text": "prometheus",
-              "value": "prometheus"
+              "selected": false,
+              "text": "Observatorium",
+              "value": "Observatorium"
             },
+            "description": null,
+            "error": null,
             "hide": 0,
+            "includeAll": false,
             "label": null,
+            "multi": false,
             "name": "datasource",
             "options": [],
             "query": "prometheus",
@@ -971,5 +1048,5 @@ data:
       "timezone": "",
       "title": "Kubernetes / Namespaces in Cluster - OCP 3.11",
       "uid": "namespaces-in-cluster",
-      "version": 17
+      "version": 1
     }
