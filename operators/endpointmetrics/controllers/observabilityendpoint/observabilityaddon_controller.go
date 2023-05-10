@@ -382,6 +382,11 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.ImageConfigMap, namespace, true, true, false)),
 		).
+		Watches(
+			&source.Kind{Type: &appsv1.StatefulSet{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, namespace, false, false, true)),
+		).
 		Complete(r)
 }
 
