@@ -373,6 +373,11 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			builder.WithPredicates(getPred(metricsCollectorName, namespace, true, true, true)),
 		).
 		Watches(
+			&source.Kind{Type: &appsv1.Deployment{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(uwlMetricsCollectorName, namespace, true, true, true)),
+		).
+		Watches(
 			&source.Kind{Type: &rbacv1.ClusterRoleBinding{}},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(clusterRoleBindingName, "", false, true, true)),
@@ -385,7 +390,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Watches(
 			&source.Kind{Type: &appsv1.StatefulSet{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, namespace, false, false, true)),
+			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, uwlNamespace, false, false, true)),
 		).
 		Complete(r)
 }
