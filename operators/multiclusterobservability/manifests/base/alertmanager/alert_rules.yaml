@@ -18,7 +18,7 @@ data:
             cluster: "{{ $labels.cluster }}"
             clusterID: "{{ $labels.clusterID }}"
             PersistentVolumeClaim: "{{ $labels.persistentvolumeclaim }}"
-            severity: critical
+            severity: informational
         - alert: KubePersistentVolumeFillingUp
           annotations:
             summary: PersistentVolume is filling up and is predicted to run out of space in 6h.
@@ -30,7 +30,7 @@ data:
             cluster: "{{ $labels.cluster }}"
             clusterID: "{{ $labels.clusterID }}"
             PersistentVolumeClaim: "{{ $labels.persistentvolumeclaim }}"
-            severity: warning
+            severity: informational
       - name: policy-reports
         rules:
         - alert: ViolatedPolicyReport
