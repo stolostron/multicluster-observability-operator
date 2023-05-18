@@ -65,7 +65,6 @@ func CreateManagedClusterLabelAllowListCM(namespace string) *v1.ConfigMap {
 
 ignore_labels:
 - clusterID
-- cluster.open-cluster-management.io/clusterset
 - feature.open-cluster-management.io/addon-application-manager
 - feature.open-cluster-management.io/addon-cert-policy-controller
 - feature.open-cluster-management.io/addon-cluster-proxy
@@ -78,7 +77,6 @@ ignore_labels:
 - installer.name
 - installer.namespace
 - local-cluster
-- name
 `}}
 }
 
