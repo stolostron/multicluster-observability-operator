@@ -318,6 +318,11 @@ func updateMetricsCollectors(ctx context.Context, c client.Client, obsAddonSpec 
 		params.isUWL = true
 		params.allowlist = uwlList
 		result, err = updateMetricsCollector(ctx, c, params, forceRestart)
+	} else {
+		err = deleteMetricsCollector(ctx, c, uwlMetricsCollectorName)
+		if err != nil {
+			return false, err
+		}
 	}
 	return result, err
 }
