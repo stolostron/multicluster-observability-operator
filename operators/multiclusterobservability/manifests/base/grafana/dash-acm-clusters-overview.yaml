@@ -1798,8 +1798,8 @@ data:
             "allValue": null,
             "current": {
               "selected": false,
-              "text": "cloud",
-              "value": "cloud"
+              "text": "name",
+              "value": "name"
             },
             "datasource": null,
             "definition": "label_values(acm_label_names, label_name)",
