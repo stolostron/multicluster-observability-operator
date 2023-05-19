@@ -33,7 +33,11 @@ spec:
       serviceAccountAnnotations:
         test.com/role-arn: 's3_role'
     receive:
-      replicas: 3
+      resources:
+        limits:
+          cpu: 1
+          memory: 4Gi
+      replicas: 2
       serviceAccountAnnotations:
         test.com/role-arn: 's3_role'
     rule:
