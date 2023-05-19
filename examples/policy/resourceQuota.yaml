@@ -6,4 +6,4 @@ metadata:
 spec:
   hard:
     cpu: "5.25"
-    memory: "12Gi"
+    memory: "15Gi"
