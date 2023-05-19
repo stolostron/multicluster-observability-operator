@@ -20,9 +20,17 @@ spec:
           memory: 1Gi
       replicas: 3
     queryFrontend:
-      replicas: 2
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      replicas: 3
     query:
-      replicas: 2
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      replicas: 3
       serviceAccountAnnotations:
         test.com/role-arn: 's3_role'
     compact:
@@ -87,7 +95,11 @@ spec:
           cpu: 100m
           memory: 400Mi
     rbacQueryProxy:
-      replicas: 2
+      replicas: 3
+      resources:
+        limits:
+          cpu: 50m
+          memory: 200Mi
   nodeSelector:
     kubernetes.io/os: linux
   observabilityAddonSpec:
