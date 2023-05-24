@@ -714,7 +714,7 @@ data:
               "value": "dbennett-hub-412"
             },
             "datasource": "$datasource",
-            "definition": "label_values(cluster_version{clusterType!=\"ocp3\"},cluster)",
+            "definition": "label_values(acm_managed_cluster_labels{openshiftVersion_major!=\"3\"},name)",
             "description": null,
             "error": null,
             "hide": 0,
@@ -724,7 +724,7 @@ data:
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(cluster_version{clusterType!=\"ocp3\"},cluster)",
+              "query": "label_values(acm_managed_cluster_labels{openshiftVersion_major!=\"3\"},name)",
               "refId": "Prometheus-cluster-Variable-Query"
             },
             "refresh": 2,

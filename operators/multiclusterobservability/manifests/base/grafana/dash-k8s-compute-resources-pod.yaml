@@ -1177,7 +1177,7 @@ data:
               "value": ""
             },
             "datasource": "$datasource",
-            "definition": "label_values(cluster_version{clusterType!=\"ocp3\"},cluster)",
+            "definition": "label_values(acm_managed_cluster_labels{openshiftVersion_major!=\"3\"},name)",
             "description": null,
             "error": null,
             "hide": 0,
@@ -1187,7 +1187,7 @@ data:
             "name": "cluster",
             "options": [],
             "query": {
-              "query": "label_values(cluster_version{clusterType!=\"ocp3\"},cluster)",
+              "query": "label_values(acm_managed_cluster_labels{openshiftVersion_major!=\"3\"},name)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
