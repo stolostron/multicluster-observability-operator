@@ -36,7 +36,7 @@ unit-tests-proxy:
 	go test ${VERBOSE} `go list ./proxy/... | grep -v test`
 
 unit-tests-collectors:
-	go test `go list ./collectors/... | grep -v test`
+	go test ${VERBOSE} `go list ./collectors/... | grep -v test`
 
 .PHONY: e2e-tests
 e2e-tests:
