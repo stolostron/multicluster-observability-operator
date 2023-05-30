@@ -27,9 +27,11 @@ if [[ -n ${PARAM_AWS_SECRET_ACCESS_KEY} ]]; then
     export AWS_SECRET_ACCESS_KEY=${PARAM_AWS_SECRET_ACCESS_KEY}
 fi
 
-if [[ ${!USE_MINIO} == false ]]; then
-    export IS_CANARY_ENV=true
-fi  
+# if [[ ${!USE_MINIO} == "false" ]]; then
+#     export IS_CANARY_ENV=true
+# fi  
+
+export IS_CANARY_ENV=true
 
 if [[ -z ${HUB_CLUSTER_NAME} || -z ${BASE_DOMAIN} || -z ${OC_CLUSTER_USER} || -z ${OC_HUB_CLUSTER_PASS} || -z ${OC_HUB_CLUSTER_API_URL} ]]; then
     echo "Aborting test.. OCP HUB details are required for the test execution"
@@ -41,9 +43,17 @@ else
         export MAKUBECONFIG=~/.kube/managed_kubeconfig
     fi
     set +x
-    oc login --insecure-skip-tls-verify -u \$OC_CLUSTER_USER -p \$OC_HUB_CLUSTER_PASS \$OC_HUB_CLUSTER_API_URL
-    set -x 
+    oc login --insecure-skip-tls-verify -u $OC_CLUSTER_USER -p $OC_HUB_CLUSTER_PASS $OC_HUB_CLUSTER_API_URL
+    set -x
+ 
+    oc config view --minify --raw=true > userfile
+    //cat userfile
+    whoami
+    rm -rf ~/.kube/config
+    cp userfile ~/.kube/config
+    //cat ~/.kube/config
     export KUBECONFIG=~/.kube/config
+
     go mod vendor && ginkgo build ./tests/pkg/tests/
     cd tests
     cp resources/options.yaml.template resources/options.yaml
