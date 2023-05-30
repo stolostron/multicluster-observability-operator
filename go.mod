@@ -17,7 +17,7 @@ require (
 	github.com/hashicorp/go-version v1.3.0
 	github.com/oklog/run v1.1.0
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.23.0
+	github.com/onsi/gomega v1.24.1
 	github.com/openshift/api v3.9.1-0.20191111211345-a27ff30ebf09+incompatible
 	github.com/openshift/client-go v0.0.0-20230120202327-72f107311084
 	github.com/openshift/cluster-monitoring-operator v0.0.0-20230118025836-20fcb9f6ef4e
@@ -44,9 +44,9 @@ require (
 	k8s.io/client-go v13.0.0+incompatible
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.26.1
-	open-cluster-management.io/addon-framework v0.0.0-20211014025435-1f42884cdd53
-	open-cluster-management.io/api v0.0.0-20221020065149-a1b824343e58
-	sigs.k8s.io/controller-runtime v0.13.1
+	open-cluster-management.io/addon-framework v0.7.0
+	open-cluster-management.io/api v0.11.0
+	sigs.k8s.io/controller-runtime v0.14.4
 	sigs.k8s.io/kube-storage-version-migrator v0.0.4
 	sigs.k8s.io/kustomize/api v0.12.1
 	sigs.k8s.io/kustomize/v3 v3.3.1
@@ -125,7 +125,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/common/sigv4 v0.1.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
-	github.com/robfig/cron v1.2.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
@@ -148,15 +147,15 @@ require (
 	go.uber.org/goleak v1.2.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
-	golang.org/x/crypto v0.1.0 // indirect
+	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/exp v0.0.0-20221212164502-fae10dda9338 // indirect
 	golang.org/x/mod v0.7.0 // indirect
-	golang.org/x/net v0.4.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/oauth2 v0.3.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.3.0 // indirect
-	golang.org/x/term v0.3.0 // indirect
-	golang.org/x/text v0.5.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/term v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.4.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
