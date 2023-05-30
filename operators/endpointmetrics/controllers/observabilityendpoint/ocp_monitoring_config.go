@@ -29,6 +29,7 @@ const (
 	clusterMonitoringRevertedName  = "cluster-monitoring-reverted"
 	clusterMonitoringConfigDataKey = "config.yaml"
 	clusterLabelKeyForAlerts       = "cluster"
+	endpointMonitoringOperatorMgr  = "endpoint-monitoring-operator"
 )
 
 var (
@@ -334,6 +335,18 @@ func createOrUpdateClusterMonitoringConfig(
 		targetNamespace = namespace
 	}
 
+	// create the hub-alertmanager-router-ca secret if it doesn't exist or update it if needed
+	if err := createHubAmRouterCASecret(ctx, hubInfo, client, targetNamespace); err != nil {
+		log.Error(err, "failed to create or update the hub-alertmanager-router-ca secret")
+		return err
+	}
+
+	// create the observability-alertmanager-accessor secret if it doesn't exist or update it if needed
+	if err := createHubAmAccessorTokenSecret(ctx, client, targetNamespace); err != nil {
+		log.Error(err, "failed to create or update the observability-alertmanager-accessor secret")
+		return err
+	}
+
 	// create or update the cluster-monitoring-config configmap and relevant resources
 	if hubInfo.AlertmanagerEndpoint == "" {
 		log.Info("request to disable alert forwarding")
@@ -353,18 +366,6 @@ func createOrUpdateClusterMonitoringConfig(
 			log.Info("configuration reverted, nothing to do")
 		}
 		return nil
-	}
-
-	// create the hub-alertmanager-router-ca secret if it doesn't exist or update it if needed
-	if err := createHubAmRouterCASecret(ctx, hubInfo, client, targetNamespace); err != nil {
-		log.Error(err, "failed to create or update the hub-alertmanager-router-ca secret")
-		return err
-	}
-
-	// create the observability-alertmanager-accessor secret if it doesn't exist or update it if needed
-	if err := createHubAmAccessorTokenSecret(ctx, client, targetNamespace); err != nil {
-		log.Error(err, "failed to create or update the observability-alertmanager-accessor secret")
-		return err
 	}
 
 	if installProm {
@@ -533,24 +534,6 @@ func unset(ctx context.Context, client client.Client) error {
 // (observability-alertmanager-accessor and hub-alertmanager-router-ca) for the openshift cluster monitoring stack
 func revertClusterMonitoringConfig(ctx context.Context, client client.Client, installProm bool) error {
 	log.Info("revertClusterMonitoringConfig called")
-	targetNamespace := promNamespace
-	if installProm {
-		// for *KS, the hub CA and alertmanager access token are not created in namespace:
-		// open-cluster-management-addon-observability
-		targetNamespace = namespace
-	}
-
-	// delete the hub-alertmanager-router-ca secret
-	if err := deleteHubAmRouterCASecret(ctx, client, targetNamespace); err != nil {
-		log.Error(err, "failed to delete the hub-alertmanager-router-ca secret")
-		return err
-	}
-
-	// delete the observability-alertmanager-accessor secret
-	if err := deleteHubAmAccessorTokenSecret(ctx, client, targetNamespace); err != nil {
-		log.Error(err, "failed to delete the observability-alertmanager-accessor secret")
-		return err
-	}
 
 	// try to retrieve the current configmap in the cluster
 	found := &corev1.ConfigMap{}
@@ -566,12 +549,32 @@ func revertClusterMonitoringConfig(ctx context.Context, client client.Client, in
 		}
 	}
 
+	// do not touch the configmap if are not already a manager
+	touched := false
+	log.Info("checking field.Manager")
+	for _, field := range found.GetManagedFields() {
+		log.Info("filed.Manager", "manager", field.Manager)
+		if field.Manager == endpointMonitoringOperatorMgr {
+			touched = true
+			break
+		}
+	}
+
+	if !touched {
+		log.Info(
+			"endpoint-monitoring-operator is not a manager of configmap, no action needed",
+			"name",
+			clusterMonitoringConfigName,
+		)
+		return nil
+	}
+
 	// revert the existing cluster-monitor-config configmap
 	log.Info("configmap exists, check if it needs revert", "name", clusterMonitoringConfigName)
 	foundClusterMonitoringConfigurationYAML, ok := found.Data[clusterMonitoringConfigDataKey]
 	if !ok {
 		log.Info(
-			"configmap data doesn't contain key, no need action",
+			"configmap data doesn't contain key, no action need",
 			"name",
 			clusterMonitoringConfigName,
 			"key",
