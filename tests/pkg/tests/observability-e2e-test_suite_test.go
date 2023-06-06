@@ -106,7 +106,7 @@ func init() {
 	flag.StringVar(
 		&reportFile,
 		"report-file",
-		"results.xml",
+		"junit_results.xml",
 		"Provide the path to where the junit results will be printed.",
 	)
 	flag.StringVar(
