@@ -26,6 +26,10 @@ var (
 	SyncLabelList    ManagedClusterLabelList
 )
 
+var (
+	requiredLabelList = []string{"name", "cluster.open-cluster-management.io/clusterset"}
+)
+
 // GetManagedClusterLabelAllowListConfigMapKey return the key name for the managedcluster labels
 func GetManagedClusterLabelAllowListConfigMapKey() string {
 	return ManagedClusterLabelAllowListConfigMapKey
@@ -39,6 +43,11 @@ func GetManagedClusterLabelAllowListConfigMapName() string {
 // GetManagedClusterLabelList will return the current cluster label list
 func GetManagedClusterLabelList() *ManagedClusterLabelList {
 	return &ManagedLabelList
+}
+
+// GetSyncLabelList will return the synced label list
+func GetRequiredLabelList() []string {
+	return requiredLabelList
 }
 
 // GetSyncLabelList will return the synced label list
