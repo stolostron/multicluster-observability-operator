@@ -10,14 +10,6 @@ data:
       - acm_managed_cluster_labels
       - authenticated_user_requests
       - authentication_attempts
-      - assisted_installer_cluster_creations  # counter
-      - assisted_installer_cluster_installation_started # counter
-      - assisted_installer_cluster_installation_second # histogram
-      - assisted_installer_cluster_host_installation_count # histogram
-      - assisted_installer_host_installation_phase_seconds # histogram
-      - assisted_installer_cluster_host_disk_sync_duration_ms # histogram
-      - assisted_installer_cluster_host_image_pull_status # histogram
-      - assisted_installer_filesystem_usage_percentage # Gauge
       - cluster:capacity_cpu_cores:sum
       - cluster:capacity_memory_bytes:sum
       - cluster:container_cpu_usage:ratio
@@ -32,10 +24,9 @@ data:
       - container_cpu_cfs_periods_total
       - container_cpu_cfs_throttled_periods_total
       - container_spec_cpu_quota
-      - coredns_dns_request_count_total
+      - coredns_dns_requests_total
       - coredns_dns_request_duration_seconds_sum
-      - coredns_dns_request_type_count_total
-      - coredns_dns_response_rcode_count_total
+      - coredns_forward_responses_total
       - etcd_debugging_mvcc_db_total_size_in_bytes
       - etcd_mvcc_db_total_size_in_bytes
       - etcd_debugging_snap_save_total_duration_seconds_sum
@@ -99,7 +90,8 @@ data:
       - kube_resourcequota
       - kubelet_running_container_count
       - kubelet_runtime_operations
-      - kubelet_runtime_operations_latency_microseconds
+      - kubelet_runtime_operations_duration_seconds
+      - kubelet_runtime_operations_duration_seconds_sum
       - kubelet_volume_stats_available_bytes
       - kubelet_volume_stats_capacity_bytes
       - kube_persistentvolume_status_phase
@@ -107,7 +99,7 @@ data:
       - machine_memory_bytes
       - mixin_pod_workload
       - namespace:kube_pod_container_resource_requests_cpu_cores:sum
-      - namespace:kube_pod_container_resource_requests_memory_bytes:sum
+      - namespace_memory:kube_pod_container_resource_requests:sum
       - namespace:container_memory_usage_bytes:sum
       - namespace_cpu:kube_pod_container_resource_requests:sum
       - namespace_workload_pod:kube_pod_owner:relabel
@@ -123,8 +115,8 @@ data:
       - node_netstat_TcpExt_TCPSynRetrans
       - policyreport_info
       - up
-      - cluster_monitoring_operator_reconcile_errors_total
-      - cluster_monitoring_operator_reconcile_attempts_total
+      - prometheus_operator_reconcile_errors_total
+      - prometheus_operator_reconcile_operations_total
       - cluster_operator_conditions
       - cluster_operator_up      
       - cluster:policy_governance_info:propagated_count
