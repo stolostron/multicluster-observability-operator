@@ -25,7 +25,7 @@ data:
       "gnetId": null,
       "graphTooltip": 0,
       "id": 2,
-      "iteration": 1683311081111,
+      "iteration": 1685474074229,
       "links": [
         {
           "asDropdown": false,
@@ -158,7 +158,7 @@ data:
           },
           "gridPos": {
             "h": 5,
-            "w": 5,
+            "w": 4,
             "x": 4,
             "y": 1
           },
@@ -221,11 +221,11 @@ data:
           },
           "gridPos": {
             "h": 5,
-            "w": 5,
-            "x": 9,
+            "w": 4,
+            "x": 8,
             "y": 1
           },
-          "id": 16,
+          "id": 25,
           "options": {
             "colorMode": "background",
             "graphMode": "area",
@@ -284,8 +284,8 @@ data:
           },
           "gridPos": {
             "h": 5,
-            "w": 5,
-            "x": 14,
+            "w": 4,
+            "x": 12,
             "y": 1
           },
           "id": 24,
@@ -347,8 +347,8 @@ data:
           },
           "gridPos": {
             "h": 5,
-            "w": 5,
-            "x": 19,
+            "w": 4,
+            "x": 16,
             "y": 1
           },
           "id": 15,
@@ -378,6 +378,69 @@ data:
             }
           ],
           "title": "Total Low Alerts",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "Total number of alerts that are firing with the severity level: important.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "links": [
+                {
+                  "targetBlank": true,
+                  "title": "",
+                  "url": "d/UZJv0TJnz/clusters-by-alert?${__url_time_range}&orgId=1&var-alert=All&var-severity=important"
+                }
+              ],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 4,
+            "x": 20,
+            "y": 1
+          },
+          "id": 16,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(ALERTS{alertstate=\"firing\",severity=\"important\"}) or vector(0)",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Total Important Alerts",
           "type": "stat"
         },
         {
@@ -737,6 +800,7 @@ data:
                   "color": {
                     "mode": "thresholds"
                   },
+                  "displayName": "${__series.name}",
                   "mappings": [],
                   "thresholds": {
                     "mode": "absolute",
