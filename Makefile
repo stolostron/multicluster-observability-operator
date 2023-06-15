@@ -27,13 +27,13 @@ docker-push:
 unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors
 
 unit-tests-operators:
-	go test ${VERBOSE} `go list ./operators/... | grep -v test`
+	go test -v ${VERBOSE} `go list ./operators/... | grep -v test`
 
 unit-tests-loaders:
-	go test ${VERBOSE} `go list ./loaders/... | grep -v test`
+	go test -v ${VERBOSE} `go list ./loaders/... | grep -v test`
 
 unit-tests-proxy:
-	go test ${VERBOSE} `go list ./proxy/... | grep -v test`
+	go test -v ${VERBOSE} `go list ./proxy/... | grep -v test`
 
 unit-tests-collectors:
 	go test ${VERBOSE} `go list ./collectors/... | grep -v test`
