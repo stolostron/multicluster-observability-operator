@@ -559,6 +559,23 @@ func resyncManagedClusterLabelAllowList(kubeClient kubernetes.Interface) error {
 	sortManagedLabelList(managedLabelList)
 	sortManagedLabelList(syncLabelList)
 
+	syncIgnoreList := []string{}
+	syncUpdate := false
+
+	for _, label := range syncLabelList.IgnoreList {
+		if slice.ContainsString(proxyconfig.GetRequiredLabelList(), label, nil) {
+			klog.Infof("detected required managedcluster label in ignorelist. resetting label: %s", label)
+		} else {
+			syncIgnoreList = append(syncIgnoreList, label)
+			syncUpdate = true
+		}
+	}
+
+	sort.Strings(syncIgnoreList)
+	if syncUpdate {
+		syncLabelList.IgnoreList = syncIgnoreList
+	}
+
 	if ok := reflect.DeepEqual(syncLabelList, managedLabelList); !ok {
 		klog.Infof("resyncing required for managedcluster label allowlist: %v",
 			proxyconfig.GetManagedClusterLabelAllowListConfigMapName())
