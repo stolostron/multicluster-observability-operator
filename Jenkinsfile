@@ -70,11 +70,15 @@ pipeline {
                     exit 1
                 else
 		    if [[ -n "${params.MANAGED_CLUSTER_USER}" && -n "${params.MANAGED_CLUSTER_PASS}" && -n "${params.MANAGED_CLUSTER_API_URL}" ]]; then
+                      set +x
                       oc login --insecure-skip-tls-verify -u \$MANAGED_CLUSTER_USER -p \$MANAGED_CLUSTER_PASS \$MANAGED_CLUSTER_API_URL
+                      set -x
                       oc config view --minify --raw=true > ~/.kube/managed_kubeconfig
                       export MAKUBECONFIG=~/.kube/managed_kubeconfig
                     fi
+                    set +x
                     oc login --insecure-skip-tls-verify -u \$OC_CLUSTER_USER -p \$OC_HUB_CLUSTER_PASS \$OC_HUB_CLUSTER_API_URL
+                    set -x
                     export KUBECONFIG=~/.kube/config
                     go mod vendor && ginkgo build ./tests/pkg/tests/
                     cd tests
