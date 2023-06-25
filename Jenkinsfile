@@ -39,14 +39,18 @@ pipeline {
                 sh """
                 export CLOUD_PROVIDER="${params.CLOUD_PROVIDER}"
                 export OC_CLUSTER_USER="${params.OC_CLUSTER_USER}"
+                set +x
                 export OC_HUB_CLUSTER_PASS="${params.OC_HUB_CLUSTER_PASS}"
+                set -x
                 export OC_HUB_CLUSTER_API_URL="${params.OC_HUB_CLUSTER_API_URL}"
                 export HUB_CLUSTER_NAME="${params.HUB_CLUSTER_NAME}"
                 export BASE_DOMAIN="${params.BASE_DOMAIN}"
                 export MANAGED_CLUSTER_NAME="${params.MANAGED_CLUSTER_NAME}"
                 export MANAGED_CLUSTER_BASE_DOMAIN="${params.MANAGED_CLUSTER_BASE_DOMAIN}"
                 export MANAGED_CLUSTER_USER="${params.MANAGED_CLUSTER_USER}"
+                set +x
                 export MANAGED_CLUSTER_PASS="${params.MANAGED_CLUSTER_PASS}"
+                set -x
                 export MANAGED_CLUSTER_API_URL="${params.MANAGED_CLUSTER_API_URL}"
                 export BUCKET="${params.BUCKET}"
                 export REGION="${params.REGION}"
