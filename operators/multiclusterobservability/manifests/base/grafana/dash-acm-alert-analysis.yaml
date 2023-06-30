@@ -1,12 +1,6 @@
-kind: ConfigMap
 apiVersion: v1
-metadata:
-  name: grafana-dashboard-custom-alert-analysis
-  namespace: open-cluster-management-observability
-  labels:
-    grafana-custom-dashboard: 'true'
 data:
-  alert-analysis.json: |-
+  acm-alert-analysis.json: |-
     {
       "annotations": {
         "list": [
@@ -30,9 +24,34 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": 8,
-      "iteration": 1643209795645,
-      "links": [],
+      "id": 2,
+      "iteration": 1685474074229,
+      "links": [
+        {
+          "asDropdown": false,
+          "icon": "dashboard",
+          "includeVars": false,
+          "keepTime": false,
+          "tags": [],
+          "targetBlank": true,
+          "title": "Alerts by Cluster",
+          "tooltip": "",
+          "type": "link",
+          "url": "d/7GMQIsJnz/alerts-by-cluster?orgId=1"
+        },
+        {
+          "asDropdown": false,
+          "icon": "dashboard",
+          "includeVars": false,
+          "keepTime": false,
+          "tags": [],
+          "targetBlank": true,
+          "title": "Clusters by Alert",
+          "tooltip": "",
+          "type": "link",
+          "url": "d/UZJv0TJnz/clusters-by-alert?orgId=1"
+        }
+      ],
       "panels": [
         {
           "datasource": null,
@@ -48,23 +67,26 @@ data:
         },
         {
           "datasource": null,
-          "description": "",
+          "description": "Total number of alerts that are firing.",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
+              "links": [
+                {
+                  "targetBlank": true,
+                  "title": "",
+                  "url": "d/UZJv0TJnz/clusters-by-alert?orgId=1&var-alert=All&var-severity=All&refresh=5m"
+                }
+              ],
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "purple",
                     "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
                   }
                 ]
               }
@@ -72,14 +94,14 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 4,
+            "h": 5,
             "w": 4,
             "x": 0,
             "y": 1
           },
           "id": 13,
           "options": {
-            "colorMode": "value",
+            "colorMode": "background",
             "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
@@ -93,11 +115,11 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(ALERTS{alertstate=\"firing\"})",
+              "expr": "sum(ALERTS{alertstate=\"firing\"}) or vector(0)",
               "interval": "",
               "legendFormat": "",
               "refId": "A"
@@ -108,119 +130,26 @@ data:
         },
         {
           "datasource": null,
+          "description": "Total number of alerts that are firing with the severity level: critical.",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
-              "custom": {
-                "align": "auto",
-                "displayMode": "auto",
-                "filterable": true
-              },
-              "links": [],
+              "links": [
+                {
+                  "targetBlank": true,
+                  "title": "",
+                  "url": "d/UZJv0TJnz/clusters-by-alert?orgId=1&var-alert=All&var-severity=critical"
+                }
+              ],
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
                     "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "cluster"
-                },
-                "properties": [
-                  {
-                    "id": "links",
-                    "value": [
-                      {
-                        "title": "Drill down to Alerts on this Cluster",
-                        "url": "/d/7GMQIsJnz/alerts-by-cluster?orgId=1&var-cluster=${__data.fields.cluster}&from=now-1h&to=now"
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "alertname"
-                },
-                "properties": [
-                  {
-                    "id": "links",
-                    "value": [
-                      {
-                        "title": "Drill down to Clusters with this Alert",
-                        "url": "/d/UZJv0TJnz/clusters-by-alert?orgId=1&var-alert=${__data.fields.alertname}"
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          },
-          "gridPos": {
-            "h": 12,
-            "w": 12,
-            "x": 4,
-            "y": 1
-          },
-          "id": 22,
-          "options": {
-            "showHeader": true,
-            "sortBy": [
-              {
-                "desc": true,
-                "displayName": "Value"
-              }
-            ]
-          },
-          "pluginVersion": "8.1.3",
-          "targets": [
-            {
-              "exemplar": true,
-              "expr": "sum (ALERTS{alertstate=\"firing\"}) by (cluster,alertname,severity)",
-              "format": "table",
-              "instant": true,
-              "interval": "",
-              "legendFormat": "",
-              "refId": "A"
-            }
-          ],
-          "title": "Alerts and Clusters",
-          "type": "table"
-        },
-        {
-          "datasource": null,
-          "description": "",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
                     "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
                   }
                 ]
               }
@@ -228,15 +157,15 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 4,
+            "h": 5,
             "w": 4,
-            "x": 16,
+            "x": 4,
             "y": 1
           },
           "id": 14,
           "options": {
-            "colorMode": "value",
-            "graphMode": "none",
+            "colorMode": "background",
+            "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -249,11 +178,11 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(ALERTS{alertstate=\"firing\",severity=\"critical\"})",
+              "expr": "sum(ALERTS{alertstate=\"firing\",severity=\"critical\"}) or vector(0)",
               "interval": "",
               "legendFormat": "",
               "refId": "A"
@@ -264,23 +193,26 @@ data:
         },
         {
           "datasource": null,
-          "description": "",
+          "description": "Total number of alerts that are firing with the severity level: warning.",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
+              "links": [
+                {
+                  "targetBlank": true,
+                  "title": "",
+                  "url": "d/UZJv0TJnz/clusters-by-alert?orgId=1&var-alert=All&var-severity=warning"
+                }
+              ],
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "orange",
                     "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
                   }
                 ]
               }
@@ -288,15 +220,15 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 4,
+            "h": 5,
             "w": 4,
-            "x": 16,
-            "y": 5
+            "x": 8,
+            "y": 1
           },
-          "id": 16,
+          "id": 25,
           "options": {
-            "colorMode": "value",
-            "graphMode": "none",
+            "colorMode": "background",
+            "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -309,11 +241,11 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(ALERTS{alertstate=\"firing\",severity=\"warning\"})",
+              "expr": "sum(ALERTS{alertstate=\"firing\",severity=\"warning\"}) or vector(0)",
               "interval": "",
               "legendFormat": "",
               "refId": "A"
@@ -324,23 +256,26 @@ data:
         },
         {
           "datasource": null,
-          "description": "",
+          "description": "Total number of alerts that are firing with the severity level: moderate.",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
+              "links": [
+                {
+                  "targetBlank": true,
+                  "title": "",
+                  "url": "d/UZJv0TJnz/clusters-by-alert?orgId=1&var-alert=All&var-severity=moderate"
+                }
+              ],
               "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "yellow",
                     "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
                   }
                 ]
               }
@@ -348,15 +283,15 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 4,
+            "h": 5,
             "w": 4,
-            "x": 16,
-            "y": 9
+            "x": 12,
+            "y": 1
           },
-          "id": 15,
+          "id": 24,
           "options": {
-            "colorMode": "value",
-            "graphMode": "none",
+            "colorMode": "background",
+            "graphMode": "area",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -369,17 +304,143 @@ data:
             "text": {},
             "textMode": "auto"
           },
-          "pluginVersion": "8.1.3",
+          "pluginVersion": "8.5.20",
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(ALERTS{alertstate=\"firing\",severity=\"moderate\"})",
+              "expr": "sum(ALERTS{alertstate=\"firing\",severity=\"moderate\"}) or vector(0)",
               "interval": "",
               "legendFormat": "",
               "refId": "A"
             }
           ],
           "title": "Total Moderate Alerts",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "Total number of alerts that are firing with the severity level: low.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "links": [
+                {
+                  "targetBlank": true,
+                  "title": "",
+                  "url": "d/UZJv0TJnz/clusters-by-alert?orgId=1&var-alert=All&var-severity=low"
+                }
+              ],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 4,
+            "x": 16,
+            "y": 1
+          },
+          "id": 15,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(ALERTS{alertstate=\"firing\",severity=\"low\"}) or vector(0)",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Total Low Alerts",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "Total number of alerts that are firing with the severity level: important.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "links": [
+                {
+                  "targetBlank": true,
+                  "title": "",
+                  "url": "d/UZJv0TJnz/clusters-by-alert?${__url_time_range}&orgId=1&var-alert=All&var-severity=important"
+                }
+              ],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 4,
+            "x": 20,
+            "y": 1
+          },
+          "id": 16,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(ALERTS{alertstate=\"firing\",severity=\"important\"}) or vector(0)",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Total Important Alerts",
           "type": "stat"
         },
         {
@@ -394,7 +455,7 @@ data:
                 "axisPlacement": "auto",
                 "barAlignment": 0,
                 "drawStyle": "bars",
-                "fillOpacity": 70,
+                "fillOpacity": 35,
                 "gradientMode": "none",
                 "hideFrom": {
                   "legend": false,
@@ -438,7 +499,7 @@ data:
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 13
+            "y": 6
           },
           "id": 2,
           "options": {
@@ -458,7 +519,7 @@ data:
               "format": "time_series",
               "instant": false,
               "interval": "",
-              "legendFormat": "",
+              "legendFormat": "{{ alertname }}",
               "refId": "A"
             }
           ],
@@ -521,7 +582,7 @@ data:
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 13
+            "y": 6
           },
           "id": 3,
           "options": {
@@ -543,12 +604,123 @@ data:
               "instant": false,
               "interval": "",
               "intervalFactor": 1,
-              "legendFormat": "",
+              "legendFormat": "{{ cluster }}",
               "refId": "A"
             }
           ],
           "title": "Cluster Affected Over Time",
           "type": "timeseries"
+        },
+        {
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "displayMode": "auto",
+                "filterable": true
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "cluster"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "Drill down to Alerts on this Cluster",
+                        "url": "/d/7GMQIsJnz/alerts-by-cluster?orgId=1&var-cluster=${__data.fields.cluster}"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "alertname"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "Drill down to Clusters with this Alert",
+                        "url": "/d/UZJv0TJnz/clusters-by-alert?orgId=1&var-alert=${__data.fields.alertname}"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 24,
+            "x": 0,
+            "y": 15
+          },
+          "id": 22,
+          "options": {
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Value"
+              }
+            ]
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum(ALERTS{alertstate=\"firing\", severity=~\"$severity\"}) by (cluster, alertname, severity)",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Alerts and Clusters",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "indexByName": {},
+                "renameByName": {
+                  "Value": "",
+                  "alertname": "Alert",
+                  "cluster": "Cluster",
+                  "severity": "Severity"
+                }
+              }
+            }
+          ],
+          "type": "table"
         },
         {
           "collapsed": true,
@@ -557,7 +729,7 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 22
+            "y": 24
           },
           "id": 18,
           "panels": [
@@ -590,7 +762,7 @@ data:
                 "h": 8,
                 "w": 12,
                 "x": 0,
-                "y": 23
+                "y": 25
               },
               "id": 10,
               "options": {
@@ -606,7 +778,7 @@ data:
                 "showUnfilled": true,
                 "text": {}
               },
-              "pluginVersion": "8.1.3",
+              "pluginVersion": "8.5.20",
               "targets": [
                 {
                   "exemplar": true,
@@ -628,6 +800,7 @@ data:
                   "color": {
                     "mode": "thresholds"
                   },
+                  "displayName": "${__series.name}",
                   "mappings": [],
                   "thresholds": {
                     "mode": "absolute",
@@ -649,7 +822,7 @@ data:
                 "h": 8,
                 "w": 12,
                 "x": 12,
-                "y": 23
+                "y": 25
               },
               "id": 11,
               "options": {
@@ -665,7 +838,7 @@ data:
                 "showUnfilled": true,
                 "text": {}
               },
-              "pluginVersion": "8.1.3",
+              "pluginVersion": "8.5.20",
               "targets": [
                 {
                   "exemplar": true,
@@ -693,21 +866,10 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": true,
-              "text": [
-                "info",
-                "moderate",
-                "none",
-                "warning",
-                "critical"
-              ],
-              "value": [
-                "info",
-                "moderate",
-                "none",
-                "warning",
-                "critical"
-              ]
+              "isNone": true,
+              "selected": false,
+              "text": "None",
+              "value": ""
             },
             "datasource": null,
             "definition": "label_values(ALERTS, severity)",
@@ -732,12 +894,18 @@ data:
         ]
       },
       "time": {
-        "from": "now-3h",
+        "from": "now-30m",
         "to": "now"
       },
       "timepicker": {},
       "timezone": "",
       "title": "Alert Analysis",
       "uid": "w1V3PRTnk",
-      "version": 8
+      "version": 1
     }
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-acm-alert-analysis
+  namespace: open-cluster-management-observability
+  annotations:
+    observability.open-cluster-management.io/dashboard-folder: "Alerts"

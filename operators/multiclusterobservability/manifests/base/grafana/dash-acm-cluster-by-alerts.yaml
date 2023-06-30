@@ -1,12 +1,6 @@
-kind: ConfigMap
 apiVersion: v1
-metadata:
-  name: grafana-dashboard-custom-alerts-by-cluster
-  namespace: open-cluster-management-observability
-  labels:
-    grafana-custom-dashboard: 'true'
 data:
-  alerts-by-cluster.json: |-
+  acm-cluster-by-alerts.json: |-
     {
       "annotations": {
         "list": [
@@ -30,13 +24,52 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": 26,
-      "iteration": 1642692464762,
-      "links": [],
+      "id": 39,
+      "iteration": 1682102035672,
+      "links": [
+        {
+          "asDropdown": false,
+          "icon": "dashboard",
+          "includeVars": false,
+          "keepTime": false,
+          "tags": [],
+          "targetBlank": true,
+          "title": "Alert Analysis",
+          "tooltip": "",
+          "type": "link",
+          "url": "d/w1V3PRTnk/alert-analysis?orgId=1"
+        },
+        {
+          "asDropdown": false,
+          "icon": "dashboard",
+          "includeVars": false,
+          "keepTime": false,
+          "tags": [],
+          "targetBlank": true,
+          "title": "Alerts by Cluster",
+          "tooltip": "",
+          "type": "link",
+          "url": "d/7GMQIsJnz/alerts-by-cluster?orgId=1"
+        }
+      ],
       "panels": [
         {
+          "collapsed": false,
           "datasource": null,
-          "description": "",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "id": 4,
+          "panels": [],
+          "title": "Real Time Data",
+          "type": "row"
+        },
+        {
+          "datasource": null,
+          "description": "Alert: $alert - $description",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -77,10 +110,6 @@ data:
                   {
                     "color": "green",
                     "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
                   }
                 ]
               }
@@ -88,10 +117,10 @@ data:
             "overrides": []
           },
           "gridPos": {
-            "h": 9,
-            "w": 12,
+            "h": 11,
+            "w": 24,
             "x": 0,
-            "y": 0
+            "y": 1
           },
           "id": 2,
           "options": {
@@ -108,17 +137,19 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(ALERTS{alertstate=\"firing\", cluster=\"$cluster\"}) by (alertname)",
+              "expr": "sum(ALERTS{alertstate=\"firing\", alertname=~\"$alert\", severity=~\"$severity\"}) by (cluster)",
               "hide": false,
+              "instant": false,
               "interval": "",
-              "legendFormat": "{{cluster}}",
+              "legendFormat": "{{ cluster }}",
               "refId": "A"
             }
           ],
-          "title": "${cluster} - Alerts over time",
+          "title": "Clusters with Alert - Severity ($severity)",
           "type": "timeseries"
         }
       ],
+      "refresh": "",
       "schemaVersion": 30,
       "style": "dark",
       "tags": [],
@@ -127,22 +158,26 @@ data:
           {
             "allValue": null,
             "current": {
-              "selected": false,
-              "text": "cicd-aap-aas-ansible-a-eastus",
-              "value": "cicd-aap-aas-ansible-a-eastus"
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
             },
             "datasource": null,
-            "definition": "label_values(ALERTS, cluster)",
+            "definition": "label_values(ALERTS, alertname)",
             "description": null,
             "error": null,
             "hide": 0,
-            "includeAll": false,
-            "label": "Cluster",
-            "multi": false,
-            "name": "cluster",
+            "includeAll": true,
+            "label": "Alert",
+            "multi": true,
+            "name": "alert",
             "options": [],
             "query": {
-              "query": "label_values(ALERTS, cluster)",
+              "query": "label_values(ALERTS, alertname)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 2,
@@ -150,11 +185,38 @@ data:
             "skipUrlSync": false,
             "sort": 5,
             "type": "query"
+          },
+          {
+            "allValue": null,
+            "current": {
+              "selected": false,
+              "text": "All",
+              "value": "$__all"
+            },
+            "datasource": null,
+            "definition": "label_values(ALERTS{alertname=~\"$alert\"}, severity)",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Severity",
+            "multi": false,
+            "name": "severity",
+            "options": [],
+            "query": {
+              "query": "label_values(ALERTS{alertname=~\"$alert\"}, severity)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
           }
         ]
       },
       "time": {
-        "from": "now-3h",
+        "from": "now-30m",
         "to": "now"
       },
       "timepicker": {
@@ -172,7 +234,13 @@ data:
         ]
       },
       "timezone": "",
-      "title": "Alerts by Cluster",
-      "uid": "7GMQIsJnz",
-      "version": 8
+      "title": "Clusters by Alert",
+      "uid": "UZJv0TJnz",
+      "version": 1
     }
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-acm-cluster-by-alerts
+  namespace: open-cluster-management-observability
+  annotations:
+    observability.open-cluster-management.io/dashboard-folder: "Alerts"
