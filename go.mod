@@ -37,6 +37,7 @@ require (
 	github.com/stolostron/observatorium-operator v0.0.0-20220307015247-f9eb849e218e
 	github.com/stretchr/testify v1.8.1
 	github.com/thanos-io/thanos v0.30.0
+	go.uber.org/zap v1.21.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.25.3
 	k8s.io/apiextensions-apiserver v0.24.2
@@ -147,7 +148,6 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/goleak v1.2.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
-	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/crypto v0.1.0 // indirect
 	golang.org/x/exp v0.0.0-20221031165847-c99f073a8326 // indirect
 	golang.org/x/mod v0.6.0 // indirect
