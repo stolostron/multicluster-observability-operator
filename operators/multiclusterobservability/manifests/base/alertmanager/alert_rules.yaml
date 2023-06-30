@@ -9,9 +9,9 @@ data:
         rules:
         - alert: KubePersistentVolumeFillingUp
           annotations:
-            summary: PersistentVolume is filling up.
+            summary: PersistentVolume \"{{ $labels.persistentvolumeclaim }}\" is filling up.
             description: "The PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} is only {{ $value | humanizePercentage }} free."
-          expr: kubelet_volume_stats_available_bytes{namespace="open-cluster-management-observability"}/kubelet_volume_stats_capacity_bytes{namespace="open-cluster-management-observability"} < 0.03
+          expr: (kubelet_volume_stats_available_bytes{namespace="open-cluster-management-observability", persistentvolumeclaim!~".+store-shard.*"} / kubelet_volume_stats_capacity_bytes{namespace="open-cluster-management-observability", persistentvolumeclaim!~".+store-shard.*"}) < 0.03
           for: 1m
           labels:
             instance: "{{ $labels.instance }}"
@@ -21,9 +21,9 @@ data:
             severity: critical
         - alert: KubePersistentVolumeFillingUp
           annotations:
-            summary: PersistentVolume is filling up and is predicted to run out of space in 6h.
+            summary: PersistentVolume \"{{ $labels.persistentvolumeclaim }}\" is filling up and is predicted to run out of space in 6h.
             description: "The PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} is only {{ $value | humanizePercentage }} free."
-          expr: (kubelet_volume_stats_available_bytes{namespace="open-cluster-management-observability"}/kubelet_volume_stats_capacity_bytes{namespace="open-cluster-management-observability"}) < 0.15 and (predict_linear(kubelet_volume_stats_available_bytes{namespace="open-cluster-management-observability"}[6h], 4 * 24 * 3600)) <0
+          expr: (kubelet_volume_stats_available_bytes{namespace="open-cluster-management-observability", persistentvolumeclaim!~".+store-shard.*"} / kubelet_volume_stats_capacity_bytes{namespace="open-cluster-management-observability", persistentvolumeclaim!~".+store-shard.*"}) < 0.15 and (predict_linear(kubelet_volume_stats_available_bytes{namespace="open-cluster-management-observability", persistentvolumeclaim!~".+store-shard.*"}[6h], 4 * 24 * 3600)) < 0
           for: 1h
           labels:
             instance: "{{ $labels.instance }}"
@@ -31,6 +31,30 @@ data:
             clusterID: "{{ $labels.clusterID }}"
             PersistentVolumeClaim: "{{ $labels.persistentvolumeclaim }}"
             severity: warning
+        - alert: KubePersistentVolumeStoreFillingUp
+          annotations:
+            summary: PersistentVolume \"{{ $labels.persistentvolumeclaim }}\" is filling up.
+            description: "The PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} is only {{ $value | humanizePercentage }} free."
+          expr: (kubelet_volume_stats_available_bytes{namespace="open-cluster-management-observability", persistentvolumeclaim=~".+store-shard.*"} / kubelet_volume_stats_capacity_bytes{namespace="open-cluster-management-observability", persistentvolumeclaim=~".+store-shard.*"}) < 0.03
+          for: 1m
+          labels:
+            instance: "{{ $labels.instance }}"
+            cluster: "{{ $labels.cluster }}"
+            clusterID: "{{ $labels.clusterID }}"
+            PersistentVolumeClaim: "{{ $labels.persistentvolumeclaim }}"
+            severity: info
+        - alert: KubePersistentVolumeStoreFillingUp
+          annotations:
+            summary: PersistentVolume \"{{ $labels.persistentvolumeclaim }}\" is filling up and is predicted to run out of space in 6h.
+            description: "The PersistentVolume claimed by {{ $labels.persistentvolumeclaim }} in Namespace {{ $labels.namespace }} is only {{ $value | humanizePercentage }} free."
+          expr: (kubelet_volume_stats_available_bytes{namespace="open-cluster-management-observability", persistentvolumeclaim=~".+store-shard.*"} / kubelet_volume_stats_capacity_bytes{namespace="open-cluster-management-observability", persistentvolumeclaim=~".+store-shard.*"}) < 0.15 and (predict_linear(kubelet_volume_stats_available_bytes{namespace="open-cluster-management-observability", persistentvolumeclaim=~".+store-shard.*"}[6h], 4 * 24 * 3600)) < 0
+          for: 1h
+          labels:
+            instance: "{{ $labels.instance }}"
+            cluster: "{{ $labels.cluster }}"
+            clusterID: "{{ $labels.clusterID }}"
+            PersistentVolumeClaim: "{{ $labels.persistentvolumeclaim }}"
+            severity: info
       - name: policy-reports
         rules:
         - alert: ViolatedPolicyReport
