@@ -111,7 +111,7 @@ func (h *hypershiftTransformer) Transform(family *prom.MetricFamily) (bool, erro
 				if family.Metric[i].Label[j].GetName() != CLUSTER_LABEL &&
 					family.Metric[i].Label[j].GetName() != CLUSTER_ID_LABEL &&
 					family.Metric[i].Label[j].GetName() != HYPERSHIFT_ID {
-					labels = append(labels, family.Metric[i].Label[j])
+					labels = insertLexicographicallyByName(labels, family.Metric[i].Label[j])
 				}
 			}
 			family.Metric[i].Label = labels
