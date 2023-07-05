@@ -7,7 +7,7 @@ COPY go.sum go.mod ./
 COPY ./collectors/metrics ./collectors/metrics
 COPY ./operators/pkg ./operators/pkg
 COPY ./operators/multiclusterobservability/api ./operators/multiclusterobservability/api
-RUN CGO_ENABLED=0 go build -a -installsuffix cgo -v -i -o metrics-collector ./collectors/metrics/cmd/metrics-collector/main.go
+RUN CGO_ENABLED=1 go build -a -installsuffix cgo -v -i -o metrics-collector ./collectors/metrics/cmd/metrics-collector/main.go
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
