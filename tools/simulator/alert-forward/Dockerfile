@@ -21,4 +21,3 @@ COPY tools/simulator/alert-forward/alerts.json /tmp/
 USER ${USER_UID}
 
 ENTRYPOINT ["/usr/local/bin/alert-forwarder"]
-
