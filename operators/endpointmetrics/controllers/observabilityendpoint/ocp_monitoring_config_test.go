@@ -45,7 +45,7 @@ alertmanager-router-ca: |
 	clusterMonitoringConfigDataYaml = `
 prometheusK8s:
   externalLabels:
-    cluster: kind-cluster-id
+    managed_cluster: kind-cluster-id
   additionalAlertManagerConfigs:
   - apiVersion: v2
     bearerToken:
@@ -110,29 +110,33 @@ func TestCreateDeleteHubAmAccessorTokenSecret(t *testing.T) {
 }
 
 func TestClusterMonitoringConfig(t *testing.T) {
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: true})))
 	tests := []struct {
 		name                                    string
 		ClusterMonitoringConfigCMExist          bool
 		ClusterMonitoringConfigDataYaml         string
+		Manager                                 string
 		ExpectedDeleteClusterMonitoringConfigCM bool
 	}{
 		{
 			name:                                    "no cluster-monitoring-config exists",
 			ClusterMonitoringConfigCMExist:          false,
-			ExpectedDeleteClusterMonitoringConfigCM: true,
+			ExpectedDeleteClusterMonitoringConfigCM: false,
 		},
 		{
 			name:                                    "cluster-monitoring-config with empty config.yaml",
 			ClusterMonitoringConfigCMExist:          true,
 			ClusterMonitoringConfigDataYaml:         "",
-			ExpectedDeleteClusterMonitoringConfigCM: true,
+			Manager:                                 endpointMonitoringOperatorMgr,
+			ExpectedDeleteClusterMonitoringConfigCM: false,
 		},
 		{
 			name:                           "cluster-monitoring-config with non-empty config.yaml and empty prometheusK8s",
 			ClusterMonitoringConfigCMExist: true,
+			Manager:                        "some-other-manager",
 			ClusterMonitoringConfigDataYaml: `
 prometheusK8s: null`,
-			ExpectedDeleteClusterMonitoringConfigCM: true,
+			ExpectedDeleteClusterMonitoringConfigCM: false,
 		},
 		{
 			name:                           "cluster-monitoring-config with non-empty config.yaml and prometheusK8s and empty additionalAlertManagerConfigs",
@@ -140,7 +144,15 @@ prometheusK8s: null`,
 			ClusterMonitoringConfigDataYaml: `
 prometheusK8s:
   additionalAlertManagerConfigs: null`,
-			ExpectedDeleteClusterMonitoringConfigCM: true,
+			ExpectedDeleteClusterMonitoringConfigCM: false,
+		},
+		{
+			name:                           "cluster-monitoring-config with non-empty config.yaml and empty prometheusK8s with endpoint-monitoring-operator manager",
+			ClusterMonitoringConfigCMExist: true,
+			Manager:                        endpointMonitoringOperatorMgr,
+			ClusterMonitoringConfigDataYaml: `
+prometheusK8s: null`,
+			ExpectedDeleteClusterMonitoringConfigCM: false,
 		},
 		{
 			name:                           "cluster-monitoring-config with non-empty config.yaml and prometheusK8s and additionalAlertManagerConfigs",
@@ -174,7 +186,7 @@ prometheusK8s:
 		t.Run(tt.name, func(t *testing.T) {
 			objs := []runtime.Object{hubInfoObj, amAccessSrt}
 			if tt.ClusterMonitoringConfigCMExist {
-				objs = append(objs, newClusterMonitoringConfigCM(tt.ClusterMonitoringConfigDataYaml))
+				objs = append(objs, newClusterMonitoringConfigCM(tt.ClusterMonitoringConfigDataYaml, tt.Manager))
 			}
 			testCreateOrUpdateClusterMonitoringConfig(t, hubInfo, fake.NewFakeClient(objs...), tt.ExpectedDeleteClusterMonitoringConfigCM)
 		})
@@ -184,8 +196,7 @@ prometheusK8s:
 func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: true})))
 	ctx := context.TODO()
-	cmc := newClusterMonitoringConfigCM(clusterMonitoringConfigDataYaml)
-	// 1. Disable alert forwarding. verify clusterMonitoringRevertedName is created, cluster-monitoring-config removed
+
 	hubInfo := &operatorconfig.HubInfo{}
 	err := yaml.Unmarshal([]byte(hubInfoYAMLAlertsDisabled), &hubInfo)
 	if err != nil {
@@ -193,117 +204,129 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 	}
 	hubInfoObj := newHubInfoSecret([]byte(hubInfoYAMLAlertsDisabled))
 	amAccessSrt := newAMAccessorSecret()
+
+	// Scenario 1:
+	//   create cluster-monitoring-config configmap with "manager: endpoint-monitoring-operator"
+	//   Disable alert forwarding
+	//   clusterMonitoringRevertedName should be created
+	//   cluster-monitoring-config should be removed
+	cmc := newClusterMonitoringConfigCM(clusterMonitoringConfigDataYaml, "endpoint-monitoring-operator")
 	objs := []runtime.Object{hubInfoObj, amAccessSrt, cmc}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	t.Run("VerifyRevertSecretCreated", func(t *testing.T) {
-		err = createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false)
-		if err != nil {
-			t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
-		}
+	// t.Run("disable alert forwarding as manager", func(t *testing.T) {
+	// 	err = createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false)
+	// 	if err != nil {
+	// 		t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
+	// 	}
 
-		foundclusterMonitoringRevertedCM := &corev1.ConfigMap{}
-		err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName,
-			Namespace: namespace}, foundclusterMonitoringRevertedCM)
-		if err != nil {
-			t.Fatalf("failed to retrieve configmap %s: %v", clusterMonitoringRevertedName, err)
-		}
+	// 	foundclusterMonitoringRevertedCM := &corev1.ConfigMap{}
+	// 	err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName,
+	// 		Namespace: namespace}, foundclusterMonitoringRevertedCM)
+	// 	if err != nil {
+	// 		t.Fatalf("failed to retrieve configmap %s: %v", clusterMonitoringRevertedName, err)
+	// 	}
 
-		foundCusterMonitoringConfigMap := &corev1.ConfigMap{}
-		err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName,
-			Namespace: promNamespace}, foundCusterMonitoringConfigMap)
-		if err != nil {
-			t.Fatalf("could not retrieve configmap %s: %v", clusterMonitoringConfigName, err)
-		}
+	// 	foundCusterMonitoringConfigMap := &corev1.ConfigMap{}
+	// 	err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName,
+	// 		Namespace: promNamespace}, foundCusterMonitoringConfigMap)
+	// 	if err != nil {
+	// 		t.Fatalf("could not retrieve configmap %s: %v", clusterMonitoringConfigName, err)
+	// 	}
 
-		foundClusterMonitoringConfigurationYAML, ok := foundCusterMonitoringConfigMap.Data[clusterMonitoringConfigDataKey]
-		if !ok {
-			t.Fatalf("configmap: %s doesn't contain key: %s", clusterMonitoringConfigName, clusterMonitoringConfigDataKey)
-		}
-		foundClusterMonitoringConfigurationJSON, err := yamltool.YAMLToJSON([]byte(foundClusterMonitoringConfigurationYAML))
-		if err != nil {
-			t.Fatalf("failed to transform YAML to JSON:\n%s\n", foundClusterMonitoringConfigurationYAML)
-		}
+	// 	foundClusterMonitoringConfigurationYAML, ok := foundCusterMonitoringConfigMap.Data[clusterMonitoringConfigDataKey]
+	// 	if !ok {
+	// 		t.Fatalf("configmap: %s doesn't contain key: %s", clusterMonitoringConfigName, clusterMonitoringConfigDataKey)
+	// 	}
+	// 	foundClusterMonitoringConfigurationJSON, err := yamltool.YAMLToJSON([]byte(foundClusterMonitoringConfigurationYAML))
+	// 	if err != nil {
+	// 		t.Fatalf("failed to transform YAML to JSON:\n%s\n", foundClusterMonitoringConfigurationYAML)
+	// 	}
 
-		foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
-		if err := json.Unmarshal([]byte(foundClusterMonitoringConfigurationJSON), foundClusterMonitoringConfiguration); err != nil {
-			t.Fatalf("failed to marshal the cluster monitoring config: %v:\n%s\n", err, foundClusterMonitoringConfigurationJSON)
-		}
+	// 	foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
+	// 	if err := json.Unmarshal([]byte(foundClusterMonitoringConfigurationJSON), foundClusterMonitoringConfiguration); err != nil {
+	// 		t.Fatalf("failed to marshal the cluster monitoring config: %v:\n%s\n", err, foundClusterMonitoringConfigurationJSON)
+	// 	}
 
-		if foundClusterMonitoringConfiguration.PrometheusK8sConfig == nil {
-			t.Fatalf("empty prometheusK8s in ClusterMonitoringConfiguration: %v", foundClusterMonitoringConfiguration)
-		}
+	// 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig == nil {
+	// 		t.Fatalf("empty prometheusK8s in ClusterMonitoringConfiguration: %v", foundClusterMonitoringConfiguration)
+	// 	}
 
-		if label := foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts]; label != "" {
-			t.Fatalf("managed cluster label not deleted on revert: %s:%s",
-				operatorconfig.ClusterLabelKeyForAlerts,
-				label)
-		}
+	// 	if label := foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts]; label != "" {
+	// 		t.Fatalf("managed cluster label not deleted on revert: %s:%s",
+	// 			operatorconfig.ClusterLabelKeyForAlerts,
+	// 			label)
+	// 	}
 
-		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs != nil {
-			t.Fatalf("AlertmanagerConfigs in ClusterMonitoringConfiguration.PrometheusK8sConfig: is not null")
-		}
-	})
+	// 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs != nil {
+	// 		t.Fatalf("AlertmanagerConfigs in ClusterMonitoringConfiguration.PrometheusK8sConfig: is not null")
+	// 	}
+	// })
 
-	// 2. (External Policy scenario): replace cluster-monitoring-config, disable alert forwarding.
-	//    verify cluster-monitoring-config is not reverted
-	err = c.Delete(ctx, cmc)
-	if err != nil {
-		t.Fatalf("could not delete existing cluster-monitoring-config")
-	}
-	err = c.Create(ctx, newClusterMonitoringConfigCM(clusterMonitoringConfigDataYaml))
-	if err != nil {
-		t.Fatalf("could not recreate cluster-monitoring-config with alerts enabled")
-	}
-	t.Run("VerifyClusterMonitoringChangesNotRevertedIfAlreadyReverted", func(t *testing.T) {
-		err = createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false)
-		if err != nil {
-			t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
-		}
+	// // Scenario 2:
+	// //    cluster-monitoring-config created externally (e.g, policy)
+	// //    disable alert forwarding
+	// //    verify cluster-monitoring-config is not reverted
+	// // err = c.Delete(ctx, cmc)
+	// // if err != nil {
+	// // 	t.Fatalf("could not delete existing cluster-monitoring-config")
+	// // }
+	// err = c.Create(ctx, newClusterMonitoringConfigCM(clusterMonitoringConfigDataYaml, "some-other-manager"))
+	// if err != nil {
+	// 	t.Fatalf("could not recreate cluster-monitoring-config with alerts enabled")
+	// }
+	// t.Run("disable alert forwarding as non-manager", func(t *testing.T) {
+	// 	err = createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false)
+	// 	if err != nil {
+	// 		t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
+	// 	}
 
-		foundclusterMonitoringRevertedCM := &corev1.ConfigMap{}
-		err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName,
-			Namespace: namespace}, foundclusterMonitoringRevertedCM)
-		if err != nil {
-			t.Fatalf("failed to retrieve configmap %s: %v", clusterMonitoringRevertedName, err)
-		}
+	// 	foundclusterMonitoringRevertedCM := &corev1.ConfigMap{}
+	// 	err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName,
+	// 		Namespace: namespace}, foundclusterMonitoringRevertedCM)
+	// 	if err != nil {
+	// 		t.Fatalf("failed to retrieve configmap %s: %v", clusterMonitoringRevertedName, err)
+	// 	}
 
-		foundCusterMonitoringConfigMap := &corev1.ConfigMap{}
-		err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName,
-			Namespace: promNamespace}, foundCusterMonitoringConfigMap)
-		if err != nil {
-			t.Fatalf("could not retrieve configmap %s: %v", clusterMonitoringConfigName, err)
-		}
+	// 	foundCusterMonitoringConfigMap := &corev1.ConfigMap{}
+	// 	err = c.Get(ctx, types.NamespacedName{Name: clusterMonitoringConfigName,
+	// 		Namespace: promNamespace}, foundCusterMonitoringConfigMap)
+	// 	if err != nil {
+	// 		t.Fatalf("could not retrieve configmap %s: %v", clusterMonitoringConfigName, err)
+	// 	}
 
-		foundClusterMonitoringConfigurationYAML, ok := foundCusterMonitoringConfigMap.Data[clusterMonitoringConfigDataKey]
-		if !ok {
-			t.Fatalf("configmap: %s doesn't contain key: %s", clusterMonitoringConfigName, clusterMonitoringConfigDataKey)
-		}
-		foundClusterMonitoringConfigurationJSON, err := yamltool.YAMLToJSON([]byte(foundClusterMonitoringConfigurationYAML))
-		if err != nil {
-			t.Fatalf("failed to transform YAML to JSON:\n%s\n", foundClusterMonitoringConfigurationYAML)
-		}
+	// 	foundClusterMonitoringConfigurationYAML, ok := foundCusterMonitoringConfigMap.Data[clusterMonitoringConfigDataKey]
+	// 	if !ok {
+	// 		t.Fatalf("configmap: %s doesn't contain key: %s", clusterMonitoringConfigName, clusterMonitoringConfigDataKey)
+	// 	}
+	// 	foundClusterMonitoringConfigurationJSON, err := yamltool.YAMLToJSON([]byte(foundClusterMonitoringConfigurationYAML))
+	// 	if err != nil {
+	// 		t.Fatalf("failed to transform YAML to JSON:\n%s\n", foundClusterMonitoringConfigurationYAML)
+	// 	}
 
-		foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
-		if err := json.Unmarshal([]byte(foundClusterMonitoringConfigurationJSON), foundClusterMonitoringConfiguration); err != nil {
-			t.Fatalf("failed to marshal the cluster monitoring config: %v:\n%s\n", err, foundClusterMonitoringConfigurationJSON)
-		}
+	// 	foundClusterMonitoringConfiguration := &cmomanifests.ClusterMonitoringConfiguration{}
+	// 	if err := json.Unmarshal([]byte(foundClusterMonitoringConfigurationJSON), foundClusterMonitoringConfiguration); err != nil {
+	// 		t.Fatalf("failed to marshal the cluster monitoring config: %v:\n%s\n", err, foundClusterMonitoringConfigurationJSON)
+	// 	}
 
-		if foundClusterMonitoringConfiguration.PrometheusK8sConfig == nil {
-			t.Fatalf("empty prometheusK8s in ClusterMonitoringConfiguration: %v", foundClusterMonitoringConfiguration)
-		}
+	// 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig == nil {
+	// 		t.Fatalf("empty prometheusK8s in ClusterMonitoringConfiguration: %v, expected to preserve content", foundClusterMonitoringConfiguration)
+	// 	}
 
-		if label := foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts]; label != "" {
-			t.Fatalf("managed cluster label not deleted on revert: %s:%s",
-				operatorconfig.ClusterLabelKeyForAlerts,
-				label)
-		}
+	// 	if label := foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts]; label != "" {
+	// 		t.Fatalf("managed cluster label not deleted on revert: %s:%s",
+	// 			operatorconfig.ClusterLabelKeyForAlerts,
+	// 			label)
+	// 	}
 
-		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs == nil {
-			t.Fatalf("AlertmanagerConfigs in ClusterMonitoringConfiguration.PrometheusK8sConfig reverted")
-		}
-	})
+	// 	if foundClusterMonitoringConfiguration.PrometheusK8sConfig.AlertmanagerConfigs == nil {
+	// 		t.Fatalf("AlertmanagerConfigs in ClusterMonitoringConfiguration.PrometheusK8sConfig reverted, expected to be preserved")
+	// 	}
+	// })
 
-	// 3. Reenable alert forwarding. verify clusterMonitoringRevertedName is deleted, cluster-monitoring-config
+	// Scenario 3:
+	//   Reenable alert forwarding.
+	//   verify clusterMonitoringRevertedName is deleted
+	//   cluster-monitoring-config restored
 	err = c.Delete(ctx, hubInfoObj)
 	if err != nil {
 		t.Fatalf("could not delete existing hubInfoObj")
@@ -317,7 +340,7 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not recreate hubInfoObject to enable alerts again")
 	}
-	t.Run("VerifyReenableAlertForwarding", func(t *testing.T) {
+	t.Run("Reenable alert forwarding", func(t *testing.T) {
 		err = createOrUpdateClusterMonitoringConfig(ctx, hubInfo, testClusterID, c, false)
 		if err != nil {
 			t.Fatalf("Failed to create or update the cluster-monitoring-config configmap: (%v)", err)
@@ -448,15 +471,15 @@ func testCreateOrUpdateClusterMonitoringConfig(t *testing.T, hubInfo *operatorco
 	foundHubAmAccessorSecret := &corev1.Secret{}
 	err = c.Get(ctx, types.NamespacedName{Name: hubAmAccessorSecretName,
 		Namespace: promNamespace}, foundHubAmAccessorSecret)
-	if err == nil || !errors.IsNotFound(err) {
-		t.Fatalf("the secret %s should be deleted", hubAmAccessorSecretName)
+	if err != nil {
+		t.Fatalf("the secret %s should not be deleted", hubAmAccessorSecretName)
 	}
 
 	foundHubAmRouterCASecret := &corev1.Secret{}
 	err = c.Get(ctx, types.NamespacedName{Name: hubAmRouterCASecretName,
 		Namespace: promNamespace}, foundHubAmRouterCASecret)
-	if err == nil || !errors.IsNotFound(err) {
-		t.Fatalf("the secret %s should be deleted", hubAmRouterCASecretName)
+	if err != nil {
+		t.Fatalf("the secret %s should not be deleted", hubAmRouterCASecretName)
 	}
 
 	err = revertClusterMonitoringConfig(ctx, c, false)

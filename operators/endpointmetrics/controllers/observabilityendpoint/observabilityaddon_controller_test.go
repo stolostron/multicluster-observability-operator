@@ -82,11 +82,17 @@ func newAMAccessorSecret() *corev1.Secret {
 	}
 }
 
-func newClusterMonitoringConfigCM(configDataStr string) *corev1.ConfigMap {
+func newClusterMonitoringConfigCM(configDataStr string, mgr string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      clusterMonitoringConfigName,
 			Namespace: promNamespace,
+			ManagedFields: []metav1.ManagedFieldsEntry{
+				{
+					Manager:   mgr,
+					Operation: metav1.ManagedFieldsOperationUpdate,
+				},
+			},
 		},
 		Data: map[string]string{
 			clusterMonitoringConfigDataKey: configDataStr,
