@@ -20,6 +20,7 @@ const (
 	AllowlistCustomConfigMapName = "observability-metrics-custom-allowlist"
 	MetricsConfigMapKey          = "metrics_list.yaml"
 	UwlMetricsConfigMapKey       = "uwl_metrics_list.yaml"
+	PrometheusUserWorkload       = "prometheus-user-workload"
 	MetricsOcp311ConfigMapKey    = "ocp311_metrics_list.yaml"
 )
 
