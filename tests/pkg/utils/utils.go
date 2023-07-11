@@ -192,8 +192,8 @@ func FetchBearerToken(opt TestOptions) (string, error) {
 		if secret.GetObjectMeta() != nil && len(secret.GetObjectMeta().GetAnnotations()) > 0 {
 			annos := secret.GetObjectMeta().GetAnnotations()
 			sa, saExists := annos["kubernetes.io/service-account.name"]
-			_, createByExists := annos["kubernetes.io/created-by"]
-			if saExists && !createByExists && sa == "mco-e2e-testing-sa" {
+			// _, createByExists := annos["kubernetes.io/created-by"]
+			if saExists && sa == "mco-e2e-testing-sa" {
 				data := secret.Data
 				if token, ok := data["token"]; ok {
 					return string(token), nil
@@ -239,11 +239,11 @@ func LoadConfig(url, kubeconfig, ctx string) (*rest.Config, error) {
 	return nil, fmt.Errorf("could not create a valid kubeconfig")
 }
 
-//Apply a multi resources file to the cluster described by the url, kubeconfig and ctx.
-//url of the cluster
-//kubeconfig which contains the ctx
-//ctx, the ctx to use
-//yamlB, a byte array containing the resources file
+// Apply a multi resources file to the cluster described by the url, kubeconfig and ctx.
+// url of the cluster
+// kubeconfig which contains the ctx
+// ctx, the ctx to use
+// yamlB, a byte array containing the resources file
 func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 	yamls := strings.Split(string(yamlB), "---")
 	// yamlFiles is an []string
@@ -569,7 +569,7 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 	return nil
 }
 
-//StatusContainsTypeEqualTo check if u contains a condition type with value typeString
+// StatusContainsTypeEqualTo check if u contains a condition type with value typeString
 func StatusContainsTypeEqualTo(u *unstructured.Unstructured, typeString string) bool {
 	if u != nil {
 		if v, ok := u.Object["status"]; ok {
@@ -590,7 +590,7 @@ func StatusContainsTypeEqualTo(u *unstructured.Unstructured, typeString string) 
 	return false
 }
 
-//GetCluster returns the first cluster with a given tag
+// GetCluster returns the first cluster with a given tag
 func GetCluster(tag string, clusters []Cluster) *Cluster {
 	for _, cluster := range clusters {
 		if tag, ok := cluster.Tags[tag]; ok {
@@ -602,7 +602,7 @@ func GetCluster(tag string, clusters []Cluster) *Cluster {
 	return nil
 }
 
-//GetClusters returns all clusters with a given tag
+// GetClusters returns all clusters with a given tag
 func GetClusters(tag string, clusters []Cluster) []*Cluster {
 	filteredClusters := make([]*Cluster, 0)
 	for i, cluster := range clusters {
