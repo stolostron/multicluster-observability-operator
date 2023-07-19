@@ -15,10 +15,12 @@ import (
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
+	"go.uber.org/zap/zapcore"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,7 +44,11 @@ import (
 )
 
 func init() {
-	ctrl.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(os.Stdout)))
+	opts := zap.Options{
+		Development: true,
+		TimeEncoder: zapcore.ISO8601TimeEncoder,
+	}
+	ctrl.SetLogger(zap.New(zap.UseDevMode(true), zap.UseFlagOptions(&opts), zap.WriteTo(os.Stdout)))
 	os.Setenv("UNIT_TEST", "true")
 }
 
@@ -344,6 +350,11 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		},
 	}
 
+	err = cl.Create(context.TODO(), createSecret("test", "test", namespace))
+	if err != nil {
+		t.Fatalf("Failed to create secret: (%v)", err)
+	}
+
 	// Create empty client
 	_, err = r.Reconcile(context.TODO(), req)
 	if err != nil {
@@ -376,11 +387,6 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		amRoute.Spec.TLS.Certificate != "test-tls-crt" ||
 		amRoute.Spec.TLS.Key != "test-tls-key" {
 		t.Fatalf("incorrect certificate for alertmanager's route")
-	}
-
-	err = cl.Create(context.TODO(), createSecret("test", "test", namespace))
-	if err != nil {
-		t.Fatalf("Failed to create secret: (%v)", err)
 	}
 
 	// backup label test for Secret
@@ -455,9 +461,13 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	expectedDeploymentNames := getExpectedDeploymentNames()
 	for _, deployName := range expectedDeploymentNames {
 		deploy := createReadyDeployment(deployName, namespace)
-		err = cl.Create(context.TODO(), deploy)
-		if err != nil {
-			t.Fatalf("Failed to create deployment %s: %v", deployName, err)
+		err = cl.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
+		if errors.IsNotFound(err) {
+			t.Log(err)
+			err = cl.Create(context.TODO(), deploy)
+			if err != nil {
+				t.Fatalf("Failed to create deployment %s: %v", deployName, err)
+			}
 		}
 	}
 
@@ -481,9 +491,12 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	expectedStatefulSetNames := getExpectedStatefulSetNames()
 	for _, statefulName := range expectedStatefulSetNames {
 		deploy := createReadyStatefulSet(name, namespace, statefulName)
-		err = cl.Create(context.TODO(), deploy)
-		if err != nil {
-			t.Fatalf("Failed to create stateful set %s: %v", statefulName, err)
+		err = cl.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
+		if errors.IsNotFound(err) {
+			err = cl.Create(context.TODO(), deploy)
+			if err != nil {
+				t.Fatalf("Failed to create stateful set %s: %v", statefulName, err)
+			}
 		}
 	}
 

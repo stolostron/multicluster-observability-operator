@@ -19,12 +19,12 @@ import (
 
 func TestCreateOrUpdateObservabilityStorageVersionMigrationResource(t *testing.T) {
 	var (
-		name      = "observability"
-		namespace = mcoconfig.GetDefaultNamespace()
+		name = "observability"
+		//namespace = mcoconfig.GetDefaultNamespace()
 	)
 	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
-		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
+		ObjectMeta: metav1.ObjectMeta{Name: name},
 		Spec:       mcov1beta2.MultiClusterObservabilitySpec{},
 	}
 	s := scheme.Scheme

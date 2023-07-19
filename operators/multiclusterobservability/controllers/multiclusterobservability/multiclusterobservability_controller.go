@@ -16,7 +16,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storev1 "k8s.io/api/storage/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -702,7 +701,7 @@ func updateStorageSizeChange(c client.Client, matchLabels map[string]string, sto
 	// update sts
 	for index, sts := range stsList {
 		err := c.Delete(context.TODO(), &stsList[index], &client.DeleteOptions{})
-		if err != nil && !errors.IsNotFound(err) {
+		if err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
 		log.Info("Successfully delete sts due to storage size changed", "sts", sts.Name)
@@ -780,7 +779,7 @@ func GenerateAlertmanagerRoute(
 		types.NamespacedName{Name: amGateway.Name, Namespace: amGateway.Namespace},
 		found,
 	)
-	if err != nil && errors.IsNotFound(err) {
+	if err != nil && apierrors.IsNotFound(err) {
 		log.Info(
 			"Creating a new route to expose alertmanager",
 			"amGateway.Namespace",
@@ -874,7 +873,7 @@ func GenerateProxyRoute(
 		types.NamespacedName{Name: proxyGateway.Name, Namespace: proxyGateway.Namespace},
 		found,
 	)
-	if err != nil && errors.IsNotFound(err) {
+	if err != nil && apierrors.IsNotFound(err) {
 		log.Info(
 			"Creating a new route to expose rbac proxy",
 			"proxyGateway.Namespace",
