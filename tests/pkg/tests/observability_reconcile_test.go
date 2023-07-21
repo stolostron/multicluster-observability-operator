@@ -43,7 +43,10 @@ var _ = Describe("", func() {
 	})
 
 	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - tune retention settings in MCO CR [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
-		if strings.Contains(string(os.Getenv("CLOUD_PROVIDER")), "VMWARE") {
+		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+		substring := "vmware"
+		if strings.Contains(cloudProvider, substring) {
+			//if strings.Contains(string(os.Getenv("CLOUD_PROVIDER")), "VMWARE") {
 			Skip("Skip the case due to it's not supported on the VMWARE")
 		}
 		By("Modifying MCO CR for reconciling")
@@ -134,7 +137,10 @@ var _ = Describe("", func() {
 	})
 
 	It("RHACM4K-2821: Observability: Customize the Observability components storage size [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
-		if strings.Contains(string(os.Getenv("CLOUD_PROVIDER")), "VMWARE") {
+		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+		substring := "vmware"
+		if strings.Contains(cloudProvider, substring) {
+			//if strings.Contains(string(os.Getenv("CLOUD_PROVIDER")), "VMWARE") {
 			Skip("Skip the case due to it's not supported on the VMWARE")
 		}
 		By("Resizing alertmanager storage")
@@ -153,7 +159,10 @@ var _ = Describe("", func() {
 	})
 
 	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - Revert MCO CR changes [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
-		if strings.Contains(string(os.Getenv("CLOUD_PROVIDER")), "VMWARE") {
+		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
+		substring := "vmware"
+		if strings.Contains(cloudProvider, substring) {
+			//if strings.Contains(string(os.Getenv("CLOUD_PROVIDER")), "VMWARE") {
 			Skip("Skip the case due to it's not supported on the VMWARE")
 		}
 		advRetentionCon, err := utils.CheckAdvRetentionConfig(testOptions)
