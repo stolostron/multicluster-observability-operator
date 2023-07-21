@@ -44,10 +44,11 @@ var _ = Describe("", func() {
 
 	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - tune retention settings in MCO CR [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
 		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
-		substring := "vmware"
-		if strings.Contains(cloudProvider, substring) {
+		substring1 := "vmware"
+		substring2 := "ibm"
+		if strings.Contains(cloudProvider, substring1) || strings.Contains(cloudProvider, substring2) {
 			//if strings.Contains(string(os.Getenv("CLOUD_PROVIDER")), "VMWARE") {
-			Skip("Skip the case due to it's not supported on the VMWARE")
+			Skip("Skip the case due to it's not supported on the VMWARE and IBM")
 		}
 		By("Modifying MCO CR for reconciling")
 		err := utils.ModifyMCOCR(testOptions)
@@ -138,10 +139,11 @@ var _ = Describe("", func() {
 
 	It("RHACM4K-2821: Observability: Customize the Observability components storage size [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
 		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
-		substring := "vmware"
-		if strings.Contains(cloudProvider, substring) {
+		substring1 := "vmware"
+		substring2 := "ibm"
+		if strings.Contains(cloudProvider, substring1) || strings.Contains(cloudProvider, substring2) {
 			//if strings.Contains(string(os.Getenv("CLOUD_PROVIDER")), "VMWARE") {
-			Skip("Skip the case due to it's not supported on the VMWARE")
+			Skip("Skip the case due to it's not supported on the VMWARE and IBM")
 		}
 		By("Resizing alertmanager storage")
 		alertmans, _ := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
@@ -160,10 +162,11 @@ var _ = Describe("", func() {
 
 	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - Revert MCO CR changes [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
 		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
-		substring := "vmware"
-		if strings.Contains(cloudProvider, substring) {
+		substring1 := "vmware"
+		substring2 := "ibm"
+		if strings.Contains(cloudProvider, substring1) || strings.Contains(cloudProvider, substring2) {
 			//if strings.Contains(string(os.Getenv("CLOUD_PROVIDER")), "VMWARE") {
-			Skip("Skip the case due to it's not supported on the VMWARE")
+			Skip("Skip the case due to it's not supported on the VMWARE and IBM")
 		}
 		advRetentionCon, err := utils.CheckAdvRetentionConfig(testOptions)
 		if !advRetentionCon {
