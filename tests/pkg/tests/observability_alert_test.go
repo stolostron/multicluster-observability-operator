@@ -50,7 +50,7 @@ var _ = Describe("", func() {
 	}
 	secret := "alertmanager-config"
 
-	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have the expected statefulsets @BVT - [P1][Sev1][Observability][Stable] (alert/g0)", func() {
+	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have the expected statefulsets @BVT - [P1][Sev1][Observability][Stable][ocpInterop] (alert/g0)", func() {
 		By("Checking if STS: Alertmanager and observability-thanos-rule exist")
 		for _, label := range statefulsetLabels {
 			sts, err := hubClient.AppsV1().
@@ -75,7 +75,7 @@ var _ = Describe("", func() {
 		}
 	})
 
-	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have the expected configmap [P2][Sev2][Observability][Stable] (alert/g0)", func() {
+	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have the expected configmap [P2][Sev2][Observability][Stable][ocpInterop] (alert/g0)", func() {
 		By("Checking if CM: thanos-ruler-default-rules is existed")
 		cm, err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Get(context.TODO(), configmap[0], metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
@@ -84,7 +84,7 @@ var _ = Describe("", func() {
 		klog.V(3).Infof("Configmap %s does exist", configmap[0])
 	})
 
-	It("RHACM4K-1404: Observability: Verify alert is created and received - Should not have the CM: thanos-ruler-custom-rules [P3][Sev3][Observability][Stable] (alert/g0)", func() {
+	It("RHACM4K-1404: Observability: Verify alert is created and received - Should not have the CM: thanos-ruler-custom-rules [P3][Sev3][Observability][Stable][ocpInterop] (alert/g0)", func() {
 		By("Checking if CM: thanos-ruler-custom-rules not existed")
 		_, err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Get(context.TODO(), configmap[1], metav1.GetOptions{})
 
@@ -97,7 +97,7 @@ var _ = Describe("", func() {
 		klog.V(3).Infof("Configmap %s does not exist", configmap[1])
 	})
 
-	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have the expected secret @BVT - [P1][Sev1][Observability][Stable] (alert/g0)", func() {
+	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have the expected secret @BVT - [P1][Sev1][Observability][Stable][ocpInterop] (alert/g0)", func() {
 		By("Checking if SECRETS: alertmanager-config is existed")
 		secret, err := hubClient.CoreV1().Secrets(MCO_NAMESPACE).Get(context.TODO(), secret, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
@@ -106,7 +106,7 @@ var _ = Describe("", func() {
 		klog.V(3).Infof("Successfully got secret: %s", secret.GetName())
 	})
 
-	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have the alertmanager configured in rule @BVT - [P1][Sev1][Observability][Stable] (alert/g0)", func() {
+	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have the alertmanager configured in rule @BVT - [P1][Sev1][Observability][Stable][ocpInterop] (alert/g0)", func() {
 		By("Checking if --alertmanagers.url or --alertmanager.config or --alertmanagers.config-file is configured in rule")
 		rules, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
 			LabelSelector: THANOS_RULE_LABEL,
@@ -133,7 +133,7 @@ var _ = Describe("", func() {
 		klog.V(3).Info("Have the alertmanager url configured in rule")
 	})
 
-	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have custom alert generated P2][Sev2][Observability][Stable] (alert/g0)", func() {
+	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have custom alert generated P2][Sev2][Observability][Stable][ocpInterop] (alert/g0)", func() {
 		By("Creating custom alert rules")
 
 		rules, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
@@ -204,7 +204,7 @@ var _ = Describe("", func() {
 		klog.V(3).Infof("Successfully modified the secret: alertmanager-config")
 	})
 
-	It("RHACM4K-1668: Observability: Updated alert rule can take effect automatically - Should have custom alert updated [P2][Sev2][Observability][Stable] (alert/g0)", func() {
+	It("RHACM4K-1668: Observability: Updated alert rule can take effect automatically - Should have custom alert updated [P2][Sev2][Observability][Stable][ocpInterop] (alert/g0)", func() {
 		By("Updating custom alert rules")
 
 		yamlB, _ := kustomize.Render(
@@ -234,7 +234,7 @@ var _ = Describe("", func() {
 			EventuallyIntervalSecond*5).Should(MatchError("Failed to find metric name from response"))
 	})
 
-	It("RHACM4K-1668: Observability: Updated alert rule can take effect automatically - delete the customized rules [P2][Sev2][Observability][Stable] (alert/g0)", func() {
+	It("RHACM4K-1668: Observability: Updated alert rule can take effect automatically - delete the customized rules [P2][Sev2][Observability][Stable][ocpInterop] (alert/g0)", func() {
 
 		rules, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
 			LabelSelector: THANOS_RULE_LABEL,
@@ -275,7 +275,7 @@ var _ = Describe("", func() {
 		klog.V(3).Infof("Successfully deleted CM: thanos-ruler-custom-rules")
 	})
 
-	It("RHACM4K-3457: Observability: Verify managed cluster alert would be forward to hub alert manager - Should have alert named Watchdog forwarded to alertmanager [P2][Sev2][Observability][Integration] (alertforward/g0)", func() {
+	It("RHACM4K-3457: Observability: Verify managed cluster alert would be forward to hub alert manager - Should have alert named Watchdog forwarded to alertmanager [P2][Sev2][Observability][Integration][ocpInterop] (alertforward/g0)", func() {
 		amURL := url.URL{
 			Scheme: "https",
 			Host:   "alertmanager-open-cluster-management-observability.apps." + testOptions.HubCluster.BaseDomain,

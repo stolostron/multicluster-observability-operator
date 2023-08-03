@@ -28,7 +28,7 @@ var _ = Describe("", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("RHACM4K-1064: Observability: Verify MCO deployment - [P1][Sev1][Observability][Stable] (deployment/g0)", func() {
+	It("RHACM4K-1064: Observability: Verify MCO deployment - [P1][Sev1][Observability][Stable][ocpInterop] (deployment/g0)", func() {
 		By("Check MCO in ready status")
 		Eventually(func() error {
 			err = utils.CheckMCOComponents(testOptions)
@@ -54,7 +54,7 @@ var _ = Describe("", func() {
 
 	})
 
-	It("RHACM4K-1288: Observability: Verify Observability function working on the hub cluster - [P1][Sev1][Observability][Stable] (deployment/g0)", func() {
+	It("RHACM4K-1288: Observability: Verify Observability function working on the hub cluster - [P1][Sev1][Observability][Stable][ocpInterop] (deployment/g0)", func() {
 		By("Check endpoint-operator and metrics-collector pods are ready")
 		Eventually(func() error {
 			err = utils.CheckAllOBAsEnabledLocal(testOptions)
@@ -68,7 +68,7 @@ var _ = Describe("", func() {
 
 	})
 
-	It("RHACM4K-30645: Observability: Verify setting in CM cluster-monitoring-config is not removed after MCO enabled - [P1][Sev1][Observability][Stable] (deployment/g1)", func() {
+	It("RHACM4K-30645: Observability: Verify setting in CM cluster-monitoring-config is not removed after MCO enabled - [P1][Sev1][Observability][Stable][ocpInterop] (deployment/g1)", func() {
 		By("Check enableUserAlertmanagerConfig value is not replaced in the CM cluster-monitoring-config")
 		if os.Getenv("SKIP_INSTALL_STEP") == "true" {
 			Skip("Skip the case due to this case is only available before MCOCR deployment")

@@ -26,7 +26,7 @@ var _ = Describe("", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	Context("RHACM4K-1443: Observability: Verify Observatorium CR configuration compliance [P1][Sev1][Observability] (observatorium_preserve/g0) -", func() {
+	Context("RHACM4K-1443: Observability: Verify Observatorium CR configuration compliance [P1][Sev1][Observability][ocpInterop] (observatorium_preserve/g0) -", func() {
 		It("[Stable] Updating observatorium cr (spec.thanos.compact.retentionResolution1h) should be automatically reverted", func() {
 			oldCRResourceVersion := ""
 			updateRetention := "10d"
