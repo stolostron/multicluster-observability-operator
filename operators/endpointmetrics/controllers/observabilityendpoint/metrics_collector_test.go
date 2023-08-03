@@ -6,8 +6,10 @@ import (
 	"context"
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -73,12 +75,31 @@ func TestMetricsCollector(t *testing.T) {
 	}
 
 	ctx := context.TODO()
-	c := fake.NewFakeClient(allowlistCM)
+	c := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(allowlistCM).Build()
+
 	// Default deployment with instance count 1
 	_, err := updateMetricsCollector(ctx, c, obsAddon, *hubInfo, testClusterID, "", 1, false)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
+
+	deployment := &appsv1.Deployment{}
+	err = c.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
+		Namespace: namespace}, deployment)
+	if err != nil {
+		t.Fatalf("Failed to find metrics collector deployment: (%v)", err)
+	}
+
+	annotations := deployment.Spec.Template.Annotations
+	v, found := annotations[operatorconfig.WorkloadPartitioningPodAnnotationKey]
+	if found || v != operatorconfig.WorkloadPodExpectedValueJSON {
+		t.Fatalf("Failed to find annotation %v: %v on the pod spec of deployment: %v",
+			operatorconfig.WorkloadPartitioningPodAnnotationKey,
+			operatorconfig.WorkloadPodExpectedValueJSON,
+			metricsCollectorName,
+		)
+	}
+
 	// Update deployment to reduce instance count to zero
 	_, err = updateMetricsCollector(ctx, c, obsAddon, *hubInfo, testClusterID, "", 0, false)
 	if err != nil {

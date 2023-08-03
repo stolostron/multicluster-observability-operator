@@ -281,6 +281,7 @@ func TestManifestWork(t *testing.T) {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
 	}
 	t.Logf("work size is %d", len(works))
+
 	if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, true); err != nil {
 		t.Fatalf("Failed to generate hubInfo secret: (%v)", err)
 	}
@@ -288,6 +289,17 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
+
+	annotations := endpointMetricsOperatorDeploy.Spec.Template.Annotations
+	v, f := annotations[operatorconfig.WorkloadPartitioningPodAnnotationKey]
+	if !f || v != operatorconfig.WorkloadPodExpectedValueJSON {
+		t.Fatalf("Failed to find annotation %v: %v on the pod spec of deployment: %v",
+			operatorconfig.WorkloadPartitioningPodAnnotationKey,
+			operatorconfig.WorkloadPodExpectedValueJSON,
+			endpointMetricsOperatorDeploy.Name,
+		)
+	}
+
 	found := &workv1.ManifestWork{}
 	workName := namespace + workNameSuffix
 	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
@@ -312,6 +324,7 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
+
 	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork %s: (%v)", workName, err)

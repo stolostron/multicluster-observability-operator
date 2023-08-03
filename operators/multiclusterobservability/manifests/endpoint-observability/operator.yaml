@@ -9,6 +9,8 @@ spec:
       name: endpoint-observability-operator
   template:
     metadata:
+      annotations:
+        target.workload.openshift.io/management: '{"effect":"PreferredDuringScheduling"}'
       labels:
         name: endpoint-observability-operator
     spec:
