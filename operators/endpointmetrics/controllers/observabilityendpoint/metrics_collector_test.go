@@ -92,7 +92,7 @@ func TestMetricsCollector(t *testing.T) {
 
 	annotations := deployment.Spec.Template.Annotations
 	v, found := annotations[operatorconfig.WorkloadPartitioningPodAnnotationKey]
-	if found || v != operatorconfig.WorkloadPodExpectedValueJSON {
+	if !found || v != operatorconfig.WorkloadPodExpectedValueJSON {
 		t.Fatalf("Failed to find annotation %v: %v on the pod spec of deployment: %v",
 			operatorconfig.WorkloadPartitioningPodAnnotationKey,
 			operatorconfig.WorkloadPodExpectedValueJSON,
