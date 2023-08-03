@@ -96,7 +96,7 @@ pipeline {
                     /usr/local/bin/yq e -i '.options.clusters.kubeconfig="'"\$MAKUBECONFIG"'"' resources/options.yaml
                     cat resources/options.yaml
                     if [[ -n "${params.TAGGING}" ]]; then
-                    ginkgo --focus="\$MANAGED_CLUSTER_USER" -v pkg/tests/ -- -options=../../resources/options.yaml -v=5
+                    ginkgo --focus="\$TAGGING" -v pkg/tests/ -- -options=../../resources/options.yaml -v=5
                     else
                     ginkgo -v pkg/tests/ -- -options=../../resources/options.yaml -v=5
                     fi
