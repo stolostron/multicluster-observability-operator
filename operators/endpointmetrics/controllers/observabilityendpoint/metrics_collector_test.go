@@ -6,9 +6,13 @@ import (
 	"context"
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubectl/pkg/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
@@ -82,6 +86,30 @@ func init() {
 	hubNamespace = testHubNamspace
 }
 
+func checkWorkloadPartitionAnnotationsOnDeploymentPodSpec(
+	ctx context.Context,
+	c client.Client,
+	deploymentName string,
+	t *testing.T) {
+
+	deployment := &appsv1.Deployment{}
+	err := c.Get(ctx, types.NamespacedName{Name: deploymentName,
+		Namespace: namespace}, deployment)
+	if err != nil {
+		t.Fatalf("Failed to query deployment: %v, err: (%v)", deploymentName, err)
+	}
+
+	annotations := deployment.Spec.Template.Annotations
+	v, found := annotations[operatorconfig.WorkloadPartitioningPodAnnotationKey]
+	if !found || v != operatorconfig.WorkloadPodExpectedValueJSON {
+		t.Fatalf("Failed to find annotation %v: %v on the pod spec of deployment: %v",
+			operatorconfig.WorkloadPartitioningPodAnnotationKey,
+			operatorconfig.WorkloadPodExpectedValueJSON,
+			deploymentName,
+		)
+	}
+}
+
 func TestMetricsCollector(t *testing.T) {
 	hubInfo := &operatorconfig.HubInfo{
 		ClusterName:              "test-cluster",
@@ -93,7 +121,9 @@ func TestMetricsCollector(t *testing.T) {
 	}
 
 	ctx := context.TODO()
-	c := fake.NewFakeClient(getAllowlistCM(), getCustomAllowlistCM())
+	objs := []runtime.Object{getAllowlistCM(), getCustomAllowlistCM()}
+	c := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(objs...).Build()
+
 	list, uwlList, err := getMetricsAllowlist(ctx, c, "")
 	if err != nil {
 		t.Fatalf("Failed to get allowlist: (%v)", err)
@@ -112,12 +142,15 @@ func TestMetricsCollector(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
+	checkWorkloadPartitionAnnotationsOnDeploymentPodSpec(ctx, c, metricsCollectorName, t)
+
 	// Update deployment to reduce instance count to zero
 	params.replicaCount = 0
 	_, err = updateMetricsCollector(ctx, c, params, false)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
+	checkWorkloadPartitionAnnotationsOnDeploymentPodSpec(ctx, c, metricsCollectorName, t)
 
 	params.replicaCount = 1
 	params.clusterID = testClusterID + "-update"
@@ -126,11 +159,13 @@ func TestMetricsCollector(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
+	checkWorkloadPartitionAnnotationsOnDeploymentPodSpec(ctx, c, metricsCollectorName, t)
 
 	_, err = updateMetricsCollector(ctx, c, params, true)
 	if err != nil {
 		t.Fatalf("Failed to update metrics collector deployment: (%v)", err)
 	}
+	checkWorkloadPartitionAnnotationsOnDeploymentPodSpec(ctx, c, metricsCollectorName, t)
 
 	params.isUWL = true
 	params.allowlist = uwlList
@@ -138,6 +173,7 @@ func TestMetricsCollector(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create uwl metrics collector deployment: (%v)", err)
 	}
+	checkWorkloadPartitionAnnotationsOnDeploymentPodSpec(ctx, c, uwlMetricsCollectorName, t)
 
 	err = deleteMetricsCollector(ctx, c, metricsCollectorName)
 	if err != nil {

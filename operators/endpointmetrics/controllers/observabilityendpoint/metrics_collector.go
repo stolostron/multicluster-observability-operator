@@ -244,6 +244,10 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ownerLabelKey: ownerLabelValue,
+						operatorconfig.WorkloadPartitioningPodAnnotationKey: operatorconfig.WorkloadPodExpectedValueJSON,
+					},
 					Labels: map[string]string{
 						selectorKey: selectorValue,
 					},
