@@ -5,6 +5,8 @@ package placementrule
 
 import (
 	"testing"
+
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 )
 
 const (
@@ -16,5 +18,16 @@ func TestGenerateNamespace(t *testing.T) {
 	namespace := generateNamespace()
 	if namespace.Name != name {
 		t.Fatal("Wrong namespace created")
+	}
+
+	annotations := namespace.GetAnnotations()
+	value, found := annotations[operatorconfig.WorkloadPartitioningNSAnnotationsKey]
+
+	if !found || value != operatorconfig.WorkloadPartitioningNSExpectedValue {
+		t.Fatalf("Failed to find annotation %v: %v on namespace: %v)",
+			operatorconfig.WorkloadPartitioningNSAnnotationsKey,
+			operatorconfig.WorkloadPartitioningNSExpectedValue,
+			name,
+		)
 	}
 }
