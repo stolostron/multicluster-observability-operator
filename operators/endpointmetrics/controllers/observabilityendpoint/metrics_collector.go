@@ -201,6 +201,9 @@ func createDeployment(clusterID string, clusterType string,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      metricsCollectorName,
 			Namespace: namespace,
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: int32Ptr(replicaCount),
