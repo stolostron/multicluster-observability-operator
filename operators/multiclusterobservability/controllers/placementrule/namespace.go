@@ -8,6 +8,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 )
 
 var (
@@ -22,6 +24,9 @@ func generateNamespace() *corev1.Namespace {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: spokeNameSpace,
+			Annotations: map[string]string{
+				operatorconfig.WorkloadPartitioningNSAnnotationsKey: operatorconfig.WorkloadPartitioningNSExpectedValue,
+			},
 		},
 	}
 }

@@ -349,6 +349,17 @@ func TestManifestWork(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}
+
+	annotations := endpointMetricsOperatorDeploy.Spec.Template.Annotations
+	v, f := annotations[operatorconfig.WorkloadPartitioningPodAnnotationKey]
+	if !f || v != operatorconfig.WorkloadPodExpectedValueJSON {
+		t.Fatalf("Failed to find annotation %v: %v on the pod spec of deployment: %v",
+			operatorconfig.WorkloadPartitioningPodAnnotationKey,
+			operatorconfig.WorkloadPodExpectedValueJSON,
+			endpointMetricsOperatorDeploy.Name,
+		)
+	}
+
 	found := &workv1.ManifestWork{}
 	workName := namespace + workNameSuffix
 	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
