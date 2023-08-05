@@ -5,6 +5,7 @@ package multiclusterobservability
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"os"
 	"path"
 	"strings"
@@ -455,9 +456,13 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	expectedDeploymentNames := getExpectedDeploymentNames()
 	for _, deployName := range expectedDeploymentNames {
 		deploy := createReadyDeployment(deployName, namespace)
-		err = cl.Create(context.TODO(), deploy)
-		if err != nil {
-			t.Fatalf("Failed to create deployment %s: %v", deployName, err)
+		err = cl.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
+		if errors.IsNotFound(err) {
+			t.Log(err)
+			err = cl.Create(context.TODO(), deploy)
+			if err != nil {
+				t.Fatalf("Failed to create deployment %s: %v", deployName, err)
+			}
 		}
 	}
 
@@ -481,9 +486,13 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	expectedStatefulSetNames := getExpectedStatefulSetNames()
 	for _, statefulName := range expectedStatefulSetNames {
 		deploy := createReadyStatefulSet(name, namespace, statefulName)
-		err = cl.Create(context.TODO(), deploy)
-		if err != nil {
-			t.Fatalf("Failed to create stateful set %s: %v", statefulName, err)
+		err = cl.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
+		if errors.IsNotFound(err) {
+			t.Log(err)
+			err = cl.Create(context.TODO(), deploy)
+			if err != nil {
+				t.Fatalf("Failed to create stateful set %s: %v", statefulName, err)
+			}
 		}
 	}
 
