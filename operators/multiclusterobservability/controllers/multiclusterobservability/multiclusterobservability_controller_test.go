@@ -19,9 +19,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -455,9 +455,13 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	expectedDeploymentNames := getExpectedDeploymentNames()
 	for _, deployName := range expectedDeploymentNames {
 		deploy := createReadyDeployment(deployName, namespace)
-		err = cl.Create(context.TODO(), deploy)
-		if err != nil {
-			t.Fatalf("Failed to create deployment %s: %v", deployName, err)
+		err = cl.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
+		if errors.IsNotFound(err) {
+			t.Log(err)
+			err = cl.Create(context.TODO(), deploy)
+			if err != nil {
+				t.Fatalf("Failed to create deployment %s: %v", deployName, err)
+			}
 		}
 	}
 
@@ -481,9 +485,12 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	expectedStatefulSetNames := getExpectedStatefulSetNames()
 	for _, statefulName := range expectedStatefulSetNames {
 		deploy := createReadyStatefulSet(name, namespace, statefulName)
-		err = cl.Create(context.TODO(), deploy)
-		if err != nil {
-			t.Fatalf("Failed to create stateful set %s: %v", statefulName, err)
+		err = cl.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, deploy)
+		if errors.IsNotFound(err) {
+			err = cl.Create(context.TODO(), deploy)
+			if err != nil {
+				t.Fatalf("Failed to create stateful set %s: %v", statefulName, err)
+			}
 		}
 	}
 
@@ -630,7 +637,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	//Test finalizer
-	mco.ObjectMeta.DeletionTimestamp = &v1.Time{Time: time.Now()}
+	mco.ObjectMeta.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 	mco.ObjectMeta.Finalizers = []string{resFinalizer, "test-finalizerr"}
 	mco.ObjectMeta.ResourceVersion = updatedMCO.ObjectMeta.ResourceVersion
 	err = cl.Update(context.TODO(), mco)
