@@ -214,6 +214,10 @@ func createDeployment(clusterID string, clusterType string,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ownerLabelKey: ownerLabelValue,
+						operatorconfig.WorkloadPartitioningPodAnnotationKey: operatorconfig.WorkloadPodExpectedValueJSON,
+					},
 					Labels: map[string]string{
 						selectorKey: selectorValue,
 					},
