@@ -80,11 +80,16 @@ func CheckAllOBAsEnabled(opt TestOptions) error {
 			return err
 		}
 
-		klog.V(1).Infof("Check managedcluster addon status for cluster <%v>", cluster)
-		err = CheckManagedClusterAddonsStatus(opt, cluster, ManagedClusterAddOnEnabledMessage)
-		if err != nil {
-			return err
-		}
+		// NOTE: Managed cluster add-on status gets set to "Cluster metrics sent successfully"
+		// for a very brief period of time, but it quickly gets overwritten with
+		// "observability-controller add-on is available" when managed cluster addon's lease is updated
+		// Disabling this check as it is not reliable.
+		//
+		// klog.V(1).Infof("Check managedcluster addon status for cluster <%v>", cluster)
+		// err = CheckManagedClusterAddonsStatus(opt, cluster, ManagedClusterAddOnEnabledMessage)
+		// if err != nil {
+		// 	return err
+		// }
 	}
 	return nil
 }
