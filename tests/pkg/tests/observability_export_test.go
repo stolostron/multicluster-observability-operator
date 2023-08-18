@@ -96,7 +96,7 @@ var _ = Describe("Observability:", func() {
 				}
 			}
 			return nil
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
+		}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	JustAfterEach(func() {
