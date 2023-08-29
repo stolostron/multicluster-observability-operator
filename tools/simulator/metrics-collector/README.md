@@ -47,13 +47,8 @@ export SIMULATED_MANAGED_CLUSTER_NAME=simulated-sno-1
 export SIMULATED_MANAGED_CLUSTER_ID=2b4bfc20-110e-4c4e-aa42-d97ac608c5e8
 ```
 
-5. Retrieve the simulated metrics by executing the script `generate-metrics-data.sh`. For example, log into an SNO cluster and execute the following command to get the metrics for SNO cluster:
-
-```bash
-IS_TIMESERIES_ONLY=true ./generate-metrics-data.sh
-```
-
-> _Note:_ we should find a file named `timeseries.txt` in current directory after running the command above that contains the metrics, you can generate simulated metrics in any connected OCP cluster.
+5. Retrieve the simulated metrics by following the instructions in [README here](metrics-extractor/README.md) .
+ The script used for this earlier - `generate-metrics-data.sh` - is deprecated.
 
 6. Run the metrics-collector to remotely write simulated SNO metrics to the ACM hub by running the following command:
 
