@@ -27,6 +27,8 @@ data:
       - coredns_dns_requests_total
       - coredns_dns_request_duration_seconds_sum
       - coredns_forward_responses_total
+      - csv_succeeded
+      - csv_abnormal
       - etcd_debugging_mvcc_db_total_size_in_bytes
       - etcd_mvcc_db_total_size_in_bytes
       - etcd_debugging_snap_save_total_duration_seconds_sum
