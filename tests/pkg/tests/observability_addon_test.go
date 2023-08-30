@@ -37,7 +37,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	Context("RHACM4K-1260: Observability: Verify monitoring operator and deployment status when metrics collection disabled [P2][Sev2][Observability]@ocpInterop (addon/g0) -", func() {
+	Context("RHACM4K-1260: Observability: Verify monitoring operator and deployment status when metrics collection disabled [P2][Sev2][Observability]@ocpInterop @e2e (addon/g0) -", func() {
 		It("[Stable] Should have resource requirement defined in CR", func() {
 			By("Check addon resource requirement")
 			res, err := utils.GetMCOAddonSpecResources(testOptions)
@@ -118,7 +118,7 @@ var _ = Describe("", func() {
 
 	})
 
-	It("RHACM4K-1418: Observability: Verify clustermanagementaddon CR for Observability - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop (addon/g0)", func() {
+	It("RHACM4K-1418: Observability: Verify clustermanagementaddon CR for Observability - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop @e2e (addon/g0)", func() {
 		Eventually(func() error {
 			return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
@@ -133,7 +133,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("RHACM4K-1074: Observability: Verify ObservabilityEndpoint operator deployment - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop (addon/g0)", func() {
+	It("RHACM4K-1074: Observability: Verify ObservabilityEndpoint operator deployment - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop @e2e (addon/g0)", func() {
 		Eventually(func() error {
 			return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
@@ -148,7 +148,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(BeTrue())
 	})
 
-	It("RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster - Should not set interval to values beyond scope [P3][Sev3][Observability][Stable]@ocpInterop (addon/g0)", func() {
+	It("RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster - Should not set interval to values beyond scope [P3][Sev3][Observability][Stable]@ocpInterop @e2e (addon/g0)", func() {
 		By("Set interval to 14")
 		Eventually(func() bool {
 			err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(14))
