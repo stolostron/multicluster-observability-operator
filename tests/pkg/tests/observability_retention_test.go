@@ -63,7 +63,7 @@ var _ = Describe("", func() {
 		}
 	})
 
-	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - Check compact args [P2][Sev2][Observability][Stable] @e2e @post-release @post-upgrade (retention/g0):", func() {
+	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - Check compact args [P2][Sev2][Observability][Stable] @e2e @post-release @post-upgrade @post-restore (retention/g0):", func() {
 		By("--delete-delay=" + deleteDelay)
 		Eventually(func() error {
 			compacts, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
@@ -82,7 +82,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - Check store args [P2][Sev2][Observability][Stable] @e2e @post-release @post-upgrade (retention/g0):", func() {
+	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - Check store args [P2][Sev2][Observability][Stable] @e2e @post-release @post-upgrade @post-restore (retention/g0):", func() {
 		By("--ignore-deletion-marks-delay=" + ignoreDeletionMarksDelay)
 		Eventually(func() error {
 			stores, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
@@ -104,7 +104,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - Check receive args [P2][Sev2][Observability][Stable] @e2e @post-release @post-upgrade (retention/g0):", func() {
+	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - Check receive args [P2][Sev2][Observability][Stable] @e2e @post-release @post-upgrade @post-restore (retention/g0):", func() {
 		By("--tsdb.retention=" + retentionInLocal)
 		Eventually(func() error {
 			receives, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
@@ -126,7 +126,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - Check rule args [P2][Sev2][Observability][Stable] @e2e @post-release @post-upgrade (retention/g0):", func() {
+	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - Check rule args [P2][Sev2][Observability][Stable] @e2e @post-release @post-upgrade @post-restore (retention/g0):", func() {
 		By("--tsdb.retention=" + retentionInLocal)
 		Eventually(func() error {
 			rules, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
@@ -148,7 +148,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - Check rule args [P2][Sev2][Observability][Stable] @e2e @post-release @post-upgrade (retention/g0):", func() {
+	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - Check rule args [P2][Sev2][Observability][Stable] @e2e @post-release @post-upgrade @post-restore (retention/g0):", func() {
 		By("--tsdb.block-duration=" + blockDuration)
 		Eventually(func() error {
 			rules, err := hubClient.AppsV1().StatefulSets(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
