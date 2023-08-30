@@ -26,6 +26,7 @@ pipeline {
         password(name:'AWS_SECRET_ACCESS_KEY', defaultValue: '', description: 'AWS secret access key')
         string(name:'SKIP_INSTALL_STEP', defaultValue: 'false', description: 'Skip Observability installation')
         string(name:'SKIP_UNINSTALL_STEP', defaultValue: 'true', description: 'Skip Observability uninstallation')
+        string(name:'TAGGING', defaultValue: '', description: 'with tagging value to run the specific test cases')
         string(name:'USE_MINIO', defaultValue: 'false', description: 'If no AWS S3 bucket, you could use minio as object storage to instead')
     }
     environment {
@@ -56,6 +57,7 @@ pipeline {
                 export REGION="${params.REGION}"
                 export SKIP_INSTALL_STEP="${params.SKIP_INSTALL_STEP}"
                 export SKIP_UNINSTALL_STEP="${params.SKIP_UNINSTALL_STEP}"
+                export TAGGING="${params.TAGGING}"
                 
                 if [[ -n "${params.AWS_ACCESS_KEY_ID}" ]]; then
                     export AWS_ACCESS_KEY_ID="${params.AWS_ACCESS_KEY_ID}"
@@ -93,7 +95,11 @@ pipeline {
                     /usr/local/bin/yq e -i '.options.clusters.baseDomain="'"\$MANAGED_CLUSTER_BASE_DOMAIN"'"' resources/options.yaml
                     /usr/local/bin/yq e -i '.options.clusters.kubeconfig="'"\$MAKUBECONFIG"'"' resources/options.yaml
                     cat resources/options.yaml
+                    if [[ -n "${params.TAGGING}" ]]; then
+                    ginkgo --focus="\$TAGGING" -v pkg/tests/ -- -options=../../resources/options.yaml -v=5
+                    else
                     ginkgo -v pkg/tests/ -- -options=../../resources/options.yaml -v=5
+                    fi
                 fi
                 """
             }
