@@ -273,7 +273,7 @@ var _ = Describe("", func() {
 		}
 	})
 
-	It("RHACM4K-3419: Observability: Persist advance values in MCO CR - Checking resources in advanced config [P2][Sev2][Observability][Integration] @e2e @post-release (config/g0)", func() {
+	It("RHACM4K-3419: Observability: Persist advance values in MCO CR - Checking resources in advanced config [P2][Sev2][Observability][Integration] @e2e @post-release @pre-upgrade (config/g0)", func() {
 		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
 		if err != nil {
 			panic(err.Error())
@@ -318,7 +318,7 @@ var _ = Describe("", func() {
 		}
 	})
 
-	It("RHACM4K-11169: Observability: Verify ACM Observability with Security Service Token credentials - [P2][Sev2][observability][Integration]@ocpInterop @e2e Checking service account annotations is set for store/query/rule/compact/receive @e2e (config/g0)", func() {
+	It("RHACM4K-11169: Observability: Verify ACM Observability with Security Service Token credentials - [P2][Sev2][observability][Integration]@ocpInterop @e2e @pre-upgrade Checking service account annotations is set for store/query/rule/compact/receive @e2e (config/g0)", func() {
 
 		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
