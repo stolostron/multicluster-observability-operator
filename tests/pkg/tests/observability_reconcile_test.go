@@ -42,7 +42,7 @@ var _ = Describe("", func() {
 			testOptions.HubCluster.KubeContext)
 	})
 
-	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - tune retention settings in MCO CR [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
+	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - tune retention settings in MCO CR [P2][Sev2][Observability][Stable] @e2e @post-release @post-upgrade @post-restore (reconcile/g0)", func() {
 		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
 		substring1 := "vmware"
 		substring2 := "ibm"
@@ -105,7 +105,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("RHACM4K-1655: Observability: Verify nodeSelector setting effects for Observability components [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
+	It("RHACM4K-1655: Observability: Verify nodeSelector setting effects for Observability components [P2][Sev2][Observability][Stable] @e2e @post-release @post-upgrade @post-restore (reconcile/g0)", func() {
 		By("Checking node selector spec in MCO CR")
 		mcoSC, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
 			Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
@@ -126,7 +126,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("RHACM4K-1657: Observability: Check affinity rule takes effect on Observability components [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
+	It("RHACM4K-1657: Observability: Check affinity rule takes effect on Observability components [P2][Sev2][Observability][Stable] @e2e @post-release @post-upgrade @post-restore (reconcile/g0)", func() {
 		By("Checking podAntiAffinity for all pods")
 		Eventually(func() error {
 			err := utils.CheckAllPodsAffinity(testOptions)
@@ -137,7 +137,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("RHACM4K-2821: Observability: Customize the Observability components storage size [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
+	It("RHACM4K-2821: Observability: Customize the Observability components storage size [P2][Sev2][Observability][Stable] @e2e @post-release @post-upgrade @post-restore (reconcile/g0)", func() {
 		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
 		substring1 := "vmware"
 		substring2 := "ibm"
@@ -160,7 +160,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - Revert MCO CR changes [P2][Sev2][Observability][Stable] (reconcile/g0)", func() {
+	It("RHACM4K-2881: Observability: Check and tune backup retention settings in MCO CR - Revert MCO CR changes [P2][Sev2][Observability][Stable] @e2e @post-release @post-upgrade @post-restore (reconcile/g0)", func() {
 		cloudProvider := strings.ToLower(os.Getenv("CLOUD_PROVIDER"))
 		substring1 := "vmware"
 		substring2 := "ibm"
