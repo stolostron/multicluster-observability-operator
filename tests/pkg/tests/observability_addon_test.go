@@ -133,7 +133,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("RHACM4K-1074: Observability: Verify ObservabilityEndpoint operator deployment - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop @e2e (addon/g0)", func() {
+	It("RHACM4K-1074: Observability: Verify ObservabilityEndpoint operator deployment - Modifying MCO cr to enable observabilityaddon [P2][Sev2][Stable][Observability]@ocpInterop @e2e @post-release (addon/g0)", func() {
 		Eventually(func() error {
 			return utils.ModifyMCOAddonSpecMetrics(testOptions, true)
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
@@ -148,7 +148,7 @@ var _ = Describe("", func() {
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(BeTrue())
 	})
 
-	It("RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster - Should not set interval to values beyond scope [P3][Sev3][Observability][Stable]@ocpInterop @e2e (addon/g0)", func() {
+	It("RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster - Should not set interval to values beyond scope [P3][Sev3][Observability][Stable]@ocpInterop @e2e @post-release (addon/g0)", func() {
 		By("Set interval to 14")
 		Eventually(func() bool {
 			err := utils.ModifyMCOAddonSpecInterval(testOptions, int64(14))
