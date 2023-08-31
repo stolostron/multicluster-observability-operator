@@ -87,6 +87,7 @@ pipeline {
                     set -x
                     export KUBECONFIG=~/.kube/config
                     go mod vendor && ginkgo build ./tests/pkg/tests/
+                    rm -rf tests/pkg/tests/*.xml
                     cd tests
                     cp resources/options.yaml.template resources/options.yaml
                     /usr/local/bin/yq e -i '.options.hub.name="'"\$HUB_CLUSTER_NAME"'"' resources/options.yaml
