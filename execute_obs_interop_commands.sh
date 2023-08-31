@@ -18,6 +18,7 @@ export REGION=${REGION:-'us-east-1'}
 export USE_MINIO=${USE_MINIO:-'false'}
 export SKIP_INSTALL_STEP=${SKIP_INSTALL_STEP:-'false'}
 export SKIP_UNINSTALL_STEP=${SKIP_UNINSTALL_STEP:-'true'}
+export TAGGING=${TAGGING:-}
 
 if [[ -n ${PARAM_AWS_ACCESS_KEY_ID} ]]; then
     export AWS_ACCESS_KEY_ID=${PARAM_AWS_ACCESS_KEY_ID}
@@ -63,5 +64,5 @@ else
     /usr/local/bin/yq e -i '.options.clusters.baseDomain="'"$MANAGED_CLUSTER_BASE_DOMAIN"'"' resources/options.yaml
     /usr/local/bin/yq e -i '.options.clusters.kubeconfig="'"$MAKUBECONFIG"'"' resources/options.yaml
     cat resources/options.yaml
-    ginkgo -v pkg/tests/ -- -options=../../resources/options.yaml -v=5
+    ginkgo --focus=$TAGGING -v pkg/tests/ -- -options=../../resources/options.yaml -v=5
 fi
