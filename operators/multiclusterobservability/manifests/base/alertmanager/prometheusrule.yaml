@@ -16,3 +16,60 @@ spec:
           expr: increase(acm_remote_write_requests_total{code!~"2.*"}[5m]) > 10
           labels:
             severity: critical
+    - name: acm-thanos-compact
+      rules:
+      - alert: ACMThanosCompactHalted
+        annotations:
+          description: Thanos Compact {{$labels.job}} in {{$labels.namespace}} has failed to run and now is halted.
+          #TODO: add link to ACM documentation link to description
+          message: ACM Thanos Compact {{$labels.job}} in {{$labels.namespace}} has failed to run and now is halted.
+          summary: ACM Thanos Compact has failed to run and is now halted.
+        expr: acm_thanos_compact_halted{job="observability-thanos-compact"} == 1
+        for: 5m
+        labels:
+          namespace: open-cluster-management-observability
+          severity: critical
+      - alert: ACMThanosCompactHighCompactionFailures
+        annotations:
+          description: ACM Thanos Compact {{$labels.job}} in {{$labels.namespace}} is failing to execute {{$value | humanize}}% of compactions.
+          #TODO: add link to ACM documentation link to description
+          message: ACM Thanos Compact {{$labels.job}} in {{$labels.namespace}} is failing to execute {{$value | humanize}}% of compactions.
+          summary: ACM Thanos Compact is failing to execute compactions.
+        expr: |
+          (
+            sum by (namespace, job) (rate(acm_thanos_compact_group_compactions_failures_total{job="observability-thanos-compact"}[5m]))
+          /
+            sum by (namespace, job) (rate(acm_thanos_compact_group_compactions_total{job="observability-thanos-compact"}[5m]))
+          * 100 > 5
+          )
+        for: 15m
+        labels:
+          namespace: open-cluster-management-observability
+          severity: warning
+      - alert: ACMThanosCompactBucketHighOperationFailures
+        annotations:
+          description: Thanos Compact {{$labels.job}} in {{$labels.namespace}} Bucket is failing to execute {{$value | humanize}}% of operations.
+          #TODO: add link to ACM documentation link to description
+          message: ACM Thanos Compact {{$labels.job}} in {{$labels.namespace}} Bucket is failing to execute {{$value | humanize}}% of operations.
+          summary: ACM Thanos Compact Bucket is having a high number of operation failures.
+        expr: |
+          (
+            sum by (namespace, job) (rate(acm_thanos_objstore_bucket_operation_failures_total{job="observability-thanos-compact"}[5m]))
+          /
+            sum by (namespace, job) (rate(acm_thanos_objstore_bucket_operations_total{job="observability-thanos-compact"}[5m]))
+          * 100 > 5
+          )
+        for: 15m
+        labels:
+          namespace: open-cluster-management-observability
+          severity: warning
+      - alert: ACMThanosCompactHasNotRun
+        annotations:
+          description: ACM Thanos Compact {{$labels.job}} in {{$labels.namespace}} has not uploaded anything for 24 hours.
+          #TODO: add link to ACM documentation link to description
+          message: ACM Thanos Compact {{$labels.job}} in {{$labels.namespace}} has not uploaded anything for 24 hours.
+          summary: ACM Thanos Compact has not uploaded anything for last 24 hours.
+        expr: (time() - max by (namespace, job) (max_over_time(acm_thanos_objstore_bucket_last_successful_upload_time{job="observability-thanos-compact"}[24h] offset 6h))) / 60 / 60 > 24
+        labels:
+          namespace: open-cluster-management-observability
+          severity: warning
