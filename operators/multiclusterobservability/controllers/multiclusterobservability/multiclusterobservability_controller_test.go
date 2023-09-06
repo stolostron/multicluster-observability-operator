@@ -68,7 +68,7 @@ var testImagemanifestsMap = map[string]string{
 	"observatorium":                "test.io/observatorium:test",
 	"observatorium_operator":       "test.io/observatorium-operator:test",
 	"prometheus_alertmanager":      "test.io/prometheus-alertmanager:test",
-	"prometheus-config-reloader":   "test.io/configmap-reloader:test",
+	"configmap_reloader":           "test.io/configmap-reloader:test",
 	"rbac_query_proxy":             "test.io/rbac-query-proxy:test",
 	"thanos":                       "test.io/thanos:test",
 	"thanos_receive_controller":    "test.io/thanos_receive_controller:test",
@@ -773,7 +773,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 			case "grafana-proxy":
 				continue
 			case "config-reloader":
-				imageKey = "prometheus-config-reloader"
+				imageKey = "configmap_reloader"
 			}
 			imageValue, exists := testImagemanifestsMap[imageKey]
 			if !exists {
@@ -806,7 +806,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 			case "alertmanager":
 				imageKey = "prometheus_alertmanager"
 			case "config-reloader":
-				imageKey = "prometheus-config-reloader"
+				imageKey = "configmap_reloader"
 			}
 			imageValue, exists := testImagemanifestsMap[imageKey]
 			if !exists {
