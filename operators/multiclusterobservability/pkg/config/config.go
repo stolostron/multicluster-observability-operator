@@ -145,7 +145,7 @@ const (
 	ConfigmapReloaderImgRepo      = "quay.io/openshift"
 	ConfigmapReloaderImgName      = "origin-configmap-reloader"
 	ConfigmapReloaderImgTagSuffix = "4.8.0"
-	ConfigmapReloaderKey          = "prometheus-config-reloader"
+	ConfigmapReloaderKey          = "configmap_reloader"
 
 	OauthProxyImgRepo      = "quay.io/stolostron"
 	OauthProxyImgName      = "origin-oauth-proxy"
