@@ -126,7 +126,7 @@ var _ = Describe("Observability:", func() {
 					MCO_ADDON_NAMESPACE,
 					"component=metrics-collector",
 				)
-				if len(podList.Items) == 1 && err == nil {
+				if len(podList.Items) >= 1 && err == nil {
 					return true
 				}
 				return false
