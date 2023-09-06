@@ -126,7 +126,8 @@ var _ = Describe("Observability:", func() {
 					MCO_ADDON_NAMESPACE,
 					"component=metrics-collector",
 				)
-				if len(podList.Items) == 1 && err == nil {
+				// starting with OCP 4.13, userWorkLoadMonitoring is enabled by default
+				if len(podList.Items) >= 1 && err == nil {
 					return true
 				}
 				return false
@@ -196,7 +197,8 @@ var _ = Describe("Observability:", func() {
 					MCO_ADDON_NAMESPACE,
 					"component=metrics-collector",
 				)
-				if len(podList.Items) == 1 && err == nil {
+				// starting with OCP 4.13, userWorkLoadMonitoring is enabled by default
+				if len(podList.Items) >= 1 && err == nil {
 					return true
 				}
 				return false
