@@ -304,6 +304,10 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	} else if clusterName == localClusterName {
 		spec.NodeSelector = mco.Spec.NodeSelector
 		spec.Tolerations = mco.Spec.Tolerations
+	} else {
+		// reset NodeSelector and Tolerations
+		spec.NodeSelector = map[string]string{}
+		spec.Tolerations = []corev1.Toleration{}
 	}
 	for i, container := range spec.Containers {
 		if container.Name == "endpoint-observability-operator" {
@@ -326,6 +330,8 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 			}
 		}
 	}
+	log.Info(fmt.Sprintf("Cluster: %+v, Spec.NodeSelector (after): %+v", clusterName, spec.NodeSelector))
+	log.Info(fmt.Sprintf("Cluster: %+v, Spec.Tolerations (after): %+v", clusterName, spec.Tolerations))
 	dep.Spec.Template.Spec = spec
 	manifests = injectIntoWork(manifests, dep)
 	// replace the pull secret and addon components image
