@@ -13,6 +13,7 @@ import (
 const (
 	ManagedClusterAddOnDisabledMessage = "enableMetrics is set to False"
 	ManagedClusterAddOnEnabledMessage  = "Cluster metrics sent successfully"
+	ManagedClusterAddonsStatusMessage  = "observability-controller add-on is available"
 )
 
 func CheckOBAStatus(opt TestOptions, namespace, status string) error {
@@ -81,7 +82,7 @@ func CheckAllOBAsEnabled(opt TestOptions) error {
 		}
 
 		klog.V(1).Infof("Check managedcluster addon status for cluster <%v>", cluster)
-		err = CheckManagedClusterAddonsStatus(opt, cluster, ManagedClusterAddOnEnabledMessage)
+		err = CheckManagedClusterAddonsStatus(opt, cluster, ManagedClusterAddonsStatusMessage)
 		if err != nil {
 			return err
 		}
@@ -105,7 +106,7 @@ func CheckAllOBAsEnabledLocal(opt TestOptions) error {
 			}
 
 			klog.V(1).Infof("Check managedcluster addon status for cluster <%v>", cluster)
-			err = CheckManagedClusterAddonsStatus(opt, cluster, ManagedClusterAddOnEnabledMessage)
+			err = CheckManagedClusterAddonsStatus(opt, cluster, ManagedClusterAddonsStatusMessage)
 			if err != nil {
 				return err
 			}
