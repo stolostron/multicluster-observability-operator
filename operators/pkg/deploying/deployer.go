@@ -348,6 +348,10 @@ func (d *Deployer) updatePrometheusRule(desiredObj, runtimeObj *unstructured.Uns
 
 	if !apiequality.Semantic.DeepDerivative(desiredPrometheusRule.Spec, runtimePrometheusRule.Spec) {
 		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
+		if desiredPrometheusRule.ResourceVersion != runtimePrometheusRule.ResourceVersion {
+			desiredPrometheusRule.ResourceVersion = runtimePrometheusRule.ResourceVersion
+		}
+
 		return d.client.Update(context.TODO(), desiredPrometheusRule)
 	}
 	return nil
