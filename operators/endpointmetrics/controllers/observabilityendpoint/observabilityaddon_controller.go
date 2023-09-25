@@ -21,7 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
@@ -333,62 +332,62 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			builder.WithPredicates(getPred(obAddonName, namespace, true, true, true)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.Secret{}},
+			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.HubInfoSecretName, namespace, true, true, false)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.Secret{}},
+			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(mtlsCertName, namespace, true, true, false)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.Secret{}},
+			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(mtlsCaName, namespace, true, true, false)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.Secret{}},
+			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(hubAmAccessorSecretName, namespace, true, true, false)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.ConfigMap{}},
+			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.AllowlistConfigMapName, namespace, true, true, false)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.ConfigMap{}},
+			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.AllowlistCustomConfigMapName, "", true, true, true)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.ConfigMap{}},
+			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(caConfigmapName, namespace, false, true, true)),
 		).
 		Watches(
-			&source.Kind{Type: &appsv1.Deployment{}},
+			&appsv1.Deployment{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(metricsCollectorName, namespace, true, true, true)),
 		).
 		Watches(
-			&source.Kind{Type: &appsv1.Deployment{}},
+			&appsv1.Deployment{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(uwlMetricsCollectorName, namespace, true, true, true)),
 		).
 		Watches(
-			&source.Kind{Type: &rbacv1.ClusterRoleBinding{}},
+			&rbacv1.ClusterRoleBinding{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(clusterRoleBindingName, "", false, true, true)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.ConfigMap{}},
+			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.ImageConfigMap, namespace, true, true, false)),
 		).
 		Watches(
-			&source.Kind{Type: &appsv1.StatefulSet{}},
+			&appsv1.StatefulSet{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, uwlNamespace, true, false, true)),
 		).

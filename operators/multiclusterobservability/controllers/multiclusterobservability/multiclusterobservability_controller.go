@@ -35,7 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	placementctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
@@ -513,10 +512,10 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		// Watch for changes to secondary Observatorium CR and requeue the owner MultiClusterObservability
 		Owns(&observatoriumv1alpha1.Observatorium{}).
 		// Watch the configmap for thanos-ruler-custom-rules update
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmPred)).
+		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmPred)).
 
 		// Watch the secret for deleting event of alertmanager-config
-		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(secretPred))
+		Watches(&corev1.Secret{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(secretPred))
 
 	mchGroupKind := schema.GroupKind{Group: mchv1.GroupVersion.Group, Kind: "MultiClusterHub"}
 	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.GroupVersion.Version); err == nil {
@@ -565,8 +564,8 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		if mchCrdExists {
 			// secondary watch for MCH
 			ctrBuilder = ctrBuilder.Watches(
-				&source.Kind{Type: &mchv1.MultiClusterHub{}},
-				handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+				&mchv1.MultiClusterHub{},
+				handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
 					return []reconcile.Request{
 						{NamespacedName: types.NamespacedName{
 							Name:      config.MCHUpdatedRequestName,
