@@ -475,7 +475,7 @@ func TestDeploy(t *testing.T) {
 	appsv1.AddToScheme(scheme)
 	rbacv1.AddToScheme(scheme)
 	prometheusv1.AddToScheme(scheme)
-	client := fake.NewFakeClientWithScheme(scheme, []runtime.Object{}...)
+	client := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 	deployer := NewDeployer(client)
 
