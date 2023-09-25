@@ -26,6 +26,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	obsepctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
 	statusctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/status"
@@ -33,7 +35,6 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/version"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	operatorsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -97,13 +98,15 @@ func main() {
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
+		Scheme: scheme,
+		Metrics: metricsserver.Options{
+			BindAddress: metricsAddr,
+		},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "7c30ca38.open-cluster-management.io",
 		NewCache:               filteredcache.NewEnhancedFilteredCacheBuilder(gvkLabelMap),
+		WebhookServer:          webhook.NewServer(webhook.Options{Port: 9443}),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -138,10 +141,12 @@ func main() {
 		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)
 	}
-	if err := operatorsutil.RegisterDebugEndpoint(mgr.AddMetricsExtraHandler); err != nil {
-		setupLog.Error(err, "unable to set up debug handler")
-		os.Exit(1)
-	}
+
+	// TODO(saswatamcode): Address this later.
+	// if err := operatorsutil.RegisterDebugEndpoint(mgr.AddMetricsExtraHandler); err != nil {
+	// 	setupLog.Error(err, "unable to set up debug handler")
+	// 	os.Exit(1)
+	// }
 
 	// start lease
 	util.StartLease()

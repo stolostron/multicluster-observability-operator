@@ -45,6 +45,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	ctrlruntimescheme "sigs.k8s.io/controller-runtime/pkg/scheme"
 	ctrlwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
@@ -245,14 +246,16 @@ func main() {
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Port:                   webhookPort,
+		Metrics: metricsserver.Options{
+			BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		},
 		Scheme:                 scheme,
-		MetricsBindAddress:     fmt.Sprintf("%s:%d", metricsHost, metricsPort),
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b9d51391.open-cluster-management.io",
 		NewCache:               filteredcache.NewEnhancedFilteredCacheBuilder(gvkLabelsMap),
-		WebhookServer:          &ctrlwebhook.Server{TLSMinVersion: "1.2"},
+		// TODO(saswatamcode): Figure out how to pass TLS version.
+		WebhookServer: ctrlwebhook.NewServer(ctrlwebhook.Options{Port: webhookPort}),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -302,10 +305,11 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
-	if err := operatorsutil.RegisterDebugEndpoint(mgr.AddMetricsExtraHandler); err != nil {
-		setupLog.Error(err, "unable to set up debug handler")
-		os.Exit(1)
-	}
+	// TODO(saswatamcode): Address this later.
+	// if err := operatorsutil.RegisterDebugEndpoint(mgr.AddMetricsExtraHandler); err != nil {
+	// 	setupLog.Error(err, "unable to set up debug handler")
+	// 	os.Exit(1)
+	// }
 
 	// Setup Scheme for observatorium resources
 	schemeBuilder := &ctrlruntimescheme.Builder{
