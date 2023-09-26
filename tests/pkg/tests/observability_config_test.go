@@ -123,7 +123,7 @@ var _ = Describe("", func() {
 		}
 		observabilityAddonSpec := mcoRes.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})
 		Expect(observabilityAddonSpec["enableMetrics"]).To(Equal(true))
-		Expect(observabilityAddonSpec["interval"]).To(Equal(int64(30)))
+		Expect(observabilityAddonSpec["interval"]).To(Equal(int64(300)))
 	})
 
 	It("RHACM4K-1065: Observability: Verify MCO CR storage class and PVC @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release (config/g0)", func() {
