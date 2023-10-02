@@ -83,7 +83,7 @@ func updateRes(r *resource.Resource,
 	if err != nil {
 		return nil, err
 	}
-	err := runtime.DefaultUnstructuredConverter.FromUnstructured(m, obj)
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(m, obj)
 	if err != nil {
 		log.Error(err, "failed to convert the resource", "resource", r.GetName())
 		return nil, err

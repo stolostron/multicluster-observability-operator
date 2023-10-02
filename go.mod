@@ -50,7 +50,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.15.1
 	sigs.k8s.io/kube-storage-version-migrator v0.0.4
 	sigs.k8s.io/kustomize/api v0.13.4
-	sigs.k8s.io/kustomize/v3 v3.3.1
+	sigs.k8s.io/kustomize/kyaml v0.14.2
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -125,7 +125,7 @@ require (
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/weppos/publicsuffix-go v0.13.0 // indirect
-	github.com/xlab/treeprint v1.1.0 // indirect
+	github.com/xlab/treeprint v1.2.0 // indirect
 	github.com/zmap/zcrypto v0.0.0-20201128221613-3719af1573cf // indirect
 	github.com/zmap/zlint/v3 v3.0.0 // indirect
 	go.mongodb.org/mongo-driver v1.11.4 // indirect
@@ -171,11 +171,11 @@ require (
 	sigs.k8s.io/cluster-api-provider-aws/v2 v2.0.2 // indirect
 	sigs.k8s.io/cluster-api-provider-ibmcloud v0.6.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
-	sigs.k8s.io/kustomize/kyaml v0.14.2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
 replace (
+	github.com/google/gnostic => github.com/google/gnostic v0.5.7-v3refs
 	github.com/openshift/api => github.com/openshift/api v0.0.0-20230915112357-693d4b64813c
 	github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20230915115245-53bd8980dfb7
 	github.com/prometheus-community/prom-label-proxy/injectproxy => github.com/prometheus-community/prom-label-proxy/injectproxy v0.6.0
@@ -189,12 +189,11 @@ replace (
 	k8s.io/client-go => k8s.io/client-go v0.26.4
 	k8s.io/component-base => k8s.io/component-base v0.26.4
 	k8s.io/klog/v2 => k8s.io/klog/v2 v2.100.1
+	//k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230109183929-3758b55a6596
 	sigs.k8s.io/cluster-api-provider-aws/v2 => sigs.k8s.io/cluster-api-provider-aws/v2 v2.2.2
-	//k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
 	sigs.k8s.io/cluster-api-provider-kubevirt => github.com/openshift/cluster-api-provider-kubevirt v0.0.0-20230126155822-4786167d51b3
 	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.14.4
-//sigs.k8s.io/kustomize/api => sigs.k8s.io/kustomize/api v0.8.8
-//sigs.k8s.io/kustomize/kyaml => sigs.k8s.io/kustomize/kyaml v0.10.17
+	sigs.k8s.io/kustomize/kyaml => sigs.k8s.io/kustomize/kyaml v0.14.1
 )
 
 // needed because otherwise installer fetches a library-go version that requires bitbucket.com/ww/goautoneg which is dead
