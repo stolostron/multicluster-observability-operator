@@ -8,6 +8,7 @@ import (
 	"os"
 	"sync"
 
+	"sigs.k8s.io/kustomize/api/resource"
 	"sigs.k8s.io/kustomize/v3/k8sdeps/kunstruct"
 	"sigs.k8s.io/kustomize/v3/k8sdeps/transformer"
 	"sigs.k8s.io/kustomize/v3/k8sdeps/validator"
@@ -15,7 +16,6 @@ import (
 	"sigs.k8s.io/kustomize/v3/pkg/loader"
 	"sigs.k8s.io/kustomize/v3/pkg/plugins"
 	"sigs.k8s.io/kustomize/v3/pkg/resmap"
-	"sigs.k8s.io/kustomize/v3/pkg/resource"
 	"sigs.k8s.io/kustomize/v3/pkg/target"
 )
 
