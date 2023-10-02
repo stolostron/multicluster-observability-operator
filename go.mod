@@ -3,7 +3,7 @@ module github.com/stolostron/multicluster-observability-operator
 go 1.20
 
 require (
-	github.com/IBM/controller-filtered-cache v0.3.3
+	github.com/IBM/controller-filtered-cache v0.3.6
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cloudflare/cfssl v1.6.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
@@ -90,7 +90,6 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/certificate-transparency-go v1.0.21 // indirect
 	github.com/google/gnostic v0.6.9 // indirect
-	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
@@ -189,11 +188,12 @@ replace (
 	k8s.io/client-go => k8s.io/client-go v0.26.4
 	k8s.io/component-base => k8s.io/component-base v0.26.4
 	k8s.io/klog/v2 => k8s.io/klog/v2 v2.100.1
-	//k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230109183929-3758b55a6596
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280
+	sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.4.7
 	sigs.k8s.io/cluster-api-provider-aws/v2 => sigs.k8s.io/cluster-api-provider-aws/v2 v2.2.2
+	sigs.k8s.io/cluster-api-provider-ibmcloud => sigs.k8s.io/cluster-api-provider-ibmcloud v0.5.2
 	sigs.k8s.io/cluster-api-provider-kubevirt => github.com/openshift/cluster-api-provider-kubevirt v0.0.0-20230126155822-4786167d51b3
 	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.14.4
-	sigs.k8s.io/kustomize/kyaml => sigs.k8s.io/kustomize/kyaml v0.14.1
 )
 
 // needed because otherwise installer fetches a library-go version that requires bitbucket.com/ww/goautoneg which is dead

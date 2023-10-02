@@ -39,22 +39,22 @@ func Log(log log.Logger, l LogLevel, keyvals ...interface{}) {
 	case Debug:
 		err := level.Debug(log).Log(keyvals...)
 		if err != nil {
-			fmt.Sprintf(errkey, err)
+			level.Error(log).Log("msg", fmt.Sprintf(errkey, err))
 		}
 	case Info:
 		err := level.Info(log).Log(keyvals...)
 		if err != nil {
-			fmt.Sprintf(errkey, err)
+			level.Error(log).Log("msg", fmt.Sprintf(errkey, err))
 		}
 	case Warn:
 		err := level.Warn(log).Log(keyvals...)
 		if err != nil {
-			fmt.Sprintf(errkey, err)
+			level.Error(log).Log("msg", fmt.Sprintf(errkey, err))
 		}
 	case Error:
 		err := level.Error(log).Log(keyvals...)
 		if err != nil {
-			fmt.Sprintf(errkey, err)
+			level.Error(log).Log("msg", fmt.Sprintf(errkey, err))
 		}
 	}
 }
