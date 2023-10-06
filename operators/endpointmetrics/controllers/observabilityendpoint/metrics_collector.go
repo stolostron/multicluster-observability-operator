@@ -265,6 +265,11 @@ func updateMetricsCollector(ctx context.Context, client client.Client, obsAddonS
 		return false, err
 	}
 	endpointDeployment := getEndpointDeployment(ctx, client)
+	log.Info(fmt.Sprintf("endpoint operator [version: %+v, UID: %+v]",
+		endpointDeployment.ResourceVersion,
+		endpointDeployment.UID))
+	log.Info(fmt.Sprintf("node selectors: %+v", endpointDeployment.Spec.Template.Spec.NodeSelector))
+	log.Info(fmt.Sprintf("tolerations: %+v", endpointDeployment.Spec.Template.Spec.Tolerations))
 	deployment := createDeployment(
 		clusterID,
 		clusterType,

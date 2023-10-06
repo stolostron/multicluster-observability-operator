@@ -19,6 +19,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -144,6 +145,7 @@ func removePostponeDeleteAnnotationForManifestwork(c client.Client, namespace st
 func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 	name := work.ObjectMeta.Name
 	namespace := work.ObjectMeta.Namespace
+	log.Info(fmt.Sprintf("createManifestWork (name): %s, (namespace): %s", name, namespace))
 	found := &workv1.ManifestWork{}
 	err := c.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
 	if err != nil && k8serrors.IsNotFound(err) {
@@ -180,12 +182,71 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 	}
 
 	if updated {
-		log.Info("Updating manifestwork", namespace, namespace, "name", name)
+		log.Info("Updating manifestwork", "namespace", namespace, "name", name)
+		for _, m := range found.Spec.Workload.Manifests {
+			var unstructuredObj unstructured.Unstructured
+			var err error
+			if json.Valid(m.Raw) {
+				err = unstructuredObj.UnmarshalJSON(m.Raw)
+				if err != nil {
+					log.Info(fmt.Sprintf("could not unmarshal manifestwork as Json(found), name: %s, namespace: %s", name, namespace))
+				}
+			} else {
+				err = yaml.Unmarshal(m.Raw, &unstructuredObj)
+				if err != nil {
+					log.Info(fmt.Sprintf("could not unmarshal manifestwork as Yaml(found), name: %s, namespace: %s", name, namespace))
+				}
+			}
+
+			if err != nil {
+				log.Info(fmt.Sprintf("m.Raw: %+v", m.Raw))
+			} else {
+				if unstructuredObj.GetKind() == "Deployment" {
+					deploymentName := unstructuredObj.GetName()
+					nodeSelector, _, _ := unstructured.NestedMap(unstructuredObj.Object, "spec", "template", "spec", "nodeSelector")
+					tolerations, _, _ := unstructured.NestedSlice(unstructuredObj.Object, "spec", "template", "spec", "tolerations")
+					log.Info(fmt.Sprintf("Manifestwork (found): %s, Deployment Name: %s", name, deploymentName))
+					log.Info(fmt.Sprintf("Manifestwork (found): %+v, NodeSelector: %+v", name, nodeSelector))
+					log.Info(fmt.Sprintf("Manifestwork (found): %+v, Tolerations: %+v", name, tolerations))
+				}
+			}
+		}
+		for _, m := range manifests {
+			var unstructuredObj unstructured.Unstructured
+			var err error
+			if json.Valid(m.Raw) {
+				err = unstructuredObj.UnmarshalJSON(m.Raw)
+				if err != nil {
+					log.Info(fmt.Sprintf("could not unmarshal manifestwork as Json(new), name: %s, namespace: %s", name, namespace))
+				}
+			} else {
+				err = yaml.Unmarshal(m.Raw, &unstructuredObj)
+				if err != nil {
+					log.Info(fmt.Sprintf("could not unmarshal manifestwork as Yaml(new), name: %s, namespace: %s", name, namespace))
+				}
+			}
+
+			if err != nil {
+				log.Info(fmt.Sprintf("m.Raw: %+v", m.Raw))
+			} else {
+				if unstructuredObj.GetKind() == "Deployment" {
+					deploymentName := unstructuredObj.GetName()
+					nodeSelector, _, _ := unstructured.NestedMap(unstructuredObj.Object, "spec", "template", "spec", "nodeSelector")
+					tolerations, _, _ := unstructured.NestedSlice(unstructuredObj.Object, "spec", "template", "spec", "tolerations")
+					log.Info(fmt.Sprintf("Manifestwork (new): %s, Deployment Name: %s", name, deploymentName))
+					log.Info(fmt.Sprintf("Manifestwork (new): %+v, NodeSelector (before): %+v", name, nodeSelector))
+					log.Info(fmt.Sprintf("Manifestwork (new): %+v, Tolerations (before): %+v", name, tolerations))
+				}
+			}
+		}
+
 		found.Spec.Workload.Manifests = manifests
 		err = c.Update(context.TODO(), found)
 		if err != nil {
 			log.Error(err, "Failed to update monitoring-endpoint-monitoring-work work")
 			return err
+		} else {
+			log.Info("manifestwork updated", "namespace", namespace, "name", name)
 		}
 		return nil
 	}
@@ -295,11 +356,19 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 	imageRegistryClient := NewImageRegistryClient(c)
 
 	// inject the endpoint operator deployment
+
+	// since we are reusing endpoint operator deployment spec across multiple managed clusters while creating manifestwork,
+	// always reset NodeSelector and Tolerations to the default values.
+	// Note that this will cause any defaults values set in the deployment template spec to be lost.
+	dep.Spec.Template.Spec.NodeSelector = map[string]string{}
+	dep.Spec.Template.Spec.Tolerations = []corev1.Toleration{}
 	spec := dep.Spec.Template.Spec
 	if clusterName == localClusterName {
 		spec.NodeSelector = mco.Spec.NodeSelector
 		spec.Tolerations = mco.Spec.Tolerations
 	}
+	log.Info(fmt.Sprintf("Cluster: %+v, Spec.NodeSelector (after): %+v", clusterName, spec.NodeSelector))
+	log.Info(fmt.Sprintf("Cluster: %+v, Spec.Tolerations (after): %+v", clusterName, spec.Tolerations))
 	for i, container := range spec.Containers {
 		if container.Name == "endpoint-observability-operator" {
 			for j, env := range container.Env {
