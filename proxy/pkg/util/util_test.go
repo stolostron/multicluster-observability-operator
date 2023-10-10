@@ -372,12 +372,12 @@ func TestUnmarshalDataToManagedClusterLabelList(t *testing.T) {
 		t.Errorf("case (%v) output: (%v) is not the expected: (%v)", testCase.name, err, testCase.expected)
 	}
 
-	testCase.cm.Data[proxyconfig.GetManagedClusterLabelAllowListConfigMapKey()] += `
-	labels:
-	- app
-		- source
-	`
-
+		testCase.cm.Data[proxyconfig.GetManagedClusterLabelAllowListConfigMapKey()] += `
+labels:
+- app
+	- source
+`
+	
 	err = unmarshalDataToManagedClusterLabelList(testCase.cm.Data,
 		proxyconfig.GetManagedClusterLabelAllowListConfigMapKey(), proxyconfig.GetManagedClusterLabelList())
 	if err == nil {
