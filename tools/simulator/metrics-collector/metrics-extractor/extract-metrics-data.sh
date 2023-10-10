@@ -18,30 +18,32 @@ mkdir -p ${WORKDIR}/../output
 
 # tmp output directory for metrics list
 TMP_OUT=$(mktemp -d /tmp/metrics.XXXXXXXXXX)
-METRICS_JSON_OUT=${TMP_OUT}/metrics.json
-RECORDINGRULES_JSON_OUT=${TMP_OUT}/recordingrules.json
+#METRICS_JSON_OUT=${TMP_OUT}/metrics.json
+#RECORDINGRULES_JSON_OUT=${TMP_OUT}/recordingrules.json
+METRICS_JSON_OUT=${WORKDIR}/metrics.json
+RECORDINGRULES_JSON_OUT=${WORKDIR}/recordingrules.json
 TIME_SERIES_OUT=${WORKDIR}/../output/timeseries.txt
 
 METRICS_ALLOW_LIST_URL=${METRICS_ALLOW_LIST_URL:-https://raw.githubusercontent.com/stolostron/multicluster-observability-operator/main/operators/multiclusterobservability/manifests/base/config/metrics_allowlist.yaml}
 
 
 
-function get_metrics_list() {
-	echo "getting metrics list..."
+# function get_metrics_list() {
+# 	echo "getting metrics list..."
 
-	matches=$(curl -L ${METRICS_ALLOW_LIST_URL} | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.data."metrics_list.yaml"' | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.matches' | jq '"{" + .[] + "}"')
-	names=$(curl -L ${METRICS_ALLOW_LIST_URL} | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.data."metrics_list.yaml"' | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.names' | jq '"{__name__=\"" + .[] + "\"}"')
-	echo $matches $names | jq -s . > ${METRICS_JSON_OUT}
+# 	matches=$(curl -L ${METRICS_ALLOW_LIST_URL} | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.data."metrics_list.yaml"' | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.matches' | jq '"{" + .[] + "}"')
+# 	names=$(curl -L ${METRICS_ALLOW_LIST_URL} | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.data."metrics_list.yaml"' | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.names' | jq '"{__name__=\"" + .[] + "\"}"')
+# 	echo $matches $names | jq -s . > ${METRICS_JSON_OUT}
 
-}
+# }
 
-function get_recordingrules_list() {
-	echo "getting recordingrules list..."
+# function get_recordingrules_list() {
+# 	echo "getting recordingrules list..."
 	
-	recordingrules=$(curl -L ${METRICS_ALLOW_LIST_URL} | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.data."metrics_list.yaml"' | ${GOJSONTOYAML_BIN} --yamltojson | jq '.recording_rules[]')
-	echo "$recordingrules" | jq -s . > ${RECORDINGRULES_JSON_OUT}
+# 	recordingrules=$(curl -L ${METRICS_ALLOW_LIST_URL} | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.data."metrics_list.yaml"' | ${GOJSONTOYAML_BIN} --yamltojson | jq '.recording_rules[]')
+# 	echo "$recordingrules" | jq -s . > ${RECORDINGRULES_JSON_OUT}
 
-}
+# }
 
 function generate_metrics() {
 	echo "generating metrics..."
@@ -89,7 +91,7 @@ function generate_timeseries() {
 }
 
 
-get_metrics_list
-get_recordingrules_list
+#get_metrics_list
+#get_recordingrules_list
 oc login ${OC_CLUSTER_URL} --token ${OC_TOKEN} --insecure-skip-tls-verify=true
 generate_timeseries

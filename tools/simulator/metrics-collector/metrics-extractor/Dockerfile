@@ -23,6 +23,19 @@ RUN cp kubectl /usr/local/bin
 COPY --from=builder /usr/local/bin/gojsontoyaml /usr/local/bin/
 
 WORKDIR /metrics-extractor
+ARG METRICS_ALLOW_LIST_URL="https://raw.githubusercontent.com/stolostron/multicluster-observability-operator/main/operators/multiclusterobservability/manifests/base/config/metrics_allowlist.yaml"
+ARG METRICS_JSON_OUT=/metrics-extractor/metrics.json
+ARG RECORDINGRULES_JSON_OUT=/metrics-extractor/recordingrules.json
+ARG GOJSONTOYAML_BIN=/usr/local/bin/gojsontoyaml
+
+
+RUN export matches=$(curl -L $METRICS_ALLOW_LIST_URL | $GOJSONTOYAML_BIN --yamltojson | jq -r '.data."metrics_list.yaml"' | $GOJSONTOYAML_BIN --yamltojson | jq -r '.matches' | jq '"{" + .[] + "}"') && \
+    export names=$(curl -L $METRICS_ALLOW_LIST_URL | $GOJSONTOYAML_BIN --yamltojson | jq -r '.data."metrics_list.yaml"' | $GOJSONTOYAML_BIN --yamltojson | jq -r '.names' | jq '"{__name__=\"" + .[] + "\"}"') && \
+    echo $matches $names | jq -s . > $METRICS_JSON_OUT && \
+    export recordingrules=$(curl -L $METRICS_ALLOW_LIST_URL | $GOJSONTOYAML_BIN --yamltojson | jq -r '.data."metrics_list.yaml"' | $GOJSONTOYAML_BIN --yamltojson | jq '.recording_rules[]') && \
+	echo $recordingrules | jq -s . > ${RECORDINGRULES_JSON_OUT}
+
+
 
 COPY ./extract-metrics-data.sh /metrics-extractor/
 RUN chmod 777 /metrics-extractor
