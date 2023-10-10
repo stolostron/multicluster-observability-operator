@@ -105,6 +105,7 @@ func (r *Renderer) RenderNamespace(
 	}
 	u := &unstructured.Unstructured{Object: m}
 	if UpdateNamespace(u) {
+		u.SetNamespace(namespace)
 		res.SetNamespace(namespace)
 	}
 
@@ -166,6 +167,7 @@ func (r *Renderer) RenderClusterRoleBinding(
 
 	if UpdateNamespace(u) {
 		subject["namespace"] = namespace
+		u.SetNamespace(namespace)
 	}
 
 	return u, nil
