@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-//Siddharth's code
+// Siddharth's code
 func TestRemove(t *testing.T) {
 	type testCaseList struct {
 		name     string
@@ -53,7 +53,7 @@ func TestContains(t *testing.T) {
 	}
 }
 
-//Siddharth's code
+// Siddharth's code
 func TestGetAnnotation(t *testing.T) {
 	type testCaseList struct {
 		name       string
@@ -85,7 +85,7 @@ func TestGetAnnotation(t *testing.T) {
 	}
 }
 
-//func TestGeneratePassword
+// func TestGeneratePassword
 func TestGeneratePassword(t *testing.T) {
 	type testCaseList struct {
 		name     string
@@ -142,7 +142,7 @@ func TestProxyEnvVarsAreSet(t *testing.T) {
 	}
 }
 
-//Siddharth's code
+// Siddharth's code
 func TestRemoveDuplicates(t *testing.T) {
 	type testCaseList struct {
 		name     string

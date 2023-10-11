@@ -227,7 +227,7 @@ func TestRewriteQuery(t *testing.T) {
 
 		{
 			"should rewrite",
-			map[string][]string{"key": []string{"value"}},
+			map[string][]string{"key": {"value"}},
 			[]string{"c1", "c2"},
 			"key",
 			"value{cluster=~\"c1|c2\"}",
@@ -235,7 +235,7 @@ func TestRewriteQuery(t *testing.T) {
 
 		{
 			"empty cluster list",
-			map[string][]string{"key": []string{"value"}},
+			map[string][]string{"key": {"value"}},
 			[]string{},
 			"key",
 			"value{cluster=~\"\"}",

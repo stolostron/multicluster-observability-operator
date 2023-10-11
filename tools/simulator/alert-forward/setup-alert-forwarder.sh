@@ -2,21 +2,24 @@
 # Copyright (c) 2021 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project
 
-WORK_DIR="$(cd "$(dirname "$0")" ; pwd -P)"
+WORK_DIR="$(
+  cd "$(dirname "$0")"
+  pwd -P
+)"
 
 KUBECTL="kubectl"
-if ! command -v kubectl &> /dev/null; then
-    if command -v oc &> /dev/null; then
-        KUBECTL="oc"
-    else
-        echo "kubectl or oc must be installed!"
-        exit 1
-    fi
+if ! command -v kubectl &>/dev/null; then
+  if command -v oc &>/dev/null; then
+    KUBECTL="oc"
+  else
+    echo "kubectl or oc must be installed!"
+    exit 1
+  fi
 fi
 
 SED_COMMAND='sed -i'
 if [[ "$(uname)" == "Darwin" ]]; then
-    SED_COMMAND='sed -i -e'
+  SED_COMMAND='sed -i -e'
 fi
 
 function usage() {
@@ -30,7 +33,7 @@ function usage() {
 }
 
 INTERVAL="30s" # default alert forward interval
-WORKERS=1000 # default alert forward workers
+WORKERS=1000   # default alert forward workers
 
 # Allow command-line args to override the defaults.
 while getopts ":i:w:h" opt; do
@@ -67,4 +70,3 @@ ${SED_COMMAND} "s~--workers=1000~--workers=${WORKERS}~g" ${WORK_DIR}/deployment.
 ${KUBECTL} create ns ${ALERT_FORWARDER_NS}
 ${KUBECTL} -n ${ALERT_FORWARDER_NS} create secret generic ${AM_ACCESS_TOKEN_SECRET} --from-literal=token=${AM_ACCESS_TOKEN}
 ${KUBECTL} -n ${ALERT_FORWARDER_NS} apply -f ${WORK_DIR}/deployment.yaml
-

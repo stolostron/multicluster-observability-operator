@@ -24,4 +24,3 @@ ValidatingWebhookConfigurationName=multicluster-observability-operator
 
 # Delete the validatingwebhookconfiguration with TOKEN
 curl --cacert ${CACERT} --header "Authorization: Bearer ${TOKEN}" -X DELETE ${APISERVER}/apis/admissionregistration.k8s.io/v1/validatingwebhookconfigurations/${ValidatingWebhookConfigurationName}
-

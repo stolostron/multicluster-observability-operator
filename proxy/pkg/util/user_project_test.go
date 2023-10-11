@@ -21,7 +21,7 @@ func TestGetUserProjectList(t *testing.T) {
 			"1",
 			&UserProjectInfo{
 				ProjectInfo: map[string]UserProject{
-					"1": UserProject{
+					"1": {
 						UserName:    "user" + strconv.Itoa(1),
 						Timestamp:   time.Now().Unix(),
 						Token:       strconv.Itoa(1),
@@ -37,7 +37,7 @@ func TestGetUserProjectList(t *testing.T) {
 			"invalid",
 			&UserProjectInfo{
 				ProjectInfo: map[string]UserProject{
-					"1": UserProject{
+					"1": {
 						UserName:    "user" + strconv.Itoa(1),
 						Timestamp:   time.Now().Unix(),
 						Token:       strconv.Itoa(1),
@@ -70,7 +70,7 @@ func TestCleanExpiredProjectInfo(t *testing.T) {
 			"1",
 			&UserProjectInfo{
 				ProjectInfo: map[string]UserProject{
-					"1": UserProject{
+					"1": {
 						UserName:    "user" + strconv.Itoa(1),
 						Timestamp:   time.Now().Unix(),
 						Token:       strconv.Itoa(1),
@@ -86,7 +86,7 @@ func TestCleanExpiredProjectInfo(t *testing.T) {
 			"2",
 			&UserProjectInfo{
 				ProjectInfo: map[string]UserProject{
-					"2": UserProject{
+					"2": {
 						UserName:    "user" + strconv.Itoa(2),
 						Timestamp:   time.Now().Unix() + 10,
 						Token:       strconv.Itoa(2),

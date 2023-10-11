@@ -4,7 +4,10 @@
 -include /opt/build-harness/Makefile.prow
 include .bingo/Variables.mk
 
-FILES_TO_FMT ?= $(shell find . -path ./vendor -prune -o -name '*.go' -print)
+FILES_TO_FMT ?= $(shell find . -path ./vendor -prune -o -name '*.deepcopy.go' -prune -o -name '*.go' -print)
+TMP_DIR := $(shell pwd)/tmp
+BIN_DIR ?= $(TMP_DIR)/bin
+GIT ?= $(shell which git)
 
 # Image URL to use all building/pushing image targets
 IMG ?= quay.io/stolostron/multicluster-observability-operator:latest
@@ -97,7 +100,6 @@ format: go-format shell-format
 # to debug big allocations during linting.
 .PHONY: go-lint
 go-lint: check-git deps $(GOLANGCI_LINT) $(FAILLINT)
-	$(call require_clean_work_tree,'detected not clean work tree before running lint, previous job changed something?')
 	@echo ">> verifying modules being imported"
 	@$(FAILLINT) -paths "errors=github.com/pkg/errors,\
 github.com/prometheus/tsdb=github.com/prometheus/prometheus/tsdb,\

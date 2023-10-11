@@ -3,13 +3,13 @@
 # Copyright Contributors to the Open Cluster Management project
 
 KUBECTL="kubectl"
-if ! command -v kubectl &> /dev/null; then
-    if command -v oc &> /dev/null; then
-        KUBECTL="oc"
-    else
-        echo "kubectl or oc must be installed!"
-        exit 1
-    fi
+if ! command -v kubectl &>/dev/null; then
+  if command -v oc &>/dev/null; then
+    KUBECTL="oc"
+  else
+    echo "kubectl or oc must be installed!"
+    exit 1
+  fi
 fi
 
 ALERT_FORWARDER_NS="alert-forwarder"

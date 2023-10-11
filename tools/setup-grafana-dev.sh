@@ -7,7 +7,7 @@ deploy_flag=0
 
 sed_command='sed -i-e -e'
 if [[ "$(uname)" == "Darwin" ]]; then
-    sed_command='sed -i '-e' -e'
+  sed_command='sed -i '-e' -e'
 fi
 
 usage() {
@@ -27,18 +27,18 @@ EOF
 }
 
 deploy() {
-  kubectl get secret -n "$obs_namespace" grafana-config -o 'go-template={{index .data "grafana.ini"}}' | base64 --decode > grafana-dev-config.ini
+  kubectl get secret -n "$obs_namespace" grafana-config -o 'go-template={{index .data "grafana.ini"}}' | base64 --decode >grafana-dev-config.ini
   if [ $? -ne 0 ]; then
-      echo "Failed to get grafana config secret"
-      exit 1
+    echo "Failed to get grafana config secret"
+    exit 1
   fi
   $sed_command "s~%(domain)s/grafana/$~%(domain)s/grafana-dev/~g" grafana-dev-config.ini
   kubectl create secret generic grafana-dev-config -n "$obs_namespace" --from-file=grafana.ini=grafana-dev-config.ini
 
-  kubectl get deployment -n "$obs_namespace" -l app=multicluster-observability-grafana -o yaml > grafana-dev-deploy.yaml
+  kubectl get deployment -n "$obs_namespace" -l app=multicluster-observability-grafana -o yaml >grafana-dev-deploy.yaml
   if [ $? -ne 0 ]; then
-      echo "Failed to get grafana deployment"
-      exit 1
+    echo "Failed to get grafana deployment"
+    exit 1
   fi
   $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-deploy.yaml
   $sed_command "s~name: observability-grafana$~name: grafana-dev~g" grafana-dev-deploy.yaml
@@ -48,7 +48,7 @@ deploy() {
   $sed_command "s~grafana-config$~grafana-dev-config~g" grafana-dev-deploy.yaml
   $sed_command "s~- multicluster-observability-grafana$~- multicluster-observability-grafana-dev~g" grafana-dev-deploy.yaml
 
-  POD_NAME=$(kubectl get pods -n "$obs_namespace" -l app=multicluster-observability-grafana |grep grafana|awk '{split($0, a, " "); print a[1]}' |head -n 1)
+  POD_NAME=$(kubectl get pods -n "$obs_namespace" -l app=multicluster-observability-grafana | grep grafana | awk '{split($0, a, " "); print a[1]}' | head -n 1)
   if [ -z "$POD_NAME" ]; then
     echo "Failed to get grafana pod name"
     exit 1
@@ -64,14 +64,14 @@ deploy() {
   $sed_command "s~--client-id=.*$~--client-id=grafana-proxy-client-dev~g" grafana-dev-deploy.yaml
   $sed_command "s~--client-secret=.*$~--client-secret=grafana-proxy-client-dev~g" grafana-dev-deploy.yaml
   $sed_command "s~  securityContext:.*$~  securityContext: {fsGroup: ${GROUP_ID}}~g" grafana-dev-deploy.yaml
-  sed "s~- emptyDir: {}$~- persistentVolumeClaim:$            claimName: grafana-dev~g" grafana-dev-deploy.yaml > grafana-dev-deploy.yaml.bak
-  tr $ '\n' < grafana-dev-deploy.yaml.bak > grafana-dev-deploy.yaml
+  sed "s~- emptyDir: {}$~- persistentVolumeClaim:$            claimName: grafana-dev~g" grafana-dev-deploy.yaml >grafana-dev-deploy.yaml.bak
+  tr $ '\n' <grafana-dev-deploy.yaml.bak >grafana-dev-deploy.yaml
   kubectl apply -f grafana-dev-deploy.yaml
 
-  kubectl get svc -n "$obs_namespace" -l app=multicluster-observability-grafana -o yaml > grafana-dev-svc.yaml
+  kubectl get svc -n "$obs_namespace" -l app=multicluster-observability-grafana -o yaml >grafana-dev-svc.yaml
   if [ $? -ne 0 ]; then
-      echo "Failed to get grafana service"
-      exit 1
+    echo "Failed to get grafana service"
+    exit 1
   fi
   $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-svc.yaml
   $sed_command "s~app: multicluster-observability-grafana$~app: multicluster-observability-grafana-dev~g" grafana-dev-svc.yaml
@@ -84,33 +84,33 @@ deploy() {
   $sed_command "s~service.beta.openshift.io/serving-cert-signed-by:.*$~~g" grafana-dev-svc.yaml
   kubectl apply -f grafana-dev-svc.yaml
 
-  kubectl get sa -n "$obs_namespace" grafana -o yaml > grafana-dev-sa.yaml
+  kubectl get sa -n "$obs_namespace" grafana -o yaml >grafana-dev-sa.yaml
   if [ $? -ne 0 ]; then
-      echo "Failed to get grafana serviceaccount"
-      exit 1
+    echo "Failed to get grafana serviceaccount"
+    exit 1
   fi
   $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-sa.yaml
   $sed_command 's/{"kind":"Route","name":"grafana"}/{"kind":"Route","name":"grafana-dev"}/g' grafana-dev-sa.yaml
   kubectl apply -f grafana-dev-sa.yaml
 
-  kubectl get clusterrolebinding open-cluster-management:grafana-crb -o yaml > grafana-dev-crb.yaml
+  kubectl get clusterrolebinding open-cluster-management:grafana-crb -o yaml >grafana-dev-crb.yaml
   if [ $? -ne 0 ]; then
-      echo "Failed to get grafana cluster role binding"
-      exit 1
+    echo "Failed to get grafana cluster role binding"
+    exit 1
   fi
   $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-crb.yaml
   $sed_command "s~name: open-cluster-management:grafana-crb$~name: open-cluster-management:grafana-crb-dev~g" grafana-dev-crb.yaml
   kubectl apply -f grafana-dev-crb.yaml
 
-  kubectl get route -n "$obs_namespace" grafana -o yaml > grafana-dev-route.yaml
+  kubectl get route -n "$obs_namespace" grafana -o yaml >grafana-dev-route.yaml
   if [ $? -ne 0 ]; then
-      echo "Failed to get grafana route"
-      exit 1
+    echo "Failed to get grafana route"
+    exit 1
   fi
   $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-route.yaml
   $sed_command "s~host:.*$~~g" grafana-dev-route.yaml
   kubectl apply -f grafana-dev-route.yaml
-  
+
   cat >grafana-pvc.yaml <<EOL
 kind: PersistentVolumeClaim
 apiVersion: v1
@@ -125,18 +125,18 @@ spec:
       storage: 1Gi
   storageClassName: gp2
 EOL
-  storage_class=$(kubectl get pvc -n "$obs_namespace" | awk '{print $6}'| awk 'NR==2')
+  storage_class=$(kubectl get pvc -n "$obs_namespace" | awk '{print $6}' | awk 'NR==2')
   if [ -z "$storage_class" ]; then
-      echo "Failed to get storage class"
-      exit 1
+    echo "Failed to get storage class"
+    exit 1
   fi
   $sed_command "s~gp2$~${storage_class}~g" grafana-pvc.yaml
   kubectl apply -f grafana-pvc.yaml
 
-  kubectl get oauthclient grafana-proxy-client -o yaml > grafana-dev-oauthclient.yaml
+  kubectl get oauthclient grafana-proxy-client -o yaml >grafana-dev-oauthclient.yaml
   if [ $? -ne 0 ]; then
-      echo "Failed to get grafana oauthclient"
-      exit 1
+    echo "Failed to get grafana oauthclient"
+    exit 1
   fi
   $sed_command "s~name: grafana-proxy-client$~name: grafana-proxy-client-dev~g" grafana-dev-oauthclient.yaml
   $sed_command "s/https:\/\/grafana-/https:\/\/grafana-dev-/g" grafana-dev-oauthclient.yaml
@@ -182,39 +182,38 @@ start() {
     usage
   fi
 
-  while [[ $# -gt 0 ]]
-  do
-  key="$1"
-  case $key in
-      -h|--help)
-      usage
-      ;;
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+    case $key in
+      -h | --help)
+        usage
+        ;;
 
-      -n|--namespace)
-      obs_namespace="$2"
-      shift
-      shift
-      ;;
+      -n | --namespace)
+        obs_namespace="$2"
+        shift
+        shift
+        ;;
 
-      -c|--clean)
-      clean
-      exit 0
-      ;;
+      -c | --clean)
+        clean
+        exit 0
+        ;;
 
-      -d|--deploy)
-      deploy_flag=1
-      shift
-      ;;
+      -d | --deploy)
+        deploy_flag=1
+        shift
+        ;;
 
       *)
-      usage
-      ;;
-  esac
+        usage
+        ;;
+    esac
   done
 
   if [ $deploy_flag -eq 1 ]; then
-      deploy
-      exit
+    deploy
+    exit
   fi
 }
 

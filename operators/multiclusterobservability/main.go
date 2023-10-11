@@ -172,36 +172,36 @@ func main() {
 
 	mcoNamespace := config.GetMCONamespace()
 	gvkLabelsMap := map[schema.GroupVersionKind][]filteredcache.Selector{
-		corev1.SchemeGroupVersion.WithKind("Secret"): []filteredcache.Selector{
+		corev1.SchemeGroupVersion.WithKind("Secret"): {
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.OpenshiftIngressOperatorNamespace)},
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.OpenshiftIngressNamespace)},
 		},
-		corev1.SchemeGroupVersion.WithKind("ConfigMap"): []filteredcache.Selector{
+		corev1.SchemeGroupVersion.WithKind("ConfigMap"): {
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
-		corev1.SchemeGroupVersion.WithKind("Service"): []filteredcache.Selector{
+		corev1.SchemeGroupVersion.WithKind("Service"): {
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
-		corev1.SchemeGroupVersion.WithKind("ServiceAccount"): []filteredcache.Selector{
+		corev1.SchemeGroupVersion.WithKind("ServiceAccount"): {
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
-		appsv1.SchemeGroupVersion.WithKind("Deployment"): []filteredcache.Selector{
+		appsv1.SchemeGroupVersion.WithKind("Deployment"): {
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
-		appsv1.SchemeGroupVersion.WithKind("StatefulSet"): []filteredcache.Selector{
+		appsv1.SchemeGroupVersion.WithKind("StatefulSet"): {
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
-		workv1.SchemeGroupVersion.WithKind("ManifestWork"): []filteredcache.Selector{
+		workv1.SchemeGroupVersion.WithKind("ManifestWork"): {
 			{LabelSelector: "owner==multicluster-observability-operator"},
 		},
-		clusterv1.SchemeGroupVersion.WithKind("ManagedCluster"): []filteredcache.Selector{
+		clusterv1.SchemeGroupVersion.WithKind("ManagedCluster"): {
 			{LabelSelector: "vendor!=auto-detect,observability!=disabled"},
 		},
-		addonv1alpha1.SchemeGroupVersion.WithKind("ClusterManagementAddOn"): []filteredcache.Selector{
+		addonv1alpha1.SchemeGroupVersion.WithKind("ClusterManagementAddOn"): {
 			{FieldSelector: fmt.Sprintf("metadata.name=%s", util.ObservabilityController)},
 		},
-		addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn"): []filteredcache.Selector{
+		addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn"): {
 			{FieldSelector: fmt.Sprintf("metadata.name=%s", util.ManagedClusterAddonName)},
 		},
 	}
