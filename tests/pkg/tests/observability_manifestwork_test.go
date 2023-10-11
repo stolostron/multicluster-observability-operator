@@ -5,12 +5,12 @@ package tests
 
 import (
 	"context"
-	"errors"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/efficientgo/core/errors"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 

@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/efficientgo/core/errors"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
@@ -59,7 +60,7 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 	if resp.StatusCode != http.StatusOK {
 		klog.Errorf("resp: %+v\n", resp)
 		klog.Errorf("err: %+v\n", err)
-		return fmt.Errorf("failed to access managed cluster metrics via grafana console: %s", query), false
+		return errors.Newf("failed to access managed cluster metrics via grafana console: %s", query), false
 	}
 
 	metricResult, err := io.ReadAll(resp.Body)
@@ -69,11 +70,11 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 	}
 
 	if !strings.Contains(string(metricResult), `"status":"success"`) {
-		return fmt.Errorf("failed to find valid status from response"), false
+		return errors.New("failed to find valid status from response"), false
 	}
 
 	if strings.Contains(string(metricResult), `"result":[]`) {
-		return fmt.Errorf("failed to find metric name from response"), false
+		return errors.New("failed to find metric name from response"), false
 	}
 
 	contained := true
@@ -84,7 +85,7 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 		}
 	}
 	if !contained {
-		return fmt.Errorf("failed to find metric name from response"), false
+		return errors.New("failed to find metric name from response"), false
 	}
 
 	return nil, true

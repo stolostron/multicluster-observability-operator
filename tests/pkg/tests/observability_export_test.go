@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/efficientgo/core/errors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -83,7 +84,7 @@ var _ = Describe("Observability:", func() {
 						`"code":"200`, `"name":"thanos-receiver"`},
 				)
 				if err != nil {
-					return fmt.Errorf("metrics not forwarded to thanos-receiver")
+					return errors.New("metrics not forwarded to thanos-receiver")
 				}
 				err, _ = utils.ContainManagedClusterMetric(
 					testOptions,
@@ -92,7 +93,7 @@ var _ = Describe("Observability:", func() {
 						`"code":"204`, `"name":"victoriametrics"`},
 				)
 				if err != nil {
-					return fmt.Errorf("metrics not forwarded to victoriametrics")
+					return errors.New("metrics not forwarded to victoriametrics")
 				}
 			}
 			return nil

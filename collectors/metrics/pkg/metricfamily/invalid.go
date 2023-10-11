@@ -1,9 +1,9 @@
 package metricfamily
 
 import (
-	"fmt"
 	"time"
 
+	"github.com/efficientgo/core/errors"
 	clientmodel "github.com/prometheus/client_model/go"
 )
 
@@ -23,7 +23,7 @@ func (t *errorInvalidFederateSamples) Transform(family *clientmodel.MetricFamily
 		return false, nil
 	}
 	if len(name) > 255 {
-		return false, fmt.Errorf("metrics_name cannot be longer than 255 characters")
+		return false, errors.New("metrics_name cannot be longer than 255 characters")
 	}
 	if family.Type == nil {
 		return false, nil
@@ -35,7 +35,7 @@ func (t *errorInvalidFederateSamples) Transform(family *clientmodel.MetricFamily
 	case clientmodel.MetricType_SUMMARY:
 	case clientmodel.MetricType_UNTYPED:
 	default:
-		return false, fmt.Errorf("unknown metric type %s", t)
+		return false, errors.Newf("unknown metric type %s", t)
 	}
 
 	for _, m := range family.Metric {
@@ -44,10 +44,10 @@ func (t *errorInvalidFederateSamples) Transform(family *clientmodel.MetricFamily
 		}
 		for _, label := range m.Label {
 			if label.Name == nil || len(*label.Name) == 0 || len(*label.Name) > 255 {
-				return false, fmt.Errorf("label_name cannot be longer than 255 characters")
+				return false, errors.New("label_name cannot be longer than 255 characters")
 			}
 			if label.Value == nil || len(*label.Value) > 255 {
-				return false, fmt.Errorf("label_value cannot be longer than 255 characters")
+				return false, errors.New("label_value cannot be longer than 255 characters")
 			}
 		}
 		if m.TimestampMs == nil {
@@ -59,23 +59,23 @@ func (t *errorInvalidFederateSamples) Transform(family *clientmodel.MetricFamily
 		switch t := *family.Type; t {
 		case clientmodel.MetricType_COUNTER:
 			if m.Counter == nil || m.Gauge != nil || m.Histogram != nil || m.Summary != nil || m.Untyped != nil {
-				return false, fmt.Errorf("metric type %s must have counter field set", t)
+				return false, errors.Newf("metric type %s must have counter field set", t)
 			}
 		case clientmodel.MetricType_GAUGE:
 			if m.Counter != nil || m.Gauge == nil || m.Histogram != nil || m.Summary != nil || m.Untyped != nil {
-				return false, fmt.Errorf("metric type %s must have gauge field set", t)
+				return false, errors.Newf("metric type %s must have gauge field set", t)
 			}
 		case clientmodel.MetricType_HISTOGRAM:
 			if m.Counter != nil || m.Gauge != nil || m.Histogram == nil || m.Summary != nil || m.Untyped != nil {
-				return false, fmt.Errorf("metric type %s must have histogram field set", t)
+				return false, errors.Newf("metric type %s must have histogram field set", t)
 			}
 		case clientmodel.MetricType_SUMMARY:
 			if m.Counter != nil || m.Gauge != nil || m.Histogram != nil || m.Summary == nil || m.Untyped != nil {
-				return false, fmt.Errorf("metric type %s must have summary field set", t)
+				return false, errors.Newf("metric type %s must have summary field set", t)
 			}
 		case clientmodel.MetricType_UNTYPED:
 			if m.Counter != nil || m.Gauge != nil || m.Histogram != nil || m.Summary != nil || m.Untyped == nil {
-				return false, fmt.Errorf("metric type %s must have untyped field set", t)
+				return false, errors.Newf("metric type %s must have untyped field set", t)
 			}
 		}
 	}

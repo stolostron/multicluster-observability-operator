@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	cerr "github.com/efficientgo/core/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
@@ -31,7 +32,7 @@ func CheckOBAStatus(opt TestOptions, namespace, status string) error {
 	if oba.Object["status"] != nil && strings.Contains(fmt.Sprint(oba.Object["status"]), status) {
 		return nil
 	} else {
-		return fmt.Errorf("observability-addon is not ready for managed cluster %s", namespace)
+		return cerr.Newf("observability-addon is not ready for managed cluster %s", namespace)
 	}
 }
 
@@ -43,7 +44,7 @@ func CheckOBADeleted(opt TestOptions, namespace string) error {
 
 	_, err := dynClient.Resource(NewMCOAddonGVR()).Namespace(namespace).Get(context.TODO(), "observability-addon", metav1.GetOptions{})
 	if err == nil || !errors.IsNotFound(err) {
-		return fmt.Errorf("observability-addon is not properly deleted for managed cluster %s", namespace)
+		return cerr.Newf("observability-addon is not properly deleted for managed cluster %s", namespace)
 	}
 	return nil
 }
@@ -63,7 +64,7 @@ func CheckManagedClusterAddonsStatus(opt TestOptions, namespace, status string) 
 	if mca.Object["status"] != nil && strings.Contains(fmt.Sprint(mca.Object["status"]), status) {
 		return nil
 	} else {
-		return fmt.Errorf("observability-controller is disabled for managed cluster %s", namespace)
+		return cerr.Newf("observability-controller is disabled for managed cluster %s", namespace)
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"time"
 
+	cerr "github.com/efficientgo/core/errors"
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -752,19 +753,19 @@ func GenerateAlertmanagerRoute(
 		log.Info("BYO CA/Certificate found for the Route of Alertmanager, will using BYO CA/certificate for the Route of Alertmanager")
 		amRouteCA, ok := amRouteBYOCaSrt.Data["tls.crt"]
 		if !ok {
-			return &ctrl.Result{}, fmt.Errorf("Invalid BYO CA for the Route of Alertmanager")
+			return &ctrl.Result{}, cerr.New("Invalid BYO CA for the Route of Alertmanager")
 		}
 		amGateway.Spec.TLS.CACertificate = string(amRouteCA)
 
 		amRouteCert, ok := amRouteBYOCertSrt.Data["tls.crt"]
 		if !ok {
-			return &ctrl.Result{}, fmt.Errorf("Invalid BYO Certificate for the Route of Alertmanager")
+			return &ctrl.Result{}, cerr.New("Invalid BYO Certificate for the Route of Alertmanager")
 		}
 		amGateway.Spec.TLS.Certificate = string(amRouteCert)
 
 		amRouteCertKey, ok := amRouteBYOCertSrt.Data["tls.key"]
 		if !ok {
-			return &ctrl.Result{}, fmt.Errorf("Invalid BYO Certificate Key for the Route of Alertmanager")
+			return &ctrl.Result{}, cerr.New("Invalid BYO Certificate Key for the Route of Alertmanager")
 		}
 		amGateway.Spec.TLS.Key = string(amRouteCertKey)
 	}
@@ -846,19 +847,19 @@ func GenerateProxyRoute(
 		log.Info("BYO CA/Certificate found for the Route of Proxy, will using BYO CA/certificate for the Route of Proxy")
 		proxyRouteCA, ok := proxyRouteBYOCaSrt.Data["tls.crt"]
 		if !ok {
-			return &ctrl.Result{}, fmt.Errorf("Invalid BYO CA for the Route of Proxy")
+			return &ctrl.Result{}, cerr.New("Invalid BYO CA for the Route of Proxy")
 		}
 		proxyGateway.Spec.TLS.CACertificate = string(proxyRouteCA)
 
 		proxyRouteCert, ok := proxyRouteBYOCertSrt.Data["tls.crt"]
 		if !ok {
-			return &ctrl.Result{}, fmt.Errorf("Invalid BYO Certificate for the Route of Proxy")
+			return &ctrl.Result{}, cerr.New("Invalid BYO Certificate for the Route of Proxy")
 		}
 		proxyGateway.Spec.TLS.Certificate = string(proxyRouteCert)
 
 		proxyRouteCertKey, ok := proxyRouteBYOCertSrt.Data["tls.key"]
 		if !ok {
-			return &ctrl.Result{}, fmt.Errorf("Invalid BYO Certificate Key for the Route of Proxy")
+			return &ctrl.Result{}, cerr.New("Invalid BYO Certificate Key for the Route of Proxy")
 		}
 		proxyGateway.Spec.TLS.Key = string(proxyRouteCertKey)
 	}

@@ -101,7 +101,8 @@ format: go-format shell-format
 .PHONY: go-lint
 go-lint: check-git deps $(GOLANGCI_LINT) $(FAILLINT)
 	@echo ">> verifying modules being imported"
-	@$(FAILLINT) -paths "errors=github.com/pkg/errors,\
+	@$(FAILLINT) -paths "errors=github.com/efficientgo/core/errors,\
+github.com/pkg/errors=github.com/efficientgo/core/errors,\
 github.com/prometheus/tsdb=github.com/prometheus/prometheus/tsdb,\
 github.com/prometheus/prometheus/pkg/testutils=github.com/thanos-io/thanos/pkg/testutil,\
 github.com/prometheus/client_golang/prometheus.{DefaultGatherer,DefBuckets,NewUntypedFunc,UntypedFunc},\

@@ -1,8 +1,7 @@
 package metricfamily
 
 import (
-	"fmt"
-
+	"github.com/efficientgo/core/errors"
 	clientmodel "github.com/prometheus/client_model/go"
 )
 
@@ -15,7 +14,7 @@ func NewRequiredLabels(labels map[string]string) Transformer {
 }
 
 var (
-	ErrRequiredLabelMissing = fmt.Errorf("a required label is missing from the metric")
+	ErrRequiredLabelMissing = errors.New("a required label is missing from the metric")
 )
 
 func (t requireLabel) Transform(family *clientmodel.MetricFamily) (bool, error) {
@@ -31,7 +30,7 @@ func (t requireLabel) Transform(family *clientmodel.MetricFamily) (bool, error) 
 				}
 				if label.GetName() == k {
 					if label.GetValue() != v {
-						return false, fmt.Errorf(
+						return false, errors.Newf(
 							"expected label %s to have value %s instead of %s",
 							label.GetName(),
 							v,

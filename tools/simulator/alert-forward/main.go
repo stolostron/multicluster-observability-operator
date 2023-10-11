@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/efficientgo/core/errors"
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
@@ -46,7 +46,7 @@ type alertForwarder struct {
 
 func newAlertFowarder(opts *alertForwarderOptions) (*alertForwarder, error) {
 	if len(opts.amHost) == 0 {
-		return nil, fmt.Errorf("am-host must be specified!")
+		return nil, errors.New("am-host must be specified")
 	}
 
 	u := &url.URL{
@@ -65,7 +65,7 @@ func newAlertFowarder(opts *alertForwarderOptions) (*alertForwarder, error) {
 		}
 		accessToken = strings.TrimSpace(string(data))
 	} else {
-		return nil, fmt.Errorf("am-access-token or am-access-token-file must be specified!")
+		return nil, errors.New("am-access-token or am-access-token-file must be specified")
 	}
 
 	alerts := ""
@@ -78,7 +78,7 @@ func newAlertFowarder(opts *alertForwarderOptions) (*alertForwarder, error) {
 		}
 		alerts = strings.TrimSpace(string(data))
 	} else {
-		return nil, fmt.Errorf("alerts or alerts-file must be specified!")
+		return nil, errors.New("alerts or alerts-file must be specified")
 	}
 
 	return &alertForwarder{
@@ -243,7 +243,7 @@ func sendOne(c *http.Client, traceCtx context.Context, url string, b []byte) err
 
 	// Any HTTP status 2xx is OK.
 	if resp.StatusCode/100 != 2 {
-		return errors.Errorf("bad response status %s", resp.Status)
+		return errors.Newf("bad response status %s", resp.Status)
 	}
 	return nil
 }

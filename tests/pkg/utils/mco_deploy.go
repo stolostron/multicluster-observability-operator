@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/efficientgo/core/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -256,7 +257,7 @@ func CheckAllPodNodeSelector(opt TestOptions, nodeSelector map[string]interface{
 		for _, pod := range podList {
 			selecterValue, ok := pod.Spec.NodeSelector[k]
 			if !ok || selecterValue != v {
-				return fmt.Errorf("failed to check node selector with %s=%s for pod: %v", k, v, pod.GetName())
+				return errors.Newf("failed to check node selector with %s=%s for pod: %v", k, v, pod.GetName())
 			}
 		}
 	}
@@ -273,7 +274,7 @@ func CheckAllPodsAffinity(opt TestOptions) error {
 	for _, pod := range podList {
 
 		if pod.Spec.Affinity == nil {
-			return fmt.Errorf("Failed to check affinity for pod: %v" + pod.GetName())
+			return errors.Newf("Failed to check affinity for pod: %v" + pod.GetName())
 		}
 
 		weightedPodAffinityTerms := pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution
@@ -282,7 +283,7 @@ func CheckAllPodsAffinity(opt TestOptions) error {
 			if (topologyKey == "kubernetes.io/hostname" && weightedPodAffinityTerm.Weight == 30) ||
 				(topologyKey == "topology.kubernetes.io/zone" && weightedPodAffinityTerm.Weight == 70) {
 			} else {
-				return fmt.Errorf("failed to check affinity for pod: %v" + pod.GetName())
+				return errors.Newf("failed to check affinity for pod: %v" + pod.GetName())
 			}
 		}
 	}
@@ -299,7 +300,7 @@ func CheckStorageResize(opt TestOptions, stsName string, expectedCapacity string
 	}
 	vct := statefulset.Spec.VolumeClaimTemplates[0]
 	if !vct.Spec.Resources.Requests["storage"].Equal(resource.MustParse(expectedCapacity)) {
-		err = fmt.Errorf("the storage size of statefulset %s should have %s but got %v",
+		err = errors.Newf("the storage size of statefulset %s should have %s but got %v",
 			stsName, expectedCapacity,
 			vct.Spec.Resources.Requests["storage"])
 		return err
@@ -323,7 +324,7 @@ func CheckOBAComponents(opt TestOptions) error {
 		}
 
 		if deployment.Status.ReadyReplicas != *deployment.Spec.Replicas {
-			err = fmt.Errorf("deployment %s should have %d but got %d ready replicas",
+			err = errors.Newf("deployment %s should have %d but got %d ready replicas",
 				deploymentName,
 				*deployment.Spec.Replicas,
 				deployment.Status.ReadyReplicas)
@@ -361,12 +362,12 @@ func CheckMCOComponents(opt TestOptions) error {
 		}
 
 		if len((*deployList).Items) == 0 {
-			return fmt.Errorf("should have deployment created with label %s", deploymentLabel)
+			return errors.Newf("should have deployment created with label %s", deploymentLabel)
 		}
 
 		for _, deployInfo := range (*deployList).Items {
 			if deployInfo.Status.ReadyReplicas != *deployInfo.Spec.Replicas {
-				err = fmt.Errorf("deployment %s should have %d but got %d ready replicas",
+				err = errors.Newf("deployment %s should have %d but got %d ready replicas",
 					deployInfo.Name,
 					*deployInfo.Spec.Replicas,
 					deployInfo.Status.ReadyReplicas)
@@ -395,12 +396,12 @@ func CheckMCOComponents(opt TestOptions) error {
 		}
 
 		if len((*statefulsetList).Items) == 0 {
-			return fmt.Errorf("should have statefulset created with label %s", statefulsetLabel)
+			return errors.Newf("should have statefulset created with label %s", statefulsetLabel)
 		}
 
 		for _, statefulsetInfo := range (*statefulsetList).Items {
 			if statefulsetInfo.Status.ReadyReplicas != *statefulsetInfo.Spec.Replicas {
-				err = fmt.Errorf("statefulset %s should have %d but got %d ready replicas",
+				err = errors.Newf("statefulset %s should have %d but got %d ready replicas",
 					statefulsetInfo.Name,
 					*statefulsetInfo.Spec.Replicas,
 					statefulsetInfo.Status.ReadyReplicas)
@@ -427,7 +428,7 @@ func CheckStatefulSetPodReady(opt TestOptions, stsName string) error {
 	if statefulset.Status.ReadyReplicas != *statefulset.Spec.Replicas ||
 		statefulset.Status.UpdatedReplicas != *statefulset.Spec.Replicas ||
 		statefulset.Status.UpdateRevision != statefulset.Status.CurrentRevision {
-		err = fmt.Errorf("statefulset %s should have %d but got %d ready replicas",
+		err = errors.Newf("statefulset %s should have %d but got %d ready replicas",
 			stsName, *statefulset.Spec.Replicas,
 			statefulset.Status.ReadyReplicas)
 		return err
@@ -450,7 +451,7 @@ func CheckDeploymentPodReady(opt TestOptions, deployName string) error {
 	if deploy.Status.ReadyReplicas != *deploy.Spec.Replicas ||
 		deploy.Status.UpdatedReplicas != *deploy.Spec.Replicas ||
 		deploy.Status.AvailableReplicas != *deploy.Spec.Replicas {
-		err = fmt.Errorf("deployment %s should have %d but got %d ready replicas",
+		err = errors.Newf("deployment %s should have %d but got %d ready replicas",
 			deployName, *deploy.Spec.Replicas,
 			deploy.Status.ReadyReplicas)
 		return err
@@ -497,11 +498,11 @@ func CheckAdvRetentionConfig(opt TestOptions) (bool, error) {
 
 	spec := mco.Object["spec"].(map[string]interface{})
 	if _, adv := spec["advanced"]; !adv {
-		return false, fmt.Errorf("the MCO CR did not have advanced spec configed")
+		return false, errors.New("the MCO CR did not have advanced spec configed")
 	} else {
 		advanced := spec["advanced"].(map[string]interface{})
 		if _, rec := advanced["retentionConfig"]; !rec {
-			return false, fmt.Errorf("the MCO CR did not have advanced retentionConfig spec configed")
+			return false, errors.New("the MCO CR did not have advanced retentionConfig spec configed")
 		} else {
 			return true, nil
 		}
@@ -562,7 +563,7 @@ func CheckMCOAddon(opt TestOptions) error {
 			}
 		}
 		if !exist {
-			return fmt.Errorf(podName + " not found")
+			return errors.New(podName + " not found")
 		}
 	}
 	return nil
@@ -602,7 +603,7 @@ func CheckMCOAddonResources(opt TestOptions) error {
 	}
 
 	if !reflect.DeepEqual(resMap["metrics-collector-deployment"], metricsCollectorRes) {
-		return fmt.Errorf("metrics-collector-deployment resource <%v> is not equal <%v>",
+		return errors.Newf("metrics-collector-deployment resource <%v> is not equal <%v>",
 			resMap["metrics-collector-deployment"],
 			metricsCollectorRes)
 	}
@@ -697,11 +698,11 @@ func GetMCOAddonSpecResources(opt TestOptions) (map[string]interface{}, error) {
 
 	spec := mco.Object["spec"].(map[string]interface{})
 	if _, addonSpec := spec["observabilityAddonSpec"]; !addonSpec {
-		return nil, fmt.Errorf("the MCO CR did not have observabilityAddonSpec spec configed")
+		return nil, errors.New("the MCO CR did not have observabilityAddonSpec spec configed")
 	}
 
 	if _, resSpec := spec["observabilityAddonSpec"].(map[string]interface{})["resources"]; !resSpec {
-		return nil, fmt.Errorf("the MCO CR did not have observabilityAddonSpec.resources spec configed")
+		return nil, errors.New("the MCO CR did not have observabilityAddonSpec.resources spec configed")
 	}
 
 	res := spec["observabilityAddonSpec"].(map[string]interface{})["resources"].(map[string]interface{})
@@ -744,10 +745,10 @@ func CheckMCOConversion(opt TestOptions, v1beta1tov1beta2GoldenPath string) erro
 	for k, v := range expectedMCOSpec {
 		val, ok := getMCOSpec[k]
 		if !ok {
-			return fmt.Errorf("%s not found in ", k)
+			return errors.Newf("%s not found in ", k)
 		}
 		if !reflect.DeepEqual(val, v) {
-			return fmt.Errorf("%+v and %+v are not equal", val, v)
+			return errors.Newf("%+v and %+v are not equal", val, v)
 		}
 	}
 	return nil
@@ -798,22 +799,22 @@ func CreateObjSecret(opt TestOptions) error {
 
 	bucket := os.Getenv("BUCKET")
 	if bucket == "" {
-		return fmt.Errorf("failed to get s3 BUCKET env")
+		return errors.New("failed to get s3 BUCKET env")
 	}
 
 	region := os.Getenv("REGION")
 	if region == "" {
-		return fmt.Errorf("failed to get s3 REGION env")
+		return errors.New("failed to get s3 REGION env")
 	}
 
 	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
 	if accessKey == "" {
-		return fmt.Errorf("failed to get aws AWS_ACCESS_KEY_ID env")
+		return errors.New("failed to get aws AWS_ACCESS_KEY_ID env")
 	}
 
 	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
 	if secretKey == "" {
-		return fmt.Errorf("failed to get aws AWS_SECRET_ACCESS_KEY env")
+		return errors.New("failed to get aws AWS_SECRET_ACCESS_KEY env")
 	}
 
 	objSecret := fmt.Sprintf(`apiVersion: v1

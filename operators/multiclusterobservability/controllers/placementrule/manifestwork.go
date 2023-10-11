@@ -6,11 +6,11 @@ package placementrule
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/efficientgo/core/errors"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -447,7 +447,7 @@ func generateAmAccessorTokenSecret(cl client.Client) (*corev1.Secret, error) {
 			"name",
 			config.AlertmanagerAccessorSAName,
 		)
-		return nil, fmt.Errorf(
+		return nil, errors.Newf(
 			"no token secret for Alertmanager accessor serviceaccount: %s",
 			config.AlertmanagerAccessorSAName,
 		)

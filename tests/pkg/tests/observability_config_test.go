@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/efficientgo/core/errors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -84,7 +85,7 @@ var _ = Describe("Observability:", func() {
 					scName := *pvc.Spec.StorageClassName
 					statusPhase := pvc.Status.Phase
 					if scName != expectedSC || statusPhase != "Bound" {
-						return fmt.Errorf(
+						return errors.Newf(
 							"PVC check failed, scName = %s, expectedSC = %s, statusPhase = %s",
 							scName,
 							expectedSC,

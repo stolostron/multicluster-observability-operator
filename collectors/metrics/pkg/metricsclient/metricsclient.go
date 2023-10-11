@@ -19,10 +19,10 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff"
+	"github.com/efficientgo/core/errors"
 	"github.com/go-kit/kit/log"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	clientmodel "github.com/prometheus/client_model/go"
@@ -104,16 +104,16 @@ func (c *Client) RetrievRecordingMetrics(
 			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
 		case http.StatusUnauthorized:
 			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
-			return fmt.Errorf("prometheus server requires authentication: %s", resp.Request.URL)
+			return errors.Newf("prometheus server requires authentication: %s", resp.Request.URL)
 		case http.StatusForbidden:
 			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
-			return fmt.Errorf("prometheus server forbidden: %s", resp.Request.URL)
+			return errors.Newf("prometheus server forbidden: %s", resp.Request.URL)
 		case http.StatusBadRequest:
 			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
-			return fmt.Errorf("bad request: %s", resp.Request.URL)
+			return errors.Newf("bad request: %s", resp.Request.URL)
 		default:
 			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
-			return fmt.Errorf("prometheus server reported unexpected error code: %d", resp.StatusCode)
+			return errors.Newf("prometheus server reported unexpected error code: %d", resp.StatusCode)
 		}
 
 		decoder := json.NewDecoder(resp.Body)
@@ -196,16 +196,16 @@ func (c *Client) Retrieve(ctx context.Context, req *http.Request) ([]*clientmode
 			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
 		case http.StatusUnauthorized:
 			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
-			return fmt.Errorf("prometheus server requires authentication: %s", resp.Request.URL)
+			return errors.Newf("prometheus server requires authentication: %s", resp.Request.URL)
 		case http.StatusForbidden:
 			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
-			return fmt.Errorf("prometheus server forbidden: %s", resp.Request.URL)
+			return errors.Newf("prometheus server forbidden: %s", resp.Request.URL)
 		case http.StatusBadRequest:
 			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
-			return fmt.Errorf("bad request: %s", resp.Request.URL)
+			return errors.Newf("bad request: %s", resp.Request.URL)
 		default:
 			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
-			return fmt.Errorf("prometheus server reported unexpected error code: %d", resp.StatusCode)
+			return errors.Newf("prometheus server reported unexpected error code: %d", resp.StatusCode)
 		}
 
 		// read the response into memory
@@ -264,21 +264,21 @@ func (c *Client) Send(ctx context.Context, req *http.Request, families []*client
 			c.gaugeRequestSend.WithLabelValues(c.metricsName, "200").Inc()
 		case http.StatusUnauthorized:
 			c.gaugeRequestSend.WithLabelValues(c.metricsName, "401").Inc()
-			return fmt.Errorf("gateway server requires authentication: %s", resp.Request.URL)
+			return errors.Newf("gateway server requires authentication: %s", resp.Request.URL)
 		case http.StatusForbidden:
 			c.gaugeRequestSend.WithLabelValues(c.metricsName, "403").Inc()
-			return fmt.Errorf("gateway server forbidden: %s", resp.Request.URL)
+			return errors.Newf("gateway server forbidden: %s", resp.Request.URL)
 		case http.StatusBadRequest:
 			c.gaugeRequestSend.WithLabelValues(c.metricsName, "400").Inc()
 			logger.Log(c.logger, logger.Debug, "msg", resp.Body)
-			return fmt.Errorf("gateway server bad request: %s", resp.Request.URL)
+			return errors.Newf("gateway server bad request: %s", resp.Request.URL)
 		default:
 			c.gaugeRequestSend.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
 			body, _ := io.ReadAll(resp.Body)
 			if len(body) > 1024 {
 				body = body[:1024]
 			}
-			return fmt.Errorf("gateway server reported unexpected error code: %d: %s", resp.StatusCode, string(body))
+			return errors.Newf("gateway server reported unexpected error code: %d: %s", resp.StatusCode, string(body))
 		}
 
 		return nil
@@ -452,7 +452,7 @@ func convertToTimeseries(p *PartitionedMetrics, now time.Time) ([]prompb.TimeSer
 			case clientmodel.MetricType_UNTYPED:
 				s.Value = *m.Untyped.Value
 			default:
-				return nil, fmt.Errorf("metric type %s not supported", f.Type.String())
+				return nil, errors.Newf("metric type %s not supported", f.Type.String())
 			}
 
 			ts.Labels = append(ts.Labels, labelpairs...)
@@ -473,7 +473,7 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 	if err != nil {
 		msg := "failed to convert timeseries"
 		logger.Log(c.logger, logger.Warn, "msg", msg, "err", err)
-		return fmt.Errorf(msg)
+		return errors.New(msg)
 	}
 
 	if len(timeseries) == 0 {
@@ -507,7 +507,7 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 		if err != nil {
 			msg := "failed to marshal proto"
 			logger.Log(c.logger, logger.Warn, "msg", msg, "err", err)
-			return fmt.Errorf(msg)
+			return errors.New(msg)
 		}
 		compressed := snappy.Encode(nil, data)
 
@@ -540,7 +540,7 @@ func (c *Client) sendRequest(serverURL string, body []byte) error {
 	if err != nil {
 		msg := "failed to create forwarding request"
 		logger.Log(c.logger, logger.Warn, "msg", msg, "err", err)
-		return fmt.Errorf(msg)
+		return errors.New(msg)
 	}
 
 	//req.Header.Add("THANOS-TENANT", tenantID)
@@ -554,7 +554,7 @@ func (c *Client) sendRequest(serverURL string, body []byte) error {
 	if err != nil {
 		msg := "failed to forward request"
 		logger.Log(c.logger, logger.Warn, "msg", msg, "err", err)
-		return fmt.Errorf(msg)
+		return errors.New(msg)
 	}
 
 	if resp.StatusCode/100 != 2 {
@@ -567,7 +567,7 @@ func (c *Client) sendRequest(serverURL string, body []byte) error {
 		msg := fmt.Sprintf("response status code is %s, response body is %s", resp.Status, bodyString)
 		logger.Log(c.logger, logger.Warn, msg)
 		if resp.StatusCode != http.StatusConflict {
-			return fmt.Errorf(msg)
+			return errors.New(msg)
 		}
 	}
 	return nil

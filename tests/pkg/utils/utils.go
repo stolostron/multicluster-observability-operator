@@ -6,13 +6,13 @@ package utils
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/efficientgo/core/errors"
 	"github.com/ghodss/yaml"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -141,7 +141,7 @@ func CreateMCOTestingRBAC(opt TestOptions) error {
 		},
 	}
 	if err := CreateCRB(opt, true, mcoTestingCRB); err != nil {
-		return fmt.Errorf("failed to create clusterrolebing for %s: %v", mcoTestingCRB.GetName(), err)
+		return errors.Newf("failed to create clusterrolebing for %s: %v", mcoTestingCRB.GetName(), err)
 	}
 
 	mcoTestingSA := &corev1.ServiceAccount{
@@ -151,7 +151,7 @@ func CreateMCOTestingRBAC(opt TestOptions) error {
 		},
 	}
 	if err := CreateSA(opt, true, MCO_NAMESPACE, mcoTestingSA); err != nil {
-		return fmt.Errorf("failed to create serviceaccount for %s: %v", mcoTestingSA.GetName(), err)
+		return errors.Newf("failed to create serviceaccount for %s: %v", mcoTestingSA.GetName(), err)
 	}
 	return nil
 }
@@ -202,7 +202,7 @@ func FetchBearerToken(opt TestOptions) (string, error) {
 			}
 		}
 	}
-	return "", fmt.Errorf("failed to get bearer token")
+	return "", errors.New("failed to get bearer token")
 }
 
 func LoadConfig(url, kubeconfig, ctx string) (*rest.Config, error) {
@@ -237,7 +237,7 @@ func LoadConfig(url, kubeconfig, ctx string) (*rest.Config, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("could not create a valid kubeconfig")
+	return nil, errors.New("could not create a valid kubeconfig")
 }
 
 // Apply a multi resources file to the cluster described by the url, kubeconfig and ctx.
@@ -262,7 +262,7 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 
 		var kind string
 		if v, ok := obj.Object["kind"]; !ok {
-			return fmt.Errorf("kind attribute not found in %s", f)
+			return errors.Newf("kind attribute not found in %s", f)
 		} else {
 			kind = v.(string)
 		}
@@ -271,7 +271,7 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 
 		var apiVersion string
 		if v, ok := obj.Object["apiVersion"]; !ok {
-			return fmt.Errorf("apiVersion attribute not found in %s", f)
+			return errors.Newf("apiVersion attribute not found in %s", f)
 		} else {
 			apiVersion = v.(string)
 		}
@@ -520,7 +520,7 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 					Resource: "prometheusrules"}
 				klog.V(5).Infof("Install PrometheusRule: %s\n", f)
 			default:
-				return fmt.Errorf("resource %s not supported", kind)
+				return errors.Newf("resource %s not supported", kind)
 			}
 
 			if kind == "MultiClusterObservability" {
@@ -669,7 +669,7 @@ func HaveDeploymentsInNamespace(
 		}
 
 		if deployment.Status.Replicas != deployment.Status.ReadyReplicas {
-			err = fmt.Errorf("%s: Expect %d but got %d Ready replicas",
+			err = errors.Newf("%s: Expect %d but got %d Ready replicas",
 				deploymentName,
 				deployment.Status.Replicas,
 				deployment.Status.ReadyReplicas)
@@ -680,7 +680,7 @@ func HaveDeploymentsInNamespace(
 		for _, condition := range deployment.Status.Conditions {
 			if condition.Reason == "MinimumReplicasAvailable" {
 				if condition.Status != corev1.ConditionTrue {
-					err = fmt.Errorf("%s: Expect %s but got %s",
+					err = errors.Newf("%s: Expect %s but got %s",
 						deploymentName,
 						condition.Status,
 						corev1.ConditionTrue)
@@ -758,7 +758,7 @@ func GetPullSecret(opt TestOptions) (string, error) {
 	}
 
 	if len(mchList.Items) == 0 {
-		return "", fmt.Errorf("can not find the MCH operator CR in the cluster")
+		return "", errors.New("can not find the MCH operator CR in the cluster")
 	}
 
 	mchName := mchList.Items[0].GetName()
@@ -773,7 +773,7 @@ func GetPullSecret(opt TestOptions) (string, error) {
 
 	spec := getMCH.Object["spec"].(map[string]interface{})
 	if _, ok := spec["imagePullSecret"]; !ok {
-		return "", fmt.Errorf("can not find imagePullSecret in MCH CR")
+		return "", errors.New("can not find imagePullSecret in MCH CR")
 	}
 
 	ips := spec["imagePullSecret"].(string)

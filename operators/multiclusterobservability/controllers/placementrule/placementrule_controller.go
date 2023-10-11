@@ -5,12 +5,12 @@ package placementrule
 
 import (
 	"context"
-	"errors"
 	"reflect"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/efficientgo/core/errors"
 	"github.com/go-logr/logr"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -387,8 +387,7 @@ func createAllRelatedRes(
 	}
 
 	if failedCreateManagedClusterRes || failedDeleteOba {
-		return ctrl.Result{}, errors.New("failed to create managedcluster resources or" +
-			" failed to delete observabilityaddon, skip and reconcile later")
+		return ctrl.Result{}, errors.New("failed to create managedcluster resources or failed to delete observabilityaddon, skip and reconcile later")
 	}
 
 	return ctrl.Result{}, nil

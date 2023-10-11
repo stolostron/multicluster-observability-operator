@@ -1,9 +1,9 @@
 package metricfamily
 
 import (
-	"fmt"
 	"testing"
 
+	"github.com/efficientgo/core/errors"
 	"github.com/golang/protobuf/proto"
 	clientmodel "github.com/prometheus/client_model/go"
 )
@@ -20,7 +20,7 @@ func TestElide(t *testing.T) {
 	isOK := func(want bool) checkFunc {
 		return func(_ *clientmodel.MetricFamily, got bool, _ error) error {
 			if want != got {
-				return fmt.Errorf("want ok %t, got %t", want, got)
+				return errors.Newf("want ok %t, got %t", want, got)
 			}
 			return nil
 		}
@@ -29,7 +29,7 @@ func TestElide(t *testing.T) {
 	hasErr := func(want error) checkFunc {
 		return func(_ *clientmodel.MetricFamily, _ bool, got error) error {
 			if want != got {
-				return fmt.Errorf("want err %v, got %v", want, got)
+				return errors.Newf("want err %v, got %v", want, got)
 			}
 			return nil
 		}
@@ -38,7 +38,7 @@ func TestElide(t *testing.T) {
 	metricIsNil := func(want bool) checkFunc {
 		return func(m *clientmodel.MetricFamily, _ bool, _ error) error {
 			if got := m == nil; want != got {
-				return fmt.Errorf("want metric to be nil=%t, got %t", want, got)
+				return errors.Newf("want metric to be nil=%t, got %t", want, got)
 			}
 			return nil
 		}
@@ -47,7 +47,7 @@ func TestElide(t *testing.T) {
 	hasMetricCount := func(want int) checkFunc {
 		return func(m *clientmodel.MetricFamily, _ bool, _ error) error {
 			if got := len(m.Metric); want != got {
-				return fmt.Errorf("want len(m.Metric)=%v, got %v", want, got)
+				return errors.Newf("want len(m.Metric)=%v, got %v", want, got)
 			}
 			return nil
 		}
@@ -57,7 +57,7 @@ func TestElide(t *testing.T) {
 		return func(family *clientmodel.MetricFamily, _ bool, _ error) error {
 			for i := range family.Metric {
 				if got := len(family.Metric[i].Label); got != want[i] {
-					return fmt.Errorf(
+					return errors.Newf(
 						"want len(m.Metric[%v].Label)=%v, got %v",
 						i, want[i], got)
 				}
@@ -87,7 +87,7 @@ func TestElide(t *testing.T) {
 						gots = "isn't"
 					}
 
-					return fmt.Errorf(
+					return errors.Newf(
 						"want label %q be %s in metrics, but it %s",
 						label, wants, gots,
 					)

@@ -1,9 +1,9 @@
 package metricfamily
 
 import (
-	"fmt"
 	"testing"
 
+	"github.com/efficientgo/core/errors"
 	clientmodel "github.com/prometheus/client_model/go"
 )
 
@@ -24,7 +24,7 @@ func TestDropTimestamp(t *testing.T) {
 	isOK := func(want bool) checkFunc {
 		return func(_ *clientmodel.MetricFamily, got bool, _ error) error {
 			if want != got {
-				return fmt.Errorf("want ok %t, got %t", want, got)
+				return errors.Newf("want ok %t, got %t", want, got)
 			}
 			return nil
 		}
@@ -33,7 +33,7 @@ func TestDropTimestamp(t *testing.T) {
 	hasErr := func(want error) checkFunc {
 		return func(_ *clientmodel.MetricFamily, _ bool, got error) error {
 			if want != got {
-				return fmt.Errorf("want err %v, got %v", want, got)
+				return errors.Newf("want err %v, got %v", want, got)
 			}
 			return nil
 		}
@@ -42,7 +42,7 @@ func TestDropTimestamp(t *testing.T) {
 	hasMetrics := func(want int) checkFunc {
 		return func(m *clientmodel.MetricFamily, _ bool, _ error) error {
 			if got := len(m.Metric); want != got {
-				return fmt.Errorf("want len(m.Metric)=%v, got %v", want, got)
+				return errors.Newf("want len(m.Metric)=%v, got %v", want, got)
 			}
 			return nil
 		}
@@ -52,7 +52,7 @@ func TestDropTimestamp(t *testing.T) {
 		return func(m *clientmodel.MetricFamily, _ bool, _ error) error {
 			for _, metric := range m.Metric {
 				if got := metric.TimestampMs != nil; want != got {
-					return fmt.Errorf("want metrics to have timestamp %t, got %t", want, got)
+					return errors.Newf("want metrics to have timestamp %t, got %t", want, got)
 				}
 			}
 			return nil

@@ -5,9 +5,9 @@ package tests
 
 import (
 	"context"
-	"fmt"
 	"time"
 
+	"github.com/efficientgo/core/errors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,7 +62,7 @@ var _ = Describe("Observability:", func() {
 					return nil
 				}
 			}
-			return fmt.Errorf("Failed to find modified retention field, the current args is: %v", argList)
+			return errors.Newf("Failed to find modified retention field, the current args is: %v", argList)
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
 		By("Wait for thanos compact pods are ready")
@@ -166,7 +166,7 @@ var _ = Describe("Observability:", func() {
 					return nil
 				}
 			}
-			return fmt.Errorf("Failed to find modified retention field, the current args is: %v", argList)
+			return errors.Newf("Failed to find modified retention field, the current args is: %v", argList)
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
 		By("Wait for thanos compact pods are ready")

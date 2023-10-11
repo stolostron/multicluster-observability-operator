@@ -6,6 +6,7 @@ require (
 	github.com/IBM/controller-filtered-cache v0.3.6
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cloudflare/cfssl v1.6.0
+	github.com/efficientgo/core v1.0.0-rc.2
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-co-op/gocron v1.18.0
 	github.com/go-kit/kit v0.12.0
@@ -22,7 +23,6 @@ require (
 	github.com/openshift/client-go v0.0.0-20230120202327-72f107311084
 	github.com/openshift/cluster-monitoring-operator v0.0.0-20230118025836-20fcb9f6ef4e
 	github.com/openshift/hypershift v0.1.11
-	github.com/pkg/errors v0.9.1
 	github.com/prometheus-community/prom-label-proxy v0.6.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.57.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.53.1
@@ -66,7 +66,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dennwc/varint v1.0.0 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
-	github.com/efficientgo/core v1.0.0-rc.0.0.20221201130417-ba593f67d2a4 // indirect
 	github.com/efficientgo/tools/core v0.0.0-20220817170617-6c25e3b627dd // indirect
 	github.com/emicklei/go-restful/v3 v3.10.2 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
@@ -117,6 +116,7 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/openshift/library-go v0.0.0-20230120214501-9bc305884fcb // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/common/sigv4 v0.1.0 // indirect
 	github.com/prometheus/procfs v0.11.1 // indirect

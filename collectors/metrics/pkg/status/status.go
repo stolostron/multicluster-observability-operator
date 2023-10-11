@@ -4,12 +4,12 @@ package status
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/efficientgo/core/errors"
 	"github.com/go-kit/kit/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -44,15 +44,15 @@ func New(logger log.Logger) (*StatusReport, error) {
 	} else {
 		config, err := clientcmd.BuildConfigFromFlags("", "")
 		if err != nil {
-			return nil, errors.New("Failed to create the kube config")
+			return nil, errors.New("failed to create the kube config")
 		}
 		s := scheme.Scheme
 		if err := oav1beta1.AddToScheme(s); err != nil {
-			return nil, errors.New("Failed to add observabilityaddon into scheme")
+			return nil, errors.New("failed to add observabilityaddon into scheme")
 		}
 		kubeClient, err = client.New(config, client.Options{Scheme: s})
 		if err != nil {
-			return nil, errors.New("Failed to create the kube client")
+			return nil, errors.New("failed to create the kube client")
 		}
 	}
 

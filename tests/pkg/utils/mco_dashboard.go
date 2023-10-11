@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/efficientgo/core/errors"
 	"k8s.io/klog"
 )
 
@@ -53,7 +54,7 @@ func ContainDashboard(opt TestOptions, title string) (error, bool) {
 	if resp.StatusCode != http.StatusOK {
 		klog.Errorf("resp: %+v\n", resp)
 		klog.Errorf("err: %+v\n", err)
-		return fmt.Errorf("failed to access grafana api"), false
+		return errors.New("failed to access grafana api"), false
 	}
 
 	result, err := io.ReadAll(resp.Body)
@@ -63,7 +64,7 @@ func ContainDashboard(opt TestOptions, title string) (error, bool) {
 	}
 
 	if !strings.Contains(string(result), fmt.Sprintf(`"title":"%s"`, title)) {
-		return fmt.Errorf("failed to find the dashboard"), false
+		return errors.New("failed to find the dashboard"), false
 	} else {
 		return nil, true
 	}

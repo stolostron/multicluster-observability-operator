@@ -8,7 +8,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -17,6 +16,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/efficientgo/core/errors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -89,7 +89,7 @@ var _ = Describe("Observability:", func() {
 		_, err := hubClient.CoreV1().ConfigMaps(MCO_NAMESPACE).Get(context.TODO(), configmap[1], metav1.GetOptions{})
 
 		if err == nil {
-			err = fmt.Errorf("%s exist within the namespace env", configmap[1])
+			err = errors.Newf("%s exist within the namespace env", configmap[1])
 			Expect(err).NotTo(HaveOccurred())
 		}
 
@@ -164,7 +164,7 @@ var _ = Describe("Observability:", func() {
 			if !ThanosRuleRestarting {
 				newSts, _ := utils.GetStatefulSet(testOptions, true, stsName, MCO_NAMESPACE)
 				if oldSts.GetResourceVersion() == newSts.GetResourceVersion() {
-					return fmt.Errorf("The %s is not being restarted in 10 minutes", stsName)
+					return errors.Newf("The %s is not being restarted in 10 minutes", stsName)
 				} else {
 					ThanosRuleRestarting = true
 				}
@@ -264,7 +264,7 @@ var _ = Describe("Observability:", func() {
 			if !ThanosRuleRestarting {
 				newSts, _ := utils.GetStatefulSet(testOptions, true, stsName, MCO_NAMESPACE)
 				if oldSts.GetResourceVersion() == newSts.GetResourceVersion() {
-					return fmt.Errorf("The %s is not being restarted in 10 minutes", stsName)
+					return errors.Newf("The %s is not being restarted in 10 minutes", stsName)
 				} else {
 					ThanosRuleRestarting = true
 				}
@@ -348,7 +348,7 @@ var _ = Describe("Observability:", func() {
 
 			if resp.StatusCode != http.StatusOK {
 				klog.Errorf("err: %+v\n", resp)
-				return fmt.Errorf("Failed to get alerts via alertmanager route with http reponse: %v", resp)
+				return errors.Newf("Failed to get alerts via alertmanager route with http reponse: %v", resp)
 			}
 
 			alertResult, err := io.ReadAll(resp.Body)
@@ -376,7 +376,7 @@ var _ = Describe("Observability:", func() {
 			sort.Strings(clusterIDsInAlerts)
 			sort.Strings(expectClusterIdentifiers)
 			if !reflect.DeepEqual(clusterIDsInAlerts, expectClusterIdentifiers) {
-				return fmt.Errorf("Not all openshift managedclusters >=4.8.0 forward Watchdog alert to hub cluster")
+				return errors.Newf("Not all openshift managedclusters >=4.8.0 forward Watchdog alert to hub cluster")
 			}
 
 			return nil

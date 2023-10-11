@@ -5,8 +5,8 @@ package util
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/efficientgo/core/errors"
 	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 	promClientSet "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	appsv1 "k8s.io/api/apps/v1"
@@ -143,7 +143,7 @@ func UpdateCRDWebhookNS(crdClient crdClientSet.Interface, namespace, crdName str
 	if crdObj.Spec.Conversion == nil || crdObj.Spec.Conversion.Webhook == nil ||
 		crdObj.Spec.Conversion.Webhook.ClientConfig == nil {
 		log.Error(err, "empty Conversion in the CRD", "CRD", crdName)
-		return fmt.Errorf("empty Conversion in the CRD %s", crdName)
+		return errors.Newf("empty Conversion in the CRD %s", crdName)
 	}
 	if crdObj.Spec.Conversion.Webhook.ClientConfig.Service.Namespace != namespace {
 		log.Info(

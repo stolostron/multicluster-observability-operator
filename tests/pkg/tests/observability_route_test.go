@@ -7,12 +7,12 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strings"
 
+	"github.com/efficientgo/core/errors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/klog"
@@ -72,7 +72,7 @@ var _ = Describe("Observability:", func() {
 			if resp.StatusCode != http.StatusOK {
 				klog.Errorf("resp: %+v\n", resp)
 				klog.Errorf("err: %+v\n", err)
-				return fmt.Errorf("Failed to access metrics via via rbac-query-proxy route")
+				return errors.New("Failed to access metrics via via rbac-query-proxy route")
 			}
 
 			metricResult, err := io.ReadAll(resp.Body)
@@ -82,7 +82,7 @@ var _ = Describe("Observability:", func() {
 			}
 
 			if !strings.Contains(string(metricResult), "cluster_version") {
-				return fmt.Errorf("Failed to find metric name from response")
+				return errors.New("Failed to find metric name from response")
 			}
 			return nil
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
@@ -145,7 +145,7 @@ var _ = Describe("Observability:", func() {
 				if resp.StatusCode != http.StatusOK {
 					klog.Errorf("resp: %+v\n", resp)
 					klog.Errorf("err: %+v\n", err)
-					return fmt.Errorf("Failed to create alert via alertmanager route")
+					return errors.New("Failed to create alert via alertmanager route")
 				}
 			}
 
@@ -173,7 +173,7 @@ var _ = Describe("Observability:", func() {
 			if resp.StatusCode != http.StatusOK {
 				klog.Errorf("resp: %+v\n", resp)
 				klog.Errorf("err: %+v\n", err)
-				return fmt.Errorf("Failed to access alert via alertmanager route")
+				return errors.New("Failed to access alert via alertmanager route")
 			}
 
 			alertResult, err := io.ReadAll(resp.Body)
@@ -183,7 +183,7 @@ var _ = Describe("Observability:", func() {
 			}
 
 			if !strings.Contains(string(alertResult), "mco-e2e") {
-				return fmt.Errorf("Failed to found alert from alertResult: %s", alertResult)
+				return errors.Newf("Failed to found alert from alertResult: %s", alertResult)
 			}
 
 			return nil

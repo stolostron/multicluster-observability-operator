@@ -1,8 +1,9 @@
 package reader
 
 import (
-	"fmt"
 	"io"
+
+	"github.com/efficientgo/core/errors"
 )
 
 type limitReadCloser struct {
@@ -21,7 +22,7 @@ func (c limitReadCloser) Close() error {
 	return c.closer.Close()
 }
 
-var ErrTooLong = fmt.Errorf("the incoming sample data is too long")
+var ErrTooLong = errors.New("the incoming sample data is too long")
 
 // LimitReader returns a Reader that reads from r
 // but stops with ErrTooLong after n bytes.

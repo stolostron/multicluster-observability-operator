@@ -5,8 +5,8 @@ package utils
 
 import (
 	"context"
-	"errors"
 
+	"github.com/efficientgo/core/errors"
 	appv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"

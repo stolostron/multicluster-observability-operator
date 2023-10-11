@@ -5,9 +5,9 @@ package tests
 
 import (
 	"context"
-	"fmt"
 	"os"
 
+	"github.com/efficientgo/core/errors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,7 +56,7 @@ func uninstallMCO() {
 			Get(context.TODO(), name, metav1.GetOptions{})
 		if instance != nil {
 			utils.PrintManagedClusterOBAObject(testOptions)
-			return fmt.Errorf("Failed to delete MCO addon instance")
+			return errors.New("Failed to delete MCO addon instance")
 		}
 		return nil
 	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())

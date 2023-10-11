@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/efficientgo/core/errors"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/oklog/run"
@@ -309,7 +310,7 @@ func (o *Options) Run() error {
 
 	worker, err := forwarder.New(*cfg)
 	if err != nil {
-		return fmt.Errorf("failed to configure metrics collector: %v", err)
+		return errors.Wrap(err, "failed to configure metrics collector")
 	}
 
 	logger.Log(
@@ -363,7 +364,7 @@ func (o *Options) Run() error {
 		handlers.Handle("/federate", serveLastMetrics(o.Logger, worker))
 		l, err := net.Listen("tcp", o.Listen)
 		if err != nil {
-			return fmt.Errorf("failed to listen: %v", err)
+			return errors.Wrap(err, "failed to listen")
 		}
 
 		{
@@ -391,7 +392,7 @@ func (o *Options) Run() error {
 	if len(o.CollectRules) != 0 {
 		evaluator, err := collectrule.New(*cfg)
 		if err != nil {
-			return fmt.Errorf("failed to configure collect rule evaluator: %v", err)
+			return errors.Wrap(err, "failed to configure collect rule evaluator")
 		}
 		ctx, cancel := context.WithCancel(context.Background())
 		g.Add(func() error {
@@ -427,7 +428,7 @@ func runMultiWorkers(o *Options) error {
 		for _, flag := range o.LabelFlag {
 			values := strings.SplitN(flag, "=", 2)
 			if len(values) != 2 {
-				return fmt.Errorf("--label must be of the form key=value: %s", flag)
+				return errors.Newf("--label must be of the form key=value: %s", flag)
 			}
 			if values[0] == "cluster" {
 				values[1] += "-" + fmt.Sprint(i)
@@ -444,7 +445,7 @@ func runMultiWorkers(o *Options) error {
 
 		forwardWorker, err := forwarder.New(*forwardCfg)
 		if err != nil {
-			return fmt.Errorf("failed to configure metrics collector: %v", err)
+			return errors.Wrap(err, "failed to configure metrics collector")
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -459,13 +460,13 @@ func runMultiWorkers(o *Options) error {
 
 func initConfig(o *Options) (error, *forwarder.Config) {
 	if len(o.From) == 0 {
-		return fmt.Errorf("you must specify a Prometheus server to federate from (e.g. http://localhost:9090)"), nil
+		return errors.New("you must specify a Prometheus server to federate from (e.g. http://localhost:9090)"), nil
 	}
 
 	for _, flag := range o.LabelFlag {
 		values := strings.SplitN(flag, "=", 2)
 		if len(values) != 2 {
-			return fmt.Errorf("--label must be of the form key=value: %s", flag), nil
+			return errors.Newf("--label must be of the form key=value: %s", flag), nil
 		}
 		if o.Labels == nil {
 			o.Labels = make(map[string]string)
@@ -479,7 +480,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 		}
 		values := strings.SplitN(flag, "=", 2)
 		if len(values) != 2 {
-			return fmt.Errorf("--rename must be of the form OLD_NAME=NEW_NAME: %s", flag), nil
+			return errors.Newf("--rename must be of the form OLD_NAME=NEW_NAME: %s", flag), nil
 		}
 		if o.Renames == nil {
 			o.Renames = make(map[string]string)
@@ -489,7 +490,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 
 	from, err := url.Parse(o.From)
 	if err != nil {
-		return fmt.Errorf("--from is not a valid URL: %v", err), nil
+		return errors.Wrap(err, "--from is not a valid URL"), nil
 	}
 	from.Path = strings.TrimRight(from.Path, "/")
 	if len(from.Path) == 0 {
@@ -498,7 +499,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 
 	fromQuery, err := url.Parse(o.FromQuery)
 	if err != nil {
-		return fmt.Errorf("--from-query is not a valid URL: %v", err), nil
+		return errors.Wrap(err, "--from-query is not a valid URL"), nil
 	}
 	fromQuery.Path = strings.TrimRight(fromQuery.Path, "/")
 	if len(fromQuery.Path) == 0 {
@@ -509,12 +510,12 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 	if len(o.ToUpload) > 0 {
 		toUpload, err = url.Parse(o.ToUpload)
 		if err != nil {
-			return fmt.Errorf("--to-upload is not a valid URL: %v", err), nil
+			return errors.Wrap(err, "--to-upload is not a valid URL"), nil
 		}
 	}
 
 	if toUpload == nil {
-		return fmt.Errorf("--to-upload must be specified"), nil
+		return errors.New("--to-upload must be specified"), nil
 	}
 
 	var transformer metricfamily.MultiTransformer

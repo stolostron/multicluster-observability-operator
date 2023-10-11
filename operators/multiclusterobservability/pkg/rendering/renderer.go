@@ -4,8 +4,6 @@
 package rendering
 
 import (
-	"fmt"
-
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -13,6 +11,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/kustomize/api/resource"
 
+	"github.com/efficientgo/core/errors"
 	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -160,7 +159,7 @@ func (r *MCORenderer) renderMutatingWebhookConfiguration(res *resource.Resource)
 	u := &unstructured.Unstructured{Object: m}
 	webooks, ok := u.Object["webhooks"].([]interface{})
 	if !ok {
-		return nil, fmt.Errorf("failed to find webhooks spec field")
+		return nil, errors.New("failed to find webhooks spec field")
 	}
 	webhook := webooks[0].(map[string]interface{})
 	clientConfig := webhook["clientConfig"].(map[string]interface{})

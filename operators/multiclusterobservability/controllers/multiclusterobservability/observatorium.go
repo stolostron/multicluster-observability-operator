@@ -6,13 +6,13 @@ package multiclusterobservability
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path"
 	"reflect"
 	"time"
 
+	"github.com/efficientgo/core/errors"
 	routev1 "github.com/openshift/api/route/v1"
 	obsv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"gopkg.in/yaml.v2"
@@ -30,7 +30,6 @@ import (
 
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
@@ -332,7 +331,7 @@ func newAPIRBAC() obsv1alpha1.APIRBAC {
 				},
 				Subjects: []obsv1alpha1.Subject{
 					{
-						Name: config.GrafanaCN,
+						Name: mcoconfig.GrafanaCN,
 						Kind: obsv1alpha1.User,
 					},
 				},
@@ -344,7 +343,7 @@ func newAPIRBAC() obsv1alpha1.APIRBAC {
 				},
 				Subjects: []obsv1alpha1.Subject{
 					{
-						Name: config.ManagedClusterOU,
+						Name: mcoconfig.ManagedClusterOU,
 						Kind: obsv1alpha1.Group,
 					},
 				},
@@ -359,7 +358,7 @@ func newAPITenants() []obsv1alpha1.APITenant {
 			Name: mcoconfig.GetDefaultTenantName(),
 			ID:   mcoconfig.GetTenantUID(),
 			MTLS: &obsv1alpha1.TenantMTLS{
-				SecretName: config.ClientCACerts,
+				SecretName: mcoconfig.ClientCACerts,
 				CAKey:      "tls.crt",
 			},
 		},
@@ -368,11 +367,11 @@ func newAPITenants() []obsv1alpha1.APITenant {
 
 func newAPITLS() obsv1alpha1.TLS {
 	return obsv1alpha1.TLS{
-		SecretName: config.ServerCerts,
+		SecretName: mcoconfig.ServerCerts,
 		CertKey:    "tls.crt",
 		KeyKey:     "tls.key",
 		CAKey:      "ca.crt",
-		ServerName: config.ServerCertCN,
+		ServerName: mcoconfig.ServerCertCN,
 	}
 }
 
@@ -390,13 +389,13 @@ func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpointWith
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      endpointsConfigName,
-			Namespace: config.GetDefaultNamespace(),
+			Namespace: mcoconfig.GetDefaultNamespace(),
 		},
 		Data: epsYamlMap,
 	}
 	found := &v1.Secret{}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: endpointsConfigName,
-		Namespace: config.GetDefaultNamespace()}, found)
+		Namespace: mcoconfig.GetDefaultNamespace()}, found)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			err = c.Create(context.TODO(), epsSecret)
@@ -413,8 +412,8 @@ func applyEndpointsSecret(c client.Client, eps []mcoutil.RemoteWriteEndpointWith
 			if err != nil {
 				return err
 			}
-			err = util.UpdateDeployLabel(c, config.GetOperandName(config.ObservatoriumAPI),
-				config.GetDefaultNamespace(), endpointsRestartLabel)
+			err = util.UpdateDeployLabel(c, mcoconfig.GetOperandName(mcoconfig.ObservatoriumAPI),
+				mcoconfig.GetDefaultNamespace(), endpointsRestartLabel)
 			if err != nil {
 				return err
 			}
@@ -431,7 +430,7 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 	apiSpec.TLS = newAPITLS()
 	apiSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ObservatoriumAPI, mco.Spec.AdvancedConfig)
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		apiSpec.Resources = mcoconfig.GetResources(config.ObservatoriumAPI, mco.Spec.AdvancedConfig)
+		apiSpec.Resources = mcoconfig.GetResources(mcoconfig.ObservatoriumAPI, mco.Spec.AdvancedConfig)
 	}
 	//set the default observatorium components' image
 	apiSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ObservatoriumAPIImgName +
@@ -462,7 +461,7 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 				data, ok := storageSecret.Data[storageConfig.Key]
 				if !ok {
 					log.Error(err, "Invalid key in secret", "name", storageConfig.Name, "key", storageConfig.Key)
-					return apiSpec, errors.New(fmt.Sprintf("Invalid key %s in secret %s", storageConfig.Key, storageConfig.Name))
+					return apiSpec, errors.Newf("Invalid key %s in secret %s", storageConfig.Key, storageConfig.Name)
 				}
 				ep := &mcoutil.RemoteWriteEndpointWithSecret{}
 				err = yaml.Unmarshal(data, ep)
@@ -524,12 +523,12 @@ func newReceiversSpec(
 	if *receSpec.Replicas < 3 {
 		receSpec.ReplicationFactor = receSpec.Replicas
 	} else {
-		receSpec.ReplicationFactor = &config.Replicas3
+		receSpec.ReplicationFactor = &mcoconfig.Replicas3
 	}
 
 	receSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		receSpec.Resources = mcoconfig.GetResources(config.ThanosReceive, mco.Spec.AdvancedConfig)
+		receSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosReceive, mco.Spec.AdvancedConfig)
 	}
 	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.ReceiveStorageSize,
@@ -568,7 +567,7 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 
 	ruleSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		ruleSpec.Resources = mcoconfig.GetResources(config.ThanosRule, mco.Spec.AdvancedConfig)
+		ruleSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosRule, mco.Spec.AdvancedConfig)
 		ruleSpec.ReloaderResources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
 				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosRuleReloaderCPURequets),
@@ -641,7 +640,7 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 func newStoreSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.StoreSpec {
 	storeSpec := obsv1alpha1.StoreSpec{}
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		storeSpec.Resources = mcoconfig.GetResources(config.ThanosStoreShard, mco.Spec.AdvancedConfig)
+		storeSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosStoreShard, mco.Spec.AdvancedConfig)
 	}
 
 	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
@@ -740,7 +739,7 @@ func newQueryFrontendSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1
 	queryFrontendSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ThanosQueryFrontend, mco.Spec.AdvancedConfig)
 	queryFrontendSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		queryFrontendSpec.Resources = mcoconfig.GetResources(config.ThanosQueryFrontend, mco.Spec.AdvancedConfig)
+		queryFrontendSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosQueryFrontend, mco.Spec.AdvancedConfig)
 	}
 	queryFrontendSpec.Cache = newMemCacheSpec(mcoconfig.ThanosQueryFrontendMemcached, mco)
 	return queryFrontendSpec
@@ -756,7 +755,7 @@ func newQuerySpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QuerySp
 		querySpec.LookbackDelta = fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval*2)
 	}
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		querySpec.Resources = mcoconfig.GetResources(config.ThanosQuery, mco.Spec.AdvancedConfig)
+		querySpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosQuery, mco.Spec.AdvancedConfig)
 	}
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Query != nil &&
 		mco.Spec.AdvancedConfig.Query.ServiceAccountAnnotations != nil {
@@ -799,7 +798,7 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 	//Compactions are needed from time to time, only when new blocks appear.
 	compactSpec.Replicas = &mcoconfig.Replicas1
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		compactSpec.Resources = mcoconfig.GetResources(config.ThanosCompact, mco.Spec.AdvancedConfig)
+		compactSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosCompact, mco.Spec.AdvancedConfig)
 	}
 	compactSpec.ServiceMonitor = true
 	compactSpec.EnableDownsampling = mco.Spec.EnableDownsampling
@@ -898,13 +897,13 @@ func deleteStoreSts(cl client.Client, name string, oldNum int32, newNum int32) e
 }
 
 func addBackupLabel(c client.Client, name string, backupS *v1.Secret) error {
-	if _, ok := config.BackupResourceMap[name]; !ok {
+	if _, ok := mcoconfig.BackupResourceMap[name]; !ok {
 		log.Info("Adding backup label", "Secret", name)
-		config.BackupResourceMap[name] = config.ResourceTypeSecret
+		mcoconfig.BackupResourceMap[name] = mcoconfig.ResourceTypeSecret
 		var err error
 		err = nil
 		if backupS == nil {
-			err = mcoutil.AddBackupLabelToSecret(c, name, config.GetDefaultNamespace())
+			err = mcoutil.AddBackupLabelToSecret(c, name, mcoconfig.GetDefaultNamespace())
 		} else {
 			err = mcoutil.AddBackupLabelToSecretObj(c, backupS)
 		}

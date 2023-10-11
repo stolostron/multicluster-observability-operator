@@ -4,13 +4,13 @@
 package certificates
 
 import (
-	"errors"
 	"os"
 	"time"
 
 	"github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/signer/local"
+	"github.com/efficientgo/core/errors"
 	certificatesv1 "k8s.io/api/certificates/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"

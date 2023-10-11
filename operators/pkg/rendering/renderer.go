@@ -4,9 +4,9 @@
 package rendering
 
 import (
-	"fmt"
 	"strconv"
 
+	"github.com/efficientgo/core/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/kustomize/api/resource"
 )
@@ -157,7 +157,7 @@ func (r *Renderer) RenderClusterRoleBinding(
 
 	subjects, ok := u.Object["subjects"].([]interface{})
 	if !ok {
-		return nil, fmt.Errorf("failed to find clusterrolebinding subjects field")
+		return nil, errors.New("failed to find clusterrolebinding subjects field")
 	}
 	subject := subjects[0].(map[string]interface{})
 	kind := subject["kind"]

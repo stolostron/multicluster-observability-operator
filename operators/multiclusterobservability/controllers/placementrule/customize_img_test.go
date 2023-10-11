@@ -5,9 +5,9 @@ package placementrule
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
+	"github.com/efficientgo/core/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,7 +68,7 @@ func Test_DefaultClientPullSecret(t *testing.T) {
 			pullSecret:         newPullSecret("pullSecret", "ns1", []byte("data")),
 			clusterName:        "cluster1",
 			cluster:            newFakeCluster("cluster1", ""),
-			expectedErr:        fmt.Errorf("wrong pullSecret format  in the annotation %s", ClusterImageRegistriesAnnotation),
+			expectedErr:        errors.Newf("wrong pullSecret format  in the annotation %s", ClusterImageRegistriesAnnotation),
 			expectedPullSecret: nil,
 		},
 		{
@@ -76,7 +76,7 @@ func Test_DefaultClientPullSecret(t *testing.T) {
 			pullSecret:         newPullSecret("pullSecret", "ns1", []byte("data")),
 			clusterName:        "cluster1",
 			cluster:            newFakeCluster("cluster1", "abc"),
-			expectedErr:        fmt.Errorf("invalid character 'a' looking for beginning of value"),
+			expectedErr:        errors.New("invalid character 'a' looking for beginning of value"),
 			expectedPullSecret: nil,
 		},
 		{
@@ -84,7 +84,7 @@ func Test_DefaultClientPullSecret(t *testing.T) {
 			pullSecret:         newPullSecret("pullSecret", "ns1", []byte("data")),
 			clusterName:        "cluster1",
 			cluster:            newFakeCluster("cluster2", ""),
-			expectedErr:        fmt.Errorf(`managedclusters.cluster.open-cluster-management.io "cluster1" not found`),
+			expectedErr:        errors.New(`managedclusters.cluster.open-cluster-management.io "cluster1" not found`),
 			expectedPullSecret: nil,
 		},
 		{
@@ -92,7 +92,7 @@ func Test_DefaultClientPullSecret(t *testing.T) {
 			pullSecret:         newPullSecret("pullSecret", "ns1", []byte("data")),
 			clusterName:        "cluster1",
 			cluster:            newFakeCluster("cluster1", newAnnotationRegistries(nil, "ns.test")),
-			expectedErr:        fmt.Errorf("secrets \"test\" not found"),
+			expectedErr:        errors.New("secrets \"test\" not found"),
 			expectedPullSecret: nil,
 		},
 	}
@@ -197,7 +197,7 @@ func Test_DefaultClientImageOverride(t *testing.T) {
 			cluster:       newFakeCluster("cluster1", "abc"),
 			image:         "registry.redhat.io/rhacm2/registration@SHA256abc",
 			expectedImage: "registry.redhat.io/rhacm2/registration@SHA256abc",
-			expectedErr:   fmt.Errorf("invalid character 'a' looking for beginning of value"),
+			expectedErr:   errors.New("invalid character 'a' looking for beginning of value"),
 		},
 		{
 			name:          "return image without cluster",
@@ -205,7 +205,7 @@ func Test_DefaultClientImageOverride(t *testing.T) {
 			cluster:       newFakeCluster("cluster2", ""),
 			image:         "registry.redhat.io/rhacm2/registration@SHA256abc",
 			expectedImage: "registry.redhat.io/rhacm2/registration@SHA256abc",
-			expectedErr:   fmt.Errorf(`managedclusters.cluster.open-cluster-management.io "cluster1" not found`),
+			expectedErr:   errors.New(`managedclusters.cluster.open-cluster-management.io "cluster1" not found`),
 		},
 	}
 

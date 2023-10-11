@@ -7,8 +7,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -18,6 +16,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 
+	"github.com/efficientgo/core/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	clientmodel "github.com/prometheus/client_model/go"
@@ -113,11 +112,11 @@ func CreateFromClient(cfg Config, interval time.Duration, name string,
 		}
 		pool, err := x509.SystemCertPool()
 		if err != nil {
-			return nil, fmt.Errorf("failed to read system certificates: %v", err)
+			return nil, errors.Wrap(err, "failed to read system certificates")
 		}
 		data, err := os.ReadFile(cfg.FromCAFile)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read from-ca-file: %v", err)
+			return nil, errors.Wrap(err, "failed to read from-ca-file")
 		}
 		if !pool.AppendCertsFromPEM(data) {
 			rlogger.Log(logger, rlogger.Warn, "msg", "no certs found in from-ca-file")
@@ -141,7 +140,7 @@ func CreateFromClient(cfg Config, interval time.Duration, name string,
 	if len(cfg.FromToken) == 0 && len(cfg.FromTokenFile) > 0 {
 		data, err := os.ReadFile(cfg.FromTokenFile)
 		if err != nil {
-			return nil, fmt.Errorf("unable to read from-token-file: %v", err)
+			return nil, errors.Wrap(err, "unable to read from-token-file")
 		}
 		cfg.FromToken = strings.TrimSpace(string(data))
 	}
@@ -164,12 +163,12 @@ func createClients(cfg Config, interval time.Duration,
 	if len(cfg.AnonymizeSalt) == 0 && len(cfg.AnonymizeSaltFile) > 0 {
 		data, err := os.ReadFile(cfg.AnonymizeSaltFile)
 		if err != nil {
-			return nil, nil, transformer, fmt.Errorf("failed to read anonymize-salt-file: %v", err)
+			return nil, nil, transformer, errors.Wrap(err, "failed to read anonymize-salt-file")
 		}
 		anonymizeSalt = strings.TrimSpace(string(data))
 	}
 	if len(cfg.AnonymizeLabels) != 0 && len(anonymizeSalt) == 0 {
-		return nil, nil, transformer, fmt.Errorf("anonymize-salt must be specified if anonymize-labels is set")
+		return nil, nil, transformer, errors.New("anonymize-salt must be specified if anonymize-labels is set")
 	}
 	if len(cfg.AnonymizeLabels) == 0 {
 		rlogger.Log(logger, rlogger.Warn, "msg", "not anonymizing any labels")
@@ -191,7 +190,7 @@ func createClients(cfg Config, interval time.Duration,
 
 	toTransport, err := metricsclient.MTLSTransport(logger, cfg.ToUploadCA, cfg.ToUploadCert, cfg.ToUploadKey)
 	if err != nil {
-		return nil, nil, transformer, errors.New(err.Error())
+		return nil, nil, transformer, errors.Wrap(err, "failed to create TLS transport")
 	}
 	toTransport.Proxy = http.ProxyFromEnvironment
 	toClient := &http.Client{Transport: toTransport}
@@ -249,7 +248,7 @@ func New(cfg Config) (*Worker, error) {
 	if len(cfg.RulesFile) > 0 {
 		data, err := os.ReadFile(cfg.RulesFile)
 		if err != nil {
-			return nil, fmt.Errorf("unable to read match-file: %v", err)
+			return nil, errors.Wrap(err, "unable to read match-file")
 		}
 		rules = append(rules, strings.Split(string(data), "\n")...)
 	}
@@ -279,7 +278,7 @@ func New(cfg Config) (*Worker, error) {
 
 	s, err := status.New(logger)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create StatusReport: %v", err)
+		return nil, errors.Wrap(err, "unable to create StatusReport")
 	}
 	w.status = *s
 
@@ -291,7 +290,7 @@ func New(cfg Config) (*Worker, error) {
 func (w *Worker) Reconfigure(cfg Config) error {
 	worker, err := New(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to reconfigure: %v", err)
+		return errors.Wrap(err, "failed to reconfigure")
 	}
 
 	w.lock.Lock()

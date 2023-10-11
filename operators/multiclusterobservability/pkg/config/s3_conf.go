@@ -4,9 +4,9 @@
 package config
 
 import (
-	"errors"
 	"strings"
 
+	"github.com/efficientgo/core/errors"
 	"gopkg.in/yaml.v2"
 )
 

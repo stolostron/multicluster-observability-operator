@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/efficientgo/core/errors"
 	"github.com/go-kit/kit/log"
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/model/labels"
@@ -118,7 +119,7 @@ func New(cfg forwarder.Config) (*Evaluator, error) {
 func (e *Evaluator) Reconfigure(cfg forwarder.Config) error {
 	evaluator, err := New(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to reconfigure: %v", err)
+		return errors.Wrap(err, "failed to reconfigure")
 	}
 
 	e.lock.Lock()
@@ -203,7 +204,7 @@ func startWorker() error {
 		var err error
 		forwardWorker, err = forwarder.New(config)
 		if err != nil {
-			return fmt.Errorf("failed to configure forwarder for additional metrics: %v", err)
+			return errors.Wrap(err, "failed to configure forwarder for additional metrics")
 		}
 		var ctx context.Context
 		ctx, cancel = context.WithCancel(context.Background())
@@ -214,7 +215,7 @@ func startWorker() error {
 	} else {
 		err := forwardWorker.Reconfigure(config)
 		if err != nil {
-			return fmt.Errorf("failed to reconfigure forwarder for additional metrics: %v", err)
+			return errors.Wrap(err, "failed to reconfigure forwarder for additional metrics")
 		}
 	}
 

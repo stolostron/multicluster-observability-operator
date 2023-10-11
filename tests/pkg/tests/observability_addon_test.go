@@ -4,9 +4,9 @@
 package tests
 
 import (
-	"fmt"
 	"strings"
 
+	"github.com/efficientgo/core/errors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/klog"
@@ -71,12 +71,12 @@ var _ = Describe("Observability:", func() {
 					"component=metrics-collector",
 				)
 				if err != nil {
-					return fmt.Errorf("Failed to disable observability addon")
+					return errors.New("Failed to disable observability addon")
 				}
 				if len(podList.Items) != 0 {
 					for _, po := range podList.Items {
 						if po.Status.Phase == "Running" {
-							return fmt.Errorf("Failed to disable observability addon, there is still metrics-collector pod in Running")
+							return errors.New("Failed to disable observability addon, there is still metrics-collector pod in Running")
 						}
 					}
 				}
@@ -109,7 +109,7 @@ var _ = Describe("Observability:", func() {
 						return nil
 					}
 				}
-				return fmt.Errorf("Check no metric data in grafana console error: %v", err)
+				return errors.Wrap(err, "Check no metric data in grafana console error")
 			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 

@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/efficientgo/core/errors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -138,12 +139,12 @@ func installMCO() {
 			}
 			testFailed = true
 			if instance != nil && instance.Object != nil {
-				return fmt.Errorf(
+				return errors.Newf(
 					"MCO componnets cannot be running in 20 minutes. check the MCO CR status for the details: %v",
 					instance.Object["status"],
 				)
 			} else {
-				return fmt.Errorf("Wait for reconciling.")
+				return errors.New("Wait for reconciling.")
 			}
 		}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
 
