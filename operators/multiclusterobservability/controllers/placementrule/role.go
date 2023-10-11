@@ -184,12 +184,16 @@ func createResourceRole(c client.Client) error {
 				Resources: []string{
 					"managedclusteraddons",
 					"managedclusteraddons/status",
+					"managedclusteraddons/finalizers",
 				},
 				Verbs: []string{
 					"watch",
 					"list",
 					"get",
 					"update",
+					"patch",
+					"delete",
+					"create",
 				},
 				APIGroups: []string{
 					"addon.open-cluster-management.io",

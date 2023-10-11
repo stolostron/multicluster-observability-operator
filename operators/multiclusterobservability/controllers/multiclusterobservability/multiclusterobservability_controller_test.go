@@ -5,6 +5,7 @@ package multiclusterobservability
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -44,6 +45,38 @@ import (
 func init() {
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(os.Stdout)))
 	os.Setenv("UNIT_TEST", "true")
+}
+
+func setupTest(t *testing.T) func() {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get work dir: (%v)", err)
+	}
+	t.Log("begin setupTest")
+	os.MkdirAll(path.Join(wd, "../../tests"), 0755)
+	testManifestsPath := path.Join(wd, "../../tests/manifests")
+	manifestsPath := path.Join(wd, "../../manifests")
+	os.Setenv("TEMPLATES_PATH", testManifestsPath)
+	templates.ResetTemplates()
+	//clean up the manifest path if left over from previous test
+	if err = os.Remove(testManifestsPath); err != nil {
+		t.Log(fmt.Sprintf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err))
+	}
+	err = os.Symlink(manifestsPath, testManifestsPath)
+	if err != nil {
+		t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
+	}
+	t.Log("setupTest done")
+
+	return func() {
+		t.Log("begin teardownTest")
+		if err = os.Remove(testManifestsPath); err != nil {
+			t.Log(fmt.Sprintf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err))
+		}
+		os.Remove(path.Join(wd, "../../tests"))
+		os.Unsetenv("TEMPLATES_PATH")
+		t.Log("teardownTest done")
+	}
 }
 
 func newTestCert(name string, namespace string) *corev1.Secret {
@@ -270,13 +303,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		namespace = config.GetDefaultNamespace()
 	)
 
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get work dir: (%v)", err)
-	}
-	testManifestsPath := path.Join(wd, "../../tests/manifests")
-	os.Setenv("TEMPLATES_PATH", testManifestsPath)
-
+	defer setupTest(t)()
 	// A MultiClusterObservability object with metadata and spec.
 	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
@@ -344,8 +371,9 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		},
 	}
 
-	// Create empty client
-	_, err = r.Reconcile(context.TODO(), req)
+	// Create empty client. The test secret specified in MCO is not yet created.
+	t.Log("Reconcile empty client")
+	_, err := r.Reconcile(context.TODO(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
@@ -391,6 +419,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		},
 	}
 
+	t.Log("---- Reconcile secret, verify backup label ---- ")
 	_, err = r.Reconcile(context.TODO(), req2)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
@@ -426,6 +455,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		},
 	}
 
+	t.Log("---- Reconcile configmap, verify backup label ---- ")
 	_, err = r.Reconcile(context.TODO(), req2)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
@@ -648,7 +678,6 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile for finalizer: (%v)", err)
 	}
-
 }
 
 func TestImageReplaceForMCO(t *testing.T) {
@@ -658,19 +687,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 		version   = "2.3.0"
 	)
 
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get work dir: (%v)", err)
-	}
-	os.MkdirAll(path.Join(wd, "../../tests"), 0755)
-	testManifestsPath := path.Join(wd, "../../tests/manifests")
-	manifestsPath := path.Join(wd, "../../manifests")
-	os.Setenv("TEMPLATES_PATH", testManifestsPath)
-	templates.ResetTemplates()
-	err = os.Symlink(manifestsPath, testManifestsPath)
-	if err != nil {
-		t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
-	}
+	defer setupTest(t)()
 
 	// A MultiClusterObservability object with metadata and spec.
 	mco := &mcov1beta2.MultiClusterObservability{
@@ -742,7 +759,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	config.SetImageManifests(testImagemanifestsMap)
 
 	// trigger another reconcile for MCH update event
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err := r.Reconcile(context.TODO(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
@@ -817,11 +834,6 @@ func TestImageReplaceForMCO(t *testing.T) {
 			}
 		}
 	}
-
-	if err = os.Remove(testManifestsPath); err != nil {
-		t.Fatalf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
-	}
-	os.Remove(path.Join(wd, "../../tests"))
 
 	// stop update status routine
 	stopStatusUpdate <- struct{}{}

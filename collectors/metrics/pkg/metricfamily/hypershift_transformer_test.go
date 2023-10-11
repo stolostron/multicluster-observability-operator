@@ -16,9 +16,9 @@ import (
 )
 
 var (
-	metricsName         = "test_metrics"
-	idLabel             = "_id"
-	id                  = "test_id"
+	metricsName = "test_metrics"
+	idLabel     = "_id"
+	//id                  = "test_id"
 	hostedClusterName   = "test-hosted-cluster"
 	hostedClusterID     = "test-hosted-cluster-id"
 	testLabel           = "test_label"

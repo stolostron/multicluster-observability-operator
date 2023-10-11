@@ -5,6 +5,8 @@
 
 #set -exo pipefail
 
+set -x
+
 ROOTDIR="$(cd "$(dirname "$0")/.." ; pwd -P)"
 
 SED_COMMAND='sed -i -e'
@@ -79,20 +81,27 @@ else
     # just for Prow KinD vm
 
     # uninstall old go version(1.16) and install new version
-    wget https://go.dev/dl/go1.18.8.linux-amd64.tar.gz
-    sudo rm -fr /usr/local/go
-    sudo tar -C /usr/local -xzf go1.18.8.linux-amd64.tar.gz
-
+    wget https://go.dev/dl/go1.20.4.linux-amd64.tar.gz
+    if command -v sudo >/dev/null 2>&1; then
+        sudo rm -fr /usr/local/go
+        sudo tar -C /usr/local -xzf go1.20.4.linux-amd64.tar.gz
+    else
+        rm -fr /usr/local/go
+        tar -C /usr/local -xzf go1.20.4.linux-amd64.tar.gz
+    fi
     go install github.com/onsi/ginkgo/ginkgo@latest
     GINKGO_CMD="$(go env GOPATH)/bin/ginkgo"
 fi
 
 go mod vendor
 ${GINKGO_CMD} -debug -trace ${GINKGO_FOCUS} -v ${ROOTDIR}/tests/pkg/tests -- -options=${OPTIONSFILE} -v=5
-
+ 
 cat ${ROOTDIR}/tests/pkg/tests/results.xml | grep failures=\"0\" | grep errors=\"0\"
 if [ $? -ne 0 ]; then
     echo "Cannot pass all test cases."
     cat ${ROOTDIR}/tests/pkg/tests/results.xml
+    echo "sleeping for 60 min"
+    sleep 3600
+    echo "waking up from sleep"
     exit 1
 fi

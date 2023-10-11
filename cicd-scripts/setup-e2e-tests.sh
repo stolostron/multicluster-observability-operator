@@ -58,9 +58,9 @@ LATEST_SNAPSHOT="${LATEST_SNAPSHOT%\"}"
 if ! command -v kubectl &> /dev/null; then
     echo "This script will install kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your machine"
     if [[ "$(uname)" == "Linux" ]]; then
-        curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl
+        curl -LO https://dl.k8s.io/release/v1.28.2/bin/linux/amd64/kubectl
     elif [[ "$(uname)" == "Darwin" ]]; then
-        curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/darwin/amd64/kubectl
+        curl -LO curl -LO "https://dl.k8s.io/release/v1.28.2/bin/darwin/arm64/kubectl"
     fi
     chmod +x ./kubectl && mv ./kubectl ${ROOTDIR}/bin/kubectl
 fi
@@ -69,11 +69,11 @@ fi
 if ! command -v kustomize &> /dev/null; then
     echo "This script will install kustomize (sigs.k8s.io/kustomize/kustomize) on your machine"
     if [[ "$(uname)" == "Linux" ]]; then
-        curl -o kustomize_v3.8.7.tar.gz -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv3.8.7/kustomize_v3.8.7_linux_amd64.tar.gz
+        curl -o kustomize_v5.1.1.tar.gz -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.1.1/kustomize_v5.1.1_linux_amd64.tar.gz
     elif [[ "$(uname)" == "Darwin" ]]; then
-        curl -o kustomize_v3.8.7.tar.gz -L  https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv3.8.7/kustomize_v3.8.7_darwin_amd64.tar.gz
+        curl -o kustomize_v5.1.1.tar.gz -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.1.1/kustomize_v5.1.1_darwin_amd64.tar.gz
     fi
-    tar xzvf kustomize_v3.8.7.tar.gz
+    tar xzvf kustomize_v5.1.1.tar.gz
     chmod +x ./kustomize && mv ./kustomize ${ROOTDIR}/bin/kustomize
 fi
 
