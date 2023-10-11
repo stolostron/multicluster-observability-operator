@@ -2,6 +2,9 @@
 # Copyright Contributors to the Open Cluster Management project
 
 -include /opt/build-harness/Makefile.prow
+include .bingo/Variables.mk
+
+FILES_TO_FMT ?= $(shell find . -path ./vendor -prune -o -name '*.go' -print)
 
 # Image URL to use all building/pushing image targets
 IMG ?= quay.io/stolostron/multicluster-observability-operator:latest
@@ -57,3 +60,60 @@ endif
 bundle:
 	cd operators/multiclusterobservability && make bundle
 
+.PHONY: check-git
+check-git:
+ifneq ($(GIT),)
+	@test -x $(GIT) || (echo >&2 "No git executable binary found at $(GIT)."; exit 1)
+else
+	@echo >&2 "No git binary found."; exit 1
+endif
+
+.PHONY: deps
+deps: ## Ensures fresh go.mod and go.sum.
+	@go mod tidy
+	@go mod verify
+	@go mod vendor
+
+.PHONY: go-format
+go-format: ## Formats Go code including imports.
+go-format: $(GOIMPORTS)
+	@echo ">> formatting go code"
+	@gofmt -s -w $(FILES_TO_FMT)
+	@$(GOIMPORTS) -w $(FILES_TO_FMT)
+
+.PHONY: shell-format
+shell-format: $(SHFMT)
+	@echo ">> formatting shell scripts"
+	@$(SHFMT) -i 2 -ci -w -s $(shell find . -type f -name "*.sh" -not -path "*vendor*" -not -path "tmp/*")
+
+.PHONY: format
+format: ## Formats code including imports.
+format: go-format shell-format
+
+# PROTIP:
+# Add
+#      --cpu-profile-path string   Path to CPU profile output file
+#      --mem-profile-path string   Path to memory profile output file
+# to debug big allocations during linting.
+.PHONY: go-lint
+go-lint: check-git deps $(GOLANGCI_LINT) $(FAILLINT)
+	$(call require_clean_work_tree,'detected not clean work tree before running lint, previous job changed something?')
+	@echo ">> verifying modules being imported"
+	@$(FAILLINT) -paths "errors=github.com/pkg/errors,\
+github.com/prometheus/tsdb=github.com/prometheus/prometheus/tsdb,\
+github.com/prometheus/prometheus/pkg/testutils=github.com/thanos-io/thanos/pkg/testutil,\
+github.com/prometheus/client_golang/prometheus.{DefaultGatherer,DefBuckets,NewUntypedFunc,UntypedFunc},\
+github.com/prometheus/client_golang/prometheus.{NewCounter,NewCounterVec,NewCounterVec,NewGauge,NewGaugeVec,NewGaugeFunc,\
+NewHistorgram,NewHistogramVec,NewSummary,NewSummaryVec}=github.com/prometheus/client_golang/prometheus/promauto.{NewCounter,\
+NewCounterVec,NewCounterVec,NewGauge,NewGaugeVec,NewGaugeFunc,NewHistorgram,NewHistogramVec,NewSummary,NewSummaryVec},\
+github.com/NYTimes/gziphandler.{GzipHandler}=github.com/klauspost/compress/gzhttp.{GzipHandler},\
+sync/atomic=go.uber.org/atomic,\
+io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile}" $(shell go list ./... | grep -v "internal/cortex")
+	@$(FAILLINT) -paths "fmt.{Print,Println,Sprint}" -ignore-tests ./...
+	@echo ">> examining all of the Go files"
+	@go vet -stdmethods=false ./...
+	@echo ">> linting all of the Go files GOGC=${GOGC}"
+	@$(GOLANGCI_LINT) run
+	@echo ">> detecting misspells"
+	@find . -type f | grep -v vendor/ | grep -vE '\./\..*' | xargs $(MISSPELL) -error
+	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')
