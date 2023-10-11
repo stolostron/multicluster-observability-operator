@@ -329,6 +329,11 @@ func TestManifestWork(t *testing.T) {
 					},
 				},
 			},
+			ProxyConfig: addonv1alpha1.ProxyConfig{
+				HTTPProxy:  "http://foo.com",
+				HTTPSProxy: "https://foo.com",
+				NoProxy:    "bar.com",
+			},
 		},
 	}
 
@@ -346,6 +351,44 @@ func TestManifestWork(t *testing.T) {
 			operatorconfig.WorkloadPodExpectedValueJSON,
 			endpointMetricsOperatorDeploy.Name,
 		)
+	}
+
+	// Check if HTTP_PROXY, HTTPS_PROXY, and NO_PROXY are present and set correctly
+	containers := endpointMetricsOperatorDeploy.Spec.Template.Spec.Containers
+	for _, container := range containers {
+		if container.Name == "endpoint-observability-operator" {
+			env := container.Env
+			foundHTTPProxy := false
+			foundHTTPSProxy := false
+			foundNOProxy := false
+			for _, e := range env {
+				if e.Name == "HTTP_PROXY" {
+					foundHTTPProxy = true
+					if e.Value != "http://foo.com" {
+						t.Fatalf("HTTP_PROXY is not set correctly: expected %s, got %s", "http://foo.com", e.Value)
+					}
+				} else if e.Name == "HTTPS_PROXY" {
+					foundHTTPSProxy = true
+					if e.Value != "https://foo.com" {
+						t.Fatalf("HTTPS_PROXY is not set correctly: expected %s, got %s", "https://foo.com", e.Value)
+					}
+				} else if e.Name == "NO_PROXY" {
+					foundNOProxy = true
+					if e.Value != "bar.com" {
+						t.Fatalf("NO_PROXY is not set correctly: expected %s, got %s", "bar.com", e.Value)
+					}
+				}
+			}
+			if !foundHTTPProxy {
+				t.Fatalf("HTTP_PROXY is not present in env")
+			}
+			if !foundHTTPSProxy {
+				t.Fatalf("HTTPS_PROXY is not present in env")
+			}
+			if !foundNOProxy {
+				t.Fatalf("NO_PROXY is not present in env")
+			}
+		}
 	}
 
 	found := &workv1.ManifestWork{}

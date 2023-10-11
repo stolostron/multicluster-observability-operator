@@ -613,9 +613,8 @@ func revertClusterMonitoringConfig(ctx context.Context, client client.Client, in
 	} else {
 		// check if externalLabels exists
 		if foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels != nil {
-			if _, ok := foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels[operatorconfig.ClusterLabelKeyForAlerts]; ok {
-				delete(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterLabelKeyForAlerts)
-			}
+			delete(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels, operatorconfig.ClusterLabelKeyForAlerts)
+
 			if len(foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels) == 0 {
 				foundClusterMonitoringConfiguration.PrometheusK8sConfig.ExternalLabels = nil
 			}

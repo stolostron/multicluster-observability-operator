@@ -320,6 +320,31 @@ func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
 				}
 			}
 
+			// If ProxyConfig is specified as part of addonConfig, set the proxy envs
+			if clusterName != localClusterName {
+				for i := range spec.Containers {
+					container := &spec.Containers[i]
+					if addonConfig.Spec.ProxyConfig.HTTPProxy != "" {
+						container.Env = append(container.Env, corev1.EnvVar{
+							Name:  "HTTP_PROXY",
+							Value: addonConfig.Spec.ProxyConfig.HTTPProxy,
+						})
+					}
+					if addonConfig.Spec.ProxyConfig.HTTPSProxy != "" {
+						container.Env = append(container.Env, corev1.EnvVar{
+							Name:  "HTTPS_PROXY",
+							Value: addonConfig.Spec.ProxyConfig.HTTPSProxy,
+						})
+					}
+					if addonConfig.Spec.ProxyConfig.NoProxy != "" {
+						container.Env = append(container.Env, corev1.EnvVar{
+							Name:  "NO_PROXY",
+							Value: addonConfig.Spec.ProxyConfig.NoProxy,
+						})
+					}
+				}
+			}
+
 			if hasCustomRegistry {
 				oldImage := container.Image
 				newImage, err := imageRegistryClient.Cluster(clusterName).ImageOverride(oldImage)
