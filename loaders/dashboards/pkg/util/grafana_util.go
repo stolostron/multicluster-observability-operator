@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"hash/fnv"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -63,7 +62,7 @@ func SetRequest(method string, url string, body io.Reader, retry int) ([]byte, i
 
 	if resp != nil {
 		defer resp.Body.Close()
-		respBody, err := ioutil.ReadAll(resp.Body)
+		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			klog.Info("failed to parse response body ", "error ", err)
 		}

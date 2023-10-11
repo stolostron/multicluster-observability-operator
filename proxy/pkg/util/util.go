@@ -9,7 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -206,7 +206,7 @@ func ModifyMetricsQueryParams(req *http.Request, reqUrl string) {
 
 	var rawQuery string
 	if req.Method == "POST" {
-		body, _ := ioutil.ReadAll(req.Body)
+		body, _ := io.ReadAll(req.Body)
 		_ = req.Body.Close()
 		queryValues, err := url.ParseQuery(string(body))
 		if err != nil {
@@ -219,7 +219,7 @@ func ModifyMetricsQueryParams(req *http.Request, reqUrl string) {
 		queryValues = rewriteQuery(queryValues, clusterList, "query")
 		queryValues = rewriteQuery(queryValues, clusterList, "match[]")
 		rawQuery = queryValues.Encode()
-		req.Body = ioutil.NopCloser(strings.NewReader(rawQuery))
+		req.Body = io.NopCloser(strings.NewReader(rawQuery))
 		req.Header.Set("Content-Length", fmt.Sprint(len([]rune(rawQuery))))
 		req.ContentLength = int64(len([]rune(rawQuery)))
 	} else {
@@ -399,7 +399,7 @@ func sendHTTPRequest(url string, verb string, token string) (*http.Response, err
 		token = "Bearer " + token
 	}
 	req.Header.Set("Authorization", token)
-	caCert, err := ioutil.ReadFile(filepath.Clean(caPath))
+	caCert, err := os.ReadFile(filepath.Clean(caPath))
 	if err != nil {
 		klog.Error("failed to load root ca cert file")
 		return nil, err

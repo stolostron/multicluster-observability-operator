@@ -7,7 +7,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -61,7 +60,7 @@ func SimulateMetrics(logger log.Logger) []*clientmodel.MetricFamily {
 		sb.WriteString("\n")
 	}
 	//rlogger.Log(logger, rlogger.Error, "data", sb.String())
-	r := ioutil.NopCloser(bytes.NewReader([]byte(sb.String())))
+	r := io.NopCloser(bytes.NewReader([]byte(sb.String())))
 	decoder := expfmt.NewDecoder(r, expfmt.FmtText)
 	for {
 		family := &clientmodel.MetricFamily{}

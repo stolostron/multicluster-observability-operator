@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -130,7 +129,7 @@ func CreateFromClient(cfg Config, interval time.Duration, name string,
 		if err != nil {
 			return nil, fmt.Errorf("failed to read system certificates: %v", err)
 		}
-		data, err := ioutil.ReadFile(cfg.FromCAFile)
+		data, err := os.ReadFile(cfg.FromCAFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read from-ca-file: %v", err)
 		}
@@ -154,7 +153,7 @@ func CreateFromClient(cfg Config, interval time.Duration, name string,
 		fromClient.Transport = metricshttp.NewDebugRoundTripper(logger, fromClient.Transport)
 	}
 	if len(cfg.FromToken) == 0 && len(cfg.FromTokenFile) > 0 {
-		data, err := ioutil.ReadFile(cfg.FromTokenFile)
+		data, err := os.ReadFile(cfg.FromTokenFile)
 		if err != nil {
 			return nil, fmt.Errorf("unable to read from-token-file: %v", err)
 		}
@@ -177,7 +176,7 @@ func createClients(cfg Config, interval time.Duration,
 	// Configure the anonymization.
 	anonymizeSalt := cfg.AnonymizeSalt
 	if len(cfg.AnonymizeSalt) == 0 && len(cfg.AnonymizeSaltFile) > 0 {
-		data, err := ioutil.ReadFile(cfg.AnonymizeSaltFile)
+		data, err := os.ReadFile(cfg.AnonymizeSaltFile)
 		if err != nil {
 			return nil, nil, transformer, fmt.Errorf("failed to read anonymize-salt-file: %v", err)
 		}
@@ -250,7 +249,7 @@ func New(cfg Config) (*Worker, error) {
 	// Configure the matching rules.
 	rules := cfg.Rules
 	if len(cfg.RulesFile) > 0 {
-		data, err := ioutil.ReadFile(cfg.RulesFile)
+		data, err := os.ReadFile(cfg.RulesFile)
 		if err != nil {
 			return nil, fmt.Errorf("unable to read match-file: %v", err)
 		}

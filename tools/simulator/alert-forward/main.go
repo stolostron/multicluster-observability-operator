@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptrace"
@@ -60,7 +59,7 @@ func newAlertFowarder(opts *alertForwarderOptions) (*alertForwarder, error) {
 	if len(opts.amAccessToken) > 0 {
 		accessToken = opts.amAccessToken
 	} else if len(opts.amAccessTokenFile) > 0 {
-		data, err := ioutil.ReadFile(opts.amAccessTokenFile)
+		data, err := os.ReadFile(opts.amAccessTokenFile)
 		if err != nil {
 			return nil, err
 		}
@@ -73,7 +72,7 @@ func newAlertFowarder(opts *alertForwarderOptions) (*alertForwarder, error) {
 	if len(opts.alerts) > 0 {
 		alerts = opts.alerts
 	} else if len(opts.alertsFile) > 0 {
-		data, err := ioutil.ReadFile(opts.alertsFile)
+		data, err := os.ReadFile(opts.alertsFile)
 		if err != nil {
 			return nil, err
 		}
@@ -237,7 +236,7 @@ func sendOne(c *http.Client, traceCtx context.Context, url string, b []byte) err
 
 	defer func() {
 		/* #nosec */
-		io.Copy(ioutil.Discard, resp.Body)
+		io.Copy(io.Discard, resp.Body)
 		/* #nosec */
 		resp.Body.Close()
 	}()

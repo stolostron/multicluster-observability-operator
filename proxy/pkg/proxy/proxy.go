@@ -8,7 +8,6 @@ import (
 	"compress/gzip"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -36,7 +35,7 @@ var (
 
 func shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) bool {
 	if strings.HasSuffix(req.URL.Path, "/api/v1/series") {
-		body, err := ioutil.ReadAll(req.Body)
+		body, err := io.ReadAll(req.Body)
 		if err != nil {
 			klog.Errorf("failed to read body: %v", err)
 		}
@@ -62,7 +61,7 @@ func shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) b
 			}
 		}
 
-		req.Body = ioutil.NopCloser(strings.NewReader(string(body)))
+		req.Body = io.NopCloser(strings.NewReader(string(body)))
 		req.ContentLength = int64(len([]rune(string(body))))
 	}
 
@@ -189,7 +188,7 @@ func proxyRequest(r *http.Request) {
 			strings.HasSuffix(r.URL.Path, "/api/v1/series") {
 			r.Method = http.MethodPost
 			r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			r.Body = ioutil.NopCloser(strings.NewReader(r.URL.RawQuery))
+			r.Body = io.NopCloser(strings.NewReader(r.URL.RawQuery))
 		}
 	}
 }

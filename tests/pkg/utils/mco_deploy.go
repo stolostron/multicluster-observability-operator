@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -728,7 +727,7 @@ func CheckMCOConversion(opt TestOptions, v1beta1tov1beta2GoldenPath string) erro
 	}
 
 	decUnstructured := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
-	yamlB, err := ioutil.ReadFile(filepath.Clean(v1beta1tov1beta2GoldenPath))
+	yamlB, err := os.ReadFile(filepath.Clean(v1beta1tov1beta2GoldenPath))
 	if err != nil {
 		return err
 	}

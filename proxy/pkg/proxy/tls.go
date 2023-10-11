@@ -6,9 +6,9 @@ package proxy
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"path"
 	"path/filepath"
 	"time"
@@ -28,7 +28,7 @@ func getTLSTransport() (*http.Transport, error) {
 	tlsCrtFile := path.Join(certPath, "tls.crt")
 
 	// Load Server CA cert
-	caCert, err := ioutil.ReadFile(filepath.Clean(caCertFile))
+	caCert, err := os.ReadFile(filepath.Clean(caCertFile))
 	if err != nil {
 		klog.Error("failed to load server ca cert file")
 		return nil, err

@@ -6,7 +6,6 @@ package tests
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"testing"
@@ -157,7 +156,7 @@ func initVars() {
 
 	klog.V(1).Infof("options filename=%s", optionsFile)
 
-	data, err := ioutil.ReadFile(optionsFile)
+	data, err := os.ReadFile(optionsFile)
 	if err != nil {
 		klog.Errorf("--options error: %v", err)
 	}

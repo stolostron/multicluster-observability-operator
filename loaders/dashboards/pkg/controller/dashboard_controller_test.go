@@ -5,7 +5,6 @@ package controller
 
 import (
 	"context"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"testing"
@@ -23,7 +22,7 @@ var (
 
 func createDashboard() (*corev1.ConfigMap, error) {
 	// read the whole file at once
-	data, err := ioutil.ReadFile("../../examples/k8s-dashboard.yaml")
+	data, err := os.ReadFile("../../examples/k8s-dashboard.yaml")
 	if err != nil {
 		panic(err)
 	}

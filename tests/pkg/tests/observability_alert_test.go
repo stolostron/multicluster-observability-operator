@@ -9,7 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -351,7 +351,7 @@ var _ = Describe("Observability:", func() {
 				return fmt.Errorf("Failed to get alerts via alertmanager route with http reponse: %v", resp)
 			}
 
-			alertResult, err := ioutil.ReadAll(resp.Body)
+			alertResult, err := io.ReadAll(resp.Body)
 			if err != nil {
 				return err
 			}

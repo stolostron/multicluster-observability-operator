@@ -6,7 +6,7 @@ package utils
 import (
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -56,7 +56,7 @@ func ContainDashboard(opt TestOptions, title string) (error, bool) {
 		return fmt.Errorf("failed to access grafana api"), false
 	}
 
-	result, err := ioutil.ReadAll(resp.Body)
+	result, err := io.ReadAll(resp.Body)
 	klog.V(1).Infof("result: %s\n", result)
 	if err != nil {
 		return err, false

@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -22,7 +21,7 @@ func TestNewEmptyMatrixHTTPBody(t *testing.T) {
 	body := newEmptyMatrixHTTPBody()
 	gr, err := gzip.NewReader(bytes.NewBuffer([]byte(body)))
 	defer gr.Close()
-	data, err := ioutil.ReadAll(gr)
+	data, err := io.ReadAll(gr)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -30,7 +29,7 @@ func TestNewEmptyMatrixHTTPBody(t *testing.T) {
 	var decompressedBuff bytes.Buffer
 	gr, err = gzip.NewReader(bytes.NewBuffer([]byte(data)))
 	defer gr.Close()
-	data, err = ioutil.ReadAll(gr)
+	data, err = io.ReadAll(gr)
 	if err != nil {
 		t.Errorf("failed to ReadAll: %v", err)
 	}
@@ -83,7 +82,7 @@ func TestErrorHandle(t *testing.T) {
 func TestPreCheckRequest(t *testing.T) {
 	req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
 	resp := http.Response{
-		Body:    ioutil.NopCloser(bytes.NewBufferString("test")),
+		Body:    io.NopCloser(bytes.NewBufferString("test")),
 		Header:  make(http.Header),
 		Request: req,
 	}
@@ -132,7 +131,7 @@ func TestGzipWrite(t *testing.T) {
 	var decompressedBuff bytes.Buffer
 	gr, err := gzip.NewReader(bytes.NewBuffer(compressedBuff.Bytes()))
 	defer gr.Close()
-	data, err := ioutil.ReadAll(gr)
+	data, err := io.ReadAll(gr)
 	if err != nil {
 		t.Errorf("failed to decompressed: %v", err)
 	}

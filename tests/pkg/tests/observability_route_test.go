@@ -8,7 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -75,7 +75,7 @@ var _ = Describe("Observability:", func() {
 				return fmt.Errorf("Failed to access metrics via via rbac-query-proxy route")
 			}
 
-			metricResult, err := ioutil.ReadAll(resp.Body)
+			metricResult, err := io.ReadAll(resp.Body)
 			klog.V(5).Infof("metricResult: %s\n", metricResult)
 			if err != nil {
 				return err
@@ -176,7 +176,7 @@ var _ = Describe("Observability:", func() {
 				return fmt.Errorf("Failed to access alert via alertmanager route")
 			}
 
-			alertResult, err := ioutil.ReadAll(resp.Body)
+			alertResult, err := io.ReadAll(resp.Body)
 			klog.V(5).Infof("alertResult: %s\n", alertResult)
 			if err != nil {
 				return err

@@ -5,9 +5,9 @@ package util
 
 import (
 	"context"
-	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -323,7 +323,7 @@ func TestGetUserClusterList(t *testing.T) {
 
 func TestWriteError(t *testing.T) {
 	writeError("test")
-	data, _ := ioutil.ReadFile("/tmp/health")
+	data, _ := os.ReadFile("/tmp/health")
 	if !strings.Contains(string(data), "test") {
 		t.Errorf("failed to find the health file")
 	}

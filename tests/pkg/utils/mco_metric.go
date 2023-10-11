@@ -8,7 +8,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -62,7 +62,7 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 		return fmt.Errorf("failed to access managed cluster metrics via grafana console: %s", query), false
 	}
 
-	metricResult, err := ioutil.ReadAll(resp.Body)
+	metricResult, err := io.ReadAll(resp.Body)
 	klog.V(5).Infof("metricResult: %s\n", metricResult)
 	if err != nil {
 		return err, false

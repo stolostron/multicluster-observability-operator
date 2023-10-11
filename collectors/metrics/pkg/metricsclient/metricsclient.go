@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -249,7 +248,7 @@ func (c *Client) Send(ctx context.Context, req *http.Request, families []*client
 	}
 	req.Header.Set("Content-Type", string(expfmt.FmtProtoDelim))
 	req.Header.Set("Content-Encoding", "snappy")
-	req.Body = ioutil.NopCloser(buf)
+	req.Body = io.NopCloser(buf)
 
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	req = req.WithContext(ctx)
@@ -257,7 +256,7 @@ func (c *Client) Send(ctx context.Context, req *http.Request, families []*client
 	logger.Log(c.logger, logger.Debug, "msg", "start to send")
 	return withCancel(ctx, c.client, req, func(resp *http.Response) error {
 		defer func() {
-			if _, err := io.Copy(ioutil.Discard, resp.Body); err != nil {
+			if _, err := io.Copy(io.Discard, resp.Body); err != nil {
 				logger.Log(c.logger, logger.Error, "msg", "error copying body", "err", err)
 			}
 			if err := resp.Body.Close(); err != nil {
@@ -280,7 +279,7 @@ func (c *Client) Send(ctx context.Context, req *http.Request, families []*client
 			return fmt.Errorf("gateway server bad request: %s", resp.Request.URL)
 		default:
 			gaugeRequestSend.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
-			body, _ := ioutil.ReadAll(resp.Body)
+			body, _ := io.ReadAll(resp.Body)
 			if len(body) > 1024 {
 				body = body[:1024]
 			}
@@ -379,7 +378,7 @@ func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string)
 		tlsCrtFile = "../../testdata/tls/tls.crt"
 	}
 	// Load Server CA cert
-	caCert, err := ioutil.ReadFile(filepath.Clean(caCertFile))
+	caCert, err := os.ReadFile(filepath.Clean(caCertFile))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load server ca cert file")
 	}
@@ -566,7 +565,7 @@ func (c *Client) sendRequest(serverURL string, body []byte) error {
 
 	if resp.StatusCode/100 != 2 {
 		// surfacing upstreams error to our users too
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
 			logger.Log(c.logger, logger.Warn, err)
 		}

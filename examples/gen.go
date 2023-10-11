@@ -29,7 +29,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"os"
@@ -83,7 +82,7 @@ func main() {
 		Type:  "CERTIFICATE",
 		Bytes: caBytes,
 	})
-	err = ioutil.WriteFile(caPath, caPEM, 0600)
+	err = os.WriteFile(caPath, caPEM, 0600)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
@@ -99,7 +98,7 @@ func main() {
 		Type:  "CERTIFICATE",
 		Bytes: certBytes,
 	})
-	err = ioutil.WriteFile(certPath, certPEM, 0600)
+	err = os.WriteFile(certPath, certPEM, 0600)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
@@ -109,7 +108,7 @@ func main() {
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(certPrivKey),
 	})
-	err = ioutil.WriteFile(privkeyPath, certPrivKeyPEM, 0600)
+	err = os.WriteFile(privkeyPath, certPrivKeyPEM, 0600)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)

@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"unicode/utf8"
@@ -70,7 +69,7 @@ func bodyToString(body *io.ReadCloser) string {
 	if err = (*body).Close(); err != nil {
 		panic(err)
 	}
-	*body = ioutil.NopCloser(&b)
+	*body = io.NopCloser(&b)
 
 	s := b.String()
 	if utf8.ValidString(s) {
