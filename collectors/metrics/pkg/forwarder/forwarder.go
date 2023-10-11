@@ -19,6 +19,7 @@ import (
 	"github.com/go-kit/kit/log"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	clientmodel "github.com/prometheus/client_model/go"
 
 	metricshttp "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/http"
@@ -33,29 +34,8 @@ const (
 	failedStatusReportMsg = "Failed to report status"
 )
 
-var (
-	gaugeFederateSamples = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "federate_samples",
-		Help: "Tracks the number of samples per federation",
-	})
-	gaugeFederateFilteredSamples = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "federate_filtered_samples",
-		Help: "Tracks the number of samples filtered per federation",
-	})
-	gaugeFederateErrors = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "federate_errors",
-		Help: "The number of times forwarding federated metrics has failed",
-	})
-)
-
 type RuleMatcher interface {
 	MatchRules() []string
-}
-
-func init() {
-	prometheus.MustRegister(
-		gaugeFederateErrors, gaugeFederateSamples, gaugeFederateFilteredSamples,
-	)
 }
 
 // Config defines the parameters that can be used to configure a worker.
@@ -88,6 +68,8 @@ type Config struct {
 
 	Logger                  log.Logger
 	SimulatedTimeseriesFile string
+
+	Registry *prometheus.Registry
 }
 
 // Worker represents a metrics forwarding agent. It collects metrics from a source URL and forwards them to a sink.
@@ -114,6 +96,10 @@ type Worker struct {
 	simulatedTimeseriesFile string
 
 	status status.StatusReport
+
+	gaugeFederateSamples         prometheus.Gauge
+	gaugeFederateFilteredSamples prometheus.Gauge
+	gaugeFederateErrors          prometheus.Gauge
 }
 
 func CreateFromClient(cfg Config, interval time.Duration, name string,
@@ -163,7 +149,7 @@ func CreateFromClient(cfg Config, interval time.Duration, name string,
 		fromClient.Transport = metricshttp.NewBearerRoundTripper(cfg.FromToken, fromClient.Transport)
 	}
 
-	from := metricsclient.New(logger, fromClient, cfg.LimitBytes, interval, "federate_from")
+	from := metricsclient.New(logger, cfg.Registry, fromClient, cfg.LimitBytes, interval, "federate_from")
 
 	return from, nil
 }
@@ -212,7 +198,7 @@ func createClients(cfg Config, interval time.Duration,
 	if cfg.Debug {
 		toClient.Transport = metricshttp.NewDebugRoundTripper(logger, toClient.Transport)
 	}
-	to := metricsclient.New(logger, toClient, cfg.LimitBytes, interval, "federate_to")
+	to := metricsclient.New(logger, cfg.Registry, toClient, cfg.LimitBytes, interval, "federate_to")
 	return from, to, transformer, nil
 }
 
@@ -232,6 +218,18 @@ func New(cfg Config) (*Worker, error) {
 		to:                      cfg.ToUpload,
 		logger:                  log.With(cfg.Logger, "component", "forwarder/worker"),
 		simulatedTimeseriesFile: cfg.SimulatedTimeseriesFile,
+		gaugeFederateSamples: promauto.With(cfg.Registry).NewGauge(prometheus.GaugeOpts{
+			Name: "federate_samples",
+			Help: "Tracks the number of samples per federation",
+		}),
+		gaugeFederateFilteredSamples: promauto.With(cfg.Registry).NewGauge(prometheus.GaugeOpts{
+			Name: "federate_filtered_samples",
+			Help: "Tracks the number of samples filtered per federation",
+		}),
+		gaugeFederateErrors: promauto.With(cfg.Registry).NewGauge(prometheus.GaugeOpts{
+			Name: "federate_errors",
+			Help: "The number of times forwarding federated metrics has failed",
+		}),
 	}
 
 	if w.interval == 0 {
@@ -329,7 +327,7 @@ func (w *Worker) Run(ctx context.Context) {
 		w.lock.Unlock()
 
 		if err := w.forward(ctx); err != nil {
-			gaugeFederateErrors.Inc()
+			w.gaugeFederateErrors.Inc()
 			rlogger.Log(w.logger, rlogger.Error, "msg", "unable to forward results", "err", err)
 			wait = time.Minute
 		}
@@ -392,8 +390,8 @@ func (w *Worker) forward(ctx context.Context) error {
 	families = metricfamily.Pack(families)
 	after := metricfamily.MetricsCount(families)
 
-	gaugeFederateSamples.Set(float64(before))
-	gaugeFederateFilteredSamples.Set(float64(before - after))
+	w.gaugeFederateSamples.Set(float64(before))
+	w.gaugeFederateFilteredSamples.Set(float64(before - after))
 
 	w.lastMetrics = families
 

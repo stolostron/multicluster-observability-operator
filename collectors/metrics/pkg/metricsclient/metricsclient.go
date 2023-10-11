@@ -24,6 +24,7 @@ import (
 	"github.com/golang/snappy"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/prometheus/model/labels"
@@ -40,42 +41,36 @@ const (
 	maxSeriesLength = 10000
 )
 
-var (
-	gaugeRequestRetrieve = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "metricsclient_request_retrieve",
-		Help: "Tracks the number of metrics retrievals",
-	}, []string{"client", "status_code"})
-	gaugeRequestSend = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "metricsclient_request_send",
-		Help: "Tracks the number of metrics sends",
-	}, []string{"client", "status_code"})
-)
-
-func init() {
-	prometheus.MustRegister(
-		gaugeRequestRetrieve, gaugeRequestSend,
-	)
-}
-
 type Client struct {
 	client      *http.Client
 	maxBytes    int64
 	timeout     time.Duration
 	metricsName string
 	logger      log.Logger
+
+	gaugeRequestRetrieve *prometheus.GaugeVec
+	gaugeRequestSend     *prometheus.GaugeVec
 }
 
 type PartitionedMetrics struct {
 	Families []*clientmodel.MetricFamily
 }
 
-func New(logger log.Logger, client *http.Client, maxBytes int64, timeout time.Duration, metricsName string) *Client {
+func New(logger log.Logger, reg *prometheus.Registry, client *http.Client, maxBytes int64, timeout time.Duration, metricsName string) *Client {
 	return &Client{
 		client:      client,
 		maxBytes:    maxBytes,
 		timeout:     timeout,
 		metricsName: metricsName,
 		logger:      log.With(logger, "component", "metricsclient"),
+		gaugeRequestRetrieve: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+			Name: "metricsclient_request_retrieve",
+			Help: "Tracks the number of metrics retrievals",
+		}, []string{"client", "status_code"}),
+		gaugeRequestSend: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+			Name: "metricsclient_request_send",
+			Help: "Tracks the number of metrics sends",
+		}, []string{"client", "status_code"}),
 	}
 }
 
@@ -106,19 +101,19 @@ func (c *Client) RetrievRecordingMetrics(
 	err := withCancel(ctx, c.client, req, func(resp *http.Response) error {
 		switch resp.StatusCode {
 		case http.StatusOK:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
+			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
 		case http.StatusUnauthorized:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
-			return fmt.Errorf("Prometheus server requires authentication: %s", resp.Request.URL)
+			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
+			return fmt.Errorf("prometheus server requires authentication: %s", resp.Request.URL)
 		case http.StatusForbidden:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
-			return fmt.Errorf("Prometheus server forbidden: %s", resp.Request.URL)
+			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
+			return fmt.Errorf("prometheus server forbidden: %s", resp.Request.URL)
 		case http.StatusBadRequest:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
+			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
 			return fmt.Errorf("bad request: %s", resp.Request.URL)
 		default:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
-			return fmt.Errorf("Prometheus server reported unexpected error code: %d", resp.StatusCode)
+			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
+			return fmt.Errorf("prometheus server reported unexpected error code: %d", resp.StatusCode)
 		}
 
 		decoder := json.NewDecoder(resp.Body)
@@ -198,19 +193,19 @@ func (c *Client) Retrieve(ctx context.Context, req *http.Request) ([]*clientmode
 	err := withCancel(ctx, c.client, req, func(resp *http.Response) error {
 		switch resp.StatusCode {
 		case http.StatusOK:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
+			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
 		case http.StatusUnauthorized:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
-			return fmt.Errorf("Prometheus server requires authentication: %s", resp.Request.URL)
+			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
+			return fmt.Errorf("prometheus server requires authentication: %s", resp.Request.URL)
 		case http.StatusForbidden:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
-			return fmt.Errorf("Prometheus server forbidden: %s", resp.Request.URL)
+			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
+			return fmt.Errorf("prometheus server forbidden: %s", resp.Request.URL)
 		case http.StatusBadRequest:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
+			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
 			return fmt.Errorf("bad request: %s", resp.Request.URL)
 		default:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
-			return fmt.Errorf("Prometheus server reported unexpected error code: %d", resp.StatusCode)
+			c.gaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
+			return fmt.Errorf("prometheus server reported unexpected error code: %d", resp.StatusCode)
 		}
 
 		// read the response into memory
@@ -266,19 +261,19 @@ func (c *Client) Send(ctx context.Context, req *http.Request, families []*client
 		logger.Log(c.logger, logger.Debug, "msg", resp.StatusCode)
 		switch resp.StatusCode {
 		case http.StatusOK:
-			gaugeRequestSend.WithLabelValues(c.metricsName, "200").Inc()
+			c.gaugeRequestSend.WithLabelValues(c.metricsName, "200").Inc()
 		case http.StatusUnauthorized:
-			gaugeRequestSend.WithLabelValues(c.metricsName, "401").Inc()
+			c.gaugeRequestSend.WithLabelValues(c.metricsName, "401").Inc()
 			return fmt.Errorf("gateway server requires authentication: %s", resp.Request.URL)
 		case http.StatusForbidden:
-			gaugeRequestSend.WithLabelValues(c.metricsName, "403").Inc()
+			c.gaugeRequestSend.WithLabelValues(c.metricsName, "403").Inc()
 			return fmt.Errorf("gateway server forbidden: %s", resp.Request.URL)
 		case http.StatusBadRequest:
-			gaugeRequestSend.WithLabelValues(c.metricsName, "400").Inc()
+			c.gaugeRequestSend.WithLabelValues(c.metricsName, "400").Inc()
 			logger.Log(c.logger, logger.Debug, "msg", resp.Body)
 			return fmt.Errorf("gateway server bad request: %s", resp.Request.URL)
 		default:
-			gaugeRequestSend.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
+			c.gaugeRequestSend.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
 			body, _ := io.ReadAll(resp.Body)
 			if len(body) > 1024 {
 				body = body[:1024]
@@ -536,8 +531,7 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 			return err
 		}
 	}
-	msg := fmt.Sprintf("Metrics pushed successfully")
-	logger.Log(c.logger, logger.Info, "msg", msg)
+	logger.Log(c.logger, logger.Info, "msg", "metrics pushed successfully")
 	return nil
 }
 

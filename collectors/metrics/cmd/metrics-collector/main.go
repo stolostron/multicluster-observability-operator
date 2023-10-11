@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -18,7 +19,10 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/oklog/run"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/version"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
@@ -282,13 +286,26 @@ type Options struct {
 }
 
 func (o *Options) Run() error {
-
 	var g run.Group
+
+	metricsReg := prometheus.NewRegistry()
+	metricsReg.MustRegister(
+		version.NewCollector("metrics-collector"),
+		collectors.NewGoCollector(
+			collectors.WithGoCollectorRuntimeMetrics(collectors.GoRuntimeMetricsRule{Matcher: regexp.MustCompile("/.*")}),
+		),
+		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
+	)
+
+	// Some packages still use default Register. Replace to have those metrics.
+	prometheus.DefaultRegisterer = metricsReg
 
 	err, cfg := initConfig(o)
 	if err != nil {
 		return err
 	}
+
+	cfg.Registry = metricsReg
 
 	worker, err := forwarder.New(*cfg)
 	if err != nil {
