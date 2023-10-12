@@ -61,6 +61,9 @@ type CollectorParams struct {
 	allowlist    operatorconfig.MetricsAllowlist
 	nodeSelector map[string]string
 	tolerations  []corev1.Toleration
+	httpProxy    string
+	httpsProxy   string
+	noProxy      string
 	replicaCount int32
 }
 
@@ -284,6 +287,23 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			},
 		},
 	}
+
+	if params.httpProxy != "" || params.httpsProxy != "" || params.noProxy != "" {
+		metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
+			corev1.EnvVar{
+				Name:  "HTTP_PROXY",
+				Value: params.httpProxy,
+			},
+			corev1.EnvVar{
+				Name:  "HTTPS_PROXY",
+				Value: params.httpsProxy,
+			},
+			corev1.EnvVar{
+				Name:  "NO_PROXY",
+				Value: params.noProxy,
+			})
+	}
+
 	if params.obsAddonSpec.Resources != nil {
 		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *params.obsAddonSpec.Resources
 	}
@@ -310,6 +330,22 @@ func updateMetricsCollectors(ctx context.Context, c client.Client, obsAddonSpec 
 		nodeSelector: endpointDeployment.Spec.Template.Spec.NodeSelector,
 		tolerations:  endpointDeployment.Spec.Template.Spec.Tolerations,
 	}
+
+	// stash away proxy settings from endpoint deployment
+	for _, container := range endpointDeployment.Spec.Template.Spec.Containers {
+		if container.Name == "endpoint-observability-operator" {
+			for _, env := range container.Env {
+				if env.Name == "HTTP_PROXY" {
+					params.httpProxy = env.Value
+				} else if env.Name == "HTTPS_PROXY" {
+					params.httpsProxy = env.Value
+				} else if env.Name == "NO_PROXY" {
+					params.noProxy = env.Value
+				}
+			}
+		}
+	}
+
 	result, err := updateMetricsCollector(ctx, c, params, forceRestart)
 	if err != nil || !result {
 		return result, err
@@ -427,7 +463,7 @@ func getMetricsAllowlist(ctx context.Context, c client.Client,
 	}
 
 	cmList := &corev1.ConfigMapList{}
-	err = c.List(ctx, cmList, &client.ListOptions{})
+	_ = c.List(ctx, cmList, &client.ListOptions{})
 	for _, allowlistCM := range cmList.Items {
 		if allowlistCM.ObjectMeta.Name == operatorconfig.AllowlistCustomConfigMapName {
 			log.Info("Parse custom allowlist configmap", "namespace", allowlistCM.ObjectMeta.Namespace,

@@ -86,7 +86,7 @@ func init() {
 	hubNamespace = testHubNamspace
 }
 
-func checkWorkloadPartitionAnnotationsOnDeploymentPodSpec(
+func checkAnnotationsAndProxySettings(
 	ctx context.Context,
 	c client.Client,
 	deploymentName string,
@@ -107,6 +107,38 @@ func checkWorkloadPartitionAnnotationsOnDeploymentPodSpec(
 			operatorconfig.WorkloadPodExpectedValueJSON,
 			deploymentName,
 		)
+	}
+
+	env := deployment.Spec.Template.Spec.Containers[0].Env
+	foundHTTPProxy := false
+	foundHTTPSProxy := false
+	foundNOProxy := false
+	for _, e := range env {
+		if e.Name == "HTTP_PROXY" {
+			foundHTTPProxy = true
+			if e.Value != "http://foo.com" {
+				t.Fatalf("HTTP_PROXY is not set correctly: expected %s, got %s", "http://foo.com", e.Value)
+			}
+		} else if e.Name == "HTTPS_PROXY" {
+			foundHTTPSProxy = true
+			if e.Value != "https://foo.com" {
+				t.Fatalf("HTTPS_PROXY is not set correctly: expected %s, got %s", "https://foo.com", e.Value)
+			}
+		} else if e.Name == "NO_PROXY" {
+			foundNOProxy = true
+			if e.Value != "bar.com" {
+				t.Fatalf("NO_PROXY is not set correctly: expected %s, got %s", "bar.com", e.Value)
+			}
+		}
+	}
+	if !foundHTTPProxy {
+		t.Fatalf("HTTP_PROXY is not present in env")
+	}
+	if !foundHTTPSProxy {
+		t.Fatalf("HTTPS_PROXY is not present in env")
+	}
+	if !foundNOProxy {
+		t.Fatalf("NO_PROXY is not present in env")
 	}
 }
 
@@ -137,12 +169,16 @@ func TestMetricsCollector(t *testing.T) {
 		hubInfo:      *hubInfo,
 		allowlist:    list,
 		replicaCount: 1,
+		httpProxy:    "http://foo.com",
+		httpsProxy:   "https://foo.com",
+		noProxy:      "bar.com",
 	}
+
 	_, err = updateMetricsCollector(ctx, c, params, false)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
-	checkWorkloadPartitionAnnotationsOnDeploymentPodSpec(ctx, c, metricsCollectorName, t)
+	checkAnnotationsAndProxySettings(ctx, c, metricsCollectorName, t)
 
 	// Update deployment to reduce instance count to zero
 	params.replicaCount = 0
@@ -150,7 +186,7 @@ func TestMetricsCollector(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
-	checkWorkloadPartitionAnnotationsOnDeploymentPodSpec(ctx, c, metricsCollectorName, t)
+	checkAnnotationsAndProxySettings(ctx, c, metricsCollectorName, t)
 
 	params.replicaCount = 1
 	params.clusterID = testClusterID + "-update"
@@ -159,13 +195,13 @@ func TestMetricsCollector(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
 	}
-	checkWorkloadPartitionAnnotationsOnDeploymentPodSpec(ctx, c, metricsCollectorName, t)
+	checkAnnotationsAndProxySettings(ctx, c, metricsCollectorName, t)
 
 	_, err = updateMetricsCollector(ctx, c, params, true)
 	if err != nil {
 		t.Fatalf("Failed to update metrics collector deployment: (%v)", err)
 	}
-	checkWorkloadPartitionAnnotationsOnDeploymentPodSpec(ctx, c, metricsCollectorName, t)
+	checkAnnotationsAndProxySettings(ctx, c, metricsCollectorName, t)
 
 	params.isUWL = true
 	params.allowlist = uwlList
@@ -173,7 +209,7 @@ func TestMetricsCollector(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create uwl metrics collector deployment: (%v)", err)
 	}
-	checkWorkloadPartitionAnnotationsOnDeploymentPodSpec(ctx, c, uwlMetricsCollectorName, t)
+	checkAnnotationsAndProxySettings(ctx, c, uwlMetricsCollectorName, t)
 
 	err = deleteMetricsCollector(ctx, c, metricsCollectorName)
 	if err != nil {
