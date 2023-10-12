@@ -61,7 +61,7 @@ func init() {
 
 func TestCreateDeleteCAConfigmap(t *testing.T) {
 	ctx := context.TODO()
-	c := fake.NewFakeClient()
+	c := fake.NewClientBuilder().Build()
 	err := createCAConfigmap(ctx, c)
 	if err != nil {
 		t.Fatalf("Failed to create CA configmap: (%v)", err)
@@ -78,7 +78,7 @@ func TestCreateDeleteCAConfigmap(t *testing.T) {
 
 func TestCreateDeleteMonitoringClusterRoleBinding(t *testing.T) {
 	ctx := context.TODO()
-	c := fake.NewFakeClient()
+	c := fake.NewClientBuilder().Build()
 	err := createMonitoringClusterRoleBinding(ctx, c)
 	if err != nil {
 		t.Fatalf("Failed to create clusterrolebinding: (%v)", err)
@@ -124,7 +124,7 @@ func TestCreateDeleteMonitoringClusterRoleBinding(t *testing.T) {
 
 func TestGetClusterID(t *testing.T) {
 	ctx := context.TODO()
-	c := fake.NewFakeClient(cv)
+	c := fake.NewClientBuilder().WithRuntimeObjects(cv).Build()
 	found, err := getClusterID(ctx, c)
 	if err != nil {
 		t.Fatalf("Failed to get clusterversion: (%v)", err)
@@ -136,7 +136,7 @@ func TestGetClusterID(t *testing.T) {
 
 func TestServiceMonitors(t *testing.T) {
 	ctx := context.TODO()
-	c := fake.NewFakeClient(hCluster, sm)
+	c := fake.NewClientBuilder().WithRuntimeObjects(hCluster, sm).Build()
 	err := createServiceMonitors(ctx, c)
 	if err != nil {
 		t.Fatalf("Failed to create ServiceMonitors: (%v)", err)
@@ -149,7 +149,7 @@ func TestServiceMonitors(t *testing.T) {
 
 func TestDeleteServiceMonitor(t *testing.T) {
 	ctx := context.TODO()
-	c := fake.NewFakeClient()
+	c := fake.NewClientBuilder().Build()
 	err := deleteServiceMonitor(ctx, c, "test", "test")
 	if err != nil {
 		t.Fatalf("Failed to delete ServiceMonitors: (%v)", err)

@@ -21,14 +21,14 @@ func init() {
 }
 
 func TestRenewAndRetry(t *testing.T) {
-	hubClient := fake.NewFakeClient()
+	hubClient := fake.NewClientBuilder().Build()
 	SetHubClient(hubClient)
 	_, _, err := RenewAndRetry(context.TODO())
 	if err == nil {
 		t.Fatal("missing error")
 	}
 
-	hubClient1 := fake.NewFakeClient(newObservabilityAddon(name, testNamespace))
+	hubClient1 := fake.NewClientBuilder().WithRuntimeObjects(newObservabilityAddon(name, testNamespace)).Build()
 	SetHubClient(hubClient1)
 	_, _, err = RenewAndRetry(context.TODO())
 	if err != nil {

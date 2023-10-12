@@ -51,9 +51,9 @@ func init() {
 
 func TestStatusController(t *testing.T) {
 
-	hubClient := fake.NewFakeClient()
+	hubClient := fake.NewClientBuilder().Build()
 	util.SetHubClient(hubClient)
-	c := fake.NewFakeClient()
+	c := fake.NewClientBuilder().Build()
 
 	r := &StatusReconciler{
 		Client:    c,

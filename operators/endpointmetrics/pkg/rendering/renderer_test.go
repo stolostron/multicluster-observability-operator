@@ -49,8 +49,7 @@ func TestRender(t *testing.T) {
 		AlertmanagerEndpoint:     "testing.com",
 		AlertmanagerRouterCA:     "testing",
 	}
-
-	c := fake.NewFakeClient([]runtime.Object{getAllowlistCM()}...)
+	c := fake.NewClientBuilder().WithRuntimeObjects([]runtime.Object{getAllowlistCM()}...).Build()
 
 	objs, err := Render(renderer, c, hubInfo)
 	if err != nil {

@@ -38,7 +38,7 @@ func New(logger log.Logger) (*StatusReport, error) {
 	standaloneMode := os.Getenv("STANDALONE") == "true"
 	var kubeClient client.Client
 	if testMode {
-		kubeClient = fake.NewFakeClient()
+		kubeClient = fake.NewClientBuilder().Build()
 	} else if standaloneMode {
 		kubeClient = nil
 	} else {

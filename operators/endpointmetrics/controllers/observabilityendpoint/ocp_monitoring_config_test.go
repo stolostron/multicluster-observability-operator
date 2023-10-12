@@ -74,7 +74,7 @@ func TestCreateDeleteHubAmRouterCASecret(t *testing.T) {
 	objs := []runtime.Object{hubInfoObj}
 
 	ctx := context.TODO()
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	err = createHubAmRouterCASecret(ctx, hubInfo, c, promNamespace)
 	if err != nil {
 		t.Fatalf("Failed to create the hub-alertmanager-router-ca secret: (%v)", err)
@@ -94,7 +94,7 @@ func TestCreateDeleteHubAmAccessorTokenSecret(t *testing.T) {
 	objs := []runtime.Object{amAccessSrt}
 
 	ctx := context.TODO()
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	err := createHubAmAccessorTokenSecret(ctx, c, promNamespace)
 	if err != nil {
 		t.Fatalf("Failed to create the observability-alertmanager-accessor secret: (%v)", err)
@@ -188,7 +188,7 @@ prometheusK8s:
 			if tt.ClusterMonitoringConfigCMExist {
 				objs = append(objs, newClusterMonitoringConfigCM(tt.ClusterMonitoringConfigDataYaml, tt.Manager))
 			}
-			testCreateOrUpdateClusterMonitoringConfig(t, hubInfo, fake.NewFakeClient(objs...), tt.ExpectedDeleteClusterMonitoringConfigCM)
+			testCreateOrUpdateClusterMonitoringConfig(t, hubInfo, fake.NewClientBuilder().WithRuntimeObjects(objs...).Build(), tt.ExpectedDeleteClusterMonitoringConfigCM)
 		})
 	}
 }

@@ -47,7 +47,7 @@ func newDeployment(name string) *appv1.Deployment {
 
 //nolint:errcheck
 func TestOnAdd(t *testing.T) {
-	c := fake.NewFakeClient()
+	c := fake.NewClientBuilder().Build()
 	caSecret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              serverCACerts,
@@ -57,8 +57,8 @@ func TestOnAdd(t *testing.T) {
 	}
 	config.SetOperandNames(c) //nolint:errcheck
 	onAdd(c)(caSecret)
-	c = fake.NewFakeClient(newDeployment(name+"-rbac-query-proxy"),
-		newDeployment(name+"-observatorium-api"))
+	c = fake.NewClientBuilder().WithRuntimeObjects(newDeployment(name+"-rbac-query-proxy"),
+		newDeployment(name+"-observatorium-api")).Build()
 	onAdd(c)(caSecret)
 	dep := &appv1.Deployment{}
 	c.Get(context.TODO(),
@@ -96,7 +96,7 @@ func TestOnDelete(t *testing.T) {
 			"tls.crt": []byte("old cert"),
 		},
 	}
-	c := fake.NewFakeClient(caSecret, getMco())
+	c := fake.NewClientBuilder().WithRuntimeObjects(caSecret, getMco()).Build()
 	onDelete(c)(deletCaSecret)
 	c.Get(context.TODO(), types.NamespacedName{Name: serverCACerts, Namespace: namespace}, caSecret) //nolint:errcheck
 	data := string(caSecret.Data["tls.crt"])
@@ -108,7 +108,7 @@ func TestOnDelete(t *testing.T) {
 func TestOnUpdate(t *testing.T) {
 	certSecret := getExpiredCertSecret()
 	oldCertLength := len(certSecret.Data["tls.crt"])
-	c := fake.NewFakeClient(certSecret)
+	c := fake.NewClientBuilder().WithRuntimeObjects(certSecret).Build()
 	onUpdate(c, true)(certSecret, certSecret)
 	certSecret.Name = clientCACerts
 	onUpdate(c, true)(certSecret, certSecret)

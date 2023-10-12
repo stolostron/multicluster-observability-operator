@@ -58,7 +58,7 @@ func NewHypershiftTransformer(l log.Logger, c client.Client, labels map[string]s
 			if err != nil {
 				return nil, err
 			}
-			hClient = fake.NewFakeClient()
+			hClient = fake.NewClientBuilder().Build()
 		}
 	}
 

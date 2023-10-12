@@ -91,7 +91,7 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 
 	objs := []runtime.Object{mco, writeStorageS}
 	// Create a fake client to mock API calls.
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	obs, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
 
@@ -183,7 +183,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 
 	objs := []runtime.Object{mco}
 	// Create a fake client to mock API calls.
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	mcoconfig.SetOperandNames(cl)
 
 	_, err := GenerateObservatoriumCR(cl, s, mco)
@@ -308,7 +308,7 @@ config:
 		},
 	}
 
-	client := fake.NewFakeClient([]runtime.Object{}...)
+	client := fake.NewClientBuilder().Build()
 	for _, c := range testCaseList {
 		err := client.Create(context.TODO(), c.secret)
 		if err != nil {

@@ -59,7 +59,7 @@ func TestReportStatus(t *testing.T) {
 
 	statusList := []string{"NotSupported", "Deployed", "Disabled"}
 	s.AddKnownTypes(oav1beta1.GroupVersion, oa)
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	for i := range statusList {
 		ReportStatus(context.TODO(), c, oa, statusList[i])
 		if oa.Status.Conditions[0].Message != expectedStatus[i].Message || oa.Status.Conditions[0].Reason != expectedStatus[i].Reason || oa.Status.Conditions[0].Status != expectedStatus[i].Status || oa.Status.Conditions[0].Type != expectedStatus[i].Type {

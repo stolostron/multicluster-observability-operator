@@ -102,7 +102,7 @@ names:
 }
 
 func TestMergeAllowList(t *testing.T) {
-	c := fake.NewFakeClient(getAllowlistCM(), geCustomAllowlistCM())
+	c := fake.NewClientBuilder().WithRuntimeObjects(getAllowlistCM(), geCustomAllowlistCM()).Build()
 	allowlist, ocp3Allowlist, uwlAllowlist, err := GetAllowList(c, operatorconfig.AllowlistConfigMapName,
 		config.GetDefaultNamespace())
 	if err != nil {

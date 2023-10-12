@@ -20,7 +20,7 @@ import (
 
 func getClient(s *runtime.Scheme) (client.Client, error) {
 	if os.Getenv("TEST") != "" {
-		c := fake.NewFakeClient()
+		c := fake.NewClientBuilder().Build()
 		return c, nil
 	}
 	config, err := clientcmd.BuildConfigFromFlags("", "")

@@ -327,7 +327,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	objs := []runtime.Object{mco, svc, serverCACerts, clientCACerts, proxyRouteBYOCACerts, grafanaCert, serverCert,
 		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, proxyRouteBYOCert, clustermgmtAddon}
 	// Create a fake client to mock API calls.
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
 	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
@@ -710,7 +710,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	objs := []runtime.Object{mco, observatoriumAPIsvc, serverCACerts, clientCACerts, grafanaCert, serverCert,
 		testMCHInstance, imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon}
 	// Create a fake client to mock API calls.
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
 	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.MCHCrdName: true, config.IngressControllerCRD: true}}
@@ -854,7 +854,7 @@ func TestCheckObjStorageStatus(t *testing.T) {
 	s := scheme.Scheme
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	objs := []runtime.Object{mco}
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	mcoCondition := checkObjStorageStatus(c, mco)
 	if mcoCondition == nil {
 		t.Errorf("check s3 conf failed: got %v, expected non-nil", mcoCondition)
@@ -905,7 +905,7 @@ func TestHandleStorageSizeChange(t *testing.T) {
 		createStatefulSet(mco.Name, config.GetDefaultNamespace(), "test"),
 		createPersistentVolumeClaim(mco.Name, config.GetDefaultNamespace(), "test"),
 	}
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
 	isAlertmanagerStorageSizeChanged = true
 	r.HandleStorageSizeChange(mco)

@@ -143,9 +143,9 @@ alertmanager-router-ca: |
 	images := newImagesCM()
 	objs := []runtime.Object{hubInfo, amAccessSrt, allowList, images, cv, infra}
 
-	hubClient := fake.NewFakeClient(hubObjs...)
+	hubClient := fake.NewClientBuilder().WithRuntimeObjects(hubObjs...).Build()
 	util.SetHubClient(hubClient)
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	r := &ObservabilityAddonReconciler{
 		Client:    c,

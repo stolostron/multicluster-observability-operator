@@ -53,7 +53,7 @@ func init() {
 }
 
 func TestTransform(t *testing.T) {
-	c := fake.NewFakeClient(hCluster)
+	c := fake.NewClientBuilder().WithRuntimeObjects(hCluster).Build()
 
 	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
 	labels := map[string]string{

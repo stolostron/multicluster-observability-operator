@@ -31,7 +31,7 @@ func TestCreateOrUpdateObservabilityStorageVersionMigrationResource(t *testing.T
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 
-	c := fake.NewFakeClient()
+	c := fake.NewClientBuilder().Build()
 
 	// test scenario of creating StorageVersionMigration
 	err := createOrUpdateObservabilityStorageVersionMigrationResource(c, s, mco)
@@ -52,7 +52,7 @@ func TestCreateOrUpdateObservabilityStorageVersionMigrationResource(t *testing.T
 			},
 		},
 	}
-	c = fake.NewFakeClient(svm)
+	c = fake.NewClientBuilder().WithRuntimeObjects(svm).Build()
 	err = createOrUpdateObservabilityStorageVersionMigrationResource(c, s, mco)
 	if err != nil {
 		t.Fatalf("createOrUpdateObservabilityStorageVersionMigrationResource: (%v)", err)
