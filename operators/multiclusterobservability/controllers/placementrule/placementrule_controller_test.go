@@ -5,7 +5,6 @@ package placementrule
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -140,7 +139,7 @@ func setupTest(t *testing.T) func() {
 	//clean up the manifest path if left over from previous test
 	if fi, err := os.Lstat(testManifestsPath); err == nil && fi.Mode()&os.ModeSymlink != 0 {
 		if err = os.Remove(testManifestsPath); err != nil {
-			t.Logf(fmt.Sprintf("Failed to delete symlink(%s) for the test manifests: (%v)", testManifestsPath, err))
+			t.Logf("Failed to delete symlink(%s) for the test manifests: (%v)", testManifestsPath, err)
 		}
 	}
 	err = os.Symlink(manifestsPath, testManifestsPath)
@@ -152,7 +151,7 @@ func setupTest(t *testing.T) func() {
 	return func() {
 		t.Log("begin teardownTest")
 		if err = os.Remove(testManifestsPath); err != nil {
-			t.Logf(fmt.Sprintf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err))
+			t.Logf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
 		}
 		os.Remove(path.Join(wd, "../../tests"))
 		os.Unsetenv("TEMPLATES_PATH")

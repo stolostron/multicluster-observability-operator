@@ -9,7 +9,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 )
 
-// GetTemplates reads base manifest
+// GetTemplates reads base manifest.
 func GetTemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
 
 	// resourceList contains all kustomize resources

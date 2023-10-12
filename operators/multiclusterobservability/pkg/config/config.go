@@ -263,15 +263,14 @@ type ObjectStorgeConf struct {
 }
 
 var (
-	log                         = logf.Log.WithName("config")
-	monitoringCRName            = ""
-	tenantUID                   = ""
-	imageManifests              = map[string]string{}
-	imageManifestConfigMapName  = ""
-	hasCustomRuleConfigMap      = false
-	hasCustomAlertmanagerConfig = false
-	certDuration                = time.Hour * 24 * 365
-	isAlertingDisabled          = false
+	log                        = logf.Log.WithName("config")
+	monitoringCRName           = ""
+	tenantUID                  = ""
+	imageManifests             = map[string]string{}
+	imageManifestConfigMapName = ""
+	hasCustomRuleConfigMap     = false
+	certDuration               = time.Hour * 24 * 365
+	isAlertingDisabled         = false
 
 	Replicas1 int32 = 1
 	Replicas2 int32 = 2
@@ -426,7 +425,7 @@ func SetImageManifests(images map[string]string) {
 // ReplaceImage is used to replace the image with specified annotation or imagemanifest configmap
 func ReplaceImage(annotations map[string]string, imageRepo, componentName string) (bool, string) {
 	if annotations != nil {
-		annotationImageRepo, _ := annotations[AnnotationKeyImageRepository]
+		annotationImageRepo := annotations[AnnotationKeyImageRepository]
 		if annotationImageRepo == "" {
 			annotationImageRepo = DefaultImgRepository
 		}

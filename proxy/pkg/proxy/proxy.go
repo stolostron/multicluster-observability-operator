@@ -68,7 +68,7 @@ func shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) b
 	return false
 }
 
-// HandleRequestAndRedirect is used to init proxy handler
+// HandleRequestAndRedirect is used to init proxy handler.
 func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
 	if preCheckRequest(req) != nil {
 		_, err := res.Write(newEmptyMatrixHTTPBody())
@@ -105,13 +105,6 @@ func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
 	req.URL.Path = path.Join(basePath, req.URL.Path)
 	util.ModifyMetricsQueryParams(req, config.GetConfigOrDie().Host+projectsAPIPath)
 	proxy.ServeHTTP(res, req)
-}
-
-func errorHandle(rw http.ResponseWriter, req *http.Request, err error) {
-	token := req.Header.Get("X-Forwarded-Access-Token")
-	if token == "" {
-		rw.WriteHeader(http.StatusUnauthorized)
-	}
 }
 
 func preCheckRequest(req *http.Request) error {

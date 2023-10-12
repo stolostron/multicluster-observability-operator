@@ -31,7 +31,7 @@ func createFakeServerWithInvalidJSON(port string, t *testing.T) {
 	server := http.NewServeMux()
 	server.HandleFunc("/",
 		func(w http.ResponseWriter, req *http.Request) {
-			w.Write([]byte("invalid json"))
+			w.Write([]byte("invalid json")) //nolint:errcheck
 		},
 	)
 	err := http.ListenAndServe(":"+port, server)
@@ -97,7 +97,7 @@ func createFakeServer(port string, t *testing.T) {
 	  }`
 	server.HandleFunc("/",
 		func(w http.ResponseWriter, req *http.Request) {
-			w.Write([]byte(projectList))
+			w.Write([]byte(projectList)) //nolint:errcheck
 		},
 	)
 	err := http.ListenAndServe(":"+port, server)
@@ -185,27 +185,6 @@ func TestGetAllManagedClusterLabelNames(t *testing.T) {
 
 	if isEnabled := GetAllManagedClusterLabelNames()["environment"]; isEnabled {
 		t.Errorf("case: (%v) output: (%v) is not the expected: (%v)", testCaseList.name, isEnabled, false)
-	}
-}
-
-func TestContains(t *testing.T) {
-	testCaseList := []struct {
-		name     string
-		list     []string
-		s        string
-		expected bool
-	}{
-		{"contain sub string", []string{"a", "b"}, "a", true},
-		{"shoud contain empty string", []string{""}, "", true},
-		{"should not contain sub string", []string{"a", "b"}, "c", false},
-		{"shoud not contain empty string", []string{"a", "b"}, "", false},
-	}
-
-	for _, c := range testCaseList {
-		output := Contains(c.list, c.s)
-		if output != c.expected {
-			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", c.name, output, c.expected)
-		}
 	}
 }
 
@@ -491,7 +470,7 @@ func TestStopScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
 	}
 
 	InitScheduler()
-	scheduler.Every(1).Seconds().Do(func() {})
+	scheduler.Every(1).Seconds().Do(func() {}) //nolint:errcheck
 
 	go scheduler.StartAsync()
 	time.Sleep(6 * time.Second)

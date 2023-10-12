@@ -15,6 +15,7 @@ import (
 	"github.com/efficientgo/core/errors"
 	routev1 "github.com/openshift/api/route/v1"
 	obsv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -195,7 +196,7 @@ func updateTenantID(
 
 	newSpec.API.Tenants[idx].ID = oldTenant.ID
 	for j, hashring := range newSpec.Hashrings {
-		if util.Contains(hashring.Tenants, newTenant.ID) {
+		if slices.Contains(hashring.Tenants, newTenant.ID) {
 			newSpec.Hashrings[j].Tenants = util.Remove(newSpec.Hashrings[j].Tenants, newTenant.ID)
 			newSpec.Hashrings[j].Tenants = append(newSpec.Hashrings[0].Tenants, oldTenant.ID)
 		}

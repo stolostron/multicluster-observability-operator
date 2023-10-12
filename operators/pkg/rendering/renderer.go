@@ -85,7 +85,9 @@ func (r *Renderer) RenderDeployments(
 	   		return nil, err
 	   	} */
 
-	res.SetNamespace(namespace)
+	if err := res.SetNamespace(namespace); err != nil {
+		return nil, err
+	}
 	m, err := res.Map()
 	if err != nil {
 		return nil, err
@@ -106,7 +108,9 @@ func (r *Renderer) RenderNamespace(
 	u := &unstructured.Unstructured{Object: m}
 	if UpdateNamespace(u) {
 		u.SetNamespace(namespace)
-		res.SetNamespace(namespace)
+		if err := res.SetNamespace(namespace); err != nil {
+			return nil, err
+		}
 	}
 
 	return u, nil

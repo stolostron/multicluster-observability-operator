@@ -20,10 +20,8 @@ import (
 )
 
 func init() {
-	//logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(os.Stdout)))
-
 	s := scheme.Scheme
-	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	mcov1beta2.SchemeBuilder.AddToScheme(s) //nolint:errcheck
 	config.SetMonitoringCRName(name)
 }
 
@@ -47,6 +45,7 @@ func newDeployment(name string) *appv1.Deployment {
 	}
 }
 
+//nolint:errcheck
 func TestOnAdd(t *testing.T) {
 	c := fake.NewFakeClient()
 	caSecret := &v1.Secret{
@@ -56,7 +55,7 @@ func TestOnAdd(t *testing.T) {
 			CreationTimestamp: metav1.Date(2020, time.January, 2, 0, 0, 0, 0, time.UTC),
 		},
 	}
-	config.SetOperandNames(c)
+	config.SetOperandNames(c) //nolint:errcheck
 	onAdd(c)(caSecret)
 	c = fake.NewFakeClient(newDeployment(name+"-rbac-query-proxy"),
 		newDeployment(name+"-observatorium-api"))
@@ -64,7 +63,7 @@ func TestOnAdd(t *testing.T) {
 	dep := &appv1.Deployment{}
 	c.Get(context.TODO(),
 		types.NamespacedName{Name: name + "-rbac-query-proxy", Namespace: namespace},
-		dep)
+		dep) //nolint:errcheck
 	if dep.Spec.Template.ObjectMeta.Labels[restartLabel] == "" {
 		t.Fatalf("Failed to inject restart label")
 	}
@@ -99,7 +98,7 @@ func TestOnDelete(t *testing.T) {
 	}
 	c := fake.NewFakeClient(caSecret, getMco())
 	onDelete(c)(deletCaSecret)
-	c.Get(context.TODO(), types.NamespacedName{Name: serverCACerts, Namespace: namespace}, caSecret)
+	c.Get(context.TODO(), types.NamespacedName{Name: serverCACerts, Namespace: namespace}, caSecret) //nolint:errcheck
 	data := string(caSecret.Data["tls.crt"])
 	if data != "new cert-old cert" {
 		t.Fatalf("deleted cert not added back: %s", data)

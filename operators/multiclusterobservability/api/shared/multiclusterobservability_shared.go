@@ -12,7 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ObservabilityAddonSpec is the spec of observability addon
+// ObservabilityAddonSpec is the spec of observability addon.
 type ObservabilityAddonSpec struct {
 	// EnableMetrics indicates the observability addon push metrics to hub server.
 	// +optional

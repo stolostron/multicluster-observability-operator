@@ -162,7 +162,6 @@ func PrintAllMCOPodsStatus(opt TestOptions) {
 		isReady := false
 		if pod.Status.Phase == corev1.PodRunning {
 			isReady = true
-			break
 		}
 
 		// only print not ready pod status
@@ -234,7 +233,6 @@ func PrintAllOBAPodsStatus(opt TestOptions) {
 		isReady := false
 		if pod.Status.Phase == corev1.PodRunning {
 			isReady = true
-			break
 		}
 
 		// only print not ready pod status

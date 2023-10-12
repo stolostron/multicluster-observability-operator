@@ -28,6 +28,10 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
+const (
+	TrueStr = "true"
+)
+
 var _ = Describe("Observability:", func() {
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
@@ -305,7 +309,7 @@ var _ = Describe("Observability:", func() {
 		alertGetReq, err := http.NewRequest("GET", amURL.String(), nil)
 		Expect(err).NotTo(HaveOccurred())
 
-		if os.Getenv("IS_KIND_ENV") != "true" {
+		if os.Getenv("IS_KIND_ENV") != TrueStr {
 			if BearerToken == "" {
 				BearerToken, err = utils.FetchBearerToken(testOptions)
 				Expect(err).NotTo(HaveOccurred())
@@ -348,7 +352,7 @@ var _ = Describe("Observability:", func() {
 
 			if resp.StatusCode != http.StatusOK {
 				klog.Errorf("err: %+v\n", resp)
-				return errors.Newf("Failed to get alerts via alertmanager route with http reponse: %v", resp)
+				return errors.Newf("Failed to get alerts via alertmanager route with http response: %v", resp)
 			}
 
 			alertResult, err := io.ReadAll(resp.Body)

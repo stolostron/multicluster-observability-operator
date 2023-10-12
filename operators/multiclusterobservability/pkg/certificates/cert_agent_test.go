@@ -13,7 +13,7 @@ import (
 
 func TestCertAgent(t *testing.T) {
 	agent := &ObservabilityAgent{}
-	agent.Manifests(nil, nil)
+	agent.Manifests(nil, nil) // nolint:errcheck
 	options := agent.GetAgentAddonOptions()
 	cluster := &clusterv1.ManagedCluster{
 		ObjectMeta: metav1.ObjectMeta{

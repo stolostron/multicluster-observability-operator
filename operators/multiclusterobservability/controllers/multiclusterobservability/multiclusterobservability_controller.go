@@ -13,11 +13,11 @@ import (
 	cerr "github.com/efficientgo/core/errors"
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
+	"golang.org/x/exp/slices"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storev1 "k8s.io/api/storage/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -40,7 +40,6 @@ import (
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	placementctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	certctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
@@ -64,8 +63,8 @@ const (
 )
 
 var (
-	log                              = logf.Log.WithName("controller_multiclustermonitoring")
-	enableHubRemoteWrite             = os.Getenv("ENABLE_HUB_REMOTEWRITE")
+	log = logf.Log.WithName("controller_multiclustermonitoring")
+	// enableHubRemoteWrite             = os.Getenv("ENABLE_HUB_REMOTEWRITE")
 	isAlertmanagerStorageSizeChanged = false
 	isCompactStorageSizeChanged      = false
 	isRuleStorageSizeChanged         = false
@@ -139,7 +138,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// start to update mco status
 	StartStatusUpdate(r.Client, instance)
 
-	ingressCtlCrdExists, _ := r.CRDMap[config.IngressControllerCRD]
+	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
 	if os.Getenv("UNIT_TEST") != "true" {
 		// start placement controller
 		err := placementctrl.StartPlacementController(r.Manager, r.CRDMap)
@@ -163,7 +162,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// check if the MCH CRD exists
-	mchCrdExists, _ := r.CRDMap[config.MCHCrdName]
+	mchCrdExists := r.CRDMap[config.MCHCrdName]
 	// requeue after 10 seconds if the mch crd exists and image image manifests map is empty
 	if mchCrdExists && len(config.GetImageManifests()) == 0 {
 		// if the mch CR is not ready, then requeue the request after 10s
@@ -284,7 +283,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// create the certificates
-	err = certificates.CreateObservabilityCerts(r.Client, r.Scheme, instance, ingressCtlCrdExists)
+	err = certctrl.CreateObservabilityCerts(r.Client, r.Scheme, instance, ingressCtlCrdExists)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -301,7 +300,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return *result, err
 	}
 
-	svmCrdExists, _ := r.CRDMap[config.StorageVersionMigrationCrdName]
+	svmCrdExists := r.CRDMap[config.StorageVersionMigrationCrdName]
 	if svmCrdExists {
 		// create or update the storage version migration resource
 		err = createOrUpdateObservabilityStorageVersionMigrationResource(r.Client, r.Scheme, instance)
@@ -324,7 +323,7 @@ func labelsForMultiClusterMonitoring(name string) map[string]string {
 
 func (r *MultiClusterObservabilityReconciler) initFinalization(
 	mco *mcov1beta2.MultiClusterObservability) (bool, error) {
-	if mco.GetDeletionTimestamp() != nil && commonutil.Contains(mco.GetFinalizers(), resFinalizer) {
+	if mco.GetDeletionTimestamp() != nil && slices.Contains(mco.GetFinalizers(), resFinalizer) {
 		log.Info("To delete resources across namespaces")
 		// clean up the cluster resources, eg. clusterrole, clusterrolebinding, etc
 		if err := cleanUpClusterScopedResources(r, mco); err != nil {
@@ -348,7 +347,7 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 
 		return true, nil
 	}
-	if !commonutil.Contains(mco.GetFinalizers(), resFinalizer) {
+	if !slices.Contains(mco.GetFinalizers(), resFinalizer) {
 		mco.SetFinalizers(commonutil.Remove(mco.GetFinalizers(), certFinalizer))
 		mco.SetFinalizers(append(mco.GetFinalizers(), resFinalizer))
 		err := r.Client.Update(context.TODO(), mco)
@@ -562,7 +561,7 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 			},
 		}
 
-		mchCrdExists, _ := r.CRDMap[config.MCHCrdName]
+		mchCrdExists := r.CRDMap[config.MCHCrdName]
 		if mchCrdExists {
 			// secondary watch for MCH
 			ctrBuilder = ctrBuilder.Watches(
@@ -673,16 +672,12 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 }
 
 func updateStorageSizeChange(c client.Client, matchLabels map[string]string, storageSize string) error {
-
-	pvcList := []corev1.PersistentVolumeClaim{}
-	stsList := []appsv1.StatefulSet{}
-
 	pvcList, err := commonutil.GetPVCList(c, config.GetDefaultNamespace(), matchLabels)
 	if err != nil {
 		return err
 	}
 
-	stsList, err = commonutil.GetStatefulSetList(c, config.GetDefaultNamespace(), matchLabels)
+	stsList, err := commonutil.GetStatefulSetList(c, config.GetDefaultNamespace(), matchLabels)
 	if err != nil {
 		return err
 	}
@@ -703,7 +698,7 @@ func updateStorageSizeChange(c client.Client, matchLabels map[string]string, sto
 	// update sts
 	for index, sts := range stsList {
 		err := c.Delete(context.TODO(), &stsList[index], &client.DeleteOptions{})
-		if err != nil && !errors.IsNotFound(err) {
+		if err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
 		log.Info("Successfully delete sts due to storage size changed", "sts", sts.Name)
@@ -781,7 +776,7 @@ func GenerateAlertmanagerRoute(
 		types.NamespacedName{Name: amGateway.Name, Namespace: amGateway.Namespace},
 		found,
 	)
-	if err != nil && errors.IsNotFound(err) {
+	if err != nil && apierrors.IsNotFound(err) {
 		log.Info(
 			"Creating a new route to expose alertmanager",
 			"amGateway.Namespace",
@@ -875,7 +870,7 @@ func GenerateProxyRoute(
 		types.NamespacedName{Name: proxyGateway.Name, Namespace: proxyGateway.Namespace},
 		found,
 	)
-	if err != nil && errors.IsNotFound(err) {
+	if err != nil && apierrors.IsNotFound(err) {
 		log.Info(
 			"Creating a new route to expose rbac proxy",
 			"proxyGateway.Namespace",
@@ -934,7 +929,7 @@ func cleanUpClusterScopedResources(
 		}
 	}
 
-	ingressCtlCrdExists, _ := r.CRDMap[config.IngressControllerCRD]
+	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
 	if ingressCtlCrdExists {
 		return DeleteGrafanaOauthClient(r.Client)
 	}

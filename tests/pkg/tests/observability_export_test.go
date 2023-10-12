@@ -52,7 +52,7 @@ var _ = Describe("Observability:", func() {
 
 		By("Updating mco cr to inject WriteStorage")
 		templatePath := "../../../examples/export/v1beta2"
-		if os.Getenv("IS_CANARY_ENV") != "true" {
+		if os.Getenv("IS_CANARY_ENV") != TrueStr {
 			templatePath = "../../../examples/export/v1beta2/custom-certs"
 		}
 		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: templatePath})

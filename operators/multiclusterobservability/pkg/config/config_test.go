@@ -28,7 +28,6 @@ import (
 var (
 	apiServerURL           = "http://example.com"
 	clusterID              = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-	version                = "2.1.1"
 	DefaultDSImgRepository = "quay.io:443/acm-d"
 )
 
@@ -333,8 +332,7 @@ func NewFakeClient(mco *mcov1beta2.MultiClusterObservability,
 }
 
 func TestReadImageManifestConfigMap(t *testing.T) {
-	var buildTestImageManifestCM func(ns, version string) *corev1.ConfigMap
-	buildTestImageManifestCM = func(ns, version string) *corev1.ConfigMap {
+	buildTestImageManifestCM := func(ns, version string) *corev1.ConfigMap {
 		return &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      ImageManifestConfigMapNamePrefix + version,
@@ -352,7 +350,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 
 	ns := "testing"
 	scheme := runtime.NewScheme()
-	corev1.AddToScheme(scheme)
+	corev1.AddToScheme(scheme) //nolint:errcheck
 
 	caseList := []struct {
 		name         string
@@ -918,8 +916,8 @@ func TestGetOperandName(t *testing.T) {
 
 				// Register operator types with the runtime scheme.
 				s := scheme.Scheme
-				mcov1beta2.SchemeBuilder.AddToScheme(s)
-				observatoriumv1alpha1.AddToScheme(s)
+				mcov1beta2.SchemeBuilder.AddToScheme(s) //nolint:errcheck
+				observatoriumv1alpha1.AddToScheme(s)    //nolint:errcheck
 				client := fake.NewFakeClientWithScheme(s, []runtime.Object{mco, observatorium}...)
 				SetMonitoringCRName(GetDefaultCRName())
 				SetOperandNames(client)
@@ -966,8 +964,8 @@ func TestGetOperandName(t *testing.T) {
 
 				// Register operator types with the runtime scheme.
 				s := scheme.Scheme
-				mcov1beta2.SchemeBuilder.AddToScheme(s)
-				observatoriumv1alpha1.AddToScheme(s)
+				mcov1beta2.SchemeBuilder.AddToScheme(s) //nolint:errcheck
+				observatoriumv1alpha1.AddToScheme(s)    //nolint:errcheck
 				client := fake.NewFakeClientWithScheme(s, []runtime.Object{mco, observatorium}...)
 
 				SetMonitoringCRName(GetDefaultCRName())
@@ -1015,8 +1013,8 @@ func TestGetOperandName(t *testing.T) {
 
 				// Register operator types with the runtime scheme.
 				s := scheme.Scheme
-				mcov1beta2.SchemeBuilder.AddToScheme(s)
-				observatoriumv1alpha1.AddToScheme(s)
+				mcov1beta2.SchemeBuilder.AddToScheme(s) //nolint:errcheck
+				observatoriumv1alpha1.AddToScheme(s)    //nolint:errcheck
 				client := fake.NewFakeClientWithScheme(s, []runtime.Object{mco, observatorium}...)
 
 				SetMonitoringCRName(GetDefaultCRName())

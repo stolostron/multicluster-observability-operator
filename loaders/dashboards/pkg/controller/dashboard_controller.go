@@ -36,12 +36,6 @@ const (
 	homeDashboardTitle  = "ACM - Clusters Overview"
 )
 
-// DashboardLoader ...
-type DashboardLoader struct {
-	coreClient corev1client.CoreV1Interface
-	informer   cache.SharedIndexInformer
-}
-
 var (
 	grafanaURI = "http://127.0.0.1:3001"
 	//retry on errors
@@ -358,7 +352,6 @@ func deleteDashboard(obj interface{}) {
 			deleteCustomFolder(folderID)
 		}
 	}
-	return
 }
 
 func setHomeDashboard(id int) {

@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"time"
 
+	"golang.org/x/exp/slices"
 	appv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -24,7 +25,6 @@ import (
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	"open-cluster-management.io/addon-framework/pkg/addonmanager"
 )
 
@@ -132,7 +132,7 @@ func updateDeployLabel(c client.Client, dName string, isUpdate bool) {
 
 func needsRenew(s v1.Secret) bool {
 	certSecretNames := []string{serverCACerts, clientCACerts, serverCerts, grafanaCerts}
-	if !util.Contains(certSecretNames, s.Name) {
+	if !slices.Contains(certSecretNames, s.Name) {
 		return false
 	}
 	data := s.Data["tls.crt"]
@@ -167,7 +167,7 @@ func onAdd(c client.Client) func(obj interface{}) {
 func onDelete(c client.Client) func(obj interface{}) {
 	return func(obj interface{}) {
 		s := *obj.(*v1.Secret)
-		if util.Contains(caSecretNames, s.Name) {
+		if slices.Contains(caSecretNames, s.Name) {
 			mco := &mcov1beta2.MultiClusterObservability{}
 			err := c.Get(context.TODO(), types.NamespacedName{
 				Name: config.GetMonitoringCRName(),
@@ -217,7 +217,7 @@ func onUpdate(c client.Client, ingressCtlCrdExists bool) func(oldObj, newObj int
 		if !reflect.DeepEqual(oldS.Data, newS.Data) {
 			restartPods(c, newS, true)
 		} else {
-			if util.Contains(caSecretNames, newS.Name) {
+			if slices.Contains(caSecretNames, newS.Name) {
 				removeExpiredCA(c, newS.Name)
 			}
 			if needsRenew(newS) {

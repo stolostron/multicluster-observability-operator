@@ -25,19 +25,15 @@ import (
 	userv1 "github.com/openshift/api/user/v1"
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/rewrite"
-
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
-
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-
 	"k8s.io/klog"
 	"k8s.io/kubectl/pkg/util/slice"
-
 	clusterclientset "open-cluster-management.io/api/client/cluster/clientset/versioned"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
@@ -469,16 +465,6 @@ func GetUserName(token string, url string) string {
 	return user.Name
 }
 
-// Contains is used to check whether a list contains string s
-func Contains(list []string, s string) bool {
-	for _, v := range list {
-		if v == s {
-			return true
-		}
-	}
-	return false
-}
-
 // canAccessAllClusters check user have permission to access all clusters
 func canAccessAllClusters(projectList []string) bool {
 	if len(allManagedClusterNames) == 0 && len(projectList) == 0 {
@@ -486,7 +472,7 @@ func canAccessAllClusters(projectList []string) bool {
 	}
 
 	for name := range allManagedClusterNames {
-		if !Contains(projectList, name) {
+		if !slices.Contains(projectList, name) {
 			return false
 		}
 	}

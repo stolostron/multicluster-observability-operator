@@ -10,6 +10,7 @@ import (
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
+	"golang.org/x/exp/slices"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -112,6 +113,7 @@ func newImagesCM() *corev1.ConfigMap {
 	}
 }
 
+// nolint:errcheck
 func init() {
 	os.Setenv("UNIT_TEST", "true")
 	s := scheme.Scheme
@@ -224,12 +226,12 @@ alertmanager-router-ca: |
 	if err != nil {
 		t.Fatalf("Failed to get observabilityAddon: (%v)", err)
 	}
-	if !contains(foundOba.Finalizers, obsAddonFinalizer) {
+	if !slices.Contains(foundOba.Finalizers, obsAddonFinalizer) {
 		t.Fatal("Finalizer not set in observabilityAddon")
 	}
 
 	// test reconcile w/o clusterversion(OCP 3.11)
-	c.Delete(ctx, cv)
+	c.Delete(ctx, cv) // nolint:errcheck
 	req = ctrl.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      "install",
@@ -349,7 +351,7 @@ alertmanager-router-ca: |
 	if err != nil {
 		t.Fatalf("Failed to get observabilityAddon: (%v)", err)
 	}
-	if contains(foundOba1.Finalizers, obsAddonFinalizer) {
+	if slices.Contains(foundOba1.Finalizers, obsAddonFinalizer) {
 		t.Fatal("Finalizer not removed from observabilityAddon")
 	}
 }

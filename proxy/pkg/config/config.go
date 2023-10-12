@@ -30,37 +30,37 @@ var (
 	requiredLabelList = []string{"name", "cluster.open-cluster-management.io/clusterset"}
 )
 
-// GetManagedClusterLabelAllowListConfigMapKey return the key name for the managedcluster labels
+// GetManagedClusterLabelAllowListConfigMapKey return the key name for the managedcluster labels.
 func GetManagedClusterLabelAllowListConfigMapKey() string {
 	return ManagedClusterLabelAllowListConfigMapKey
 }
 
-// GetManagedClusterLabelConfigMapName return the name for the managedcluster labels configmap
+// GetManagedClusterLabelConfigMapName return the name for the managedcluster labels configmap.
 func GetManagedClusterLabelAllowListConfigMapName() string {
 	return ManagedClusterLabelAllowListConfigMapName
 }
 
-// GetManagedClusterLabelList will return the current cluster label list
+// GetManagedClusterLabelList will return the current cluster label list.
 func GetManagedClusterLabelList() *ManagedClusterLabelList {
 	return &ManagedLabelList
 }
 
-// GetSyncLabelList will return the synced label list
+// GetSyncLabelList will return the synced label list.
 func GetRequiredLabelList() []string {
 	return requiredLabelList
 }
 
-// GetSyncLabelList will return the synced label list
+// GetSyncLabelList will return the synced label list.
 func GetSyncLabelList() *ManagedClusterLabelList {
 	return &SyncLabelList
 }
 
-// GetRBACProxyLabelMetricName returns the name of the rbac query proxy label metric
+// GetRBACProxyLabelMetricName returns the name of the rbac query proxy label metric.
 func GetRBACProxyLabelMetricName() string {
 	return RBACProxyLabelMetricName
 }
 
-// CreateManagedClusterLabelAllowListCM creates a managedcluster label allowlist configmap object
+// CreateManagedClusterLabelAllowListCM creates a managedcluster label allowlist configmap object.
 func CreateManagedClusterLabelAllowListCM(namespace string) *v1.ConfigMap {
 	return &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -89,7 +89,7 @@ ignore_labels:
 `}}
 }
 
-// GetManagedClusterLabelAllowListConfigmap returns the managedcluster label allowlist configmap
+// GetManagedClusterLabelAllowListConfigmap returns the managedcluster label allowlist configmap.
 func GetManagedClusterLabelAllowListConfigmap(kubeClient kubernetes.Interface, namespace string) (*v1.ConfigMap,
 	error) {
 	configmap, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(

@@ -190,6 +190,7 @@ func FetchBearerToken(opt TestOptions) (string, error) {
 		return "", err
 	}
 	for _, secret := range secretList.Items {
+		// nolint:staticcheck
 		if secret.GetObjectMeta() != nil && len(secret.GetObjectMeta().GetAnnotations()) > 0 {
 			annos := secret.GetObjectMeta().GetAnnotations()
 			sa, saExists := annos["kubernetes.io/service-account.name"]

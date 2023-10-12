@@ -168,7 +168,7 @@ func (mco *MultiClusterObservability) validateUpdateMultiClusterObservabilitySto
 	return nil
 }
 
-// createOrGetKubeClient creates or gets the existing kubeClient
+// createOrGetKubeClient creates or gets the existing kubeClient.
 func createOrGetKubeClient() (kubernetes.Interface, error) {
 	if kubeClient != nil {
 		return kubeClient, nil
@@ -180,7 +180,7 @@ func createOrGetKubeClient() (kubernetes.Interface, error) {
 	return kubeClient, nil
 }
 
-// getSelectedStorageClassForMultiClusterObservability get secected for the MultiClusterObservability CR
+// getSelectedStorageClassForMultiClusterObservability get secected for the MultiClusterObservability CR.
 func getSelectedStorageClassForMultiClusterObservability(
 	c kubernetes.Interface,
 	mco *MultiClusterObservability,
@@ -217,7 +217,7 @@ func getSelectedStorageClassForMultiClusterObservability(
 	return expectedSC, nil
 }
 
-// storageClassAllowVolumeExpansion check if the storageclass allow volume expansion
+// storageClassAllowVolumeExpansion check if the storageclass allow volume expansion.
 func storageClassAllowVolumeExpansion(c kubernetes.Interface, name string) (bool, error) {
 	sc, err := c.StorageV1().StorageClasses().Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
@@ -225,7 +225,7 @@ func storageClassAllowVolumeExpansion(c kubernetes.Interface, name string) (bool
 	}
 
 	scAllowVolumeExpansion := false
-	// AllowVolumeExpansion may be omited with default false value
+	// AllowVolumeExpansion may be omitted with default false value.
 	if sc.AllowVolumeExpansion != nil {
 		scAllowVolumeExpansion = *sc.AllowVolumeExpansion
 	}

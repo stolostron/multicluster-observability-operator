@@ -5,6 +5,7 @@ package util
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -114,13 +115,13 @@ func TestMergeAllowList(t *testing.T) {
 	}
 	list, ocp3List, uwlList := MergeAllowlist(allowlist, customAllowlist, ocp3Allowlist,
 		uwlAllowlist, customUwlAllowlist)
-	if !Contains(list.NameList, "custom_a") {
+	if !slices.Contains(list.NameList, "custom_a") {
 		t.Error("metrics custom_a not merged into allowlist")
 	}
-	if !Contains(ocp3List.NameList, "custom_a") {
+	if !slices.Contains(ocp3List.NameList, "custom_a") {
 		t.Error("metrics custom_a not merged into allowlist")
 	}
-	if !Contains(uwlList.NameList, "custom_uwl_a") {
+	if !slices.Contains(uwlList.NameList, "custom_uwl_a") {
 		t.Error("metrics custom_uwl_a not merged into uwl allowlist")
 	}
 }

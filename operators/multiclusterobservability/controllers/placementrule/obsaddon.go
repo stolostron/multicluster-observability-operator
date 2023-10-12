@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -123,7 +124,7 @@ func deleteStaleObsAddon(c client.Client, namespace string, isForce bool) error 
 }
 
 func deleteFinalizer(c client.Client, obsaddon *obsv1beta1.ObservabilityAddon) error {
-	if util.Contains(obsaddon.GetFinalizers(), obsAddonFinalizer) {
+	if slices.Contains(obsaddon.GetFinalizers(), obsAddonFinalizer) {
 		obsaddon.SetFinalizers(util.Remove(obsaddon.GetFinalizers(), obsAddonFinalizer))
 		err := c.Update(context.TODO(), obsaddon)
 		if err != nil {

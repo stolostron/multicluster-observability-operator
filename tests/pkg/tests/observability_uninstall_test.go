@@ -16,7 +16,7 @@ import (
 )
 
 func uninstallMCO() {
-	if os.Getenv("SKIP_UNINSTALL_STEP") == "true" {
+	if os.Getenv("SKIP_UNINSTALL_STEP") == TrueStr {
 		return
 	}
 
@@ -30,7 +30,7 @@ func uninstallMCO() {
 		testOptions.KubeConfig,
 		testOptions.HubCluster.KubeContext)
 
-	By("Deleteing the MCO testing RBAC resources")
+	By("Deleting the MCO testing RBAC resources")
 	Expect(utils.DeleteMCOTestingRBAC(testOptions)).NotTo(HaveOccurred())
 
 	By("Uninstall MCO instance")

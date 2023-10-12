@@ -32,7 +32,7 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("@BVT - [P1][Sev1][observability][Stable] Checking metrics default values on managed cluster (config/g0)", func() {
-		if os.Getenv("SKIP_INSTALL_STEP") == "true" {
+		if os.Getenv("SKIP_INSTALL_STEP") == TrueStr {
 			Skip("Skip the case due to MCO CR was created customized")
 		}
 		mcoRes, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
@@ -46,7 +46,7 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("@BVT - [P1][Sev1][observability][Stable] Checking default value of PVC and StorageClass (config/g0)", func() {
-		if os.Getenv("SKIP_INSTALL_STEP") == "true" {
+		if os.Getenv("SKIP_INSTALL_STEP") == TrueStr {
 			Skip("Skip the case due to MCO CR was created customized")
 		}
 		mcoSC, err := dynClient.Resource(utils.NewMCOGVRV1BETA2()).
@@ -60,7 +60,7 @@ var _ = Describe("Observability:", func() {
 		scMatch := false
 		defaultSC := ""
 		for _, sc := range scList.Items {
-			if sc.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
+			if sc.Annotations["storageclass.kubernetes.io/is-default-class"] == TrueStr {
 				defaultSC = sc.Name
 			}
 			if sc.Name == scInCR {

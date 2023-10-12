@@ -20,7 +20,7 @@ import (
 )
 
 func installMCO() {
-	if os.Getenv("SKIP_INSTALL_STEP") == "true" {
+	if os.Getenv("SKIP_INSTALL_STEP") == TrueStr {
 		return
 	}
 
@@ -87,7 +87,7 @@ func installMCO() {
 	}).Should(Succeed())
 
 	Expect(utils.CreateMCONamespace(testOptions)).NotTo(HaveOccurred())
-	if os.Getenv("IS_CANARY_ENV") == "true" {
+	if os.Getenv("IS_CANARY_ENV") == TrueStr {
 		Expect(utils.CreatePullSecret(testOptions, mcoNs)).NotTo(HaveOccurred())
 		Expect(utils.CreateObjSecret(testOptions)).NotTo(HaveOccurred())
 	} else {
@@ -112,7 +112,7 @@ func installMCO() {
 	By("Creating the MCO testing RBAC resources")
 	Expect(utils.CreateMCOTestingRBAC(testOptions)).NotTo(HaveOccurred())
 
-	if os.Getenv("SKIP_INTEGRATION_CASES") != "true" {
+	if os.Getenv("SKIP_INTEGRATION_CASES") != TrueStr {
 		By("Creating MCO instance of v1beta1")
 		v1beta1KustomizationPath := "../../../examples/mco/e2e/v1beta1"
 		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: v1beta1KustomizationPath})
@@ -166,7 +166,7 @@ func installMCO() {
 		Expect(err).NotTo(HaveOccurred())
 	}
 
-	if os.Getenv("IS_CANARY_ENV") != "true" {
+	if os.Getenv("IS_CANARY_ENV") != TrueStr {
 		By("Recreating Minio-tls as object storage")
 		//set resource quota and limit range for canary environment to avoid destruct the node
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/minio-tls"})
