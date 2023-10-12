@@ -332,7 +332,7 @@ func (w *Worker) Run(ctx context.Context) {
 		}
 
 		select {
-		// If the context is cancelled, then we're done.
+		// If the context is canceled, then we're done.
 		case <-ctx.Done():
 			return
 		case <-time.After(wait):

@@ -150,7 +150,7 @@ func (e *Evaluator) Run(ctx context.Context) {
 		e.evaluate(ctx)
 
 		select {
-		// If the context is cancelled, then we're done.
+		// If the context is canceled, then we're done.
 		case <-ctx.Done():
 			return
 		case <-time.After(wait):

@@ -15,6 +15,7 @@ func family(name string, timestamps ...int64) *clientmodel.MetricFamily {
 	return families
 }
 
+//nolint:unparam
 func metric(timestamp int64) *clientmodel.Metric {
 	return &clientmodel.Metric{
 		TimestampMs: &timestamp,

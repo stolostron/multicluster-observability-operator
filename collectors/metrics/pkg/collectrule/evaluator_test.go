@@ -21,6 +21,7 @@ func getTimePointer(d time.Duration) *time.Time {
 	return &testTime
 }
 
+//nolint:unparam
 func getHash(k string, v string) uint64 {
 	ls := labels.Labels{}
 	ls = append(ls, labels.Label{

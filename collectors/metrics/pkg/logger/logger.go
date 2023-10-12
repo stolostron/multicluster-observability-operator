@@ -17,7 +17,7 @@ const (
 	Error LogLevel = "error"
 )
 
-// LogLevelFromString determines log level to string, defaults to all,
+// LogLevelFromString determines log level to string, defaults to all.
 func LogLevelFromString(l string) level.Option {
 	switch l {
 	case "debug":
@@ -33,7 +33,7 @@ func LogLevelFromString(l string) level.Option {
 	}
 }
 
-// Log is used to handle the error of logger.Log globally
+// Log is used to handle the error of logger.Log globally.
 func Log(log log.Logger, l LogLevel, keyvals ...interface{}) {
 	//errkey := "failover_err_%d"
 	switch l {

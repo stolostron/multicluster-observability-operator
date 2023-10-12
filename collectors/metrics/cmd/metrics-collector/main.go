@@ -593,7 +593,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 	}
 }
 
-// serveLastMetrics retrieves the last set of metrics served
+// serveLastMetrics retrieves the last set of metrics served.
 func serveLastMetrics(l log.Logger, worker *forwarder.Worker) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != "GET" {
