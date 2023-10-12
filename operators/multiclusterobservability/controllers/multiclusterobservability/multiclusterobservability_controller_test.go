@@ -347,7 +347,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get namespace: (%v)", err)
 	}
-	if _, ok := updatedNS.Labels[config.OpenShiftClusterMonitoringlabel]; !ok {
+	if val, ok := updatedNS.ObjectMeta.Labels[config.OpenShiftClusterMonitoringlabel]; !ok || val != "true" {
 		t.Fatalf("Failed to get correct namespace label, expect true")
 	}
 
@@ -964,6 +964,42 @@ func createPersistentVolumeClaim(name, namespace, pvcName string) *corev1.Persis
 					corev1.ResourceName(corev1.ResourceStorage): resource.MustParse("1Gi"),
 				},
 			},
+		},
+	}
+}
+
+func newMultiClusterObservability() *mcov1beta2.MultiClusterObservability {
+	return &mcov1beta2.MultiClusterObservability{
+		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{Name: "test"},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
+					Key:  "test",
+					Name: "test",
+				},
+				AlertmanagerStorageSize: "2Gi",
+			},
+		},
+	}
+}
+
+func createNamespaceInstance(name string) *corev1.Namespace {
+	return &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				"openshift.io/cluster-monitoring": "true",
+			},
+		},
+	}
+}
+
+func createAlertManagerConfigMap(name string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: config.GetDefaultNamespace(),
 		},
 	}
 }
