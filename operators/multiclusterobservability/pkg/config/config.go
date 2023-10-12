@@ -108,6 +108,7 @@ const (
 	WebhookServiceName                 = "multicluster-observability-webhook-service"
 	BackupLabelName                    = "cluster.open-cluster-management.io/backup"
 	BackupLabelValue                   = ""
+	OpenShiftClusterMonitoringlabel    = "openshift.io/cluster-monitoring"
 )
 
 const (

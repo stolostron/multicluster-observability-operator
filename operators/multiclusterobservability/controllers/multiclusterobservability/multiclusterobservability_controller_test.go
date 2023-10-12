@@ -339,6 +339,18 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	//wait for update status
 	time.Sleep(1 * time.Second)
 
+	//verify openshiftcluster monitoring label is set to true in namespace
+	updatedNS := &corev1.Namespace{}
+	err = cl.Get(context.TODO(), types.NamespacedName{
+		Name: namespace,
+	}, updatedNS)
+	if err != nil {
+		t.Fatalf("Failed to get namespace: (%v)", err)
+	}
+	if _, ok := updatedNS.Labels[config.OpenShiftClusterMonitoringlabel]; !ok {
+		t.Fatalf("Failed to get correct namespace label, expect true")
+	}
+
 	updatedMCO := &mcov1beta2.MultiClusterObservability{}
 	err = cl.Get(context.TODO(), req.NamespacedName, updatedMCO)
 	if err != nil {

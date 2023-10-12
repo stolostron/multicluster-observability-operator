@@ -58,8 +58,9 @@ const (
 )
 
 const (
-	infoAddingBackupLabel  = "adding backup label"
-	errorAddingBackupLabel = "failed to add backup label"
+	infoAddingBackupLabel           = "adding backup label"
+	errorAddingBackupLabel          = "failed to add backup label"
+	openShiftClusterMonitoringLabel = "openshift.io/cluster-monitoring"
 )
 
 var (
@@ -246,6 +247,18 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 				res.GetKind(), resNS, res.GetName()))
 			return ctrl.Result{}, err
 		}
+	}
+
+	/*
+		In ACM 2.9, we need to ensure that the openshift.io/cluster-monitoring is added to the same namespace as the
+		Multi-cluster Observability Operator to avoid conflicts with the openshift-* namespace when deploying PrometheusRules and
+		ServiceMonitors in ACM.
+	*/
+	_, err = r.ensureOpenShiftNamespaceLabel(ctx, instance)
+	if err != nil {
+		r.Log.Error(err, "Failed to add to %s label to namespace: %s", openShiftClusterMonitoringLabel,
+			instance.GetNamespace())
+		return ctrl.Result{}, err
 	}
 
 	// the route resource won't be created in testing env, for instance, KinD
@@ -928,4 +941,39 @@ func cleanUpClusterScopedResources(
 	}
 
 	return nil
+}
+
+func (r *MultiClusterObservabilityReconciler) ensureOpenShiftNamespaceLabel(ctx context.Context,
+	m *mcov1beta2.MultiClusterObservability) (reconcile.Result, error) {
+
+	log := logf.FromContext(ctx)
+	existingNs := &corev1.Namespace{}
+	resNS := m.GetNamespace()
+	if resNS == "" {
+		resNS = config.GetDefaultNamespace()
+	}
+
+	err := r.Client.Get(ctx, types.NamespacedName{Name: resNS}, existingNs)
+	if err != nil || errors.IsNotFound(err) {
+		log.Error(err, fmt.Sprintf("Failed to find namespace for Multicluster Operator: %s", m.GetNamespace()))
+		return reconcile.Result{Requeue: true}, err
+	}
+
+	if existingNs.ObjectMeta.Labels == nil || len(existingNs.ObjectMeta.Labels) == 0 {
+		existingNs.ObjectMeta.Labels = make(map[string]string)
+	}
+
+	if _, ok := existingNs.ObjectMeta.Labels[config.OpenShiftClusterMonitoringlabel]; !ok {
+		log.Info(fmt.Sprintf("Adding label: %s to namespace: %s", config.OpenShiftClusterMonitoringlabel, resNS))
+		existingNs.ObjectMeta.Labels[openShiftClusterMonitoringLabel] = "true"
+
+		err = r.Client.Update(ctx, existingNs)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Failed to update namespace for MultiClusterHub: %s with the label: %s",
+				m.GetNamespace(), config.OpenShiftClusterMonitoringlabel))
+			return reconcile.Result{Requeue: true}, err
+		}
+	}
+
+	return reconcile.Result{}, nil
 }
