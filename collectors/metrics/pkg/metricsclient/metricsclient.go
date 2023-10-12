@@ -20,7 +20,7 @@ import (
 
 	"github.com/cenkalti/backoff"
 	"github.com/efficientgo/core/errors"
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
 	"github.com/prometheus/client_golang/prometheus"

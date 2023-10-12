@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 

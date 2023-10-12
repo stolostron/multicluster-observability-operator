@@ -9,7 +9,6 @@ require (
 	github.com/efficientgo/core v1.0.0-rc.2
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-co-op/gocron v1.18.0
-	github.com/go-kit/kit v0.12.0
 	github.com/go-kit/log v0.2.1
 	github.com/go-logr/logr v1.2.4
 	github.com/gogo/protobuf v1.3.2
@@ -73,6 +72,7 @@ require (
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
+	github.com/go-kit/kit v0.12.0 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-logr/zapr v1.2.4 // indirect

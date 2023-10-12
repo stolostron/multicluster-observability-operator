@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/efficientgo/core/errors"
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
 	prom "github.com/prometheus/client_model/go"
 	"k8s.io/client-go/kubernetes/scheme"

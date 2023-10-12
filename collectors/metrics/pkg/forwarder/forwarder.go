@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 
 	"github.com/efficientgo/core/errors"
 	"github.com/prometheus/client_golang/prometheus"
