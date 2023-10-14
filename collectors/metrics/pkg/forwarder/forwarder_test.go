@@ -3,6 +3,7 @@ package forwarder
 
 import (
 	"context"
+	stdlog "log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -232,10 +233,10 @@ func TestRun(t *testing.T) {
 		go func() {
 			from, err := url.Parse(ts2.URL)
 			if err != nil {
-				t.Fatalf("failed to parse second test server URL: %v", err)
+				stdlog.Fatalf("failed to parse second test server URL: %v", err)
 			}
 			if err := w.Reconfigure(Config{From: from, FromQuery: from, Logger: log.NewNopLogger()}); err != nil {
-				t.Fatalf("failed to reconfigure worker with second test server url: %v", err)
+				stdlog.Fatalf("failed to reconfigure worker with second test server url: %v", err)
 			}
 		}()
 	}))

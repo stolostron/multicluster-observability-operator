@@ -5,6 +5,7 @@ package controller
 
 import (
 	"context"
+	stdlog "log"
 	"net/http"
 	"os"
 	"testing"
@@ -85,7 +86,7 @@ func createFakeServer(t *testing.T) {
 
 	err := http.ListenAndServe(":3001", server3001)
 	if err != nil {
-		t.Fatal("fail to create internal server at 3001")
+		stdlog.Fatal("fail to create internal server at 3001")
 	}
 }
 

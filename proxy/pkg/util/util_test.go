@@ -5,6 +5,7 @@ package util
 
 import (
 	"context"
+	stdlog "log"
 	"net/http"
 	"net/url"
 	"os"
@@ -36,7 +37,7 @@ func createFakeServerWithInvalidJSON(port string, t *testing.T) {
 	)
 	err := http.ListenAndServe(":"+port, server)
 	if err != nil {
-		t.Fatal("fail to create internal server at " + port)
+		stdlog.Fatal("fail to create internal server at " + port)
 	}
 }
 
@@ -102,7 +103,7 @@ func createFakeServer(port string, t *testing.T) {
 	)
 	err := http.ListenAndServe(":"+port, server)
 	if err != nil {
-		t.Fatal("fail to create internal server at " + port)
+		stdlog.Fatal("fail to create internal server at " + port)
 	}
 }
 func TestModifyMetricsQueryParams(t *testing.T) {

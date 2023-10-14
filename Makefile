@@ -98,8 +98,9 @@ format: go-format shell-format
 #      --cpu-profile-path string   Path to CPU profile output file
 #      --mem-profile-path string   Path to memory profile output file
 # to debug big allocations during linting.
-.PHONY: go-lint
-go-lint: check-git deps $(GOLANGCI_LINT) $(FAILLINT)
+.PHONY: lint
+lint: check-git deps format $(GOLANGCI_LINT) $(FAILLINT)
+	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')
 	@echo ">> verifying modules being imported"
 	@$(FAILLINT) -paths "errors=github.com/efficientgo/core/errors,\
 github.com/pkg/errors=github.com/efficientgo/core/errors,\
@@ -114,9 +115,12 @@ sync/atomic=go.uber.org/atomic,\
 io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile}" $(shell go list ./... | grep -v "internal/cortex")
 	@$(FAILLINT) -paths "fmt.{Print,Println}" -ignore-tests ./...
 	@echo ">> examining all of the Go files"
-	# @go vet -stdmethods=false ./...
+	@go vet -stdmethods=false ./...
 	@echo ">> linting all of the Go files GOGC=${GOGC}"
 	@$(GOLANGCI_LINT) run
+	# TODO(saswatamcode): Enable this in a separate commit.
+	# @echo ">> ensuring Copyright headers"
+	# @go run ./scripts/copyright
 	@echo ">> detecting misspells"
 	@find . -type f | grep -v vendor/ | grep -vE '\./\..*' | gxargs $(MISSPELL) -error
 	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')
