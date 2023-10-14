@@ -78,8 +78,8 @@ func TestCreateCertificates(t *testing.T) {
 	}
 	mco := getMco()
 	s := scheme.Scheme
-	mcov1beta2.SchemeBuilder.AddToScheme(s) //nolint:errcheck
-	routev1.AddToScheme(s)                  //nolint:errcheck
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	routev1.AddToScheme(s)
 
 	c := fake.NewClientBuilder().WithRuntimeObjects(route).Build()
 

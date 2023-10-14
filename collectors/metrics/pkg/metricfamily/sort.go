@@ -104,7 +104,7 @@ func MergeSortedWithTimestamps(families []*clientmodel.MetricFamily) []*clientmo
 
 // PackedFamilyWithTimestampsByName sorts a packed slice of metrics
 // (no nils, all families have at least one metric, and all metrics
-// have timestamps) in order of metric name and then oldest sample
+// have timestamps) in order of metric name and then oldest sample.
 type PackedFamilyWithTimestampsByName []*clientmodel.MetricFamily
 
 func (families PackedFamilyWithTimestampsByName) Len() int {

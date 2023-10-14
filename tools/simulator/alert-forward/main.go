@@ -193,7 +193,7 @@ func main() {
 	}
 }
 
-// createAlertmanagerConfig creates and returns the configuration for the target Alertmanager
+// createAlertmanagerConfig creates and returns the configuration for the target Alertmanager.
 func createAlertmanagerConfig(amHost, amScheme, amAPIVersion, amAccessToken string) *config.AlertmanagerConfig {
 	return &config.AlertmanagerConfig{
 		APIVersion: config.AlertmanagerAPIVersion(amAPIVersion),
@@ -220,7 +220,7 @@ func createAlertmanagerConfig(amHost, amScheme, amAPIVersion, amAccessToken stri
 	}
 }
 
-// send alerts to alertmanager with one http request
+// send alerts to alertmanager with one http request.
 func sendOne(c *http.Client, traceCtx context.Context, url string, b []byte) error {
 	req, err := http.NewRequestWithContext(traceCtx, "POST", url, bytes.NewReader(b))
 	if err != nil {
@@ -236,7 +236,9 @@ func sendOne(c *http.Client, traceCtx context.Context, url string, b []byte) err
 
 	defer func() {
 		/* #nosec */
-		io.Copy(io.Discard, resp.Body) //nolint:errcheck
+		// TODO(saswatamcode): Check err here.
+		//nolint:errcheck
+		io.Copy(io.Discard, resp.Body)
 		/* #nosec */
 		resp.Body.Close()
 	}()

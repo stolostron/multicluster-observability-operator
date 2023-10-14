@@ -141,7 +141,7 @@ func TestWebhookController(t *testing.T) {
 			wc := NewWebhookController(cl, c.reconciledmwh, c.reconciledvwh)
 			ctx, cancel := context.WithCancel(context.Background())
 			go func() {
-				wc.Start(ctx) //nolint:errcheck
+				wc.Start(ctx)
 			}()
 			time.Sleep(1 * time.Second)
 			cancel()

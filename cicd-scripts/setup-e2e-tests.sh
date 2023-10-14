@@ -203,7 +203,7 @@ wait_for_observability_ready() {
   for ((i = 1; i <= retry_number; i++)); do
 
     if kubectl wait --timeout=${timeout} --for=condition=Ready mco/observability &>/dev/null; then
-      echo "Observability has been started up and is runing."
+      echo "Observability has been started up and is running."
       break
     else
       echo "timeout wait for mco are ready, retry in 10s...."
@@ -252,7 +252,7 @@ wait_for_deployment_ready() {
     fi
 
     if kubectl -n ${ns} wait --timeout=${timeout} --for=condition=Available deploy ${@:4} &>/dev/null; then
-      echo "deployment ${@:4} have been started up and are runing."
+      echo "deployment ${@:4} have been started up and are running."
       break
     else
       echo "timeout wait for deployment ${@:4} are ready, retry in 10s...."
@@ -272,7 +272,7 @@ execute() {
   approve_csr_joinrequest
   deploy_mco_operator
   deploy_grafana_test
-  echo "OCM and MCO are installed successfuly..."
+  echo "OCM and MCO are installed successfully..."
 }
 
 # start executing the ACTION

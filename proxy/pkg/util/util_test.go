@@ -31,7 +31,7 @@ func createFakeServerWithInvalidJSON(port string, t *testing.T) {
 	server := http.NewServeMux()
 	server.HandleFunc("/",
 		func(w http.ResponseWriter, req *http.Request) {
-			w.Write([]byte("invalid json")) //nolint:errcheck
+			w.Write([]byte("invalid json"))
 		},
 	)
 	err := http.ListenAndServe(":"+port, server)
@@ -97,7 +97,7 @@ func createFakeServer(port string, t *testing.T) {
 	  }`
 	server.HandleFunc("/",
 		func(w http.ResponseWriter, req *http.Request) {
-			w.Write([]byte(projectList)) //nolint:errcheck
+			w.Write([]byte(projectList))
 		},
 	)
 	err := http.ListenAndServe(":"+port, server)
@@ -470,7 +470,7 @@ func TestStopScheduleManagedClusterLabelAllowlistResync(t *testing.T) {
 	}
 
 	InitScheduler()
-	scheduler.Every(1).Seconds().Do(func() {}) //nolint:errcheck
+	scheduler.Every(1).Seconds().Do(func() {})
 
 	go scheduler.StartAsync()
 	time.Sleep(6 * time.Second)

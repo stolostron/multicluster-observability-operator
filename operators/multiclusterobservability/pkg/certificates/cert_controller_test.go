@@ -21,7 +21,7 @@ import (
 
 func init() {
 	s := scheme.Scheme
-	mcov1beta2.SchemeBuilder.AddToScheme(s) //nolint:errcheck
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	config.SetMonitoringCRName(name)
 }
 
@@ -45,7 +45,6 @@ func newDeployment(name string) *appv1.Deployment {
 	}
 }
 
-//nolint:errcheck
 func TestOnAdd(t *testing.T) {
 	c := fake.NewClientBuilder().Build()
 	caSecret := &v1.Secret{
@@ -55,7 +54,7 @@ func TestOnAdd(t *testing.T) {
 			CreationTimestamp: metav1.Date(2020, time.January, 2, 0, 0, 0, 0, time.UTC),
 		},
 	}
-	config.SetOperandNames(c) //nolint:errcheck
+	config.SetOperandNames(c)
 	onAdd(c)(caSecret)
 	c = fake.NewClientBuilder().WithRuntimeObjects(newDeployment(name+"-rbac-query-proxy"),
 		newDeployment(name+"-observatorium-api")).Build()
@@ -63,7 +62,7 @@ func TestOnAdd(t *testing.T) {
 	dep := &appv1.Deployment{}
 	c.Get(context.TODO(),
 		types.NamespacedName{Name: name + "-rbac-query-proxy", Namespace: namespace},
-		dep) //nolint:errcheck
+		dep)
 	if dep.Spec.Template.ObjectMeta.Labels[restartLabel] == "" {
 		t.Fatalf("Failed to inject restart label")
 	}
@@ -98,7 +97,7 @@ func TestOnDelete(t *testing.T) {
 	}
 	c := fake.NewClientBuilder().WithRuntimeObjects(caSecret, getMco()).Build()
 	onDelete(c)(deletCaSecret)
-	c.Get(context.TODO(), types.NamespacedName{Name: serverCACerts, Namespace: namespace}, caSecret) //nolint:errcheck
+	c.Get(context.TODO(), types.NamespacedName{Name: serverCACerts, Namespace: namespace}, caSecret)
 	data := string(caSecret.Data["tls.crt"])
 	if data != "new cert-old cert" {
 		t.Fatalf("deleted cert not added back: %s", data)

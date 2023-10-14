@@ -62,7 +62,7 @@ func New(logger log.Logger) (*StatusReport, error) {
 	}, nil
 }
 
-func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
+func (s *StatusReport) UpdateStatus(t string, m string) error {
 	if s.statusClient == nil {
 		return nil
 	}
@@ -83,8 +83,7 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 	found := false
 	conditions := []oav1beta1.StatusCondition{}
 	latestC := oav1beta1.StatusCondition{}
-	message, conditionType, reason := mergeCondtion(isUwl, r, m,
-		addon.Status.Conditions[len(addon.Status.Conditions)-1])
+	message, conditionType, reason := mergeCondtion(isUwl, m, addon.Status.Conditions[len(addon.Status.Conditions)-1])
 	for _, c := range addon.Status.Conditions {
 		if c.Status == metav1.ConditionTrue {
 			if c.Type != conditionType {
@@ -138,7 +137,7 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 	return nil
 }
 
-func mergeCondtion(isUwl bool, r, m string, condition oav1beta1.StatusCondition) (string, string, string) {
+func mergeCondtion(isUwl bool, m string, condition oav1beta1.StatusCondition) (string, string, string) {
 	messages := strings.Split(condition.Message, " ; ")
 	if len(messages) == 1 {
 		messages = append(messages, "")

@@ -27,7 +27,7 @@ func createFakeServer(t *testing.T) {
 	server3002 := http.NewServeMux()
 	server3002.HandleFunc("/",
 		func(w http.ResponseWriter, req *http.Request) {
-			w.Write([]byte("done")) //nolint:errcheck
+			w.Write([]byte("done"))
 		},
 	)
 	err := http.ListenAndServe(":3002", server3002)

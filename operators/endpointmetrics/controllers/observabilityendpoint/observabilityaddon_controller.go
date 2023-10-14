@@ -54,7 +54,7 @@ var (
 	hubNamespace = os.Getenv("HUB_NAMESPACE")
 )
 
-// ObservabilityAddonReconciler reconciles a ObservabilityAddon object
+// ObservabilityAddonReconciler reconciles a ObservabilityAddon object.
 type ObservabilityAddonReconciler struct {
 	Client    client.Client
 	Scheme    *runtime.Scheme
@@ -269,7 +269,7 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 			return false, err
 		}
 		// revert the change to cluster monitoring stack
-		err = revertClusterMonitoringConfig(ctx, r.Client, installPrometheus)
+		err = revertClusterMonitoringConfig(ctx, r.Client)
 		if err != nil {
 			return false, err
 		}

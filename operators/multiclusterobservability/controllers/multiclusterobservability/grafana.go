@@ -68,7 +68,7 @@ type SecureJsonData struct {
 }
 
 // GenerateGrafanaDataSource is used to generate the GrafanaDatasource as a secret.
-// the GrafanaDatasource points to observatorium api gateway service
+// the GrafanaDatasource points to observatorium api gateway service.
 func GenerateGrafanaDataSource(
 	c client.Client,
 	scheme *runtime.Scheme,

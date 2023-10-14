@@ -23,7 +23,7 @@ func validateGCS(conf Config) error {
 	return nil
 }
 
-// IsValidGCSConf is used to validate GCS configuration
+// IsValidGCSConf is used to validate GCS configuration.
 func IsValidGCSConf(data []byte) (bool, error) {
 	var objectConfg ObjectStorgeConf
 	err := yaml.Unmarshal(data, &objectConfg)

@@ -134,15 +134,6 @@ func newMCHInstanceWithVersion(namespace, version string) *mchv1.MultiClusterHub
 	}
 }
 
-func TestLabelsForMultiClusterMonitoring(t *testing.T) {
-	lab := labelsForMultiClusterMonitoring("test")
-
-	value := lab["observability.open-cluster-management.io/name"]
-	if value != "test" {
-		t.Errorf("value (%v) is not the expected (test)", value)
-	}
-}
-
 func createObservatoriumAPIService(name, namespace string) *corev1.Service {
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -265,7 +256,6 @@ func createFailedDeployment(name, namespace string) *appsv1.Deployment {
 	}
 }
 
-//nolint:errcheck
 func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	var (
 		name      = "monitoring"

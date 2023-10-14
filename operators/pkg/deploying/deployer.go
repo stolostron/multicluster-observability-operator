@@ -28,13 +28,13 @@ var log = logf.Log.WithName("deploying")
 
 type deployerFn func(*unstructured.Unstructured, *unstructured.Unstructured) error
 
-// Deployer is used create or update the resources
+// Deployer is used create or update the resources.
 type Deployer struct {
 	client      client.Client
 	deployerFns map[string]deployerFn
 }
 
-// NewDeployer inits the deployer
+// NewDeployer inits the deployer.
 func NewDeployer(client client.Client) *Deployer {
 	deployer := &Deployer{client: client}
 	deployer.deployerFns = map[string]deployerFn{
@@ -52,7 +52,7 @@ func NewDeployer(client client.Client) *Deployer {
 	return deployer
 }
 
-// Deploy is used to create or update the resources
+// Deploy is used to create or update the resources.
 func (d *Deployer) Deploy(obj *unstructured.Unstructured) error {
 	found := &unstructured.Unstructured{}
 	found.SetGroupVersionKind(obj.GroupVersionKind())

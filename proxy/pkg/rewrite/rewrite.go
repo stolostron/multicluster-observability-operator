@@ -17,7 +17,7 @@ const (
 	placeholderMetrics = "acm_metrics_placeholder"
 )
 
-// InjectLabels is used to inject addtional label filters into original query
+// InjectLabels is used to inject additional label filters into original query.
 func InjectLabels(query string, label string, values []string) (string, error) {
 
 	reg := regexp.MustCompile(`([{|,][ ]*)(` + label + `[ ]*)(=|!=|=~|!~)([ ]*"[^"]+")`)

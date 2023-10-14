@@ -134,15 +134,6 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	}
 }
 
-func TestMergeVolumeClaimTemplate(t *testing.T) {
-	vct1 := newVolumeClaimTemplate("1Gi", "test")
-	vct3 := newVolumeClaimTemplate("3Gi", "test")
-	mergeVolumeClaimTemplate(vct1, vct3)
-	if vct1.Spec.Resources.Requests[v1.ResourceStorage] != resource.MustParse("3Gi") {
-		t.Errorf("Failed to merge %v to %v", vct3, vct1)
-	}
-}
-
 func TestNoUpdateObservatoriumCR(t *testing.T) {
 	var (
 		namespace = mcoconfig.GetDefaultNamespace()

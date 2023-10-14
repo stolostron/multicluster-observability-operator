@@ -51,28 +51,28 @@ var (
 	syncLabelList    = proxyconfig.GetSyncLabelList()
 )
 
-// resources for the gocron scheduler
+// resources for the gocron scheduler.
 var (
 	resyncTag = "managed-cluster-label-allowlist-resync"
 	scheduler *gocron.Scheduler
 )
 
-// GetAllManagedClusterNames returns all managed cluster names
+// GetAllManagedClusterNames returns all managed cluster names.
 func GetAllManagedClusterNames() map[string]string {
 	return allManagedClusterNames
 }
 
-// GetAllManagedClusterLabelNames returns all managed cluster labels
+// GetAllManagedClusterLabelNames returns all managed cluster labels.
 func GetAllManagedClusterLabelNames() map[string]bool {
 	return allManagedClusterLabelNames
 }
 
-// InitAllManagedClusterNames initializes all managed cluster names map
+// InitAllManagedClusterNames initializes all managed cluster names map.
 func InitAllManagedClusterNames() {
 	allManagedClusterNames = map[string]string{}
 }
 
-// InitAllManagedClusterLabelNames initializes all managed cluster labels map
+// InitAllManagedClusterLabelNames initializes all managed cluster labels map.
 func InitAllManagedClusterLabelNames() {
 	allManagedClusterLabelNames = map[string]bool{}
 }
@@ -81,7 +81,7 @@ func InitScheduler() {
 	scheduler = gocron.NewScheduler(time.UTC)
 }
 
-// shouldUpdateManagedClusterLabelNames determine whether the managedcluster label names map should be updated
+// shouldUpdateManagedClusterLabelNames determine whether the managedcluster label names map should be updated.
 func shouldUpdateManagedClusterLabelNames(clusterLabels map[string]string,
 	managedLabelList *proxyconfig.ManagedClusterLabelList) bool {
 	updateRequired := false
@@ -97,7 +97,7 @@ func shouldUpdateManagedClusterLabelNames(clusterLabels map[string]string,
 	return updateRequired
 }
 
-// addManagedClusterLabelNames set key to enable within the managedcluster label names map
+// addManagedClusterLabelNames set key to enable within the managedcluster label names map.
 func addManagedClusterLabelNames(managedLabelList *proxyconfig.ManagedClusterLabelList) {
 	for _, key := range managedLabelList.LabelList {
 		if _, ok := allManagedClusterLabelNames[key]; !ok {
@@ -127,7 +127,7 @@ func addManagedClusterLabelNames(managedLabelList *proxyconfig.ManagedClusterLab
 	syncLabelList.RegexLabelList = managedLabelList.RegexLabelList
 }
 
-// ignoreManagedClusterLabelNames set key to ignore within the managedcluster label names map
+// ignoreManagedClusterLabelNames set key to ignore within the managedcluster label names map.
 func ignoreManagedClusterLabelNames(managedLabelList *proxyconfig.ManagedClusterLabelList) {
 	for _, key := range managedLabelList.IgnoreList {
 		if _, ok := allManagedClusterLabelNames[key]; !ok {
@@ -154,7 +154,7 @@ func ignoreManagedClusterLabelNames(managedLabelList *proxyconfig.ManagedCluster
 	syncLabelList.RegexLabelList = managedLabelList.RegexLabelList
 }
 
-// updateAllManagedClusterLabelNames updates all managed cluster label names status within the map
+// updateAllManagedClusterLabelNames updates all managed cluster label names status within the map.
 func updateAllManagedClusterLabelNames(managedLabelList *proxyconfig.ManagedClusterLabelList) {
 	if managedLabelList.LabelList != nil {
 		addManagedClusterLabelNames(managedLabelList)
@@ -169,7 +169,7 @@ func updateAllManagedClusterLabelNames(managedLabelList *proxyconfig.ManagedClus
 	}
 }
 
-// ModifyMetricsQueryParams will modify request url params for query metrics
+// ModifyMetricsQueryParams will modify request url params for query metrics.
 func ModifyMetricsQueryParams(req *http.Request, reqUrl string) {
 	userName := req.Header.Get("X-Forwarded-User")
 	klog.V(1).Infof("user is %v", userName)
@@ -233,10 +233,9 @@ func ModifyMetricsQueryParams(req *http.Request, reqUrl string) {
 	klog.V(1).Infof("URL is: %s", req.URL)
 	klog.V(1).Infof("URL path is: %v", req.URL.Path)
 	klog.V(1).Infof("URL RawQuery is: %v", rawQuery)
-	return
 }
 
-// GetManagedClusterEventHandler return event handler functions for managed cluster watch events
+// GetManagedClusterEventHandler return event handler functions for managed cluster watch events.
 func GetManagedClusterEventHandler() cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -271,7 +270,7 @@ func GetManagedClusterEventHandler() cache.ResourceEventHandlerFuncs {
 	}
 }
 
-// WatchManagedCluster will watch and save managedcluster when create/update/delete managedcluster
+// WatchManagedCluster will watch and save managedcluster when create/update/delete managedcluster.
 func WatchManagedCluster(clusterClient clusterclientset.Interface, kubeClient kubernetes.Interface) {
 	InitAllManagedClusterNames()
 	InitAllManagedClusterLabelNames()
@@ -293,7 +292,6 @@ func WatchManagedCluster(clusterClient clusterclientset.Interface, kubeClient ku
 	}
 }
 
-// ScheduleManagedClusterLabelAllowlistResync ...
 func ScheduleManagedClusterLabelAllowlistResync(kubeClient kubernetes.Interface) {
 	if scheduler == nil {
 		InitScheduler()
@@ -308,7 +306,6 @@ func ScheduleManagedClusterLabelAllowlistResync(kubeClient kubernetes.Interface)
 	scheduler.StartAsync()
 }
 
-// StopScheduleManagedClusterLabelAllowlistResync ...
 func StopScheduleManagedClusterLabelAllowlistResync() {
 	klog.Info("stopping scheduler for managedcluster allowlist resync")
 	scheduler.Stop()
@@ -318,7 +315,7 @@ func StopScheduleManagedClusterLabelAllowlistResync() {
 	}
 }
 
-// GetManagedClusterLabelAllowListEventHandler return event handler for managedcluster label allow list watch event
+// GetManagedClusterLabelAllowListEventHandler return event handler for managedcluster label allow list watch event.
 func GetManagedClusterLabelAllowListEventHandler(kubeClient kubernetes.Interface) cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -362,7 +359,7 @@ func GetManagedClusterLabelAllowListEventHandler(kubeClient kubernetes.Interface
 }
 
 // WatchManagedClusterLabelAllowList will watch and save managedcluster label allowlist configmap
-// when create/update/delete
+// when create/update/delete.
 func WatchManagedClusterLabelAllowList(kubeClient kubernetes.Interface) {
 	watchlist := cache.NewListWatchFromClient(kubeClient.CoreV1().RESTClient(), "configmaps",
 		proxyconfig.ManagedClusterLabelAllowListNamespace, fields.Everything())
@@ -465,7 +462,7 @@ func GetUserName(token string, url string) string {
 	return user.Name
 }
 
-// canAccessAllClusters check user have permission to access all clusters
+// canAccessAllClusters check user have permission to access all clusters.
 func canAccessAllClusters(projectList []string) bool {
 	if len(allManagedClusterNames) == 0 && len(projectList) == 0 {
 		return false
@@ -587,7 +584,7 @@ func resyncManagedClusterLabelAllowList(kubeClient kubernetes.Interface) error {
 	return nil
 }
 
-// marshalLabelListToConfigMap marshal managedcluster label list data to configmap data key
+// marshalLabelListToConfigMap marshal managedcluster label list data to configmap data key.
 func marshalLabelListToConfigMap(obj interface{}, key string,
 	managedLabelList *proxyconfig.ManagedClusterLabelList) error {
 	data, err := yaml.Marshal(managedLabelList)
@@ -600,7 +597,7 @@ func marshalLabelListToConfigMap(obj interface{}, key string,
 	return nil
 }
 
-// unmarshalDataToManagedClusterLabelList unmarshal managedcluster label allowlist
+// unmarshalDataToManagedClusterLabelList unmarshal managedcluster label allowlist.
 func unmarshalDataToManagedClusterLabelList(data map[string]string, key string,
 	managedLabelList *proxyconfig.ManagedClusterLabelList) error {
 	err := yaml.Unmarshal([]byte(data[key]), managedLabelList)
@@ -613,7 +610,6 @@ func unmarshalDataToManagedClusterLabelList(data map[string]string, key string,
 	return nil
 }
 
-// sortManagedLabelList ...
 func sortManagedLabelList(managedLabelList *proxyconfig.ManagedClusterLabelList) {
 	if managedLabelList != nil {
 		sort.Strings(managedLabelList.IgnoreList)

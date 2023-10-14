@@ -516,8 +516,8 @@ func isUWLMonitoringEnabled(ctx context.Context, c client.Client) (bool, error) 
 }
 
 // for custom uwl allowlist:
-// 1. only support "names" and "matches"
-// 2. inject namespace label filter for all entries in the allowlist
+// 1. only support "names" and "matches".
+// 2. inject namespace label filter for all entries in the allowlist.
 func injectNamespaceLabel(allowlist *operatorconfig.MetricsAllowlist,
 	namespace string) *operatorconfig.MetricsAllowlist {
 	updatedList := &operatorconfig.MetricsAllowlist{

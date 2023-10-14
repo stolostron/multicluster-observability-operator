@@ -31,7 +31,7 @@ func validateAzure(conf Config) error {
 	return nil
 }
 
-// IsValidAzureConf is used to validate azure configuration
+// IsValidAzureConf is used to validate azure configuration.
 func IsValidAzureConf(data []byte) (bool, error) {
 	var objectConfg ObjectStorgeConf
 	err := yaml.Unmarshal(data, &objectConfg)

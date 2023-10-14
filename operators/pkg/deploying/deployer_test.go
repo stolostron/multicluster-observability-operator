@@ -68,7 +68,7 @@ func TestDeploy(t *testing.T) {
 					Namespace: "ns1",
 				}
 				obj := &appsv1.Deployment{}
-				client.Get(context.Background(), namespacedName, obj) //nolint:errcheck
+				client.Get(context.Background(), namespacedName, obj)
 
 				if *obj.Spec.Replicas != 2 {
 					t.Fatalf("fail to update the deployment")
@@ -113,7 +113,7 @@ func TestDeploy(t *testing.T) {
 					Namespace: "ns1",
 				}
 				obj := &appsv1.Deployment{}
-				client.Get(context.Background(), namespacedName, obj) //nolint:errcheck
+				client.Get(context.Background(), namespacedName, obj)
 
 				if len(obj.ObjectMeta.GetLabels()) != 0 {
 					t.Fatalf("should not update the deployment")
@@ -155,7 +155,7 @@ func TestDeploy(t *testing.T) {
 					Namespace: "ns1",
 				}
 				obj := &appsv1.StatefulSet{}
-				client.Get(context.Background(), namespacedName, obj) //nolint:errcheck
+				client.Get(context.Background(), namespacedName, obj)
 
 				if *obj.Spec.Replicas != 2 {
 					t.Fatalf("fail to update the statefulset")
@@ -197,7 +197,7 @@ func TestDeploy(t *testing.T) {
 					Namespace: "ns2",
 				}
 				obj := &corev1.ConfigMap{}
-				client.Get(context.Background(), namespacedName, obj) //nolint:errcheck
+				client.Get(context.Background(), namespacedName, obj)
 
 				if obj.Data["test-key"] != "test-value-2" {
 					t.Fatalf("fail to update the configmap")
@@ -243,7 +243,7 @@ func TestDeploy(t *testing.T) {
 					Namespace: "ns2",
 				}
 				obj := &corev1.Service{}
-				client.Get(context.Background(), namespacedName, obj) //nolint:errcheck
+				client.Get(context.Background(), namespacedName, obj)
 
 				if obj.Spec.Selector["app"] != "myApp-2" {
 					t.Fatalf("fail to update the service")
@@ -283,7 +283,7 @@ func TestDeploy(t *testing.T) {
 					Namespace: "ns2",
 				}
 				obj := &corev1.Secret{}
-				client.Get(context.Background(), namespacedName, obj) //nolint:errcheck
+				client.Get(context.Background(), namespacedName, obj)
 
 				if len(obj.Data) == 0 {
 					t.Fatalf("fail to update the secret")
@@ -331,7 +331,7 @@ func TestDeploy(t *testing.T) {
 					Name: "test-clusterrole",
 				}
 				obj := &rbacv1.ClusterRole{}
-				client.Get(context.Background(), namespacedName, obj) //nolint:errcheck
+				client.Get(context.Background(), namespacedName, obj)
 
 				if len(obj.Rules) == 0 {
 					t.Fatalf("fail to update the clusterrole")
@@ -376,7 +376,7 @@ func TestDeploy(t *testing.T) {
 					Name: "test-clusterrolebinding",
 				}
 				obj := &rbacv1.ClusterRoleBinding{}
-				client.Get(context.Background(), namespacedName, obj) //nolint:errcheck
+				client.Get(context.Background(), namespacedName, obj)
 
 				if len(obj.Subjects) == 0 {
 					t.Fatalf("fail to update the clusterrolebinding")
@@ -415,7 +415,7 @@ func TestDeploy(t *testing.T) {
 					Namespace: "ns1",
 				}
 				obj := &corev1.ServiceAccount{}
-				client.Get(context.Background(), namespacedName, obj) //nolint:errcheck
+				client.Get(context.Background(), namespacedName, obj)
 
 				if len(obj.GetObjectMeta().GetLabels()) != 0 {
 					t.Fatalf("update serviceaccount is not supported then")
@@ -461,7 +461,7 @@ func TestDeploy(t *testing.T) {
 					Namespace: "ns1",
 				}
 				obj := &prometheusv1.Prometheus{}
-				client.Get(context.Background(), namespacedName, obj) //nolint:errcheck
+				client.Get(context.Background(), namespacedName, obj)
 
 				if obj.Spec.AdditionalAlertManagerConfigs.Key != "new" {
 					t.Fatalf("fail to update the prometheus")
@@ -471,7 +471,7 @@ func TestDeploy(t *testing.T) {
 	}
 
 	scheme := runtime.NewScheme()
-	//nolint:errcheck
+
 	corev1.AddToScheme(scheme)
 	appsv1.AddToScheme(scheme)
 	rbacv1.AddToScheme(scheme)

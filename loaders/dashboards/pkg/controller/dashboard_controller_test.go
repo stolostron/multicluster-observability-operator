@@ -37,49 +37,49 @@ func createFakeServer(t *testing.T) {
 	server3001 := http.NewServeMux()
 	server3001.HandleFunc("/api/folders",
 		func(w http.ResponseWriter, req *http.Request) {
-			w.Write([]byte("[{\"id\": 1,\"uid\": \"test\",\"title\": \"Custom\"}, {\"id\": 2, \"title\": \"noServer\",\"uid\": \"noServer\"}, {\"id\": 3,\"title\": \"noUID\"}]")) //nolint:errcheck
+			w.Write([]byte("[{\"id\": 1,\"uid\": \"test\",\"title\": \"Custom\"}, {\"id\": 2, \"title\": \"noServer\",\"uid\": \"noServer\"}, {\"id\": 3,\"title\": \"noUID\"}]"))
 		},
 	)
 
 	server3001.HandleFunc("/api/folders/id/1",
 		func(w http.ResponseWriter, req *http.Request) {
-			w.Write([]byte("{\"uid\": \"test\"}")) //nolint:errcheck
+			w.Write([]byte("{\"uid\": \"test\"}"))
 		},
 	)
 
 	server3001.HandleFunc("/api/folders/id/2",
 		func(w http.ResponseWriter, req *http.Request) {
-			w.Write([]byte("{\"uid\": \"noServer\"}")) //nolint:errcheck
+			w.Write([]byte("{\"uid\": \"noServer\"}"))
 		},
 	)
 
 	server3001.HandleFunc("/api/folders/id/3",
 		func(w http.ResponseWriter, req *http.Request) {
-			w.Write([]byte("{}")) //nolint:errcheck
+			w.Write([]byte("{}"))
 		},
 	)
 
 	server3001.HandleFunc("/api/folders/test",
 		func(w http.ResponseWriter, req *http.Request) {
-			w.Write([]byte("{}")) //nolint:errcheck
+			w.Write([]byte("{}"))
 		},
 	)
 
 	server3001.HandleFunc("/api/search",
 		func(w http.ResponseWriter, req *http.Request) {
-			w.Write([]byte("[]")) //nolint:errcheck
+			w.Write([]byte("[]"))
 		},
 	)
 
 	server3001.HandleFunc("/api/dashboards/db",
 		func(w http.ResponseWriter, req *http.Request) {
-			w.Write([]byte("done")) //nolint:errcheck
+			w.Write([]byte("done"))
 		},
 	)
 
 	server3001.HandleFunc("/api/dashboards/uid/ff635a025bcfea7bc3dd4f508990a3e8",
 		func(w http.ResponseWriter, req *http.Request) {
-			w.Write([]byte("done")) //nolint:errcheck
+			w.Write([]byte("done"))
 		},
 	)
 
@@ -131,7 +131,7 @@ func TestGrafanaDashboardController(t *testing.T) {
 		time.Sleep(time.Second * 2)
 		updateDashboard(nil, cm, false)
 
-		coreClient.ConfigMaps("ns2").Delete(context.TODO(), cm.GetName(), metav1.DeleteOptions{}) //nolint:errcheck
+		coreClient.ConfigMaps("ns2").Delete(context.TODO(), cm.GetName(), metav1.DeleteOptions{})
 		time.Sleep(time.Second * 2)
 		deleteDashboard(cm)
 

@@ -118,5 +118,5 @@ io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile
 	@echo ">> linting all of the Go files GOGC=${GOGC}"
 	@$(GOLANGCI_LINT) run
 	@echo ">> detecting misspells"
-	@find . -type f | grep -v vendor/ | grep -vE '\./\..*' | xargs $(MISSPELL) -error
+	@find . -type f | grep -v vendor/ | grep -vE '\./\..*' | gxargs $(MISSPELL) -error
 	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')

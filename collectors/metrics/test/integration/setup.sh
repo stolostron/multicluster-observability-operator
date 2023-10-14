@@ -167,7 +167,7 @@ deploy_metrics_collector() {
       echo "SUCCESS sending metrics to Thanos"
       exit 0
     fi
-    echo "No Sucess yet ..Sleeping for 30s"
+    echo "No Success yet ..Sleeping for 30s"
     echo "available pods: " && kubectl describe pod $POD
     sleep 30s
     if [ $count -gt 10 ]; then

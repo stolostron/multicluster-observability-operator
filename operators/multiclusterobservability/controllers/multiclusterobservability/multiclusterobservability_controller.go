@@ -53,7 +53,7 @@ import (
 
 const (
 	resFinalizer = "observability.open-cluster-management.io/res-cleanup"
-	// deprecated one
+	// deprecated one.
 	certFinalizer = "observability.open-cluster-management.io/cert-cleanup"
 )
 
@@ -63,8 +63,7 @@ const (
 )
 
 var (
-	log = logf.Log.WithName("controller_multiclustermonitoring")
-	// enableHubRemoteWrite             = os.Getenv("ENABLE_HUB_REMOTEWRITE")
+	log                              = logf.Log.WithName("controller_multiclustermonitoring")
 	isAlertmanagerStorageSizeChanged = false
 	isCompactStorageSizeChanged      = false
 	isRuleStorageSizeChanged         = false
@@ -313,12 +312,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	requeueStatusUpdate <- struct{}{}
 
 	return ctrl.Result{}, nil
-}
-
-// labelsForMultiClusterMonitoring returns the labels for selecting the resources
-// belonging to the given MultiClusterObservability CR name.
-func labelsForMultiClusterMonitoring(name string) map[string]string {
-	return map[string]string{"observability.open-cluster-management.io/name": name}
 }
 
 func (r *MultiClusterObservabilityReconciler) initFinalization(

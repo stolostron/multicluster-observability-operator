@@ -52,7 +52,7 @@ function generate_metrics() {
   for rule in $(cat ${METRICS_JSON_OUT} | jq -r '.[]'); do
     federate="${federate} $(printf -- "--data-urlencode match[]=%s" ${rule})"
   done
-  echo '# Beggining for metrics' >${TIME_SERIES_OUT}
+  echo '# Beginning for metrics' >${TIME_SERIES_OUT}
   ${federate} >>${TIME_SERIES_OUT}
 }
 

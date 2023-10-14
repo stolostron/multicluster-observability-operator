@@ -251,9 +251,7 @@ func GenerateAPIGatewayRoute(
 	return nil, nil
 }
 
-func newDefaultObservatoriumSpec(cl client.Client, mco *mcov1beta2.MultiClusterObservability,
-	scSelected string, tlsSecretMountPath string) (*obsv1alpha1.ObservatoriumSpec, error) {
-
+func newDefaultObservatoriumSpec(cl client.Client, mco *mcov1beta2.MultiClusterObservability, scSelected string, tlsSecretMountPath string) (*obsv1alpha1.ObservatoriumSpec, error) {
 	obs := &obsv1alpha1.ObservatoriumSpec{}
 	obs.SecurityContext = &v1.SecurityContext{}
 	obs.PullSecret = mcoconfig.GetImagePullSecret(mco.Spec)
@@ -279,6 +277,13 @@ func newDefaultObservatoriumSpec(cl client.Client, mco *mcov1beta2.MultiClusterO
 		obs.ObjectStorageConfig.Thanos.Name = objStorageConf.Name
 		obs.ObjectStorageConfig.Thanos.Key = objStorageConf.Key
 		obs.ObjectStorageConfig.Thanos.TLSSecretName = objStorageConf.TLSSecretName
+
+		// Prefer using TLSSecretMountPath from the objstore config, rather than fetched one from secret.
+		obs.ObjectStorageConfig.Thanos.TLSSecretMountPath = tlsSecretMountPath
+		if objStorageConf.TLSSecretMountPath != "" {
+			obs.ObjectStorageConfig.Thanos.TLSSecretMountPath = objStorageConf.TLSSecretMountPath
+		}
+
 		obs.ObjectStorageConfig.Thanos.TLSSecretMountPath = objStorageConf.TLSSecretMountPath
 		obs.ObjectStorageConfig.Thanos.ServiceAccountProjection =
 			mco.Spec.StorageConfig.MetricObjectStorage.ServiceAccountProjection
@@ -857,19 +862,6 @@ func newVolumeClaimTemplate(size string, storageClass string) obsv1alpha1.Volume
 	return vct
 }
 
-func mergeVolumeClaimTemplate(oldVolumn,
-	newVolumn obsv1alpha1.VolumeClaimTemplate) obsv1alpha1.VolumeClaimTemplate {
-	requestRes := newVolumn.Spec.Resources.Requests
-	limitRes := newVolumn.Spec.Resources.Limits
-	if requestRes != nil {
-		oldVolumn.Spec.Resources.Requests[v1.ResourceStorage] = requestRes[v1.ResourceStorage]
-	}
-	if limitRes != nil {
-		oldVolumn.Spec.Resources.Limits[v1.ResourceStorage] = limitRes[v1.ResourceStorage]
-	}
-	return oldVolumn
-}
-
 func deleteStoreSts(cl client.Client, name string, oldNum int32, newNum int32) error {
 	if oldNum > newNum {
 		for i := newNum; i < oldNum; i++ {
@@ -902,7 +894,6 @@ func addBackupLabel(c client.Client, name string, backupS *v1.Secret) error {
 		log.Info("Adding backup label", "Secret", name)
 		mcoconfig.BackupResourceMap[name] = mcoconfig.ResourceTypeSecret
 		var err error
-		err = nil
 		if backupS == nil {
 			err = mcoutil.AddBackupLabelToSecret(c, name, mcoconfig.GetDefaultNamespace())
 		} else {

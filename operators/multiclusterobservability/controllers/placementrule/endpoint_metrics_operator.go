@@ -26,7 +26,7 @@ const (
 	rolebindingName = "open-cluster-management:endpoint-observability-operator-rb"
 )
 
-// loadTemplates load manifests from manifests directory
+// loadTemplates load manifests from manifests directory.
 func loadTemplates(mco *mcov1beta2.MultiClusterObservability) (
 	[]runtime.RawExtension,
 	*apiextensionsv1.CustomResourceDefinition,
@@ -72,7 +72,10 @@ func updateRes(r *resource.Resource,
 
 	kind := r.GetKind()
 	if kind != "ClusterRole" && kind != "ClusterRoleBinding" && kind != "CustomResourceDefinition" {
-		r.SetNamespace(spokeNameSpace)
+		if err := r.SetNamespace(spokeNameSpace); err != nil {
+			log.Error(err, "failed to set namespace")
+			return nil, err
+		}
 	}
 	obj := util.GetK8sObj(kind)
 	if kind == "CustomResourceDefinition" && r.GetGvk().Version == "v1beta1" {

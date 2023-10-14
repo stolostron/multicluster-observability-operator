@@ -30,9 +30,9 @@ type clusterManagementAddOnSpec struct {
 	CRDName     string `json:"crdName"`
 }
 
-func CreateClusterManagementAddon(c client.Client, isStandalone bool) (
+func CreateClusterManagementAddon(c client.Client) (
 	*addonv1alpha1.ClusterManagementAddOn, error) {
-	clusterManagementAddon, err := newClusterManagementAddon(c, isStandalone)
+	clusterManagementAddon, err := newClusterManagementAddon(c)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func DeleteClusterManagementAddon(client client.Client) error {
 	return nil
 }
 
-func newClusterManagementAddon(c client.Client, isStandalone bool) (*addonv1alpha1.ClusterManagementAddOn, error) {
+func newClusterManagementAddon(c client.Client) (*addonv1alpha1.ClusterManagementAddOn, error) {
 	host, err := config.GetRouteHost(c, config.GrafanaRouteName, config.GetDefaultNamespace())
 	if err != nil {
 		return nil, err

@@ -38,7 +38,7 @@ var (
 )
 
 // initializes clusterMonitoringConfigReverted based on the presence of clusterMonitoringRevertedName
-// configmap in openshift-monitoring namespace
+// configmap in openshift-monitoring namespace.
 func initPersistedRevertState(ctx context.Context, client client.Client) error {
 	if !persistedRevertStateRead {
 		// check if reverted configmap is present
@@ -136,7 +136,7 @@ func unsetConfigReverted(ctx context.Context, client client.Client) error {
 	return nil
 }
 
-// createHubAmRouterCASecret creates the secret that contains CA of the Hub's Alertmanager Route
+// createHubAmRouterCASecret creates the secret that contains CA of the Hub's Alertmanager Route.
 func createHubAmRouterCASecret(
 	ctx context.Context,
 	hubInfo *operatorconfig.HubInfo,
@@ -186,29 +186,7 @@ func createHubAmRouterCASecret(
 	}
 }
 
-// deleteHubAmRouterCASecret deletes the secret that contains CA of the Hub's Alertmanager Route
-func deleteHubAmRouterCASecret(ctx context.Context, client client.Client, targetNamespace string) error {
-	found := &corev1.Secret{}
-	err := client.Get(ctx, types.NamespacedName{Name: hubAmRouterCASecretName,
-		Namespace: targetNamespace}, found)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("the hub-alertmanager-router-ca secret is already deleted")
-			return nil
-		}
-		log.Error(err, "failed to check the hub-alertmanager-router-ca secret")
-		return err
-	}
-	err = client.Delete(ctx, found)
-	if err != nil {
-		log.Error(err, "error deleting the hub-alertmanager-router-ca secret")
-		return err
-	}
-	log.Info("the hub-alertmanager-router-ca secret is deleted")
-	return nil
-}
-
-// createHubAmAccessorTokenSecret creates the secret that contains access token of the Hub's Alertmanager
+// createHubAmAccessorTokenSecret creates the secret that contains access token of the Hub's Alertmanager.
 func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, targetNamespace string) error {
 	amAccessorToken, err := getAmAccessorToken(ctx, client)
 	if err != nil {
@@ -257,29 +235,7 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, t
 	}
 }
 
-// deleteHubAmAccessorTokenSecret deletes the secret that contains access token of the Hub's Alertmanager
-func deleteHubAmAccessorTokenSecret(ctx context.Context, client client.Client, targetNamespace string) error {
-	found := &corev1.Secret{}
-	err := client.Get(ctx, types.NamespacedName{Name: hubAmAccessorSecretName,
-		Namespace: targetNamespace}, found)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("the observability-alertmanager-accessor secret is already deleted")
-			return nil
-		}
-		log.Error(err, "failed to check the observability-alertmanager-accessor secret")
-		return err
-	}
-	err = client.Delete(ctx, found)
-	if err != nil {
-		log.Error(err, "error deleting the observability-alertmanager-accessor secret")
-		return err
-	}
-	log.Info("the observability-alertmanager-accessor secret is deleted")
-	return nil
-}
-
-// getAmAccessorToken retrieves the alertmanager access token from observability-alertmanager-accessor secret
+// getAmAccessorToken retrieves the alertmanager access token from observability-alertmanager-accessor secret.
 func getAmAccessorToken(ctx context.Context, client client.Client) (string, error) {
 	amAccessorSecret := &corev1.Secret{}
 	if err := client.Get(ctx, types.NamespacedName{Name: hubAmAccessorSecretName,
@@ -315,19 +271,20 @@ func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifes
 			},
 			Key: hubAmAccessorSecretKey,
 		},
-		StaticConfigs: []string{strings.TrimLeft(hubInfo.AlertmanagerEndpoint, "https://")},
+		StaticConfigs: []string{strings.TrimPrefix(hubInfo.AlertmanagerEndpoint, "https://")},
 	}
 }
 
 // createOrUpdateClusterMonitoringConfig creates or updates the configmap
 // cluster-monitoring-config and relevant resources (observability-alertmanager-accessor
-// and hub-alertmanager-router-ca) for the openshift cluster monitoring stack
+// and hub-alertmanager-router-ca) for the openshift cluster monitoring stack.
 func createOrUpdateClusterMonitoringConfig(
 	ctx context.Context,
 	hubInfo *operatorconfig.HubInfo,
 	clusterID string,
 	client client.Client,
-	installProm bool) error {
+	installProm bool,
+) error {
 	targetNamespace := promNamespace
 	if installProm {
 		// for *KS, the hub CA and alertmanager access token should be created
@@ -356,7 +313,7 @@ func createOrUpdateClusterMonitoringConfig(
 			return err
 		}
 		if !revertedAlready {
-			if err = revertClusterMonitoringConfig(ctx, client, installProm); err != nil {
+			if err = revertClusterMonitoringConfig(ctx, client); err != nil {
 				return err
 			}
 			if err = setConfigReverted(ctx, client); err != nil {
@@ -531,8 +488,8 @@ func unset(ctx context.Context, client client.Client) error {
 }
 
 // revertClusterMonitoringConfig reverts the configmap cluster-monitoring-config and relevant resources
-// (observability-alertmanager-accessor and hub-alertmanager-router-ca) for the openshift cluster monitoring stack
-func revertClusterMonitoringConfig(ctx context.Context, client client.Client, installProm bool) error {
+// (observability-alertmanager-accessor and hub-alertmanager-router-ca) for the openshift cluster monitoring stack.
+func revertClusterMonitoringConfig(ctx context.Context, client client.Client) error {
 	log.Info("revertClusterMonitoringConfig called")
 
 	// try to retrieve the current configmap in the cluster

@@ -113,7 +113,6 @@ func newImagesCM() *corev1.ConfigMap {
 	}
 }
 
-// nolint:errcheck
 func init() {
 	os.Setenv("UNIT_TEST", "true")
 	s := scheme.Scheme
@@ -231,7 +230,7 @@ alertmanager-router-ca: |
 	}
 
 	// test reconcile w/o clusterversion(OCP 3.11)
-	c.Delete(ctx, cv) // nolint:errcheck
+	c.Delete(ctx, cv)
 	req = ctrl.Request{
 		NamespacedName: types.NamespacedName{
 			Name:      "install",

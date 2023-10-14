@@ -350,7 +350,7 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 
 	ns := "testing"
 	scheme := runtime.NewScheme()
-	corev1.AddToScheme(scheme) //nolint:errcheck
+	corev1.AddToScheme(scheme)
 
 	caseList := []struct {
 		name         string
@@ -916,8 +916,8 @@ func TestGetOperandName(t *testing.T) {
 
 				// Register operator types with the runtime scheme.
 				s := scheme.Scheme
-				mcov1beta2.SchemeBuilder.AddToScheme(s) //nolint:errcheck
-				observatoriumv1alpha1.AddToScheme(s)    //nolint:errcheck
+				mcov1beta2.SchemeBuilder.AddToScheme(s)
+				observatoriumv1alpha1.AddToScheme(s)
 				client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, observatorium).Build()
 				SetMonitoringCRName(GetDefaultCRName())
 				SetOperandNames(client)
@@ -964,8 +964,8 @@ func TestGetOperandName(t *testing.T) {
 
 				// Register operator types with the runtime scheme.
 				s := scheme.Scheme
-				mcov1beta2.SchemeBuilder.AddToScheme(s) //nolint:errcheck
-				observatoriumv1alpha1.AddToScheme(s)    //nolint:errcheck
+				mcov1beta2.SchemeBuilder.AddToScheme(s)
+				observatoriumv1alpha1.AddToScheme(s)
 				client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, observatorium).Build()
 
 				SetMonitoringCRName(GetDefaultCRName())
@@ -1013,8 +1013,8 @@ func TestGetOperandName(t *testing.T) {
 
 				// Register operator types with the runtime scheme.
 				s := scheme.Scheme
-				mcov1beta2.SchemeBuilder.AddToScheme(s) //nolint:errcheck
-				observatoriumv1alpha1.AddToScheme(s)    //nolint:errcheck
+				mcov1beta2.SchemeBuilder.AddToScheme(s)
+				observatoriumv1alpha1.AddToScheme(s)
 				client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, observatorium).Build()
 
 				SetMonitoringCRName(GetDefaultCRName())

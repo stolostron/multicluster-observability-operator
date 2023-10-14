@@ -83,7 +83,7 @@ make deploy IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-observability-opera
 kubectl apply -f operators/multiclusterobservability/config/samples/observability_v1beta2_multiclusterobservability.yaml
 ```
 
-5. Verify all the components for the Multicluster Observability are starting up and runing:
+5. Verify all the components for the Multicluster Observability are starting up and running:
 
 ```bash
 kubectl -n open-cluster-management-observability get pod

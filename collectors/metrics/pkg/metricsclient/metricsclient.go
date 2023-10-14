@@ -322,6 +322,8 @@ func Write(w io.Writer, families []*clientmodel.MetricFamily) error {
 
 func withCancel(ctx context.Context, client *http.Client, req *http.Request, fn func(*http.Response) error) error {
 	resp, err := client.Do(req)
+	// TODO(saswatamcode): Check error.
+	//nolint:errcheck
 	defer func() error {
 		if resp != nil {
 			if err = resp.Body.Close(); err != nil {
@@ -465,7 +467,7 @@ func convertToTimeseries(p *PartitionedMetrics, now time.Time) ([]prompb.TimeSer
 	return timeseries, nil
 }
 
-// RemoteWrite is used to push the metrics to remote thanos endpoint
+// RemoteWrite is used to push the metrics to remote thanos endpoint.
 func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 	families []*clientmodel.MetricFamily, interval time.Duration) error {
 

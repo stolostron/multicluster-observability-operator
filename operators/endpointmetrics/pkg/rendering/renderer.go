@@ -213,7 +213,7 @@ func Render(
 				)
 			}
 			// replace the hub alertmanager address. Address will be set to null when alerts are disabled
-			hubAmEp := strings.TrimLeft(hubInfo.AlertmanagerEndpoint, "https://")
+			hubAmEp := strings.TrimPrefix(hubInfo.AlertmanagerEndpoint, "https://")
 			amConfig = strings.ReplaceAll(amConfig, "_ALERTMANAGER_ENDPOINT_", hubAmEp)
 			s.StringData["alertmanager.yaml"] = amConfig
 

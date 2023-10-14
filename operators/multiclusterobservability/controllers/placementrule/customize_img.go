@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	// ClusterImageRegistriesAnnotation value is a json string of ImageRegistries
+	// ClusterImageRegistriesAnnotation value is a json string of ImageRegistries.
 	ClusterImageRegistriesAnnotation = "open-cluster-management.io/image-registries"
 )
 
@@ -125,7 +125,7 @@ func (c *DefaultClient) ImageOverride(imageName string) (newImageName string, er
 	return overrideImageName, nil
 }
 
-// getImageRegistries retrieves the imageRegistries from annotations of managedCluster
+// getImageRegistries retrieves the imageRegistries from annotations of managedCluster.
 func (c *DefaultClient) getImageRegistries(clusterName string) (ImageRegistries, error) {
 	imageRegistries := ImageRegistries{}
 	managedCluster := &clusterv1.ManagedCluster{}

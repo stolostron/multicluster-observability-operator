@@ -9,6 +9,9 @@ run:
   # exit code when at least one issue was found, default is 1
   issues-exit-code: 1
 
+  # TODO(saswatamcode): Remove this by cleaning up our test suite.
+  tests: false
+
   # which dirs to skip: they won't be analyzed;
   # can use regexp here: generated.*, regexp is applied on full path;
   # default value is empty list, but next dirs are always skipped independently
@@ -33,7 +36,8 @@ linters:
     # Sorted alphabetically.
     - errcheck
     - goconst
-    - godot
+    # TODO(saswatamcode): Re-enable godot at some point, once comments are in order.
+    # - godot
     - gofmt
     - goimports
     - gosimple

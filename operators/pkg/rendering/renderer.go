@@ -177,7 +177,7 @@ func (r *Renderer) RenderClusterRoleBinding(
 	return u, nil
 }
 
-// UpdateNamespace checks for annotiation to update NS
+// UpdateNamespace checks for annotiation to update NS.
 func UpdateNamespace(u *unstructured.Unstructured) bool {
 	annotations := u.GetAnnotations()
 	v, ok := annotations[nsUpdateAnnoKey]
