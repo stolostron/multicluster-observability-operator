@@ -9,6 +9,9 @@ TMP_DIR := $(shell pwd)/tmp
 BIN_DIR ?= $(TMP_DIR)/bin
 GIT ?= $(shell which git)
 
+XARGS ?= $(shell which gxargs 2>/dev/null || which xargs)
+GREP ?= $(shell which ggrep 2>/dev/null || which grep)
+
 # Image URL to use all building/pushing image targets
 IMG ?= quay.io/stolostron/multicluster-observability-operator:latest
 
@@ -33,16 +36,16 @@ docker-push:
 unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors
 
 unit-tests-operators:
-	go test -v ${VERBOSE} `go list ./operators/... | grep -v test`
+	go test -v ${VERBOSE} `go list ./operators/... | $(GREP) -v test`
 
 unit-tests-loaders:
-	go test -v ${VERBOSE} `go list ./loaders/... | grep -v test`
+	go test -v ${VERBOSE} `go list ./loaders/... | $(GREP) -v test`
 
 unit-tests-proxy:
-	go test -v ${VERBOSE} `go list ./proxy/... | grep -v test`
+	go test -v ${VERBOSE} `go list ./proxy/... | $(GREP) -v test`
 
 unit-tests-collectors:
-	go test ${VERBOSE} `go list ./collectors/... | grep -v test`
+	go test ${VERBOSE} `go list ./collectors/... | $(GREP) -v test`
 
 .PHONY: e2e-tests
 e2e-tests:
@@ -93,6 +96,25 @@ shell-format: $(SHFMT)
 format: ## Formats code including imports.
 format: go-format shell-format
 
+define require_clean_work_tree
+	@git update-index -q --ignore-submodules --refresh
+
+	@if ! git diff-files --quiet --ignore-submodules --; then \
+		echo >&2 "cannot $1: you have unstaged changes."; \
+		git diff -r --ignore-submodules -- >&2; \
+		echo >&2 "Please commit or stash them."; \
+		exit 1; \
+	fi
+
+	@if ! git diff-index --cached --quiet HEAD --ignore-submodules --; then \
+		echo >&2 "cannot $1: your index contains uncommitted changes."; \
+		git diff --cached -r --ignore-submodules HEAD -- >&2; \
+		echo >&2 "Please commit or stash them."; \
+		exit 1; \
+	fi
+
+endef
+
 # PROTIP:
 # Add
 #      --cpu-profile-path string   Path to CPU profile output file
@@ -112,15 +134,13 @@ NewHistorgram,NewHistogramVec,NewSummary,NewSummaryVec}=github.com/prometheus/cl
 NewCounterVec,NewCounterVec,NewGauge,NewGaugeVec,NewGaugeFunc,NewHistorgram,NewHistogramVec,NewSummary,NewSummaryVec},\
 github.com/NYTimes/gziphandler.{GzipHandler}=github.com/klauspost/compress/gzhttp.{GzipHandler},\
 sync/atomic=go.uber.org/atomic,\
-io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile}" $(shell go list ./... | grep -v "internal/cortex")
+io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile}" ./...
 	@$(FAILLINT) -paths "fmt.{Print,Println}" -ignore-tests ./...
 	@echo ">> examining all of the Go files"
 	@go vet -stdmethods=false ./...
 	@echo ">> linting all of the Go files GOGC=${GOGC}"
 	@$(GOLANGCI_LINT) run
 	# TODO(saswatamcode): Enable this in a separate commit.
-	# @echo ">> ensuring Copyright headers"
+	@echo ">> ensuring Copyright headers $(MISS)"
 	# @go run ./scripts/copyright
-	@echo ">> detecting misspells"
-	@find . -type f | grep -v vendor/ | grep -vE '\./\..*' | gxargs $(MISSPELL) -error
 	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')

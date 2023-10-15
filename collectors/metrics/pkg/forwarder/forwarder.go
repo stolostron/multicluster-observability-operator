@@ -68,7 +68,7 @@ type Config struct {
 	Logger                  log.Logger
 	SimulatedTimeseriesFile string
 
-	Registry *prometheus.Registry
+	Metrics *workerMetrics
 }
 
 // Worker represents a metrics forwarding agent. It collects metrics from a source URL and forwards them to a sink.
@@ -96,12 +96,10 @@ type Worker struct {
 
 	status status.StatusReport
 
-	gaugeFederateSamples         prometheus.Gauge
-	gaugeFederateFilteredSamples prometheus.Gauge
-	gaugeFederateErrors          prometheus.Gauge
+	m *workerMetrics
 }
 
-func CreateFromClient(cfg Config, interval time.Duration, name string,
+func CreateFromClient(cfg Config, m *workerMetrics, interval time.Duration, name string,
 	logger log.Logger) (*metricsclient.Client, error) {
 	fromTransport := metricsclient.DefaultTransport(logger, false)
 	if len(cfg.FromCAFile) > 0 {
@@ -148,12 +146,12 @@ func CreateFromClient(cfg Config, interval time.Duration, name string,
 		fromClient.Transport = metricshttp.NewBearerRoundTripper(cfg.FromToken, fromClient.Transport)
 	}
 
-	from := metricsclient.New(logger, cfg.Registry, fromClient, cfg.LimitBytes, interval, "federate_from")
+	from := metricsclient.New(logger, m.clientMetrics, fromClient, cfg.LimitBytes, interval, "federate_from")
 
 	return from, nil
 }
 
-func createClients(cfg Config, interval time.Duration,
+func createClients(cfg Config, m *metricsclient.ClientMetrics, interval time.Duration,
 	logger log.Logger) (*metricsclient.Client, *metricsclient.Client, metricfamily.MultiTransformer, error) {
 
 	var transformer metricfamily.MultiTransformer
@@ -181,7 +179,7 @@ func createClients(cfg Config, interval time.Duration,
 	if len(cfg.AnonymizeLabels) > 0 {
 		transformer.With(metricfamily.NewMetricsAnonymizer(anonymizeSalt, cfg.AnonymizeLabels, nil))
 	}
-	from, err := CreateFromClient(cfg, interval, "federate_from", logger)
+	from, err := CreateFromClient(cfg, cfg.Metrics, interval, "federate_from", logger)
 	if err != nil {
 		return nil, nil, transformer, err
 	}
@@ -197,8 +195,44 @@ func createClients(cfg Config, interval time.Duration,
 	if cfg.Debug {
 		toClient.Transport = metricshttp.NewDebugRoundTripper(logger, toClient.Transport)
 	}
-	to := metricsclient.New(logger, cfg.Registry, toClient, cfg.LimitBytes, interval, "federate_to")
+	to := metricsclient.New(logger, m, toClient, cfg.LimitBytes, interval, "federate_to")
 	return from, to, transformer, nil
+}
+
+type workerMetrics struct {
+	gaugeFederateSamples         prometheus.Gauge
+	gaugeFederateFilteredSamples prometheus.Gauge
+	gaugeFederateErrors          prometheus.Gauge
+
+	clientMetrics *metricsclient.ClientMetrics
+}
+
+func NewWorkerMetrics(reg *prometheus.Registry) *workerMetrics {
+	return &workerMetrics{
+		gaugeFederateSamples: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "federate_samples",
+			Help: "Tracks the number of samples per federation",
+		}),
+		gaugeFederateFilteredSamples: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "federate_filtered_samples",
+			Help: "Tracks the number of samples filtered per federation",
+		}),
+		gaugeFederateErrors: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "federate_errors",
+			Help: "The number of times forwarding federated metrics has failed",
+		}),
+
+		clientMetrics: &metricsclient.ClientMetrics{
+			GaugeRequestRetrieve: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+				Name: "metricsclient_request_retrieve",
+				Help: "Tracks the number of metrics retrievals",
+			}, []string{"client", "status_code"}),
+			GaugeRequestSend: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+				Name: "metricsclient_request_send",
+				Help: "Tracks the number of metrics sends",
+			}, []string{"client", "status_code"}),
+		},
+	}
 }
 
 // New creates a new Worker based on the provided Config. If the Config contains invalid
@@ -217,25 +251,14 @@ func New(cfg Config) (*Worker, error) {
 		to:                      cfg.ToUpload,
 		logger:                  log.With(cfg.Logger, "component", "forwarder/worker"),
 		simulatedTimeseriesFile: cfg.SimulatedTimeseriesFile,
-		gaugeFederateSamples: promauto.With(cfg.Registry).NewGauge(prometheus.GaugeOpts{
-			Name: "federate_samples",
-			Help: "Tracks the number of samples per federation",
-		}),
-		gaugeFederateFilteredSamples: promauto.With(cfg.Registry).NewGauge(prometheus.GaugeOpts{
-			Name: "federate_filtered_samples",
-			Help: "Tracks the number of samples filtered per federation",
-		}),
-		gaugeFederateErrors: promauto.With(cfg.Registry).NewGauge(prometheus.GaugeOpts{
-			Name: "federate_errors",
-			Help: "The number of times forwarding federated metrics has failed",
-		}),
+		m:                       cfg.Metrics,
 	}
 
 	if w.interval == 0 {
 		w.interval = 4*time.Minute + 30*time.Second
 	}
 
-	fromClient, toClient, transformer, err := createClients(cfg, w.interval, logger)
+	fromClient, toClient, transformer, err := createClients(cfg, w.m.clientMetrics, w.interval, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +349,7 @@ func (w *Worker) Run(ctx context.Context) {
 		w.lock.Unlock()
 
 		if err := w.forward(ctx); err != nil {
-			w.gaugeFederateErrors.Inc()
+			w.m.gaugeFederateErrors.Inc()
 			rlogger.Log(w.logger, rlogger.Error, "msg", "unable to forward results", "err", err)
 			wait = time.Minute
 		}
@@ -389,8 +412,8 @@ func (w *Worker) forward(ctx context.Context) error {
 	families = metricfamily.Pack(families)
 	after := metricfamily.MetricsCount(families)
 
-	w.gaugeFederateSamples.Set(float64(before))
-	w.gaugeFederateFilteredSamples.Set(float64(before - after))
+	w.m.gaugeFederateSamples.Set(float64(before))
+	w.m.gaugeFederateFilteredSamples.Set(float64(before - after))
 
 	w.lastMetrics = families
 

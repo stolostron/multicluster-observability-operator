@@ -8,6 +8,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/forwarder"
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 )
 
@@ -41,7 +43,7 @@ func TestMultiWorkers(t *testing.T) {
 	stdlog.SetOutput(log.NewStdlibAdapter(l))
 	opt.Logger = l
 
-	err := runMultiWorkers(opt)
+	err := runMultiWorkers(opt, &forwarder.Config{Metrics: forwarder.NewWorkerMetrics(prometheus.NewRegistry())})
 	if err != nil {
 		t.Fatal(err)
 	}

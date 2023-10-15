@@ -84,7 +84,8 @@ func New(cfg forwarder.Config) (*Evaluator, error) {
 		LimitBytes:        cfg.LimitBytes,
 		Transformer:       cfg.Transformer,
 
-		Logger: cfg.Logger,
+		Logger:  cfg.Logger,
+		Metrics: cfg.Metrics,
 	}
 	from := &url.URL{
 		Scheme: cfg.From.Scheme,
@@ -107,7 +108,7 @@ func New(cfg forwarder.Config) (*Evaluator, error) {
 		evaluator.interval = 30 * time.Second
 	}
 
-	fromClient, err := forwarder.CreateFromClient(cfg, evaluator.interval, "evaluate_query", cfg.Logger)
+	fromClient, err := forwarder.CreateFromClient(cfg, cfg.Metrics, evaluator.interval, "evaluate_query", cfg.Logger)
 	if err != nil {
 		return nil, err
 	}

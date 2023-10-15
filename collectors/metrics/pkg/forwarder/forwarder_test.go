@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func init() {
@@ -124,6 +125,7 @@ func TestNew(t *testing.T) {
 	}
 
 	for i := range tc {
+		tc[i].c.Metrics = NewWorkerMetrics(prometheus.NewRegistry())
 		if _, err := New(tc[i].c); (err != nil) != tc[i].err {
 			no := "no"
 			if tc[i].err {
@@ -140,8 +142,9 @@ func TestReconfigure(t *testing.T) {
 		t.Fatalf("failed to parse `from` URL: %v", err)
 	}
 	c := Config{
-		From:   from,
-		Logger: log.NewNopLogger(),
+		From:    from,
+		Logger:  log.NewNopLogger(),
+		Metrics: NewWorkerMetrics(prometheus.NewRegistry()),
 	}
 	w, err := New(c)
 	if err != nil {
@@ -182,6 +185,7 @@ func TestReconfigure(t *testing.T) {
 	}
 
 	for i := range tc {
+		tc[i].c.Metrics = NewWorkerMetrics(prometheus.NewRegistry())
 		if err := w.Reconfigure(tc[i].c); (err != nil) != tc[i].err {
 			no := "no"
 			if tc[i].err {
@@ -206,6 +210,7 @@ func TestRun(t *testing.T) {
 		From:      &url.URL{},
 		FromQuery: &url.URL{},
 		Logger:    log.NewNopLogger(),
+		Metrics:   NewWorkerMetrics(prometheus.NewRegistry()),
 	}
 	w, err := New(c)
 	if err != nil {
@@ -235,7 +240,7 @@ func TestRun(t *testing.T) {
 			if err != nil {
 				stdlog.Fatalf("failed to parse second test server URL: %v", err)
 			}
-			if err := w.Reconfigure(Config{From: from, FromQuery: from, Logger: log.NewNopLogger()}); err != nil {
+			if err := w.Reconfigure(Config{From: from, FromQuery: from, Logger: log.NewNopLogger(), Metrics: NewWorkerMetrics(prometheus.NewRegistry())}); err != nil {
 				stdlog.Fatalf("failed to reconfigure worker with second test server url: %v", err)
 			}
 		}()
@@ -248,7 +253,7 @@ func TestRun(t *testing.T) {
 	}
 	if err := w.Reconfigure(Config{From: from, FromQuery: from,
 		RecordingRules: []string{"{\"name\":\"test\",\"query\":\"test\"}"},
-		Logger:         log.NewNopLogger()}); err != nil {
+		Logger:         log.NewNopLogger(), Metrics: NewWorkerMetrics(prometheus.NewRegistry())}); err != nil {
 		t.Fatalf("failed to reconfigure worker with first test server url: %v", err)
 	}
 

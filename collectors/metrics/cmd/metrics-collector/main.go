@@ -306,8 +306,8 @@ func (o *Options) Run() error {
 		return err
 	}
 
-	cfg.Registry = metricsReg
-
+	metrics := forwarder.NewWorkerMetrics(metricsReg)
+	cfg.Metrics = metrics
 	worker, err := forwarder.New(*cfg)
 	if err != nil {
 		return errors.Wrap(err, "failed to configure metrics collector")
@@ -357,7 +357,7 @@ func (o *Options) Run() error {
 		handlers := http.NewServeMux()
 		collectorhttp.DebugRoutes(handlers)
 		collectorhttp.HealthRoutes(handlers)
-		collectorhttp.MetricRoutes(handlers)
+		collectorhttp.MetricRoutes(handlers, metricsReg)
 		collectorhttp.ReloadRoutes(handlers, func() error {
 			return worker.Reconfigure(*cfg)
 		})
@@ -384,7 +384,7 @@ func (o *Options) Run() error {
 		}
 	}
 
-	err = runMultiWorkers(o)
+	err = runMultiWorkers(o, cfg)
 	if err != nil {
 		return err
 	}
@@ -406,7 +406,7 @@ func (o *Options) Run() error {
 	return g.Run()
 }
 
-func runMultiWorkers(o *Options) error {
+func runMultiWorkers(o *Options, cfg *forwarder.Config) error {
 	for i := 1; i < int(o.WorkerNum); i++ {
 		opt := &Options{
 			From:                    o.From,
@@ -443,6 +443,7 @@ func runMultiWorkers(o *Options) error {
 			return err
 		}
 
+		forwardCfg.Metrics = cfg.Metrics
 		forwardWorker, err := forwarder.New(*forwardCfg)
 		if err != nil {
 			return errors.Wrap(err, "failed to configure metrics collector")
