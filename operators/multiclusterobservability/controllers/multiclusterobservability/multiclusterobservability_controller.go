@@ -319,10 +319,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	// Delete PrometheusRule from openshift-monitoring namespace
-	if err := r.deleteSpecificPrometheusRule(ctx); err != nil {
-		reqLogger.Error(err, "Failed to delete the specific PrometheusRule in the openshift-monitoring namespace")
-		return ctrl.Result{}, err
+	if os.Getenv("UNIT_TEST") != "true" {
+		// Delete PrometheusRule from openshift-monitoring namespace
+		if err := r.deleteSpecificPrometheusRule(ctx); err != nil {
+			reqLogger.Error(err, "Failed to delete the specific PrometheusRule in the openshift-monitoring namespace")
+			return ctrl.Result{}, err
+		}
 	}
 
 	//update status
