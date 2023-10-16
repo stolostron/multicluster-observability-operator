@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -15,8 +16,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"errors"
 
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"

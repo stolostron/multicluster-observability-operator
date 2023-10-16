@@ -1,9 +1,8 @@
 package reader
 
 import (
-	"io"
-
 	"errors"
+	"io"
 )
 
 type limitReadCloser struct {

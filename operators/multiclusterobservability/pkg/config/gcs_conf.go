@@ -4,9 +4,8 @@
 package config
 
 import (
-	"strings"
-
 	"errors"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )

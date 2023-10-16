@@ -6,13 +6,12 @@ package multiclusterobservability
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path"
 	"reflect"
 	"time"
-
-	"errors"
 
 	routev1 "github.com/openshift/api/route/v1"
 	obsv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"

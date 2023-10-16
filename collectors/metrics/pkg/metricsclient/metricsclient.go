@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -17,8 +18,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"errors"
 
 	"github.com/cenkalti/backoff"
 	"github.com/go-kit/log"
@@ -48,7 +47,7 @@ type Client struct {
 	metricsName string
 	logger      log.Logger
 
-	m *ClientMetrics
+	metrics *ClientMetrics
 }
 
 type ClientMetrics struct {
@@ -60,14 +59,14 @@ type PartitionedMetrics struct {
 	Families []*clientmodel.MetricFamily
 }
 
-func New(logger log.Logger, m *ClientMetrics, client *http.Client, maxBytes int64, timeout time.Duration, metricsName string) *Client {
+func New(logger log.Logger, metrics *ClientMetrics, client *http.Client, maxBytes int64, timeout time.Duration, metricsName string) *Client {
 	return &Client{
 		client:      client,
 		maxBytes:    maxBytes,
 		timeout:     timeout,
 		metricsName: metricsName,
 		logger:      log.With(logger, "component", "metricsclient"),
-		m:           m,
+		metrics:     metrics,
 	}
 }
 
@@ -98,18 +97,18 @@ func (c *Client) RetrievRecordingMetrics(
 	err := withCancel(ctx, c.client, req, func(resp *http.Response) error {
 		switch resp.StatusCode {
 		case http.StatusOK:
-			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
 		case http.StatusUnauthorized:
-			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
 			return fmt.Errorf("prometheus server requires authentication: %s", resp.Request.URL)
 		case http.StatusForbidden:
-			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
 			return fmt.Errorf("prometheus server forbidden: %s", resp.Request.URL)
 		case http.StatusBadRequest:
-			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
 			return fmt.Errorf("bad request: %s", resp.Request.URL)
 		default:
-			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
 			return fmt.Errorf("prometheus server reported unexpected error code: %d", resp.StatusCode)
 		}
 
@@ -190,18 +189,18 @@ func (c *Client) Retrieve(ctx context.Context, req *http.Request) ([]*clientmode
 	err := withCancel(ctx, c.client, req, func(resp *http.Response) error {
 		switch resp.StatusCode {
 		case http.StatusOK:
-			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
 		case http.StatusUnauthorized:
-			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
 			return fmt.Errorf("prometheus server requires authentication: %s", resp.Request.URL)
 		case http.StatusForbidden:
-			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
 			return fmt.Errorf("prometheus server forbidden: %s", resp.Request.URL)
 		case http.StatusBadRequest:
-			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
 			return fmt.Errorf("bad request: %s", resp.Request.URL)
 		default:
-			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
 			return fmt.Errorf("prometheus server reported unexpected error code: %d", resp.StatusCode)
 		}
 
@@ -258,19 +257,19 @@ func (c *Client) Send(ctx context.Context, req *http.Request, families []*client
 		logger.Log(c.logger, logger.Debug, "msg", resp.StatusCode)
 		switch resp.StatusCode {
 		case http.StatusOK:
-			c.m.GaugeRequestSend.WithLabelValues(c.metricsName, "200").Inc()
+			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, "200").Inc()
 		case http.StatusUnauthorized:
-			c.m.GaugeRequestSend.WithLabelValues(c.metricsName, "401").Inc()
+			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, "401").Inc()
 			return fmt.Errorf("gateway server requires authentication: %s", resp.Request.URL)
 		case http.StatusForbidden:
-			c.m.GaugeRequestSend.WithLabelValues(c.metricsName, "403").Inc()
+			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, "403").Inc()
 			return fmt.Errorf("gateway server forbidden: %s", resp.Request.URL)
 		case http.StatusBadRequest:
-			c.m.GaugeRequestSend.WithLabelValues(c.metricsName, "400").Inc()
+			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, "400").Inc()
 			logger.Log(c.logger, logger.Debug, "msg", resp.Body)
 			return fmt.Errorf("gateway server bad request: %s", resp.Request.URL)
 		default:
-			c.m.GaugeRequestSend.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
+			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
 			body, _ := io.ReadAll(resp.Body)
 			if len(body) > 1024 {
 				body = body[:1024]

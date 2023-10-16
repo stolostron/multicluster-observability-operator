@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -16,9 +17,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-
-	"errors"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	clientmodel "github.com/prometheus/client_model/go"
@@ -98,10 +96,10 @@ type Worker struct {
 
 	status status.StatusReport
 
-	m *workerMetrics
+	metrics *workerMetrics
 }
 
-func CreateFromClient(cfg Config, m *workerMetrics, interval time.Duration, name string,
+func CreateFromClient(cfg Config, metrics *workerMetrics, interval time.Duration, name string,
 	logger log.Logger) (*metricsclient.Client, error) {
 	fromTransport := metricsclient.DefaultTransport(logger, false)
 	if len(cfg.FromCAFile) > 0 {
@@ -148,12 +146,12 @@ func CreateFromClient(cfg Config, m *workerMetrics, interval time.Duration, name
 		fromClient.Transport = metricshttp.NewBearerRoundTripper(cfg.FromToken, fromClient.Transport)
 	}
 
-	from := metricsclient.New(logger, m.clientMetrics, fromClient, cfg.LimitBytes, interval, "federate_from")
+	from := metricsclient.New(logger, metrics.clientMetrics, fromClient, cfg.LimitBytes, interval, "federate_from")
 
 	return from, nil
 }
 
-func createClients(cfg Config, m *metricsclient.ClientMetrics, interval time.Duration,
+func createClients(cfg Config, metrics *metricsclient.ClientMetrics, interval time.Duration,
 	logger log.Logger) (*metricsclient.Client, *metricsclient.Client, metricfamily.MultiTransformer, error) {
 
 	var transformer metricfamily.MultiTransformer
@@ -197,7 +195,7 @@ func createClients(cfg Config, m *metricsclient.ClientMetrics, interval time.Dur
 	if cfg.Debug {
 		toClient.Transport = metricshttp.NewDebugRoundTripper(logger, toClient.Transport)
 	}
-	to := metricsclient.New(logger, m, toClient, cfg.LimitBytes, interval, "federate_to")
+	to := metricsclient.New(logger, metrics, toClient, cfg.LimitBytes, interval, "federate_to")
 	return from, to, transformer, nil
 }
 
@@ -253,14 +251,14 @@ func New(cfg Config) (*Worker, error) {
 		to:                      cfg.ToUpload,
 		logger:                  log.With(cfg.Logger, "component", "forwarder/worker"),
 		simulatedTimeseriesFile: cfg.SimulatedTimeseriesFile,
-		m:                       cfg.Metrics,
+		metrics:                 cfg.Metrics,
 	}
 
 	if w.interval == 0 {
 		w.interval = 4*time.Minute + 30*time.Second
 	}
 
-	fromClient, toClient, transformer, err := createClients(cfg, w.m.clientMetrics, w.interval, logger)
+	fromClient, toClient, transformer, err := createClients(cfg, w.metrics.clientMetrics, w.interval, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +349,7 @@ func (w *Worker) Run(ctx context.Context) {
 		w.lock.Unlock()
 
 		if err := w.forward(ctx); err != nil {
-			w.m.gaugeFederateErrors.Inc()
+			w.metrics.gaugeFederateErrors.Inc()
 			rlogger.Log(w.logger, rlogger.Error, "msg", "unable to forward results", "err", err)
 			wait = time.Minute
 		}
@@ -414,8 +412,8 @@ func (w *Worker) forward(ctx context.Context) error {
 	families = metricfamily.Pack(families)
 	after := metricfamily.MetricsCount(families)
 
-	w.m.gaugeFederateSamples.Set(float64(before))
-	w.m.gaugeFederateFilteredSamples.Set(float64(before - after))
+	w.metrics.gaugeFederateSamples.Set(float64(before))
+	w.metrics.gaugeFederateFilteredSamples.Set(float64(before - after))
 
 	w.lastMetrics = families
 

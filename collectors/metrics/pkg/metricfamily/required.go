@@ -1,9 +1,8 @@
 package metricfamily
 
 import (
-	"fmt"
-
 	"errors"
+	"fmt"
 
 	clientmodel "github.com/prometheus/client_model/go"
 )

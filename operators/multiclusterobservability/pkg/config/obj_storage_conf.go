@@ -4,10 +4,9 @@
 package config
 
 import (
+	"errors"
 	"net/http"
 	"strings"
-
-	"errors"
 
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v2"

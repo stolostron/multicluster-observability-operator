@@ -4,10 +4,9 @@
 package tests
 
 import (
+	"errors"
 	"fmt"
 	"os"
-
-	"errors"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -53,7 +52,7 @@ var _ = Describe("Observability:", func() {
 
 		By("Updating mco cr to inject WriteStorage")
 		templatePath := "../../../examples/export/v1beta2"
-		if os.Getenv("IS_CANARY_ENV") != TrueStr {
+		if os.Getenv("IS_CANARY_ENV") != trueStr {
 			templatePath = "../../../examples/export/v1beta2/custom-certs"
 		}
 		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: templatePath})

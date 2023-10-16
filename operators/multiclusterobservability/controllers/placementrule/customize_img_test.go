@@ -5,10 +5,9 @@ package placementrule
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
-
-	"errors"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"

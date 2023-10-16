@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	stdlog "log"
 	"net"
@@ -15,8 +16,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"errors"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"

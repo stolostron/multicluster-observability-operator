@@ -194,6 +194,8 @@ func createCACertificate(cn string, caKey *rsa.PrivateKey) ([]byte, []byte, erro
 	return caKeyBytes, caBytes, nil
 }
 
+// TODO(saswatamcode): Refactor function to remove ou.
+//
 //nolint:unparam
 func createCertSecret(c client.Client,
 	scheme *runtime.Scheme, mco *mcov1beta2.MultiClusterObservability,

@@ -113,7 +113,7 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("[P2][Sev2][observability][Stable] Should revert any manual changes on metrics-collector-view clusterolebinding (endpoint_preserve/g0)", func() {
-		if os.Getenv("IS_KIND_ENV") == TrueStr {
+		if os.Getenv("IS_KIND_ENV") == trueStr {
 			Skip("Skip the case due to run in KinD")
 		}
 
@@ -151,7 +151,7 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("[P2][Sev2][observability][Stable] Should recreate on metrics-collector-serving-certs-ca-bundle configmap if deleted (endpoint_preserve/g0)", func() {
-		if os.Getenv("IS_KIND_ENV") == TrueStr {
+		if os.Getenv("IS_KIND_ENV") == trueStr {
 			Skip("Skip the case due to run in KinD")
 		}
 

@@ -5,7 +5,6 @@ package utils
 
 import (
 	"context"
-
 	"errors"
 
 	goversion "github.com/hashicorp/go-version"

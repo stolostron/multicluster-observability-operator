@@ -5,12 +5,11 @@ package multiclusterobservability
 
 import (
 	"context"
+	cerr "errors"
 	"fmt"
 	"os"
 	"reflect"
 	"time"
-
-	cerr "errors"
 
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"

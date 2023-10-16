@@ -4,10 +4,9 @@
 package certificates
 
 import (
+	"errors"
 	"os"
 	"time"
-
-	"errors"
 
 	"github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/signer"

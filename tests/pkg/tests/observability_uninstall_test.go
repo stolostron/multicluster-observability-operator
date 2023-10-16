@@ -5,9 +5,8 @@ package tests
 
 import (
 	"context"
-	"os"
-
 	"errors"
+	"os"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -17,7 +16,7 @@ import (
 )
 
 func uninstallMCO() {
-	if os.Getenv("SKIP_UNINSTALL_STEP") == TrueStr {
+	if os.Getenv("SKIP_UNINSTALL_STEP") == trueStr {
 		return
 	}
 

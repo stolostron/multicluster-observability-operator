@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	TrueStr = "true"
+	trueStr = "true"
 )
 
 var _ = Describe("Observability:", func() {
@@ -309,7 +309,7 @@ var _ = Describe("Observability:", func() {
 		alertGetReq, err := http.NewRequest("GET", amURL.String(), nil)
 		Expect(err).NotTo(HaveOccurred())
 
-		if os.Getenv("IS_KIND_ENV") != TrueStr {
+		if os.Getenv("IS_KIND_ENV") != trueStr {
 			if BearerToken == "" {
 				BearerToken, err = utils.FetchBearerToken(testOptions)
 				Expect(err).NotTo(HaveOccurred())

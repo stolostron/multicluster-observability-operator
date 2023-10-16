@@ -60,7 +60,7 @@ var _ = Describe("Observability:", func() {
 			}
 
 			client := &http.Client{}
-			if os.Getenv("IS_KIND_ENV") != TrueStr {
+			if os.Getenv("IS_KIND_ENV") != trueStr {
 				client.Transport = tr
 				req.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
@@ -133,7 +133,7 @@ var _ = Describe("Observability:", func() {
 			}
 
 			client := &http.Client{}
-			if os.Getenv("IS_KIND_ENV") != TrueStr {
+			if os.Getenv("IS_KIND_ENV") != trueStr {
 				client.Transport = tr
 				alertPostReq.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
@@ -162,7 +162,7 @@ var _ = Describe("Observability:", func() {
 				return err
 			}
 
-			if os.Getenv("IS_KIND_ENV") != TrueStr {
+			if os.Getenv("IS_KIND_ENV") != trueStr {
 				alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
 

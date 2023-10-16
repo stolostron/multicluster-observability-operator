@@ -5,14 +5,13 @@ package utils
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
-
-	"errors"
 
 	"k8s.io/klog"
 )
