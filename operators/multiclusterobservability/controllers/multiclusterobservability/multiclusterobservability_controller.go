@@ -38,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	placementctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
 	certctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
@@ -316,6 +317,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+	}
+
+	// Delete PrometheusRule from openshift-monitoring namespace
+	if err := r.deleteSpecificPrometheusRule(ctx); err != nil {
+		reqLogger.Error(err, "Failed to delete the specific PrometheusRule in the openshift-monitoring namespace")
+		return ctrl.Result{}, err
 	}
 
 	//update status
@@ -831,4 +838,22 @@ func (r *MultiClusterObservabilityReconciler) ensureOpenShiftNamespaceLabel(ctx 
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func (r *MultiClusterObservabilityReconciler) deleteSpecificPrometheusRule(ctx context.Context) error {
+	promRule := &monitoringv1.PrometheusRule{}
+	err := r.Client.Get(ctx, client.ObjectKey{Name: "acm-observability-alert-rules", Namespace: "openshift-monitoring"}, promRule)
+	if err == nil {
+		err = r.Client.Delete(ctx, promRule)
+		if err != nil {
+			log.Error(err, "Failed to delete PrometheusRule in openshift-monitoring namespace")
+			return err
+		}
+		log.Info("Deleted PrometheusRule from openshift-monitoring namespace")
+	} else if !apierrors.IsNotFound(err) {
+		log.Error(err, "Failed to fetch PrometheusRule")
+		return err
+	}
+
+	return nil
 }

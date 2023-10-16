@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	ocpMonitoringNamespace = "openshift-monitoring"
+	ocpMonitoringNamespace = "open-cluster-management-observability"
 	metricsNamePrefix      = "acm_"
 )
 
