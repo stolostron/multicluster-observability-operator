@@ -71,3 +71,4 @@ cluster:policy_governance_info:propagated_noncompliant_count
 policy:policy_governance_info:propagated_count
 policy:policy_governance_info:propagated_noncompliant_count
 namespace_cpu:kube_pod_container_resource_requests:sum
+csv_abnormal
