@@ -291,7 +291,7 @@ func (o *Options) Run() error {
 
 	metricsReg := prometheus.NewRegistry()
 	metricsReg.MustRegister(
-		version.NewCollector("metrics-collector"),
+		version.NewCollector("metrics_collector"),
 		collectors.NewGoCollector(
 			collectors.WithGoCollectorRuntimeMetrics(collectors.GoRuntimeMetricsRule{Matcher: regexp.MustCompile("/.*")}),
 		),
