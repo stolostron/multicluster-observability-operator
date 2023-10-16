@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/efficientgo/core/errors"
 	"github.com/go-kit/log"
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/prompb"
@@ -185,25 +184,25 @@ func Test_convertToTimeseries(t *testing.T) {
 
 func timeseriesEqual(t1 []prompb.TimeSeries, t2 []prompb.TimeSeries) (bool, error) {
 	if len(t1) != len(t2) {
-		return false, errors.Newf("timeseries don't match amount of series: %d != %d", len(t1), len(t2))
+		return false, fmt.Errorf("timeseries don't match amount of series: %d != %d", len(t1), len(t2))
 	}
 
 	for i, t := range t1 {
 		for j, l := range t.Labels {
 			if t2[i].Labels[j].Name != l.Name {
-				return false, errors.Newf("label names don't match: %s != %s", t2[i].Labels[j].Name, l.Name)
+				return false, fmt.Errorf("label names don't match: %s != %s", t2[i].Labels[j].Name, l.Name)
 			}
 			if t2[i].Labels[j].Value != l.Value {
-				return false, errors.Newf("label values don't match: %s != %s", t2[i].Labels[j].Value, l.Value)
+				return false, fmt.Errorf("label values don't match: %s != %s", t2[i].Labels[j].Value, l.Value)
 			}
 		}
 
 		for j, s := range t.Samples {
 			if t2[i].Samples[j].Timestamp != s.Timestamp {
-				return false, errors.Newf("sample timestamps don't match: %d != %d", t2[i].Samples[j].Timestamp, s.Timestamp)
+				return false, fmt.Errorf("sample timestamps don't match: %d != %d", t2[i].Samples[j].Timestamp, s.Timestamp)
 			}
 			if t2[i].Samples[j].Value != s.Value {
-				return false, errors.Newf("sample values don't match: %f != %f", t2[i].Samples[j].Value, s.Value)
+				return false, fmt.Errorf("sample values don't match: %f != %f", t2[i].Samples[j].Value, s.Value)
 			}
 		}
 	}

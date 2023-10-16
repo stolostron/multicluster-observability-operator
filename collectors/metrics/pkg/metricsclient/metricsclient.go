@@ -18,8 +18,9 @@ import (
 	"strings"
 	"time"
 
+	"errors"
+
 	"github.com/cenkalti/backoff"
-	"github.com/efficientgo/core/errors"
 	"github.com/go-kit/log"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
@@ -100,16 +101,16 @@ func (c *Client) RetrievRecordingMetrics(
 			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
 		case http.StatusUnauthorized:
 			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
-			return errors.Newf("prometheus server requires authentication: %s", resp.Request.URL)
+			return fmt.Errorf("prometheus server requires authentication: %s", resp.Request.URL)
 		case http.StatusForbidden:
 			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
-			return errors.Newf("prometheus server forbidden: %s", resp.Request.URL)
+			return fmt.Errorf("prometheus server forbidden: %s", resp.Request.URL)
 		case http.StatusBadRequest:
 			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
-			return errors.Newf("bad request: %s", resp.Request.URL)
+			return fmt.Errorf("bad request: %s", resp.Request.URL)
 		default:
 			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
-			return errors.Newf("prometheus server reported unexpected error code: %d", resp.StatusCode)
+			return fmt.Errorf("prometheus server reported unexpected error code: %d", resp.StatusCode)
 		}
 
 		decoder := json.NewDecoder(resp.Body)
@@ -192,16 +193,16 @@ func (c *Client) Retrieve(ctx context.Context, req *http.Request) ([]*clientmode
 			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
 		case http.StatusUnauthorized:
 			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
-			return errors.Newf("prometheus server requires authentication: %s", resp.Request.URL)
+			return fmt.Errorf("prometheus server requires authentication: %s", resp.Request.URL)
 		case http.StatusForbidden:
 			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
-			return errors.Newf("prometheus server forbidden: %s", resp.Request.URL)
+			return fmt.Errorf("prometheus server forbidden: %s", resp.Request.URL)
 		case http.StatusBadRequest:
 			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
-			return errors.Newf("bad request: %s", resp.Request.URL)
+			return fmt.Errorf("bad request: %s", resp.Request.URL)
 		default:
 			c.m.GaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
-			return errors.Newf("prometheus server reported unexpected error code: %d", resp.StatusCode)
+			return fmt.Errorf("prometheus server reported unexpected error code: %d", resp.StatusCode)
 		}
 
 		// read the response into memory
@@ -260,21 +261,21 @@ func (c *Client) Send(ctx context.Context, req *http.Request, families []*client
 			c.m.GaugeRequestSend.WithLabelValues(c.metricsName, "200").Inc()
 		case http.StatusUnauthorized:
 			c.m.GaugeRequestSend.WithLabelValues(c.metricsName, "401").Inc()
-			return errors.Newf("gateway server requires authentication: %s", resp.Request.URL)
+			return fmt.Errorf("gateway server requires authentication: %s", resp.Request.URL)
 		case http.StatusForbidden:
 			c.m.GaugeRequestSend.WithLabelValues(c.metricsName, "403").Inc()
-			return errors.Newf("gateway server forbidden: %s", resp.Request.URL)
+			return fmt.Errorf("gateway server forbidden: %s", resp.Request.URL)
 		case http.StatusBadRequest:
 			c.m.GaugeRequestSend.WithLabelValues(c.metricsName, "400").Inc()
 			logger.Log(c.logger, logger.Debug, "msg", resp.Body)
-			return errors.Newf("gateway server bad request: %s", resp.Request.URL)
+			return fmt.Errorf("gateway server bad request: %s", resp.Request.URL)
 		default:
 			c.m.GaugeRequestSend.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
 			body, _ := io.ReadAll(resp.Body)
 			if len(body) > 1024 {
 				body = body[:1024]
 			}
-			return errors.Newf("gateway server reported unexpected error code: %d: %s", resp.StatusCode, string(body))
+			return fmt.Errorf("gateway server reported unexpected error code: %d: %s", resp.StatusCode, string(body))
 		}
 
 		return nil
@@ -373,12 +374,12 @@ func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string)
 	// Load Server CA cert
 	caCert, err := os.ReadFile(filepath.Clean(caCertFile))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load server ca cert file")
+		return nil, fmt.Errorf("failed to load server ca cert file: %w", err)
 	}
 	// Load client cert signed by Client CA
 	cert, err := tls.LoadX509KeyPair(tlsCrtFile, tlsKeyFile)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load client ca cert")
+		return nil, fmt.Errorf("failed to load client ca cert: %w", err)
 	}
 
 	caCertPool := x509.NewCertPool()
@@ -450,7 +451,7 @@ func convertToTimeseries(p *PartitionedMetrics, now time.Time) ([]prompb.TimeSer
 			case clientmodel.MetricType_UNTYPED:
 				s.Value = *m.Untyped.Value
 			default:
-				return nil, errors.Newf("metric type %s not supported", f.Type.String())
+				return nil, fmt.Errorf("metric type %s not supported", f.Type.String())
 			}
 
 			ts.Labels = append(ts.Labels, labelpairs...)

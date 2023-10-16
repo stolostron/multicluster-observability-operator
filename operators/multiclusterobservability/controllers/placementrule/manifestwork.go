@@ -10,7 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -451,7 +452,7 @@ func generateAmAccessorTokenSecret(cl client.Client) (*corev1.Secret, error) {
 			"name",
 			config.AlertmanagerAccessorSAName,
 		)
-		return nil, errors.Newf(
+		return nil, fmt.Errorf(
 			"no token secret for Alertmanager accessor serviceaccount: %s",
 			config.AlertmanagerAccessorSAName,
 		)

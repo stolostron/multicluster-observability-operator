@@ -3,7 +3,7 @@ package reader
 import (
 	"io"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
 )
 
 type limitReadCloser struct {

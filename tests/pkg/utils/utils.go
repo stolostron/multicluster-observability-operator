@@ -6,13 +6,15 @@ package utils
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	"github.com/ghodss/yaml"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -141,7 +143,7 @@ func CreateMCOTestingRBAC(opt TestOptions) error {
 		},
 	}
 	if err := CreateCRB(opt, true, mcoTestingCRB); err != nil {
-		return errors.Newf("failed to create clusterrolebing for %s: %v", mcoTestingCRB.GetName(), err)
+		return fmt.Errorf("failed to create clusterrolebing for %s: %v", mcoTestingCRB.GetName(), err)
 	}
 
 	mcoTestingSA := &corev1.ServiceAccount{
@@ -151,7 +153,7 @@ func CreateMCOTestingRBAC(opt TestOptions) error {
 		},
 	}
 	if err := CreateSA(opt, true, MCO_NAMESPACE, mcoTestingSA); err != nil {
-		return errors.Newf("failed to create serviceaccount for %s: %v", mcoTestingSA.GetName(), err)
+		return fmt.Errorf("failed to create serviceaccount for %s: %v", mcoTestingSA.GetName(), err)
 	}
 	return nil
 }
@@ -263,7 +265,7 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 
 		var kind string
 		if v, ok := obj.Object["kind"]; !ok {
-			return errors.Newf("kind attribute not found in %s", f)
+			return fmt.Errorf("kind attribute not found in %s", f)
 		} else {
 			kind = v.(string)
 		}
@@ -272,7 +274,7 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 
 		var apiVersion string
 		if v, ok := obj.Object["apiVersion"]; !ok {
-			return errors.Newf("apiVersion attribute not found in %s", f)
+			return fmt.Errorf("apiVersion attribute not found in %s", f)
 		} else {
 			apiVersion = v.(string)
 		}
@@ -521,7 +523,7 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 					Resource: "prometheusrules"}
 				klog.V(5).Infof("Install PrometheusRule: %s\n", f)
 			default:
-				return errors.Newf("resource %s not supported", kind)
+				return fmt.Errorf("resource %s not supported", kind)
 			}
 
 			if kind == "MultiClusterObservability" {
@@ -670,7 +672,7 @@ func HaveDeploymentsInNamespace(
 		}
 
 		if deployment.Status.Replicas != deployment.Status.ReadyReplicas {
-			err = errors.Newf("%s: Expect %d but got %d Ready replicas",
+			err = fmt.Errorf("%s: Expect %d but got %d Ready replicas",
 				deploymentName,
 				deployment.Status.Replicas,
 				deployment.Status.ReadyReplicas)
@@ -681,7 +683,7 @@ func HaveDeploymentsInNamespace(
 		for _, condition := range deployment.Status.Conditions {
 			if condition.Reason == "MinimumReplicasAvailable" {
 				if condition.Status != corev1.ConditionTrue {
-					err = errors.Newf("%s: Expect %s but got %s",
+					err = fmt.Errorf("%s: Expect %s but got %s",
 						deploymentName,
 						condition.Status,
 						corev1.ConditionTrue)

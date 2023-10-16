@@ -3,9 +3,11 @@ package metricfamily
 
 import (
 	"context"
+	"fmt"
 	"os"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	"github.com/go-kit/log"
 	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
 	prom "github.com/prometheus/client_model/go"
@@ -129,7 +131,7 @@ func getClusterName(h *hypershiftTransformer, id string) (string, error) {
 		}
 		clusterName, ok = h.hostedClusters[id]
 		if !ok {
-			return "", errors.Newf("failed to find HostedCluster with id: %s", id)
+			return "", fmt.Errorf("failed to find HostedCluster with id: %s", id)
 		}
 	}
 	return clusterName, nil

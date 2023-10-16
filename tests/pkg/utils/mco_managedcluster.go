@@ -6,7 +6,8 @@ package utils
 import (
 	"context"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	goversion "github.com/hashicorp/go-version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

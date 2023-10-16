@@ -1,9 +1,11 @@
 package metricfamily
 
 import (
+	"fmt"
 	"time"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	clientmodel "github.com/prometheus/client_model/go"
 )
 
@@ -35,7 +37,7 @@ func (t *errorInvalidFederateSamples) Transform(family *clientmodel.MetricFamily
 	case clientmodel.MetricType_SUMMARY:
 	case clientmodel.MetricType_UNTYPED:
 	default:
-		return false, errors.Newf("unknown metric type %s", t)
+		return false, fmt.Errorf("unknown metric type %s", t)
 	}
 
 	for _, m := range family.Metric {
@@ -59,23 +61,23 @@ func (t *errorInvalidFederateSamples) Transform(family *clientmodel.MetricFamily
 		switch t := *family.Type; t {
 		case clientmodel.MetricType_COUNTER:
 			if m.Counter == nil || m.Gauge != nil || m.Histogram != nil || m.Summary != nil || m.Untyped != nil {
-				return false, errors.Newf("metric type %s must have counter field set", t)
+				return false, fmt.Errorf("metric type %s must have counter field set", t)
 			}
 		case clientmodel.MetricType_GAUGE:
 			if m.Counter != nil || m.Gauge == nil || m.Histogram != nil || m.Summary != nil || m.Untyped != nil {
-				return false, errors.Newf("metric type %s must have gauge field set", t)
+				return false, fmt.Errorf("metric type %s must have gauge field set", t)
 			}
 		case clientmodel.MetricType_HISTOGRAM:
 			if m.Counter != nil || m.Gauge != nil || m.Histogram == nil || m.Summary != nil || m.Untyped != nil {
-				return false, errors.Newf("metric type %s must have histogram field set", t)
+				return false, fmt.Errorf("metric type %s must have histogram field set", t)
 			}
 		case clientmodel.MetricType_SUMMARY:
 			if m.Counter != nil || m.Gauge != nil || m.Histogram != nil || m.Summary == nil || m.Untyped != nil {
-				return false, errors.Newf("metric type %s must have summary field set", t)
+				return false, fmt.Errorf("metric type %s must have summary field set", t)
 			}
 		case clientmodel.MetricType_UNTYPED:
 			if m.Counter != nil || m.Gauge != nil || m.Histogram != nil || m.Summary != nil || m.Untyped == nil {
-				return false, errors.Newf("metric type %s must have untyped field set", t)
+				return false, fmt.Errorf("metric type %s must have untyped field set", t)
 			}
 		}
 	}

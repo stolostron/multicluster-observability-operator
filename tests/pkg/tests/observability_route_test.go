@@ -7,12 +7,14 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strings"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/klog"
@@ -183,7 +185,7 @@ var _ = Describe("Observability:", func() {
 			}
 
 			if !strings.Contains(string(alertResult), "mco-e2e") {
-				return errors.Newf("Failed to found alert from alertResult: %s", alertResult)
+				return fmt.Errorf("Failed to found alert from alertResult: %s", alertResult)
 			}
 
 			return nil

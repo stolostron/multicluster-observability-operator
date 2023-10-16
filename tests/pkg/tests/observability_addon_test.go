@@ -4,9 +4,11 @@
 package tests
 
 import (
+	"fmt"
 	"strings"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/klog"
@@ -109,7 +111,7 @@ var _ = Describe("Observability:", func() {
 						return nil
 					}
 				}
-				return errors.Wrap(err, "Check no metric data in grafana console error")
+				return fmt.Errorf("Check no metric data in grafana console error: %w", err)
 			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 

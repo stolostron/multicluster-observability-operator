@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/efficientgo/core/errors"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -79,7 +78,7 @@ var _ = Describe("Observability:", func() {
 					return nil
 				}
 			}
-			return errors.Newf("Failed to check compact args: --delete-delay="+deleteDelay+". args is %v", argList)
+			return fmt.Errorf("Failed to check compact args: --delete-delay="+deleteDelay+". args is %v", argList)
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
@@ -98,7 +97,7 @@ var _ = Describe("Observability:", func() {
 					return nil
 				}
 			}
-			return errors.Newf(
+			return fmt.Errorf(
 				"Failed to check store args: --ignore-deletion-marks-delay="+ignoreDeletionMarksDelay+". The args is: %v",
 				argList,
 			)
@@ -120,7 +119,7 @@ var _ = Describe("Observability:", func() {
 					return nil
 				}
 			}
-			return errors.Newf(
+			return fmt.Errorf(
 				"Failed to check receive args: --tsdb.retention="+retentionInLocal+". The args is: %v",
 				argList,
 			)
@@ -142,7 +141,7 @@ var _ = Describe("Observability:", func() {
 					return nil
 				}
 			}
-			return errors.Newf(
+			return fmt.Errorf(
 				"Failed to check rule args: --tsdb.retention="+retentionInLocal+". The args is: %v",
 				argList,
 			)
@@ -164,7 +163,7 @@ var _ = Describe("Observability:", func() {
 					return nil
 				}
 			}
-			return errors.Newf(
+			return fmt.Errorf(
 				"Failed to check rule args: --tsdb.block-duration="+blockDuration+". The args is: %v",
 				argList,
 			)

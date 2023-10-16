@@ -10,7 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	"github.com/go-logr/logr"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	"golang.org/x/exp/slices"

@@ -7,7 +7,8 @@ import (
 	"context"
 	"os"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

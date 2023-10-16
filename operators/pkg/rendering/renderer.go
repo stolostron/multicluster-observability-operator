@@ -6,7 +6,8 @@ package rendering
 import (
 	"strconv"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/kustomize/api/resource"
 )

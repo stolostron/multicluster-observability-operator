@@ -5,10 +5,10 @@ package observabilityendpoint
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 
-	cerr "github.com/efficientgo/core/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -190,7 +190,7 @@ func createHubAmRouterCASecret(
 func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, targetNamespace string) error {
 	amAccessorToken, err := getAmAccessorToken(ctx, client)
 	if err != nil {
-		return cerr.Wrap(err, "fail to get the alertmanager accessor token")
+		return fmt.Errorf("fail to get the alertmanager accessor token: %w", err)
 	}
 
 	dataMap := map[string][]byte{hubAmAccessorSecretKey: []byte(amAccessorToken)}
@@ -245,7 +245,7 @@ func getAmAccessorToken(ctx context.Context, client client.Client) (string, erro
 
 	amAccessorToken := amAccessorSecret.Data[hubAmAccessorSecretKey]
 	if amAccessorToken == nil {
-		return "", cerr.Newf("no token in secret %s", hubAmAccessorSecretName)
+		return "", fmt.Errorf("no token in secret %s", hubAmAccessorSecretName)
 	}
 
 	return string(amAccessorToken), nil

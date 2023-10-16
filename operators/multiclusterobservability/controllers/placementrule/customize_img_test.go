@@ -5,9 +5,11 @@ package placementrule
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,7 +70,7 @@ func Test_DefaultClientPullSecret(t *testing.T) {
 			pullSecret:         newPullSecret("pullSecret", "ns1", []byte("data")),
 			clusterName:        "cluster1",
 			cluster:            newFakeCluster("cluster1", ""),
-			expectedErr:        errors.Newf("wrong pullSecret format  in the annotation %s", ClusterImageRegistriesAnnotation),
+			expectedErr:        fmt.Errorf("wrong pullSecret format  in the annotation %s", ClusterImageRegistriesAnnotation),
 			expectedPullSecret: nil,
 		},
 		{

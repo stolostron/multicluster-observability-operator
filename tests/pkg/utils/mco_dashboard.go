@@ -12,7 +12,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	"k8s.io/klog"
 )
 

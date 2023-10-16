@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/efficientgo/core/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -88,7 +87,7 @@ func (c *DefaultClient) PullSecret() (*corev1.Secret, error) {
 	}
 	segs := strings.Split(imageRegistries.PullSecret, ".")
 	if len(segs) != 2 {
-		return nil, errors.Newf("wrong pullSecret format %v in the annotation %s",
+		return nil, fmt.Errorf("wrong pullSecret format %v in the annotation %s",
 			imageRegistries.PullSecret, ClusterImageRegistriesAnnotation)
 	}
 	namespace := segs[0]

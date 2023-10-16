@@ -1,7 +1,8 @@
 package metricfamily
 
 import (
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	clientmodel "github.com/prometheus/client_model/go"
 )
 

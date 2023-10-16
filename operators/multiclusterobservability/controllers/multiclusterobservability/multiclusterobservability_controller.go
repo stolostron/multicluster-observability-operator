@@ -10,7 +10,8 @@ import (
 	"reflect"
 	"time"
 
-	cerr "github.com/efficientgo/core/errors"
+	cerr "errors"
+
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
 	"golang.org/x/exp/slices"

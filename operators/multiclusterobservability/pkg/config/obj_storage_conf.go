@@ -7,7 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v2"
 )

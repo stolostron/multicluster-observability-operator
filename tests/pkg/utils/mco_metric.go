@@ -15,7 +15,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
@@ -60,7 +61,7 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 	if resp.StatusCode != http.StatusOK {
 		klog.Errorf("resp: %+v\n", resp)
 		klog.Errorf("err: %+v\n", err)
-		return errors.Newf("failed to access managed cluster metrics via grafana console: %s", query), false
+		return fmt.Errorf("failed to access managed cluster metrics via grafana console: %s", query), false
 	}
 
 	metricResult, err := io.ReadAll(resp.Body)

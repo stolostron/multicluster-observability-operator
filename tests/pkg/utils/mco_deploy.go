@@ -12,7 +12,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -255,7 +256,7 @@ func CheckAllPodNodeSelector(opt TestOptions, nodeSelector map[string]interface{
 		for _, pod := range podList {
 			selecterValue, ok := pod.Spec.NodeSelector[k]
 			if !ok || selecterValue != v {
-				return errors.Newf("failed to check node selector with %s=%s for pod: %v", k, v, pod.GetName())
+				return fmt.Errorf("failed to check node selector with %s=%s for pod: %v", k, v, pod.GetName())
 			}
 		}
 	}
@@ -272,7 +273,7 @@ func CheckAllPodsAffinity(opt TestOptions) error {
 	for _, pod := range podList {
 
 		if pod.Spec.Affinity == nil {
-			return errors.Newf("Failed to check affinity for pod: %v" + pod.GetName())
+			return fmt.Errorf("Failed to check affinity for pod: %v" + pod.GetName())
 		}
 
 		weightedPodAffinityTerms := pod.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution
@@ -281,7 +282,7 @@ func CheckAllPodsAffinity(opt TestOptions) error {
 			if (topologyKey == "kubernetes.io/hostname" && weightedPodAffinityTerm.Weight == 30) ||
 				(topologyKey == "topology.kubernetes.io/zone" && weightedPodAffinityTerm.Weight == 70) {
 			} else {
-				return errors.Newf("failed to check affinity for pod: %v" + pod.GetName())
+				return fmt.Errorf("failed to check affinity for pod: %v" + pod.GetName())
 			}
 		}
 	}
@@ -298,7 +299,7 @@ func CheckStorageResize(opt TestOptions, stsName string, expectedCapacity string
 	}
 	vct := statefulset.Spec.VolumeClaimTemplates[0]
 	if !vct.Spec.Resources.Requests["storage"].Equal(resource.MustParse(expectedCapacity)) {
-		err = errors.Newf("the storage size of statefulset %s should have %s but got %v",
+		err = fmt.Errorf("the storage size of statefulset %s should have %s but got %v",
 			stsName, expectedCapacity,
 			vct.Spec.Resources.Requests["storage"])
 		return err
@@ -322,7 +323,7 @@ func CheckOBAComponents(opt TestOptions) error {
 		}
 
 		if deployment.Status.ReadyReplicas != *deployment.Spec.Replicas {
-			err = errors.Newf("deployment %s should have %d but got %d ready replicas",
+			err = fmt.Errorf("deployment %s should have %d but got %d ready replicas",
 				deploymentName,
 				*deployment.Spec.Replicas,
 				deployment.Status.ReadyReplicas)
@@ -360,12 +361,12 @@ func CheckMCOComponents(opt TestOptions) error {
 		}
 
 		if len((*deployList).Items) == 0 {
-			return errors.Newf("should have deployment created with label %s", deploymentLabel)
+			return fmt.Errorf("should have deployment created with label %s", deploymentLabel)
 		}
 
 		for _, deployInfo := range (*deployList).Items {
 			if deployInfo.Status.ReadyReplicas != *deployInfo.Spec.Replicas {
-				err = errors.Newf("deployment %s should have %d but got %d ready replicas",
+				err = fmt.Errorf("deployment %s should have %d but got %d ready replicas",
 					deployInfo.Name,
 					*deployInfo.Spec.Replicas,
 					deployInfo.Status.ReadyReplicas)
@@ -394,12 +395,12 @@ func CheckMCOComponents(opt TestOptions) error {
 		}
 
 		if len((*statefulsetList).Items) == 0 {
-			return errors.Newf("should have statefulset created with label %s", statefulsetLabel)
+			return fmt.Errorf("should have statefulset created with label %s", statefulsetLabel)
 		}
 
 		for _, statefulsetInfo := range (*statefulsetList).Items {
 			if statefulsetInfo.Status.ReadyReplicas != *statefulsetInfo.Spec.Replicas {
-				err = errors.Newf("statefulset %s should have %d but got %d ready replicas",
+				err = fmt.Errorf("statefulset %s should have %d but got %d ready replicas",
 					statefulsetInfo.Name,
 					*statefulsetInfo.Spec.Replicas,
 					statefulsetInfo.Status.ReadyReplicas)
@@ -426,7 +427,7 @@ func CheckStatefulSetPodReady(opt TestOptions, stsName string) error {
 	if statefulset.Status.ReadyReplicas != *statefulset.Spec.Replicas ||
 		statefulset.Status.UpdatedReplicas != *statefulset.Spec.Replicas ||
 		statefulset.Status.UpdateRevision != statefulset.Status.CurrentRevision {
-		err = errors.Newf("statefulset %s should have %d but got %d ready replicas",
+		err = fmt.Errorf("statefulset %s should have %d but got %d ready replicas",
 			stsName, *statefulset.Spec.Replicas,
 			statefulset.Status.ReadyReplicas)
 		return err
@@ -449,7 +450,7 @@ func CheckDeploymentPodReady(opt TestOptions, deployName string) error {
 	if deploy.Status.ReadyReplicas != *deploy.Spec.Replicas ||
 		deploy.Status.UpdatedReplicas != *deploy.Spec.Replicas ||
 		deploy.Status.AvailableReplicas != *deploy.Spec.Replicas {
-		err = errors.Newf("deployment %s should have %d but got %d ready replicas",
+		err = fmt.Errorf("deployment %s should have %d but got %d ready replicas",
 			deployName, *deploy.Spec.Replicas,
 			deploy.Status.ReadyReplicas)
 		return err
@@ -601,7 +602,7 @@ func CheckMCOAddonResources(opt TestOptions) error {
 	}
 
 	if !reflect.DeepEqual(resMap["metrics-collector-deployment"], metricsCollectorRes) {
-		return errors.Newf("metrics-collector-deployment resource <%v> is not equal <%v>",
+		return fmt.Errorf("metrics-collector-deployment resource <%v> is not equal <%v>",
 			resMap["metrics-collector-deployment"],
 			metricsCollectorRes)
 	}
@@ -743,10 +744,10 @@ func CheckMCOConversion(opt TestOptions, v1beta1tov1beta2GoldenPath string) erro
 	for k, v := range expectedMCOSpec {
 		val, ok := getMCOSpec[k]
 		if !ok {
-			return errors.Newf("%s not found in ", k)
+			return fmt.Errorf("%s not found in ", k)
 		}
 		if !reflect.DeepEqual(val, v) {
-			return errors.Newf("%+v and %+v are not equal", val, v)
+			return fmt.Errorf("%+v and %+v are not equal", val, v)
 		}
 	}
 	return nil

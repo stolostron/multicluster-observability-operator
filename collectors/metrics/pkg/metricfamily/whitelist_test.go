@@ -1,10 +1,10 @@
 package metricfamily
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
-	"github.com/efficientgo/core/errors"
 	clientmodel "github.com/prometheus/client_model/go"
 )
 
@@ -43,7 +43,7 @@ func TestAllowlist(t *testing.T) {
 	isOK := func(want bool) checkFunc {
 		return func(_ *clientmodel.MetricFamily, got bool, _ error) error {
 			if want != got {
-				return errors.Newf("want ok %t, got %t", want, got)
+				return fmt.Errorf("want ok %t, got %t", want, got)
 			}
 			return nil
 		}
@@ -52,7 +52,7 @@ func TestAllowlist(t *testing.T) {
 	hasErr := func(want error) checkFunc {
 		return func(_ *clientmodel.MetricFamily, _ bool, got error) error {
 			if want != got {
-				return errors.Newf("want err %v, got %v", want, got)
+				return fmt.Errorf("want err %v, got %v", want, got)
 			}
 			return nil
 		}
@@ -61,7 +61,7 @@ func TestAllowlist(t *testing.T) {
 	deepEqual := func(want *clientmodel.MetricFamily) checkFunc {
 		return func(got *clientmodel.MetricFamily, _ bool, _ error) error {
 			if !reflect.DeepEqual(want, got) {
-				return errors.Newf("want metricfamily %v, got %v", want, got)
+				return fmt.Errorf("want metricfamily %v, got %v", want, got)
 			}
 			return nil
 		}

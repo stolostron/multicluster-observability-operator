@@ -5,8 +5,8 @@ package utils
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/efficientgo/core/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
@@ -29,5 +29,5 @@ func GetRouterCA(cli kubernetes.Interface) ([]byte, error) {
 	if ok {
 		return caCrt, nil
 	}
-	return caCrt, errors.Newf("failed to get tls.crt from %s secret", RouterCertsSecretName)
+	return caCrt, fmt.Errorf("failed to get tls.crt from %s secret", RouterCertsSecretName)
 }

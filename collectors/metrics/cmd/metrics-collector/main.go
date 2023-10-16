@@ -16,7 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/oklog/run"
@@ -310,7 +311,7 @@ func (o *Options) Run() error {
 	cfg.Metrics = metrics
 	worker, err := forwarder.New(*cfg)
 	if err != nil {
-		return errors.Wrap(err, "failed to configure metrics collector")
+		return fmt.Errorf("failed to configure metrics collector: %w", err)
 	}
 
 	logger.Log(
@@ -364,7 +365,7 @@ func (o *Options) Run() error {
 		handlers.Handle("/federate", serveLastMetrics(o.Logger, worker))
 		l, err := net.Listen("tcp", o.Listen)
 		if err != nil {
-			return errors.Wrap(err, "failed to listen")
+			return fmt.Errorf("failed to listen: %w", err)
 		}
 
 		{
@@ -392,7 +393,7 @@ func (o *Options) Run() error {
 	if len(o.CollectRules) != 0 {
 		evaluator, err := collectrule.New(*cfg)
 		if err != nil {
-			return errors.Wrap(err, "failed to configure collect rule evaluator")
+			return fmt.Errorf("failed to configure collect rule evaluator: %w", err)
 		}
 		ctx, cancel := context.WithCancel(context.Background())
 		g.Add(func() error {
@@ -428,7 +429,7 @@ func runMultiWorkers(o *Options, cfg *forwarder.Config) error {
 		for _, flag := range o.LabelFlag {
 			values := strings.SplitN(flag, "=", 2)
 			if len(values) != 2 {
-				return errors.Newf("--label must be of the form key=value: %s", flag)
+				return fmt.Errorf("--label must be of the form key=value: %s", flag)
 			}
 			if values[0] == "cluster" {
 				values[1] += "-" + fmt.Sprint(i)
@@ -446,7 +447,7 @@ func runMultiWorkers(o *Options, cfg *forwarder.Config) error {
 		forwardCfg.Metrics = cfg.Metrics
 		forwardWorker, err := forwarder.New(*forwardCfg)
 		if err != nil {
-			return errors.Wrap(err, "failed to configure metrics collector")
+			return fmt.Errorf("failed to configure metrics collector: %w", err)
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -467,7 +468,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 	for _, flag := range o.LabelFlag {
 		values := strings.SplitN(flag, "=", 2)
 		if len(values) != 2 {
-			return errors.Newf("--label must be of the form key=value: %s", flag), nil
+			return fmt.Errorf("--label must be of the form key=value: %s", flag), nil
 		}
 		if o.Labels == nil {
 			o.Labels = make(map[string]string)
@@ -481,7 +482,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 		}
 		values := strings.SplitN(flag, "=", 2)
 		if len(values) != 2 {
-			return errors.Newf("--rename must be of the form OLD_NAME=NEW_NAME: %s", flag), nil
+			return fmt.Errorf("--rename must be of the form OLD_NAME=NEW_NAME: %s", flag), nil
 		}
 		if o.Renames == nil {
 			o.Renames = make(map[string]string)
@@ -491,7 +492,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 
 	from, err := url.Parse(o.From)
 	if err != nil {
-		return errors.Wrap(err, "--from is not a valid URL"), nil
+		return fmt.Errorf("--from is not a valid URL: %w", err), nil
 	}
 	from.Path = strings.TrimRight(from.Path, "/")
 	if len(from.Path) == 0 {
@@ -500,7 +501,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 
 	fromQuery, err := url.Parse(o.FromQuery)
 	if err != nil {
-		return errors.Wrap(err, "--from-query is not a valid URL"), nil
+		return fmt.Errorf("--from-query is not a valid URL: %w", err), nil
 	}
 	fromQuery.Path = strings.TrimRight(fromQuery.Path, "/")
 	if len(fromQuery.Path) == 0 {
@@ -511,7 +512,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 	if len(o.ToUpload) > 0 {
 		toUpload, err = url.Parse(o.ToUpload)
 		if err != nil {
-			return errors.Wrap(err, "--to-upload is not a valid URL"), nil
+			return fmt.Errorf("--to-upload is not a valid URL: %w", err), nil
 		}
 	}
 

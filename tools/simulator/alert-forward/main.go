@@ -16,7 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
@@ -245,7 +246,7 @@ func sendOne(c *http.Client, traceCtx context.Context, url string, b []byte) err
 
 	// Any HTTP status 2xx is OK.
 	if resp.StatusCode/100 != 2 {
-		return errors.Newf("bad response status %s", resp.Status)
+		return fmt.Errorf("bad response status %s", resp.Status)
 	}
 	return nil
 }

@@ -5,10 +5,10 @@ package rendering
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 
-	"github.com/efficientgo/core/errors"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -175,7 +175,7 @@ func Render(
 			s := obj.(*corev1.Secret)
 			promConfig, exists := s.StringData["scrape-targets.yaml"]
 			if !exists {
-				return nil, errors.Newf(
+				return nil, fmt.Errorf(
 					"no key 'scrape-targets.yaml' found in the secret: %s/%s",
 					s.GetNamespace(),
 					s.GetName(),
@@ -206,7 +206,7 @@ func Render(
 			s := obj.(*corev1.Secret)
 			amConfig, exists := s.StringData["alertmanager.yaml"]
 			if !exists {
-				return nil, errors.Newf(
+				return nil, fmt.Errorf(
 					"no key 'alertmanager.yaml' found in the configmap: %s/%s",
 					s.GetNamespace(),
 					s.GetName(),

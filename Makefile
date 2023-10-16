@@ -124,9 +124,7 @@ endef
 lint: check-git deps format $(GOLANGCI_LINT) $(FAILLINT)
 	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')
 	@echo ">> verifying modules being imported"
-	@$(FAILLINT) -paths "errors=github.com/efficientgo/core/errors,\
-github.com/pkg/errors=github.com/efficientgo/core/errors,\
-github.com/prometheus/tsdb=github.com/prometheus/prometheus/tsdb,\
+	@$(FAILLINT) -paths "github.com/prometheus/tsdb=github.com/prometheus/prometheus/tsdb,\
 github.com/prometheus/prometheus/pkg/testutils=github.com/thanos-io/thanos/pkg/testutil,\
 github.com/prometheus/client_golang/prometheus.{DefaultGatherer,DefBuckets,NewUntypedFunc,UntypedFunc},\
 github.com/prometheus/client_golang/prometheus.{NewCounter,NewCounterVec,NewCounterVec,NewGauge,NewGaugeVec,NewGaugeFunc,\
@@ -141,6 +139,6 @@ io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile
 	@echo ">> linting all of the Go files GOGC=${GOGC}"
 	@$(GOLANGCI_LINT) run
 	# TODO(saswatamcode): Enable this in a separate commit.
-	@echo ">> ensuring Copyright headers $(MISS)"
+	# @echo ">> ensuring Copyright headers"
 	# @go run ./scripts/copyright
 	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')

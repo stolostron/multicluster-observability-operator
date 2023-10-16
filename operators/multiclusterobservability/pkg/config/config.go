@@ -5,11 +5,11 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"time"
 
-	cerr "github.com/efficientgo/core/errors"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -399,7 +399,7 @@ func ReadImageManifestConfigMap(c client.Client, version string) (bool, error) {
 	imageCMList := &corev1.ConfigMapList{}
 	err := c.List(context.TODO(), imageCMList, listOpts...)
 	if err != nil {
-		return false, cerr.Wrap(err, "failed to list mch-image-manifest configmaps")
+		return false, fmt.Errorf("failed to list mch-image-manifest configmaps: %w", err)
 	}
 
 	if len(imageCMList.Items) != 1 {
@@ -534,7 +534,7 @@ func getDomainForIngressController(client client.Client, name, namespace string)
 	}
 	domain := ingressOperatorInstance.Status.Domain
 	if domain == "" {
-		return "", cerr.Newf("no domain found in the ingressOperator: %s/%s.", namespace, name)
+		return "", fmt.Errorf("no domain found in the ingressOperator: %s/%s.", namespace, name)
 	}
 	return domain, nil
 }

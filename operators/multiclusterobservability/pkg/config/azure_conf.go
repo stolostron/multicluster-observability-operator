@@ -6,7 +6,8 @@ package config
 import (
 	"strings"
 
-	"github.com/efficientgo/core/errors"
+	"errors"
+
 	"gopkg.in/yaml.v2"
 )
 
