@@ -844,7 +844,8 @@ func (r *MultiClusterObservabilityReconciler) ensureOpenShiftNamespaceLabel(ctx 
 
 func (r *MultiClusterObservabilityReconciler) deleteSpecificPrometheusRule(ctx context.Context) error {
 	promRule := &monitoringv1.PrometheusRule{}
-	err := r.Client.Get(ctx, client.ObjectKey{Name: "acm-observability-alert-rules", Namespace: "openshift-monitoring"}, promRule)
+	err := r.Client.Get(ctx, client.ObjectKey{Name: "acm-observability-alert-rules",
+		Namespace: "openshift-monitoring"}, promRule)
 	if err == nil {
 		err = r.Client.Delete(ctx, promRule)
 		if err != nil {
