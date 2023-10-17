@@ -6,7 +6,7 @@ package config
 const (
 	ClusterNameKey                  = "cluster-name"
 	HubInfoSecretName               = "hub-info-secret"
-	HubInfoSecretKey                = "hub-info.yaml" // #nosec
+	HubInfoSecretKey                = "hub-info.yaml" // #nosec G101 -- Not a hardcoded credential.
 	ObservatoriumAPIRemoteWritePath = "/api/metrics/v1/default/api/v1/receive"
 	AnnotationSkipCreation          = "skip-creation-if-exist"
 

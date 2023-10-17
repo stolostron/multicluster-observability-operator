@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	addonName          = "observability-controller"
+	addonName          = "observability-controller" // #nosec G101 -- Not a hardcoded credential.
 	resRoleName        = "endpoint-observability-res-role"
 	resRoleBindingName = "endpoint-observability-res-rolebinding"
 	mcoRoleName        = "endpoint-observability-mco-role"

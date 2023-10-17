@@ -37,7 +37,7 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 	client := &http.Client{}
 	if os.Getenv("IS_KIND_ENV") != "true" {
 		tr := &http.Transport{
-			/* #nosec */
+			// #nosec G402 -- Only used in test.
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 

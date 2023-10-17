@@ -125,6 +125,7 @@ func (r *MCORenderer) renderProxySecret(res *resource.Resource,
 		return nil, err
 	}
 
+	// #nosec G101 -- Not a hardcoded credential.
 	if u.GetName() == "rbac-proxy-cookie-secret" {
 		obj := util.GetK8sObj(u.GetKind())
 		err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, obj)

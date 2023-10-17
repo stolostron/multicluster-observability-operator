@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	ObservabilityController       = "observability-controller"
+	ObservabilityController       = "observability-controller" // #nosec G101 -- Not a hardcoded credential.
 	AddonGroup                    = "addon.open-cluster-management.io"
 	AddonDeploymentConfigResource = "addondeploymentconfigs"
 	grafanaLink                   = "/d/2b679d600f3b9e7676a7c5ac3643d448/acm-clusters-overview"

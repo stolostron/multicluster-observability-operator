@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	stdlog "log"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -362,21 +361,24 @@ func (o *Options) Run() error {
 			return worker.Reconfigure(*cfg)
 		})
 		handlers.Handle("/federate", serveLastMetrics(o.Logger, worker))
-		l, err := net.Listen("tcp", o.Listen)
-		if err != nil {
-			return fmt.Errorf("failed to listen: %w", err)
+		s := http.Server{
+			Addr:              o.Listen,
+			Handler:           handlers,
+			ReadHeaderTimeout: 1 * time.Second,
+			ReadTimeout:       5 * time.Second,
+			WriteTimeout:      12 * time.Minute,
 		}
 
 		{
 			// Run the HTTP server.
 			g.Add(func() error {
-				if err := http.Serve(l, handlers); err != nil && err != http.ErrServerClosed {
+				if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 					logger.Log(o.Logger, logger.Error, "msg", "server exited unexpectedly", "err", err)
 					return err
 				}
 				return nil
 			}, func(error) {
-				err := l.Close()
+				err := s.Shutdown(context.Background())
 				if err != nil {
 					logger.Log(o.Logger, logger.Error, "msg", "failed to close listener", "err", err)
 				}

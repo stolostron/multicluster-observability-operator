@@ -29,7 +29,7 @@ const (
 	MCO_NAMESPACE                 = "open-cluster-management-observability"
 	MCO_ADDON_NAMESPACE           = "open-cluster-management-addon-observability"
 	MCO_PULL_SECRET_NAME          = "multiclusterhub-operator-pull-secret"
-	OBJ_SECRET_NAME               = "thanos-object-storage" // #nosec
+	OBJ_SECRET_NAME               = "thanos-object-storage" // #nosec G101 -- Not a hardcoded credential.
 	MCO_GROUP                     = "observability.open-cluster-management.io"
 	OCM_WORK_GROUP                = "work.open-cluster-management.io"
 	OCM_CLUSTER_GROUP             = "cluster.open-cluster-management.io"

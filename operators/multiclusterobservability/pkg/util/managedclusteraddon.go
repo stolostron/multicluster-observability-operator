@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	ManagedClusterAddonName = "observability-controller"
+	ManagedClusterAddonName = "observability-controller" // #nosec G101 -- Not a hardcoded credential.
 )
 
 var (
