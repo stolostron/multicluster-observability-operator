@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"hash/fnv"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -18,7 +17,7 @@ const (
 	defaultAdmin = "WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000"
 )
 
-// GenerateUID generates UID for customized dashboard
+// GenerateUID generates UID for customized dashboard.
 func GenerateUID(namespace string, name string) (string, error) {
 	uid := namespace + "-" + name
 	if len(uid) > 40 {
@@ -32,7 +31,7 @@ func GenerateUID(namespace string, name string) (string, error) {
 	return uid, nil
 }
 
-// GetHTTPClient returns http client
+// GetHTTPClient returns http client.
 func getHTTPClient() *http.Client {
 	transport := &http.Transport{}
 	client := &http.Client{Transport: transport}
@@ -63,7 +62,7 @@ func SetRequest(method string, url string, body io.Reader, retry int) ([]byte, i
 
 	if resp != nil {
 		defer resp.Body.Close()
-		respBody, err := ioutil.ReadAll(resp.Body)
+		respBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			klog.Info("failed to parse response body ", "error ", err)
 		}

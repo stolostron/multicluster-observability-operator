@@ -36,15 +36,9 @@ const (
 	homeDashboardTitle  = "ACM - Clusters Overview"
 )
 
-// DashboardLoader ...
-type DashboardLoader struct {
-	coreClient corev1client.CoreV1Interface
-	informer   cache.SharedIndexInformer
-}
-
 var (
 	grafanaURI = "http://127.0.0.1:3001"
-	//retry on errors
+	// Retry on errors.
 	retry = 10
 )
 
@@ -103,6 +97,8 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) cache.SharedIndexI
 		cache.Indexers{},
 	)
 
+	// TODO(saswatamcode): Check error here.
+	//nolint:errcheck
 	kubeInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if !isDesiredDashboardConfigmap(obj) {
@@ -247,7 +243,7 @@ func getDashboardCustomFolderTitle(obj interface{}) string {
 	return ""
 }
 
-// updateDashboard is used to update the customized dashboards via calling grafana api
+// updateDashboard is used to update the customized dashboards via calling grafana api.
 func updateDashboard(old, new interface{}, overwrite bool) {
 	folderID := 0.0
 	folderTitle := getDashboardCustomFolderTitle(new)
@@ -323,7 +319,10 @@ func updateDashboard(old, new interface{}, overwrite bool) {
 	folderTitle = getDashboardCustomFolderTitle(old)
 	folderID = hasCustomFolder(folderTitle)
 	if isEmptyFolder(folderID) {
-		deleteCustomFolder(folderID)
+		if deleteCustomFolder(folderID) {
+			klog.Errorf("Failed to delete custom folder")
+			return
+		}
 	}
 }
 
@@ -355,10 +354,12 @@ func deleteDashboard(obj interface{}) {
 		folderTitle := getDashboardCustomFolderTitle(obj)
 		folderID := hasCustomFolder(folderTitle)
 		if isEmptyFolder(folderID) {
-			deleteCustomFolder(folderID)
+			if deleteCustomFolder(folderID) {
+				klog.Errorf("Failed to delete custom folder")
+				return
+			}
 		}
 	}
-	return
 }
 
 func setHomeDashboard(id int) {

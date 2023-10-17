@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-//Siddharth's code
+// Siddharth's code
 func TestRemove(t *testing.T) {
 	type testCaseList struct {
 		name     string
@@ -32,28 +32,7 @@ func TestRemove(t *testing.T) {
 	}
 }
 
-func TestContains(t *testing.T) {
-	testCaseList := []struct {
-		name     string
-		list     []string
-		s        string
-		expected bool
-	}{
-		{"contain sub string", []string{"a", "b"}, "a", true},
-		{"shoud contain empty string", []string{""}, "", true},
-		{"should not contain sub string", []string{"a", "b"}, "c", false},
-		{"shoud not contain empty string", []string{"a", "b"}, "", false},
-	}
-
-	for _, c := range testCaseList {
-		output := Contains(c.list, c.s)
-		if output != c.expected {
-			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", c.name, output, c.expected)
-		}
-	}
-}
-
-//Siddharth's code
+// Siddharth's code
 func TestGetAnnotation(t *testing.T) {
 	type testCaseList struct {
 		name       string
@@ -85,7 +64,7 @@ func TestGetAnnotation(t *testing.T) {
 	}
 }
 
-//func TestGeneratePassword
+// func TestGeneratePassword
 func TestGeneratePassword(t *testing.T) {
 	type testCaseList struct {
 		name     string
@@ -142,7 +121,7 @@ func TestProxyEnvVarsAreSet(t *testing.T) {
 	}
 }
 
-//Siddharth's code
+// Siddharth's code
 func TestRemoveDuplicates(t *testing.T) {
 	type testCaseList struct {
 		name     string

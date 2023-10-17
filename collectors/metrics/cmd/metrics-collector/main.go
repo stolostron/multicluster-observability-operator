@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	stdlog "log"
 	"net"
@@ -11,14 +12,18 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/oklog/run"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/version"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
@@ -282,17 +287,30 @@ type Options struct {
 }
 
 func (o *Options) Run() error {
-
 	var g run.Group
+
+	metricsReg := prometheus.NewRegistry()
+	metricsReg.MustRegister(
+		version.NewCollector("metrics_collector"),
+		collectors.NewGoCollector(
+			collectors.WithGoCollectorRuntimeMetrics(collectors.GoRuntimeMetricsRule{Matcher: regexp.MustCompile("/.*")}),
+		),
+		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
+	)
+
+	// Some packages still use default Register. Replace to have those metrics.
+	prometheus.DefaultRegisterer = metricsReg
 
 	err, cfg := initConfig(o)
 	if err != nil {
 		return err
 	}
 
+	metrics := forwarder.NewWorkerMetrics(metricsReg)
+	cfg.Metrics = metrics
 	worker, err := forwarder.New(*cfg)
 	if err != nil {
-		return fmt.Errorf("failed to configure metrics collector: %v", err)
+		return fmt.Errorf("failed to configure metrics collector: %w", err)
 	}
 
 	logger.Log(
@@ -339,14 +357,14 @@ func (o *Options) Run() error {
 		handlers := http.NewServeMux()
 		collectorhttp.DebugRoutes(handlers)
 		collectorhttp.HealthRoutes(handlers)
-		collectorhttp.MetricRoutes(handlers)
+		collectorhttp.MetricRoutes(handlers, metricsReg)
 		collectorhttp.ReloadRoutes(handlers, func() error {
 			return worker.Reconfigure(*cfg)
 		})
 		handlers.Handle("/federate", serveLastMetrics(o.Logger, worker))
 		l, err := net.Listen("tcp", o.Listen)
 		if err != nil {
-			return fmt.Errorf("failed to listen: %v", err)
+			return fmt.Errorf("failed to listen: %w", err)
 		}
 
 		{
@@ -366,7 +384,7 @@ func (o *Options) Run() error {
 		}
 	}
 
-	err = runMultiWorkers(o)
+	err = runMultiWorkers(o, cfg)
 	if err != nil {
 		return err
 	}
@@ -374,7 +392,7 @@ func (o *Options) Run() error {
 	if len(o.CollectRules) != 0 {
 		evaluator, err := collectrule.New(*cfg)
 		if err != nil {
-			return fmt.Errorf("failed to configure collect rule evaluator: %v", err)
+			return fmt.Errorf("failed to configure collect rule evaluator: %w", err)
 		}
 		ctx, cancel := context.WithCancel(context.Background())
 		g.Add(func() error {
@@ -388,7 +406,7 @@ func (o *Options) Run() error {
 	return g.Run()
 }
 
-func runMultiWorkers(o *Options) error {
+func runMultiWorkers(o *Options, cfg *forwarder.Config) error {
 	for i := 1; i < int(o.WorkerNum); i++ {
 		opt := &Options{
 			From:                    o.From,
@@ -425,9 +443,10 @@ func runMultiWorkers(o *Options) error {
 			return err
 		}
 
+		forwardCfg.Metrics = cfg.Metrics
 		forwardWorker, err := forwarder.New(*forwardCfg)
 		if err != nil {
-			return fmt.Errorf("failed to configure metrics collector: %v", err)
+			return fmt.Errorf("failed to configure metrics collector: %w", err)
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -442,7 +461,7 @@ func runMultiWorkers(o *Options) error {
 
 func initConfig(o *Options) (error, *forwarder.Config) {
 	if len(o.From) == 0 {
-		return fmt.Errorf("you must specify a Prometheus server to federate from (e.g. http://localhost:9090)"), nil
+		return errors.New("you must specify a Prometheus server to federate from (e.g. http://localhost:9090)"), nil
 	}
 
 	for _, flag := range o.LabelFlag {
@@ -472,7 +491,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 
 	from, err := url.Parse(o.From)
 	if err != nil {
-		return fmt.Errorf("--from is not a valid URL: %v", err), nil
+		return fmt.Errorf("--from is not a valid URL: %w", err), nil
 	}
 	from.Path = strings.TrimRight(from.Path, "/")
 	if len(from.Path) == 0 {
@@ -481,7 +500,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 
 	fromQuery, err := url.Parse(o.FromQuery)
 	if err != nil {
-		return fmt.Errorf("--from-query is not a valid URL: %v", err), nil
+		return fmt.Errorf("--from-query is not a valid URL: %w", err), nil
 	}
 	fromQuery.Path = strings.TrimRight(fromQuery.Path, "/")
 	if len(fromQuery.Path) == 0 {
@@ -492,12 +511,12 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 	if len(o.ToUpload) > 0 {
 		toUpload, err = url.Parse(o.ToUpload)
 		if err != nil {
-			return fmt.Errorf("--to-upload is not a valid URL: %v", err), nil
+			return fmt.Errorf("--to-upload is not a valid URL: %w", err), nil
 		}
 	}
 
 	if toUpload == nil {
-		return fmt.Errorf("--to-upload must be specified"), nil
+		return errors.New("--to-upload must be specified"), nil
 	}
 
 	var transformer metricfamily.MultiTransformer
@@ -575,7 +594,7 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 	}
 }
 
-// serveLastMetrics retrieves the last set of metrics served
+// serveLastMetrics retrieves the last set of metrics served.
 func serveLastMetrics(l log.Logger, worker *forwarder.Worker) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != "GET" {

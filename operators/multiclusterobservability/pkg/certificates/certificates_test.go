@@ -81,7 +81,7 @@ func TestCreateCertificates(t *testing.T) {
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	routev1.AddToScheme(s)
 
-	c := fake.NewFakeClient(route)
+	c := fake.NewClientBuilder().WithRuntimeObjects(route).Build()
 
 	err := CreateObservabilityCerts(c, s, mco, true)
 	if err != nil {
@@ -108,7 +108,7 @@ func TestRemoveExpiredCA(t *testing.T) {
 
 	caSecret := getExpiredCertSecret()
 	oldCertLength := len(caSecret.Data["tls.crt"])
-	c := fake.NewFakeClient(caSecret)
+	c := fake.NewClientBuilder().WithRuntimeObjects(caSecret).Build()
 	removeExpiredCA(c, serverCACerts)
 	c.Get(context.TODO(),
 		types.NamespacedName{Name: serverCACerts, Namespace: namespace},

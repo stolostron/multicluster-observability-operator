@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -38,21 +38,21 @@ func New(logger log.Logger) (*StatusReport, error) {
 	standaloneMode := os.Getenv("STANDALONE") == "true"
 	var kubeClient client.Client
 	if testMode {
-		kubeClient = fake.NewFakeClient()
+		kubeClient = fake.NewClientBuilder().Build()
 	} else if standaloneMode {
 		kubeClient = nil
 	} else {
 		config, err := clientcmd.BuildConfigFromFlags("", "")
 		if err != nil {
-			return nil, errors.New("Failed to create the kube config")
+			return nil, errors.New("failed to create the kube config")
 		}
 		s := scheme.Scheme
 		if err := oav1beta1.AddToScheme(s); err != nil {
-			return nil, errors.New("Failed to add observabilityaddon into scheme")
+			return nil, errors.New("failed to add observabilityaddon into scheme")
 		}
 		kubeClient, err = client.New(config, client.Options{Scheme: s})
 		if err != nil {
-			return nil, errors.New("Failed to create the kube client")
+			return nil, errors.New("failed to create the kube client")
 		}
 	}
 
@@ -62,7 +62,7 @@ func New(logger log.Logger) (*StatusReport, error) {
 	}, nil
 }
 
-func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
+func (s *StatusReport) UpdateStatus(t string, m string) error {
 	if s.statusClient == nil {
 		return nil
 	}
@@ -83,8 +83,7 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 	found := false
 	conditions := []oav1beta1.StatusCondition{}
 	latestC := oav1beta1.StatusCondition{}
-	message, conditionType, reason := mergeCondtion(isUwl, t, r, m,
-		addon.Status.Conditions[len(addon.Status.Conditions)-1])
+	message, conditionType, reason := mergeCondtion(isUwl, m, addon.Status.Conditions[len(addon.Status.Conditions)-1])
 	for _, c := range addon.Status.Conditions {
 		if c.Status == metav1.ConditionTrue {
 			if c.Type != conditionType {
@@ -138,7 +137,7 @@ func (s *StatusReport) UpdateStatus(t string, r string, m string) error {
 	return nil
 }
 
-func mergeCondtion(isUwl bool, t, r, m string, condition oav1beta1.StatusCondition) (string, string, string) {
+func mergeCondtion(isUwl bool, m string, condition oav1beta1.StatusCondition) (string, string, string) {
 	messages := strings.Split(condition.Message, " ; ")
 	if len(messages) == 1 {
 		messages = append(messages, "")

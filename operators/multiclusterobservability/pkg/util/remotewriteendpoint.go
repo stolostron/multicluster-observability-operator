@@ -66,10 +66,10 @@ type HTTPClientConfigWithSecret struct {
 	Authorization *AuthorizationWithSecret `yaml:"authorization,omitempty" json:"authorization,omitempty"`
 	// The OAuth2 client credentials used to fetch a token for the targets.
 	OAuth2 *OAuth2WithSecret `yaml:"oauth2,omitempty" json:"oauth2,omitempty"`
-	// The bearer token for the targets. Deprecated in favour of
+	// The bearer token for the targets. Deprecated in favor of
 	// Authorization.Credentials.
 	BearerToken string `yaml:"bearer_token,omitempty" json:"bearer_token,omitempty"`
-	// The bearer token file for the targets. Deprecated in favour of
+	// The bearer token file for the targets. Deprecated in favor of
 	// Authorization.CredentialsFile.
 	BearerTokenFile string `yaml:"bearer_token_file,omitempty" json:"bearer_token_file,omitempty"`
 	// Name of the secret which contains the file
@@ -81,7 +81,7 @@ type HTTPClientConfigWithSecret struct {
 	TLSConfig *TLSConfigWithSecret `yaml:"tls_config,omitempty" json:"tls_config,omitempty"`
 	// FollowRedirects specifies whether the client should follow HTTP 3xx redirects.
 	// The omitempty flag is not set, because it would be hidden from the
-	// marshalled configuration when set to false.
+	// marshaled configuration when set to false.
 	FollowRedirects bool `yaml:"follow_redirects" json:"follow_redirects"`
 }
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-logr/logr"
 	operatorv1 "github.com/openshift/api/operator/v1"
+	"golang.org/x/exp/slices"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -158,21 +159,18 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	if !deleteAll {
-		res, err := createAllRelatedRes(
+		if err := createAllRelatedRes(
 			r.Client,
-			r.RESTMapper,
 			req,
 			mco,
 			obsAddonList,
 			r.CRDMap,
-		)
-		if err != nil {
-			return res, err
+		); err != nil {
+			return ctrl.Result{}, err
 		}
 	} else {
-		res, err := deleteAllObsAddons(r.Client, obsAddonList)
-		if err != nil {
-			return res, err
+		if err := deleteAllObsAddons(r.Client, obsAddonList); err != nil {
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -208,7 +206,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				return ctrl.Result{}, err
 			}
 		}
-		if !commonutil.Contains(latestClusters, work.Namespace) {
+		if !slices.Contains(latestClusters, work.Namespace) {
 			reqLogger.Info("To delete manifestwork", "namespace", work.Namespace)
 			err = deleteManagedClusterRes(r.Client, work.Namespace)
 			if err != nil {
@@ -223,7 +221,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// but the managedclusteraddon for observability will not deleted by the cluster manager, so check against the
 	// managedclusteraddon list to remove the managedcluster resources after the managedcluster is detached.
 	for _, mcaddon := range managedclusteraddonList.Items {
-		if !commonutil.Contains(latestClusters, mcaddon.Namespace) {
+		if !slices.Contains(latestClusters, mcaddon.Namespace) {
 			reqLogger.Info("To delete managedcluster resources", "namespace", mcaddon.Namespace)
 			err = deleteManagedClusterRes(r.Client, mcaddon.Namespace)
 			if err != nil {
@@ -267,30 +265,29 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 func createAllRelatedRes(
 	c client.Client,
-	restMapper meta.RESTMapper,
 	request ctrl.Request,
 	mco *mcov1beta2.MultiClusterObservability,
 	obsAddonList *mcov1beta1.ObservabilityAddonList,
-	CRDMap map[string]bool) (ctrl.Result, error) {
-
+	CRDMap map[string]bool,
+) error {
 	var err error
 	// create the clusterrole if not there
 	if !isCRoleCreated {
 		err = createClusterRole(c)
 		if err != nil {
-			return ctrl.Result{}, err
+			return err
 		}
 		err = createResourceRole(c)
 		if err != nil {
-			return ctrl.Result{}, err
+			return err
 		}
 		isCRoleCreated = true
 	}
 
 	//Get or create ClusterManagementAddon
-	clusterAddon, err = util.CreateClusterManagementAddon(c, !CRDMap[config.MCHCrdName])
+	clusterAddon, err = util.CreateClusterManagementAddon(c)
 	if err != nil {
-		return ctrl.Result{}, err
+		return err
 	}
 	for _, config := range clusterAddon.Spec.SupportedConfigs {
 		if config.ConfigGroupResource.Group == util.AddonGroup &&
@@ -305,7 +302,7 @@ func createAllRelatedRes(
 					addonConfig,
 				)
 				if err != nil {
-					return ctrl.Result{}, err
+					return err
 				}
 				log.Info("There is default AddonDeploymentConfig for current addon")
 				defaultAddonDeploymentConfig = addonConfig
@@ -327,14 +324,14 @@ func createAllRelatedRes(
 
 	works, crdv1Work, crdv1beta1Work, err := generateGlobalManifestResources(c, mco)
 	if err != nil {
-		return ctrl.Result{}, err
+		return err
 	}
 
 	// regenerate the hubinfo secret if empty
 	if hubInfoSecret == nil {
 		var err error
 		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap[config.IngressControllerCRD]); err != nil {
-			return ctrl.Result{}, err
+			return err
 		}
 	}
 
@@ -353,15 +350,15 @@ func createAllRelatedRes(
 				request.Namespace,
 			)
 			if openshiftVersion == "3" {
-				err = createManagedClusterRes(c, restMapper, mco,
+				err = createManagedClusterRes(c, mco,
 					managedCluster, managedCluster,
 					works, ocp311metricsAllowlistConfigMap, crdv1beta1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
 			} else if openshiftVersion == nonOCP {
-				err = createManagedClusterRes(c, restMapper, mco,
+				err = createManagedClusterRes(c, mco,
 					managedCluster, managedCluster,
 					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, true)
 			} else {
-				err = createManagedClusterRes(c, restMapper, mco,
+				err = createManagedClusterRes(c, mco,
 					managedCluster, managedCluster,
 					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
 			}
@@ -387,24 +384,24 @@ func createAllRelatedRes(
 	}
 
 	if failedCreateManagedClusterRes || failedDeleteOba {
-		return ctrl.Result{}, errors.New("failed to create managedcluster resources or" +
-			" failed to delete observabilityaddon, skip and reconcile later")
+		return errors.New("failed to create managedcluster resources or failed to delete observabilityaddon, skip and reconcile later")
 	}
 
-	return ctrl.Result{}, nil
+	return nil
 }
 
 func deleteAllObsAddons(
 	client client.Client,
-	obsAddonList *mcov1beta1.ObservabilityAddonList) (ctrl.Result, error) {
+	obsAddonList *mcov1beta1.ObservabilityAddonList,
+) error {
 	for _, ep := range obsAddonList.Items {
 		err := deleteObsAddon(client, ep.Namespace)
 		if err != nil {
 			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
-			return ctrl.Result{}, err
+			return err
 		}
 	}
-	return ctrl.Result{}, nil
+	return nil
 }
 
 func deleteGlobalResource(c client.Client) error {
@@ -425,10 +422,18 @@ func deleteGlobalResource(c client.Client) error {
 	return nil
 }
 
-func createManagedClusterRes(c client.Client, restMapper meta.RESTMapper,
-	mco *mcov1beta2.MultiClusterObservability, name string, namespace string,
-	works []workv1.Manifest, allowlist *corev1.ConfigMap, crdWork *workv1.Manifest,
-	dep *appsv1.Deployment, hubInfo *corev1.Secret, installProm bool) error {
+func createManagedClusterRes(
+	c client.Client,
+	mco *mcov1beta2.MultiClusterObservability,
+	name string,
+	namespace string,
+	works []workv1.Manifest,
+	allowlist *corev1.ConfigMap,
+	crdWork *workv1.Manifest,
+	dep *appsv1.Deployment,
+	hubInfo *corev1.Secret,
+	installProm bool,
+) error {
 	err := createObsAddon(c, namespace)
 	if err != nil {
 		log.Error(err, "Failed to create observabilityaddon")
@@ -469,9 +474,7 @@ func createManagedClusterRes(c client.Client, restMapper meta.RESTMapper,
 		addonConfig = defaultAddonDeploymentConfig
 	}
 
-	err = createManifestWorks(c, restMapper, namespace, name, mco, works, allowlist, crdWork, dep,
-		hubInfo, addonConfig, installProm)
-	if err != nil {
+	if err = createManifestWorks(c, namespace, name, mco, works, allowlist, crdWork, dep, hubInfo, addonConfig, installProm); err != nil {
 		log.Error(err, "Failed to create manifestwork")
 		return err
 	}
@@ -559,7 +562,10 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					e.Object.GetName(),
 				)
 				/* #nosec */
-				removePostponeDeleteAnnotationForManifestwork(c, e.Object.GetNamespace())
+				if err := removePostponeDeleteAnnotationForManifestwork(c, e.Object.GetNamespace()); err != nil {
+					log.Error(err, "postpone delete annotation for manifestwork could not be removed")
+					return false
+				}
 				return true
 			}
 			return false
@@ -770,14 +776,17 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				// wait 10s for access_token of alertmanager and generate the secret that contains the access_token
 				/* #nosec */
-				wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
+				if err := wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
 					var err error
 					log.Info("generate amAccessorTokenSecret for alertmanager access serviceaccount CREATE")
 					if amAccessorTokenSecret, err = generateAmAccessorTokenSecret(c); err == nil {
 						return true, nil
 					}
 					return false, err
-				})
+				}); err != nil {
+					log.Error(err, "error polling in createfunc")
+					return false
+				}
 				return true
 			}
 			return false

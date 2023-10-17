@@ -91,7 +91,7 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 
 	objs := []runtime.Object{mco, writeStorageS}
 	// Create a fake client to mock API calls.
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	obs, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
 
@@ -131,15 +131,6 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	}
 	if endpointConfig[0].Name != "write_name" || endpointConfig[0].URL.String() != "http://remotewrite/endpoint" {
 		t.Errorf("Wrong endpoint config: %s, %s", endpointConfig[0].Name, endpointConfig[0].URL.String())
-	}
-}
-
-func TestMergeVolumeClaimTemplate(t *testing.T) {
-	vct1 := newVolumeClaimTemplate("1Gi", "test")
-	vct3 := newVolumeClaimTemplate("3Gi", "test")
-	mergeVolumeClaimTemplate(vct1, vct3)
-	if vct1.Spec.Resources.Requests[v1.ResourceStorage] != resource.MustParse("3Gi") {
-		t.Errorf("Failed to merge %v to %v", vct3, vct1)
 	}
 }
 
@@ -183,7 +174,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 
 	objs := []runtime.Object{mco}
 	// Create a fake client to mock API calls.
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	mcoconfig.SetOperandNames(cl)
 
 	_, err := GenerateObservatoriumCR(cl, s, mco)
@@ -308,7 +299,7 @@ config:
 		},
 	}
 
-	client := fake.NewFakeClient([]runtime.Object{}...)
+	client := fake.NewClientBuilder().Build()
 	for _, c := range testCaseList {
 		err := client.Create(context.TODO(), c.secret)
 		if err != nil {

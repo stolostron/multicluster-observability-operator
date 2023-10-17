@@ -23,7 +23,7 @@ func validateS3(conf Config) error {
 	return nil
 }
 
-// IsValidS3Conf is used to validate s3 configuration
+// IsValidS3Conf is used to validate s3 configuration.
 func IsValidS3Conf(data []byte) (bool, error) {
 	var objectConfg ObjectStorgeConf
 	err := yaml.Unmarshal(data, &objectConfg)

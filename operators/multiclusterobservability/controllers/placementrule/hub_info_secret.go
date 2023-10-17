@@ -16,7 +16,7 @@ import (
 )
 
 // generateHubInfoSecret generates the secret that contains hubInfo.
-// this function should only called when the watched resources are created/updated
+// this function should only called when the watched resources are created/updated.
 func generateHubInfoSecret(client client.Client, obsNamespace string,
 	namespace string, ingressCtlCrdExists bool) (*corev1.Secret, error) {
 

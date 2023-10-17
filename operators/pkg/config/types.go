@@ -10,7 +10,7 @@ import (
 // HubInfo is the struct that contains the common information about the hub
 // cluster, for example the name of managed cluster on the hub, the URL of
 // observatorium api gateway, the URL of hub alertmanager and the CA for the
-// hub router
+// hub router.
 type HubInfo struct {
 	ClusterName              string `yaml:"cluster-name"`
 	ObservatoriumAPIEndpoint string `yaml:"observatorium-api-endpoint"`

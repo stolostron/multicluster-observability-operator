@@ -11,10 +11,10 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 )
 
-// *Templates contains all kustomize resources
+// *Templates contains all kustomize resources.
 var genericTemplates, grafanaTemplates, alertManagerTemplates, thanosTemplates, proxyTemplates, endpointObservabilityTemplates, prometheusTemplates []*resource.Resource
 
-// GetOrLoadGenericTemplates reads base manifest
+// GetOrLoadGenericTemplates reads base manifest.
 func GetOrLoadGenericTemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
 	if len(genericTemplates) > 0 {
 		return genericTemplates, nil
@@ -35,7 +35,7 @@ func GetOrLoadGenericTemplates(r *templates.TemplateRenderer) ([]*resource.Resou
 	return genericTemplates, nil
 }
 
-// GetOrLoadGrafanaTemplates reads the grafana manifests
+// GetOrLoadGrafanaTemplates reads the grafana manifests.
 func GetOrLoadGrafanaTemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
 	if len(grafanaTemplates) > 0 {
 		return grafanaTemplates, nil
@@ -50,7 +50,7 @@ func GetOrLoadGrafanaTemplates(r *templates.TemplateRenderer) ([]*resource.Resou
 	return grafanaTemplates, nil
 }
 
-// GetOrLoadAlertManagerTemplates reads the alertmanager manifests
+// GetOrLoadAlertManagerTemplates reads the alertmanager manifests.
 func GetOrLoadAlertManagerTemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
 	if len(alertManagerTemplates) > 0 {
 		return alertManagerTemplates, nil
@@ -65,7 +65,7 @@ func GetOrLoadAlertManagerTemplates(r *templates.TemplateRenderer) ([]*resource.
 	return alertManagerTemplates, nil
 }
 
-// GetOrLoadThanosTemplates reads the thanos manifests
+// GetOrLoadThanosTemplates reads the thanos manifests.
 func GetOrLoadThanosTemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
 	if len(thanosTemplates) > 0 {
 		return thanosTemplates, nil
@@ -80,7 +80,7 @@ func GetOrLoadThanosTemplates(r *templates.TemplateRenderer) ([]*resource.Resour
 	return thanosTemplates, nil
 }
 
-// GetOrLoadProxyTemplates reads the rbac-query-proxy manifests
+// GetOrLoadProxyTemplates reads the rbac-query-proxy manifests.
 func GetOrLoadProxyTemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
 	if len(proxyTemplates) > 0 {
 		return proxyTemplates, nil
@@ -95,7 +95,7 @@ func GetOrLoadProxyTemplates(r *templates.TemplateRenderer) ([]*resource.Resourc
 	return proxyTemplates, nil
 }
 
-// GetEndpointObservabilityTemplates reads endpoint-observability manifest
+// GetEndpointObservabilityTemplates reads endpoint-observability manifest.
 func GetOrLoadEndpointObservabilityTemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
 	if len(endpointObservabilityTemplates) > 0 {
 		return endpointObservabilityTemplates, nil
@@ -111,7 +111,7 @@ func GetOrLoadEndpointObservabilityTemplates(r *templates.TemplateRenderer) ([]*
 	return endpointObservabilityTemplates, nil
 }
 
-// GetOrLoadPrometheusTemplates reads endpoint-observability manifest
+// GetOrLoadPrometheusTemplates reads endpoint-observability manifest.
 func GetOrLoadPrometheusTemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
 	if len(prometheusTemplates) > 0 {
 		return prometheusTemplates, nil
@@ -127,7 +127,7 @@ func GetOrLoadPrometheusTemplates(r *templates.TemplateRenderer) ([]*resource.Re
 	return prometheusTemplates, nil
 }
 
-// ResetTemplates reset all the loaded templates
+// ResetTemplates reset all the loaded templates.
 func ResetTemplates() {
 	genericTemplates = nil
 	grafanaTemplates = nil

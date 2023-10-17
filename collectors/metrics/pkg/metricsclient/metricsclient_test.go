@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/prompb"
 )

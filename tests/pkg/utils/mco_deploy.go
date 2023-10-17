@@ -6,8 +6,8 @@ package utils
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -162,7 +162,6 @@ func PrintAllMCOPodsStatus(opt TestOptions) {
 		isReady := false
 		if pod.Status.Phase == corev1.PodRunning {
 			isReady = true
-			break
 		}
 
 		// only print not ready pod status
@@ -234,7 +233,6 @@ func PrintAllOBAPodsStatus(opt TestOptions) {
 		isReady := false
 		if pod.Status.Phase == corev1.PodRunning {
 			isReady = true
-			break
 		}
 
 		// only print not ready pod status
@@ -498,11 +496,11 @@ func CheckAdvRetentionConfig(opt TestOptions) (bool, error) {
 
 	spec := mco.Object["spec"].(map[string]interface{})
 	if _, adv := spec["advanced"]; !adv {
-		return false, fmt.Errorf("the MCO CR did not have advanced spec configed")
+		return false, errors.New("the MCO CR did not have advanced spec configed")
 	} else {
 		advanced := spec["advanced"].(map[string]interface{})
 		if _, rec := advanced["retentionConfig"]; !rec {
-			return false, fmt.Errorf("the MCO CR did not have advanced retentionConfig spec configed")
+			return false, errors.New("the MCO CR did not have advanced retentionConfig spec configed")
 		} else {
 			return true, nil
 		}
@@ -563,7 +561,7 @@ func CheckMCOAddon(opt TestOptions) error {
 			}
 		}
 		if !exist {
-			return fmt.Errorf(podName + " not found")
+			return errors.New(podName + " not found")
 		}
 	}
 	return nil
@@ -698,11 +696,11 @@ func GetMCOAddonSpecResources(opt TestOptions) (map[string]interface{}, error) {
 
 	spec := mco.Object["spec"].(map[string]interface{})
 	if _, addonSpec := spec["observabilityAddonSpec"]; !addonSpec {
-		return nil, fmt.Errorf("the MCO CR did not have observabilityAddonSpec spec configed")
+		return nil, errors.New("the MCO CR did not have observabilityAddonSpec spec configed")
 	}
 
 	if _, resSpec := spec["observabilityAddonSpec"].(map[string]interface{})["resources"]; !resSpec {
-		return nil, fmt.Errorf("the MCO CR did not have observabilityAddonSpec.resources spec configed")
+		return nil, errors.New("the MCO CR did not have observabilityAddonSpec.resources spec configed")
 	}
 
 	res := spec["observabilityAddonSpec"].(map[string]interface{})["resources"].(map[string]interface{})
@@ -728,7 +726,7 @@ func CheckMCOConversion(opt TestOptions, v1beta1tov1beta2GoldenPath string) erro
 	}
 
 	decUnstructured := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
-	yamlB, err := ioutil.ReadFile(filepath.Clean(v1beta1tov1beta2GoldenPath))
+	yamlB, err := os.ReadFile(filepath.Clean(v1beta1tov1beta2GoldenPath))
 	if err != nil {
 		return err
 	}
@@ -799,22 +797,22 @@ func CreateObjSecret(opt TestOptions) error {
 
 	bucket := os.Getenv("BUCKET")
 	if bucket == "" {
-		return fmt.Errorf("failed to get s3 BUCKET env")
+		return errors.New("failed to get s3 BUCKET env")
 	}
 
 	region := os.Getenv("REGION")
 	if region == "" {
-		return fmt.Errorf("failed to get s3 REGION env")
+		return errors.New("failed to get s3 REGION env")
 	}
 
 	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
 	if accessKey == "" {
-		return fmt.Errorf("failed to get aws AWS_ACCESS_KEY_ID env")
+		return errors.New("failed to get aws AWS_ACCESS_KEY_ID env")
 	}
 
 	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
 	if secretKey == "" {
-		return fmt.Errorf("failed to get aws AWS_SECRET_ACCESS_KEY env")
+		return errors.New("failed to get aws AWS_SECRET_ACCESS_KEY env")
 	}
 
 	objSecret := fmt.Sprintf(`apiVersion: v1

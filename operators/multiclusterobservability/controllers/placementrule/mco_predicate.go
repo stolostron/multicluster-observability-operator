@@ -25,7 +25,7 @@ func getMCOPred(c client.Client, ingressCtlCrdExists bool) predicate.Funcs {
 			mco := e.Object.(*mcov1beta2.MultiClusterObservability)
 			alertingStatus := config.IsAlertingDisabledInSpec(mco)
 			config.SetAlertingDisabled(alertingStatus)
-			var err error = nil
+			var err error
 			hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists)
 			if err != nil {
 				log.Error(err, "unable to get HubInfoSecret", "controller", "PlacementRule")
@@ -40,13 +40,11 @@ func getMCOPred(c client.Client, ingressCtlCrdExists bool) predicate.Funcs {
 			// if value changed, then mustReconcile is true
 			if oldAlertingStatus != newAlertingStatus {
 				config.SetAlertingDisabled(newAlertingStatus)
-				var err error = nil
-
+				var err error
 				hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists)
 				if err != nil {
 					log.Error(err, "unable to get HubInfoSecret", "controller", "PlacementRule")
 				}
-
 				retval = true
 			}
 

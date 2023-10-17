@@ -5,21 +5,18 @@ package multiclusterobservability
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path"
 	"strings"
 	"testing"
 	"time"
 
-	configv1 "github.com/openshift/api/config/v1"
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,7 +58,7 @@ func setupTest(t *testing.T) func() {
 	//clean up the manifest path if left over from previous test
 	if fi, err := os.Lstat(testManifestsPath); err == nil && fi.Mode()&os.ModeSymlink != 0 {
 		if err = os.Remove(testManifestsPath); err != nil {
-			t.Logf(fmt.Sprintf("Failed to delete symlink(%s) for the test manifests: (%v)", testManifestsPath, err))
+			t.Logf("Failed to delete symlink(%s) for the test manifests: (%v)", testManifestsPath, err)
 		}
 	}
 	err = os.Symlink(manifestsPath, testManifestsPath)
@@ -73,7 +70,7 @@ func setupTest(t *testing.T) func() {
 	return func() {
 		t.Log("begin teardownTest")
 		if err = os.Remove(testManifestsPath); err != nil {
-			t.Logf(fmt.Sprintf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err))
+			t.Logf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
 		}
 		os.Remove(path.Join(wd, "../../tests"))
 		os.Unsetenv("TEMPLATES_PATH")
@@ -134,15 +131,6 @@ func newMCHInstanceWithVersion(namespace, version string) *mchv1.MultiClusterHub
 			CurrentVersion: version,
 			DesiredVersion: version,
 		},
-	}
-}
-
-func TestLabelsForMultiClusterMonitoring(t *testing.T) {
-	lab := labelsForMultiClusterMonitoring("test")
-
-	value, _ := lab["observability.open-cluster-management.io/name"]
-	if value != "test" {
-		t.Errorf("value (%v) is not the expected (test)", value)
 	}
 }
 
@@ -268,37 +256,6 @@ func createFailedDeployment(name, namespace string) *appsv1.Deployment {
 	}
 }
 
-func createClusterVersion() *configv1.ClusterVersion {
-	return &configv1.ClusterVersion{
-		ObjectMeta: metav1.ObjectMeta{Name: "version"},
-		Spec: configv1.ClusterVersionSpec{
-			ClusterID: configv1.ClusterID("xxx-xxxxxx-xxxx"),
-		},
-	}
-}
-
-func createMultiClusterHubCRD() *apiextensionsv1beta1.CustomResourceDefinition {
-	return &apiextensionsv1beta1.CustomResourceDefinition{
-		ObjectMeta: metav1.ObjectMeta{Name: config.MCHCrdName},
-		Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
-			Scope:      apiextensionsv1beta1.NamespaceScoped,
-			Conversion: &apiextensionsv1beta1.CustomResourceConversion{Strategy: apiextensionsv1beta1.NoneConverter},
-			Group:      "operator.open-cluster-management.io",
-			Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
-				Kind:       "MultiClusterHub",
-				ListKind:   "MultiClusterHubList",
-				Plural:     "multiclusterhubs",
-				ShortNames: []string{"mch"},
-				Singular:   "multiclusterhub",
-			},
-			Version: "v1",
-			Versions: []apiextensionsv1beta1.CustomResourceDefinitionVersion{
-				{Name: "v1", Storage: true, Served: true},
-			},
-		},
-	}
-}
-
 func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	var (
 		name      = "monitoring"
@@ -360,7 +317,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	objs := []runtime.Object{mco, svc, serverCACerts, clientCACerts, proxyRouteBYOCACerts, grafanaCert, serverCert,
 		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, proxyRouteBYOCert, clustermgmtAddon}
 	// Create a fake client to mock API calls.
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
 	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
@@ -743,7 +700,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	objs := []runtime.Object{mco, observatoriumAPIsvc, serverCACerts, clientCACerts, grafanaCert, serverCert,
 		testMCHInstance, imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon}
 	// Create a fake client to mock API calls.
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
 	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.MCHCrdName: true, config.IngressControllerCRD: true}}
@@ -887,7 +844,7 @@ func TestCheckObjStorageStatus(t *testing.T) {
 	s := scheme.Scheme
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	objs := []runtime.Object{mco}
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	mcoCondition := checkObjStorageStatus(c, mco)
 	if mcoCondition == nil {
 		t.Errorf("check s3 conf failed: got %v, expected non-nil", mcoCondition)
@@ -938,7 +895,7 @@ func TestHandleStorageSizeChange(t *testing.T) {
 		createStatefulSet(mco.Name, config.GetDefaultNamespace(), "test"),
 		createPersistentVolumeClaim(mco.Name, config.GetDefaultNamespace(), "test"),
 	}
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
 	isAlertmanagerStorageSizeChanged = true
 	r.HandleStorageSizeChange(mco)

@@ -1,15 +1,15 @@
 package metricfamily
 
 import (
-	"fmt"
+	"errors"
 
 	clientmodel "github.com/prometheus/client_model/go"
 )
 
 var (
-	ErrUnsorted        = fmt.Errorf("metrics in provided family are not in increasing timestamp order")
-	ErrNoTimestamp     = fmt.Errorf("metrics in provided family do not have a timestamp")
-	ErrTimestampTooOld = fmt.Errorf("metrics in provided family have a timestamp that is too old, check clock skew")
+	ErrUnsorted        = errors.New("metrics in provided family are not in increasing timestamp order")
+	ErrNoTimestamp     = errors.New("metrics in provided family do not have a timestamp")
+	ErrTimestampTooOld = errors.New("metrics in provided family have a timestamp that is too old, check clock skew")
 )
 
 type errorOnUnsorted struct {

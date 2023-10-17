@@ -5,7 +5,7 @@ package controller
 
 import (
 	"context"
-	"io/ioutil"
+	stdlog "log"
 	"net/http"
 	"os"
 	"testing"
@@ -23,7 +23,7 @@ var (
 
 func createDashboard() (*corev1.ConfigMap, error) {
 	// read the whole file at once
-	data, err := ioutil.ReadFile("../../examples/k8s-dashboard.yaml")
+	data, err := os.ReadFile("../../examples/k8s-dashboard.yaml")
 	if err != nil {
 		panic(err)
 	}
@@ -86,7 +86,7 @@ func createFakeServer(t *testing.T) {
 
 	err := http.ListenAndServe(":3001", server3001)
 	if err != nil {
-		t.Fatal("fail to create internal server at 3001")
+		stdlog.Fatal("fail to create internal server at 3001")
 	}
 }
 

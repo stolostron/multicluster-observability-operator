@@ -12,7 +12,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Config is for s3/azure/gcs compatiable configuration
+// Config is for s3/azure/gcs compatible configuration.
 type Config struct {
 	// s3 configuration
 	Bucket     string     `yaml:"bucket"`
@@ -65,7 +65,7 @@ type TLSConfig struct {
 	InsecureSkipVerify bool `yaml:"insecure_skip_verify"`
 }
 
-// CheckObjStorageConf is used to check/valid the object storage configurations
+// CheckObjStorageConf is used to check/valid the object storage configurations.
 func CheckObjStorageConf(data []byte) (bool, error) {
 	var objectConfg ObjectStorgeConf
 	err := yaml.Unmarshal(data, &objectConfg)

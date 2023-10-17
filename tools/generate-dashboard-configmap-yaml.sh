@@ -4,18 +4,15 @@
 
 obs_namespace='open-cluster-management-observability'
 
-if command -v python &> /dev/null
-then
-    PYTHON_CMD="python"
-elif command -v python2 &> /dev/null
-then
-    PYTHON_CMD="python2"
-elif command -v python3 &> /dev/null
-then
-    PYTHON_CMD="python3"
+if command -v python &>/dev/null; then
+  PYTHON_CMD="python"
+elif command -v python2 &>/dev/null; then
+  PYTHON_CMD="python2"
+elif command -v python3 &>/dev/null; then
+  PYTHON_CMD="python3"
 else
-    echo "Failed to found python command, please install firstly"
-    exit 1
+  echo "Failed to found python command, please install firstly"
+  exit 1
 fi
 
 usage() {
@@ -45,67 +42,66 @@ start() {
     savePath=$2
   fi
   org_dashboard_name=$1
-  dashboard_name=`echo ${1//[!(a-z\A-Z\0-9\-\.)]/-} | tr '[:upper:]' '[:lower:]'`
+  dashboard_name=$(echo ${1//[!(a-z\A-Z\0-9\-\.)]/-} | tr '[:upper:]' '[:lower:]')
 
-  while [[ $# -gt 0 ]]
-  do
-  key="$1"
-  case $key in
-      -h|--help)
-      usage
-      ;;
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+    case $key in
+      -h | --help)
+        usage
+        ;;
 
-      -n|--namespace)
-      obs_namespace="$2"
-      shift
-      shift
-      ;;
+      -n | --namespace)
+        obs_namespace="$2"
+        shift
+        shift
+        ;;
 
       *)
-      shift
-      ;;
-  esac
+        shift
+        ;;
+    esac
   done
 
   if [ ! -d $savePath ]; then
     mkdir -p $savePath
     if [ $? -ne 0 ]; then
-        echo "Failed to create directory <$savePath>"
-        exit 1
+      echo "Failed to create directory <$savePath>"
+      exit 1
     fi
   fi
 
-  podName=`kubectl get pods -n "$obs_namespace" -l app=multicluster-observability-grafana-dev --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}'`
+  podName=$(kubectl get pods -n "$obs_namespace" -l app=multicluster-observability-grafana-dev --template '{{range .items}}{{.metadata.name}}{{"\n"}}{{end}}')
   if [ $? -ne 0 ] || [ -z "$podName" ]; then
-      echo "Failed to get grafana pod name, please check your grafana-dev deployment"
-      exit 1
+    echo "Failed to get grafana pod name, please check your grafana-dev deployment"
+    exit 1
   fi
 
   curlCMD="kubectl exec -it -n "$obs_namespace" $podName -c grafana-dashboard-loader -- /usr/bin/curl"
   XForwardedUser="WHAT_YOU_ARE_DOING_IS_VOIDING_SUPPORT_0000000000000000000000000000000000000000000000000000000000000000"
-  dashboards=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User: $XForwardedUser" 127.0.0.1:3001/api/search`
+  dashboards=$($curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User: $XForwardedUser" 127.0.0.1:3001/api/search)
   if [ $? -ne 0 ]; then
-      echo "Failed to search dashboards, please check your grafana-dev instance"
-      exit 1
+    echo "Failed to search dashboards, please check your grafana-dev instance"
+    exit 1
   fi
 
-  dashboard=`echo $dashboards | $PYTHON_CMD -c "import sys, json;[sys.stdout.write(json.dumps(dash)) for dash in json.load(sys.stdin) if dash['title'] == '$org_dashboard_name']"`
+  dashboard=$(echo $dashboards | $PYTHON_CMD -c "import sys, json;[sys.stdout.write(json.dumps(dash)) for dash in json.load(sys.stdin) if dash['title'] == '$org_dashboard_name']")
 
-  dashboardUID=`echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['uid'])" 2>/dev/null`
-  dashboardFolderId=`echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['folderId'])" 2>/dev/null`
-  dashboardFolderTitle=`echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['folderTitle'])" 2>/dev/null`
-  
-  dashboardJson=`$curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User:$XForwardedUser" 127.0.0.1:3001/api/dashboards/uid/$dashboardUID | $PYTHON_CMD -c "import sys, json; print(json.dumps(json.load(sys.stdin)['dashboard']))" 2>/dev/null`
+  dashboardUID=$(echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['uid'])" 2>/dev/null)
+  dashboardFolderId=$(echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['folderId'])" 2>/dev/null)
+  dashboardFolderTitle=$(echo $dashboard | $PYTHON_CMD -c "import sys, json; print(json.load(sys.stdin)['folderTitle'])" 2>/dev/null)
+
+  dashboardJson=$($curlCMD -s -X GET -H "Content-Type: application/json" -H "X-Forwarded-User:$XForwardedUser" 127.0.0.1:3001/api/dashboards/uid/$dashboardUID | $PYTHON_CMD -c "import sys, json; print(json.dumps(json.load(sys.stdin)['dashboard']))" 2>/dev/null)
   if [ $? -ne 0 ]; then
-      echo "Failed to fetch dashboard json data, please check your dashboard name <$org_dashboard_name>"
-      exit 1
+    echo "Failed to fetch dashboard json data, please check your dashboard name <$org_dashboard_name>"
+    exit 1
   fi
 
   # delete dashboard uid avoid conflict with old dashboard
-  dashboardJson=`echo $dashboardJson | $PYTHON_CMD -c "import sys, json; d=json.load(sys.stdin);del d['uid'];print(json.dumps(d))"`
+  dashboardJson=$(echo $dashboardJson | $PYTHON_CMD -c "import sys, json; d=json.load(sys.stdin);del d['uid'];print(json.dumps(d))")
 
   if [ $dashboardFolderId -ne 0 ]; then
-  cat > $savePath/$dashboard_name.yaml <<EOF
+    cat >$savePath/$dashboard_name.yaml <<EOF
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -120,7 +116,7 @@ data:
     $dashboardJson
 EOF
   else
-  cat > $savePath/$dashboard_name.yaml <<EOF
+    cat >$savePath/$dashboard_name.yaml <<EOF
 kind: ConfigMap
 apiVersion: v1
 metadata:

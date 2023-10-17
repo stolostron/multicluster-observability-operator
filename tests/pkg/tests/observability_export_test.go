@@ -4,6 +4,7 @@
 package tests
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -51,7 +52,7 @@ var _ = Describe("Observability:", func() {
 
 		By("Updating mco cr to inject WriteStorage")
 		templatePath := "../../../examples/export/v1beta2"
-		if os.Getenv("IS_CANARY_ENV") != "true" {
+		if os.Getenv("IS_CANARY_ENV") != trueStr {
 			templatePath = "../../../examples/export/v1beta2/custom-certs"
 		}
 		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: templatePath})
@@ -83,7 +84,7 @@ var _ = Describe("Observability:", func() {
 						`"code":"200`, `"name":"thanos-receiver"`},
 				)
 				if err != nil {
-					return fmt.Errorf("metrics not forwarded to thanos-receiver")
+					return errors.New("metrics not forwarded to thanos-receiver")
 				}
 				err, _ = utils.ContainManagedClusterMetric(
 					testOptions,
@@ -92,7 +93,7 @@ var _ = Describe("Observability:", func() {
 						`"code":"204`, `"name":"victoriametrics"`},
 				)
 				if err != nil {
-					return fmt.Errorf("metrics not forwarded to victoriametrics")
+					return errors.New("metrics not forwarded to victoriametrics")
 				}
 			}
 			return nil

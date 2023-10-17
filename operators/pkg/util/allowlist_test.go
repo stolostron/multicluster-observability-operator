@@ -9,6 +9,7 @@ import (
 
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -101,7 +102,7 @@ names:
 }
 
 func TestMergeAllowList(t *testing.T) {
-	c := fake.NewFakeClient(getAllowlistCM(), geCustomAllowlistCM())
+	c := fake.NewClientBuilder().WithRuntimeObjects(getAllowlistCM(), geCustomAllowlistCM()).Build()
 	allowlist, ocp3Allowlist, uwlAllowlist, err := GetAllowList(c, operatorconfig.AllowlistConfigMapName,
 		config.GetDefaultNamespace())
 	if err != nil {
@@ -114,13 +115,13 @@ func TestMergeAllowList(t *testing.T) {
 	}
 	list, ocp3List, uwlList := MergeAllowlist(allowlist, customAllowlist, ocp3Allowlist,
 		uwlAllowlist, customUwlAllowlist)
-	if !Contains(list.NameList, "custom_a") {
+	if !slices.Contains(list.NameList, "custom_a") {
 		t.Error("metrics custom_a not merged into allowlist")
 	}
-	if !Contains(ocp3List.NameList, "custom_a") {
+	if !slices.Contains(ocp3List.NameList, "custom_a") {
 		t.Error("metrics custom_a not merged into allowlist")
 	}
-	if !Contains(uwlList.NameList, "custom_uwl_a") {
+	if !slices.Contains(uwlList.NameList, "custom_uwl_a") {
 		t.Error("metrics custom_uwl_a not merged into uwl allowlist")
 	}
 }

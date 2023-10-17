@@ -4,7 +4,7 @@
 package rendering
 
 import (
-	"fmt"
+	"errors"
 	"strconv"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -85,7 +85,9 @@ func (r *Renderer) RenderDeployments(
 	   		return nil, err
 	   	} */
 
-	res.SetNamespace(namespace)
+	if err := res.SetNamespace(namespace); err != nil {
+		return nil, err
+	}
 	m, err := res.Map()
 	if err != nil {
 		return nil, err
@@ -106,7 +108,9 @@ func (r *Renderer) RenderNamespace(
 	u := &unstructured.Unstructured{Object: m}
 	if UpdateNamespace(u) {
 		u.SetNamespace(namespace)
-		res.SetNamespace(namespace)
+		if err := res.SetNamespace(namespace); err != nil {
+			return nil, err
+		}
 	}
 
 	return u, nil
@@ -157,7 +161,7 @@ func (r *Renderer) RenderClusterRoleBinding(
 
 	subjects, ok := u.Object["subjects"].([]interface{})
 	if !ok {
-		return nil, fmt.Errorf("failed to find clusterrolebinding subjects field")
+		return nil, errors.New("failed to find clusterrolebinding subjects field")
 	}
 	subject := subjects[0].(map[string]interface{})
 	kind := subject["kind"]
@@ -173,7 +177,7 @@ func (r *Renderer) RenderClusterRoleBinding(
 	return u, nil
 }
 
-// UpdateNamespace checks for annotiation to update NS
+// UpdateNamespace checks for annotiation to update NS.
 func UpdateNamespace(u *unstructured.Unstructured) bool {
 	annotations := u.GetAnnotations()
 	v, ok := annotations[nsUpdateAnnoKey]

@@ -8,7 +8,6 @@ import (
 	"compress/gzip"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -36,7 +35,7 @@ var (
 
 func shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) bool {
 	if strings.HasSuffix(req.URL.Path, "/api/v1/series") {
-		body, err := ioutil.ReadAll(req.Body)
+		body, err := io.ReadAll(req.Body)
 		if err != nil {
 			klog.Errorf("failed to read body: %v", err)
 		}
@@ -62,14 +61,14 @@ func shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) b
 			}
 		}
 
-		req.Body = ioutil.NopCloser(strings.NewReader(string(body)))
+		req.Body = io.NopCloser(strings.NewReader(string(body)))
 		req.ContentLength = int64(len([]rune(string(body))))
 	}
 
 	return false
 }
 
-// HandleRequestAndRedirect is used to init proxy handler
+// HandleRequestAndRedirect is used to init proxy handler.
 func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
 	if preCheckRequest(req) != nil {
 		_, err := res.Write(newEmptyMatrixHTTPBody())
@@ -106,13 +105,6 @@ func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
 	req.URL.Path = path.Join(basePath, req.URL.Path)
 	util.ModifyMetricsQueryParams(req, config.GetConfigOrDie().Host+projectsAPIPath)
 	proxy.ServeHTTP(res, req)
-}
-
-func errorHandle(rw http.ResponseWriter, req *http.Request, err error) {
-	token := req.Header.Get("X-Forwarded-Access-Token")
-	if token == "" {
-		rw.WriteHeader(http.StatusUnauthorized)
-	}
 }
 
 func preCheckRequest(req *http.Request) error {
@@ -189,7 +181,7 @@ func proxyRequest(r *http.Request) {
 			strings.HasSuffix(r.URL.Path, "/api/v1/series") {
 			r.Method = http.MethodPost
 			r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			r.Body = ioutil.NopCloser(strings.NewReader(r.URL.RawQuery))
+			r.Body = io.NopCloser(strings.NewReader(r.URL.RawQuery))
 		}
 	}
 }

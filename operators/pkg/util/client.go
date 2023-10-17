@@ -31,7 +31,7 @@ var (
 	promClient promClientSet.Interface
 )
 
-// GetOrCreateKubeClient gets existing kubeclient or creates new one if it doesn't exist
+// GetOrCreateKubeClient gets existing kubeclient or creates new one if it doesn't exist.
 func GetOrCreateKubeClient() (kubernetes.Interface, error) {
 	if kubeClient != nil {
 		return kubeClient, nil
@@ -53,7 +53,7 @@ func GetOrCreateKubeClient() (kubernetes.Interface, error) {
 	return kubeClient, nil
 }
 
-// GetOrCreateOCPClient creates ocp client
+// GetOrCreateOCPClient creates ocp client.
 func GetOrCreateOCPClient() (ocpClientSet.Interface, error) {
 	if crdClient != nil {
 		return ocpClient, nil
@@ -75,7 +75,7 @@ func GetOrCreateOCPClient() (ocpClientSet.Interface, error) {
 	return ocpClient, err
 }
 
-// GetOrCreateCRDClient gets an existing or creates a new CRD client
+// GetOrCreateCRDClient gets an existing or creates a new CRD client.
 func GetOrCreateCRDClient() (crdClientSet.Interface, error) {
 	if crdClient != nil {
 		return crdClient, nil
@@ -97,7 +97,7 @@ func GetOrCreateCRDClient() (crdClientSet.Interface, error) {
 	return crdClient, err
 }
 
-// GetOrCreatePromClient creates prometheus client
+// GetOrCreatePromClient creates prometheus client.
 func GetOrCreatePromClient() (promClientSet.Interface, error) {
 	if promClient != nil {
 		return promClient, nil
@@ -165,7 +165,7 @@ func UpdateCRDWebhookNS(crdClient crdClientSet.Interface, namespace, crdName str
 	return nil
 }
 
-// GetPVCList get pvc with matched labels
+// GetPVCList get pvc with matched labels.
 func GetPVCList(c client.Client, namespace string,
 	matchLabels map[string]string) ([]corev1.PersistentVolumeClaim, error) {
 	pvcList := &corev1.PersistentVolumeClaimList{}
@@ -181,7 +181,7 @@ func GetPVCList(c client.Client, namespace string,
 	return pvcList.Items, nil
 }
 
-// GetStatefulSetList get sts with matched labels
+// GetStatefulSetList get sts with matched labels.
 func GetStatefulSetList(c client.Client, namespace string,
 	matchLabels map[string]string) ([]appsv1.StatefulSet, error) {
 	stsList := &appsv1.StatefulSetList{}

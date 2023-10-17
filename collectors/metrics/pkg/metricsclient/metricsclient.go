@@ -8,9 +8,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -20,10 +20,9 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff"
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
@@ -41,42 +40,33 @@ const (
 	maxSeriesLength = 10000
 )
 
-var (
-	gaugeRequestRetrieve = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "metricsclient_request_retrieve",
-		Help: "Tracks the number of metrics retrievals",
-	}, []string{"client", "status_code"})
-	gaugeRequestSend = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "metricsclient_request_send",
-		Help: "Tracks the number of metrics sends",
-	}, []string{"client", "status_code"})
-)
-
-func init() {
-	prometheus.MustRegister(
-		gaugeRequestRetrieve, gaugeRequestSend,
-	)
-}
-
 type Client struct {
 	client      *http.Client
 	maxBytes    int64
 	timeout     time.Duration
 	metricsName string
 	logger      log.Logger
+
+	metrics *ClientMetrics
+}
+
+type ClientMetrics struct {
+	GaugeRequestRetrieve *prometheus.GaugeVec
+	GaugeRequestSend     *prometheus.GaugeVec
 }
 
 type PartitionedMetrics struct {
 	Families []*clientmodel.MetricFamily
 }
 
-func New(logger log.Logger, client *http.Client, maxBytes int64, timeout time.Duration, metricsName string) *Client {
+func New(logger log.Logger, metrics *ClientMetrics, client *http.Client, maxBytes int64, timeout time.Duration, metricsName string) *Client {
 	return &Client{
 		client:      client,
 		maxBytes:    maxBytes,
 		timeout:     timeout,
 		metricsName: metricsName,
 		logger:      log.With(logger, "component", "metricsclient"),
+		metrics:     metrics,
 	}
 }
 
@@ -107,19 +97,19 @@ func (c *Client) RetrievRecordingMetrics(
 	err := withCancel(ctx, c.client, req, func(resp *http.Response) error {
 		switch resp.StatusCode {
 		case http.StatusOK:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
 		case http.StatusUnauthorized:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
-			return fmt.Errorf("Prometheus server requires authentication: %s", resp.Request.URL)
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
+			return fmt.Errorf("prometheus server requires authentication: %s", resp.Request.URL)
 		case http.StatusForbidden:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
-			return fmt.Errorf("Prometheus server forbidden: %s", resp.Request.URL)
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
+			return fmt.Errorf("prometheus server forbidden: %s", resp.Request.URL)
 		case http.StatusBadRequest:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
 			return fmt.Errorf("bad request: %s", resp.Request.URL)
 		default:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
-			return fmt.Errorf("Prometheus server reported unexpected error code: %d", resp.StatusCode)
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
+			return fmt.Errorf("prometheus server reported unexpected error code: %d", resp.StatusCode)
 		}
 
 		decoder := json.NewDecoder(resp.Body)
@@ -199,19 +189,19 @@ func (c *Client) Retrieve(ctx context.Context, req *http.Request) ([]*clientmode
 	err := withCancel(ctx, c.client, req, func(resp *http.Response) error {
 		switch resp.StatusCode {
 		case http.StatusOK:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
 		case http.StatusUnauthorized:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
-			return fmt.Errorf("Prometheus server requires authentication: %s", resp.Request.URL)
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
+			return fmt.Errorf("prometheus server requires authentication: %s", resp.Request.URL)
 		case http.StatusForbidden:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
-			return fmt.Errorf("Prometheus server forbidden: %s", resp.Request.URL)
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
+			return fmt.Errorf("prometheus server forbidden: %s", resp.Request.URL)
 		case http.StatusBadRequest:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
 			return fmt.Errorf("bad request: %s", resp.Request.URL)
 		default:
-			gaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
-			return fmt.Errorf("Prometheus server reported unexpected error code: %d", resp.StatusCode)
+			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
+			return fmt.Errorf("prometheus server reported unexpected error code: %d", resp.StatusCode)
 		}
 
 		// read the response into memory
@@ -249,7 +239,7 @@ func (c *Client) Send(ctx context.Context, req *http.Request, families []*client
 	}
 	req.Header.Set("Content-Type", string(expfmt.FmtProtoDelim))
 	req.Header.Set("Content-Encoding", "snappy")
-	req.Body = ioutil.NopCloser(buf)
+	req.Body = io.NopCloser(buf)
 
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	req = req.WithContext(ctx)
@@ -257,7 +247,7 @@ func (c *Client) Send(ctx context.Context, req *http.Request, families []*client
 	logger.Log(c.logger, logger.Debug, "msg", "start to send")
 	return withCancel(ctx, c.client, req, func(resp *http.Response) error {
 		defer func() {
-			if _, err := io.Copy(ioutil.Discard, resp.Body); err != nil {
+			if _, err := io.Copy(io.Discard, resp.Body); err != nil {
 				logger.Log(c.logger, logger.Error, "msg", "error copying body", "err", err)
 			}
 			if err := resp.Body.Close(); err != nil {
@@ -267,20 +257,20 @@ func (c *Client) Send(ctx context.Context, req *http.Request, families []*client
 		logger.Log(c.logger, logger.Debug, "msg", resp.StatusCode)
 		switch resp.StatusCode {
 		case http.StatusOK:
-			gaugeRequestSend.WithLabelValues(c.metricsName, "200").Inc()
+			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, "200").Inc()
 		case http.StatusUnauthorized:
-			gaugeRequestSend.WithLabelValues(c.metricsName, "401").Inc()
+			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, "401").Inc()
 			return fmt.Errorf("gateway server requires authentication: %s", resp.Request.URL)
 		case http.StatusForbidden:
-			gaugeRequestSend.WithLabelValues(c.metricsName, "403").Inc()
+			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, "403").Inc()
 			return fmt.Errorf("gateway server forbidden: %s", resp.Request.URL)
 		case http.StatusBadRequest:
-			gaugeRequestSend.WithLabelValues(c.metricsName, "400").Inc()
+			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, "400").Inc()
 			logger.Log(c.logger, logger.Debug, "msg", resp.Body)
 			return fmt.Errorf("gateway server bad request: %s", resp.Request.URL)
 		default:
-			gaugeRequestSend.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
-			body, _ := ioutil.ReadAll(resp.Body)
+			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
+			body, _ := io.ReadAll(resp.Body)
 			if len(body) > 1024 {
 				body = body[:1024]
 			}
@@ -328,6 +318,8 @@ func Write(w io.Writer, families []*clientmodel.MetricFamily) error {
 
 func withCancel(ctx context.Context, client *http.Client, req *http.Request, fn func(*http.Response) error) error {
 	resp, err := client.Do(req)
+	// TODO(saswatamcode): Check error.
+	//nolint:errcheck
 	defer func() error {
 		if resp != nil {
 			if err = resp.Body.Close(); err != nil {
@@ -379,14 +371,14 @@ func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string)
 		tlsCrtFile = "../../testdata/tls/tls.crt"
 	}
 	// Load Server CA cert
-	caCert, err := ioutil.ReadFile(filepath.Clean(caCertFile))
+	caCert, err := os.ReadFile(filepath.Clean(caCertFile))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load server ca cert file")
+		return nil, fmt.Errorf("failed to load server ca cert file: %w", err)
 	}
 	// Load client cert signed by Client CA
 	cert, err := tls.LoadX509KeyPair(tlsCrtFile, tlsKeyFile)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load client ca cert")
+		return nil, fmt.Errorf("failed to load client ca cert: %w", err)
 	}
 
 	caCertPool := x509.NewCertPool()
@@ -471,7 +463,7 @@ func convertToTimeseries(p *PartitionedMetrics, now time.Time) ([]prompb.TimeSer
 	return timeseries, nil
 }
 
-// RemoteWrite is used to push the metrics to remote thanos endpoint
+// RemoteWrite is used to push the metrics to remote thanos endpoint.
 func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 	families []*clientmodel.MetricFamily, interval time.Duration) error {
 
@@ -479,7 +471,7 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 	if err != nil {
 		msg := "failed to convert timeseries"
 		logger.Log(c.logger, logger.Warn, "msg", msg, "err", err)
-		return fmt.Errorf(msg)
+		return errors.New(msg)
 	}
 
 	if len(timeseries) == 0 {
@@ -513,7 +505,7 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 		if err != nil {
 			msg := "failed to marshal proto"
 			logger.Log(c.logger, logger.Warn, "msg", msg, "err", err)
-			return fmt.Errorf(msg)
+			return errors.New(msg)
 		}
 		compressed := snappy.Encode(nil, data)
 
@@ -537,8 +529,7 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 			return err
 		}
 	}
-	msg := fmt.Sprintf("Metrics pushed successfully")
-	logger.Log(c.logger, logger.Info, "msg", msg)
+	logger.Log(c.logger, logger.Info, "msg", "metrics pushed successfully")
 	return nil
 }
 
@@ -547,7 +538,7 @@ func (c *Client) sendRequest(serverURL string, body []byte) error {
 	if err != nil {
 		msg := "failed to create forwarding request"
 		logger.Log(c.logger, logger.Warn, "msg", msg, "err", err)
-		return fmt.Errorf(msg)
+		return errors.New(msg)
 	}
 
 	//req.Header.Add("THANOS-TENANT", tenantID)
@@ -561,12 +552,12 @@ func (c *Client) sendRequest(serverURL string, body []byte) error {
 	if err != nil {
 		msg := "failed to forward request"
 		logger.Log(c.logger, logger.Warn, "msg", msg, "err", err)
-		return fmt.Errorf(msg)
+		return errors.New(msg)
 	}
 
 	if resp.StatusCode/100 != 2 {
 		// surfacing upstreams error to our users too
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
 			logger.Log(c.logger, logger.Warn, err)
 		}
@@ -574,7 +565,7 @@ func (c *Client) sendRequest(serverURL string, body []byte) error {
 		msg := fmt.Sprintf("response status code is %s, response body is %s", resp.Status, bodyString)
 		logger.Log(c.logger, logger.Warn, msg)
 		if resp.StatusCode != http.StatusConflict {
-			return fmt.Errorf(msg)
+			return errors.New(msg)
 		}
 	}
 	return nil

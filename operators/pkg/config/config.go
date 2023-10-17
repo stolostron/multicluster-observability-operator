@@ -47,7 +47,7 @@ const (
 	PrometheusConfigmapReloaderKey     = "prometheus_config_reloader"
 )
 
-// Annotations to uspport OpenShift workload partitioning
+// Annotations to uspport OpenShift workload partitioning.
 const (
 	WorkloadPartitioningPodAnnotationKey = "target.workload.openshift.io/management"
 	WorkloadPodExpectedValueJSON         = "{\"effect\":\"PreferredDuringScheduling\"}"

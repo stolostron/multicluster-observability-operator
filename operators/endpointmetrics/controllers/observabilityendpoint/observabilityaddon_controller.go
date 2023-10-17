@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -53,7 +54,7 @@ var (
 	hubNamespace = os.Getenv("HUB_NAMESPACE")
 )
 
-// ObservabilityAddonReconciler reconciles a ObservabilityAddon object
+// ObservabilityAddonReconciler reconciles a ObservabilityAddon object.
 type ObservabilityAddonReconciler struct {
 	Client    client.Client
 	Scheme    *runtime.Scheme
@@ -257,7 +258,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 func (r *ObservabilityAddonReconciler) initFinalization(
 	ctx context.Context, delete bool, hubObsAddon *oav1beta1.ObservabilityAddon,
 	isHypershift bool) (bool, error) {
-	if delete && contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
+	if delete && slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
 		log.Info("To clean observability components/configurations in the cluster")
 		err := deleteMetricsCollector(ctx, r.Client, metricsCollectorName)
 		if err != nil {
@@ -268,7 +269,7 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 			return false, err
 		}
 		// revert the change to cluster monitoring stack
-		err = revertClusterMonitoringConfig(ctx, r.Client, installPrometheus)
+		err = revertClusterMonitoringConfig(ctx, r.Client)
 		if err != nil {
 			return false, err
 		}
@@ -310,7 +311,7 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		log.Info("Finalizer removed from observabilityaddon resource")
 		return true, nil
 	}
-	if !contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
+	if !slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
 		hubObsAddon.SetFinalizers(append(hubObsAddon.GetFinalizers(), obsAddonFinalizer))
 		err := r.HubClient.Update(ctx, hubObsAddon)
 		if err != nil {
@@ -393,15 +394,6 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, uwlNamespace, true, false, true)),
 		).
 		Complete(r)
-}
-
-func contains(list []string, s string) bool {
-	for _, v := range list {
-		if v == s {
-			return true
-		}
-	}
-	return false
 }
 
 func remove(list []string, s string) []string {

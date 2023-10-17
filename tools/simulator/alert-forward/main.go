@@ -3,9 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptrace"
@@ -17,7 +17,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pkg/errors"
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
@@ -47,7 +46,7 @@ type alertForwarder struct {
 
 func newAlertFowarder(opts *alertForwarderOptions) (*alertForwarder, error) {
 	if len(opts.amHost) == 0 {
-		return nil, fmt.Errorf("am-host must be specified!")
+		return nil, errors.New("am-host must be specified")
 	}
 
 	u := &url.URL{
@@ -60,26 +59,26 @@ func newAlertFowarder(opts *alertForwarderOptions) (*alertForwarder, error) {
 	if len(opts.amAccessToken) > 0 {
 		accessToken = opts.amAccessToken
 	} else if len(opts.amAccessTokenFile) > 0 {
-		data, err := ioutil.ReadFile(opts.amAccessTokenFile)
+		data, err := os.ReadFile(opts.amAccessTokenFile)
 		if err != nil {
 			return nil, err
 		}
 		accessToken = strings.TrimSpace(string(data))
 	} else {
-		return nil, fmt.Errorf("am-access-token or am-access-token-file must be specified!")
+		return nil, errors.New("am-access-token or am-access-token-file must be specified")
 	}
 
 	alerts := ""
 	if len(opts.alerts) > 0 {
 		alerts = opts.alerts
 	} else if len(opts.alertsFile) > 0 {
-		data, err := ioutil.ReadFile(opts.alertsFile)
+		data, err := os.ReadFile(opts.alertsFile)
 		if err != nil {
 			return nil, err
 		}
 		alerts = strings.TrimSpace(string(data))
 	} else {
-		return nil, fmt.Errorf("alerts or alerts-file must be specified!")
+		return nil, errors.New("alerts or alerts-file must be specified")
 	}
 
 	return &alertForwarder{
@@ -194,7 +193,7 @@ func main() {
 	}
 }
 
-// createAlertmanagerConfig creates and returns the configuration for the target Alertmanager
+// createAlertmanagerConfig creates and returns the configuration for the target Alertmanager.
 func createAlertmanagerConfig(amHost, amScheme, amAPIVersion, amAccessToken string) *config.AlertmanagerConfig {
 	return &config.AlertmanagerConfig{
 		APIVersion: config.AlertmanagerAPIVersion(amAPIVersion),
@@ -221,7 +220,7 @@ func createAlertmanagerConfig(amHost, amScheme, amAPIVersion, amAccessToken stri
 	}
 }
 
-// send alerts to alertmanager with one http request
+// send alerts to alertmanager with one http request.
 func sendOne(c *http.Client, traceCtx context.Context, url string, b []byte) error {
 	req, err := http.NewRequestWithContext(traceCtx, "POST", url, bytes.NewReader(b))
 	if err != nil {
@@ -237,14 +236,16 @@ func sendOne(c *http.Client, traceCtx context.Context, url string, b []byte) err
 
 	defer func() {
 		/* #nosec */
-		io.Copy(ioutil.Discard, resp.Body)
+		// TODO(saswatamcode): Check err here.
+		//nolint:errcheck
+		io.Copy(io.Discard, resp.Body)
 		/* #nosec */
 		resp.Body.Close()
 	}()
 
 	// Any HTTP status 2xx is OK.
 	if resp.StatusCode/100 != 2 {
-		return errors.Errorf("bad response status %s", resp.Status)
+		return fmt.Errorf("bad response status %s", resp.Status)
 	}
 	return nil
 }

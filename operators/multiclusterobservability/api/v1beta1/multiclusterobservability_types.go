@@ -17,13 +17,13 @@ import (
 type AvailabilityType string
 
 const (
-	// HABasic stands up most app subscriptions with a replicaCount of 1
+	// HABasic stands up most app subscriptions with a replicaCount of 1.
 	HABasic AvailabilityType = "Basic"
-	// HAHigh stands up most app subscriptions with a replicaCount of 2
+	// HAHigh stands up most app subscriptions with a replicaCount of 2.
 	HAHigh AvailabilityType = "High"
 )
 
-// MultiClusterObservabilitySpec defines the desired state of MultiClusterObservability
+// MultiClusterObservabilitySpec defines the desired state of MultiClusterObservability.
 type MultiClusterObservabilitySpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
@@ -105,7 +105,7 @@ type StorageConfigObject struct {
 	StatefulSetStorageClass string `json:"statefulSetStorageClass,omitempty"`
 }
 
-// MultiClusterObservabilityStatus defines the observed state of MultiClusterObservability
+// MultiClusterObservabilityStatus defines the observed state of MultiClusterObservability.
 type MultiClusterObservabilityStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file

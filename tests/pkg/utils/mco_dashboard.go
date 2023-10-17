@@ -5,8 +5,9 @@ package utils
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -53,17 +54,17 @@ func ContainDashboard(opt TestOptions, title string) (error, bool) {
 	if resp.StatusCode != http.StatusOK {
 		klog.Errorf("resp: %+v\n", resp)
 		klog.Errorf("err: %+v\n", err)
-		return fmt.Errorf("failed to access grafana api"), false
+		return errors.New("failed to access grafana api"), false
 	}
 
-	result, err := ioutil.ReadAll(resp.Body)
+	result, err := io.ReadAll(resp.Body)
 	klog.V(1).Infof("result: %s\n", result)
 	if err != nil {
 		return err, false
 	}
 
 	if !strings.Contains(string(result), fmt.Sprintf(`"title":"%s"`, title)) {
-		return fmt.Errorf("failed to find the dashboard"), false
+		return errors.New("failed to find the dashboard"), false
 	} else {
 		return nil, true
 	}

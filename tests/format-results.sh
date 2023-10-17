@@ -7,8 +7,8 @@
 #!/bin/bash
 
 if [ -z $1 ]; then
-    echo "Please provide the results file."
-    exit 1
+  echo "Please provide the results file."
+  exit 1
 fi
 
 sed -i "s~BeforeSuite~Observability: [P1][Sev1][observability] Cannot enable observability service successfully~g" $1

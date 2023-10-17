@@ -1,7 +1,7 @@
 package reader
 
 import (
-	"fmt"
+	"errors"
 	"io"
 )
 
@@ -21,7 +21,7 @@ func (c limitReadCloser) Close() error {
 	return c.closer.Close()
 }
 
-var ErrTooLong = fmt.Errorf("the incoming sample data is too long")
+var ErrTooLong = errors.New("the incoming sample data is too long")
 
 // LimitReader returns a Reader that reads from r
 // but stops with ErrTooLong after n bytes.

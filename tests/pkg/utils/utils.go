@@ -6,6 +6,7 @@ package utils
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -14,7 +15,6 @@ import (
 	"time"
 
 	"github.com/ghodss/yaml"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -22,17 +22,16 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/version"
-	"k8s.io/klog"
-
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured/unstructuredscheme"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog"
 )
 
 func NewUnversionedRestClient(url, kubeconfig, ctx string) *rest.RESTClient {
@@ -190,6 +189,7 @@ func FetchBearerToken(opt TestOptions) (string, error) {
 		return "", err
 	}
 	for _, secret := range secretList.Items {
+		// nolint:staticcheck
 		if secret.GetObjectMeta() != nil && len(secret.GetObjectMeta().GetAnnotations()) > 0 {
 			annos := secret.GetObjectMeta().GetAnnotations()
 			sa, saExists := annos["kubernetes.io/service-account.name"]
@@ -202,7 +202,7 @@ func FetchBearerToken(opt TestOptions) (string, error) {
 			}
 		}
 	}
-	return "", fmt.Errorf("failed to get bearer token")
+	return "", errors.New("failed to get bearer token")
 }
 
 func LoadConfig(url, kubeconfig, ctx string) (*rest.Config, error) {
@@ -237,14 +237,14 @@ func LoadConfig(url, kubeconfig, ctx string) (*rest.Config, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("could not create a valid kubeconfig")
+	return nil, errors.New("could not create a valid kubeconfig")
 }
 
-//Apply a multi resources file to the cluster described by the url, kubeconfig and ctx.
-//url of the cluster
-//kubeconfig which contains the ctx
-//ctx, the ctx to use
-//yamlB, a byte array containing the resources file
+// Apply a multi resources file to the cluster described by the url, kubeconfig and ctx.
+// url of the cluster
+// kubeconfig which contains the ctx
+// ctx, the ctx to use
+// yamlB, a byte array containing the resources file
 func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 	yamls := strings.Split(string(yamlB), "---")
 	// yamlFiles is an []string
@@ -570,7 +570,7 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 	return nil
 }
 
-//StatusContainsTypeEqualTo check if u contains a condition type with value typeString
+// StatusContainsTypeEqualTo check if u contains a condition type with value typeString
 func StatusContainsTypeEqualTo(u *unstructured.Unstructured, typeString string) bool {
 	if u != nil {
 		if v, ok := u.Object["status"]; ok {
@@ -591,7 +591,7 @@ func StatusContainsTypeEqualTo(u *unstructured.Unstructured, typeString string) 
 	return false
 }
 
-//GetCluster returns the first cluster with a given tag
+// GetCluster returns the first cluster with a given tag
 func GetCluster(tag string, clusters []Cluster) *Cluster {
 	for _, cluster := range clusters {
 		if tag, ok := cluster.Tags[tag]; ok {
@@ -603,7 +603,7 @@ func GetCluster(tag string, clusters []Cluster) *Cluster {
 	return nil
 }
 
-//GetClusters returns all clusters with a given tag
+// GetClusters returns all clusters with a given tag
 func GetClusters(tag string, clusters []Cluster) []*Cluster {
 	filteredClusters := make([]*Cluster, 0)
 	for i, cluster := range clusters {
@@ -758,7 +758,7 @@ func GetPullSecret(opt TestOptions) (string, error) {
 	}
 
 	if len(mchList.Items) == 0 {
-		return "", fmt.Errorf("can not find the MCH operator CR in the cluster")
+		return "", errors.New("can not find the MCH operator CR in the cluster")
 	}
 
 	mchName := mchList.Items[0].GetName()
@@ -773,7 +773,7 @@ func GetPullSecret(opt TestOptions) (string, error) {
 
 	spec := getMCH.Object["spec"].(map[string]interface{})
 	if _, ok := spec["imagePullSecret"]; !ok {
-		return "", fmt.Errorf("can not find imagePullSecret in MCH CR")
+		return "", errors.New("can not find imagePullSecret in MCH CR")
 	}
 
 	ips := spec["imagePullSecret"].(string)

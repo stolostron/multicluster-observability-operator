@@ -129,16 +129,13 @@ func checkReadyStatus(c client.Client, mco *mcov1beta2.MultiClusterObservability
 		return false
 	}
 
-	deployStatus := checkDeployStatus(c, mco)
+	deployStatus := checkDeployStatus(c)
 	if deployStatus != nil {
 		return false
 	}
 
-	statefulStatus := checkStatefulSetStatus(c, mco)
-	if statefulStatus != nil {
-		return false
-	}
-	return true
+	statefulStatus := checkStatefulSetStatus(c)
+	return statefulStatus == nil
 }
 
 func updateReadyStatus(
@@ -156,13 +153,13 @@ func updateReadyStatus(
 		return
 	}
 
-	deployStatus := checkDeployStatus(c, mco)
+	deployStatus := checkDeployStatus(c)
 	if deployStatus != nil {
 		setStatusCondition(conditions, *deployStatus)
 		return
 	}
 
-	statefulStatus := checkStatefulSetStatus(c, mco)
+	statefulStatus := checkStatefulSetStatus(c)
 	if statefulStatus != nil {
 		setStatusCondition(conditions, *statefulStatus)
 		return
@@ -174,10 +171,10 @@ func updateReadyStatus(
 
 // setStatusCondition sets the corresponding condition in conditions to newCondition.
 // conditions must be non-nil.
-// 1. if the condition of the specified type already exists (all fields of the existing condition are updated to
-//    newCondition, LastTransitionTime is set to now if the new status differs from the old status)
-// 2. if a condition of the specified type does not exist (LastTransitionTime is set to now() if unset,
-//    and newCondition is appended)
+//  1. if the condition of the specified type already exists (all fields of the existing condition are updated to
+//     newCondition, LastTransitionTime is set to now if the new status differs from the old status)
+//  2. if a condition of the specified type does not exist (LastTransitionTime is set to now() if unset,
+//     and newCondition is appended)
 func setStatusCondition(conditions *[]mcoshared.Condition, newCondition mcoshared.Condition) {
 	if conditions == nil {
 		return
@@ -254,9 +251,7 @@ func getExpectedDeploymentNames() []string {
 	}
 }
 
-func checkDeployStatus(
-	c client.Client,
-	mco *mcov1beta2.MultiClusterObservability) *mcoshared.Condition {
+func checkDeployStatus(c client.Client) *mcoshared.Condition {
 	expectedDeploymentNames := getExpectedDeploymentNames()
 	for _, name := range expectedDeploymentNames {
 		found := &appsv1.Deployment{}
@@ -290,9 +285,7 @@ func getExpectedStatefulSetNames() []string {
 	}
 }
 
-func checkStatefulSetStatus(
-	c client.Client,
-	mco *mcov1beta2.MultiClusterObservability) *mcoshared.Condition {
+func checkStatefulSetStatus(c client.Client) *mcoshared.Condition {
 	expectedStatefulSetNames := getExpectedStatefulSetNames()
 	for _, name := range expectedStatefulSetNames {
 		found := &appsv1.StatefulSet{}

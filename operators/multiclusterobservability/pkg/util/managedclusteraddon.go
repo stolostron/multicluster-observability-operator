@@ -93,6 +93,8 @@ func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValu
 		}
 
 		// got the created managedclusteraddon just now, uopdating its status
+		// TODO(saswatamcode): Remove deprecated field
+		//nolint:staticcheck
 		managedClusterAddon.Status.AddOnConfiguration = addonv1alpha1.ConfigCoordinates{
 			CRDName: "observabilityaddons.observability.open-cluster-management.io",
 			CRName:  "observability-addon",

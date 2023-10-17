@@ -3,7 +3,7 @@
 
 package utils
 
-// InstallConfig definition for install config structure from install-config.yaml
+// InstallConfig definition for install config structure from install-config.yaml.
 type InstallConfig struct {
 	BaseDomain string     `yaml:"baseDomain,omitempty"`
 	Networking Networking `yaml:"networking,omitempty"`
@@ -13,18 +13,18 @@ type InstallConfig struct {
 	SSHKey     string     `yaml:"sshKey,omitempty"`
 }
 
-// Networking definition
+// Networking definition.
 type Networking struct {
 	NetworkType string `yaml:"networkType"`
 	MachineCIDR string `yaml:"machineCIDR"`
 }
 
-// Platform definition
+// Platform definition.
 type Platform struct {
 	Baremetal Baremetal `yaml:"baremetal,omitempty"`
 }
 
-// Baremetal specs for target baremetal provisioning
+// Baremetal specs for target baremetal provisioning.
 type Baremetal struct {
 	ExternalBridge               string `yaml:"externalBridge,omitempty"`
 	ProvisioningBridge           string `yaml:"provisioningBridge,omitempty"`
@@ -38,7 +38,7 @@ type Baremetal struct {
 	SSHKnownHosts                string `yaml:"sshKnownHosts,omitempty"`
 }
 
-// Host is an array of baremetal assets
+// Host is an array of baremetal assets.
 type Host struct {
 	Name            string `yaml:"name"`
 	Role            string `yaml:"role"`
@@ -47,7 +47,7 @@ type Host struct {
 	HardwareProfile string `yaml:"hardwareProfile"`
 }
 
-// Bmc definition
+// Bmc definition.
 type Bmc struct {
 	Address  string `yaml:"address"`
 	Username string `yaml:"username"`

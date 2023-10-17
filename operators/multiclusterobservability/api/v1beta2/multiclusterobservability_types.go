@@ -10,7 +10,7 @@ import (
 	observabilityshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 )
 
-// MultiClusterObservabilitySpec defines the desired state of MultiClusterObservability
+// MultiClusterObservabilitySpec defines the desired state of MultiClusterObservability.
 type MultiClusterObservabilitySpec struct {
 	// Advanced configurations for observability
 	// +optional
@@ -91,7 +91,7 @@ type CommonSpec struct {
 	Replicas *int32 `json:"replicas,omitempty"`
 }
 
-// Thanos Query Spec
+// Thanos Query Spec.
 type QuerySpec struct {
 	// Annotations is an unstructured key value map stored with a service account
 	// +optional
@@ -100,7 +100,7 @@ type QuerySpec struct {
 	CommonSpec `json:",inline"`
 }
 
-// Thanos Receive Spec
+// Thanos Receive Spec.
 type ReceiveSpec struct {
 	// Annotations is an unstructured key value map stored with a service account
 	// +optional
@@ -109,7 +109,7 @@ type ReceiveSpec struct {
 	CommonSpec `json:",inline"`
 }
 
-// Thanos Store Spec
+// Thanos Store Spec.
 type StoreSpec struct {
 	// Annotations is an unstructured key value map stored with a service account
 	// +optional
@@ -118,7 +118,7 @@ type StoreSpec struct {
 	CommonSpec `json:",inline"`
 }
 
-// Thanos Rule Spec
+// Thanos Rule Spec.
 type RuleSpec struct {
 	// Evaluation interval
 	// +optional
@@ -131,7 +131,7 @@ type RuleSpec struct {
 	CommonSpec `json:",inline"`
 }
 
-// Thanos Compact Spec
+// Thanos Compact Spec.
 type CompactSpec struct {
 	// Compute Resources required by the compact.
 	// +optional
@@ -220,7 +220,7 @@ type StorageConfig struct {
 	StoreStorageSize string `json:"storeStorageSize,omitempty"`
 }
 
-// MultiClusterObservabilityStatus defines the observed state of MultiClusterObservability
+// MultiClusterObservabilityStatus defines the observed state of MultiClusterObservability.
 type MultiClusterObservabilityStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file

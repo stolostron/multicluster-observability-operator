@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/model/labels"
 
@@ -83,7 +83,8 @@ func New(cfg forwarder.Config) (*Evaluator, error) {
 		LimitBytes:        cfg.LimitBytes,
 		Transformer:       cfg.Transformer,
 
-		Logger: cfg.Logger,
+		Logger:  cfg.Logger,
+		Metrics: cfg.Metrics,
 	}
 	from := &url.URL{
 		Scheme: cfg.From.Scheme,
@@ -106,7 +107,7 @@ func New(cfg forwarder.Config) (*Evaluator, error) {
 		evaluator.interval = 30 * time.Second
 	}
 
-	fromClient, err := forwarder.CreateFromClient(cfg, evaluator.interval, "evaluate_query", cfg.Logger)
+	fromClient, err := forwarder.CreateFromClient(cfg, cfg.Metrics, evaluator.interval, "evaluate_query", cfg.Logger)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +119,7 @@ func New(cfg forwarder.Config) (*Evaluator, error) {
 func (e *Evaluator) Reconfigure(cfg forwarder.Config) error {
 	evaluator, err := New(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to reconfigure: %v", err)
+		return fmt.Errorf("failed to reconfigure: %w", err)
 	}
 
 	e.lock.Lock()
@@ -149,7 +150,7 @@ func (e *Evaluator) Run(ctx context.Context) {
 		e.evaluate(ctx)
 
 		select {
-		// If the context is cancelled, then we're done.
+		// If the context is canceled, then we're done.
 		case <-ctx.Done():
 			return
 		case <-time.After(wait):
@@ -203,7 +204,7 @@ func startWorker() error {
 		var err error
 		forwardWorker, err = forwarder.New(config)
 		if err != nil {
-			return fmt.Errorf("failed to configure forwarder for additional metrics: %v", err)
+			return fmt.Errorf("failed to configure forwarder for additional metrics: %w", err)
 		}
 		var ctx context.Context
 		ctx, cancel = context.WithCancel(context.Background())
@@ -214,7 +215,7 @@ func startWorker() error {
 	} else {
 		err := forwardWorker.Reconfigure(config)
 		if err != nil {
-			return fmt.Errorf("failed to reconfigure forwarder for additional metrics: %v", err)
+			return fmt.Errorf("failed to reconfigure forwarder for additional metrics: %w", err)
 		}
 	}
 

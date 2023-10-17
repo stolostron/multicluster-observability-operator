@@ -5,6 +5,7 @@ import (
 
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/prompb"
+	"golang.org/x/exp/slices"
 )
 
 type LabelRetriever interface {
@@ -81,7 +82,7 @@ func appendLabels(
 	for k, v := range overrides {
 		// only append real names and values
 		// don't append anything overwritten above
-		if k != "" && v.GetValue() != "" && !contains(found, k) {
+		if k != "" && v.GetValue() != "" && !slices.Contains(found, k) {
 			existing = insertLexicographicallyByName(existing, v)
 		}
 	}
@@ -100,15 +101,6 @@ func insertLexicographicallyByName(
 		i -= 1
 	}
 	return existing
-}
-
-func contains(values []string, s string) bool {
-	for _, v := range values {
-		if s == v {
-			return true
-		}
-	}
-	return false
 }
 
 func InsertLabelLexicographicallyByName(

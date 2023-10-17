@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,9 +16,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/kit/log"
-
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	clientmodel "github.com/prometheus/client_model/go"
 
 	metricshttp "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/http"
@@ -34,29 +33,8 @@ const (
 	failedStatusReportMsg = "Failed to report status"
 )
 
-var (
-	gaugeFederateSamples = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "federate_samples",
-		Help: "Tracks the number of samples per federation",
-	})
-	gaugeFederateFilteredSamples = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "federate_filtered_samples",
-		Help: "Tracks the number of samples filtered per federation",
-	})
-	gaugeFederateErrors = prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: "federate_errors",
-		Help: "The number of times forwarding federated metrics has failed",
-	})
-)
-
 type RuleMatcher interface {
 	MatchRules() []string
-}
-
-func init() {
-	prometheus.MustRegister(
-		gaugeFederateErrors, gaugeFederateSamples, gaugeFederateFilteredSamples,
-	)
 }
 
 // Config defines the parameters that can be used to configure a worker.
@@ -89,6 +67,8 @@ type Config struct {
 
 	Logger                  log.Logger
 	SimulatedTimeseriesFile string
+
+	Metrics *workerMetrics
 }
 
 // Worker represents a metrics forwarding agent. It collects metrics from a source URL and forwards them to a sink.
@@ -115,9 +95,11 @@ type Worker struct {
 	simulatedTimeseriesFile string
 
 	status status.StatusReport
+
+	metrics *workerMetrics
 }
 
-func CreateFromClient(cfg Config, interval time.Duration, name string,
+func CreateFromClient(cfg Config, metrics *workerMetrics, interval time.Duration, name string,
 	logger log.Logger) (*metricsclient.Client, error) {
 	fromTransport := metricsclient.DefaultTransport(logger, false)
 	if len(cfg.FromCAFile) > 0 {
@@ -128,11 +110,11 @@ func CreateFromClient(cfg Config, interval time.Duration, name string,
 		}
 		pool, err := x509.SystemCertPool()
 		if err != nil {
-			return nil, fmt.Errorf("failed to read system certificates: %v", err)
+			return nil, fmt.Errorf("failed to read system certificates: %w", err)
 		}
-		data, err := ioutil.ReadFile(cfg.FromCAFile)
+		data, err := os.ReadFile(cfg.FromCAFile)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read from-ca-file: %v", err)
+			return nil, fmt.Errorf("failed to read from-ca-file: %w", err)
 		}
 		if !pool.AppendCertsFromPEM(data) {
 			rlogger.Log(logger, rlogger.Warn, "msg", "no certs found in from-ca-file")
@@ -154,9 +136,9 @@ func CreateFromClient(cfg Config, interval time.Duration, name string,
 		fromClient.Transport = metricshttp.NewDebugRoundTripper(logger, fromClient.Transport)
 	}
 	if len(cfg.FromToken) == 0 && len(cfg.FromTokenFile) > 0 {
-		data, err := ioutil.ReadFile(cfg.FromTokenFile)
+		data, err := os.ReadFile(cfg.FromTokenFile)
 		if err != nil {
-			return nil, fmt.Errorf("unable to read from-token-file: %v", err)
+			return nil, fmt.Errorf("unable to read from-token-file: %w", err)
 		}
 		cfg.FromToken = strings.TrimSpace(string(data))
 	}
@@ -164,12 +146,12 @@ func CreateFromClient(cfg Config, interval time.Duration, name string,
 		fromClient.Transport = metricshttp.NewBearerRoundTripper(cfg.FromToken, fromClient.Transport)
 	}
 
-	from := metricsclient.New(logger, fromClient, cfg.LimitBytes, interval, "federate_from")
+	from := metricsclient.New(logger, metrics.clientMetrics, fromClient, cfg.LimitBytes, interval, "federate_from")
 
 	return from, nil
 }
 
-func createClients(cfg Config, interval time.Duration,
+func createClients(cfg Config, metrics *metricsclient.ClientMetrics, interval time.Duration,
 	logger log.Logger) (*metricsclient.Client, *metricsclient.Client, metricfamily.MultiTransformer, error) {
 
 	var transformer metricfamily.MultiTransformer
@@ -177,14 +159,14 @@ func createClients(cfg Config, interval time.Duration,
 	// Configure the anonymization.
 	anonymizeSalt := cfg.AnonymizeSalt
 	if len(cfg.AnonymizeSalt) == 0 && len(cfg.AnonymizeSaltFile) > 0 {
-		data, err := ioutil.ReadFile(cfg.AnonymizeSaltFile)
+		data, err := os.ReadFile(cfg.AnonymizeSaltFile)
 		if err != nil {
-			return nil, nil, transformer, fmt.Errorf("failed to read anonymize-salt-file: %v", err)
+			return nil, nil, transformer, fmt.Errorf("failed to read anonymize-salt-file: %w", err)
 		}
 		anonymizeSalt = strings.TrimSpace(string(data))
 	}
 	if len(cfg.AnonymizeLabels) != 0 && len(anonymizeSalt) == 0 {
-		return nil, nil, transformer, fmt.Errorf("anonymize-salt must be specified if anonymize-labels is set")
+		return nil, nil, transformer, errors.New("anonymize-salt must be specified if anonymize-labels is set")
 	}
 	if len(cfg.AnonymizeLabels) == 0 {
 		rlogger.Log(logger, rlogger.Warn, "msg", "not anonymizing any labels")
@@ -197,7 +179,7 @@ func createClients(cfg Config, interval time.Duration,
 	if len(cfg.AnonymizeLabels) > 0 {
 		transformer.With(metricfamily.NewMetricsAnonymizer(anonymizeSalt, cfg.AnonymizeLabels, nil))
 	}
-	from, err := CreateFromClient(cfg, interval, "federate_from", logger)
+	from, err := CreateFromClient(cfg, cfg.Metrics, interval, "federate_from", logger)
 	if err != nil {
 		return nil, nil, transformer, err
 	}
@@ -206,15 +188,51 @@ func createClients(cfg Config, interval time.Duration,
 
 	toTransport, err := metricsclient.MTLSTransport(logger, cfg.ToUploadCA, cfg.ToUploadCert, cfg.ToUploadKey)
 	if err != nil {
-		return nil, nil, transformer, errors.New(err.Error())
+		return nil, nil, transformer, fmt.Errorf("failed to create TLS transport: %w", err)
 	}
 	toTransport.Proxy = http.ProxyFromEnvironment
 	toClient := &http.Client{Transport: toTransport}
 	if cfg.Debug {
 		toClient.Transport = metricshttp.NewDebugRoundTripper(logger, toClient.Transport)
 	}
-	to := metricsclient.New(logger, toClient, cfg.LimitBytes, interval, "federate_to")
+	to := metricsclient.New(logger, metrics, toClient, cfg.LimitBytes, interval, "federate_to")
 	return from, to, transformer, nil
+}
+
+type workerMetrics struct {
+	gaugeFederateSamples         prometheus.Gauge
+	gaugeFederateFilteredSamples prometheus.Gauge
+	gaugeFederateErrors          prometheus.Gauge
+
+	clientMetrics *metricsclient.ClientMetrics
+}
+
+func NewWorkerMetrics(reg *prometheus.Registry) *workerMetrics {
+	return &workerMetrics{
+		gaugeFederateSamples: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "federate_samples",
+			Help: "Tracks the number of samples per federation",
+		}),
+		gaugeFederateFilteredSamples: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "federate_filtered_samples",
+			Help: "Tracks the number of samples filtered per federation",
+		}),
+		gaugeFederateErrors: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "federate_errors",
+			Help: "The number of times forwarding federated metrics has failed",
+		}),
+
+		clientMetrics: &metricsclient.ClientMetrics{
+			GaugeRequestRetrieve: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+				Name: "metricsclient_request_retrieve",
+				Help: "Tracks the number of metrics retrievals",
+			}, []string{"client", "status_code"}),
+			GaugeRequestSend: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+				Name: "metricsclient_request_send",
+				Help: "Tracks the number of metrics sends",
+			}, []string{"client", "status_code"}),
+		},
+	}
 }
 
 // New creates a new Worker based on the provided Config. If the Config contains invalid
@@ -233,13 +251,14 @@ func New(cfg Config) (*Worker, error) {
 		to:                      cfg.ToUpload,
 		logger:                  log.With(cfg.Logger, "component", "forwarder/worker"),
 		simulatedTimeseriesFile: cfg.SimulatedTimeseriesFile,
+		metrics:                 cfg.Metrics,
 	}
 
 	if w.interval == 0 {
 		w.interval = 4*time.Minute + 30*time.Second
 	}
 
-	fromClient, toClient, transformer, err := createClients(cfg, w.interval, logger)
+	fromClient, toClient, transformer, err := createClients(cfg, w.metrics.clientMetrics, w.interval, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -250,9 +269,9 @@ func New(cfg Config) (*Worker, error) {
 	// Configure the matching rules.
 	rules := cfg.Rules
 	if len(cfg.RulesFile) > 0 {
-		data, err := ioutil.ReadFile(cfg.RulesFile)
+		data, err := os.ReadFile(cfg.RulesFile)
 		if err != nil {
-			return nil, fmt.Errorf("unable to read match-file: %v", err)
+			return nil, fmt.Errorf("unable to read match-file: %w", err)
 		}
 		rules = append(rules, strings.Split(string(data), "\n")...)
 	}
@@ -282,7 +301,7 @@ func New(cfg Config) (*Worker, error) {
 
 	s, err := status.New(logger)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create StatusReport: %v", err)
+		return nil, fmt.Errorf("unable to create StatusReport: %w", err)
 	}
 	w.status = *s
 
@@ -294,7 +313,7 @@ func New(cfg Config) (*Worker, error) {
 func (w *Worker) Reconfigure(cfg Config) error {
 	worker, err := New(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to reconfigure: %v", err)
+		return fmt.Errorf("failed to reconfigure: %w", err)
 	}
 
 	w.lock.Lock()
@@ -330,13 +349,13 @@ func (w *Worker) Run(ctx context.Context) {
 		w.lock.Unlock()
 
 		if err := w.forward(ctx); err != nil {
-			gaugeFederateErrors.Inc()
+			w.metrics.gaugeFederateErrors.Inc()
 			rlogger.Log(w.logger, rlogger.Error, "msg", "unable to forward results", "err", err)
 			wait = time.Minute
 		}
 
 		select {
-		// If the context is cancelled, then we're done.
+		// If the context is canceled, then we're done.
 		case <-ctx.Done():
 			return
 		case <-time.After(wait):
@@ -362,7 +381,7 @@ func (w *Worker) forward(ctx context.Context) error {
 	} else {
 		families, err = w.getFederateMetrics(ctx)
 		if err != nil {
-			statusErr := w.status.UpdateStatus("Degraded", "Degraded", "Failed to retrieve metrics")
+			statusErr := w.status.UpdateStatus("Degraded", "Failed to retrieve metrics")
 			if statusErr != nil {
 				rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
 			}
@@ -371,7 +390,7 @@ func (w *Worker) forward(ctx context.Context) error {
 
 		rfamilies, err := w.getRecordingMetrics(ctx)
 		if err != nil && len(rfamilies) == 0 {
-			statusErr := w.status.UpdateStatus("Degraded", "Degraded", "Failed to retrieve recording metrics")
+			statusErr := w.status.UpdateStatus("Degraded", "Failed to retrieve recording metrics")
 			if statusErr != nil {
 				rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
 			}
@@ -383,7 +402,7 @@ func (w *Worker) forward(ctx context.Context) error {
 
 	before := metricfamily.MetricsCount(families)
 	if err := metricfamily.Filter(families, w.transformer); err != nil {
-		statusErr := w.status.UpdateStatus("Degraded", "Degraded", "Failed to filter metrics")
+		statusErr := w.status.UpdateStatus("Degraded", "Failed to filter metrics")
 		if statusErr != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
 		}
@@ -393,14 +412,14 @@ func (w *Worker) forward(ctx context.Context) error {
 	families = metricfamily.Pack(families)
 	after := metricfamily.MetricsCount(families)
 
-	gaugeFederateSamples.Set(float64(before))
-	gaugeFederateFilteredSamples.Set(float64(before - after))
+	w.metrics.gaugeFederateSamples.Set(float64(before))
+	w.metrics.gaugeFederateFilteredSamples.Set(float64(before - after))
 
 	w.lastMetrics = families
 
 	if len(families) == 0 {
 		rlogger.Log(w.logger, rlogger.Warn, "msg", "no metrics to send, doing nothing")
-		statusErr := w.status.UpdateStatus("Available", "Available", "No metrics to send")
+		statusErr := w.status.UpdateStatus("Available", "No metrics to send")
 		if statusErr != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
 		}
@@ -409,7 +428,7 @@ func (w *Worker) forward(ctx context.Context) error {
 
 	if w.to == nil {
 		rlogger.Log(w.logger, rlogger.Warn, "msg", "to is nil, doing nothing")
-		statusErr := w.status.UpdateStatus("Available", "Available", "Metrics is not required to send")
+		statusErr := w.status.UpdateStatus("Available", "Metrics is not required to send")
 		if statusErr != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
 		}
@@ -419,12 +438,12 @@ func (w *Worker) forward(ctx context.Context) error {
 	req := &http.Request{Method: "POST", URL: w.to}
 	err = w.toClient.RemoteWrite(ctx, req, families, w.interval)
 	if err != nil {
-		statusErr := w.status.UpdateStatus("Degraded", "Degraded", "Failed to send metrics")
+		statusErr := w.status.UpdateStatus("Degraded", "Failed to send metrics")
 		if statusErr != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
 		}
 	} else if w.simulatedTimeseriesFile == "" {
-		statusErr := w.status.UpdateStatus("Available", "Available", "Cluster metrics sent successfully")
+		statusErr := w.status.UpdateStatus("Available", "Cluster metrics sent successfully")
 		if statusErr != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
 		}

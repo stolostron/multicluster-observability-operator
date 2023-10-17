@@ -85,7 +85,7 @@ func CompareObject(re1 runtime.RawExtension, re2 runtime.RawExtension) bool {
 	version1 := obj1.GetObjectKind().GroupVersionKind().Version
 	version2 := obj2.GetObjectKind().GroupVersionKind().Version
 	if kind1 != kind2 || version1 != version2 {
-		log.Info("obj1 and obj2 have differnt Kind or Version",
+		log.Info("obj1 and obj2 have different Kind or Version",
 			"kind1", kind2, "kind2", kind2, "version1", version1, "version2", version2)
 		return false
 	}

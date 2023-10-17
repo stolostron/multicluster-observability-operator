@@ -1,6 +1,7 @@
 package metricfamily
 
 import (
+	"errors"
 	"fmt"
 
 	clientmodel "github.com/prometheus/client_model/go"
@@ -15,7 +16,7 @@ func NewRequiredLabels(labels map[string]string) Transformer {
 }
 
 var (
-	ErrRequiredLabelMissing = fmt.Errorf("a required label is missing from the metric")
+	ErrRequiredLabelMissing = errors.New("a required label is missing from the metric")
 )
 
 func (t requireLabel) Transform(family *clientmodel.MetricFamily) (bool, error) {

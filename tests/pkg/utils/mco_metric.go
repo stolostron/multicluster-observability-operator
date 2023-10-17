@@ -7,8 +7,9 @@ import (
 	"bufio"
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -62,18 +63,18 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 		return fmt.Errorf("failed to access managed cluster metrics via grafana console: %s", query), false
 	}
 
-	metricResult, err := ioutil.ReadAll(resp.Body)
+	metricResult, err := io.ReadAll(resp.Body)
 	klog.V(5).Infof("metricResult: %s\n", metricResult)
 	if err != nil {
 		return err, false
 	}
 
 	if !strings.Contains(string(metricResult), `"status":"success"`) {
-		return fmt.Errorf("failed to find valid status from response"), false
+		return errors.New("failed to find valid status from response"), false
 	}
 
 	if strings.Contains(string(metricResult), `"result":[]`) {
-		return fmt.Errorf("failed to find metric name from response"), false
+		return errors.New("failed to find metric name from response"), false
 	}
 
 	contained := true
@@ -84,7 +85,7 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 		}
 	}
 	if !contained {
-		return fmt.Errorf("failed to find metric name from response"), false
+		return errors.New("failed to find metric name from response"), false
 	}
 
 	return nil, true

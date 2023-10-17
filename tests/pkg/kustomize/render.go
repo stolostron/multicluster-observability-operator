@@ -4,8 +4,8 @@
 package kustomize
 
 import (
-	"sigs.k8s.io/kustomize/api/filesys"
 	"sigs.k8s.io/kustomize/api/krusty"
+	"sigs.k8s.io/kustomize/kyaml/filesys"
 	"sigs.k8s.io/yaml"
 )
 
@@ -15,7 +15,7 @@ type Options struct {
 	OutputPath        string
 }
 
-// Render is used to render the kustomization
+// Render is used to render the kustomization.
 func Render(o Options) ([]byte, error) {
 	fSys := filesys.MakeFsOnDisk()
 	k := krusty.MakeKustomizer(krusty.MakeDefaultOptions())
@@ -26,7 +26,7 @@ func Render(o Options) ([]byte, error) {
 	return m.AsYaml()
 }
 
-// GetLabels return labels
+// GetLabels return labels.
 func GetLabels(yamlB []byte) (interface{}, error) {
 	data := map[string]interface{}{}
 	err := yaml.Unmarshal(yamlB, &data)

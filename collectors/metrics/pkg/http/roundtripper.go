@@ -5,12 +5,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"unicode/utf8"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 
 	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 )
@@ -70,7 +69,7 @@ func bodyToString(body *io.ReadCloser) string {
 	if err = (*body).Close(); err != nil {
 		panic(err)
 	}
-	*body = ioutil.NopCloser(&b)
+	*body = io.NopCloser(&b)
 
 	s := b.String()
 	if utf8.ValidString(s) {

@@ -10,6 +10,7 @@ import (
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
+	"golang.org/x/exp/slices"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -141,9 +142,9 @@ alertmanager-router-ca: |
 	images := newImagesCM()
 	objs := []runtime.Object{hubInfo, amAccessSrt, allowList, images, cv, infra}
 
-	hubClient := fake.NewFakeClient(hubObjs...)
+	hubClient := fake.NewClientBuilder().WithRuntimeObjects(hubObjs...).Build()
 	util.SetHubClient(hubClient)
-	c := fake.NewFakeClient(objs...)
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	r := &ObservabilityAddonReconciler{
 		Client:    c,
@@ -224,7 +225,7 @@ alertmanager-router-ca: |
 	if err != nil {
 		t.Fatalf("Failed to get observabilityAddon: (%v)", err)
 	}
-	if !contains(foundOba.Finalizers, obsAddonFinalizer) {
+	if !slices.Contains(foundOba.Finalizers, obsAddonFinalizer) {
 		t.Fatal("Finalizer not set in observabilityAddon")
 	}
 
@@ -349,7 +350,7 @@ alertmanager-router-ca: |
 	if err != nil {
 		t.Fatalf("Failed to get observabilityAddon: (%v)", err)
 	}
-	if contains(foundOba1.Finalizers, obsAddonFinalizer) {
+	if slices.Contains(foundOba1.Finalizers, obsAddonFinalizer) {
 		t.Fatal("Finalizer not removed from observabilityAddon")
 	}
 }

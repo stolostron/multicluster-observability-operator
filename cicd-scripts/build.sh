@@ -6,7 +6,7 @@ set -e
 
 make docker-binary
 
-git config --global url."https://$GITHUB_TOKEN@github.com/stolostron".insteadOf  "https://github.com/stolostron"
+git config --global url."https://$GITHUB_TOKEN@github.com/stolostron".insteadOf "https://github.com/stolostron"
 
 echo "Building multicluster-observability-operator image"
 export DOCKER_IMAGE_AND_TAG=${1}

@@ -137,7 +137,7 @@ func TestWebhookController(t *testing.T) {
 			if c.existingvwh != nil {
 				objs = append(objs, c.existingvwh)
 			}
-			cl := fake.NewFakeClient(objs...)
+			cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 			wc := NewWebhookController(cl, c.reconciledmwh, c.reconciledvwh)
 			ctx, cancel := context.WithCancel(context.Background())
 			go func() {

@@ -8,10 +8,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strings"
+
+	"errors"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -58,7 +60,7 @@ var _ = Describe("Observability:", func() {
 			}
 
 			client := &http.Client{}
-			if os.Getenv("IS_KIND_ENV") != "true" {
+			if os.Getenv("IS_KIND_ENV") != trueStr {
 				client.Transport = tr
 				req.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
@@ -72,17 +74,17 @@ var _ = Describe("Observability:", func() {
 			if resp.StatusCode != http.StatusOK {
 				klog.Errorf("resp: %+v\n", resp)
 				klog.Errorf("err: %+v\n", err)
-				return fmt.Errorf("Failed to access metrics via via rbac-query-proxy route")
+				return errors.New("Failed to access metrics via via rbac-query-proxy route")
 			}
 
-			metricResult, err := ioutil.ReadAll(resp.Body)
+			metricResult, err := io.ReadAll(resp.Body)
 			klog.V(5).Infof("metricResult: %s\n", metricResult)
 			if err != nil {
 				return err
 			}
 
 			if !strings.Contains(string(metricResult), "cluster_version") {
-				return fmt.Errorf("Failed to find metric name from response")
+				return errors.New("Failed to find metric name from response")
 			}
 			return nil
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
@@ -131,7 +133,7 @@ var _ = Describe("Observability:", func() {
 			}
 
 			client := &http.Client{}
-			if os.Getenv("IS_KIND_ENV") != "true" {
+			if os.Getenv("IS_KIND_ENV") != trueStr {
 				client.Transport = tr
 				alertPostReq.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
@@ -145,7 +147,7 @@ var _ = Describe("Observability:", func() {
 				if resp.StatusCode != http.StatusOK {
 					klog.Errorf("resp: %+v\n", resp)
 					klog.Errorf("err: %+v\n", err)
-					return fmt.Errorf("Failed to create alert via alertmanager route")
+					return errors.New("Failed to create alert via alertmanager route")
 				}
 			}
 
@@ -160,7 +162,7 @@ var _ = Describe("Observability:", func() {
 				return err
 			}
 
-			if os.Getenv("IS_KIND_ENV") != "true" {
+			if os.Getenv("IS_KIND_ENV") != trueStr {
 				alertGetReq.Header.Set("Authorization", "Bearer "+BearerToken)
 			}
 
@@ -173,10 +175,10 @@ var _ = Describe("Observability:", func() {
 			if resp.StatusCode != http.StatusOK {
 				klog.Errorf("resp: %+v\n", resp)
 				klog.Errorf("err: %+v\n", err)
-				return fmt.Errorf("Failed to access alert via alertmanager route")
+				return errors.New("Failed to access alert via alertmanager route")
 			}
 
-			alertResult, err := ioutil.ReadAll(resp.Body)
+			alertResult, err := io.ReadAll(resp.Body)
 			klog.V(5).Infof("alertResult: %s\n", alertResult)
 			if err != nil {
 				return err

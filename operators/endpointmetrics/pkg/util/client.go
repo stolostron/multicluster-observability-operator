@@ -33,7 +33,7 @@ const (
 	hubKubeConfigPath = "/spoke/hub-kubeconfig/kubeconfig"
 )
 
-// GetOrCreateOCPClient get an existing hub client or create new one if it doesn't exist
+// GetOrCreateOCPClient get an existing hub client or create new one if it doesn't exist.
 func GetOrCreateHubClient(renew bool) (client.Client, error) {
 	if os.Getenv("UNIT_TEST") == "true" {
 		return hubClient, nil
@@ -65,7 +65,7 @@ func GetOrCreateHubClient(renew bool) (client.Client, error) {
 	return hubClient, err
 }
 
-// GetOrCreateOCPClient get an existing ocp client or create new one if it doesn't exist
+// GetOrCreateOCPClient get an existing ocp client or create new one if it doesn't exist.
 func GetOrCreateOCPClient() (ocpClientSet.Interface, error) {
 	if ocpClient != nil {
 		return ocpClient, nil

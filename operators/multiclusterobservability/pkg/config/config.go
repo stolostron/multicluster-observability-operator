@@ -121,7 +121,7 @@ const (
 	ObservatoriumOperatorImgName   = "observatorium-operator"
 	ObservatoriumOperatorImgKey    = "observatorium_operator"
 	ThanosReceiveControllerImgName = "thanos-receive-controller"
-	//ThanosReceiveControllerKey is used to get from mch-image-manifest.xxx configmap
+	//ThanosReceiveControllerKey is used to get from mch-image-manifest.xxx configmap.
 	ThanosReceiveControllerKey    = "thanos_receive_controller"
 	ThanosReceiveControllerImgTag = "master-2022-04-01-b58820f"
 	ThanosImgName                 = "thanos"
@@ -256,22 +256,21 @@ const (
 	ResourceTypeSecret    = "Secret"
 )
 
-// ObjectStorgeConf is used to Unmarshal from bytes to do validation
+// ObjectStorgeConf is used to Unmarshal from bytes to do validation.
 type ObjectStorgeConf struct {
 	Type   string `yaml:"type"`
 	Config Config `yaml:"config"`
 }
 
 var (
-	log                         = logf.Log.WithName("config")
-	monitoringCRName            = ""
-	tenantUID                   = ""
-	imageManifests              = map[string]string{}
-	imageManifestConfigMapName  = ""
-	hasCustomRuleConfigMap      = false
-	hasCustomAlertmanagerConfig = false
-	certDuration                = time.Hour * 24 * 365
-	isAlertingDisabled          = false
+	log                        = logf.Log.WithName("config")
+	monitoringCRName           = ""
+	tenantUID                  = ""
+	imageManifests             = map[string]string{}
+	imageManifestConfigMapName = ""
+	hasCustomRuleConfigMap     = false
+	certDuration               = time.Hour * 24 * 365
+	isAlertingDisabled         = false
 
 	Replicas1 int32 = 1
 	Replicas2 int32 = 2
@@ -290,7 +289,7 @@ var (
 		ThanosQueryFrontendMemcached: &Replicas3,
 		Alertmanager:                 &Replicas3,
 	}
-	// use this map to store the operand name
+	// use this map to store the operand name.
 	operandNames = map[string]string{}
 
 	MemoryLimitMB   = int32(1024)
@@ -370,12 +369,12 @@ func GetReplicas(component string, advanced *observabilityv1beta2.AdvancedConfig
 	return replicas
 }
 
-// GetCrLabelKey returns the key for the CR label injected into the resources created by the operator
+// GetCrLabelKey returns the key for the CR label injected into the resources created by the operator.
 func GetCrLabelKey() string {
 	return crLabelKey
 }
 
-// GetClusterNameLabelKey returns the key for the injected label
+// GetClusterNameLabelKey returns the key for the injected label.
 func GetClusterNameLabelKey() string {
 	return clusterNameLabelKey
 }
@@ -384,7 +383,7 @@ func GetImageManifestConfigMapName() string {
 	return imageManifestConfigMapName
 }
 
-// ReadImageManifestConfigMap reads configmap with the label ocm-configmap-type=image-manifest
+// ReadImageManifestConfigMap reads configmap with the label ocm-configmap-type=image-manifest.
 func ReadImageManifestConfigMap(c client.Client, version string) (bool, error) {
 	mcoNamespace := GetMCONamespace()
 	// List image manifest configmap with label ocm-configmap-type=image-manifest and ocm-release-version
@@ -400,7 +399,7 @@ func ReadImageManifestConfigMap(c client.Client, version string) (bool, error) {
 	imageCMList := &corev1.ConfigMapList{}
 	err := c.List(context.TODO(), imageCMList, listOpts...)
 	if err != nil {
-		return false, fmt.Errorf("Failed to list mch-image-manifest configmaps: %v", err)
+		return false, fmt.Errorf("failed to list mch-image-manifest configmaps: %w", err)
 	}
 
 	if len(imageCMList.Items) != 1 {
@@ -418,15 +417,15 @@ func GetImageManifests() map[string]string {
 	return imageManifests
 }
 
-// SetImageManifests sets imageManifests
+// SetImageManifests sets imageManifests.
 func SetImageManifests(images map[string]string) {
 	imageManifests = images
 }
 
-// ReplaceImage is used to replace the image with specified annotation or imagemanifest configmap
+// ReplaceImage is used to replace the image with specified annotation or imagemanifest configmap.
 func ReplaceImage(annotations map[string]string, imageRepo, componentName string) (bool, string) {
 	if annotations != nil {
-		annotationImageRepo, _ := annotations[AnnotationKeyImageRepository]
+		annotationImageRepo := annotations[AnnotationKeyImageRepository]
 		if annotationImageRepo == "" {
 			annotationImageRepo = DefaultImgRepository
 		}
@@ -464,12 +463,12 @@ func ReplaceImage(annotations map[string]string, imageRepo, componentName string
 	}
 }
 
-// GetDefaultTenantName returns the default tenant name
+// GetDefaultTenantName returns the default tenant name.
 func GetDefaultTenantName() string {
 	return defaultTenantName
 }
 
-// GetObsAPIHost is used to get the URL for observartium api gateway
+// GetObsAPIHost is used to get the URL for observartium api gateway.
 func GetObsAPIHost(client client.Client, namespace string) (string, error) {
 	return GetRouteHost(client, obsAPIGateway, namespace)
 }
@@ -504,7 +503,7 @@ func GetMCONamespace() string {
 	return podNamespace
 }
 
-// GetAlertmanagerEndpoint is used to get the URL for alertmanager
+// GetAlertmanagerEndpoint is used to get the URL for alertmanager.
 func GetAlertmanagerEndpoint(client client.Client, namespace string) (string, error) {
 	found := &routev1.Route{}
 
@@ -526,7 +525,7 @@ func GetAlertmanagerEndpoint(client client.Client, namespace string) (string, er
 	return found.Spec.Host, nil
 }
 
-// getDomainForIngressController get the domain for the given ingresscontroller instance
+// getDomainForIngressController get the domain for the given ingresscontroller instance.
 func getDomainForIngressController(client client.Client, name, namespace string) (string, error) {
 	ingressOperatorInstance := &operatorv1.IngressController{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, ingressOperatorInstance)
@@ -540,7 +539,7 @@ func getDomainForIngressController(client client.Client, name, namespace string)
 	return domain, nil
 }
 
-// GetAlertmanagerRouterCA is used to get the CA of openshift Route
+// GetAlertmanagerRouterCA is used to get the CA of openshift Route.
 func GetAlertmanagerRouterCA(client client.Client) (string, error) {
 	amRouteBYOCaSrt := &corev1.Secret{}
 	amRouteBYOCertSrt := &corev1.Secret{}
@@ -586,7 +585,7 @@ func GetAlertmanagerRouterCA(client client.Client) (string, error) {
 	return string(routerCASecret.Data["tls.crt"]), nil
 }
 
-// GetAlertmanagerCA is used to get the CA of Alertmanager
+// GetAlertmanagerCA is used to get the CA of Alertmanager.
 func GetAlertmanagerCA(client client.Client) (string, error) {
 	amCAConfigmap := &corev1.ConfigMap{}
 	err := client.Get(
@@ -604,12 +603,12 @@ func GetDefaultNamespace() string {
 	return defaultNamespace
 }
 
-// GetMonitoringCRName returns monitoring cr name
+// GetMonitoringCRName returns monitoring cr name.
 func GetMonitoringCRName() string {
 	return monitoringCRName
 }
 
-// SetMonitoringCRName sets the cr name
+// SetMonitoringCRName sets the cr name.
 func SetMonitoringCRName(crName string) {
 	monitoringCRName = crName
 }
@@ -620,7 +619,7 @@ func infrastructureConfigNameNsN() types.NamespacedName {
 	}
 }
 
-// GetKubeAPIServerAddress is used to get the api server url
+// GetKubeAPIServerAddress is used to get the api server url.
 func GetKubeAPIServerAddress(client client.Client) (string, error) {
 	infraConfig := &ocinfrav1.Infrastructure{}
 	if err := client.Get(context.TODO(), infrastructureConfigNameNsN(), infraConfig); err != nil {
@@ -630,7 +629,7 @@ func GetKubeAPIServerAddress(client client.Client) (string, error) {
 	return infraConfig.Status.APIServerURL, nil
 }
 
-// GetClusterID is used to get the cluster uid
+// GetClusterID is used to get the cluster uid.
 func GetClusterID(ocpClient ocpClientSet.Interface) (string, error) {
 	clusterVersion, err := ocpClient.ConfigV1().ClusterVersions().Get(context.TODO(), "version", v1.GetOptions{})
 	if err != nil {
@@ -642,7 +641,7 @@ func GetClusterID(ocpClient ocpClientSet.Interface) (string, error) {
 }
 
 // checkIsIBMCloud detects if the current cloud vendor is ibm or not
-// we know we are on OCP already, so if it's also ibm cloud, it's roks
+// we know we are on OCP already, so if it's also ibm cloud, it's roks.
 func CheckIsIBMCloud(c client.Client) (bool, error) {
 	nodes := &corev1.NodeList{}
 	err := c.List(context.TODO(), nodes)
@@ -668,7 +667,7 @@ func GetDefaultCRName() string {
 	return defaultCRName
 }
 
-// IsPaused returns true if the multiclusterobservability instance is labeled as paused, and false otherwise
+// IsPaused returns true if the multiclusterobservability instance is labeled as paused, and false otherwise.
 func IsPaused(annotations map[string]string) bool {
 	if annotations == nil {
 		return false
@@ -699,7 +698,7 @@ func WithoutResourcesRequests(annotations map[string]string) bool {
 	return false
 }
 
-// GetTenantUID returns tenant uid
+// GetTenantUID returns tenant uid.
 func GetTenantUID() string {
 	if tenantUID == "" {
 		tenantUID = string(uuid.NewUUID())
@@ -707,17 +706,17 @@ func GetTenantUID() string {
 	return tenantUID
 }
 
-// GetObsAPISvc returns observatorium api service
+// GetObsAPISvc returns observatorium api service.
 func GetObsAPISvc(instanceName string) string {
 	return instanceName + "-observatorium-api." + defaultNamespace + ".svc.cluster.local"
 }
 
-// SetCustomRuleConfigMap set true if there is custom rule configmap
+// SetCustomRuleConfigMap set true if there is custom rule configmap.
 func SetCustomRuleConfigMap(hasConfigMap bool) {
 	hasCustomRuleConfigMap = hasConfigMap
 }
 
-// HasCustomRuleConfigMap returns true if there is custom rule configmap
+// HasCustomRuleConfigMap returns true if there is custom rule configmap.
 func HasCustomRuleConfigMap() bool {
 	return hasCustomRuleConfigMap
 }
@@ -1103,15 +1102,15 @@ func SetOperandNames(c client.Client) error {
 	return nil
 }
 
-// CleanUpOperandNames delete all the operand name items
-// Should be called when the MCO CR is deleted
+// CleanUpOperandNames delete all the operand name items.
+// Should be called when the MCO CR is deleted.
 func CleanUpOperandNames() {
 	for k := range operandNames {
 		delete(operandNames, k)
 	}
 }
 
-// GetValidatingWebhookConfigurationForMCO return the ValidatingWebhookConfiguration for the MCO validaing webhook
+// GetValidatingWebhookConfigurationForMCO return the ValidatingWebhookConfiguration for the MCO validaing webhook.
 func GetValidatingWebhookConfigurationForMCO() *admissionregistrationv1.ValidatingWebhookConfiguration {
 	validatingWebhookPath := "/validate-observability-open-cluster-management-io-v1beta2-multiclusterobservability"
 	noSideEffects := admissionregistrationv1.SideEffectClassNone
@@ -1161,7 +1160,7 @@ func GetValidatingWebhookConfigurationForMCO() *admissionregistrationv1.Validati
 	}
 }
 
-// GetMulticloudConsoleHost is used to get the URL for multicloud-console route
+// GetMulticloudConsoleHost is used to get the URL for multicloud-console route.
 func GetMulticloudConsoleHost(client client.Client, isStandalone bool) (string, error) {
 	if multicloudConsoleRouteHost != "" {
 		return multicloudConsoleRouteHost, nil
@@ -1182,7 +1181,7 @@ func GetMulticloudConsoleHost(client client.Client, isStandalone bool) (string, 
 	return found.Spec.Host, nil
 }
 
-// Set AnnotationMCOAlerting
+// Set AnnotationMCOAlerting.
 func SetAlertingDisabled(status bool) {
 	isAlertingDisabled = status
 }
@@ -1191,7 +1190,7 @@ func IsAlertingDisabled() bool {
 	return isAlertingDisabled
 }
 
-// Get AnnotationMCOAlerting
+// Get AnnotationMCOAlerting.
 func IsAlertingDisabledInSpec(mco *observabilityv1beta2.MultiClusterObservability) bool {
 	if mco == nil {
 		return false

@@ -32,7 +32,7 @@ var (
 	hubNamespace = os.Getenv("HUB_NAMESPACE")
 )
 
-// StatusReconciler reconciles status object
+// StatusReconciler reconciles status object.
 type StatusReconciler struct {
 	Client    client.Client
 	Scheme    *runtime.Scheme

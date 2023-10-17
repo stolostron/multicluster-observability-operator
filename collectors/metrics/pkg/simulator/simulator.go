@@ -7,7 +7,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -15,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
@@ -61,7 +60,7 @@ func SimulateMetrics(logger log.Logger) []*clientmodel.MetricFamily {
 		sb.WriteString("\n")
 	}
 	//rlogger.Log(logger, rlogger.Error, "data", sb.String())
-	r := ioutil.NopCloser(bytes.NewReader([]byte(sb.String())))
+	r := io.NopCloser(bytes.NewReader([]byte(sb.String())))
 	decoder := expfmt.NewDecoder(r, expfmt.FmtText)
 	for {
 		family := &clientmodel.MetricFamily{}

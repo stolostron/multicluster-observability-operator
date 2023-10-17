@@ -9,7 +9,7 @@ The resource consumption later is not for single pod/deployment, but for the Ope
 Your results might vary, depending on your environment, network speed, and changes to the product.
 
 ## Test environment
-In the test environment, hub and managed clusters are located in Amazon Web Services cloud platfrom and have the same topology/configuration as below:
+In the test environment, hub and managed clusters are located in Amazon Web Services cloud platform and have the same topology/configuration as below:
 
 
 Node | Flavor	| vCPU	| RAM (GiB)	| Disk type	| Disk size(GiB)/IOS	| Count	| Region

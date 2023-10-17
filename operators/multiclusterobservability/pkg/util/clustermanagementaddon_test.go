@@ -33,12 +33,12 @@ func TestClusterManagmentAddon(t *testing.T) {
 		},
 	}
 
-	c := fake.NewFakeClient(consoleRoute)
-	_, err := CreateClusterManagementAddon(c, false)
+	c := fake.NewClientBuilder().WithRuntimeObjects(consoleRoute).Build()
+	_, err := CreateClusterManagementAddon(c)
 	if err != nil {
 		t.Fatalf("Failed to create clustermanagementaddon: (%v)", err)
 	}
-	_, err = CreateClusterManagementAddon(c, false)
+	_, err = CreateClusterManagementAddon(c)
 	if err != nil {
 		t.Fatalf("Failed to create clustermanagementaddon twice: (%v)", err)
 	}

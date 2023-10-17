@@ -9,7 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -26,6 +26,10 @@ import (
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
+)
+
+const (
+	trueStr = "true"
 )
 
 var _ = Describe("Observability:", func() {
@@ -305,7 +309,7 @@ var _ = Describe("Observability:", func() {
 		alertGetReq, err := http.NewRequest("GET", amURL.String(), nil)
 		Expect(err).NotTo(HaveOccurred())
 
-		if os.Getenv("IS_KIND_ENV") != "true" {
+		if os.Getenv("IS_KIND_ENV") != trueStr {
 			if BearerToken == "" {
 				BearerToken, err = utils.FetchBearerToken(testOptions)
 				Expect(err).NotTo(HaveOccurred())
@@ -348,10 +352,10 @@ var _ = Describe("Observability:", func() {
 
 			if resp.StatusCode != http.StatusOK {
 				klog.Errorf("err: %+v\n", resp)
-				return fmt.Errorf("Failed to get alerts via alertmanager route with http reponse: %v", resp)
+				return fmt.Errorf("Failed to get alerts via alertmanager route with http response: %v", resp)
 			}
 
-			alertResult, err := ioutil.ReadAll(resp.Body)
+			alertResult, err := io.ReadAll(resp.Body)
 			if err != nil {
 				return err
 			}

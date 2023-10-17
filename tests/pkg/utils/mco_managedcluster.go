@@ -5,7 +5,7 @@ package utils
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	goversion "github.com/hashicorp/go-version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,7 +63,7 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 	}
 
 	if len(clusterNames) == 0 {
-		return clusterNames, fmt.Errorf("no managedcluster found")
+		return clusterNames, errors.New("no managedcluster found")
 	}
 
 	return clusterNames, nil

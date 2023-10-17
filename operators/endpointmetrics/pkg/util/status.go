@@ -13,19 +13,19 @@ import (
 
 var (
 	conditions = map[string]map[string]string{
-		"Deployed": map[string]string{
+		"Deployed": {
 			"type":    "Progressing",
 			"reason":  "Deployed",
 			"message": "Metrics collector deployed"},
-		"Disabled": map[string]string{
+		"Disabled": {
 			"type":    "Disabled",
 			"reason":  "Disabled",
 			"message": "enableMetrics is set to False"},
-		"Degraded": map[string]string{
+		"Degraded": {
 			"type":    "Degraded",
 			"reason":  "Degraded",
 			"message": "Metrics collector deployment not successful"},
-		"NotSupported": map[string]string{
+		"NotSupported": {
 			"type":    "NotSupported",
 			"reason":  "NotSupported",
 			"message": "No Prometheus service found in this cluster"},

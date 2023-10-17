@@ -5,9 +5,10 @@ package util
 
 import (
 	"context"
-	"io/ioutil"
+	stdlog "log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -36,7 +37,7 @@ func createFakeServerWithInvalidJSON(port string, t *testing.T) {
 	)
 	err := http.ListenAndServe(":"+port, server)
 	if err != nil {
-		t.Fatal("fail to create internal server at " + port)
+		stdlog.Fatal("fail to create internal server at " + port)
 	}
 }
 
@@ -102,7 +103,7 @@ func createFakeServer(port string, t *testing.T) {
 	)
 	err := http.ListenAndServe(":"+port, server)
 	if err != nil {
-		t.Fatal("fail to create internal server at " + port)
+		stdlog.Fatal("fail to create internal server at " + port)
 	}
 }
 func TestModifyMetricsQueryParams(t *testing.T) {
@@ -188,27 +189,6 @@ func TestGetAllManagedClusterLabelNames(t *testing.T) {
 	}
 }
 
-func TestContains(t *testing.T) {
-	testCaseList := []struct {
-		name     string
-		list     []string
-		s        string
-		expected bool
-	}{
-		{"contain sub string", []string{"a", "b"}, "a", true},
-		{"shoud contain empty string", []string{""}, "", true},
-		{"should not contain sub string", []string{"a", "b"}, "c", false},
-		{"shoud not contain empty string", []string{"a", "b"}, "", false},
-	}
-
-	for _, c := range testCaseList {
-		output := Contains(c.list, c.s)
-		if output != c.expected {
-			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", c.name, output, c.expected)
-		}
-	}
-}
-
 func TestRewriteQuery(t *testing.T) {
 	testCaseList := []struct {
 		name        string
@@ -227,7 +207,7 @@ func TestRewriteQuery(t *testing.T) {
 
 		{
 			"should rewrite",
-			map[string][]string{"key": []string{"value"}},
+			map[string][]string{"key": {"value"}},
 			[]string{"c1", "c2"},
 			"key",
 			"value{cluster=~\"c1|c2\"}",
@@ -235,7 +215,7 @@ func TestRewriteQuery(t *testing.T) {
 
 		{
 			"empty cluster list",
-			map[string][]string{"key": []string{"value"}},
+			map[string][]string{"key": {"value"}},
 			[]string{},
 			"key",
 			"value{cluster=~\"\"}",
@@ -323,7 +303,7 @@ func TestGetUserClusterList(t *testing.T) {
 
 func TestWriteError(t *testing.T) {
 	writeError("test")
-	data, _ := ioutil.ReadFile("/tmp/health")
+	data, _ := os.ReadFile("/tmp/health")
 	if !strings.Contains(string(data), "test") {
 		t.Errorf("failed to find the health file")
 	}

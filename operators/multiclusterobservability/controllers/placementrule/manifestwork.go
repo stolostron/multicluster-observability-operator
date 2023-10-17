@@ -17,7 +17,6 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -39,7 +38,7 @@ const (
 	workPostponeDeleteAnnoKey = "open-cluster-management/postpone-delete"
 )
 
-// intermidiate resources for the manifest work
+// intermediate resources for the manifest work.
 var (
 	hubInfoSecret                   *corev1.Secret
 	pullSecret                      *corev1.Secret
@@ -54,7 +53,6 @@ var (
 	imageListConfigMap            *corev1.ConfigMap
 
 	rawExtensionList []runtime.RawExtension
-	//promRawExtensionList []runtime.RawExtension
 )
 
 func deleteManifestWork(c client.Client, name string, namespace string) error {
@@ -264,13 +262,19 @@ func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClust
 	return works, crdv1Work, crdv1beta1Work, nil
 }
 
-func createManifestWorks(c client.Client, restMapper meta.RESTMapper,
-	clusterNamespace string, clusterName string,
+func createManifestWorks(
+	c client.Client,
+	clusterNamespace string,
+	clusterName string,
 	mco *mcov1beta2.MultiClusterObservability,
-	works []workv1.Manifest, allowlist *corev1.ConfigMap,
-	crdWork *workv1.Manifest, dep *appsv1.Deployment,
-	hubInfo *corev1.Secret, addonConfig *addonv1alpha1.AddOnDeploymentConfig, installProm bool) error {
-
+	works []workv1.Manifest,
+	allowlist *corev1.ConfigMap,
+	crdWork *workv1.Manifest,
+	dep *appsv1.Deployment,
+	hubInfo *corev1.Secret,
+	addonConfig *addonv1alpha1.AddOnDeploymentConfig,
+	installProm bool,
+) error {
 	work := newManifestwork(clusterNamespace+workNameSuffix, clusterNamespace)
 
 	manifests := work.Spec.Workload.Manifests

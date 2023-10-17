@@ -1,6 +1,7 @@
 package metricfamily
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -23,7 +24,7 @@ func (t *errorInvalidFederateSamples) Transform(family *clientmodel.MetricFamily
 		return false, nil
 	}
 	if len(name) > 255 {
-		return false, fmt.Errorf("metrics_name cannot be longer than 255 characters")
+		return false, errors.New("metrics_name cannot be longer than 255 characters")
 	}
 	if family.Type == nil {
 		return false, nil
@@ -44,10 +45,10 @@ func (t *errorInvalidFederateSamples) Transform(family *clientmodel.MetricFamily
 		}
 		for _, label := range m.Label {
 			if label.Name == nil || len(*label.Name) == 0 || len(*label.Name) > 255 {
-				return false, fmt.Errorf("label_name cannot be longer than 255 characters")
+				return false, errors.New("label_name cannot be longer than 255 characters")
 			}
 			if label.Value == nil || len(*label.Value) > 255 {
-				return false, fmt.Errorf("label_value cannot be longer than 255 characters")
+				return false, errors.New("label_value cannot be longer than 255 characters")
 			}
 		}
 		if m.TimestampMs == nil {

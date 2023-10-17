@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -21,16 +20,30 @@ import (
 func TestNewEmptyMatrixHTTPBody(t *testing.T) {
 	body := newEmptyMatrixHTTPBody()
 	gr, err := gzip.NewReader(bytes.NewBuffer([]byte(body)))
-	defer gr.Close()
-	data, err := ioutil.ReadAll(gr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := gr.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+	data, err := io.ReadAll(gr)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	var decompressedBuff bytes.Buffer
 	gr, err = gzip.NewReader(bytes.NewBuffer([]byte(data)))
-	defer gr.Close()
-	data, err = ioutil.ReadAll(gr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := gr.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+	data, err = io.ReadAll(gr)
 	if err != nil {
 		t.Errorf("failed to ReadAll: %v", err)
 	}
@@ -69,21 +82,10 @@ func (r *FakeResponse) WriteHeader(status int) {
 	r.status = status
 }
 
-func TestErrorHandle(t *testing.T) {
-	req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
-	req.Header.Set("X-Forwarded-User", "test")
-	var err error
-	fakeResp := NewFakeResponse(t)
-	errorHandle(fakeResp, req, err)
-	if fakeResp.status != http.StatusUnauthorized {
-		t.Errorf("failed to get expected status: %v", fakeResp.status)
-	}
-}
-
 func TestPreCheckRequest(t *testing.T) {
 	req, _ := http.NewRequest("GET", "http://127.0.0.1:3002/metrics/query?query=foo", nil)
 	resp := http.Response{
-		Body:    ioutil.NopCloser(bytes.NewBufferString("test")),
+		Body:    io.NopCloser(bytes.NewBufferString("test")),
 		Header:  make(http.Header),
 		Request: req,
 	}
@@ -131,8 +133,15 @@ func TestGzipWrite(t *testing.T) {
 	}
 	var decompressedBuff bytes.Buffer
 	gr, err := gzip.NewReader(bytes.NewBuffer(compressedBuff.Bytes()))
-	defer gr.Close()
-	data, err := ioutil.ReadAll(gr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := gr.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+	data, err := io.ReadAll(gr)
 	if err != nil {
 		t.Errorf("failed to decompressed: %v", err)
 	}

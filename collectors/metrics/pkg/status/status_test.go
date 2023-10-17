@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 
@@ -48,43 +48,43 @@ func TestUpdateStatus(t *testing.T) {
 		t.Fatalf("Failed to create observabilityAddon: (%v)", err)
 	}
 
-	err = s.UpdateStatus("Disabled", "Disabled", "enableMetrics is set to False")
+	err = s.UpdateStatus("Disabled", "enableMetrics is set to False")
 	if err != nil {
 		t.Fatalf("Failed to update status: (%v)", err)
 	}
 
-	err = s.UpdateStatus("Ready", "Deployed", "Metrics collector deployed and functional")
+	err = s.UpdateStatus("Ready", "Metrics collector deployed and functional")
 	if err != nil {
 		t.Fatalf("Failed to update status: (%v)", err)
 	}
 
-	err = s.UpdateStatus("Ready", "Deployed", "Metrics collector deployed and updated")
+	err = s.UpdateStatus("Ready", "Metrics collector deployed and updated")
 	if err != nil {
 		t.Fatalf("Failed to update status: (%v)", err)
 	}
 
-	err = s.UpdateStatus("Available", "Available", "Cluster metrics sent successfully")
+	err = s.UpdateStatus("Available", "Cluster metrics sent successfully")
 	if err != nil {
 		t.Fatalf("Failed to update status: (%v)", err)
 	}
 
 	os.Setenv("FROM", uwlPromURL)
-	err = s.UpdateStatus("Degraded", "Degraded", "Failed to retrieve metrics")
+	err = s.UpdateStatus("Degraded", "Failed to retrieve metrics")
 	if err != nil {
 		t.Fatalf("Failed to update status: (%v)", err)
 	}
 
-	err = s.UpdateStatus("Degraded", "Degraded", "Failed to send metrics")
+	err = s.UpdateStatus("Degraded", "Failed to send metrics")
 	if err != nil {
 		t.Fatalf("Failed to update status: (%v)", err)
 	}
 
-	err = s.UpdateStatus("Available", "Available", "Cluster metrics sent successfully")
+	err = s.UpdateStatus("Available", "Cluster metrics sent successfully")
 	if err != nil {
 		t.Fatalf("Failed to update status: (%v)", err)
 	}
 	os.Setenv("FROM", "")
-	err = s.UpdateStatus("Available", "Available", "Cluster metrics sent successfully")
+	err = s.UpdateStatus("Available", "Cluster metrics sent successfully")
 	if err != nil {
 		t.Fatalf("Failed to update status: (%v)", err)
 	}

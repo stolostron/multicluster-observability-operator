@@ -15,6 +15,7 @@ import (
 	"net"
 	"time"
 
+	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,7 +28,6 @@ import (
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (
@@ -194,6 +194,9 @@ func createCACertificate(cn string, caKey *rsa.PrivateKey) ([]byte, []byte, erro
 	return caKeyBytes, caBytes, nil
 }
 
+// TODO(saswatamcode): Refactor function to remove ou.
+//
+//nolint:unparam
 func createCertSecret(c client.Client,
 	scheme *runtime.Scheme, mco *mcov1beta2.MultiClusterObservability,
 	isRenew bool, name string, isServer bool,
@@ -255,7 +258,7 @@ func createCertSecret(c client.Client,
 				}
 				// to handle upgrade scenario in which hosts maybe update
 				for _, dnsString := range dns {
-					if !util.Contains(serverCrt.DNSNames, dnsString) {
+					if !slices.Contains(serverCrt.DNSNames, dnsString) {
 						isRenew = true
 						break
 					}

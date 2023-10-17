@@ -5,7 +5,7 @@ package tests
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"os"
 
 	. "github.com/onsi/ginkgo"
@@ -16,7 +16,7 @@ import (
 )
 
 func uninstallMCO() {
-	if os.Getenv("SKIP_UNINSTALL_STEP") == "true" {
+	if os.Getenv("SKIP_UNINSTALL_STEP") == trueStr {
 		return
 	}
 
@@ -30,7 +30,7 @@ func uninstallMCO() {
 		testOptions.KubeConfig,
 		testOptions.HubCluster.KubeContext)
 
-	By("Deleteing the MCO testing RBAC resources")
+	By("Deleting the MCO testing RBAC resources")
 	Expect(utils.DeleteMCOTestingRBAC(testOptions)).NotTo(HaveOccurred())
 
 	By("Uninstall MCO instance")
@@ -56,7 +56,7 @@ func uninstallMCO() {
 			Get(context.TODO(), name, metav1.GetOptions{})
 		if instance != nil {
 			utils.PrintManagedClusterOBAObject(testOptions)
-			return fmt.Errorf("Failed to delete MCO addon instance")
+			return errors.New("Failed to delete MCO addon instance")
 		}
 		return nil
 	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())

@@ -1,7 +1,6 @@
 package util
 
 import (
-	"fmt"
 	"path"
 	"testing"
 )
@@ -49,31 +48,31 @@ func TestTransform(t *testing.T) {
 	}
 	newConfig, names := Transform(*config)
 
-	if newConfig.BasicAuth.PasswordFile != fmt.Sprintf(path.Join(MountPath, basicAuthSName, basicAuthSKey)) {
+	if newConfig.BasicAuth.PasswordFile != path.Join(MountPath, basicAuthSName, basicAuthSKey) {
 		t.Fatalf("Wrong path for BasicAuth.PasswordFile: %s", newConfig.BasicAuth.PasswordFile)
 	}
 
-	if newConfig.Authorization.CredentialsFile != fmt.Sprintf(path.Join(MountPath, AuthSName, AuthSKey)) {
+	if newConfig.Authorization.CredentialsFile != path.Join(MountPath, AuthSName, AuthSKey) {
 		t.Fatalf("Wrong path for Authorization.CredentialsFile: %s", newConfig.Authorization.CredentialsFile)
 	}
 
-	if newConfig.OAuth2.ClientSecretFile != fmt.Sprintf(path.Join(MountPath, OAuth2SName, OAuth2SKey)) {
+	if newConfig.OAuth2.ClientSecretFile != path.Join(MountPath, OAuth2SName, OAuth2SKey) {
 		t.Fatalf("Wrong path for OAuth2.ClientSecretFile: %s", newConfig.OAuth2.ClientSecretFile)
 	}
 
-	if newConfig.BearerTokenFile != fmt.Sprintf(path.Join(MountPath, BearerTokenSName, BearerTokenSKey)) {
+	if newConfig.BearerTokenFile != path.Join(MountPath, BearerTokenSName, BearerTokenSKey) {
 		t.Fatalf("Wrong path for BearerTokenFile: %s", newConfig.BearerTokenFile)
 	}
 
-	if newConfig.TLSConfig.CAFile != fmt.Sprintf(path.Join(MountPath, TLSSName, TLSCAKey)) {
+	if newConfig.TLSConfig.CAFile != path.Join(MountPath, TLSSName, TLSCAKey) {
 		t.Fatalf("Wrong path for TLSConfig.CAFile: %s", newConfig.TLSConfig.CAFile)
 	}
 
-	if newConfig.TLSConfig.CertFile != fmt.Sprintf(path.Join(MountPath, TLSSName, TLSCertKey)) {
+	if newConfig.TLSConfig.CertFile != path.Join(MountPath, TLSSName, TLSCertKey) {
 		t.Fatalf("Wrong path for TLSConfig.CertFile: %s", newConfig.TLSConfig.CertFile)
 	}
 
-	if newConfig.TLSConfig.KeyFile != fmt.Sprintf(path.Join(MountPath, TLSSName, TLSKeyKey)) {
+	if newConfig.TLSConfig.KeyFile != path.Join(MountPath, TLSSName, TLSKeyKey) {
 		t.Fatalf("Wrong path for TLSConfig.KeyFile: %s", newConfig.TLSConfig.KeyFile)
 	}
 
