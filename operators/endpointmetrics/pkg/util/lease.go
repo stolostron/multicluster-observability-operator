@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	leaseName = "observability-controller"
+	leaseName = "observability-controller" // #nosec G101 -- Not a hardcoded credential.
 )
 
 var (

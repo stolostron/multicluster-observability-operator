@@ -7,6 +7,7 @@ import (
 	"flag"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/spf13/pflag"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -84,8 +85,17 @@ func main() {
 	go util.ScheduleManagedClusterLabelAllowlistResync(kubeClient)
 	go util.CleanExpiredProjectInfoJob(24 * 60 * 60)
 
-	http.HandleFunc("/", proxy.HandleRequestAndRedirect)
-	if err := http.ListenAndServe(cfg.listenAddress, nil); err != nil {
+	handlers := http.NewServeMux()
+	handlers.HandleFunc("/", proxy.HandleRequestAndRedirect)
+	s := http.Server{
+		Addr:              cfg.listenAddress,
+		Handler:           handlers,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      12 * time.Minute,
+	}
+
+	if err := s.ListenAndServe(); err != nil {
 		klog.Fatalf("failed to ListenAndServe: %v", err)
 	}
 }

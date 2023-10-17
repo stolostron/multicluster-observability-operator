@@ -71,15 +71,13 @@ const (
 	GrafanaCN        = "grafana"
 	ManagedClusterOU = "acm"
 
-	GrafanaRouteName       = "grafana"
-	GrafanaServiceName     = "grafana"
-	GrafanaOauthClientName = "grafana-proxy-client"
-	/* #nosec */
-	GrafanaOauthClientSecret = "grafana-proxy-client"
+	GrafanaRouteName         = "grafana"
+	GrafanaServiceName       = "grafana"
+	GrafanaOauthClientName   = "grafana-proxy-client" // #nosec G101 -- Not a hardcoded credential.
+	GrafanaOauthClientSecret = "grafana-proxy-client" // #nosec G101 -- Not a hardcoded credential.
 
-	AlertmanagerAccessorSAName = "observability-alertmanager-accessor"
-	/* #nosec */
-	AlertmanagerAccessorSecretName = "observability-alertmanager-accessor"
+	AlertmanagerAccessorSAName     = "observability-alertmanager-accessor"
+	AlertmanagerAccessorSecretName = "observability-alertmanager-accessor" // #nosec G101 -- Not a hardcoded credential.
 	AlertmanagerServiceName        = "alertmanager"
 	AlertmanagerRouteName          = "alertmanager"
 	AlertmanagerRouteBYOCAName     = "alertmanager-byo-ca"
@@ -136,8 +134,8 @@ const (
 	MemcachedExporterImgTag  = "v0.9.0"
 
 	GrafanaImgKey               = "grafana"
-	GrafanaDashboardLoaderName  = "grafana-dashboard-loader"
-	GrafanaDashboardLoaderKey   = "grafana_dashboard_loader"
+	GrafanaDashboardLoaderName  = "grafana-dashboard-loader" // #nosec G101 -- Not a hardcoded credential.
+	GrafanaDashboardLoaderKey   = "grafana_dashboard_loader" // #nosec G101 -- Not a hardcoded credential.
 	GrafanaCustomDashboardLabel = "grafana-custom-dashboard"
 
 	AlertManagerImgName           = "prometheus-alertmanager"

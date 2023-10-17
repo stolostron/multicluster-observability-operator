@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	hubAmAccessorSecretName        = "observability-alertmanager-accessor" // #nosec
-	hubAmAccessorSecretKey         = "token"
+	hubAmAccessorSecretName        = "observability-alertmanager-accessor" // #nosec G101 -- Not a hardcoded credential.
+	hubAmAccessorSecretKey         = "token"                               // #nosec G101 -- Not a hardcoded credential.
 	hubAmRouterCASecretName        = "hub-alertmanager-router-ca"
 	hubAmRouterCASecretKey         = "service-ca.crt"
 	clusterMonitoringConfigName    = "cluster-monitoring-config"
