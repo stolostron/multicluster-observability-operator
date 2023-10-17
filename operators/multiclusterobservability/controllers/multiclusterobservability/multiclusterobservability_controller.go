@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -323,6 +324,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		// Delete PrometheusRule from openshift-monitoring namespace
 		if err := r.deleteSpecificPrometheusRule(ctx); err != nil {
 			reqLogger.Error(err, "Failed to delete the specific PrometheusRule in the openshift-monitoring namespace")
+			return ctrl.Result{}, err
+		}
+		// Delete ServiceMonitor from openshft-monitoring namespace
+		if err := r.deleteServiceMonitorInOpenshiftMonitoringNamespace(ctx); err != nil {
+			reqLogger.Error(err, "Failed to delete service monitor in the openshift-monitoring namespace")
 			return ctrl.Result{}, err
 		}
 	}
@@ -858,5 +864,27 @@ func (r *MultiClusterObservabilityReconciler) deleteSpecificPrometheusRule(ctx c
 		return err
 	}
 
+	return nil
+}
+
+// Delete the ServiceMonitor in openshift-monitoring namespace
+func (r *MultiClusterObservabilityReconciler) deleteServiceMonitorInOpenshiftMonitoringNamespace(ctx context.Context) error {
+	serviceMonitorList := &monitoringv1.ServiceMonitorList{}
+	err := r.Client.List(ctx, serviceMonitorList, client.InNamespace("openshift-monitoring"))
+	if !apierrors.IsNotFound(err) && err != nil {
+		log.Error(err, "Failed to fetch ServiceMonitors")
+		return err
+	}
+
+	for _, sm := range serviceMonitorList.Items {
+		if strings.HasPrefix(sm.Name, "observability-") {
+			err = r.Client.Delete(ctx, sm)
+			if err != nil {
+				log.Error(err, "Failed to delete ServiceMonitor", "ServiceMonitorName", sm.Name)
+				return err
+			}
+			log.Info("Deleted ServiceMonitor", "ServiceMonitorName", sm.Name)
+		}
+	}
 	return nil
 }
