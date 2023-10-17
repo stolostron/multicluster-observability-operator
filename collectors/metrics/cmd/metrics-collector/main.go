@@ -364,8 +364,8 @@ func (o *Options) Run() error {
 		s := http.Server{
 			Addr:              o.Listen,
 			Handler:           handlers,
-			ReadHeaderTimeout: 1 * time.Second,
-			ReadTimeout:       5 * time.Second,
+			ReadHeaderTimeout: 5 * time.Second,
+			ReadTimeout:       15 * time.Second,
 			WriteTimeout:      12 * time.Minute,
 		}
 
