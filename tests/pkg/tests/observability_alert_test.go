@@ -192,6 +192,10 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
+	// TODO(subbarao): Re-enable slack integration test once issue mentioned in
+	// https://github.com/stolostron/multicluster-observability-operator/pull/1112 &
+	// https://github.com/stolostron/multicluster-observability-operator/pull/1258
+	// is addressed.
 	// It("[P2][Sev2][observability][Stable] Should modify the SECRET: alertmanager-config (alert/g0)", func() {
 	// 	By("Editing the secret, we should be able to add the third partying tools integrations")
 	// 	secret := utils.CreateCustomAlertConfigYaml(testOptions.HubCluster.BaseDomain)
