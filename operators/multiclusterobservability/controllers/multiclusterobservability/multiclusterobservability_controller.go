@@ -71,6 +71,7 @@ var (
 	isRuleStorageSizeChanged         = false
 	isReceiveStorageSizeChanged      = false
 	isStoreStorageSizeChanged        = false
+	isLegacyResourceRemoved          = false
 )
 
 // MultiClusterObservabilityReconciler reconciles a MultiClusterObservability object
@@ -320,7 +321,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	if os.Getenv("UNIT_TEST") != "true" {
+	if os.Getenv("UNIT_TEST") != "true" && !isLegacyResourceRemoved {
+		isLegacyResourceRemoved = true
 		// Delete PrometheusRule from openshift-monitoring namespace
 		if err := r.deleteSpecificPrometheusRule(ctx); err != nil {
 			reqLogger.Error(err, "Failed to delete the specific PrometheusRule in the openshift-monitoring namespace")

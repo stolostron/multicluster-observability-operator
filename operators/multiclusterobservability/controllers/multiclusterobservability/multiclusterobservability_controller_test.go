@@ -6,6 +6,7 @@ package multiclusterobservability
 
 import (
 	"context"
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"os"
 	"path"
 	"strings"
@@ -1002,5 +1003,63 @@ func createAlertManagerConfigMap(name string) *corev1.ConfigMap {
 			Name:      name,
 			Namespace: config.GetDefaultNamespace(),
 		},
+	}
+}
+
+// Test Prometheus Rules removed from open shift monitoring namespace
+func TestPrometheusRulesRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
+	promRule := &monitoringv1.PrometheusRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "acm-observability-alert-rules",
+			Namespace: "openshift-monitoring",
+		},
+		//Sample rules
+		Spec: monitoringv1.PrometheusRuleSpec{
+			Groups: []monitoringv1.RuleGroup{
+				{
+					Name: "test",
+					Rules: []monitoringv1.Rule{
+						{
+							Alert: "test",
+						},
+					},
+				},
+			},
+		},
+	}
+	s := scheme.Scheme
+	monitoringv1.AddToScheme(s)
+	objs := []runtime.Object{promRule}
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
+	err := r.deleteSpecificPrometheusRule(context.TODO())
+	if err != nil {
+		t.Fatalf("Failed to delete PrometheusRule: (%v)", err)
+	}
+}
+
+// Test Service Monitor removed from open shift monitoring namespace
+func TestServiceMonitorRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
+	sm := &monitoringv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "observability-sm-test",
+			Namespace: "openshift-monitoring",
+		},
+		Spec: monitoringv1.ServiceMonitorSpec{
+			Endpoints: []monitoringv1.Endpoint{
+				{
+					Port: "test",
+				},
+			},
+		},
+	}
+	s := scheme.Scheme
+	monitoringv1.AddToScheme(s)
+	objs := []runtime.Object{sm}
+	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	r := &MultiClusterObservabilityReconciler{Client: c, Scheme: s}
+	err := r.deleteServiceMonitorInOpenshiftMonitoringNamespace(context.TODO())
+	if err != nil {
+		t.Fatalf("Failed to delete ServiceMonitor: (%v)", err)
 	}
 }
