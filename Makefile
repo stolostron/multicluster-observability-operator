@@ -138,7 +138,6 @@ io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile
 	@go vet -stdmethods=false ./...
 	@echo ">> linting all of the Go files GOGC=${GOGC}"
 	@$(GOLANGCI_LINT) run
-	# TODO(saswatamcode): Enable this in a separate commit.
-	# @echo ">> ensuring Copyright headers"
-	# @go run ./scripts/copyright
+	@echo ">> ensuring Copyright headers"
+	@go run ./scripts/copyright
 	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')
