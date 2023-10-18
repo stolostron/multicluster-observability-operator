@@ -54,7 +54,12 @@ func RunGrafanaDashboardController(stop <-chan struct{}) {
 		klog.Fatal("Failed to build kubeclient", "error", err)
 	}
 
-	go newKubeInformer(kubeClient.CoreV1()).Run(stop)
+	informer, err := newKubeInformer(kubeClient.CoreV1())
+	if err != nil {
+		klog.Fatal("Failed to get informer", "error", err)
+	}
+
+	go informer.Run(stop)
 	<-stop
 }
 
@@ -79,7 +84,7 @@ func isDesiredDashboardConfigmap(obj interface{}) bool {
 	return false
 }
 
-func newKubeInformer(coreClient corev1client.CoreV1Interface) cache.SharedIndexInformer {
+func newKubeInformer(coreClient corev1client.CoreV1Interface) (cache.SharedIndexInformer, error) {
 	// get watched namespace
 	watchedNS := os.Getenv("POD_NAMESPACE")
 	watchlist := &cache.ListWatch{
@@ -97,9 +102,7 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) cache.SharedIndexI
 		cache.Indexers{},
 	)
 
-	// TODO(saswatamcode): Check error here.
-	//nolint:errcheck
-	kubeInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err := kubeInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			if !isDesiredDashboardConfigmap(obj) {
 				return
@@ -125,8 +128,11 @@ func newKubeInformer(coreClient corev1client.CoreV1Interface) cache.SharedIndexI
 			deleteDashboard(obj)
 		},
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	return kubeInformer
+	return kubeInformer, nil
 }
 
 func hasCustomFolder(folderTitle string) float64 {
