@@ -23,21 +23,21 @@ import (
 )
 
 const (
-	ocpMonitoringNamespace = "open-cluster-management-observability"
-	metricsNamePrefix      = "acm_"
+	metricsNamePrefix = "acm_"
 )
 
 var (
+	ocpMonitoringNamespace = config.GetDefaultNamespace()
 	log                    = logf.Log.WithName("sm_controller")
-	isSmControllerRunnning = false
+	isSmControllerRunning  = false
 )
 
 func Start() {
 
-	if isSmControllerRunnning {
+	if isSmControllerRunning {
 		return
 	}
-	isSmControllerRunnning = true
+	isSmControllerRunning = true
 
 	promClient, err := promclientset.NewForConfig(ctrl.GetConfigOrDie())
 	if err != nil {
