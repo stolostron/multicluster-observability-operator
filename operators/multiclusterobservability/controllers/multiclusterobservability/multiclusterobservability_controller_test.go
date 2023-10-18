@@ -971,7 +971,6 @@ func createPersistentVolumeClaim(name, namespace, pvcName string) *corev1.Persis
 	}
 }
 
-<<<<<<< HEAD
 func newMultiClusterObservability() *mcov1beta2.MultiClusterObservability {
 	return &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
