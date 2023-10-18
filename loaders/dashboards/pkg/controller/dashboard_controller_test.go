@@ -91,7 +91,6 @@ func createFakeServer(t *testing.T) {
 }
 
 func TestGrafanaDashboardController(t *testing.T) {
-
 	coreClient := fake.NewSimpleClientset().CoreV1()
 	stop := make(chan struct{})
 
@@ -100,7 +99,10 @@ func TestGrafanaDashboardController(t *testing.T) {
 
 	os.Setenv("POD_NAMESPACE", "ns2")
 
-	informer := newKubeInformer(coreClient)
+	informer, err := newKubeInformer(coreClient)
+	if err != nil {
+		t.Fatalf("failed to create informer with %v", err)
+	}
 	go informer.Run(stop)
 
 	cm, err := createDashboard()
