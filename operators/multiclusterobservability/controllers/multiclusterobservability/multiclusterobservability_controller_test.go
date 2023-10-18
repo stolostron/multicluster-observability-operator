@@ -1008,9 +1008,6 @@ func createAlertManagerConfigMap(name string) *corev1.ConfigMap {
 	}
 }
 
-// Test Prometheus Rules removed from open shift monitoring namespace
-=======
->>>>>>> ca1cbf5f (clean comments)
 func TestPrometheusRulesRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 	promRule := &monitoringv1.PrometheusRule{
 		ObjectMeta: metav1.ObjectMeta{
