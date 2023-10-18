@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storev1 "k8s.io/api/storage/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -30,11 +31,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -95,6 +94,9 @@ type MultiClusterObservabilityReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.0/pkg/reconcile
+// In ACM 2.9, we need to ensure that the openshift.io/cluster-monitoring is added to the same namespace as the
+// Multi-cluster Observability Operator to avoid conflicts with the openshift-* namespace when deploying
+// PrometheusRules and ServiceMonitors in ACM.
 func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling MultiClusterObservability")
@@ -248,6 +250,13 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
+	_, err = r.ensureOpenShiftNamespaceLabel(ctx, instance)
+	if err != nil {
+		r.Log.Error(err, "Failed to add to %s label to namespace: %s", config.OpenShiftClusterMonitoringlabel,
+			instance.GetNamespace())
+		return ctrl.Result{}, err
+	}
+
 	// the route resource won't be created in testing env, for instance, KinD
 	// in the testing env, the service can be accessed via service name, we assume that
 	// in testing env, the local-cluster is the only allowed managedcluster
@@ -380,115 +389,11 @@ func getStorageClass(mco *mcov1beta2.MultiClusterObservability, cl client.Client
 // SetupWithManager sets up the controller with the Manager.
 func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	c := mgr.GetClient()
-	mcoPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			//set request name to be used in placementrule controller
-			config.SetMonitoringCRName(e.Object.GetName())
-			return true
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			checkStorageChanged(e.ObjectOld.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig,
-				e.ObjectNew.(*mcov1beta2.MultiClusterObservability).Spec.StorageConfig)
-			return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return !e.DeleteStateUnknown
-		},
-	}
 
-	cmPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				if e.Object.GetName() == config.AlertRuleCustomConfigMapName {
-					config.SetCustomRuleConfigMap(true)
-					return true
-				} else if _, ok := e.Object.GetLabels()[config.BackupLabelName]; ok {
-					// resource already has backup label
-					return false
-				} else if _, ok := config.BackupResourceMap[e.Object.GetName()]; ok {
-					// resource's backup label must be checked
-					return true
-				} else if _, ok := e.Object.GetLabels()[config.GrafanaCustomDashboardLabel]; ok {
-					// ConfigMap with custom-grafana-dashboard labels, check for backup label
-					config.BackupResourceMap[e.Object.GetName()] = config.ResourceTypeConfigMap
-					return true
-				}
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			// Find a way to restart the alertmanager to take the update
-			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
-				if e.ObjectNew.GetName() == config.AlertRuleCustomConfigMapName {
-					// Grafana dynamically loads AlertRule configmap, nothing more to do
-					//config.SetCustomRuleConfigMap(true)
-					//return e.ObjectOld.GetResourceVersion() != e.ObjectNew.GetResourceVersion()
-					return false
-				} else if _, ok := e.ObjectNew.GetLabels()[config.BackupLabelName]; ok {
-					// resource already has backup label
-					return false
-				} else if _, ok := config.BackupResourceMap[e.ObjectNew.GetName()]; ok {
-					// resource's backup label must be checked
-					return true
-				} else if _, ok := e.ObjectNew.GetLabels()[config.GrafanaCustomDashboardLabel]; ok {
-					// ConfigMap with custom-grafana-dashboard labels, check for backup label
-					config.BackupResourceMap[e.ObjectNew.GetName()] = config.ResourceTypeConfigMap
-					return true
-				}
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetName() == config.AlertRuleCustomConfigMapName &&
-				e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				config.SetCustomRuleConfigMap(false)
-				return true
-			}
-			return false
-		},
-	}
-
-	secretPred := predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetNamespace() == config.GetDefaultNamespace() {
-				if e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName {
-					return true
-				} else if _, ok := e.Object.GetLabels()[config.BackupLabelName]; ok {
-					// resource already has backup label
-					return false
-				} else if _, ok := config.BackupResourceMap[e.Object.GetName()]; ok {
-					// resource's backup label must be checked
-					return true
-				}
-			}
-			return false
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() {
-				if e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.ObjectNew.GetName() == config.AlertmanagerRouteBYOCERTName {
-					return true
-				} else if _, ok := e.ObjectNew.GetLabels()[config.BackupLabelName]; ok {
-					// resource already has backup label
-					return false
-				} else if _, ok := config.BackupResourceMap[e.ObjectNew.GetName()]; ok {
-					// resource's backup label must be checked
-					return true
-				}
-			}
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetNamespace() == config.GetDefaultNamespace() &&
-				(e.Object.GetName() == config.AlertmanagerRouteBYOCAName ||
-					e.Object.GetName() == config.AlertmanagerRouteBYOCERTName ||
-					e.Object.GetName() == config.AlertmanagerConfigName) {
-				return true
-			}
-			return false
-		},
-	}
+	mcoPred := GetMCOPredicateFunc()
+	cmPred := GetConfigMapPredicateFunc()
+	secretPred := GetAlertManagerSecretPredicateFunc()
+	namespacePred := GetNamespacePredicateFunc()
 
 	ctrBuilder := ctrl.NewControllerManagedBy(mgr).
 		// Watch for changes to primary resource MultiClusterObservability with predicate
@@ -507,53 +412,15 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		Owns(&observatoriumv1alpha1.Observatorium{}).
 		// Watch the configmap for thanos-ruler-custom-rules update
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmPred)).
-
 		// Watch the secret for deleting event of alertmanager-config
-		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(secretPred))
+		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(secretPred)).
+		// Watch the namespace for changes
+		Watches(&source.Kind{Type: &corev1.Namespace{}}, &handler.EnqueueRequestForObject{},
+			builder.WithPredicates(namespacePred))
 
 	mchGroupKind := schema.GroupKind{Group: mchv1.GroupVersion.Group, Kind: "MultiClusterHub"}
 	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.GroupVersion.Version); err == nil {
-		mchPred := predicate.Funcs{
-			CreateFunc: func(e event.CreateEvent) bool {
-				// this is for operator restart, the mch CREATE event will be caught and the mch should be ready
-				if e.Object.GetNamespace() == config.GetMCONamespace() &&
-					e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
-					e.Object.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion {
-					// only read the image manifests configmap and enqueue the request when the MCH is
-					// installed/upgraded successfully
-					ok, err := config.ReadImageManifestConfigMap(
-						c,
-						e.Object.(*mchv1.MultiClusterHub).Status.CurrentVersion,
-					)
-					if err != nil {
-						return false
-					}
-					return ok
-				}
-				return false
-			},
-			UpdateFunc: func(e event.UpdateEvent) bool {
-				if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
-					e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion != "" &&
-					e.ObjectNew.(*mchv1.MultiClusterHub).Status.DesiredVersion == e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion {
-					// only read the image manifests configmap and enqueue the request when the MCH is
-					// installed/upgraded successfully
-					ok, err := config.ReadImageManifestConfigMap(
-						c,
-						e.ObjectNew.(*mchv1.MultiClusterHub).Status.CurrentVersion,
-					)
-					if err != nil {
-						return false
-					}
-					return ok
-				}
-				return false
-			},
-			DeleteFunc: func(e event.DeleteEvent) bool {
-				return false
-			},
-		}
-
+		mchPred := GetMCHPredicateFunc(c)
 		mchCrdExists := r.CRDMap[config.MCHCrdName]
 		if mchCrdExists {
 			// secondary watch for MCH
@@ -928,4 +795,39 @@ func cleanUpClusterScopedResources(
 	}
 
 	return nil
+}
+
+func (r *MultiClusterObservabilityReconciler) ensureOpenShiftNamespaceLabel(ctx context.Context,
+	m *mcov1beta2.MultiClusterObservability) (reconcile.Result, error) {
+
+	log := logf.FromContext(ctx)
+	existingNs := &corev1.Namespace{}
+	resNS := m.GetNamespace()
+	if resNS == "" {
+		resNS = config.GetDefaultNamespace()
+	}
+
+	err := r.Client.Get(ctx, types.NamespacedName{Name: resNS}, existingNs)
+	if err != nil || errors.IsNotFound(err) {
+		log.Error(err, fmt.Sprintf("Failed to find namespace for Multicluster Operator: %s", resNS))
+		return reconcile.Result{Requeue: true}, err
+	}
+
+	if existingNs.ObjectMeta.Labels == nil || len(existingNs.ObjectMeta.Labels) == 0 {
+		existingNs.ObjectMeta.Labels = make(map[string]string)
+	}
+
+	if _, ok := existingNs.ObjectMeta.Labels[config.OpenShiftClusterMonitoringlabel]; !ok {
+		log.Info(fmt.Sprintf("Adding label: %s to namespace: %s", config.OpenShiftClusterMonitoringlabel, resNS))
+		existingNs.ObjectMeta.Labels[config.OpenShiftClusterMonitoringlabel] = "true"
+
+		err = r.Client.Update(ctx, existingNs)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Failed to update namespace for MultiClusterHub: %s with the label: %s",
+				m.GetNamespace(), config.OpenShiftClusterMonitoringlabel))
+			return reconcile.Result{Requeue: true}, err
+		}
+	}
+
+	return reconcile.Result{}, nil
 }
