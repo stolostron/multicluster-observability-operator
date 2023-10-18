@@ -971,6 +971,7 @@ func createPersistentVolumeClaim(name, namespace, pvcName string) *corev1.Persis
 	}
 }
 
+<<<<<<< HEAD
 func newMultiClusterObservability() *mcov1beta2.MultiClusterObservability {
 	return &mcov1beta2.MultiClusterObservability{
 		TypeMeta:   metav1.TypeMeta{Kind: "MultiClusterObservability"},
@@ -1008,6 +1009,8 @@ func createAlertManagerConfigMap(name string) *corev1.ConfigMap {
 }
 
 // Test Prometheus Rules removed from open shift monitoring namespace
+=======
+>>>>>>> ca1cbf5f (clean comments)
 func TestPrometheusRulesRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 	promRule := &monitoringv1.PrometheusRule{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1039,7 +1042,6 @@ func TestPrometheusRulesRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 	}
 }
 
-// Test Service Monitor removed from open shift monitoring namespace
 func TestServiceMonitorRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 	sm := &monitoringv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{

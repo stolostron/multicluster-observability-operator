@@ -869,7 +869,6 @@ func (r *MultiClusterObservabilityReconciler) deleteSpecificPrometheusRule(ctx c
 	return nil
 }
 
-// Delete the ServiceMonitor in openshift-monitoring namespace
 func (r *MultiClusterObservabilityReconciler) deleteServiceMonitorInOpenshiftMonitoringNamespace(ctx context.Context) error {
 	serviceMonitorList := &monitoringv1.ServiceMonitorList{}
 	err := r.Client.List(ctx, serviceMonitorList, client.InNamespace("openshift-monitoring"))
