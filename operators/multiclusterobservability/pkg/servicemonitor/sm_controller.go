@@ -23,21 +23,21 @@ import (
 )
 
 const (
-	ocpMonitoringNamespace = "openshift-monitoring"
-	metricsNamePrefix      = "acm_"
+	metricsNamePrefix = "acm_"
 )
 
 var (
+	ocpMonitoringNamespace = config.GetDefaultNamespace()
 	log                    = logf.Log.WithName("sm_controller")
-	isSmControllerRunnning = false
+	isSmControllerRunning  = false
 )
 
 func Start() {
 
-	if isSmControllerRunnning {
+	if isSmControllerRunning {
 		return
 	}
-	isSmControllerRunnning = true
+	isSmControllerRunning = true
 
 	promClient, err := promclientset.NewForConfig(ctrl.GetConfigOrDie())
 	if err != nil {
@@ -56,7 +56,6 @@ func Start() {
 		time.Minute*60,
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    onAdd(promClient),
-			DeleteFunc: onDelete(promClient),
 			UpdateFunc: onUpdate(promClient),
 		},
 	)
@@ -70,22 +69,6 @@ func onAdd(promClient promclientset.Interface) func(obj interface{}) {
 		sm := obj.(*promv1.ServiceMonitor)
 		if sm.ObjectMeta.OwnerReferences != nil && sm.ObjectMeta.OwnerReferences[0].Kind == "Observatorium" {
 			updateServiceMonitor(promClient, sm)
-		}
-	}
-}
-
-func onDelete(promClient promclientset.Interface) func(obj interface{}) {
-	return func(obj interface{}) {
-		sm := obj.(*promv1.ServiceMonitor)
-		if sm.ObjectMeta.OwnerReferences != nil && sm.ObjectMeta.OwnerReferences[0].Kind == "Observatorium" {
-			err := promClient.MonitoringV1().
-				ServiceMonitors(ocpMonitoringNamespace).
-				Delete(context.TODO(), sm.Name, metav1.DeleteOptions{})
-			if err != nil {
-				log.Error(err, "Failed to delete ServiceMonitor", "namespace", ocpMonitoringNamespace, "name", sm.Name)
-			} else {
-				log.Info("ServiceMonitor Deleted", "namespace", ocpMonitoringNamespace, "name", sm.Name)
-			}
 		}
 	}
 }

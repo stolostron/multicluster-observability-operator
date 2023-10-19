@@ -4,7 +4,7 @@ metadata:
   annotations:
     update-namespace: 'false'
   name: acm-observability-alert-rules
-  namespace: openshift-monitoring
+  namespace: open-cluster-management-observability
 spec:
   groups:
     - name: observability.rules

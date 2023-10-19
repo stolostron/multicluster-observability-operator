@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -38,6 +39,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	placementctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
 	certctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
@@ -69,6 +71,7 @@ var (
 	isRuleStorageSizeChanged         = false
 	isReceiveStorageSizeChanged      = false
 	isStoreStorageSizeChanged        = false
+	isLegacyResourceRemoved          = false
 )
 
 // MultiClusterObservabilityReconciler reconciles a MultiClusterObservability object
@@ -314,6 +317,20 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		// create or update the storage version migration resource
 		err = createOrUpdateObservabilityStorageVersionMigrationResource(r.Client, r.Scheme, instance)
 		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	if os.Getenv("UNIT_TEST") != "true" && !isLegacyResourceRemoved {
+		isLegacyResourceRemoved = true
+		// Delete PrometheusRule from openshift-monitoring namespace
+		if err := r.deleteSpecificPrometheusRule(ctx); err != nil {
+			reqLogger.Error(err, "Failed to delete the specific PrometheusRule in the openshift-monitoring namespace")
+			return ctrl.Result{}, err
+		}
+		// Delete ServiceMonitor from openshft-monitoring namespace
+		if err := r.deleteServiceMonitorInOpenshiftMonitoringNamespace(ctx); err != nil {
+			reqLogger.Error(err, "Failed to delete service monitor in the openshift-monitoring namespace")
 			return ctrl.Result{}, err
 		}
 	}
@@ -831,4 +848,44 @@ func (r *MultiClusterObservabilityReconciler) ensureOpenShiftNamespaceLabel(ctx 
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func (r *MultiClusterObservabilityReconciler) deleteSpecificPrometheusRule(ctx context.Context) error {
+	promRule := &monitoringv1.PrometheusRule{}
+	err := r.Client.Get(ctx, client.ObjectKey{Name: "acm-observability-alert-rules",
+		Namespace: "openshift-monitoring"}, promRule)
+	if err == nil {
+		err = r.Client.Delete(ctx, promRule)
+		if err != nil {
+			log.Error(err, "Failed to delete PrometheusRule in openshift-monitoring namespace")
+			return err
+		}
+		log.Info("Deleted PrometheusRule from openshift-monitoring namespace")
+	} else if !apierrors.IsNotFound(err) {
+		log.Error(err, "Failed to fetch PrometheusRule")
+		return err
+	}
+
+	return nil
+}
+
+func (r *MultiClusterObservabilityReconciler) deleteServiceMonitorInOpenshiftMonitoringNamespace(ctx context.Context) error {
+	serviceMonitorList := &monitoringv1.ServiceMonitorList{}
+	err := r.Client.List(ctx, serviceMonitorList, client.InNamespace("openshift-monitoring"))
+	if !apierrors.IsNotFound(err) && err != nil {
+		log.Error(err, "Failed to fetch ServiceMonitors")
+		return err
+	}
+
+	for _, sm := range serviceMonitorList.Items {
+		if strings.HasPrefix(sm.Name, "observability-") {
+			err = r.Client.Delete(ctx, sm)
+			if err != nil {
+				log.Error(err, "Failed to delete ServiceMonitor", "ServiceMonitorName", sm.Name)
+				return err
+			}
+			log.Info("Deleted ServiceMonitor", "ServiceMonitorName", sm.Name)
+		}
+	}
+	return nil
 }
