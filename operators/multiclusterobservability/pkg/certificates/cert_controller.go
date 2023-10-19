@@ -58,11 +58,15 @@ func Start(c client.Client, ingressCtlCrdExists bool) {
 		os.Exit(1)
 	}
 
-	err = addonMgr.Start(context.TODO())
-	if err != nil {
-		log.Error(err, "Failed to start addon manager")
-		os.Exit(1)
-	}
+	go func() {
+		ctx := context.TODO()
+		err = addonMgr.Start(ctx)
+		if err != nil {
+			log.Error(err, "Failed to start addon manager")
+			os.Exit(1)
+		}
+		<-ctx.Done()
+	}()
 
 	kubeClient, err := kubernetes.NewForConfig(ctrl.GetConfigOrDie())
 	if err != nil {
