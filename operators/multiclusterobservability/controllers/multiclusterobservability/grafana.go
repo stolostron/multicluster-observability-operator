@@ -39,28 +39,28 @@ type GrafanaDatasources struct {
 }
 
 type GrafanaDatasource struct {
-	Access                string          `yaml:"access,omitempty"`
-	BasicAuth             bool            `yaml:"basicAuth,omitempty"`
-	BasicAuthPassword     string          `yaml:"basicAuthPassword,omitempty"`
-	BasicAuthUser         string          `yaml:"basicAuthUser,omitempty"`
-	Editable              bool            `yaml:"editable,omitempty"`
-	IsDefault             bool            `yaml:"isDefault,omitempty"`
-	Name                  string          `yaml:"name,omitempty"`
-	OrgID                 int             `yaml:"orgId,omitempty"`
-	Type                  string          `yaml:"type,omitempty"`
-	URL                   string          `yaml:"url,omitempty"`
-	CustomQueryParameters string          `yaml:"customQueryParameters,omitempty"`
-	Version               int             `yaml:"version,omitempty"`
-	JSONData              *JsonData       `yaml:"jsonData,omitempty"`
-	SecureJSONData        *SecureJsonData `yaml:"secureJsonData,omitempty"`
+	Access            string          `yaml:"access,omitempty"`
+	BasicAuth         bool            `yaml:"basicAuth,omitempty"`
+	BasicAuthPassword string          `yaml:"basicAuthPassword,omitempty"`
+	BasicAuthUser     string          `yaml:"basicAuthUser,omitempty"`
+	Editable          bool            `yaml:"editable,omitempty"`
+	IsDefault         bool            `yaml:"isDefault,omitempty"`
+	Name              string          `yaml:"name,omitempty"`
+	OrgID             int             `yaml:"orgId,omitempty"`
+	Type              string          `yaml:"type,omitempty"`
+	URL               string          `yaml:"url,omitempty"`
+	Version           int             `yaml:"version,omitempty"`
+	JSONData          *JsonData       `yaml:"jsonData,omitempty"`
+	SecureJSONData    *SecureJsonData `yaml:"secureJsonData,omitempty"`
 }
 
 type JsonData struct {
-	TLSAuth      bool   `yaml:"tlsAuth,omitempty"`
-	TLSAuthCA    bool   `yaml:"tlsAuthWithCACert,omitempty"`
-	QueryTimeout string `yaml:"queryTimeout,omitempty"`
-	HttpMethod   string `yaml:"httpMethod,omitempty"`
-	TimeInterval string `yaml:"timeInterval,omitempty"`
+	TLSAuth               bool   `yaml:"tlsAuth,omitempty"`
+	TLSAuthCA             bool   `yaml:"tlsAuthWithCACert,omitempty"`
+	QueryTimeout          string `yaml:"queryTimeout,omitempty"`
+	HttpMethod            string `yaml:"httpMethod,omitempty"`
+	TimeInterval          string `yaml:"timeInterval,omitempty"`
+	CustomQueryParameters string `yaml:"customQueryParameters,omitempty"`
 }
 
 type SecureJsonData struct {
@@ -95,10 +95,10 @@ func GenerateGrafanaDataSource(
 					config.ProxyServiceName,
 					config.GetDefaultNamespace(),
 				),
-				CustomQueryParameters: "max_source_resolution=auto",
 				JSONData: &JsonData{
-					QueryTimeout: "300s",
-					TimeInterval: fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval),
+					QueryTimeout:          "300s",
+					CustomQueryParameters: "max_source_resolution=auto",
+					TimeInterval:          fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval),
 				},
 			},
 			{
@@ -111,10 +111,10 @@ func GenerateGrafanaDataSource(
 					config.ProxyServiceName,
 					config.GetDefaultNamespace(),
 				),
-				CustomQueryParameters: "max_source_resolution=auto",
 				JSONData: &JsonData{
-					QueryTimeout: "300s",
-					TimeInterval: fmt.Sprintf("%ds", DynamicTimeInterval),
+					QueryTimeout:          "300s",
+					CustomQueryParameters: "max_source_resolution=auto",
+					TimeInterval:          fmt.Sprintf("%ds", DynamicTimeInterval),
 				},
 			},
 		},
