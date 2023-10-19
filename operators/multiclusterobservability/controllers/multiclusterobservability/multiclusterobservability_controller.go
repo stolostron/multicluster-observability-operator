@@ -144,7 +144,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	StartStatusUpdate(r.Client, instance)
 
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
-	if os.Getenv("UNIT_TEST") != "true" {
+	if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
 		// start placement controller
 		err := placementctrl.StartPlacementController(r.Manager, r.CRDMap)
 		if err != nil {
