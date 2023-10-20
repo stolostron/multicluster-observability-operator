@@ -318,6 +318,7 @@ func main() {
 	}
 
 	setupLog.Info("starting manager")
+	setupLog.Info("Testing if my PR image is used for e2e test")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
