@@ -20,7 +20,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storev1 "k8s.io/api/storage/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -72,6 +71,7 @@ var (
 	isReceiveStorageSizeChanged      = false
 	isStoreStorageSizeChanged        = false
 	isLegacyResourceRemoved          = false
+	lastLogTime                      = time.Now()
 )
 
 // MultiClusterObservabilityReconciler reconciles a MultiClusterObservability object
@@ -170,6 +170,14 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	mchCrdExists := r.CRDMap[config.MCHCrdName]
 	// requeue after 10 seconds if the mch crd exists and image image manifests map is empty
 	if mchCrdExists && len(config.GetImageManifests()) == 0 {
+		currentTime := time.Now()
+
+		// Log the message if it has been longer than 5 minutes since the last log
+		if currentTime.Sub(lastLogTime) > 5*time.Minute {
+			reqLogger.Info("Waiting for the mch CR to be ready", "mchCrdExists", mchCrdExists, "imageManifests", len(config.GetImageManifests()))
+			lastLogTime = currentTime
+		}
+
 		// if the mch CR is not ready, then requeue the request after 10s
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
@@ -321,8 +329,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	if os.Getenv("UNIT_TEST") != "true" && !isLegacyResourceRemoved {
-		isLegacyResourceRemoved = true
+	if _, ok := os.LookupEnv("UNIT_TEST"); !ok && !isLegacyResourceRemoved {
 		// Delete PrometheusRule from openshift-monitoring namespace
 		if err := r.deleteSpecificPrometheusRule(ctx); err != nil {
 			reqLogger.Error(err, "Failed to delete the specific PrometheusRule in the openshift-monitoring namespace")
@@ -333,6 +340,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 			reqLogger.Error(err, "Failed to delete service monitor in the openshift-monitoring namespace")
 			return ctrl.Result{}, err
 		}
+		isLegacyResourceRemoved = true
 	}
 
 	//update status
@@ -626,19 +634,19 @@ func GenerateAlertmanagerRoute(
 		log.Info("BYO CA/Certificate found for the Route of Alertmanager, will using BYO CA/certificate for the Route of Alertmanager")
 		amRouteCA, ok := amRouteBYOCaSrt.Data["tls.crt"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("Invalid BYO CA for the Route of Alertmanager")
+			return &ctrl.Result{}, cerr.New("invalid BYO CA for the Route of Alertmanager")
 		}
 		amGateway.Spec.TLS.CACertificate = string(amRouteCA)
 
 		amRouteCert, ok := amRouteBYOCertSrt.Data["tls.crt"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("Invalid BYO Certificate for the Route of Alertmanager")
+			return &ctrl.Result{}, cerr.New("invalid BYO Certificate for the Route of Alertmanager")
 		}
 		amGateway.Spec.TLS.Certificate = string(amRouteCert)
 
 		amRouteCertKey, ok := amRouteBYOCertSrt.Data["tls.key"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("Invalid BYO Certificate Key for the Route of Alertmanager")
+			return &ctrl.Result{}, cerr.New("invalid BYO Certificate Key for the Route of Alertmanager")
 		}
 		amGateway.Spec.TLS.Key = string(amRouteCertKey)
 	}
@@ -720,19 +728,19 @@ func GenerateProxyRoute(
 		log.Info("BYO CA/Certificate found for the Route of Proxy, will using BYO CA/certificate for the Route of Proxy")
 		proxyRouteCA, ok := proxyRouteBYOCaSrt.Data["tls.crt"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("Invalid BYO CA for the Route of Proxy")
+			return &ctrl.Result{}, cerr.New("invalid BYO CA for the Route of Proxy")
 		}
 		proxyGateway.Spec.TLS.CACertificate = string(proxyRouteCA)
 
 		proxyRouteCert, ok := proxyRouteBYOCertSrt.Data["tls.crt"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("Invalid BYO Certificate for the Route of Proxy")
+			return &ctrl.Result{}, cerr.New("invalid BYO Certificate for the Route of Proxy")
 		}
 		proxyGateway.Spec.TLS.Certificate = string(proxyRouteCert)
 
 		proxyRouteCertKey, ok := proxyRouteBYOCertSrt.Data["tls.key"]
 		if !ok {
-			return &ctrl.Result{}, cerr.New("Invalid BYO Certificate Key for the Route of Proxy")
+			return &ctrl.Result{}, cerr.New("invalid BYO Certificate Key for the Route of Proxy")
 		}
 		proxyGateway.Spec.TLS.Key = string(proxyRouteCertKey)
 	}
@@ -826,7 +834,7 @@ func (r *MultiClusterObservabilityReconciler) ensureOpenShiftNamespaceLabel(ctx 
 	}
 
 	err := r.Client.Get(ctx, types.NamespacedName{Name: resNS}, existingNs)
-	if err != nil || errors.IsNotFound(err) {
+	if err != nil || apierrors.IsNotFound(err) {
 		log.Error(err, fmt.Sprintf("Failed to find namespace for Multicluster Operator: %s", resNS))
 		return reconcile.Result{Requeue: true}, err
 	}

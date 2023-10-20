@@ -61,14 +61,21 @@ func SetRequest(method string, url string, body io.Reader, retry int) ([]byte, i
 		resp, err = getHTTPClient().Do(req)
 	}
 
-	if resp != nil {
-		defer resp.Body.Close()
-		respBody, err := io.ReadAll(resp.Body)
-		if err != nil {
-			klog.Info("failed to parse response body ", "error ", err)
-		}
-		return respBody, resp.StatusCode
-	} else {
+	if resp == nil {
 		return nil, http.StatusNotFound
 	}
+
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			klog.Info("failed to close response body ", "error ", err)
+		}
+	}()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		klog.Info("failed to parse response body ", "error ", err)
+		return nil, resp.StatusCode
+	}
+	return respBody, resp.StatusCode
 }
