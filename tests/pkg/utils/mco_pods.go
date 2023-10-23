@@ -65,7 +65,14 @@ func GetPodLogs(
 		klog.Errorf("Failed to get logs for %s/%s in namespace %s due to %v", podName, containerName, namespace, err)
 		return "", err
 	}
-	defer podLogs.Close()
+
+	defer func() {
+		err := podLogs.Close()
+		if err != nil {
+			klog.Errorf("Failed to close pod logs due to %v", err)
+		}
+	}()
+
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, podLogs)
 	if err != nil {

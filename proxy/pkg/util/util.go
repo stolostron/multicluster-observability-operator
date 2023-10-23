@@ -427,7 +427,13 @@ func FetchUserProjectList(token string, url string) []string {
 		writeError(fmt.Sprintf("failed to send http request: %v", err))
 		return []string{}
 	}
-	defer resp.Body.Close()
+
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			klog.Errorf("failed to close response body: %v", err)
+		}
+	}()
 
 	var projects projectv1.ProjectList
 	err = json.NewDecoder(resp.Body).Decode(&projects)
@@ -451,9 +457,15 @@ func GetUserName(token string, url string) string {
 		writeError(fmt.Sprintf("failed to send http request: %v", err))
 		return ""
 	}
-	defer resp.Body.Close()
 
 	user := userv1.User{}
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			klog.Errorf("failed to close response body: %v", err)
+		}
+	}()
+
 	err = json.NewDecoder(resp.Body).Decode(&user)
 	if err != nil {
 		klog.Errorf("failed to decode response json body: %v", err)

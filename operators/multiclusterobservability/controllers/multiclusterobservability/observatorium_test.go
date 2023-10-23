@@ -11,7 +11,6 @@ import (
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -20,9 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
-	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
@@ -34,8 +32,8 @@ var (
 
 func TestNewVolumeClaimTemplate(t *testing.T) {
 	vct := newVolumeClaimTemplate("10Gi", "test")
-	if vct.Spec.AccessModes[0] != v1.ReadWriteOnce ||
-		vct.Spec.Resources.Requests[v1.ResourceStorage] != resource.MustParse("10Gi") {
+	if vct.Spec.AccessModes[0] != corev1.ReadWriteOnce ||
+		vct.Spec.Resources.Requests[corev1.ResourceStorage] != resource.MustParse("10Gi") {
 		t.Errorf("Failed to newVolumeClaimTemplate")
 	}
 }
@@ -81,7 +79,7 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	writeStorageS := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "write_name",
-			Namespace: config.GetDefaultNamespace(),
+			Namespace: mcoconfig.GetDefaultNamespace(),
 		},
 		Type: "Opaque",
 		Data: map[string][]byte{
@@ -120,7 +118,7 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	endpointS := &corev1.Secret{}
 	err := cl.Get(context.TODO(), types.NamespacedName{
 		Name:      endpointsConfigName,
-		Namespace: config.GetDefaultNamespace(),
+		Namespace: mcoconfig.GetDefaultNamespace(),
 	}, endpointS)
 	if err != nil {
 		t.Errorf("Failed to get endpoint config secret due to %v", err)
@@ -214,7 +212,7 @@ func TestGetTLSSecretMountPath(t *testing.T) {
 	testCaseList := []struct {
 		name        string
 		secret      *corev1.Secret
-		storeConfig *oashared.PreConfiguredStorage
+		storeConfig *mcoshared.PreConfiguredStorage
 		expected    string
 	}{
 
@@ -223,7 +221,7 @@ func TestGetTLSSecretMountPath(t *testing.T) {
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
-					Namespace: config.GetDefaultNamespace(),
+					Namespace: mcoconfig.GetDefaultNamespace(),
 				},
 				Type: "Opaque",
 				Data: map[string][]byte{
@@ -234,7 +232,7 @@ config:
 `),
 				},
 			},
-			&oashared.PreConfiguredStorage{
+			&mcoshared.PreConfiguredStorage{
 				Key:  "thanos.yaml",
 				Name: "test",
 			},
@@ -245,7 +243,7 @@ config:
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-1",
-					Namespace: config.GetDefaultNamespace(),
+					Namespace: mcoconfig.GetDefaultNamespace(),
 				},
 				Type: "Opaque",
 				Data: map[string][]byte{
@@ -263,7 +261,7 @@ config:
 `),
 				},
 			},
-			&oashared.PreConfiguredStorage{
+			&mcoshared.PreConfiguredStorage{
 				Key:  "thanos.yaml",
 				Name: "test-1",
 			},
@@ -274,7 +272,7 @@ config:
 			&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-2",
-					Namespace: config.GetDefaultNamespace(),
+					Namespace: mcoconfig.GetDefaultNamespace(),
 				},
 				Type: "Opaque",
 				Data: map[string][]byte{
@@ -292,7 +290,7 @@ config:
 `),
 				},
 			},
-			&oashared.PreConfiguredStorage{
+			&mcoshared.PreConfiguredStorage{
 				Key:  "thanos.yaml",
 				Name: "test-2",
 			},
@@ -307,6 +305,9 @@ config:
 			t.Errorf("failed to create object storage secret, due to %v", err)
 		}
 		path, err := getTLSSecretMountPath(client, c.storeConfig)
+		if err != nil {
+			t.Errorf("failed to get tls secret mount path, due to %v", err)
+		}
 		if path != c.expected {
 			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", c.name, path, c.expected)
 		}

@@ -44,7 +44,7 @@ func NewHypershiftTransformer(l log.Logger, c client.Client, labels map[string]s
 	//clusters := map[string]string{}
 	hClient := c
 	if hClient == nil {
-		if os.Getenv("UNIT_TEST") != "true" {
+		if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
 			config, err := clientcmd.BuildConfigFromFlags("", "")
 			if err != nil {
 				return nil, errors.New("failed to create the kube config")
