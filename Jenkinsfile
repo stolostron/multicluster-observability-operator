@@ -69,7 +69,7 @@ pipeline {
                     export AWS_SECRET_ACCESS_KEY="${params.AWS_SECRET_ACCESS_KEY}"
                 fi
                 
-                if [[ "${!params.USE_MINIO}" == true ]]; then
+                if [[ "${params.USE_MINIO}" == true ]]; then
                   export IS_CANARY_ENV=false
                 fi  
                 
