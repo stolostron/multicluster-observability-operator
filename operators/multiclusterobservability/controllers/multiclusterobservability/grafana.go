@@ -55,11 +55,12 @@ type GrafanaDatasource struct {
 }
 
 type JsonData struct {
-	TLSAuth      bool   `yaml:"tlsAuth,omitempty"`
-	TLSAuthCA    bool   `yaml:"tlsAuthWithCACert,omitempty"`
-	QueryTimeout string `yaml:"queryTimeout,omitempty"`
-	HttpMethod   string `yaml:"httpMethod,omitempty"`
-	TimeInterval string `yaml:"timeInterval,omitempty"`
+	TLSAuth               bool   `yaml:"tlsAuth,omitempty"`
+	TLSAuthCA             bool   `yaml:"tlsAuthWithCACert,omitempty"`
+	QueryTimeout          string `yaml:"queryTimeout,omitempty"`
+	HttpMethod            string `yaml:"httpMethod,omitempty"`
+	TimeInterval          string `yaml:"timeInterval,omitempty"`
+	CustomQueryParameters string `yaml:"customQueryParameters,omitempty"`
 }
 
 type SecureJsonData struct {
@@ -95,8 +96,9 @@ func GenerateGrafanaDataSource(
 					config.GetDefaultNamespace(),
 				),
 				JSONData: &JsonData{
-					QueryTimeout: "300s",
-					TimeInterval: fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval),
+					QueryTimeout:          "300s",
+					CustomQueryParameters: "max_source_resolution=auto",
+					TimeInterval:          fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval),
 				},
 			},
 			{
@@ -110,8 +112,9 @@ func GenerateGrafanaDataSource(
 					config.GetDefaultNamespace(),
 				),
 				JSONData: &JsonData{
-					QueryTimeout: "300s",
-					TimeInterval: fmt.Sprintf("%ds", DynamicTimeInterval),
+					QueryTimeout:          "300s",
+					CustomQueryParameters: "max_source_resolution=auto",
+					TimeInterval:          fmt.Sprintf("%ds", DynamicTimeInterval),
 				},
 			},
 		},
