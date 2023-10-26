@@ -58,6 +58,8 @@ pipeline {
                 export SKIP_INSTALL_STEP="${params.SKIP_INSTALL_STEP}"
                 export SKIP_UNINSTALL_STEP="${params.SKIP_UNINSTALL_STEP}"
                 export TAGGING="${params.TAGGING}"
+                export USE_MINIO="${params.USE_MINIO}"
+                export IS_CANARY_ENV=true
                 
                 if [[ -n "${params.AWS_ACCESS_KEY_ID}" ]]; then
                     export AWS_ACCESS_KEY_ID="${params.AWS_ACCESS_KEY_ID}"
@@ -67,8 +69,8 @@ pipeline {
                     export AWS_SECRET_ACCESS_KEY="${params.AWS_SECRET_ACCESS_KEY}"
                 fi
                 
-                if [[ "${!params.USE_MINIO}" == false ]]; then
-                  export IS_CANARY_ENV=true
+                if [[ "${params.USE_MINIO}" == true ]]; then
+                  export IS_CANARY_ENV=false
                 fi  
                 
                 if [[ -z "${HUB_CLUSTER_NAME}" || -z "${BASE_DOMAIN}" || -z "${OC_CLUSTER_USER}" || -z "${OC_HUB_CLUSTER_PASS}" || -z "${OC_HUB_CLUSTER_API_URL}" ]]; then
