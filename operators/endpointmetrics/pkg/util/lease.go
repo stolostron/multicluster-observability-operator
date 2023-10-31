@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	leaseName = "observability-controller" //nolint:gosec
+	leaseName = "observability-controller" // #nosec G101  -- false positive, not a hardcoded credential
 )
 
 var (
