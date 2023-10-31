@@ -8,17 +8,18 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
 
 const (
-	ObservabilityController       = "observability-controller"
+	ObservabilityController       = "observability-controller" //nolint:gosec
 	AddonGroup                    = "addon.open-cluster-management.io"
 	AddonDeploymentConfigResource = "addondeploymentconfigs"
 	grafanaLink                   = "/d/2b679d600f3b9e7676a7c5ac3643d448/acm-clusters-overview"

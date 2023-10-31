@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	ManagedClusterAddonName = "observability-controller"
+	ManagedClusterAddonName = "observability-controller" //nolint:gosec
 )
 
 var (

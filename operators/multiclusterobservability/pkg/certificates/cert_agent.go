@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	//nolint:gosec
 	addonName = "observability-controller"
 	agentName = "observability"
 )

@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	addonName          = "observability-controller"
+	addonName          = "observability-controller" //nolint:gosec
 	resRoleName        = "endpoint-observability-res-role"
 	resRoleBindingName = "endpoint-observability-res-rolebinding"
 	mcoRoleName        = "endpoint-observability-mco-role"

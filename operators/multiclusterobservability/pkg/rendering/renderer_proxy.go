@@ -125,7 +125,7 @@ func (r *MCORenderer) renderProxySecret(res *resource.Resource,
 		return nil, err
 	}
 
-	if u.GetName() == "rbac-proxy-cookie-secret" {
+	if u.GetName() == "rbac-proxy-cookie-secret" { //nolint:gosec
 		obj := util.GetK8sObj(u.GetKind())
 		err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, obj)
 		if err != nil {

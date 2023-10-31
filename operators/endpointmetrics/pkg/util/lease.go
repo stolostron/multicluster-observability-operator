@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	leaseName = "observability-controller"
+	leaseName = "observability-controller" //nolint:gosec
 )
 
 var (

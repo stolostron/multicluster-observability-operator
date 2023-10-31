@@ -136,8 +136,8 @@ const (
 	MemcachedExporterImgTag  = "v0.9.0"
 
 	GrafanaImgKey               = "grafana"
-	GrafanaDashboardLoaderName  = "grafana-dashboard-loader"
-	GrafanaDashboardLoaderKey   = "grafana_dashboard_loader"
+	GrafanaDashboardLoaderName  = "grafana-dashboard-loader" //nolint:gosec
+	GrafanaDashboardLoaderKey   = "grafana_dashboard_loader" //nolint:gosec
 	GrafanaCustomDashboardLabel = "grafana-custom-dashboard"
 
 	AlertManagerImgName           = "prometheus-alertmanager"
