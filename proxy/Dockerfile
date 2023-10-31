@@ -42,6 +42,9 @@ LABEL org.label-schema.vendor="Red Hat" \
     io.openshift.tags="$IMAGE_OPENSHIFT_TAGS"
 
 WORKDIR /
+
+USER 1001:1001
+
 COPY --from=builder /workspace/main rbac-query-proxy
 
 EXPOSE 3002

@@ -11,10 +11,11 @@ RUN microdnf install wget -y \
 RUN microdnf install tar gzip jq bc -y\
     && microdnf clean all
 
+USER 1001:1001
 
 RUN wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable-4.13/openshift-client-linux.tar.gz -P /ocp-tools
 WORKDIR /ocp-tools
-RUN chmod 777 /ocp-tools
+RUN chmod 644 /ocp-tools
 RUN tar xvf openshift-client-linux.tar.gz oc kubectl
 RUN rm openshift-client-linux.tar.gz
 RUN cp oc /usr/local/bin
@@ -38,7 +39,7 @@ RUN export matches=$(curl -L $METRICS_ALLOW_LIST_URL | $GOJSONTOYAML_BIN --yamlt
 
 
 COPY ./extract-metrics-data.sh /metrics-extractor/
-RUN chmod 777 /metrics-extractor
+RUN chmod 744 /metrics-extractor
 
 
 CMD [ "/bin/bash", "/metrics-extractor/extract-metrics-data.sh" ]

@@ -12,7 +12,7 @@ RUN go install github.com/onsi/ginkgo/ginkgo@v1.14.2 && go mod vendor && ginkgo 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
 # run as non-root
-USER nobody
+USER 1001:1001
 
 # expose env vars for runtime
 ENV KUBECONFIG "/opt/.kube/config"
