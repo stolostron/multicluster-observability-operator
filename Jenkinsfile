@@ -20,7 +20,7 @@ pipeline {
         string(name:'MANAGED_CLUSTER_USER', defaultValue: 'kubeadmin', description: 'Managed Cluster User Name')
         string(name:'MANAGED_CLUSTER_PASS', defaultValue: '', description: 'Managed cluster Password')
         string(name:'MANAGED_CLUSTER_API_URL', defaultValue: '', description: 'Managed cluster API URL')
-        string(name:'BUCKET', defaultValue: 'obs-v1', description: 'Bucket name')
+        string(name:'BUCKET', defaultValue: 'obs-auto-bucket', description: 'Bucket name')
         string(name:'REGION', defaultValue: 'us-east-1', description: 'Bucket region')
         password(name:'AWS_ACCESS_KEY_ID', defaultValue: '', description: 'AWS access key ID')
         password(name:'AWS_SECRET_ACCESS_KEY', defaultValue: '', description: 'AWS secret access key')
