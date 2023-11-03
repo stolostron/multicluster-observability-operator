@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	// #nosec G101  -- false positive, not a hardcoded credential
 	addonName = "observability-controller"
 	agentName = "observability"
 )

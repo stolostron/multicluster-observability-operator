@@ -136,8 +136,8 @@ const (
 	MemcachedExporterImgTag  = "v0.9.0"
 
 	GrafanaImgKey               = "grafana"
-	GrafanaDashboardLoaderName  = "grafana-dashboard-loader"
-	GrafanaDashboardLoaderKey   = "grafana_dashboard_loader"
+	GrafanaDashboardLoaderName  = "grafana-dashboard-loader" // #nosec G101  -- false positive, not a hardcoded credential
+	GrafanaDashboardLoaderKey   = "grafana_dashboard_loader" // #nosec G101  -- false positive, not a hardcoded credential
 	GrafanaCustomDashboardLabel = "grafana-custom-dashboard"
 
 	AlertManagerImgName           = "prometheus-alertmanager"
