@@ -47,6 +47,8 @@ RUN microdnf update &&\
     mkdir /licenses &&\
     microdnf clean all
 
+USER 1001:1001
+
 COPY --from=builder /workspace/metrics-collector /usr/bin/
 
 # standalone required parameters

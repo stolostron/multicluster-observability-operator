@@ -45,6 +45,8 @@ WORKDIR /
 
 RUN microdnf update -y && microdnf clean all
 
+USER 1001:1001
+
 COPY --from=builder /workspace/main grafana-dashboard-loader
 
 EXPOSE 3002
