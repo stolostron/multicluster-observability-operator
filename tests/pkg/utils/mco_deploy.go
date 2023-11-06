@@ -886,7 +886,7 @@ route:
 receivers:
   - name: default-receiver
     slack_configs:
-    - api_url: https://hooks.slack.com/services/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
+    - api_url: <SLACK_HOOK_URL>
       channel: team-observability-test
       footer: |
         {{ .CommonLabels.cluster }}

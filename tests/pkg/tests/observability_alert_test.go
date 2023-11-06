@@ -192,7 +192,9 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Stable] Should modify the SECRET: alertmanager-config (alert/g0)", func() {
+	// This test is skipped because it was using a Slack hook url that should be private and it triggered a security
+	// warning.
+	XIt("[P2][Sev2][observability][Stable] Should modify the SECRET: alertmanager-config (alert/g0)", func() {
 		By("Editing the secret, we should be able to add the third partying tools integrations")
 		secret := utils.CreateCustomAlertConfigYaml(testOptions.HubCluster.BaseDomain)
 
