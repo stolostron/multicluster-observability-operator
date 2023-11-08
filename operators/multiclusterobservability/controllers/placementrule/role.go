@@ -1,5 +1,5 @@
-// Copyright (c) 2021 Red Hat, Inc.
-// Copyright Contributors to the Open Cluster Management project
+// Copyright (c) Red Hat, Inc.
+// Licensed under the Apache License 2.0
 
 package placementrule
 
@@ -184,12 +184,16 @@ func createResourceRole(c client.Client) error {
 				Resources: []string{
 					"managedclusteraddons",
 					"managedclusteraddons/status",
+					"managedclusteraddons/finalizers",
 				},
 				Verbs: []string{
 					"watch",
 					"list",
 					"get",
 					"update",
+					"patch",
+					"delete",
+					"create",
 				},
 				APIGroups: []string{
 					"addon.open-cluster-management.io",
