@@ -324,6 +324,7 @@ spec:
           - delete
           - get
           - list
+          - patch
         - apiGroups:
           - migration.k8s.io
           resources:
