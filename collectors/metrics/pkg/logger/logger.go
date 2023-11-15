@@ -1,10 +1,8 @@
 package logger
 
 import (
-	"fmt"
-
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 )
 
 type LogLevel string
@@ -34,27 +32,15 @@ func LogLevelFromString(l string) level.Option {
 
 // Log is used to handle the error of logger.Log globally
 func Log(log log.Logger, l LogLevel, keyvals ...interface{}) {
-	errkey := "failover_err_%d"
 	switch l {
+	// ignore errors during logging
 	case Debug:
-		err := level.Debug(log).Log(keyvals...)
-		if err != nil {
-			fmt.Sprintf(errkey, err)
-		}
+		_ = level.Debug(log).Log(keyvals...)
 	case Info:
-		err := level.Info(log).Log(keyvals...)
-		if err != nil {
-			fmt.Sprintf(errkey, err)
-		}
+		_ = level.Info(log).Log(keyvals...)
 	case Warn:
-		err := level.Warn(log).Log(keyvals...)
-		if err != nil {
-			fmt.Sprintf(errkey, err)
-		}
+		_ = level.Warn(log).Log(keyvals...)
 	case Error:
-		err := level.Error(log).Log(keyvals...)
-		if err != nil {
-			fmt.Sprintf(errkey, err)
-		}
+		_ = level.Error(log).Log(keyvals...)
 	}
 }

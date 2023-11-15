@@ -98,7 +98,7 @@ func New(cfg forwarder.Config) (*Evaluator, error) {
 		logger:       log.With(cfg.Logger, "component", "collectrule/evaluator"),
 	}
 
-	if err := unmarshalCollectorRules(evaluator); err != nil {
+	if err := unmarshalCollectorRules(&evaluator); err != nil {
 		return nil, err
 	}
 
@@ -128,7 +128,7 @@ func (e *Evaluator) Reconfigure(cfg forwarder.Config) error {
 	e.interval = evaluator.interval
 	e.from = evaluator.from
 	e.collectRules = evaluator.collectRules
-	if err = unmarshalCollectorRules(*e); err != nil {
+	if err = unmarshalCollectorRules(e); err != nil {
 		return err
 	}
 
@@ -159,7 +159,7 @@ func (e *Evaluator) Run(ctx context.Context) {
 	}
 }
 
-func unmarshalCollectorRules(e Evaluator) error {
+func unmarshalCollectorRules(e *Evaluator) error {
 	rules = []CollectRule{}
 	for _, ruleStr := range e.collectRules {
 		rule := &CollectRule{}
@@ -255,10 +255,10 @@ func evaluateRule(logger log.Logger, r CollectRule, metrics []*clientmodel.Metri
 	now := time.Now()
 	pendings := map[uint64]string{}
 	firings := map[uint64]string{}
-	for k, _ := range (*pendingRules[r.Name]).triggerTime {
+	for k := range (*pendingRules[r.Name]).triggerTime {
 		pendings[k] = ""
 	}
-	for k, _ := range (*firingRules[r.Name]).triggerTime {
+	for k := range (*firingRules[r.Name]).triggerTime {
 		firings[k] = ""
 	}
 	for _, metric := range metrics {
@@ -307,10 +307,10 @@ func evaluateRule(logger log.Logger, r CollectRule, metrics []*clientmodel.Metri
 			}
 		}
 	}
-	for k, _ := range pendings {
+	for k := range pendings {
 		delete((*pendingRules[r.Name]).triggerTime, k)
 	}
-	for k, _ := range firings {
+	for k := range firings {
 		if (*firingRules[r.Name]).resolveTime[k] == nil {
 			(*firingRules[r.Name]).resolveTime[k] = &now
 		} else if time.Since(*(*firingRules[r.Name]).resolveTime[k]) >= expireDuration {

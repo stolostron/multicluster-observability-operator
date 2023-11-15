@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-kit/kit/log"
 	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
-	clientmodel "github.com/prometheus/client_model/go"
 	prom "github.com/prometheus/client_model/go"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
@@ -38,21 +37,20 @@ type hypershiftTransformer struct {
 
 func NewHypershiftTransformer(l log.Logger, c client.Client, labels map[string]string) (Transformer, error) {
 
-	clusters := map[string]string{}
 	hClient := c
 	if hClient == nil {
 		if os.Getenv("UNIT_TEST") != "true" {
 			config, err := clientcmd.BuildConfigFromFlags("", "")
 			if err != nil {
-				return nil, errors.New("Failed to create the kube config")
+				return nil, errors.New("failed to create the kube config")
 			}
 			s := scheme.Scheme
 			if err := hyperv1.AddToScheme(s); err != nil {
-				return nil, errors.New("Failed to add observabilityaddon into scheme")
+				return nil, errors.New("failed to add observabilityaddon into scheme")
 			}
 			hClient, err = client.New(config, client.Options{Scheme: s})
 			if err != nil {
-				return nil, errors.New("Failed to create the kube client")
+				return nil, errors.New("failed to create the kube client")
 			}
 		} else {
 			s := scheme.Scheme
@@ -94,7 +92,7 @@ func (h *hypershiftTransformer) Transform(family *prom.MetricFamily) (bool, erro
 				if err != nil {
 					return false, err
 				}
-				overrides := map[string]*clientmodel.LabelPair{
+				overrides := map[string]*prom.LabelPair{
 					MANAGEMENT_CLUSTER_LABEL:    {Name: &MANAGEMENT_CLUSTER_LABEL, Value: &h.managementCluster},
 					MANAGEMENT_CLUSTER_ID_LABEL: {Name: &MANAGEMENT_CLUSTER_ID_LABEL, Value: &h.managementClusterID},
 					CLUSTER_ID_LABEL:            {Name: &CLUSTER_ID_LABEL, Value: &id},
@@ -131,7 +129,7 @@ func getClusterName(h *hypershiftTransformer, id string) (string, error) {
 		}
 		clusterName, ok = h.hostedClusters[id]
 		if !ok {
-			return "", errors.New(fmt.Sprintf("Failed to find HosteCluster with id: %s", id))
+			return "", fmt.Errorf("failed to find HosteCluster with id: %s", id)
 		}
 	}
 	return clusterName, nil

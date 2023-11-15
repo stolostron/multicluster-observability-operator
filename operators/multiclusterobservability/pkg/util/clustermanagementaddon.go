@@ -102,6 +102,9 @@ func newClusterManagementAddon(c client.Client, isStandalone bool) (*addonv1alph
 				DisplayName: clusterManagementAddOnSpec.DisplayName,
 				Description: clusterManagementAddOnSpec.Description,
 			},
+			InstallStrategy: addonv1alpha1.InstallStrategy{
+				Type: addonv1alpha1.AddonInstallStrategyManual,
+			},
 			AddOnConfiguration: addonv1alpha1.ConfigCoordinates{
 				CRDName: clusterManagementAddOnSpec.CRDName,
 			},
