@@ -2,6 +2,7 @@ kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: open-cluster-management-observability:observatorium-monitoring
+  namespace: open-cluster-management-observability
 rules:
   - verbs:
       - get

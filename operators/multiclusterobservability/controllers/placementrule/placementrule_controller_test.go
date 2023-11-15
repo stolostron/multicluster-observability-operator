@@ -5,6 +5,7 @@ package placementrule
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -125,6 +126,38 @@ func newConsoleRoute() *routev1.Route {
 	}
 }
 
+func setupTest(t *testing.T) func() {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get work dir: (%v)", err)
+	}
+	t.Log("begin setupTest")
+	os.MkdirAll(path.Join(wd, "../../tests"), 0755)
+	testManifestsPath := path.Join(wd, "../../tests/manifests")
+	manifestsPath := path.Join(wd, "../../manifests")
+	os.Setenv("TEMPLATES_PATH", testManifestsPath)
+	templates.ResetTemplates()
+	//clean up the manifest path if left over from previous test
+	if err = os.Remove(testManifestsPath); err != nil {
+		t.Log(fmt.Sprintf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err))
+	}
+	err = os.Symlink(manifestsPath, testManifestsPath)
+	if err != nil {
+		t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
+	}
+	t.Log("setupTest done")
+
+	return func() {
+		t.Log("begin teardownTest")
+		if err = os.Remove(testManifestsPath); err != nil {
+			t.Log(fmt.Sprintf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err))
+		}
+		os.Remove(path.Join(wd, "../../tests"))
+		os.Unsetenv("TEMPLATES_PATH")
+		t.Log("teardownTest done")
+	}
+}
+
 func TestObservabilityAddonController(t *testing.T) {
 	s := scheme.Scheme
 	addonv1alpha1.AddToScheme(s)
@@ -146,22 +179,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		newAddonDeploymentConfig(defaultAddonConfigName, namespace), newAddonDeploymentConfig(addonConfigName, namespace)}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &PlacementRuleReconciler{Client: c, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get work dir: (%v)", err)
-	}
-	os.MkdirAll(path.Join(wd, "../../placementrule-tests"), 0755)
-	testManifestsPath := path.Join(wd, "../../placementrule-tests/manifests")
-	manifestsPath := path.Join(wd, "../../manifests")
-	os.Setenv("TEMPLATES_PATH", testManifestsPath)
-	templates.ResetTemplates()
-	if _, err := os.Stat(testManifestsPath); err == os.ErrNotExist {
-		err = os.Symlink(manifestsPath, testManifestsPath)
-		if err != nil {
-			t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
-		}
-	}
+	defer setupTest(t)()
 
 	req := ctrl.Request{
 		NamespacedName: types.NamespacedName{
@@ -174,7 +192,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		namespace:  "4",
 		namespace2: "4",
 	}
-	_, err = r.Reconcile(context.TODO(), req)
+	_, err := r.Reconcile(context.TODO(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
@@ -461,15 +479,6 @@ func TestObservabilityAddonController(t *testing.T) {
 			}
 		}
 	}
-
-	// remove the testing manifests directory
-	_, err = os.Stat(testManifestsPath)
-	if err == nil {
-		if err = os.Remove(testManifestsPath); err != nil {
-			t.Fatalf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
-		}
-	}
-	os.Remove(path.Join(wd, "../../placementrule-tests"))
 }
 
 func newManagedClusterAddon() *addonv1alpha1.ManagedClusterAddOn {
