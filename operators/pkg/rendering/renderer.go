@@ -1,14 +1,15 @@
-// Copyright (c) 2021 Red Hat, Inc.
+// Copyright (c) Red Hat, Inc.
 // Copyright Contributors to the Open Cluster Management project
+// Licensed under the Apache License 2.0
 
 package rendering
 
 import (
-	"fmt"
+	"errors"
 	"strconv"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"sigs.k8s.io/kustomize/v3/pkg/resource"
+	"sigs.k8s.io/kustomize/api/resource"
 )
 
 const (
@@ -54,7 +55,11 @@ func (r *Renderer) RenderTemplates(
 	for _, template := range templates {
 		render, ok := r.renderFns[template.GetKind()]
 		if !ok {
-			uobjs = append(uobjs, &unstructured.Unstructured{Object: template.Map()})
+			m, err := template.Map()
+			if err != nil {
+				return []*unstructured.Unstructured{}, err
+			}
+			uobjs = append(uobjs, &unstructured.Unstructured{Object: m})
 			continue
 		}
 		uobj, err := render(template.DeepCopy(), namespace, labels)
@@ -76,13 +81,14 @@ func (r *Renderer) RenderDeployments(
 	namespace string,
 	labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	/* 	err := patching.ApplyGlobalPatches(res, r.cr)
-	   	if err != nil {
-	   		return nil, err
-	   	} */
-
-	res.SetNamespace(namespace)
-	u := &unstructured.Unstructured{Object: res.Map()}
+	if err := res.SetNamespace(namespace); err != nil {
+		return nil, err
+	}
+	m, err := res.Map()
+	if err != nil {
+		return nil, err
+	}
+	u := &unstructured.Unstructured{Object: m}
 	return u, nil
 }
 
@@ -91,9 +97,16 @@ func (r *Renderer) RenderNamespace(
 	namespace string,
 	labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u := &unstructured.Unstructured{Object: res.Map()}
+	m, err := res.Map()
+	if err != nil {
+		return nil, err
+	}
+	u := &unstructured.Unstructured{Object: m}
 	if UpdateNamespace(u) {
-		res.SetNamespace(namespace)
+		u.SetNamespace(namespace)
+		if err := res.SetNamespace(namespace); err != nil {
+			return nil, err
+		}
 	}
 
 	return u, nil
@@ -104,7 +117,11 @@ func (r *Renderer) RenderClusterRole(
 	namespace string,
 	labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u := &unstructured.Unstructured{Object: res.Map()}
+	m, err := res.Map()
+	if err != nil {
+		return nil, err
+	}
+	u := &unstructured.Unstructured{Object: m}
 
 	cLabels := u.GetLabels()
 	if cLabels == nil {
@@ -123,7 +140,11 @@ func (r *Renderer) RenderClusterRoleBinding(
 	namespace string,
 	labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u := &unstructured.Unstructured{Object: res.Map()}
+	m, err := res.Map()
+	if err != nil {
+		return nil, err
+	}
+	u := &unstructured.Unstructured{Object: m}
 
 	cLabels := u.GetLabels()
 	if cLabels == nil {
@@ -136,7 +157,7 @@ func (r *Renderer) RenderClusterRoleBinding(
 
 	subjects, ok := u.Object["subjects"].([]interface{})
 	if !ok {
-		return nil, fmt.Errorf("failed to find clusterrolebinding subjects field")
+		return nil, errors.New("failed to find clusterrolebinding subjects field")
 	}
 	subject := subjects[0].(map[string]interface{})
 	kind := subject["kind"]
@@ -146,12 +167,13 @@ func (r *Renderer) RenderClusterRoleBinding(
 
 	if UpdateNamespace(u) {
 		subject["namespace"] = namespace
+		u.SetNamespace(namespace)
 	}
 
 	return u, nil
 }
 
-// UpdateNamespace checks for annotiation to update NS
+// UpdateNamespace checks for annotiation to update NS.
 func UpdateNamespace(u *unstructured.Unstructured) bool {
 	annotations := u.GetAnnotations()
 	v, ok := annotations[nsUpdateAnnoKey]

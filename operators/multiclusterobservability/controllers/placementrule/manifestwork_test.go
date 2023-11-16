@@ -1,5 +1,6 @@
-// Copyright (c) 2021 Red Hat, Inc.
+// Copyright (c) Red Hat, Inc.
 // Copyright Contributors to the Open Cluster Management project
+// Licensed under the Apache License 2.0
 
 package placementrule
 
@@ -7,8 +8,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"os"
-	"path"
 	"strings"
 	"testing"
 
@@ -281,8 +280,7 @@ func TestGetAllowList(t *testing.T) {
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	_, _, cc, err := util.GetAllowList(c, config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
 	if err == nil {
-		t.Fatalf("the cm is %v", cc)
-		t.Fatalf("The yaml marshall error is ignored")
+		t.Fatalf("the cm is %v, The yaml marshall error is ignored", cc)
 	}
 }
 
@@ -306,18 +304,9 @@ func TestManifestWork(t *testing.T) {
 		newPullSecret("custorm_pull_secret", namespace, []byte("custorm")),
 	}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get work dir: (%v)", err)
-	}
-	os.MkdirAll(path.Join(wd, "../../tests"), 0755)
-	testManifestsPath := path.Join(wd, "../../tests/manifests")
-	manifestsPath := path.Join(wd, "../../manifests")
-	os.Setenv("TEMPLATES_PATH", testManifestsPath)
-	err = os.Symlink(manifestsPath, testManifestsPath)
-	if err != nil {
-		t.Fatalf("Failed to create symbollink(%s) to(%s) for the test manifests: (%v)", testManifestsPath, manifestsPath, err)
-	}
+
+	defer setupTest(t)()
+
 	works, crdWork, _, err := generateGlobalManifestResources(c, newTestMCO())
 	if err != nil {
 		t.Fatalf("Failed to get global manifestwork resource: (%v)", err)
@@ -457,11 +446,6 @@ func TestManifestWork(t *testing.T) {
 			}
 		}
 	}
-
-	if err = os.Remove(testManifestsPath); err != nil {
-		t.Fatalf("Failed to delete symbollink(%s) for the test manifests: (%v)", testManifestsPath, err)
-	}
-	os.Remove(path.Join(wd, "../../tests"))
 }
 
 func TestLogSizeErrorDetails(t *testing.T) {

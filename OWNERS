@@ -1,7 +1,9 @@
 approvers:
 - dislbenn
 - marcolan018
-- ngraham20
+- saswatamcode
+- philipgough
+- douglascamata
 - subbarao-meduri
 - bjoydeep
 
@@ -9,4 +11,4 @@ reviewers:
 - clyang82
 - haoqing0110
 - morvencao
-- songleo
+- ngraham20
