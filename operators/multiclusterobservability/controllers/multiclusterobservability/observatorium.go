@@ -460,7 +460,7 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 				data, ok := storageSecret.Data[storageConfig.Key]
 				if !ok {
 					log.Error(err, "Invalid key in secret", "name", storageConfig.Name, "key", storageConfig.Key)
-					return apiSpec, errors.New(fmt.Sprintf("Invalid key %s in secret %s", storageConfig.Key, storageConfig.Name))
+					return apiSpec, fmt.Errorf("nvalid key %s in secret %s", storageConfig.Key, storageConfig.Name)
 				}
 				ep := &mcoutil.RemoteWriteEndpointWithSecret{}
 				err = yaml.Unmarshal(data, ep)

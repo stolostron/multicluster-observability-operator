@@ -10,7 +10,7 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/kustomize/v3/pkg/resource"
+	"sigs.k8s.io/kustomize/api/resource"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -72,14 +72,21 @@ func updateRes(r *resource.Resource,
 
 	kind := r.GetKind()
 	if kind != "ClusterRole" && kind != "ClusterRoleBinding" && kind != "CustomResourceDefinition" {
-		r.SetNamespace(spokeNameSpace)
+		if err := r.SetNamespace(spokeNameSpace); err != nil {
+			log.Error(err, "failed to set namespace")
+			return nil, err
+		}
 	}
 	obj := util.GetK8sObj(kind)
 	if kind == "CustomResourceDefinition" && r.GetGvk().Version == "v1beta1" {
 		obj = &apiextensionsv1beta1.CustomResourceDefinition{}
 	}
 	obj.GetObjectKind()
-	err := runtime.DefaultUnstructuredConverter.FromUnstructured(r.Map(), obj)
+	m, err := r.Map()
+	if err != nil {
+		return nil, err
+	}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(m, obj)
 	if err != nil {
 		log.Error(err, "failed to convert the resource", "resource", r.GetName())
 		return nil, err
