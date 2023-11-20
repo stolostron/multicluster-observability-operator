@@ -279,7 +279,12 @@ func newDefaultObservatoriumSpec(cl client.Client, mco *mcov1beta2.MultiClusterO
 		obs.ObjectStorageConfig.Thanos.Name = objStorageConf.Name
 		obs.ObjectStorageConfig.Thanos.Key = objStorageConf.Key
 		obs.ObjectStorageConfig.Thanos.TLSSecretName = objStorageConf.TLSSecretName
+
+		// Prefer using TLSSecretMountPath from the objstore config, rather than fetched one from secret.
 		obs.ObjectStorageConfig.Thanos.TLSSecretMountPath = tlsSecretMountPath
+		if objStorageConf.TLSSecretMountPath != "" {
+			obs.ObjectStorageConfig.Thanos.TLSSecretMountPath = objStorageConf.TLSSecretMountPath
+		}
 	}
 	return obs, nil
 }

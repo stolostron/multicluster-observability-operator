@@ -142,6 +142,9 @@ spec:
                         description: TLS secret contains the custom certificate for
                           the object store
                         type: string
+                      tlsSecretMountPath: 
+                        description: TLS secret mount path for the custom certificate for the object store
+                        type: string
                     required:
                     - key
                     - name
@@ -890,6 +893,9 @@ spec:
                         description: TLS secret contains the custom certificate for
                           the object store
                         type: string
+                      tlsSecretMountPath: 
+                        description: TLS secret mount path for the custom certificate for the object store
+                        type: string
                     required:
                     - key
                     - name
@@ -930,6 +936,9 @@ spec:
                         tlsSecretName:
                           description: TLS secret contains the custom certificate
                             for the object store
+                          type: string
+                        tlsSecretMountPath: 
+                          description: TLS secret mount path for the custom certificate for the object store
                           type: string
                       required:
                       - key
