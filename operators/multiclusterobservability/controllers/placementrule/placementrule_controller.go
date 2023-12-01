@@ -979,7 +979,8 @@ func StartPlacementController(mgr manager.Manager, crdMap map[string]bool) error
 func isReconcileRequired(request ctrl.Request, managedCluster string) bool {
 	if request.Name == config.MCOUpdatedRequestName ||
 		request.Name == config.MCHUpdatedRequestName ||
-		request.Name == config.ClusterManagementAddOnUpdateName {
+		request.Name == config.ClusterManagementAddOnUpdateName ||
+		request.Name == config.AddonDeploymentConfigUpdateName {
 		return true
 	}
 	if request.Namespace == config.GetDefaultNamespace() ||
