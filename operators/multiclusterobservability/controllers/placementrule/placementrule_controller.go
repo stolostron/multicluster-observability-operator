@@ -539,7 +539,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	clusterPred := getClusterPreds()
 
-	// Watch chnages for AddonDeploymentConfig
+	// Watch changes for AddonDeploymentConfig
 	AddonDeploymentPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			if e.Object.GetName() == defaultAddonDeploymentConfig.Name &&
