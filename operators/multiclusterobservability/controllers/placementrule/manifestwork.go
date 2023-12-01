@@ -326,6 +326,7 @@ func createManifestWorks(
 			}
 
 			// If ProxyConfig is specified as part of addonConfig, set the proxy envs
+			//Coleen shouldnt this be out of th loop
 			if clusterName != localClusterName {
 				for i := range spec.Containers {
 					container := &spec.Containers[i]

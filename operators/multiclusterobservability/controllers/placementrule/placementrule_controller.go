@@ -539,6 +539,34 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	clusterPred := getClusterPreds()
 
+	// Watch chnages for AddonDeploymentConfig
+	AddonDeploymentPred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Object.GetName() == defaultAddonDeploymentConfig.Name &&
+				e.Object.GetNamespace() == defaultAddonDeploymentConfig.Namespace {
+				log.Info("default AddonDeploymentConfig is created")
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.ObjectNew.GetName() == defaultAddonDeploymentConfig.Name &&
+				e.ObjectNew.GetNamespace() == defaultAddonDeploymentConfig.Namespace {
+				log.Info("default AddonDeploymentConfig is updated")
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Object.GetName() == defaultAddonDeploymentConfig.Name &&
+				e.Object.GetNamespace() == defaultAddonDeploymentConfig.Namespace {
+				log.Info("default AddonDeploymentConfig is deleted")
+				return true
+			}
+			return false
+		},
+	}
+
 	obsAddonPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			return false
@@ -829,6 +857,20 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// secondary watch for alertmanager accessor serviceaccount
 		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred))
 
+	// watch for AddonDeploymentConfig
+	if _, err := r.RESTMapper.RESTMapping(schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "AddOnDeploymentConfig"}, addonv1alpha1.GroupVersion.Version); err == nil {
+		ctrBuilder = ctrBuilder.Watches(
+			&source.Kind{Type: &addonv1alpha1.AddOnDeploymentConfig{}},
+			handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+				return []reconcile.Request{
+					{NamespacedName: types.NamespacedName{
+						Name: config.AddonDeploymentConfigUpdateName,
+					}},
+				}
+			}),
+			builder.WithPredicates(AddonDeploymentPred),
+		)
+	}
 	manifestWorkGroupKind := schema.GroupKind{Group: workv1.GroupVersion.Group, Kind: "ManifestWork"}
 	if _, err := r.RESTMapper.RESTMapping(manifestWorkGroupKind, workv1.GroupVersion.Version); err == nil {
 		workPred := getManifestworkPred()
