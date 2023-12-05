@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
+
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -177,7 +179,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		},
 	}
 	objs := []runtime.Object{mco, pull, newConsoleRoute(), newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
-		NewAmAccessorSA(), NewAmAccessorTokenSecret(), newManagedClusterAddon(), deprecatedRole, newClusterMgmtAddon(),
+		NewAmAccessorSA(), NewAmAccessorTokenSecret(), deprecatedRole, newClusterMgmtAddon(),
 		newAddonDeploymentConfig(defaultAddonConfigName, namespace), newAddonDeploymentConfig(addonConfigName, namespace)}
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	r := &PlacementRuleReconciler{Client: c, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
@@ -232,6 +234,73 @@ func TestObservabilityAddonController(t *testing.T) {
 	_, err = r.Reconcile(context.TODO(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
+	}
+
+	foundAddonDeploymentConfig := &addonv1alpha1.AddOnDeploymentConfig{}
+	err = c.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: defaultAddonConfigName}, foundAddonDeploymentConfig)
+	if err != nil {
+		t.Fatalf("Failed to get addondeploymentconfig %s: (%v)", name, err)
+	}
+
+	_, err = r.Reconcile(context.TODO(), req)
+	if err != nil {
+		t.Fatalf("reconcile after updating addondeploymentconfig: (%v)", err)
+	}
+	//Change proxyconfig in addondeploymentconfig
+	foundAddonDeploymentConfig.Spec.ProxyConfig = addonv1alpha1.ProxyConfig{
+		HTTPProxy:  "http://test1.com",
+		HTTPSProxy: "https://test1.com",
+		NoProxy:    "test.com",
+	}
+
+	err = c.Update(context.TODO(), foundAddonDeploymentConfig)
+	if err != nil {
+		t.Fatalf("Failed to update addondeploymentconfig %s: (%v)", name, err)
+	}
+
+	req = ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Name: config.AddonDeploymentConfigUpdateName,
+		},
+	}
+
+	_, err = r.Reconcile(context.TODO(), req)
+	if err != nil {
+		t.Fatalf("reconcile after updating addondeploymentconfig: (%v)", err)
+	}
+
+	foundManifestwork := &workv1.ManifestWork{}
+	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + workNameSuffix, Namespace: namespace}, foundManifestwork)
+	if err != nil {
+		t.Fatalf("Failed to get manifestwork %s: (%v)", namespace, err)
+	}
+	for _, manifest := range foundManifestwork.Spec.Workload.Manifests {
+		obj, _ := util.GetObject(manifest.RawExtension)
+		if obj.GetObjectKind().GroupVersionKind().Kind == "Deployment" {
+			//Check the proxy env variables
+			deployment := obj.(*appsv1.Deployment)
+			spec := deployment.Spec.Template.Spec
+			for _, c := range spec.Containers {
+				if c.Name == "endpoint-observability-operator" {
+					env := c.Env
+					for _, e := range env {
+						if e.Name == "HTTP_PROXY" {
+							if e.Value != "http://test1.com" {
+								t.Fatalf("HTTP_PROXY is not set correctly: expected %s, got %s", "http://test1.com", e.Value)
+							}
+						} else if e.Name == "HTTPS_PROXY" {
+							if e.Value != "https://test1.com" {
+								t.Fatalf("HTTPS_PROXY is not set correctly: expected %s, got %s", "https://test1.com", e.Value)
+							}
+						} else if e.Name == "NO_PROXY" {
+							if e.Value != "test.com" {
+								t.Fatalf("NO_PROXY is not set correctly: expected %s, got %s", "test.com", e.Value)
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	err = c.Delete(context.TODO(), mco)
@@ -310,7 +379,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	// test mco-disable-alerting annotation
 	// 1. Verify that alertmanager-endpoint in secret hub-info-secret in the ManifestWork is not null
 	t.Logf("check alertmanager endpoint is not null")
-	foundManifestwork := &workv1.ManifestWork{}
+	foundManifestwork = &workv1.ManifestWork{}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: namespace + workNameSuffix, Namespace: namespace}, foundManifestwork)
 	if err != nil {
 		t.Fatalf("Failed to get manifestwork %s: (%v)", namespace, err)
@@ -552,6 +621,11 @@ func newAddonDeploymentConfig(name, namespace string) *addonv1alpha1.AddOnDeploy
 				NodeSelector: map[string]string{
 					"kubernetes.io/os": "linux",
 				},
+			},
+			ProxyConfig: addonv1alpha1.ProxyConfig{
+				HTTPProxy:  "http://foo.com",
+				HTTPSProxy: "https://foo.com",
+				NoProxy:    "bar.com",
 			},
 		},
 	}

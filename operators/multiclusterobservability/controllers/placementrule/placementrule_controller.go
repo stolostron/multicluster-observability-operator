@@ -542,12 +542,12 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// Watch changes for AddonDeploymentConfig
 	AddonDeploymentPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == defaultAddonDeploymentConfig.Name &&
-				e.Object.GetNamespace() == defaultAddonDeploymentConfig.Namespace {
-				log.Info("default AddonDeploymentConfig is created")
-				return true
-			}
-			return false
+			//if e.Object.GetName() == defaultAddonDeploymentConfig.Name &&
+			//	e.Object.GetNamespace() == defaultAddonDeploymentConfig.Namespace {
+			//	log.Info("default AddonDeploymentConfig is created")
+			//	return true
+			//}
+			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.ObjectNew.GetName() == defaultAddonDeploymentConfig.Name &&

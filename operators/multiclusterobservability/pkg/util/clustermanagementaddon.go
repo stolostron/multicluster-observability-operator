@@ -40,6 +40,7 @@ func CreateClusterManagementAddon(c client.Client) (
 	found := &addonv1alpha1.ClusterManagementAddOn{}
 	err = c.Get(context.TODO(), types.NamespacedName{Name: ObservabilityController}, found)
 	if err != nil && errors.IsNotFound(err) {
+
 		if err := c.Create(context.TODO(), clusterManagementAddon); err != nil {
 			log.Error(err, "Failed to create observability-controller clustermanagementaddon ")
 			return nil, err
