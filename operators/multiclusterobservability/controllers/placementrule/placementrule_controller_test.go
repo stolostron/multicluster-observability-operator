@@ -242,10 +242,6 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("Failed to get addondeploymentconfig %s: (%v)", name, err)
 	}
 
-	//_, err = r.Reconcile(context.TODO(), req)
-	//if err != nil {
-	//	t.Fatalf("reconcile after updating addondeploymentconfig: (%v)", err)
-	//}
 	//Change proxyconfig in addondeploymentconfig
 	foundAddonDeploymentConfig.Spec.ProxyConfig = addonv1alpha1.ProxyConfig{
 		HTTPProxy:  "http://test1.com",
