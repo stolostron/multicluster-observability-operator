@@ -44,7 +44,7 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.27.2
-	open-cluster-management.io/addon-framework v0.8.0
+	open-cluster-management.io/addon-framework v0.8.1-0.20231128122622-3bfdbffb237c
 	open-cluster-management.io/api v0.12.1-0.20231130134655-97a8a92a7f30
 	sigs.k8s.io/controller-runtime v0.15.1
 	sigs.k8s.io/kube-storage-version-migrator v0.0.4
