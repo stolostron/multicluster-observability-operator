@@ -91,7 +91,12 @@ func getCommands(params CollectorParams) []string {
 		"--from=$(FROM)",
 		"--from-query=$(FROM_QUERY)",
 		"--to-upload=$(TO)",
-		"--to-upload-ca=/tlscerts/ca/ca.crt",
+		"--to-upload-ca=/tlscerts/ca/" + func() string {
+			if params.CABundle == "" {
+				return "ca.crt"
+			}
+			return params.CABundle
+		}(),
 		"--to-upload-cert=/tlscerts/certs/tls.crt",
 		"--to-upload-key=/tlscerts/certs/tls.key",
 		"--interval=" + interval,
@@ -349,11 +354,10 @@ func updateMetricsCollectors(ctx context.Context, c client.Client, obsAddonSpec 
 					params.httpProxy = env.Value
 				} else if env.Name == "HTTPS_PROXY" {
 					params.httpsProxy = env.Value
-					if env.Name == "HTTPS_PROXY_CA_BUNDLE" {
-						params.CABundle = env.Value
-					}
 				} else if env.Name == "NO_PROXY" {
 					params.noProxy = env.Value
+				} else if env.Name == "HTTPS_PROXY_CA_BUNDLE" {
+					params.CABundle = env.Value
 				}
 			}
 		}
