@@ -230,58 +230,58 @@ func (c *Client) Retrieve(ctx context.Context, req *http.Request) ([]*clientmode
 	return families, nil
 }
 
-//func (c *Client) Send(ctx context.Context, req *http.Request, families []*clientmodel.MetricFamily) error {
-//	buf := &bytes.Buffer{}
-//	if err := Write(buf, families); err != nil {
-//		return err
-//	}
-//
-//	if req.Header == nil {
-//		req.Header = make(http.Header)
-//	}
-//	req.Header.Set("Content-Type", string(expfmt.FmtProtoDelim))
-//	req.Header.Set("Content-Encoding", "snappy")
-//	req.Body = io.NopCloser(buf)
-//
-//	ctx, cancel := context.WithTimeout(ctx, c.timeout)
-//	req = req.WithContext(ctx)
-//	defer cancel()
-//	logger.Log(c.logger, logger.Debug, "msg", "start to send")
-//	return withCancel(ctx, c.client, req, func(resp *http.Response) error {
-//		defer func() {
-//			if _, err := io.Copy(io.Discard, resp.Body); err != nil {
-//				logger.Log(c.logger, logger.Error, "msg", "error copying body", "err", err)
-//			}
-//			if err := resp.Body.Close(); err != nil {
-//				logger.Log(c.logger, logger.Error, "msg", "error closing body", "err", err)
-//			}
-//		}()
-//		logger.Log(c.logger, logger.Debug, "msg", resp.StatusCode)
-//		switch resp.StatusCode {
-//		case http.StatusOK:
-//			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, "200").Inc()
-//		case http.StatusUnauthorized:
-//			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, "401").Inc()
-//			return fmt.Errorf("gateway server requires authentication: %s", resp.Request.URL)
-//		case http.StatusForbidden:
-//			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, "403").Inc()
-//			return fmt.Errorf("gateway server forbidden: %s", resp.Request.URL)
-//		case http.StatusBadRequest:
-//			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, "400").Inc()
-//			logger.Log(c.logger, logger.Debug, "msg", resp.Body)
-//			return fmt.Errorf("gateway server bad request: %s", resp.Request.URL)
-//		default:
-//			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
-//			body, _ := io.ReadAll(resp.Body)
-//			if len(body) > 1024 {
-//				body = body[:1024]
-//			}
-//			return fmt.Errorf("gateway server reported unexpected error code: %d: %s", resp.StatusCode, string(body))
-//		}
-//
-//		return nil
-//	})
-//}
+func (c *Client) Send(ctx context.Context, req *http.Request, families []*clientmodel.MetricFamily) error {
+	buf := &bytes.Buffer{}
+	if err := Write(buf, families); err != nil {
+		return err
+	}
+
+	if req.Header == nil {
+		req.Header = make(http.Header)
+	}
+	req.Header.Set("Content-Type", string(expfmt.FmtProtoDelim))
+	req.Header.Set("Content-Encoding", "snappy")
+	req.Body = io.NopCloser(buf)
+
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	req = req.WithContext(ctx)
+	defer cancel()
+	logger.Log(c.logger, logger.Debug, "msg", "start to send")
+	return withCancel(ctx, c.client, req, func(resp *http.Response) error {
+		defer func() {
+			if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+				logger.Log(c.logger, logger.Error, "msg", "error copying body", "err", err)
+			}
+			if err := resp.Body.Close(); err != nil {
+				logger.Log(c.logger, logger.Error, "msg", "error closing body", "err", err)
+			}
+		}()
+		logger.Log(c.logger, logger.Debug, "msg", resp.StatusCode)
+		switch resp.StatusCode {
+		case http.StatusOK:
+			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, "200").Inc()
+		case http.StatusUnauthorized:
+			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, "401").Inc()
+			return fmt.Errorf("gateway server requires authentication: %s", resp.Request.URL)
+		case http.StatusForbidden:
+			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, "403").Inc()
+			return fmt.Errorf("gateway server forbidden: %s", resp.Request.URL)
+		case http.StatusBadRequest:
+			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, "400").Inc()
+			logger.Log(c.logger, logger.Debug, "msg", resp.Body)
+			return fmt.Errorf("gateway server bad request: %s", resp.Request.URL)
+		default:
+			c.metrics.GaugeRequestSend.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
+			body, _ := io.ReadAll(resp.Body)
+			if len(body) > 1024 {
+				body = body[:1024]
+			}
+			return fmt.Errorf("gateway server reported unexpected error code: %d: %s", resp.StatusCode, string(body))
+		}
+
+		return nil
+	})
+}
 
 func Read(r io.Reader) ([]*clientmodel.MetricFamily, error) {
 	decompress := snappy.NewReader(r)
