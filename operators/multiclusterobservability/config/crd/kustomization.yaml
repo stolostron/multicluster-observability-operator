@@ -7,7 +7,8 @@ resources:
 - bases/core.observatorium.io_observatoria.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
-patchesStrategicMerge:
 # patches here are for enabling webhook with ocp service serving certificate.
-- patches/webhook_multiclusterobservabilities_cainjection_patch.yaml
-# +kubebuilder:scaffold:kustomizepatch
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+patches:
+- path: patches/webhook_multiclusterobservabilities_cainjection_patch.yaml
