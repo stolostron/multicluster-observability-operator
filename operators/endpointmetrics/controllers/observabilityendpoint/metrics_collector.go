@@ -91,11 +91,17 @@ func getCommands(params CollectorParams) []string {
 		"--from=$(FROM)",
 		"--from-query=$(FROM_QUERY)",
 		"--to-upload=$(TO)",
-		"--to-upload-ca=/tlscerts/ca/" + func() string {
+		"--to-upload-ca=" + func() string {
 			if params.CABundle == "" {
-				return "ca.crt"
+				return "/tlscerts/ca/ca.crt"
 			}
 			return params.CABundle
+		}(),
+		"--custom-ca=" + func() string {
+			if params.CABundle != "" {
+				return "true"
+			}
+			return "false"
 		}(),
 		"--to-upload-cert=/tlscerts/certs/tls.crt",
 		"--to-upload-key=/tlscerts/certs/tls.key",

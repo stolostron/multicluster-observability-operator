@@ -49,6 +49,7 @@ type Config struct {
 	FromTokenFile string
 	FromCAFile    string
 	ToUploadCA    string
+	IsCustomCA    bool
 	ToUploadCert  string
 	ToUploadKey   string
 
@@ -188,7 +189,7 @@ func createClients(cfg Config, metrics *metricsclient.ClientMetrics, interval ti
 
 	// Create the `toClient`.
 
-	toTransport, err := metricsclient.MTLSTransport(logger, cfg.ToUploadCA, cfg.ToUploadCert, cfg.ToUploadKey)
+	toTransport, err := metricsclient.MTLSTransport(logger, cfg.IsCustomCA, cfg.ToUploadCA, cfg.ToUploadCert, cfg.ToUploadKey)
 	if err != nil {
 		return nil, nil, transformer, fmt.Errorf("failed to create TLS transport: %w", err)
 	}
