@@ -20,10 +20,14 @@ spec:
         description: Observatorium is the Schema for the observatoria API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
@@ -31,32 +35,63 @@ spec:
             description: ObservatoriumSpec defines the desired state of Observatorium
             properties:
               affinity:
-                description: Affinity causes all components to be scheduled on nodes with matching rules.
+                description: Affinity causes all components to be scheduled on nodes
+                  with matching rules.
                 properties:
                   nodeAffinity:
-                    description: Describes node affinity scheduling rules for the pod.
+                    description: Describes node affinity scheduling rules for the
+                      pod.
                     properties:
                       preferredDuringSchedulingIgnoredDuringExecution:
-                        description: The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding "weight" to the sum if the node matches the corresponding matchExpressions; the node(s) with the highest sum are the most preferred.
+                        description: The scheduler will prefer to schedule pods to
+                          nodes that satisfy the affinity expressions specified by
+                          this field, but it may choose a node that violates one or
+                          more of the expressions. The node that is most preferred
+                          is the one with the greatest sum of weights, i.e. for each
+                          node that meets all of the scheduling requirements (resource
+                          request, requiredDuringScheduling affinity expressions,
+                          etc.), compute a sum by iterating through the elements of
+                          this field and adding "weight" to the sum if the node matches
+                          the corresponding matchExpressions; the node(s) with the
+                          highest sum are the most preferred.
                         items:
-                          description: An empty preferred scheduling term matches all objects with implicit weight 0 (i.e. it's a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op).
+                          description: An empty preferred scheduling term matches
+                            all objects with implicit weight 0 (i.e. it's a no-op).
+                            A null preferred scheduling term matches no objects (i.e.
+                            is also a no-op).
                           properties:
                             preference:
-                              description: A node selector term, associated with the corresponding weight.
+                              description: A node selector term, associated with the
+                                corresponding weight.
                               properties:
                                 matchExpressions:
-                                  description: A list of node selector requirements by node's labels.
+                                  description: A list of node selector requirements
+                                    by node's labels.
                                   items:
-                                    description: A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                    description: A node selector requirement is a
+                                      selector that contains values, a key, and an
+                                      operator that relates the key and values.
                                     properties:
                                       key:
-                                        description: The label key that the selector applies to.
+                                        description: The label key that the selector
+                                          applies to.
                                         type: string
                                       operator:
-                                        description: Represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
+                                        description: Represents a key's relationship
+                                          to a set of values. Valid operators are
+                                          In, NotIn, Exists, DoesNotExist. Gt, and
+                                          Lt.
                                         type: string
                                       values:
-                                        description: An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.
+                                        description: An array of string values. If
+                                          the operator is In or NotIn, the values
+                                          array must be non-empty. If the operator
+                                          is Exists or DoesNotExist, the values array
+                                          must be empty. If the operator is Gt or
+                                          Lt, the values array must have a single
+                                          element, which will be interpreted as an
+                                          integer. This array is replaced during a
+                                          strategic merge patch.
                                         items:
                                           type: string
                                         type: array
@@ -66,18 +101,33 @@ spec:
                                     type: object
                                   type: array
                                 matchFields:
-                                  description: A list of node selector requirements by node's fields.
+                                  description: A list of node selector requirements
+                                    by node's fields.
                                   items:
-                                    description: A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                    description: A node selector requirement is a
+                                      selector that contains values, a key, and an
+                                      operator that relates the key and values.
                                     properties:
                                       key:
-                                        description: The label key that the selector applies to.
+                                        description: The label key that the selector
+                                          applies to.
                                         type: string
                                       operator:
-                                        description: Represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
+                                        description: Represents a key's relationship
+                                          to a set of values. Valid operators are
+                                          In, NotIn, Exists, DoesNotExist. Gt, and
+                                          Lt.
                                         type: string
                                       values:
-                                        description: An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.
+                                        description: An array of string values. If
+                                          the operator is In or NotIn, the values
+                                          array must be non-empty. If the operator
+                                          is Exists or DoesNotExist, the values array
+                                          must be empty. If the operator is Gt or
+                                          Lt, the values array must have a single
+                                          element, which will be interpreted as an
+                                          integer. This array is replaced during a
+                                          strategic merge patch.
                                         items:
                                           type: string
                                         type: array
@@ -88,7 +138,8 @@ spec:
                                   type: array
                               type: object
                             weight:
-                              description: Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.
+                              description: Weight associated with matching the corresponding
+                                nodeSelectorTerm, in the range 1-100.
                               format: int32
                               type: integer
                           required:
@@ -97,26 +148,50 @@ spec:
                           type: object
                         type: array
                       requiredDuringSchedulingIgnoredDuringExecution:
-                        description: If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to an update), the system may or may not try to eventually evict the pod from its node.
+                        description: If the affinity requirements specified by this
+                          field are not met at scheduling time, the pod will not be
+                          scheduled onto the node. If the affinity requirements specified
+                          by this field cease to be met at some point during pod execution
+                          (e.g. due to an update), the system may or may not try to
+                          eventually evict the pod from its node.
                         properties:
                           nodeSelectorTerms:
-                            description: Required. A list of node selector terms. The terms are ORed.
+                            description: Required. A list of node selector terms.
+                              The terms are ORed.
                             items:
-                              description: A null or empty node selector term matches no objects. The requirements of them are ANDed. The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.
+                              description: A null or empty node selector term matches
+                                no objects. The requirements of them are ANDed. The
+                                TopologySelectorTerm type implements a subset of the
+                                NodeSelectorTerm.
                               properties:
                                 matchExpressions:
-                                  description: A list of node selector requirements by node's labels.
+                                  description: A list of node selector requirements
+                                    by node's labels.
                                   items:
-                                    description: A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                    description: A node selector requirement is a
+                                      selector that contains values, a key, and an
+                                      operator that relates the key and values.
                                     properties:
                                       key:
-                                        description: The label key that the selector applies to.
+                                        description: The label key that the selector
+                                          applies to.
                                         type: string
                                       operator:
-                                        description: Represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
+                                        description: Represents a key's relationship
+                                          to a set of values. Valid operators are
+                                          In, NotIn, Exists, DoesNotExist. Gt, and
+                                          Lt.
                                         type: string
                                       values:
-                                        description: An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.
+                                        description: An array of string values. If
+                                          the operator is In or NotIn, the values
+                                          array must be non-empty. If the operator
+                                          is Exists or DoesNotExist, the values array
+                                          must be empty. If the operator is Gt or
+                                          Lt, the values array must have a single
+                                          element, which will be interpreted as an
+                                          integer. This array is replaced during a
+                                          strategic merge patch.
                                         items:
                                           type: string
                                         type: array
@@ -126,18 +201,33 @@ spec:
                                     type: object
                                   type: array
                                 matchFields:
-                                  description: A list of node selector requirements by node's fields.
+                                  description: A list of node selector requirements
+                                    by node's fields.
                                   items:
-                                    description: A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                    description: A node selector requirement is a
+                                      selector that contains values, a key, and an
+                                      operator that relates the key and values.
                                     properties:
                                       key:
-                                        description: The label key that the selector applies to.
+                                        description: The label key that the selector
+                                          applies to.
                                         type: string
                                       operator:
-                                        description: Represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
+                                        description: Represents a key's relationship
+                                          to a set of values. Valid operators are
+                                          In, NotIn, Exists, DoesNotExist. Gt, and
+                                          Lt.
                                         type: string
                                       values:
-                                        description: An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.
+                                        description: An array of string values. If
+                                          the operator is In or NotIn, the values
+                                          array must be non-empty. If the operator
+                                          is Exists or DoesNotExist, the values array
+                                          must be empty. If the operator is Gt or
+                                          Lt, the values array must have a single
+                                          element, which will be interpreted as an
+                                          integer. This array is replaced during a
+                                          strategic merge patch.
                                         items:
                                           type: string
                                         type: array
@@ -153,32 +243,61 @@ spec:
                         type: object
                     type: object
                   podAffinity:
-                    description: Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, zone, etc. as some other pod(s)).
+                    description: Describes pod affinity scheduling rules (e.g. co-locate
+                      this pod in the same node, zone, etc. as some other pod(s)).
                     properties:
                       preferredDuringSchedulingIgnoredDuringExecution:
-                        description: The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding "weight" to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.
+                        description: The scheduler will prefer to schedule pods to
+                          nodes that satisfy the affinity expressions specified by
+                          this field, but it may choose a node that violates one or
+                          more of the expressions. The node that is most preferred
+                          is the one with the greatest sum of weights, i.e. for each
+                          node that meets all of the scheduling requirements (resource
+                          request, requiredDuringScheduling affinity expressions,
+                          etc.), compute a sum by iterating through the elements of
+                          this field and adding "weight" to the sum if the node has
+                          pods which matches the corresponding podAffinityTerm; the
+                          node(s) with the highest sum are the most preferred.
                         items:
-                          description: The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
+                          description: The weights of all of the matched WeightedPodAffinityTerm
+                            fields are added per-node to find the most preferred node(s)
                           properties:
                             podAffinityTerm:
-                              description: Required. A pod affinity term, associated with the corresponding weight.
+                              description: Required. A pod affinity term, associated
+                                with the corresponding weight.
                               properties:
                                 labelSelector:
-                                  description: A label query over a set of resources, in this case pods.
+                                  description: A label query over a set of resources,
+                                    in this case pods.
                                   properties:
                                     matchExpressions:
-                                      description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                                      description: matchExpressions is a list of label
+                                        selector requirements. The requirements are
+                                        ANDed.
                                       items:
-                                        description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                        description: A label selector requirement
+                                          is a selector that contains values, a key,
+                                          and an operator that relates the key and
+                                          values.
                                         properties:
                                           key:
-                                            description: key is the label key that the selector applies to.
+                                            description: key is the label key that
+                                              the selector applies to.
                                             type: string
                                           operator:
-                                            description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                            description: operator represents a key's
+                                              relationship to a set of values. Valid
+                                              operators are In, NotIn, Exists and
+                                              DoesNotExist.
                                             type: string
                                           values:
-                                            description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                            description: values is an array of string
+                                              values. If the operator is In or NotIn,
+                                              the values array must be non-empty.
+                                              If the operator is Exists or DoesNotExist,
+                                              the values array must be empty. This
+                                              array is replaced during a strategic
+                                              merge patch.
                                             items:
                                               type: string
                                             type: array
@@ -190,22 +309,36 @@ spec:
                                     matchLabels:
                                       additionalProperties:
                                         type: string
-                                      description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                      description: matchLabels is a map of {key,value}
+                                        pairs. A single {key,value} in the matchLabels
+                                        map is equivalent to an element of matchExpressions,
+                                        whose key field is "key", the operator is
+                                        "In", and the values array contains only "value".
+                                        The requirements are ANDed.
                                       type: object
                                   type: object
                                 namespaces:
-                                  description: namespaces specifies which namespaces the labelSelector applies to (matches against); null or empty list means "this pod's namespace"
+                                  description: namespaces specifies which namespaces
+                                    the labelSelector applies to (matches against);
+                                    null or empty list means "this pod's namespace"
                                   items:
                                     type: string
                                   type: array
                                 topologyKey:
-                                  description: This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching the labelSelector in the specified namespaces, where co-located is defined as running on a node whose value of the label with key topologyKey matches that of any node on which any of the selected pods is running. Empty topologyKey is not allowed.
+                                  description: This pod should be co-located (affinity)
+                                    or not co-located (anti-affinity) with the pods
+                                    matching the labelSelector in the specified namespaces,
+                                    where co-located is defined as running on a node
+                                    whose value of the label with key topologyKey
+                                    matches that of any node on which any of the selected
+                                    pods is running. Empty topologyKey is not allowed.
                                   type: string
                               required:
                               - topologyKey
                               type: object
                             weight:
-                              description: weight associated with matching the corresponding podAffinityTerm, in the range 1-100.
+                              description: weight associated with matching the corresponding
+                                podAffinityTerm, in the range 1-100.
                               format: int32
                               type: integer
                           required:
@@ -214,26 +347,52 @@ spec:
                           type: object
                         type: array
                       requiredDuringSchedulingIgnoredDuringExecution:
-                        description: If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to a pod label update), the system may or may not try to eventually evict the pod from its node. When there are multiple elements, the lists of nodes corresponding to each podAffinityTerm are intersected, i.e. all terms must be satisfied.
+                        description: If the affinity requirements specified by this
+                          field are not met at scheduling time, the pod will not be
+                          scheduled onto the node. If the affinity requirements specified
+                          by this field cease to be met at some point during pod execution
+                          (e.g. due to a pod label update), the system may or may
+                          not try to eventually evict the pod from its node. When
+                          there are multiple elements, the lists of nodes corresponding
+                          to each podAffinityTerm are intersected, i.e. all terms
+                          must be satisfied.
                         items:
-                          description: Defines a set of pods (namely those matching the labelSelector relative to the given namespace(s)) that this pod should be co-located (affinity) or not co-located (anti-affinity) with, where co-located is defined as running on a node whose value of the label with key <topologyKey> matches that of any node on which a pod of the set of pods is running
+                          description: Defines a set of pods (namely those matching
+                            the labelSelector relative to the given namespace(s))
+                            that this pod should be co-located (affinity) or not co-located
+                            (anti-affinity) with, where co-located is defined as running
+                            on a node whose value of the label with key <topologyKey>
+                            matches that of any node on which a pod of the set of
+                            pods is running
                           properties:
                             labelSelector:
-                              description: A label query over a set of resources, in this case pods.
+                              description: A label query over a set of resources,
+                                in this case pods.
                               properties:
                                 matchExpressions:
-                                  description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                                  description: matchExpressions is a list of label
+                                    selector requirements. The requirements are ANDed.
                                   items:
-                                    description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                    description: A label selector requirement is a
+                                      selector that contains values, a key, and an
+                                      operator that relates the key and values.
                                     properties:
                                       key:
-                                        description: key is the label key that the selector applies to.
+                                        description: key is the label key that the
+                                          selector applies to.
                                         type: string
                                       operator:
-                                        description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                        description: operator represents a key's relationship
+                                          to a set of values. Valid operators are
+                                          In, NotIn, Exists and DoesNotExist.
                                         type: string
                                       values:
-                                        description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                        description: values is an array of string
+                                          values. If the operator is In or NotIn,
+                                          the values array must be non-empty. If the
+                                          operator is Exists or DoesNotExist, the
+                                          values array must be empty. This array is
+                                          replaced during a strategic merge patch.
                                         items:
                                           type: string
                                         type: array
@@ -245,16 +404,29 @@ spec:
                                 matchLabels:
                                   additionalProperties:
                                     type: string
-                                  description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                  description: matchLabels is a map of {key,value}
+                                    pairs. A single {key,value} in the matchLabels
+                                    map is equivalent to an element of matchExpressions,
+                                    whose key field is "key", the operator is "In",
+                                    and the values array contains only "value". The
+                                    requirements are ANDed.
                                   type: object
                               type: object
                             namespaces:
-                              description: namespaces specifies which namespaces the labelSelector applies to (matches against); null or empty list means "this pod's namespace"
+                              description: namespaces specifies which namespaces the
+                                labelSelector applies to (matches against); null or
+                                empty list means "this pod's namespace"
                               items:
                                 type: string
                               type: array
                             topologyKey:
-                              description: This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching the labelSelector in the specified namespaces, where co-located is defined as running on a node whose value of the label with key topologyKey matches that of any node on which any of the selected pods is running. Empty topologyKey is not allowed.
+                              description: This pod should be co-located (affinity)
+                                or not co-located (anti-affinity) with the pods matching
+                                the labelSelector in the specified namespaces, where
+                                co-located is defined as running on a node whose value
+                                of the label with key topologyKey matches that of
+                                any node on which any of the selected pods is running.
+                                Empty topologyKey is not allowed.
                               type: string
                           required:
                           - topologyKey
@@ -262,32 +434,62 @@ spec:
                         type: array
                     type: object
                   podAntiAffinity:
-                    description: Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s)).
+                    description: Describes pod anti-affinity scheduling rules (e.g.
+                      avoid putting this pod in the same node, zone, etc. as some
+                      other pod(s)).
                     properties:
                       preferredDuringSchedulingIgnoredDuringExecution:
-                        description: The scheduler will prefer to schedule pods to nodes that satisfy the anti-affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling anti-affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding "weight" to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.
+                        description: The scheduler will prefer to schedule pods to
+                          nodes that satisfy the anti-affinity expressions specified
+                          by this field, but it may choose a node that violates one
+                          or more of the expressions. The node that is most preferred
+                          is the one with the greatest sum of weights, i.e. for each
+                          node that meets all of the scheduling requirements (resource
+                          request, requiredDuringScheduling anti-affinity expressions,
+                          etc.), compute a sum by iterating through the elements of
+                          this field and adding "weight" to the sum if the node has
+                          pods which matches the corresponding podAffinityTerm; the
+                          node(s) with the highest sum are the most preferred.
                         items:
-                          description: The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
+                          description: The weights of all of the matched WeightedPodAffinityTerm
+                            fields are added per-node to find the most preferred node(s)
                           properties:
                             podAffinityTerm:
-                              description: Required. A pod affinity term, associated with the corresponding weight.
+                              description: Required. A pod affinity term, associated
+                                with the corresponding weight.
                               properties:
                                 labelSelector:
-                                  description: A label query over a set of resources, in this case pods.
+                                  description: A label query over a set of resources,
+                                    in this case pods.
                                   properties:
                                     matchExpressions:
-                                      description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                                      description: matchExpressions is a list of label
+                                        selector requirements. The requirements are
+                                        ANDed.
                                       items:
-                                        description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                        description: A label selector requirement
+                                          is a selector that contains values, a key,
+                                          and an operator that relates the key and
+                                          values.
                                         properties:
                                           key:
-                                            description: key is the label key that the selector applies to.
+                                            description: key is the label key that
+                                              the selector applies to.
                                             type: string
                                           operator:
-                                            description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                            description: operator represents a key's
+                                              relationship to a set of values. Valid
+                                              operators are In, NotIn, Exists and
+                                              DoesNotExist.
                                             type: string
                                           values:
-                                            description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                            description: values is an array of string
+                                              values. If the operator is In or NotIn,
+                                              the values array must be non-empty.
+                                              If the operator is Exists or DoesNotExist,
+                                              the values array must be empty. This
+                                              array is replaced during a strategic
+                                              merge patch.
                                             items:
                                               type: string
                                             type: array
@@ -299,22 +501,36 @@ spec:
                                     matchLabels:
                                       additionalProperties:
                                         type: string
-                                      description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                      description: matchLabels is a map of {key,value}
+                                        pairs. A single {key,value} in the matchLabels
+                                        map is equivalent to an element of matchExpressions,
+                                        whose key field is "key", the operator is
+                                        "In", and the values array contains only "value".
+                                        The requirements are ANDed.
                                       type: object
                                   type: object
                                 namespaces:
-                                  description: namespaces specifies which namespaces the labelSelector applies to (matches against); null or empty list means "this pod's namespace"
+                                  description: namespaces specifies which namespaces
+                                    the labelSelector applies to (matches against);
+                                    null or empty list means "this pod's namespace"
                                   items:
                                     type: string
                                   type: array
                                 topologyKey:
-                                  description: This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching the labelSelector in the specified namespaces, where co-located is defined as running on a node whose value of the label with key topologyKey matches that of any node on which any of the selected pods is running. Empty topologyKey is not allowed.
+                                  description: This pod should be co-located (affinity)
+                                    or not co-located (anti-affinity) with the pods
+                                    matching the labelSelector in the specified namespaces,
+                                    where co-located is defined as running on a node
+                                    whose value of the label with key topologyKey
+                                    matches that of any node on which any of the selected
+                                    pods is running. Empty topologyKey is not allowed.
                                   type: string
                               required:
                               - topologyKey
                               type: object
                             weight:
-                              description: weight associated with matching the corresponding podAffinityTerm, in the range 1-100.
+                              description: weight associated with matching the corresponding
+                                podAffinityTerm, in the range 1-100.
                               format: int32
                               type: integer
                           required:
@@ -323,26 +539,52 @@ spec:
                           type: object
                         type: array
                       requiredDuringSchedulingIgnoredDuringExecution:
-                        description: If the anti-affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the anti-affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to a pod label update), the system may or may not try to eventually evict the pod from its node. When there are multiple elements, the lists of nodes corresponding to each podAffinityTerm are intersected, i.e. all terms must be satisfied.
+                        description: If the anti-affinity requirements specified by
+                          this field are not met at scheduling time, the pod will
+                          not be scheduled onto the node. If the anti-affinity requirements
+                          specified by this field cease to be met at some point during
+                          pod execution (e.g. due to a pod label update), the system
+                          may or may not try to eventually evict the pod from its
+                          node. When there are multiple elements, the lists of nodes
+                          corresponding to each podAffinityTerm are intersected, i.e.
+                          all terms must be satisfied.
                         items:
-                          description: Defines a set of pods (namely those matching the labelSelector relative to the given namespace(s)) that this pod should be co-located (affinity) or not co-located (anti-affinity) with, where co-located is defined as running on a node whose value of the label with key <topologyKey> matches that of any node on which a pod of the set of pods is running
+                          description: Defines a set of pods (namely those matching
+                            the labelSelector relative to the given namespace(s))
+                            that this pod should be co-located (affinity) or not co-located
+                            (anti-affinity) with, where co-located is defined as running
+                            on a node whose value of the label with key <topologyKey>
+                            matches that of any node on which a pod of the set of
+                            pods is running
                           properties:
                             labelSelector:
-                              description: A label query over a set of resources, in this case pods.
+                              description: A label query over a set of resources,
+                                in this case pods.
                               properties:
                                 matchExpressions:
-                                  description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                                  description: matchExpressions is a list of label
+                                    selector requirements. The requirements are ANDed.
                                   items:
-                                    description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                    description: A label selector requirement is a
+                                      selector that contains values, a key, and an
+                                      operator that relates the key and values.
                                     properties:
                                       key:
-                                        description: key is the label key that the selector applies to.
+                                        description: key is the label key that the
+                                          selector applies to.
                                         type: string
                                       operator:
-                                        description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                        description: operator represents a key's relationship
+                                          to a set of values. Valid operators are
+                                          In, NotIn, Exists and DoesNotExist.
                                         type: string
                                       values:
-                                        description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                        description: values is an array of string
+                                          values. If the operator is In or NotIn,
+                                          the values array must be non-empty. If the
+                                          operator is Exists or DoesNotExist, the
+                                          values array must be empty. This array is
+                                          replaced during a strategic merge patch.
                                         items:
                                           type: string
                                         type: array
@@ -354,16 +596,29 @@ spec:
                                 matchLabels:
                                   additionalProperties:
                                     type: string
-                                  description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                  description: matchLabels is a map of {key,value}
+                                    pairs. A single {key,value} in the matchLabels
+                                    map is equivalent to an element of matchExpressions,
+                                    whose key field is "key", the operator is "In",
+                                    and the values array contains only "value". The
+                                    requirements are ANDed.
                                   type: object
                               type: object
                             namespaces:
-                              description: namespaces specifies which namespaces the labelSelector applies to (matches against); null or empty list means "this pod's namespace"
+                              description: namespaces specifies which namespaces the
+                                labelSelector applies to (matches against); null or
+                                empty list means "this pod's namespace"
                               items:
                                 type: string
                               type: array
                             topologyKey:
-                              description: This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching the labelSelector in the specified namespaces, where co-located is defined as running on a node whose value of the label with key topologyKey matches that of any node on which any of the selected pods is running. Empty topologyKey is not allowed.
+                              description: This pod should be co-located (affinity)
+                                or not co-located (anti-affinity) with the pods matching
+                                the labelSelector in the specified namespaces, where
+                                co-located is defined as running on a node whose value
+                                of the label with key topologyKey matches that of
+                                any node on which any of the selected pods is running.
+                                Empty topologyKey is not allowed.
                               type: string
                           required:
                           - topologyKey
@@ -375,7 +630,8 @@ spec:
                 description: API
                 properties:
                   additionalWriteEndpoints:
-                    description: AdditionalWriteEndpoints is a slice of additional write endpoint for the Observatorium API.
+                    description: AdditionalWriteEndpoints is a slice of additional
+                      write endpoint for the Observatorium API.
                     properties:
                       endpointsConfigSecret:
                         description: Secret name for the endpoints configuration
@@ -398,12 +654,15 @@ spec:
                     description: API image pull policy
                     type: string
                   rbac:
-                    description: RBAC is an RBAC configuration for the Observatorium API.
+                    description: RBAC is an RBAC configuration for the Observatorium
+                      API.
                     properties:
                       roleBindings:
-                        description: RoleBindings is a slice of Observatorium API role bindings.
+                        description: RoleBindings is a slice of Observatorium API
+                          role bindings.
                         items:
-                          description: RBACRoleBinding binds a set of roles to a set of subjects.
+                          description: RBACRoleBinding binds a set of roles to a set
+                            of subjects.
                           properties:
                             name:
                               description: Name is the name of the role binding.
@@ -414,12 +673,15 @@ spec:
                                 type: string
                               type: array
                             subjects:
-                              description: Subjects is a list of subjects who will be given access to the specified roles.
+                              description: Subjects is a list of subjects who will
+                                be given access to the specified roles.
                               items:
-                                description: Subject represents a subject to which an RBAC role can be bound.
+                                description: Subject represents a subject to which
+                                  an RBAC role can be bound.
                                 properties:
                                   kind:
-                                    description: SubjectKind is a kind of Observatorium subject.
+                                    description: SubjectKind is a kind of Observatorium
+                                      subject.
                                     type: string
                                   name:
                                     type: string
@@ -437,24 +699,28 @@ spec:
                       roles:
                         description: Roles is a slice of Observatorium API roles.
                         items:
-                          description: RBACRole describes a set of permissions to interact with a tenant.
+                          description: RBACRole describes a set of permissions to
+                            interact with a tenant.
                           properties:
                             name:
                               description: Name is the name of the role.
                               type: string
                             permissions:
-                              description: Permissions is a list of permissions that will be granted.
+                              description: Permissions is a list of permissions that
+                                will be granted.
                               items:
                                 description: Permission is an Observatorium RBAC permission.
                                 type: string
                               type: array
                             resources:
-                              description: Resources is a list of resources to which access will be granted.
+                              description: Resources is a list of resources to which
+                                access will be granted.
                               items:
                                 type: string
                               type: array
                             tenants:
-                              description: Tenants is a list of tenants whose resources will be considered.
+                              description: Tenants is a list of tenants whose resources
+                                will be considered.
                               items:
                                 type: string
                               type: array
@@ -483,7 +749,8 @@ spec:
                           - type: string
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
-                        description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                        description: 'Limits describes the maximum amount of compute
+                          resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                         type: object
                       requests:
                         additionalProperties:
@@ -492,21 +759,27 @@ spec:
                           - type: string
                           pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                           x-kubernetes-int-or-string: true
-                        description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                        description: 'Requests describes the minimum amount of compute
+                          resources required. If Requests is omitted for a container,
+                          it defaults to Limits if that is explicitly specified, otherwise
+                          to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                         type: object
                     type: object
                   serviceMonitor:
                     description: ServiceMonitor enables servicemonitor.
                     type: boolean
                   tenants:
-                    description: Tenants is a slice of tenants for the Observatorium API.
+                    description: Tenants is a slice of tenants for the Observatorium
+                      API.
                     items:
-                      description: APITenant represents a tenant in the Observatorium API.
+                      description: APITenant represents a tenant in the Observatorium
+                        API.
                       properties:
                         id:
                           type: string
                         mTLS:
-                          description: TenantMTLS represents the mTLS configuration for an Observatorium API tenant.
+                          description: TenantMTLS represents the mTLS configuration
+                            for an Observatorium API tenant.
                           properties:
                             caKey:
                               type: string
@@ -520,7 +793,8 @@ spec:
                         name:
                           type: string
                         oidc:
-                          description: TenantOIDC represents the OIDC configuration for an Observatorium API tenant.
+                          description: TenantOIDC represents the OIDC configuration
+                            for an Observatorium API tenant.
                           properties:
                             caKey:
                               type: string
@@ -579,7 +853,8 @@ spec:
               envVars:
                 additionalProperties:
                   type: string
-                description: EnvVars define the common environment variables. EnvVars apply to thanos compact/receive/rule/store components
+                description: EnvVars define the common environment variables. EnvVars
+                  apply to thanos compact/receive/rule/store components
                 type: object
               hashrings:
                 description: Hashrings describes a list of Hashrings
@@ -619,18 +894,33 @@ spec:
                     description: VolumeClaimTemplate
                     properties:
                       spec:
-                        description: PersistentVolumeClaimSpec describes the common attributes of storage devices and allows a Source for provider-specific attributes
+                        description: PersistentVolumeClaimSpec describes the common
+                          attributes of storage devices and allows a Source for provider-specific
+                          attributes
                         properties:
                           accessModes:
-                            description: 'AccessModes contains the desired access modes the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1'
+                            description: 'AccessModes contains the desired access
+                              modes the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1'
                             items:
                               type: string
                             type: array
                           dataSource:
-                            description: 'This field can be used to specify either: * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot) * An existing PVC (PersistentVolumeClaim) * An existing custom resource that implements data population (Alpha) In order to use custom resource types that implement data population, the AnyVolumeDataSource feature gate must be enabled. If the provisioner or an external controller can support the specified data source, it will create a new volume based on the contents of the specified data source.'
+                            description: 'This field can be used to specify either:
+                              * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)
+                              * An existing PVC (PersistentVolumeClaim) * An existing
+                              custom resource that implements data population (Alpha)
+                              In order to use custom resource types that implement
+                              data population, the AnyVolumeDataSource feature gate
+                              must be enabled. If the provisioner or an external controller
+                              can support the specified data source, it will create
+                              a new volume based on the contents of the specified
+                              data source.'
                             properties:
                               apiGroup:
-                                description: APIGroup is the group for the resource being referenced. If APIGroup is not specified, the specified Kind must be in the core API group. For any other third-party types, APIGroup is required.
+                                description: APIGroup is the group for the resource
+                                  being referenced. If APIGroup is not specified,
+                                  the specified Kind must be in the core API group.
+                                  For any other third-party types, APIGroup is required.
                                 type: string
                               kind:
                                 description: Kind is the type of resource being referenced
@@ -643,7 +933,8 @@ spec:
                             - name
                             type: object
                           resources:
-                            description: 'Resources represents the minimum resources the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources'
+                            description: 'Resources represents the minimum resources
+                              the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources'
                             properties:
                               limits:
                                 additionalProperties:
@@ -652,7 +943,8 @@ spec:
                                   - type: string
                                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                   x-kubernetes-int-or-string: true
-                                description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                description: 'Limits describes the maximum amount
+                                  of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                 type: object
                               requests:
                                 additionalProperties:
@@ -661,25 +953,41 @@ spec:
                                   - type: string
                                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                   x-kubernetes-int-or-string: true
-                                description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                description: 'Requests describes the minimum amount
+                                  of compute resources required. If Requests is omitted
+                                  for a container, it defaults to Limits if that is
+                                  explicitly specified, otherwise to an implementation-defined
+                                  value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                 type: object
                             type: object
                           selector:
-                            description: A label query over volumes to consider for binding.
+                            description: A label query over volumes to consider for
+                              binding.
                             properties:
                               matchExpressions:
-                                description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                                description: matchExpressions is a list of label selector
+                                  requirements. The requirements are ANDed.
                                 items:
-                                  description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                  description: A label selector requirement is a selector
+                                    that contains values, a key, and an operator that
+                                    relates the key and values.
                                   properties:
                                     key:
-                                      description: key is the label key that the selector applies to.
+                                      description: key is the label key that the selector
+                                        applies to.
                                       type: string
                                     operator:
-                                      description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                      description: operator represents a key's relationship
+                                        to a set of values. Valid operators are In,
+                                        NotIn, Exists and DoesNotExist.
                                       type: string
                                     values:
-                                      description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                      description: values is an array of string values.
+                                        If the operator is In or NotIn, the values
+                                        array must be non-empty. If the operator is
+                                        Exists or DoesNotExist, the values array must
+                                        be empty. This array is replaced during a
+                                        strategic merge patch.
                                       items:
                                         type: string
                                       type: array
@@ -691,17 +999,25 @@ spec:
                               matchLabels:
                                 additionalProperties:
                                   type: string
-                                description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                description: matchLabels is a map of {key,value} pairs.
+                                  A single {key,value} in the matchLabels map is equivalent
+                                  to an element of matchExpressions, whose key field
+                                  is "key", the operator is "In", and the values array
+                                  contains only "value". The requirements are ANDed.
                                 type: object
                             type: object
                           storageClassName:
-                            description: 'Name of the StorageClass required by the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
+                            description: 'Name of the StorageClass required by the
+                              claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
                             type: string
                           volumeMode:
-                            description: volumeMode defines what type of volume is required by the claim. Value of Filesystem is implied when not included in claim spec.
+                            description: volumeMode defines what type of volume is
+                              required by the claim. Value of Filesystem is implied
+                              when not included in claim spec.
                             type: string
                           volumeName:
-                            description: VolumeName is the binding reference to the PersistentVolume backing this claim.
+                            description: VolumeName is the binding reference to the
+                              PersistentVolume backing this claim.
                             type: string
                         type: object
                     required:
@@ -714,7 +1030,8 @@ spec:
               nodeSelector:
                 additionalProperties:
                   type: string
-                description: NodeSelector causes all components to be scheduled on nodes with matching labels.
+                description: NodeSelector causes all components to be scheduled on
+                  nodes with matching labels.
                 type: object
               objectStorageConfig:
                 description: Objest Storage Configuration
@@ -753,13 +1070,15 @@ spec:
                         description: Object Store Config Secret Name
                         type: string
                       serviceAccountProjection:
-                        description: Whether mount service account token in thanos store/ruler/compact/receiver
+                        description: Whether mount service account token in thanos
+                          store/ruler/compact/receiver
                         type: boolean
                       tlsSecretMountPath:
                         description: TLS secret mount path in thanos store/ruler/compact/receiver
                         type: string
                       tlsSecretName:
-                        description: TLS secret contains the custom certificate for the object store
+                        description: TLS secret contains the custom certificate for
+                          the object store
                         type: string
                     required:
                     - key
@@ -775,10 +1094,16 @@ spec:
                 description: Security options the pod should run with.
                 properties:
                   allowPrivilegeEscalation:
-                    description: 'AllowPrivilegeEscalation controls whether a process can gain more privileges than its parent process. This bool directly controls if the no_new_privs flag will be set on the container process. AllowPrivilegeEscalation is true always when the container is: 1) run as Privileged 2) has CAP_SYS_ADMIN'
+                    description: 'AllowPrivilegeEscalation controls whether a process
+                      can gain more privileges than its parent process. This bool
+                      directly controls if the no_new_privs flag will be set on the
+                      container process. AllowPrivilegeEscalation is true always when
+                      the container is: 1) run as Privileged 2) has CAP_SYS_ADMIN'
                     type: boolean
                   capabilities:
-                    description: The capabilities to add/drop when running containers. Defaults to the default set of capabilities granted by the container runtime.
+                    description: The capabilities to add/drop when running containers.
+                      Defaults to the default set of capabilities granted by the container
+                      runtime.
                     properties:
                       add:
                         description: Added capabilities
@@ -794,64 +1119,112 @@ spec:
                         type: array
                     type: object
                   privileged:
-                    description: Run container in privileged mode. Processes in privileged containers are essentially equivalent to root on the host. Defaults to false.
+                    description: Run container in privileged mode. Processes in privileged
+                      containers are essentially equivalent to root on the host. Defaults
+                      to false.
                     type: boolean
                   procMount:
-                    description: procMount denotes the type of proc mount to use for the containers. The default is DefaultProcMount which uses the container runtime defaults for readonly paths and masked paths. This requires the ProcMountType feature flag to be enabled.
+                    description: procMount denotes the type of proc mount to use for
+                      the containers. The default is DefaultProcMount which uses the
+                      container runtime defaults for readonly paths and masked paths.
+                      This requires the ProcMountType feature flag to be enabled.
                     type: string
                   readOnlyRootFilesystem:
-                    description: Whether this container has a read-only root filesystem. Default is false.
+                    description: Whether this container has a read-only root filesystem.
+                      Default is false.
                     type: boolean
                   runAsGroup:
-                    description: The GID to run the entrypoint of the container process. Uses runtime default if unset. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.
+                    description: The GID to run the entrypoint of the container process.
+                      Uses runtime default if unset. May also be set in PodSecurityContext.  If
+                      set in both SecurityContext and PodSecurityContext, the value
+                      specified in SecurityContext takes precedence.
                     format: int64
                     type: integer
                   runAsNonRoot:
-                    description: Indicates that the container must run as a non-root user. If true, the Kubelet will validate the image at runtime to ensure that it does not run as UID 0 (root) and fail to start the container if it does. If unset or false, no such validation will be performed. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.
+                    description: Indicates that the container must run as a non-root
+                      user. If true, the Kubelet will validate the image at runtime
+                      to ensure that it does not run as UID 0 (root) and fail to start
+                      the container if it does. If unset or false, no such validation
+                      will be performed. May also be set in PodSecurityContext.  If
+                      set in both SecurityContext and PodSecurityContext, the value
+                      specified in SecurityContext takes precedence.
                     type: boolean
                   runAsUser:
-                    description: The UID to run the entrypoint of the container process. Defaults to user specified in image metadata if unspecified. May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.
+                    description: The UID to run the entrypoint of the container process.
+                      Defaults to user specified in image metadata if unspecified.
+                      May also be set in PodSecurityContext.  If set in both SecurityContext
+                      and PodSecurityContext, the value specified in SecurityContext
+                      takes precedence.
                     format: int64
                     type: integer
                   seLinuxOptions:
-                    description: The SELinux context to be applied to the container. If unspecified, the container runtime will allocate a random SELinux context for each container.  May also be set in PodSecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.
+                    description: The SELinux context to be applied to the container.
+                      If unspecified, the container runtime will allocate a random
+                      SELinux context for each container.  May also be set in PodSecurityContext.  If
+                      set in both SecurityContext and PodSecurityContext, the value
+                      specified in SecurityContext takes precedence.
                     properties:
                       level:
-                        description: Level is SELinux level label that applies to the container.
+                        description: Level is SELinux level label that applies to
+                          the container.
                         type: string
                       role:
-                        description: Role is a SELinux role label that applies to the container.
+                        description: Role is a SELinux role label that applies to
+                          the container.
                         type: string
                       type:
-                        description: Type is a SELinux type label that applies to the container.
+                        description: Type is a SELinux type label that applies to
+                          the container.
                         type: string
                       user:
-                        description: User is a SELinux user label that applies to the container.
+                        description: User is a SELinux user label that applies to
+                          the container.
                         type: string
                     type: object
                   seccompProfile:
-                    description: The seccomp options to use by this container. If seccomp options are provided at both the pod & container level, the container options override the pod options.
+                    description: The seccomp options to use by this container. If
+                      seccomp options are provided at both the pod & container level,
+                      the container options override the pod options.
                     properties:
                       localhostProfile:
-                        description: localhostProfile indicates a profile defined in a file on the node should be used. The profile must be preconfigured on the node to work. Must be a descending path, relative to the kubelet's configured seccomp profile location. Must only be set if type is "Localhost".
+                        description: localhostProfile indicates a profile defined
+                          in a file on the node should be used. The profile must be
+                          preconfigured on the node to work. Must be a descending
+                          path, relative to the kubelet's configured seccomp profile
+                          location. Must only be set if type is "Localhost".
                         type: string
                       type:
-                        description: "type indicates which kind of seccomp profile will be applied. Valid options are: \n Localhost - a profile defined in a file on the node should be used. RuntimeDefault - the container runtime default profile should be used. Unconfined - no profile should be applied."
+                        description: "type indicates which kind of seccomp profile
+                          will be applied. Valid options are: \n Localhost - a profile
+                          defined in a file on the node should be used. RuntimeDefault
+                          - the container runtime default profile should be used.
+                          Unconfined - no profile should be applied."
                         type: string
                     required:
                     - type
                     type: object
                   windowsOptions:
-                    description: The Windows specific settings applied to all containers. If unspecified, the options from the PodSecurityContext will be used. If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.
+                    description: The Windows specific settings applied to all containers.
+                      If unspecified, the options from the PodSecurityContext will
+                      be used. If set in both SecurityContext and PodSecurityContext,
+                      the value specified in SecurityContext takes precedence.
                     properties:
                       gmsaCredentialSpec:
-                        description: GMSACredentialSpec is where the GMSA admission webhook (https://github.com/kubernetes-sigs/windows-gmsa) inlines the contents of the GMSA credential spec named by the GMSACredentialSpecName field.
+                        description: GMSACredentialSpec is where the GMSA admission
+                          webhook (https://github.com/kubernetes-sigs/windows-gmsa)
+                          inlines the contents of the GMSA credential spec named by
+                          the GMSACredentialSpecName field.
                         type: string
                       gmsaCredentialSpecName:
-                        description: GMSACredentialSpecName is the name of the GMSA credential spec to use.
+                        description: GMSACredentialSpecName is the name of the GMSA
+                          credential spec to use.
                         type: string
                       runAsUserName:
-                        description: The UserName in Windows to run the entrypoint of the container process. Defaults to the user specified in image metadata if unspecified. May also be set in PodSecurityContext. If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence.
+                        description: The UserName in Windows to run the entrypoint
+                          of the container process. Defaults to the user specified
+                          in image metadata if unspecified. May also be set in PodSecurityContext.
+                          If set in both SecurityContext and PodSecurityContext, the
+                          value specified in SecurityContext takes precedence.
                         type: string
                     type: object
                 type: object
@@ -862,7 +1235,8 @@ spec:
                     description: Thanos CompactSpec
                     properties:
                       deleteDelay:
-                        description: Time before a block marked for deletion is deleted from bucket
+                        description: Time before a block marked for deletion is deleted
+                          from bucket
                         type: string
                       enableDownsampling:
                         description: EnableDownsampling enables downsampling.
@@ -881,7 +1255,8 @@ spec:
                               - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Limits describes the maximum amount of compute
+                              resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                           requests:
                             additionalProperties:
@@ -890,7 +1265,11 @@ spec:
                               - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Requests describes the minimum amount of
+                              compute resources required. If Requests is omitted for
+                              a container, it defaults to Limits if that is explicitly
+                              specified, otherwise to an implementation-defined value.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                         type: object
                       retentionResolution1h:
@@ -905,7 +1284,8 @@ spec:
                       serviceAccountAnnotations:
                         additionalProperties:
                           type: string
-                        description: Annotations is an unstructured key value map stored with a service account
+                        description: Annotations is an unstructured key value map
+                          stored with a service account
                         type: object
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.
@@ -914,31 +1294,50 @@ spec:
                         description: VolumeClaimTemplate
                         properties:
                           spec:
-                            description: PersistentVolumeClaimSpec describes the common attributes of storage devices and allows a Source for provider-specific attributes
+                            description: PersistentVolumeClaimSpec describes the common
+                              attributes of storage devices and allows a Source for
+                              provider-specific attributes
                             properties:
                               accessModes:
-                                description: 'AccessModes contains the desired access modes the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1'
+                                description: 'AccessModes contains the desired access
+                                  modes the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1'
                                 items:
                                   type: string
                                 type: array
                               dataSource:
-                                description: 'This field can be used to specify either: * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot) * An existing PVC (PersistentVolumeClaim) * An existing custom resource that implements data population (Alpha) In order to use custom resource types that implement data population, the AnyVolumeDataSource feature gate must be enabled. If the provisioner or an external controller can support the specified data source, it will create a new volume based on the contents of the specified data source.'
+                                description: 'This field can be used to specify either:
+                                  * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)
+                                  * An existing PVC (PersistentVolumeClaim) * An existing
+                                  custom resource that implements data population
+                                  (Alpha) In order to use custom resource types that
+                                  implement data population, the AnyVolumeDataSource
+                                  feature gate must be enabled. If the provisioner
+                                  or an external controller can support the specified
+                                  data source, it will create a new volume based on
+                                  the contents of the specified data source.'
                                 properties:
                                   apiGroup:
-                                    description: APIGroup is the group for the resource being referenced. If APIGroup is not specified, the specified Kind must be in the core API group. For any other third-party types, APIGroup is required.
+                                    description: APIGroup is the group for the resource
+                                      being referenced. If APIGroup is not specified,
+                                      the specified Kind must be in the core API group.
+                                      For any other third-party types, APIGroup is
+                                      required.
                                     type: string
                                   kind:
-                                    description: Kind is the type of resource being referenced
+                                    description: Kind is the type of resource being
+                                      referenced
                                     type: string
                                   name:
-                                    description: Name is the name of resource being referenced
+                                    description: Name is the name of resource being
+                                      referenced
                                     type: string
                                 required:
                                 - kind
                                 - name
                                 type: object
                               resources:
-                                description: 'Resources represents the minimum resources the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources'
+                                description: 'Resources represents the minimum resources
+                                  the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources'
                                 properties:
                                   limits:
                                     additionalProperties:
@@ -947,7 +1346,8 @@ spec:
                                       - type: string
                                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                       x-kubernetes-int-or-string: true
-                                    description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                    description: 'Limits describes the maximum amount
+                                      of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                     type: object
                                   requests:
                                     additionalProperties:
@@ -956,25 +1356,43 @@ spec:
                                       - type: string
                                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                       x-kubernetes-int-or-string: true
-                                    description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                    description: 'Requests describes the minimum amount
+                                      of compute resources required. If Requests is
+                                      omitted for a container, it defaults to Limits
+                                      if that is explicitly specified, otherwise to
+                                      an implementation-defined value. More info:
+                                      https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                     type: object
                                 type: object
                               selector:
-                                description: A label query over volumes to consider for binding.
+                                description: A label query over volumes to consider
+                                  for binding.
                                 properties:
                                   matchExpressions:
-                                    description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                                    description: matchExpressions is a list of label
+                                      selector requirements. The requirements are
+                                      ANDed.
                                     items:
-                                      description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                      description: A label selector requirement is
+                                        a selector that contains values, a key, and
+                                        an operator that relates the key and values.
                                       properties:
                                         key:
-                                          description: key is the label key that the selector applies to.
+                                          description: key is the label key that the
+                                            selector applies to.
                                           type: string
                                         operator:
-                                          description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                          description: operator represents a key's
+                                            relationship to a set of values. Valid
+                                            operators are In, NotIn, Exists and DoesNotExist.
                                           type: string
                                         values:
-                                          description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                          description: values is an array of string
+                                            values. If the operator is In or NotIn,
+                                            the values array must be non-empty. If
+                                            the operator is Exists or DoesNotExist,
+                                            the values array must be empty. This array
+                                            is replaced during a strategic merge patch.
                                           items:
                                             type: string
                                           type: array
@@ -986,17 +1404,26 @@ spec:
                                   matchLabels:
                                     additionalProperties:
                                       type: string
-                                    description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                    description: matchLabels is a map of {key,value}
+                                      pairs. A single {key,value} in the matchLabels
+                                      map is equivalent to an element of matchExpressions,
+                                      whose key field is "key", the operator is "In",
+                                      and the values array contains only "value".
+                                      The requirements are ANDed.
                                     type: object
                                 type: object
                               storageClassName:
-                                description: 'Name of the StorageClass required by the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
+                                description: 'Name of the StorageClass required by
+                                  the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
                                 type: string
                               volumeMode:
-                                description: volumeMode defines what type of volume is required by the claim. Value of Filesystem is implied when not included in claim spec.
+                                description: volumeMode defines what type of volume
+                                  is required by the claim. Value of Filesystem is
+                                  implied when not included in claim spec.
                                 type: string
                               volumeName:
-                                description: VolumeName is the binding reference to the PersistentVolume backing this claim.
+                                description: VolumeName is the binding reference to
+                                  the PersistentVolume backing this claim.
                                 type: string
                             type: object
                         required:
@@ -1018,7 +1445,8 @@ spec:
                     description: Query
                     properties:
                       lookbackDelta:
-                        description: The maximum lookback duration for retrieving metrics during expression evaluations.
+                        description: The maximum lookback duration for retrieving
+                          metrics during expression evaluations.
                         type: string
                       replicas:
                         description: Number of Query replicas.
@@ -1034,7 +1462,8 @@ spec:
                               - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Limits describes the maximum amount of compute
+                              resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                           requests:
                             additionalProperties:
@@ -1043,13 +1472,18 @@ spec:
                               - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Requests describes the minimum amount of
+                              compute resources required. If Requests is omitted for
+                              a container, it defaults to Limits if that is explicitly
+                              specified, otherwise to an implementation-defined value.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                         type: object
                       serviceAccountAnnotations:
                         additionalProperties:
                           type: string
-                        description: Annotations is an unstructured key value map stored with a service account
+                        description: Annotations is an unstructured key value map
+                          stored with a service account
                         type: object
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.
@@ -1069,7 +1503,8 @@ spec:
                             description: Memcached Prometheus Exporter image
                             type: string
                           exporterImagePullPolicy:
-                            description: Memcached Prometheus Exporter image image pull policy
+                            description: Memcached Prometheus Exporter image image
+                              pull policy
                             type: string
                           exporterResources:
                             description: Compute Resources required by this container.
@@ -1081,7 +1516,8 @@ spec:
                                   - type: string
                                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                   x-kubernetes-int-or-string: true
-                                description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                description: 'Limits describes the maximum amount
+                                  of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                 type: object
                               requests:
                                 additionalProperties:
@@ -1090,11 +1526,16 @@ spec:
                                   - type: string
                                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                   x-kubernetes-int-or-string: true
-                                description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                description: 'Requests describes the minimum amount
+                                  of compute resources required. If Requests is omitted
+                                  for a container, it defaults to Limits if that is
+                                  explicitly specified, otherwise to an implementation-defined
+                                  value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                 type: object
                             type: object
                           exporterVersion:
-                            description: Version of Memcached Prometheus Exporter image to be deployed.
+                            description: Version of Memcached Prometheus Exporter
+                              image to be deployed.
                             type: string
                           image:
                             description: Memcached image
@@ -1103,7 +1544,8 @@ spec:
                             description: Memcached image pull policy
                             type: string
                           maxItemSize:
-                            description: 'Max item size (default: 1m, min: 1k, max: 1024m)'
+                            description: 'Max item size (default: 1m, min: 1k, max:
+                              1024m)'
                             type: string
                           memoryLimitMb:
                             description: Memory limit of Memcached in megabytes.
@@ -1123,7 +1565,8 @@ spec:
                                   - type: string
                                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                   x-kubernetes-int-or-string: true
-                                description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                description: 'Limits describes the maximum amount
+                                  of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                 type: object
                               requests:
                                 additionalProperties:
@@ -1132,7 +1575,11 @@ spec:
                                   - type: string
                                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                   x-kubernetes-int-or-string: true
-                                description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                description: 'Requests describes the minimum amount
+                                  of compute resources required. If Requests is omitted
+                                  for a container, it defaults to Limits if that is
+                                  explicitly specified, otherwise to an implementation-defined
+                                  value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                 type: object
                             type: object
                           serviceMonitor:
@@ -1156,7 +1603,8 @@ spec:
                               - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Limits describes the maximum amount of compute
+                              resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                           requests:
                             additionalProperties:
@@ -1165,7 +1613,11 @@ spec:
                               - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Requests describes the minimum amount of
+                              compute resources required. If Requests is omitted for
+                              a container, it defaults to Limits if that is explicitly
+                              specified, otherwise to an implementation-defined value.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                         type: object
                       serviceMonitor:
@@ -1191,7 +1643,8 @@ spec:
                               - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Limits describes the maximum amount of compute
+                              resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                           requests:
                             additionalProperties:
@@ -1200,14 +1653,19 @@ spec:
                               - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Requests describes the minimum amount of
+                              compute resources required. If Requests is omitted for
+                              a container, it defaults to Limits if that is explicitly
+                              specified, otherwise to an implementation-defined value.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                         type: object
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.
                         type: boolean
                       version:
-                        description: Version describes the version of Thanos receive controller to use.
+                        description: Version describes the version of Thanos receive
+                          controller to use.
                         type: string
                     type: object
                   receivers:
@@ -1218,7 +1676,8 @@ spec:
                         format: int32
                         type: integer
                       replicationFactor:
-                        description: ReplicationFactor defines the number of copies of every time-series
+                        description: ReplicationFactor defines the number of copies
+                          of every time-series
                         format: int32
                         type: integer
                       resources:
@@ -1231,7 +1690,8 @@ spec:
                               - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Limits describes the maximum amount of compute
+                              resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                           requests:
                             additionalProperties:
@@ -1240,7 +1700,11 @@ spec:
                               - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Requests describes the minimum amount of
+                              compute resources required. If Requests is omitted for
+                              a container, it defaults to Limits if that is explicitly
+                              specified, otherwise to an implementation-defined value.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                         type: object
                       retention:
@@ -1249,7 +1713,8 @@ spec:
                       serviceAccountAnnotations:
                         additionalProperties:
                           type: string
-                        description: Annotations is an unstructured key value map stored with a service account
+                        description: Annotations is an unstructured key value map
+                          stored with a service account
                         type: object
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.
@@ -1258,31 +1723,50 @@ spec:
                         description: VolumeClaimTemplate
                         properties:
                           spec:
-                            description: PersistentVolumeClaimSpec describes the common attributes of storage devices and allows a Source for provider-specific attributes
+                            description: PersistentVolumeClaimSpec describes the common
+                              attributes of storage devices and allows a Source for
+                              provider-specific attributes
                             properties:
                               accessModes:
-                                description: 'AccessModes contains the desired access modes the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1'
+                                description: 'AccessModes contains the desired access
+                                  modes the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1'
                                 items:
                                   type: string
                                 type: array
                               dataSource:
-                                description: 'This field can be used to specify either: * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot) * An existing PVC (PersistentVolumeClaim) * An existing custom resource that implements data population (Alpha) In order to use custom resource types that implement data population, the AnyVolumeDataSource feature gate must be enabled. If the provisioner or an external controller can support the specified data source, it will create a new volume based on the contents of the specified data source.'
+                                description: 'This field can be used to specify either:
+                                  * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)
+                                  * An existing PVC (PersistentVolumeClaim) * An existing
+                                  custom resource that implements data population
+                                  (Alpha) In order to use custom resource types that
+                                  implement data population, the AnyVolumeDataSource
+                                  feature gate must be enabled. If the provisioner
+                                  or an external controller can support the specified
+                                  data source, it will create a new volume based on
+                                  the contents of the specified data source.'
                                 properties:
                                   apiGroup:
-                                    description: APIGroup is the group for the resource being referenced. If APIGroup is not specified, the specified Kind must be in the core API group. For any other third-party types, APIGroup is required.
+                                    description: APIGroup is the group for the resource
+                                      being referenced. If APIGroup is not specified,
+                                      the specified Kind must be in the core API group.
+                                      For any other third-party types, APIGroup is
+                                      required.
                                     type: string
                                   kind:
-                                    description: Kind is the type of resource being referenced
+                                    description: Kind is the type of resource being
+                                      referenced
                                     type: string
                                   name:
-                                    description: Name is the name of resource being referenced
+                                    description: Name is the name of resource being
+                                      referenced
                                     type: string
                                 required:
                                 - kind
                                 - name
                                 type: object
                               resources:
-                                description: 'Resources represents the minimum resources the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources'
+                                description: 'Resources represents the minimum resources
+                                  the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources'
                                 properties:
                                   limits:
                                     additionalProperties:
@@ -1291,7 +1775,8 @@ spec:
                                       - type: string
                                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                       x-kubernetes-int-or-string: true
-                                    description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                    description: 'Limits describes the maximum amount
+                                      of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                     type: object
                                   requests:
                                     additionalProperties:
@@ -1300,25 +1785,43 @@ spec:
                                       - type: string
                                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                       x-kubernetes-int-or-string: true
-                                    description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                    description: 'Requests describes the minimum amount
+                                      of compute resources required. If Requests is
+                                      omitted for a container, it defaults to Limits
+                                      if that is explicitly specified, otherwise to
+                                      an implementation-defined value. More info:
+                                      https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                     type: object
                                 type: object
                               selector:
-                                description: A label query over volumes to consider for binding.
+                                description: A label query over volumes to consider
+                                  for binding.
                                 properties:
                                   matchExpressions:
-                                    description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                                    description: matchExpressions is a list of label
+                                      selector requirements. The requirements are
+                                      ANDed.
                                     items:
-                                      description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                      description: A label selector requirement is
+                                        a selector that contains values, a key, and
+                                        an operator that relates the key and values.
                                       properties:
                                         key:
-                                          description: key is the label key that the selector applies to.
+                                          description: key is the label key that the
+                                            selector applies to.
                                           type: string
                                         operator:
-                                          description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                          description: operator represents a key's
+                                            relationship to a set of values. Valid
+                                            operators are In, NotIn, Exists and DoesNotExist.
                                           type: string
                                         values:
-                                          description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                          description: values is an array of string
+                                            values. If the operator is In or NotIn,
+                                            the values array must be non-empty. If
+                                            the operator is Exists or DoesNotExist,
+                                            the values array must be empty. This array
+                                            is replaced during a strategic merge patch.
                                           items:
                                             type: string
                                           type: array
@@ -1330,17 +1833,26 @@ spec:
                                   matchLabels:
                                     additionalProperties:
                                       type: string
-                                    description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                    description: matchLabels is a map of {key,value}
+                                      pairs. A single {key,value} in the matchLabels
+                                      map is equivalent to an element of matchExpressions,
+                                      whose key field is "key", the operator is "In",
+                                      and the values array contains only "value".
+                                      The requirements are ANDed.
                                     type: object
                                 type: object
                               storageClassName:
-                                description: 'Name of the StorageClass required by the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
+                                description: 'Name of the StorageClass required by
+                                  the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
                                 type: string
                               volumeMode:
-                                description: volumeMode defines what type of volume is required by the claim. Value of Filesystem is implied when not included in claim spec.
+                                description: volumeMode defines what type of volume
+                                  is required by the claim. Value of Filesystem is
+                                  implied when not included in claim spec.
                                 type: string
                               volumeName:
-                                description: VolumeName is the binding reference to the PersistentVolume backing this claim.
+                                description: VolumeName is the binding reference to
+                                  the PersistentVolume backing this claim.
                                 type: string
                             type: object
                         required:
@@ -1415,7 +1927,8 @@ spec:
                               - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Limits describes the maximum amount of compute
+                              resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                           requests:
                             additionalProperties:
@@ -1424,7 +1937,11 @@ spec:
                               - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Requests describes the minimum amount of
+                              compute resources required. If Requests is omitted for
+                              a container, it defaults to Limits if that is explicitly
+                              specified, otherwise to an implementation-defined value.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                         type: object
                       replicas:
@@ -1441,7 +1958,8 @@ spec:
                               - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Limits describes the maximum amount of compute
+                              resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                           requests:
                             additionalProperties:
@@ -1450,7 +1968,11 @@ spec:
                               - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Requests describes the minimum amount of
+                              compute resources required. If Requests is omitted for
+                              a container, it defaults to Limits if that is explicitly
+                              specified, otherwise to an implementation-defined value.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                         type: object
                       retention:
@@ -1474,7 +1996,8 @@ spec:
                       serviceAccountAnnotations:
                         additionalProperties:
                           type: string
-                        description: Annotations is an unstructured key value map stored with a service account
+                        description: Annotations is an unstructured key value map
+                          stored with a service account
                         type: object
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.
@@ -1483,31 +2006,50 @@ spec:
                         description: VolumeClaimTemplate
                         properties:
                           spec:
-                            description: PersistentVolumeClaimSpec describes the common attributes of storage devices and allows a Source for provider-specific attributes
+                            description: PersistentVolumeClaimSpec describes the common
+                              attributes of storage devices and allows a Source for
+                              provider-specific attributes
                             properties:
                               accessModes:
-                                description: 'AccessModes contains the desired access modes the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1'
+                                description: 'AccessModes contains the desired access
+                                  modes the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1'
                                 items:
                                   type: string
                                 type: array
                               dataSource:
-                                description: 'This field can be used to specify either: * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot) * An existing PVC (PersistentVolumeClaim) * An existing custom resource that implements data population (Alpha) In order to use custom resource types that implement data population, the AnyVolumeDataSource feature gate must be enabled. If the provisioner or an external controller can support the specified data source, it will create a new volume based on the contents of the specified data source.'
+                                description: 'This field can be used to specify either:
+                                  * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)
+                                  * An existing PVC (PersistentVolumeClaim) * An existing
+                                  custom resource that implements data population
+                                  (Alpha) In order to use custom resource types that
+                                  implement data population, the AnyVolumeDataSource
+                                  feature gate must be enabled. If the provisioner
+                                  or an external controller can support the specified
+                                  data source, it will create a new volume based on
+                                  the contents of the specified data source.'
                                 properties:
                                   apiGroup:
-                                    description: APIGroup is the group for the resource being referenced. If APIGroup is not specified, the specified Kind must be in the core API group. For any other third-party types, APIGroup is required.
+                                    description: APIGroup is the group for the resource
+                                      being referenced. If APIGroup is not specified,
+                                      the specified Kind must be in the core API group.
+                                      For any other third-party types, APIGroup is
+                                      required.
                                     type: string
                                   kind:
-                                    description: Kind is the type of resource being referenced
+                                    description: Kind is the type of resource being
+                                      referenced
                                     type: string
                                   name:
-                                    description: Name is the name of resource being referenced
+                                    description: Name is the name of resource being
+                                      referenced
                                     type: string
                                 required:
                                 - kind
                                 - name
                                 type: object
                               resources:
-                                description: 'Resources represents the minimum resources the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources'
+                                description: 'Resources represents the minimum resources
+                                  the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources'
                                 properties:
                                   limits:
                                     additionalProperties:
@@ -1516,7 +2058,8 @@ spec:
                                       - type: string
                                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                       x-kubernetes-int-or-string: true
-                                    description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                    description: 'Limits describes the maximum amount
+                                      of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                     type: object
                                   requests:
                                     additionalProperties:
@@ -1525,25 +2068,43 @@ spec:
                                       - type: string
                                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                       x-kubernetes-int-or-string: true
-                                    description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                    description: 'Requests describes the minimum amount
+                                      of compute resources required. If Requests is
+                                      omitted for a container, it defaults to Limits
+                                      if that is explicitly specified, otherwise to
+                                      an implementation-defined value. More info:
+                                      https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                     type: object
                                 type: object
                               selector:
-                                description: A label query over volumes to consider for binding.
+                                description: A label query over volumes to consider
+                                  for binding.
                                 properties:
                                   matchExpressions:
-                                    description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                                    description: matchExpressions is a list of label
+                                      selector requirements. The requirements are
+                                      ANDed.
                                     items:
-                                      description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                      description: A label selector requirement is
+                                        a selector that contains values, a key, and
+                                        an operator that relates the key and values.
                                       properties:
                                         key:
-                                          description: key is the label key that the selector applies to.
+                                          description: key is the label key that the
+                                            selector applies to.
                                           type: string
                                         operator:
-                                          description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                          description: operator represents a key's
+                                            relationship to a set of values. Valid
+                                            operators are In, NotIn, Exists and DoesNotExist.
                                           type: string
                                         values:
-                                          description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                          description: values is an array of string
+                                            values. If the operator is In or NotIn,
+                                            the values array must be non-empty. If
+                                            the operator is Exists or DoesNotExist,
+                                            the values array must be empty. This array
+                                            is replaced during a strategic merge patch.
                                           items:
                                             type: string
                                           type: array
@@ -1555,17 +2116,26 @@ spec:
                                   matchLabels:
                                     additionalProperties:
                                       type: string
-                                    description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                    description: matchLabels is a map of {key,value}
+                                      pairs. A single {key,value} in the matchLabels
+                                      map is equivalent to an element of matchExpressions,
+                                      whose key field is "key", the operator is "In",
+                                      and the values array contains only "value".
+                                      The requirements are ANDed.
                                     type: object
                                 type: object
                               storageClassName:
-                                description: 'Name of the StorageClass required by the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
+                                description: 'Name of the StorageClass required by
+                                  the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
                                 type: string
                               volumeMode:
-                                description: volumeMode defines what type of volume is required by the claim. Value of Filesystem is implied when not included in claim spec.
+                                description: volumeMode defines what type of volume
+                                  is required by the claim. Value of Filesystem is
+                                  implied when not included in claim spec.
                                 type: string
                               volumeName:
-                                description: VolumeName is the binding reference to the PersistentVolume backing this claim.
+                                description: VolumeName is the binding reference to
+                                  the PersistentVolume backing this claim.
                                 type: string
                             type: object
                         required:
@@ -1588,7 +2158,8 @@ spec:
                             description: Memcached Prometheus Exporter image
                             type: string
                           exporterImagePullPolicy:
-                            description: Memcached Prometheus Exporter image image pull policy
+                            description: Memcached Prometheus Exporter image image
+                              pull policy
                             type: string
                           exporterResources:
                             description: Compute Resources required by this container.
@@ -1600,7 +2171,8 @@ spec:
                                   - type: string
                                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                   x-kubernetes-int-or-string: true
-                                description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                description: 'Limits describes the maximum amount
+                                  of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                 type: object
                               requests:
                                 additionalProperties:
@@ -1609,11 +2181,16 @@ spec:
                                   - type: string
                                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                   x-kubernetes-int-or-string: true
-                                description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                description: 'Requests describes the minimum amount
+                                  of compute resources required. If Requests is omitted
+                                  for a container, it defaults to Limits if that is
+                                  explicitly specified, otherwise to an implementation-defined
+                                  value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                 type: object
                             type: object
                           exporterVersion:
-                            description: Version of Memcached Prometheus Exporter image to be deployed.
+                            description: Version of Memcached Prometheus Exporter
+                              image to be deployed.
                             type: string
                           image:
                             description: Memcached image
@@ -1622,7 +2199,8 @@ spec:
                             description: Memcached image pull policy
                             type: string
                           maxItemSize:
-                            description: 'Max item size (default: 1m, min: 1k, max: 1024m)'
+                            description: 'Max item size (default: 1m, min: 1k, max:
+                              1024m)'
                             type: string
                           memoryLimitMb:
                             description: Memory limit of Memcached in megabytes.
@@ -1642,7 +2220,8 @@ spec:
                                   - type: string
                                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                   x-kubernetes-int-or-string: true
-                                description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                description: 'Limits describes the maximum amount
+                                  of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                 type: object
                               requests:
                                 additionalProperties:
@@ -1651,7 +2230,11 @@ spec:
                                   - type: string
                                   pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                   x-kubernetes-int-or-string: true
-                                description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                description: 'Requests describes the minimum amount
+                                  of compute resources required. If Requests is omitted
+                                  for a container, it defaults to Limits if that is
+                                  explicitly specified, otherwise to an implementation-defined
+                                  value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                 type: object
                             type: object
                           serviceMonitor:
@@ -1671,7 +2254,8 @@ spec:
                               - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Limits describes the maximum amount of compute
+                              resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                           requests:
                             additionalProperties:
@@ -1680,13 +2264,18 @@ spec:
                               - type: string
                               pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                               x-kubernetes-int-or-string: true
-                            description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                            description: 'Requests describes the minimum amount of
+                              compute resources required. If Requests is omitted for
+                              a container, it defaults to Limits if that is explicitly
+                              specified, otherwise to an implementation-defined value.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                             type: object
                         type: object
                       serviceAccountAnnotations:
                         additionalProperties:
                           type: string
-                        description: Annotations is an unstructured key value map stored with a service account
+                        description: Annotations is an unstructured key value map
+                          stored with a service account
                         type: object
                       serviceMonitor:
                         description: ServiceMonitor enables servicemonitor.
@@ -1698,31 +2287,50 @@ spec:
                         description: VolumeClaimTemplate
                         properties:
                           spec:
-                            description: PersistentVolumeClaimSpec describes the common attributes of storage devices and allows a Source for provider-specific attributes
+                            description: PersistentVolumeClaimSpec describes the common
+                              attributes of storage devices and allows a Source for
+                              provider-specific attributes
                             properties:
                               accessModes:
-                                description: 'AccessModes contains the desired access modes the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1'
+                                description: 'AccessModes contains the desired access
+                                  modes the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1'
                                 items:
                                   type: string
                                 type: array
                               dataSource:
-                                description: 'This field can be used to specify either: * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot) * An existing PVC (PersistentVolumeClaim) * An existing custom resource that implements data population (Alpha) In order to use custom resource types that implement data population, the AnyVolumeDataSource feature gate must be enabled. If the provisioner or an external controller can support the specified data source, it will create a new volume based on the contents of the specified data source.'
+                                description: 'This field can be used to specify either:
+                                  * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)
+                                  * An existing PVC (PersistentVolumeClaim) * An existing
+                                  custom resource that implements data population
+                                  (Alpha) In order to use custom resource types that
+                                  implement data population, the AnyVolumeDataSource
+                                  feature gate must be enabled. If the provisioner
+                                  or an external controller can support the specified
+                                  data source, it will create a new volume based on
+                                  the contents of the specified data source.'
                                 properties:
                                   apiGroup:
-                                    description: APIGroup is the group for the resource being referenced. If APIGroup is not specified, the specified Kind must be in the core API group. For any other third-party types, APIGroup is required.
+                                    description: APIGroup is the group for the resource
+                                      being referenced. If APIGroup is not specified,
+                                      the specified Kind must be in the core API group.
+                                      For any other third-party types, APIGroup is
+                                      required.
                                     type: string
                                   kind:
-                                    description: Kind is the type of resource being referenced
+                                    description: Kind is the type of resource being
+                                      referenced
                                     type: string
                                   name:
-                                    description: Name is the name of resource being referenced
+                                    description: Name is the name of resource being
+                                      referenced
                                     type: string
                                 required:
                                 - kind
                                 - name
                                 type: object
                               resources:
-                                description: 'Resources represents the minimum resources the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources'
+                                description: 'Resources represents the minimum resources
+                                  the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources'
                                 properties:
                                   limits:
                                     additionalProperties:
@@ -1731,7 +2339,8 @@ spec:
                                       - type: string
                                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                       x-kubernetes-int-or-string: true
-                                    description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                    description: 'Limits describes the maximum amount
+                                      of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                     type: object
                                   requests:
                                     additionalProperties:
@@ -1740,25 +2349,43 @@ spec:
                                       - type: string
                                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                                       x-kubernetes-int-or-string: true
-                                    description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                                    description: 'Requests describes the minimum amount
+                                      of compute resources required. If Requests is
+                                      omitted for a container, it defaults to Limits
+                                      if that is explicitly specified, otherwise to
+                                      an implementation-defined value. More info:
+                                      https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                     type: object
                                 type: object
                               selector:
-                                description: A label query over volumes to consider for binding.
+                                description: A label query over volumes to consider
+                                  for binding.
                                 properties:
                                   matchExpressions:
-                                    description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                                    description: matchExpressions is a list of label
+                                      selector requirements. The requirements are
+                                      ANDed.
                                     items:
-                                      description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                                      description: A label selector requirement is
+                                        a selector that contains values, a key, and
+                                        an operator that relates the key and values.
                                       properties:
                                         key:
-                                          description: key is the label key that the selector applies to.
+                                          description: key is the label key that the
+                                            selector applies to.
                                           type: string
                                         operator:
-                                          description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                                          description: operator represents a key's
+                                            relationship to a set of values. Valid
+                                            operators are In, NotIn, Exists and DoesNotExist.
                                           type: string
                                         values:
-                                          description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                                          description: values is an array of string
+                                            values. If the operator is In or NotIn,
+                                            the values array must be non-empty. If
+                                            the operator is Exists or DoesNotExist,
+                                            the values array must be empty. This array
+                                            is replaced during a strategic merge patch.
                                           items:
                                             type: string
                                           type: array
@@ -1770,17 +2397,26 @@ spec:
                                   matchLabels:
                                     additionalProperties:
                                       type: string
-                                    description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                    description: matchLabels is a map of {key,value}
+                                      pairs. A single {key,value} in the matchLabels
+                                      map is equivalent to an element of matchExpressions,
+                                      whose key field is "key", the operator is "In",
+                                      and the values array contains only "value".
+                                      The requirements are ANDed.
                                     type: object
                                 type: object
                               storageClassName:
-                                description: 'Name of the StorageClass required by the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
+                                description: 'Name of the StorageClass required by
+                                  the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
                                 type: string
                               volumeMode:
-                                description: volumeMode defines what type of volume is required by the claim. Value of Filesystem is implied when not included in claim spec.
+                                description: volumeMode defines what type of volume
+                                  is required by the claim. Value of Filesystem is
+                                  implied when not included in claim spec.
                                 type: string
                               volumeName:
-                                description: VolumeName is the binding reference to the PersistentVolume backing this claim.
+                                description: VolumeName is the binding reference to
+                                  the PersistentVolume backing this claim.
                                 type: string
                             type: object
                         required:
@@ -1799,25 +2435,43 @@ spec:
                 - store
                 type: object
               tolerations:
-                description: Tolerations causes all components to tolerate specified taints.
+                description: Tolerations causes all components to tolerate specified
+                  taints.
                 items:
-                  description: The pod this Toleration is attached to tolerates any taint that matches the triple <key,value,effect> using the matching operator <operator>.
+                  description: The pod this Toleration is attached to tolerates any
+                    taint that matches the triple <key,value,effect> using the matching
+                    operator <operator>.
                   properties:
                     effect:
-                      description: Effect indicates the taint effect to match. Empty means match all taint effects. When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
+                      description: Effect indicates the taint effect to match. Empty
+                        means match all taint effects. When specified, allowed values
+                        are NoSchedule, PreferNoSchedule and NoExecute.
                       type: string
                     key:
-                      description: Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.
+                      description: Key is the taint key that the toleration applies
+                        to. Empty means match all taint keys. If the key is empty,
+                        operator must be Exists; this combination means to match all
+                        values and all keys.
                       type: string
                     operator:
-                      description: Operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.
+                      description: Operator represents a key's relationship to the
+                        value. Valid operators are Exists and Equal. Defaults to Equal.
+                        Exists is equivalent to wildcard for value, so that a pod
+                        can tolerate all taints of a particular category.
                       type: string
                     tolerationSeconds:
-                      description: TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.
+                      description: TolerationSeconds represents the period of time
+                        the toleration (which must be of effect NoExecute, otherwise
+                        this field is ignored) tolerates the taint. By default, it
+                        is not set, which means tolerate the taint forever (do not
+                        evict). Zero and negative values will be treated as 0 (evict
+                        immediately) by the system.
                       format: int64
                       type: integer
                     value:
-                      description: Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string.
+                      description: Value is the taint value the toleration matches
+                        to. If the operator is Exists, the value should be empty,
+                        otherwise just a regular string.
                       type: string
                   type: object
                 type: array

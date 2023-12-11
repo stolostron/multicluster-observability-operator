@@ -2,6 +2,8 @@ resources:
 - service.yaml
 - validatingwebhookconfiguration.yaml
 
-patchesStrategicMerge:
-- webhook_service_cert_patch.yaml
-- webhook_cainjection_patch.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+patches:
+- path: webhook_service_cert_patch.yaml
+- path: webhook_cainjection_patch.yaml
