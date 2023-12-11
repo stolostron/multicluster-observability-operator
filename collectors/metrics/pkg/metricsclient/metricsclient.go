@@ -366,7 +366,7 @@ func withCancel(ctx context.Context, client *http.Client, req *http.Request, fn 
 	return err
 }
 
-func MTLSTransport(logger log.Logger, isCustomCA bool, caCertFile, tlsCrtFile, tlsKeyFile string) (*http.Transport, error) {
+func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string) (*http.Transport, error) {
 	testMode := os.Getenv("UNIT_TEST") != ""
 	if testMode {
 		caCertFile = "../../testdata/tls/ca.crt"
@@ -376,25 +376,29 @@ func MTLSTransport(logger log.Logger, isCustomCA bool, caCertFile, tlsCrtFile, t
 	// Load Server CA cert
 	var caCert []byte
 	var err error
-	if !isCustomCA {
-		caCert, err = os.ReadFile(filepath.Clean(caCertFile))
-		if err != nil {
-			return nil, fmt.Errorf("failed to load server ca cert file: %w", err)
-		}
-	} else {
-		caCert, err = base64.StdEncoding.DecodeString(caCertFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode server ca cert: %w", err)
-		}
+
+	caCert, err = os.ReadFile(filepath.Clean(caCertFile))
+	if err != nil {
+		return nil, fmt.Errorf("failed to load server ca cert file: %w", err)
 	}
+
 	// Load client cert signed by Client CA
 	cert, err := tls.LoadX509KeyPair(tlsCrtFile, tlsKeyFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load client ca cert: %w", err)
 	}
-
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
+
+	if os.Getenv("HTTPS_PROXY_CA_BUNDLE") != "" {
+		customCaCert, err := base64.StdEncoding.DecodeString(os.Getenv("HTTPS_PROXY_CA_BUNDLE"))
+		logger.Log(logger, logger.Log("msg", "caCert", "caCert", caCert))
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode server ca cert: %w", err)
+		}
+		caCertPool.AppendCertsFromPEM(customCaCert)
+	}
+
 	// Setup HTTPS client
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{cert},

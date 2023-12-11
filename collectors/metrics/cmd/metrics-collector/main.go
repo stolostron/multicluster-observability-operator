@@ -96,11 +96,6 @@ func main() {
 		opt.ToUpload,
 		"A server endpoint to push metrics to.")
 	cmd.Flags().StringVar(
-		&opt.IsCustomCA,
-		"is-custom-ca",
-		opt.IsCustomCA,
-		"Whether the CA certificate is custom.")
-	cmd.Flags().StringVar(
 		&opt.ToUploadCA,
 		"to-upload-ca",
 		opt.ToUploadCA,
@@ -252,7 +247,6 @@ type Options struct {
 	FromCAFile    string
 	FromToken     string
 	FromTokenFile string
-	IsCustomCA    bool
 	ToUploadCA    string
 	ToUploadCert  string
 	ToUploadKey   string
@@ -424,7 +418,6 @@ func runMultiWorkers(o *Options, cfg *forwarder.Config) error {
 			ToUpload:                o.ToUpload,
 			FromCAFile:              o.FromCAFile,
 			FromTokenFile:           o.FromTokenFile,
-			IsCustomCA:              o.IsCustomCA,
 			ToUploadCA:              o.ToUploadCA,
 			ToUploadCert:            o.ToUploadCert,
 			ToUploadKey:             o.ToUploadKey,
@@ -583,7 +576,6 @@ func initConfig(o *Options) (error, *forwarder.Config) {
 		FromToken:     o.FromToken,
 		FromTokenFile: o.FromTokenFile,
 		FromCAFile:    o.FromCAFile,
-		IsCustomCA:    o.IsCustomCA,
 		ToUploadCA:    o.ToUploadCA,
 		ToUploadCert:  o.ToUploadCert,
 		ToUploadKey:   o.ToUploadKey,
