@@ -66,6 +66,7 @@ type CollectorParams struct {
 	httpProxy    string
 	httpsProxy   string
 	noProxy      string
+	CABundle     string
 	replicaCount int32
 }
 
@@ -90,7 +91,18 @@ func getCommands(params CollectorParams) []string {
 		"--from=$(FROM)",
 		"--from-query=$(FROM_QUERY)",
 		"--to-upload=$(TO)",
-		"--to-upload-ca=/tlscerts/ca/ca.crt",
+		"--to-upload-ca=" + func() string {
+			if params.CABundle == "" {
+				return "/tlscerts/ca/ca.crt"
+			}
+			return params.CABundle
+		}(),
+		"--custom-ca=" + func() string {
+			if params.CABundle != "" {
+				return "true"
+			}
+			return "false"
+		}(),
 		"--to-upload-cert=/tlscerts/certs/tls.crt",
 		"--to-upload-key=/tlscerts/certs/tls.key",
 		"--interval=" + interval,
@@ -305,6 +317,13 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 				Value: params.noProxy,
 			})
 	}
+	if params.httpsProxy != "" && params.CABundle != "" {
+		metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
+			corev1.EnvVar{
+				Name:  "HTTPS_PROXY_CA_BUNDLE",
+				Value: params.CABundle,
+			})
+	}
 
 	if params.obsAddonSpec.Resources != nil {
 		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *params.obsAddonSpec.Resources
@@ -343,6 +362,8 @@ func updateMetricsCollectors(ctx context.Context, c client.Client, obsAddonSpec 
 					params.httpsProxy = env.Value
 				} else if env.Name == "NO_PROXY" {
 					params.noProxy = env.Value
+				} else if env.Name == "HTTPS_PROXY_CA_BUNDLE" {
+					params.CABundle = env.Value
 				}
 			}
 		}

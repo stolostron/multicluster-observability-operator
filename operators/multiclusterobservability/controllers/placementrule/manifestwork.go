@@ -6,6 +6,7 @@ package placementrule
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -339,6 +340,13 @@ func createManifestWorks(
 							Name:  "HTTPS_PROXY",
 							Value: addonConfig.Spec.ProxyConfig.HTTPSProxy,
 						})
+						//CA is allowed only when HTTPS proxy is set
+						if addonConfig.Spec.ProxyConfig.CABundle != nil {
+							container.Env = append(container.Env, corev1.EnvVar{
+								Name:  "HTTPS_PROXY_CA",
+								Value: base64.StdEncoding.EncodeToString(addonConfig.Spec.ProxyConfig.CABundle),
+							})
+						}
 					}
 					if addonConfig.Spec.ProxyConfig.NoProxy != "" {
 						container.Env = append(container.Env, corev1.EnvVar{

@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -365,7 +366,7 @@ func withCancel(ctx context.Context, client *http.Client, req *http.Request, fn 
 	return err
 }
 
-func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string) (*http.Transport, error) {
+func MTLSTransport(logger log.Logger, isCustomCA bool, caCertFile, tlsCrtFile, tlsKeyFile string) (*http.Transport, error) {
 	testMode := os.Getenv("UNIT_TEST") != ""
 	if testMode {
 		caCertFile = "../../testdata/tls/ca.crt"
@@ -373,9 +374,18 @@ func MTLSTransport(logger log.Logger, caCertFile, tlsCrtFile, tlsKeyFile string)
 		tlsCrtFile = "../../testdata/tls/tls.crt"
 	}
 	// Load Server CA cert
-	caCert, err := os.ReadFile(filepath.Clean(caCertFile))
-	if err != nil {
-		return nil, fmt.Errorf("failed to load server ca cert file: %w", err)
+	var caCert []byte
+	var err error
+	if !isCustomCA {
+		caCert, err = os.ReadFile(filepath.Clean(caCertFile))
+		if err != nil {
+			return nil, fmt.Errorf("failed to load server ca cert file: %w", err)
+		}
+	} else {
+		caCert, err = base64.StdEncoding.DecodeString(caCertFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode server ca cert: %w", err)
+		}
 	}
 	// Load client cert signed by Client CA
 	cert, err := tls.LoadX509KeyPair(tlsCrtFile, tlsKeyFile)
