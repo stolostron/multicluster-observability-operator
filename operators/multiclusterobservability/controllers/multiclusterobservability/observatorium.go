@@ -675,8 +675,8 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 		ruleSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosRule, mco.Spec.AdvancedConfig)
 		ruleSpec.ReloaderResources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosRuleReloaderCPURequets),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosRuleReloaderMemoryRequets),
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosRuleReloaderCPURequest),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosRuleReloaderMemoryRequest),
 			},
 		}
 	}
@@ -905,10 +905,10 @@ func newReceiverControllerSpec(mco *mcov1beta2.MultiClusterObservability) obsv1a
 		receiveControllerSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
 				v1.ResourceName(v1.ResourceCPU): resource.MustParse(
-					mcoconfig.ObservatoriumReceiveControllerCPURequets,
+					mcoconfig.ObservatoriumReceiveControllerCPURequest,
 				),
 				v1.ResourceName(v1.ResourceMemory): resource.MustParse(
-					mcoconfig.ObservatoriumReceiveControllerMemoryRequets,
+					mcoconfig.ObservatoriumReceiveControllerMemoryRequest,
 				),
 			},
 		}
