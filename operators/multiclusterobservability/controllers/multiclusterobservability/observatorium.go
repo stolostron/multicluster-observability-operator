@@ -673,6 +673,9 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 	ruleSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		ruleSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosRule, mcoconfig.TShirtSize(mco.Spec.ReadTShirtSize), mco.Spec.AdvancedConfig)
+		if mco.Spec.ReadTShirtSize == "" {
+			mco.Spec.ReadTShirtSize = "small"
+		}
 		ruleSpec.ReloaderResources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
 				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosRuleReloaderCPURequest[mcoconfig.TShirtSize(mco.Spec.ReadTShirtSize)]),
@@ -902,6 +905,9 @@ func newReceiverControllerSpec(mco *mcov1beta2.MultiClusterObservability) obsv1a
 	receiveControllerSpec.ServiceMonitor = true
 	receiveControllerSpec.Version = mcoconfig.ThanosReceiveControllerImgTag
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
+		if mco.Spec.WriteTShirtSize == "" {
+			mco.Spec.WriteTShirtSize = "small"
+		}
 		receiveControllerSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
 				v1.ResourceName(v1.ResourceCPU): resource.MustParse(
