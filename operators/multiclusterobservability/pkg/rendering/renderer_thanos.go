@@ -76,7 +76,7 @@ func (r *MCORenderer) RenderThanosConfig(res *resource.Resource,
 			return nil, err
 		}
 		addr := []string{}
-		for i := 0; i < int(*mcoconfig.GetReplicas("alertmanager", mcoconfig.TShirtSize(r.cr.Spec.ReadTShirtSize), r.cr.Spec.AdvancedConfig)); i++ {
+		for i := 0; i < int(*mcoconfig.GetReplicas("alertmanager", r.cr.Spec.ReadTShirtSize, r.cr.Spec.AdvancedConfig)); i++ {
 			addr = append(addr, "observability-alertmanager-"+strconv.Itoa(i)+
 				".alertmanager-operated.open-cluster-management-observability.svc:9095")
 		}
