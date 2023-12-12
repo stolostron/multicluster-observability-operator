@@ -226,6 +226,10 @@ func getAdvancedConfigResourceOverride(component string, tshirtSize TShirtSize, 
 // GetResources returns the pre-set resource requirements for a particular o11y workload.
 // Always default unless configured via advancedConfig, in which case it is overridden.
 func GetResources(component string, tshirtSize TShirtSize, advanced *observabilityv1beta2.AdvancedConfig) corev1.ResourceRequirements {
+	if tshirtSize == "" {
+		tshirtSize = Small
+	}
+
 	resourceReq := getDefaultResourceRequirements(component, tshirtSize)
 	if advanced != nil {
 		resourceReq = getAdvancedConfigResourceOverride(component, tshirtSize, advanced)
@@ -236,6 +240,10 @@ func GetResources(component string, tshirtSize TShirtSize, advanced *observabili
 
 // GetOBAResources returns the pre-set resource requirements for metrics collector.
 func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec, tshirtSize TShirtSize) *corev1.ResourceRequirements {
+	if tshirtSize == "" {
+		tshirtSize = Small
+	}
+
 	cpuRequests := MetricsCollectorCPURequest[tshirtSize]
 	cpuLimits := MetricsCollectorCPULimits
 	memoryRequests := MetricsCollectorMemoryRequest[tshirtSize]
@@ -283,6 +291,10 @@ func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec, tshirtSize TShirtSiz
 
 // GetReplicas returns the default replicas for a particular o11y workload.
 func GetReplicas(component string, tshirtSize TShirtSize, advanced *observabilityv1beta2.AdvancedConfig) *int32 {
+	if tshirtSize == "" {
+		tshirtSize = Small
+	}
+
 	if advanced == nil {
 		return Replicas[component][tshirtSize]
 	}
