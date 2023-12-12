@@ -75,7 +75,7 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource,
 	}
 
 	spec.Containers[0].Args = args
-	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.Alertmanager, r.cr.Spec.AdvancedConfig)
+	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.Alertmanager, mcoconfig.TShirtSize(r.cr.Spec.ReadTShirtSize), r.cr.Spec.AdvancedConfig)
 
 	spec.Containers[1].ImagePullPolicy = imagePullPolicy
 	spec.NodeSelector = r.cr.Spec.NodeSelector

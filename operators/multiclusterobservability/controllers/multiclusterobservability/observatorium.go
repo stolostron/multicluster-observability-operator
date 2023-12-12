@@ -523,7 +523,7 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 	apiSpec.TLS = newAPITLS()
 	apiSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ObservatoriumAPI, mco.Spec.AdvancedConfig)
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		apiSpec.Resources = mcoconfig.GetResources(mcoconfig.ObservatoriumAPI, mco.Spec.AdvancedConfig)
+		apiSpec.Resources = mcoconfig.GetResources(mcoconfig.ObservatoriumAPI, mcoconfig.TShirtSize(mco.Spec.WriteTShirtSize), mco.Spec.AdvancedConfig)
 	}
 	// set the default observatorium components' image
 	apiSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ObservatoriumAPIImgName +
@@ -628,7 +628,7 @@ func newReceiversSpec(
 
 	receSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		receSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosReceive, mco.Spec.AdvancedConfig)
+		receSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosReceive, mcoconfig.TShirtSize(mco.Spec.WriteTShirtSize), mco.Spec.AdvancedConfig)
 	}
 	receSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
 		mco.Spec.StorageConfig.ReceiveStorageSize,
@@ -672,11 +672,11 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 
 	ruleSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		ruleSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosRule, mco.Spec.AdvancedConfig)
+		ruleSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosRule, mcoconfig.TShirtSize(mco.Spec.ReadTShirtSize), mco.Spec.AdvancedConfig)
 		ruleSpec.ReloaderResources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosRuleReloaderCPURequest),
-				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosRuleReloaderMemoryRequest),
+				v1.ResourceName(v1.ResourceCPU):    resource.MustParse(mcoconfig.ThanosRuleReloaderCPURequest[mcoconfig.TShirtSize(mco.Spec.ReadTShirtSize)]),
+				v1.ResourceName(v1.ResourceMemory): resource.MustParse(mcoconfig.ThanosRuleReloaderMemoryRequest[mcoconfig.TShirtSize(mco.Spec.ReadTShirtSize)]),
 			},
 		}
 	}
@@ -750,7 +750,7 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 func newStoreSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.StoreSpec {
 	storeSpec := obsv1alpha1.StoreSpec{}
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		storeSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosStoreShard, mco.Spec.AdvancedConfig)
+		storeSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosStoreShard, mcoconfig.TShirtSize(mco.Spec.ReadTShirtSize), mco.Spec.AdvancedConfig)
 	}
 
 	storeSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
@@ -794,8 +794,8 @@ func newMemCacheSpec(component string, mco *mcov1beta2.MultiClusterObservability
 		mcoconfig.MemcachedExporterImgName + ":" + mcoconfig.MemcachedExporterImgTag
 	memCacheSpec.ExporterVersion = mcoconfig.MemcachedExporterImgTag
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		memCacheSpec.Resources = mcoconfig.GetResources(component, mco.Spec.AdvancedConfig)
-		memCacheSpec.ExporterResources = mcoconfig.GetResources(mcoconfig.MemcachedExporter, mco.Spec.AdvancedConfig)
+		memCacheSpec.Resources = mcoconfig.GetResources(component, mcoconfig.TShirtSize(mco.Spec.ReadTShirtSize), mco.Spec.AdvancedConfig)
+		memCacheSpec.ExporterResources = mcoconfig.GetResources(mcoconfig.MemcachedExporter, mcoconfig.TShirtSize(mco.Spec.ReadTShirtSize), mco.Spec.AdvancedConfig)
 	}
 
 	found, image := mcoconfig.ReplaceImage(mco.Annotations, memCacheSpec.Image, mcoconfig.MemcachedImgName)
@@ -854,7 +854,7 @@ func newQueryFrontendSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1
 	queryFrontendSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ThanosQueryFrontend, mco.Spec.AdvancedConfig)
 	queryFrontendSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		queryFrontendSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosQueryFrontend, mco.Spec.AdvancedConfig)
+		queryFrontendSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosQueryFrontend, mcoconfig.TShirtSize(mco.Spec.ReadTShirtSize), mco.Spec.AdvancedConfig)
 	}
 	queryFrontendSpec.Cache = newMemCacheSpec(mcoconfig.ThanosQueryFrontendMemcached, mco)
 
@@ -876,7 +876,7 @@ func newQuerySpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QuerySp
 		querySpec.LookbackDelta = fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval*2)
 	}
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		querySpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosQuery, mco.Spec.AdvancedConfig)
+		querySpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosQuery, mcoconfig.TShirtSize(mco.Spec.ReadTShirtSize), mco.Spec.AdvancedConfig)
 	}
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Query != nil &&
 		mco.Spec.AdvancedConfig.Query.ServiceAccountAnnotations != nil {
@@ -905,10 +905,10 @@ func newReceiverControllerSpec(mco *mcov1beta2.MultiClusterObservability) obsv1a
 		receiveControllerSpec.Resources = v1.ResourceRequirements{
 			Requests: v1.ResourceList{
 				v1.ResourceName(v1.ResourceCPU): resource.MustParse(
-					mcoconfig.ObservatoriumReceiveControllerCPURequest,
+					mcoconfig.ObservatoriumReceiveControllerCPURequest[mcoconfig.TShirtSize(mco.Spec.WriteTShirtSize)],
 				),
 				v1.ResourceName(v1.ResourceMemory): resource.MustParse(
-					mcoconfig.ObservatoriumReceiveControllerMemoryRequest,
+					mcoconfig.ObservatoriumReceiveControllerMemoryRequest[mcoconfig.TShirtSize(mco.Spec.WriteTShirtSize)],
 				),
 			},
 		}
@@ -928,7 +928,7 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 	// Compactions are needed from time to time, only when new blocks appear.
 	compactSpec.Replicas = &mcoconfig.Replicas1
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
-		compactSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosCompact, mco.Spec.AdvancedConfig)
+		compactSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosCompact, mcoconfig.TShirtSize(mco.Spec.WriteTShirtSize), mco.Spec.AdvancedConfig)
 	}
 	compactSpec.ServiceMonitor = true
 	compactSpec.EnableDownsampling = mco.Spec.EnableDownsampling

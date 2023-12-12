@@ -14,64 +14,14 @@ import (
 	observabilityv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 )
 
-// Specifies resources for all components.
 const (
-	RBACQueryProxyCPURequest    = "20m"
-	RBACQueryProxyMemoryRequest = "100Mi"
-
-	GrafanaCPURequest    = "4m"
-	GrafanaMemoryRequest = "100Mi"
-	GrafanaCPULimit      = "500m"
-	GrafanaMemoryLimit   = "1Gi"
-
-	AlertmanagerCPURequest    = "4m"
-	AlertmanagerMemoryRequest = "200Mi"
-
-	ObservatoriumAPICPURequest    = "20m"
-	ObservatoriumAPIMemoryRequest = "128Mi"
-
-	ThanosQueryFrontendCPURequest    = "100m"
-	ThanosQueryFrontendMemoryRequest = "256Mi"
-
-	MemcachedExporterCPURequest    = "5m"
-	MemcachedExporterMemoryRequest = "50Mi"
-
-	ThanosQueryCPURequest    = "300m"
-	ThanosQueryMemoryRequest = "1Gi"
-
-	ThanosCompactCPURequest    = "100m"
-	ThanosCompactMemoryRequest = "512Mi"
-
-	ObservatoriumReceiveControllerCPURequest    = "4m"
-	ObservatoriumReceiveControllerMemoryRequest = "32Mi"
-
-	ThanosReceiveCPURequest    = "300m"
-	ThanosReceiveMemoryRequest = "512Mi"
-
-	ThanosRuleCPURequest            = "50m"
-	ThanosRuleMemoryRequest         = "512Mi"
-	ThanosRuleReloaderCPURequest    = "4m"
-	ThanosRuleReloaderMemoryRequest = "25Mi"
-
-	ThanosCachedCPURequest            = "45m"
-	ThanosCachedMemoryRequest         = "128Mi"
-	ThanosCachedExporterCPURequest    = "5m"
-	ThanosCachedExporterMemoryRequest = "50Mi"
-
-	ThanosStoreCPURequest    = "100m"
-	ThanosStoreMemoryRequest = "1Gi"
-
-	MetricsCollectorCPURequest    = "10m"
-	MetricsCollectorMemoryRequest = "100Mi"
-	MetricsCollectorCPULimits     = ""
-	MetricsCollectorMemoryLimits  = ""
-
 	ResourceLimits                        = "limits"
 	ResourceRequests                      = "requests"
 	AnnotationMCOWithoutResourcesRequests = "mco-thanos-without-resources-requests"
 )
 
 // Specifies replicas for all components.
+// TODO(saswatamcode): Configure replicas with tshirt size as well.
 var (
 	Replicas1 int32 = 1
 	Replicas2 int32 = 2
@@ -93,68 +43,68 @@ var (
 )
 
 // getDefaultResourceCPU returns the default resource CPU request for a particular o11y workload.
-func getDefaultResourceCPU(component string) string {
+func getDefaultResourceCPU(component string, tshirtSize TShirtSize) string {
 	switch component {
 	case ObservatoriumAPI:
-		return ObservatoriumAPICPURequest
+		return ObservatoriumAPICPURequest[tshirtSize]
 	case ThanosCompact:
-		return ThanosCompactCPURequest
+		return ThanosCompactCPURequest[tshirtSize]
 	case ThanosQuery:
-		return ThanosQueryCPURequest
+		return ThanosQueryCPURequest[tshirtSize]
 	case ThanosQueryFrontend:
-		return ThanosQueryFrontendCPURequest
+		return ThanosQueryFrontendCPURequest[tshirtSize]
 	case ThanosRule:
-		return ThanosRuleCPURequest
+		return ThanosRuleCPURequest[tshirtSize]
 	case ThanosReceive:
-		return ThanosReceiveCPURequest
+		return ThanosReceiveCPURequest[tshirtSize]
 	case ThanosStoreShard:
-		return ThanosStoreCPURequest
+		return ThanosStoreCPURequest[tshirtSize]
 	case ThanosQueryFrontendMemcached, ThanosStoreMemcached:
-		return ThanosCachedCPURequest
+		return ThanosCachedCPURequest[tshirtSize]
 	case MemcachedExporter:
-		return MemcachedExporterCPURequest
+		return MemcachedExporterCPURequest[tshirtSize]
 	case RBACQueryProxy:
-		return RBACQueryProxyCPURequest
+		return RBACQueryProxyCPURequest[tshirtSize]
 	case MetricsCollector:
-		return MetricsCollectorCPURequest
+		return MetricsCollectorCPURequest[tshirtSize]
 	case Alertmanager:
-		return AlertmanagerCPURequest
+		return AlertmanagerCPURequest[tshirtSize]
 	case Grafana:
-		return GrafanaCPURequest
+		return GrafanaCPURequest[tshirtSize]
 	default:
 		return ""
 	}
 }
 
 // getDefaultResourceMemory returns the default resource memory request for a particular o11y workload.
-func getDefaultResourceMemory(component string) string {
+func getDefaultResourceMemory(component string, tshirtSize TShirtSize) string {
 	switch component {
 	case ObservatoriumAPI:
-		return ObservatoriumAPIMemoryRequest
+		return ObservatoriumAPIMemoryRequest[tshirtSize]
 	case ThanosCompact:
-		return ThanosCompactMemoryRequest
+		return ThanosCompactMemoryRequest[tshirtSize]
 	case ThanosQuery:
-		return ThanosQueryMemoryRequest
+		return ThanosQueryMemoryRequest[tshirtSize]
 	case ThanosQueryFrontend:
-		return ThanosQueryFrontendMemoryRequest
+		return ThanosQueryFrontendMemoryRequest[tshirtSize]
 	case ThanosRule:
-		return ThanosRuleMemoryRequest
+		return ThanosRuleMemoryRequest[tshirtSize]
 	case ThanosReceive:
-		return ThanosReceiveMemoryRequest
+		return ThanosReceiveMemoryRequest[tshirtSize]
 	case ThanosStoreShard:
-		return ThanosStoreMemoryRequest
+		return ThanosStoreMemoryRequest[tshirtSize]
 	case ThanosQueryFrontendMemcached, ThanosStoreMemcached:
-		return ThanosCachedMemoryRequest
+		return ThanosCachedMemoryRequest[tshirtSize]
 	case MemcachedExporter:
-		return MemcachedExporterMemoryRequest
+		return MemcachedExporterMemoryRequest[tshirtSize]
 	case RBACQueryProxy:
-		return RBACQueryProxyMemoryRequest
+		return RBACQueryProxyMemoryRequest[tshirtSize]
 	case MetricsCollector:
-		return MetricsCollectorMemoryRequest
+		return MetricsCollectorMemoryRequest[tshirtSize]
 	case Alertmanager:
-		return AlertmanagerMemoryRequest
+		return AlertmanagerMemoryRequest[tshirtSize]
 	case Grafana:
-		return GrafanaMemoryRequest
+		return GrafanaMemoryRequest[tshirtSize]
 	default:
 		return ""
 	}
@@ -181,12 +131,12 @@ func getDefaultResourceCPULimit(component string) string {
 }
 
 // getDefaultResourceRequirements returns the default resource requirements for a particular o11y workload.
-func getDefaultResourceRequirements(component string) corev1.ResourceRequirements {
+func getDefaultResourceRequirements(component string, tshirtSize TShirtSize) corev1.ResourceRequirements {
 	requests := corev1.ResourceList{}
 	limits := corev1.ResourceList{}
 
-	memoryRequest := getDefaultResourceMemory(component)
-	cpuRequest := getDefaultResourceCPU(component)
+	memoryRequest := getDefaultResourceMemory(component, tshirtSize)
+	cpuRequest := getDefaultResourceCPU(component, tshirtSize)
 
 	memoryLimit := getDefaultResourceMemoryLimit(component)
 	cpuLimit := getDefaultResourceCPULimit(component)
@@ -209,7 +159,7 @@ func getDefaultResourceRequirements(component string) corev1.ResourceRequirement
 }
 
 // getAdvancedConfigResourceOverride returns the AdvancedConfig overriden resource requirements for a particular o11y workload.
-func getAdvancedConfigResourceOverride(component string, advanced *observabilityv1beta2.AdvancedConfig) corev1.ResourceRequirements {
+func getAdvancedConfigResourceOverride(component string, tshirtSize TShirtSize, advanced *observabilityv1beta2.AdvancedConfig) corev1.ResourceRequirements {
 	resourcesReq := &corev1.ResourceRequirements{}
 	switch component {
 	case ObservatoriumAPI:
@@ -268,49 +218,49 @@ func getAdvancedConfigResourceOverride(component string, advanced *observability
 		if len(resourcesReq.Requests) != 0 {
 			final.Requests = resourcesReq.Requests
 			if resourcesReq.Requests.Cpu().String() == "0" {
-				final.Requests[corev1.ResourceCPU] = getDefaultResourceRequirements(component).Requests[corev1.ResourceCPU]
+				final.Requests[corev1.ResourceCPU] = getDefaultResourceRequirements(component, tshirtSize).Requests[corev1.ResourceCPU]
 			}
 			if resourcesReq.Requests.Memory().String() == "0" {
-				final.Requests[corev1.ResourceMemory] = getDefaultResourceRequirements(component).Requests[corev1.ResourceMemory]
+				final.Requests[corev1.ResourceMemory] = getDefaultResourceRequirements(component, tshirtSize).Requests[corev1.ResourceMemory]
 			}
 		} else {
-			final.Requests = getDefaultResourceRequirements(component).Requests
+			final.Requests = getDefaultResourceRequirements(component, tshirtSize).Requests
 		}
 
 		if len(resourcesReq.Limits) != 0 {
 			final.Limits = resourcesReq.Limits
 			if resourcesReq.Limits.Cpu().String() == "0" {
-				final.Limits[corev1.ResourceCPU] = getDefaultResourceRequirements(component).Limits[corev1.ResourceCPU]
+				final.Limits[corev1.ResourceCPU] = getDefaultResourceRequirements(component, tshirtSize).Limits[corev1.ResourceCPU]
 			}
 			if resourcesReq.Limits.Memory().String() == "0" {
-				final.Limits[corev1.ResourceMemory] = getDefaultResourceRequirements(component).Limits[corev1.ResourceMemory]
+				final.Limits[corev1.ResourceMemory] = getDefaultResourceRequirements(component, tshirtSize).Limits[corev1.ResourceMemory]
 			}
 		} else {
-			final.Limits = getDefaultResourceRequirements(component).Limits
+			final.Limits = getDefaultResourceRequirements(component, tshirtSize).Limits
 		}
 
 		return final
 	}
 
-	return getDefaultResourceRequirements(component)
+	return getDefaultResourceRequirements(component, tshirtSize)
 }
 
 // GetResources returns the pre-set resource requirements for a particular o11y workload.
 // Always default unless configured via advancedConfig, in which case it is overriden.
-func GetResources(component string, advanced *observabilityv1beta2.AdvancedConfig) corev1.ResourceRequirements {
-	resourceReq := getDefaultResourceRequirements(component)
+func GetResources(component string, tshirtSize TShirtSize, advanced *observabilityv1beta2.AdvancedConfig) corev1.ResourceRequirements {
+	resourceReq := getDefaultResourceRequirements(component, tshirtSize)
 	if advanced != nil {
-		resourceReq = getAdvancedConfigResourceOverride(component, advanced)
+		resourceReq = getAdvancedConfigResourceOverride(component, tshirtSize, advanced)
 	}
 
 	return resourceReq
 }
 
 // GetOBAResources returns the pre-set resource requirements for metrics collector.
-func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec) *corev1.ResourceRequirements {
-	cpuRequests := MetricsCollectorCPURequest
+func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec, tshirtSize TShirtSize) *corev1.ResourceRequirements {
+	cpuRequests := MetricsCollectorCPURequest[tshirtSize]
 	cpuLimits := MetricsCollectorCPULimits
-	memoryRequests := MetricsCollectorMemoryRequest
+	memoryRequests := MetricsCollectorMemoryRequest[tshirtSize]
 	memoryLimits := MetricsCollectorMemoryLimits
 	resourceReq := &corev1.ResourceRequirements{}
 
