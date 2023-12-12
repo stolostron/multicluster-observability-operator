@@ -49,8 +49,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2023-12-11T10:33:35Z"
-    operators.operatorframework.io/builder: operator-sdk-v1.32.0
+    operators.operatorframework.io/builder: operator-sdk-v1.4.2
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: multicluster-observability-operator.v0.1.0
   namespace: placeholder
@@ -58,14 +57,12 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: MultiClusterObservability defines the configuration for the Observability
-        installation on Hub and Managed Clusters all through this one custom resource.
+    - description: MultiClusterObservability defines the configuration for the Observability installation on Hub and Managed Clusters all through this one custom resource.
       displayName: MultiClusterObservability
       kind: MultiClusterObservability
       name: multiclusterobservabilities.observability.open-cluster-management.io
       version: v1beta1
-    - description: MultiClusterObservability defines the configuration for the Observability
-        installation on Hub and Managed Clusters all through this one custom resource.
+    - description: MultiClusterObservability defines the configuration for the Observability installation on Hub and Managed Clusters all through this one custom resource.
       displayName: MultiClusterObservability
       kind: MultiClusterObservability
       name: multiclusterobservabilities.observability.open-cluster-management.io
@@ -78,8 +75,7 @@ spec:
     - kind: Observatorium
       name: observatoria.core.observatorium.io
       version: v1alpha1
-  description: The multicluster-observability-operator is a component of ACM observability
-    feature. It is designed to install into Hub Cluster.
+  description: The multicluster-observability-operator is a component of ACM observability feature. It is designed to install into Hub Cluster.
   displayName: Multicluster Observability Operator
   icon:
   - base64data: ""
@@ -456,9 +452,7 @@ spec:
           - watch
         serviceAccountName: multicluster-observability-operator
       deployments:
-      - label:
-          name: multicluster-observability-operator
-        name: multicluster-observability-operator
+      - name: multicluster-observability-operator
         spec:
           replicas: 1
           selector:
@@ -566,18 +560,6 @@ spec:
     url: https://github.com/stolostron/multicluster-observability-operator
   version: 0.1.0
   webhookdefinitions:
-  - admissionReviewVersions:
-    - v1
-    - v1beta1
-    containerPort: 443
-    conversionCRDs:
-    - multiclusterobservabilities.observability.open-cluster-management.io
-    deploymentName: multicluster-observability-operator
-    generateName: cmulticlusterobservabilities.kb.io
-    sideEffects: None
-    targetPort: 9443
-    type: ConversionWebhook
-    webhookPath: /convert
   - admissionReviewVersions:
     - v1
     - v1beta1
