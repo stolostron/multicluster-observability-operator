@@ -313,7 +313,7 @@ func TestGetReplicas(t *testing.T) {
 	}
 	for _, c := range caseList {
 		t.Run(c.componentName+":"+c.name, func(t *testing.T) {
-			replicas := GetReplicas(c.componentName, c.raw)
+			replicas := GetReplicas(c.componentName, Small, c.raw)
 			if !c.result(replicas) {
 				t.Errorf("case (%v) output (%v) is not the expected", c.componentName+":"+c.name, replicas)
 			}

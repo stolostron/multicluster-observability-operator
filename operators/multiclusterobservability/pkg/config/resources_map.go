@@ -327,10 +327,124 @@ var (
 	}
 )
 
+// TODO(saswatamcode): Add tshirt sized limits for all components.
 const (
 	GrafanaCPULimit    = "500m"
 	GrafanaMemoryLimit = "1Gi"
 
 	MetricsCollectorCPULimits    = ""
 	MetricsCollectorMemoryLimits = ""
+)
+
+type ReplicaMap map[TShirtSize]*int32
+
+// Specifies replicas for all components.
+// TODO(saswatamcode): Figure out the right values for these. They are all the same at the moment.
+var (
+	Replicas1 int32 = 1
+	Replicas2 int32 = 2
+	Replicas3 int32 = 3
+
+	Replicas = map[string]ReplicaMap{
+		ObservatoriumAPI: {
+			Small:       &Replicas2,
+			Medium:      &Replicas2,
+			Large:       &Replicas2,
+			XLarge:      &Replicas2,
+			TwoXLarge:   &Replicas2,
+			FourXLarge:  &Replicas2,
+			EightXLarge: &Replicas2,
+		},
+		ThanosQuery: {
+			Small:       &Replicas2,
+			Medium:      &Replicas2,
+			Large:       &Replicas2,
+			XLarge:      &Replicas2,
+			TwoXLarge:   &Replicas2,
+			FourXLarge:  &Replicas2,
+			EightXLarge: &Replicas2,
+		},
+		ThanosQueryFrontend: {
+			Small:       &Replicas2,
+			Medium:      &Replicas2,
+			Large:       &Replicas2,
+			XLarge:      &Replicas2,
+			TwoXLarge:   &Replicas2,
+			FourXLarge:  &Replicas2,
+			EightXLarge: &Replicas2,
+		},
+		Grafana: {
+			Small:       &Replicas2,
+			Medium:      &Replicas2,
+			Large:       &Replicas2,
+			XLarge:      &Replicas2,
+			TwoXLarge:   &Replicas2,
+			FourXLarge:  &Replicas2,
+			EightXLarge: &Replicas2,
+		},
+		RBACQueryProxy: {
+			Small:       &Replicas2,
+			Medium:      &Replicas2,
+			Large:       &Replicas2,
+			XLarge:      &Replicas2,
+			TwoXLarge:   &Replicas2,
+			FourXLarge:  &Replicas2,
+			EightXLarge: &Replicas2,
+		},
+
+		ThanosRule: {
+			Small:       &Replicas3,
+			Medium:      &Replicas3,
+			Large:       &Replicas3,
+			XLarge:      &Replicas3,
+			TwoXLarge:   &Replicas3,
+			FourXLarge:  &Replicas3,
+			EightXLarge: &Replicas3,
+		},
+		ThanosReceive: {
+			Small:       &Replicas3,
+			Medium:      &Replicas3,
+			Large:       &Replicas3,
+			XLarge:      &Replicas3,
+			TwoXLarge:   &Replicas3,
+			FourXLarge:  &Replicas3,
+			EightXLarge: &Replicas3,
+		},
+		ThanosStoreShard: {
+			Small:       &Replicas3,
+			Medium:      &Replicas3,
+			Large:       &Replicas3,
+			XLarge:      &Replicas3,
+			TwoXLarge:   &Replicas3,
+			FourXLarge:  &Replicas3,
+			EightXLarge: &Replicas3,
+		},
+		ThanosStoreMemcached: {
+			Small:       &Replicas3,
+			Medium:      &Replicas3,
+			Large:       &Replicas3,
+			XLarge:      &Replicas3,
+			TwoXLarge:   &Replicas3,
+			FourXLarge:  &Replicas3,
+			EightXLarge: &Replicas3,
+		},
+		ThanosQueryFrontendMemcached: {
+			Small:       &Replicas3,
+			Medium:      &Replicas3,
+			Large:       &Replicas3,
+			XLarge:      &Replicas3,
+			TwoXLarge:   &Replicas3,
+			FourXLarge:  &Replicas3,
+			EightXLarge: &Replicas3,
+		},
+		Alertmanager: {
+			Small:       &Replicas3,
+			Medium:      &Replicas3,
+			Large:       &Replicas3,
+			XLarge:      &Replicas3,
+			TwoXLarge:   &Replicas3,
+			FourXLarge:  &Replicas3,
+			EightXLarge: &Replicas3,
+		},
+	}
 )

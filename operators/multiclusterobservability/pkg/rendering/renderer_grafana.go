@@ -45,7 +45,7 @@ func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
 	}
 	dep := obj.(*v1.Deployment)
 	dep.Name = config.GetOperandName(config.Grafana)
-	dep.Spec.Replicas = config.GetReplicas(config.Grafana, r.cr.Spec.AdvancedConfig)
+	dep.Spec.Replicas = config.GetReplicas(config.Grafana, config.TShirtSize(r.cr.Spec.ReadTShirtSize), r.cr.Spec.AdvancedConfig)
 
 	spec := &dep.Spec.Template.Spec
 	imagePullPolicy := config.GetImagePullPolicy(r.cr.Spec)
