@@ -136,7 +136,7 @@ func getDefaultResourceRequirements(component string, tshirtSize TShirtSize) cor
 	}
 }
 
-// getAdvancedConfigResourceOverride returns the AdvancedConfig overriden resource requirements for a particular o11y workload.
+// getAdvancedConfigResourceOverride returns the AdvancedConfig overridden resource requirements for a particular o11y workload.
 func getAdvancedConfigResourceOverride(component string, tshirtSize TShirtSize, advanced *observabilityv1beta2.AdvancedConfig) corev1.ResourceRequirements {
 	resourcesReq := &corev1.ResourceRequirements{}
 	switch component {
@@ -224,7 +224,7 @@ func getAdvancedConfigResourceOverride(component string, tshirtSize TShirtSize, 
 }
 
 // GetResources returns the pre-set resource requirements for a particular o11y workload.
-// Always default unless configured via advancedConfig, in which case it is overriden.
+// Always default unless configured via advancedConfig, in which case it is overridden.
 func GetResources(component string, tshirtSize TShirtSize, advanced *observabilityv1beta2.AdvancedConfig) corev1.ResourceRequirements {
 	resourceReq := getDefaultResourceRequirements(component, tshirtSize)
 	if advanced != nil {
