@@ -521,7 +521,7 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 	apiSpec.RBAC = newAPIRBAC()
 	apiSpec.Tenants = newAPITenants()
 	apiSpec.TLS = newAPITLS()
-	apiSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ObservatoriumAPI, mco.Spec.AdvancedConfig)
+	apiSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ObservatoriumAPI, mcoconfig.TShirtSize(mco.Spec.WriteTShirtSize), mco.Spec.AdvancedConfig)
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		apiSpec.Resources = mcoconfig.GetResources(mcoconfig.ObservatoriumAPI, mcoconfig.TShirtSize(mco.Spec.WriteTShirtSize), mco.Spec.AdvancedConfig)
 	}
@@ -619,7 +619,7 @@ func newReceiversSpec(
 		receSpec.Retention = mcoconfig.RetentionInLocal
 	}
 
-	receSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ThanosReceive, mco.Spec.AdvancedConfig)
+	receSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ThanosReceive, mcoconfig.TShirtSize(mco.Spec.WriteTShirtSize), mco.Spec.AdvancedConfig)
 	if *receSpec.Replicas < 3 {
 		receSpec.ReplicationFactor = receSpec.Replicas
 	} else {
@@ -668,7 +668,7 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 	} else {
 		ruleSpec.EvalInterval = fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval)
 	}
-	ruleSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ThanosRule, mco.Spec.AdvancedConfig)
+	ruleSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ThanosRule, mcoconfig.TShirtSize(mco.Spec.ReadTShirtSize), mco.Spec.AdvancedConfig)
 
 	ruleSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
@@ -757,7 +757,7 @@ func newStoreSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) 
 		mco.Spec.StorageConfig.StoreStorageSize,
 		scSelected)
 
-	storeSpec.Shards = mcoconfig.GetReplicas(mcoconfig.ThanosStoreShard, mco.Spec.AdvancedConfig)
+	storeSpec.Shards = mcoconfig.GetReplicas(mcoconfig.ThanosStoreShard, mcoconfig.TShirtSize(mco.Spec.ReadTShirtSize), mco.Spec.AdvancedConfig)
 	storeSpec.ServiceMonitor = true
 	storeSpec.Cache = newMemCacheSpec(mcoconfig.ThanosStoreMemcached, mco)
 
@@ -787,7 +787,7 @@ func newMemCacheSpec(component string, mco *mcov1beta2.MultiClusterObservability
 	memCacheSpec.Image = mcoconfig.MemcachedImgRepo + "/" +
 		mcoconfig.MemcachedImgName + ":" + mcoconfig.MemcachedImgTag
 	memCacheSpec.Version = mcoconfig.MemcachedImgTag
-	memCacheSpec.Replicas = mcoconfig.GetReplicas(component, mco.Spec.AdvancedConfig)
+	memCacheSpec.Replicas = mcoconfig.GetReplicas(component, mcoconfig.TShirtSize(mco.Spec.ReadTShirtSize), mco.Spec.AdvancedConfig)
 
 	memCacheSpec.ServiceMonitor = true
 	memCacheSpec.ExporterImage = mcoconfig.MemcachedExporterImgRepo + "/" +
@@ -851,7 +851,7 @@ func newThanosSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string)
 
 func newQueryFrontendSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QueryFrontendSpec {
 	queryFrontendSpec := obsv1alpha1.QueryFrontendSpec{}
-	queryFrontendSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ThanosQueryFrontend, mco.Spec.AdvancedConfig)
+	queryFrontendSpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ThanosQueryFrontend, mcoconfig.TShirtSize(mco.Spec.ReadTShirtSize), mco.Spec.AdvancedConfig)
 	queryFrontendSpec.ServiceMonitor = true
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		queryFrontendSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosQueryFrontend, mcoconfig.TShirtSize(mco.Spec.ReadTShirtSize), mco.Spec.AdvancedConfig)
@@ -868,7 +868,7 @@ func newQueryFrontendSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1
 
 func newQuerySpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QuerySpec {
 	querySpec := obsv1alpha1.QuerySpec{}
-	querySpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ThanosQuery, mco.Spec.AdvancedConfig)
+	querySpec.Replicas = mcoconfig.GetReplicas(mcoconfig.ThanosQuery, mcoconfig.TShirtSize(mco.Spec.ReadTShirtSize), mco.Spec.AdvancedConfig)
 	querySpec.ServiceMonitor = true
 	// only set lookback-delta when the scrape interval * 2 is larger than 5 minute,
 	// otherwise default value(5m) will be used.

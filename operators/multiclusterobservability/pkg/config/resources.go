@@ -20,28 +20,6 @@ const (
 	AnnotationMCOWithoutResourcesRequests = "mco-thanos-without-resources-requests"
 )
 
-// Specifies replicas for all components.
-// TODO(saswatamcode): Configure replicas with tshirt size as well.
-var (
-	Replicas1 int32 = 1
-	Replicas2 int32 = 2
-	Replicas3 int32 = 3
-	Replicas        = map[string]*int32{
-		ObservatoriumAPI:    &Replicas2,
-		ThanosQuery:         &Replicas2,
-		ThanosQueryFrontend: &Replicas2,
-		Grafana:             &Replicas2,
-		RBACQueryProxy:      &Replicas2,
-
-		ThanosRule:                   &Replicas3,
-		ThanosReceive:                &Replicas3,
-		ThanosStoreShard:             &Replicas3,
-		ThanosStoreMemcached:         &Replicas3,
-		ThanosQueryFrontendMemcached: &Replicas3,
-		Alertmanager:                 &Replicas3,
-	}
-)
-
 // getDefaultResourceCPU returns the default resource CPU request for a particular o11y workload.
 func getDefaultResourceCPU(component string, tshirtSize TShirtSize) string {
 	switch component {
@@ -304,9 +282,9 @@ func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec, tshirtSize TShirtSiz
 }
 
 // GetReplicas returns the default replicas for a particular o11y workload.
-func GetReplicas(component string, advanced *observabilityv1beta2.AdvancedConfig) *int32 {
+func GetReplicas(component string, tshirtSize TShirtSize, advanced *observabilityv1beta2.AdvancedConfig) *int32 {
 	if advanced == nil {
-		return Replicas[component]
+		return Replicas[component][tshirtSize]
 	}
 	var replicas *int32
 	switch component {
@@ -357,7 +335,7 @@ func GetReplicas(component string, advanced *observabilityv1beta2.AdvancedConfig
 	}
 
 	if replicas == nil || *replicas == 0 {
-		replicas = Replicas[component]
+		replicas = Replicas[component][tshirtSize]
 	}
 	return replicas
 }
