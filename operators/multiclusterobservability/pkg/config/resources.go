@@ -21,7 +21,7 @@ const (
 )
 
 // getDefaultResourceCPU returns the default resource CPU request for a particular o11y workload.
-func getDefaultResourceCPU(component string, tshirtSize TShirtSize) string {
+func getDefaultResourceCPU(component string, tshirtSize observabilityv1beta2.TShirtSize) string {
 	switch component {
 	case ObservatoriumAPI:
 		return ObservatoriumAPICPURequest[tshirtSize]
@@ -55,7 +55,7 @@ func getDefaultResourceCPU(component string, tshirtSize TShirtSize) string {
 }
 
 // getDefaultResourceMemory returns the default resource memory request for a particular o11y workload.
-func getDefaultResourceMemory(component string, tshirtSize TShirtSize) string {
+func getDefaultResourceMemory(component string, tshirtSize observabilityv1beta2.TShirtSize) string {
 	switch component {
 	case ObservatoriumAPI:
 		return ObservatoriumAPIMemoryRequest[tshirtSize]
@@ -109,7 +109,7 @@ func getDefaultResourceCPULimit(component string) string {
 }
 
 // getDefaultResourceRequirements returns the default resource requirements for a particular o11y workload.
-func getDefaultResourceRequirements(component string, tshirtSize TShirtSize) corev1.ResourceRequirements {
+func getDefaultResourceRequirements(component string, tshirtSize observabilityv1beta2.TShirtSize) corev1.ResourceRequirements {
 	requests := corev1.ResourceList{}
 	limits := corev1.ResourceList{}
 
@@ -137,7 +137,7 @@ func getDefaultResourceRequirements(component string, tshirtSize TShirtSize) cor
 }
 
 // getAdvancedConfigResourceOverride returns the AdvancedConfig overridden resource requirements for a particular o11y workload.
-func getAdvancedConfigResourceOverride(component string, tshirtSize TShirtSize, advanced *observabilityv1beta2.AdvancedConfig) corev1.ResourceRequirements {
+func getAdvancedConfigResourceOverride(component string, tshirtSize observabilityv1beta2.TShirtSize, advanced *observabilityv1beta2.AdvancedConfig) corev1.ResourceRequirements {
 	resourcesReq := &corev1.ResourceRequirements{}
 	switch component {
 	case ObservatoriumAPI:
@@ -225,7 +225,7 @@ func getAdvancedConfigResourceOverride(component string, tshirtSize TShirtSize, 
 
 // GetResources returns the pre-set resource requirements for a particular o11y workload.
 // Always default unless configured via advancedConfig, in which case it is overridden.
-func GetResources(component string, tshirtSize TShirtSize, advanced *observabilityv1beta2.AdvancedConfig) corev1.ResourceRequirements {
+func GetResources(component string, tshirtSize observabilityv1beta2.TShirtSize, advanced *observabilityv1beta2.AdvancedConfig) corev1.ResourceRequirements {
 	if tshirtSize == "" {
 		tshirtSize = Small
 	}
@@ -239,7 +239,7 @@ func GetResources(component string, tshirtSize TShirtSize, advanced *observabili
 }
 
 // GetOBAResources returns the pre-set resource requirements for metrics collector.
-func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec, tshirtSize TShirtSize) *corev1.ResourceRequirements {
+func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec, tshirtSize observabilityv1beta2.TShirtSize) *corev1.ResourceRequirements {
 	if tshirtSize == "" {
 		tshirtSize = Small
 	}
@@ -290,7 +290,7 @@ func GetOBAResources(oba *mcoshared.ObservabilityAddonSpec, tshirtSize TShirtSiz
 }
 
 // GetReplicas returns the default replicas for a particular o11y workload.
-func GetReplicas(component string, tshirtSize TShirtSize, advanced *observabilityv1beta2.AdvancedConfig) *int32 {
+func GetReplicas(component string, tshirtSize observabilityv1beta2.TShirtSize, advanced *observabilityv1beta2.AdvancedConfig) *int32 {
 	if tshirtSize == "" {
 		tshirtSize = Small
 	}
