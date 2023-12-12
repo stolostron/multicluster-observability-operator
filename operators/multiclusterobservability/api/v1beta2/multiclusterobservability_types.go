@@ -50,7 +50,7 @@ type MultiClusterObservabilitySpec struct {
 }
 
 // T Shirt size class for a particular o11y resource.
-// +kubebuilder:validation:Enum:=small;medium;large;xlarge;2xlarge;4xlarge;8xlarge
+// +kubebuilder:validation:Enum:={"small","medium","large","xlarge","2xlarge","4xlarge","8xlarge"}
 type TShirtSize string
 
 type AdvancedConfig struct {
