@@ -73,3 +73,27 @@ func getClusterPreds() predicate.Funcs {
 		DeleteFunc: deleteFunc,
 	}
 }
+
+func GetAddOnDeploymentPredicates() predicate.Funcs {
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return true
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.ObjectNew.GetName() == defaultAddonDeploymentConfig.Name &&
+				e.ObjectNew.GetNamespace() == defaultAddonDeploymentConfig.Namespace {
+				log.Info("default AddonDeploymentConfig is updated")
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Object.GetName() == defaultAddonDeploymentConfig.Name &&
+				e.Object.GetNamespace() == defaultAddonDeploymentConfig.Namespace {
+				log.Info("default AddonDeploymentConfig is deleted")
+				return true
+			}
+			return false
+		},
+	}
+}

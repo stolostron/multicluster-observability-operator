@@ -5,6 +5,7 @@
 package placementrule
 
 import (
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"testing"
 	"time"
 
@@ -143,6 +144,71 @@ func TestClusterPred(t *testing.T) {
 				}
 			}
 
+		})
+	}
+}
+
+func TestAddonDeploymentPredicate(t *testing.T) {
+	name := "test-obj"
+	caseList := []struct {
+		caseName       string
+		namespace      string
+		expectedCreate bool
+		expectedUpdate bool
+		expectedDelete bool
+	}{
+		{
+			caseName:       "Create AddonDeploymentConfig",
+			namespace:      testNamespace,
+			expectedCreate: true,
+			expectedDelete: true,
+			expectedUpdate: true,
+		},
+	}
+
+	defaultAddonDeploymentConfig = &addonv1alpha1.AddOnDeploymentConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
+			ProxyConfig: addonv1alpha1.ProxyConfig{
+				HTTPProxy:  "http://foo.com",
+				HTTPSProxy: "https://foo.com",
+				NoProxy:    "bar.com",
+			},
+		},
+	}
+	for _, c := range caseList {
+		t.Run(c.caseName, func(t *testing.T) {
+			pred := GetAddOnDeploymentPredicates()
+			createEvent := event.CreateEvent{
+				Object: defaultAddonDeploymentConfig,
+			}
+
+			if c.expectedCreate {
+				if !pred.CreateFunc(createEvent) {
+					t.Fatalf("pre func return false on applied createevent in case: (%v)", c.caseName)
+				}
+			}
+
+			updateEvent := event.UpdateEvent{
+				ObjectNew: defaultAddonDeploymentConfig,
+			}
+			if c.expectedUpdate {
+				if !pred.UpdateFunc(updateEvent) {
+					t.Fatalf("pre func return false on applied update event in case: (%v)", c.caseName)
+				}
+			}
+
+			deleteEvent := event.DeleteEvent{
+				Object: defaultAddonDeploymentConfig,
+			}
+			if c.expectedDelete {
+				if !pred.DeleteFunc(deleteEvent) {
+					t.Fatalf("pre func return false on applied delete event in case: (%v)", c.caseName)
+				}
+			}
 		})
 	}
 }
