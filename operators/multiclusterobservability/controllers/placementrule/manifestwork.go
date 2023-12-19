@@ -973,7 +973,7 @@ func getObservabilityAddon(c client.Client, namespace string,
 		Spec: mcoshared.ObservabilityAddonSpec{
 			EnableMetrics: mco.Spec.ObservabilityAddonSpec.EnableMetrics,
 			Interval:      mco.Spec.ObservabilityAddonSpec.Interval,
-			Resources:     config.GetOBAResources(mco.Spec.ObservabilityAddonSpec, mco.Spec.WriteTShirtSize),
+			Resources:     config.GetOBAResources(mco.Spec.ObservabilityAddonSpec, mco.Spec.InstanceSize),
 		},
 	}, nil
 }

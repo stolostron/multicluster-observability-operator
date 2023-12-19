@@ -5904,6 +5904,19 @@ spec:
               imagePullSecret:
                 description: Pull secret of the MultiClusterObservability images
                 type: string
+              instanceSize:
+                description: Size read and write paths of your Observability instance
+                enum:
+                - default
+                - minimal
+                - small
+                - medium
+                - large
+                - xlarge
+                - 2xlarge
+                - 4xlarge
+                - 8xlarge
+                type: string
               nodeSelector:
                 additionalProperties:
                   type: string
@@ -5961,17 +5974,6 @@ spec:
                         type: object
                     type: object
                 type: object
-              readTShirtSize:
-                description: Size read path of your Observability instance
-                enum:
-                - small
-                - medium
-                - large
-                - xlarge
-                - 2xlarge
-                - 4xlarge
-                - 8xlarge
-                type: string
               storageConfig:
                 description: Specifies the storage to be used by Observability
                 properties:
@@ -6071,17 +6073,6 @@ spec:
                       type: string
                   type: object
                 type: array
-              writeTShirtSize:
-                description: Size write path of your Observability instance Some components are shared with the read path. In case of common components, we will use write path size.
-                enum:
-                - small
-                - medium
-                - large
-                - xlarge
-                - 2xlarge
-                - 4xlarge
-                - 8xlarge
-                type: string
             required:
             - observabilityAddonSpec
             - storageConfig

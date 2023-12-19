@@ -16,14 +16,9 @@ type MultiClusterObservabilitySpec struct {
 	// Advanced configurations for observability
 	// +optional
 	AdvancedConfig *AdvancedConfig `json:"advanced,omitempty"`
-	// Size read path of your Observability instance
+	// Size read and write paths of your Observability instance
 	// +optional
-	ReadTShirtSize TShirtSize `json:"readTShirtSize,omitempty"`
-	// Size write path of your Observability instance
-	// Some components are shared with the read path. In case of common components,
-	// we will use write path size.
-	// +optional
-	WriteTShirtSize TShirtSize `json:"writeTShirtSize,omitempty"`
+	InstanceSize TShirtSize `json:"instanceSize,omitempty"`
 	// Enable or disable the downsample.
 	// +optional
 	// +kubebuilder:default:=true
@@ -50,7 +45,7 @@ type MultiClusterObservabilitySpec struct {
 }
 
 // T Shirt size class for a particular o11y resource.
-// +kubebuilder:validation:Enum:={"small","medium","large","xlarge","2xlarge","4xlarge","8xlarge"}
+// +kubebuilder:validation:Enum:={"default","minimal","small","medium","large","xlarge","2xlarge","4xlarge","8xlarge"}
 type TShirtSize string
 
 type AdvancedConfig struct {

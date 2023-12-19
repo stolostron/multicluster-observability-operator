@@ -57,7 +57,7 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource,
 	dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
 	dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 	dep.Name = mcoconfig.GetOperandName(mcoconfig.Alertmanager)
-	dep.Spec.Replicas = mcoconfig.GetReplicas(mcoconfig.Alertmanager, r.cr.Spec.ReadTShirtSize, r.cr.Spec.AdvancedConfig)
+	dep.Spec.Replicas = mcoconfig.GetReplicas(mcoconfig.Alertmanager, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
 
 	spec := &dep.Spec.Template.Spec
 
@@ -75,7 +75,7 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource,
 	}
 
 	spec.Containers[0].Args = args
-	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.Alertmanager, r.cr.Spec.ReadTShirtSize, r.cr.Spec.AdvancedConfig)
+	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.Alertmanager, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
 
 	spec.Containers[1].ImagePullPolicy = imagePullPolicy
 	spec.NodeSelector = r.cr.Spec.NodeSelector
