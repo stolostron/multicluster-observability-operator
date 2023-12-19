@@ -52,7 +52,7 @@ func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
 	dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
 	dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 	dep.Name = mcoconfig.GetOperandName(mcoconfig.RBACQueryProxy)
-	dep.Spec.Replicas = mcoconfig.GetReplicas(mcoconfig.RBACQueryProxy, r.cr.Spec.ReadTShirtSize, r.cr.Spec.AdvancedConfig)
+	dep.Spec.Replicas = mcoconfig.GetReplicas(mcoconfig.RBACQueryProxy, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
 
 	spec := &dep.Spec.Template.Spec
 	imagePullPolicy := mcoconfig.GetImagePullPolicy(r.cr.Spec)
@@ -68,7 +68,7 @@ func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
 		)
 	}
 	spec.Containers[0].Args = args0
-	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.RBACQueryProxy, r.cr.Spec.ReadTShirtSize, r.cr.Spec.AdvancedConfig)
+	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.RBACQueryProxy, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
 
 	spec.Containers[1].ImagePullPolicy = imagePullPolicy
 	args1 := spec.Containers[1].Args

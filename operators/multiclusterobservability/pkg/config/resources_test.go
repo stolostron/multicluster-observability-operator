@@ -55,8 +55,8 @@ func TestGetResources(t *testing.T) {
 				},
 			},
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequest[Small] &&
-					resources.Requests.Memory().String() == ObservatoriumAPIMemoryRequest[Small] &&
+				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequest[Default] &&
+					resources.Requests.Memory().String() == ObservatoriumAPIMemoryRequest[Default] &&
 					resources.Limits.Cpu().String() == "1" &&
 					resources.Limits.Memory().String() == "1Gi"
 			},
@@ -75,8 +75,8 @@ func TestGetResources(t *testing.T) {
 				},
 			},
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == RBACQueryProxyCPURequest[Small] &&
-					resources.Requests.Memory().String() == RBACQueryProxyMemoryRequest[Small] &&
+				return resources.Requests.Cpu().String() == RBACQueryProxyCPURequest[Default] &&
+					resources.Requests.Memory().String() == RBACQueryProxyMemoryRequest[Default] &&
 					resources.Limits.Cpu().String() == "1" &&
 					resources.Limits.Memory().String() == "1Gi"
 			},
@@ -116,8 +116,8 @@ func TestGetResources(t *testing.T) {
 				},
 			},
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequest[Small] &&
-					resources.Requests.Memory().String() == ObservatoriumAPIMemoryRequest[Small] &&
+				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequest[Default] &&
+					resources.Requests.Memory().String() == ObservatoriumAPIMemoryRequest[Default] &&
 					resources.Limits.Cpu().String() == "0" && resources.Limits.Memory().String() == "0"
 			},
 		},
@@ -130,8 +130,8 @@ func TestGetResources(t *testing.T) {
 				},
 			},
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequest[Small] &&
-					resources.Requests.Memory().String() == ObservatoriumAPIMemoryRequest[Small] &&
+				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequest[Default] &&
+					resources.Requests.Memory().String() == ObservatoriumAPIMemoryRequest[Default] &&
 					resources.Limits.Cpu().String() == "0" && resources.Limits.Memory().String() == "0"
 			},
 		},
@@ -142,8 +142,8 @@ func TestGetResources(t *testing.T) {
 				ObservatoriumAPI: &mcov1beta2.CommonSpec{},
 			},
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequest[Small] &&
-					resources.Requests.Memory().String() == ObservatoriumAPIMemoryRequest[Small] &&
+				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequest[Default] &&
+					resources.Requests.Memory().String() == ObservatoriumAPIMemoryRequest[Default] &&
 					resources.Limits.Cpu().String() == "0" && resources.Limits.Memory().String() == "0"
 			},
 		},
@@ -152,8 +152,8 @@ func TestGetResources(t *testing.T) {
 			componentName: ObservatoriumAPI,
 			raw:           nil,
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequest[Small] &&
-					resources.Requests.Memory().String() == ObservatoriumAPIMemoryRequest[Small] &&
+				return resources.Requests.Cpu().String() == ObservatoriumAPICPURequest[Default] &&
+					resources.Requests.Memory().String() == ObservatoriumAPIMemoryRequest[Default] &&
 					resources.Limits.Cpu().String() == "0" && resources.Limits.Memory().String() == "0"
 			},
 		},
@@ -162,8 +162,8 @@ func TestGetResources(t *testing.T) {
 			componentName: Grafana,
 			raw:           nil,
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == GrafanaCPURequest[Small] &&
-					resources.Requests.Memory().String() == GrafanaMemoryRequest[Small] &&
+				return resources.Requests.Cpu().String() == GrafanaCPURequest[Default] &&
+					resources.Requests.Memory().String() == GrafanaMemoryRequest[Default] &&
 					resources.Limits.Cpu().String() == GrafanaCPULimit &&
 					resources.Limits.Memory().String() == GrafanaMemoryLimit
 			},
@@ -182,7 +182,7 @@ func TestGetResources(t *testing.T) {
 			},
 			result: func(resources corev1.ResourceRequirements) bool {
 				return resources.Requests.Cpu().String() == "1" &&
-					resources.Requests.Memory().String() == GrafanaMemoryRequest[Small] &&
+					resources.Requests.Memory().String() == GrafanaMemoryRequest[Default] &&
 					resources.Limits.Cpu().String() == GrafanaCPULimit &&
 					resources.Limits.Memory().String() == GrafanaMemoryLimit
 			},
@@ -200,8 +200,8 @@ func TestGetResources(t *testing.T) {
 				},
 			},
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == GrafanaCPURequest[Small] &&
-					resources.Requests.Memory().String() == GrafanaMemoryRequest[Small] &&
+				return resources.Requests.Cpu().String() == GrafanaCPURequest[Default] &&
+					resources.Requests.Memory().String() == GrafanaMemoryRequest[Default] &&
 					resources.Limits.Cpu().String() == "1" &&
 					resources.Limits.Memory().String() == GrafanaMemoryLimit
 			},
@@ -220,8 +220,8 @@ func TestGetResources(t *testing.T) {
 				},
 			},
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == GrafanaCPURequest[Small] &&
-					resources.Requests.Memory().String() == GrafanaMemoryRequest[Small] &&
+				return resources.Requests.Cpu().String() == GrafanaCPURequest[Default] &&
+					resources.Requests.Memory().String() == GrafanaMemoryRequest[Default] &&
 					resources.Limits.Cpu().String() == "1" &&
 					resources.Limits.Memory().String() == "1Gi"
 			},
@@ -242,8 +242,8 @@ func TestGetResources(t *testing.T) {
 				},
 			},
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == ThanosCachedCPURequest[Small] &&
-					resources.Requests.Memory().String() == ThanosCachedMemoryRequest[Small] &&
+				return resources.Requests.Cpu().String() == ThanosCachedCPURequest[Default] &&
+					resources.Requests.Memory().String() == ThanosCachedMemoryRequest[Default] &&
 					resources.Limits.Cpu().String() == "1" &&
 					resources.Limits.Memory().String() == "1Gi"
 			},
@@ -252,7 +252,7 @@ func TestGetResources(t *testing.T) {
 
 	for _, c := range caseList {
 		t.Run(c.componentName+":"+c.name, func(t *testing.T) {
-			resources := GetResources(c.componentName, Small, c.raw)
+			resources := GetResources(c.componentName, Default, c.raw)
 			if !c.result(resources) {
 				t.Errorf("case (%v) output (%v) is not the expected", c.componentName+":"+c.name, resources)
 			}
@@ -313,7 +313,7 @@ func TestGetReplicas(t *testing.T) {
 	}
 	for _, c := range caseList {
 		t.Run(c.componentName+":"+c.name, func(t *testing.T) {
-			replicas := GetReplicas(c.componentName, Small, c.raw)
+			replicas := GetReplicas(c.componentName, Default, c.raw)
 			if !c.result(replicas) {
 				t.Errorf("case (%v) output (%v) is not the expected", c.componentName+":"+c.name, replicas)
 			}
@@ -357,8 +357,8 @@ func TestGetOBAResources(t *testing.T) {
 				},
 			},
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == MetricsCollectorCPURequest[Small] &&
-					resources.Requests.Memory().String() == MetricsCollectorMemoryRequest[Small] &&
+				return resources.Requests.Cpu().String() == MetricsCollectorCPURequest[Default] &&
+					resources.Requests.Memory().String() == MetricsCollectorMemoryRequest[Default] &&
 					resources.Limits.Cpu().String() == "1" &&
 					resources.Limits.Memory().String() == "0"
 			},
@@ -370,8 +370,8 @@ func TestGetOBAResources(t *testing.T) {
 				Resources: &corev1.ResourceRequirements{},
 			},
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == MetricsCollectorCPURequest[Small] &&
-					resources.Requests.Memory().String() == MetricsCollectorMemoryRequest[Small] &&
+				return resources.Requests.Cpu().String() == MetricsCollectorCPURequest[Default] &&
+					resources.Requests.Memory().String() == MetricsCollectorMemoryRequest[Default] &&
 					resources.Limits.Cpu().String() == "0" &&
 					resources.Limits.Memory().String() == "0"
 			},
@@ -379,7 +379,7 @@ func TestGetOBAResources(t *testing.T) {
 	}
 	for _, c := range caseList {
 		t.Run(c.componentName+":"+c.name, func(t *testing.T) {
-			resources := GetOBAResources(c.raw, Small)
+			resources := GetOBAResources(c.raw, Default)
 			if !c.result(*resources) {
 				t.Errorf("case (%v) output (%v) is not the expected", c.componentName+":"+c.name, resources)
 			}

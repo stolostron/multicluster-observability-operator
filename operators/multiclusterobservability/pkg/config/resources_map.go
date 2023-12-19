@@ -9,6 +9,11 @@ import (
 )
 
 const (
+	// To be only used for testing.
+	Minimal observabilityv1beta2.TShirtSize = "minimal"
+
+	// To be used for actual setups.
+	Default     observabilityv1beta2.TShirtSize = "default"
 	Small       observabilityv1beta2.TShirtSize = "small"
 	Medium      observabilityv1beta2.TShirtSize = "medium"
 	Large       observabilityv1beta2.TShirtSize = "large"
@@ -24,6 +29,8 @@ type ResourceSizeMap map[observabilityv1beta2.TShirtSize]string
 // TODO(saswatamcode): Figure out the right values for these. They are all the same at the moment.
 var (
 	RBACQueryProxyCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "20m",
+		Default:     "20m",
 		Small:       "20m",
 		Medium:      "20m",
 		Large:       "20m",
@@ -33,6 +40,8 @@ var (
 		EightXLarge: "20m",
 	}
 	RBACQueryProxyMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "100Mi",
+		Default:     "100Mi",
 		Small:       "100Mi",
 		Medium:      "100Mi",
 		Large:       "100Mi",
@@ -43,6 +52,8 @@ var (
 	}
 
 	GrafanaCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "4m",
+		Default:     "4m",
 		Small:       "4m",
 		Medium:      "4m",
 		Large:       "4m",
@@ -52,6 +63,8 @@ var (
 		EightXLarge: "4m",
 	}
 	GrafanaMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "100Mi",
+		Default:     "100Mi",
 		Small:       "100Mi",
 		Medium:      "100Mi",
 		Large:       "100Mi",
@@ -62,6 +75,8 @@ var (
 	}
 
 	AlertmanagerCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "4m",
+		Default:     "4m",
 		Small:       "4m",
 		Medium:      "4m",
 		Large:       "4m",
@@ -71,6 +86,8 @@ var (
 		EightXLarge: "4m",
 	}
 	AlertmanagerMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "200Mi",
+		Default:     "200Mi",
 		Small:       "200Mi",
 		Medium:      "200Mi",
 		Large:       "200Mi",
@@ -81,6 +98,8 @@ var (
 	}
 
 	ObservatoriumAPICPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "20m",
+		Default:     "20m",
 		Small:       "20m",
 		Medium:      "20m",
 		Large:       "20m",
@@ -90,6 +109,8 @@ var (
 		EightXLarge: "20m",
 	}
 	ObservatoriumAPIMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "128Mi",
+		Default:     "128Mi",
 		Small:       "128Mi",
 		Medium:      "128Mi",
 		Large:       "128Mi",
@@ -100,6 +121,8 @@ var (
 	}
 
 	ThanosQueryFrontendCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "100m",
+		Default:     "100m",
 		Small:       "100m",
 		Medium:      "100m",
 		Large:       "100m",
@@ -109,6 +132,8 @@ var (
 		EightXLarge: "100m",
 	}
 	ThanosQueryFrontendMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "256Mi",
+		Default:     "256Mi",
 		Small:       "256Mi",
 		Medium:      "256Mi",
 		Large:       "256Mi",
@@ -119,6 +144,8 @@ var (
 	}
 
 	MemcachedExporterCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "20m",
+		Default:     "20m",
 		Small:       "5m",
 		Medium:      "5m",
 		Large:       "5m",
@@ -128,6 +155,8 @@ var (
 		EightXLarge: "5m",
 	}
 	MemcachedExporterMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "50Mi",
+		Default:     "50Mi",
 		Small:       "50Mi",
 		Medium:      "50Mi",
 		Large:       "50Mi",
@@ -138,6 +167,8 @@ var (
 	}
 
 	ThanosQueryCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "300m",
+		Default:     "300m",
 		Small:       "300m",
 		Medium:      "300m",
 		Large:       "300m",
@@ -147,6 +178,8 @@ var (
 		EightXLarge: "300m",
 	}
 	ThanosQueryMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "1Gi",
+		Default:     "1Gi",
 		Small:       "1Gi",
 		Medium:      "1Gi",
 		Large:       "1Gi",
@@ -157,6 +190,8 @@ var (
 	}
 
 	ThanosCompactCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "100m",
+		Default:     "100m",
 		Small:       "100m",
 		Medium:      "100m",
 		Large:       "100m",
@@ -166,6 +201,8 @@ var (
 		EightXLarge: "100m",
 	}
 	ThanosCompactMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "512Mi",
+		Default:     "512Mi",
 		Small:       "512Mi",
 		Medium:      "512Mi",
 		Large:       "512Mi",
@@ -176,6 +213,8 @@ var (
 	}
 
 	ObservatoriumReceiveControllerCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "4m",
+		Default:     "4m",
 		Small:       "4m",
 		Medium:      "4m",
 		Large:       "4m",
@@ -185,6 +224,8 @@ var (
 		EightXLarge: "4m",
 	}
 	ObservatoriumReceiveControllerMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "32Mi",
+		Default:     "32Mi",
 		Small:       "32Mi",
 		Medium:      "32Mi",
 		Large:       "32Mi",
@@ -195,6 +236,8 @@ var (
 	}
 
 	ThanosReceiveCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "300m",
+		Default:     "300m",
 		Small:       "300m",
 		Medium:      "300m",
 		Large:       "300m",
@@ -204,6 +247,8 @@ var (
 		EightXLarge: "300m",
 	}
 	ThanosReceiveMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "512Mi",
+		Default:     "512Mi",
 		Small:       "512Mi",
 		Medium:      "512Mi",
 		Large:       "512Mi",
@@ -214,6 +259,8 @@ var (
 	}
 
 	ThanosRuleCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "50m",
+		Default:     "50m",
 		Small:       "50m",
 		Medium:      "50m",
 		Large:       "50m",
@@ -223,6 +270,8 @@ var (
 		EightXLarge: "50m",
 	}
 	ThanosRuleMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "512Mi",
+		Default:     "512Mi",
 		Small:       "512Mi",
 		Medium:      "512Mi",
 		Large:       "512Mi",
@@ -233,6 +282,8 @@ var (
 	}
 
 	ThanosRuleReloaderCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "4m",
+		Default:     "4m",
 		Small:       "4m",
 		Medium:      "4m",
 		Large:       "4m",
@@ -242,6 +293,8 @@ var (
 		EightXLarge: "4m",
 	}
 	ThanosRuleReloaderMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "25Mi",
+		Default:     "25Mi",
 		Small:       "25Mi",
 		Medium:      "25Mi",
 		Large:       "25Mi",
@@ -252,6 +305,8 @@ var (
 	}
 
 	ThanosCachedCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "45m",
+		Default:     "45m",
 		Small:       "45m",
 		Medium:      "45m",
 		Large:       "45m",
@@ -261,6 +316,8 @@ var (
 		EightXLarge: "45m",
 	}
 	ThanosCachedMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "128Mi",
+		Default:     "128Mi",
 		Small:       "128Mi",
 		Medium:      "128Mi",
 		Large:       "128Mi",
@@ -271,6 +328,8 @@ var (
 	}
 
 	ThanosCachedExporterCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "5m",
+		Default:     "5m",
 		Small:       "5m",
 		Medium:      "5m",
 		Large:       "5m",
@@ -280,6 +339,8 @@ var (
 		EightXLarge: "5m",
 	}
 	ThanosCachedExporterMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "50Mi",
+		Default:     "50Mi",
 		Small:       "50Mi",
 		Medium:      "50Mi",
 		Large:       "50Mi",
@@ -290,6 +351,8 @@ var (
 	}
 
 	ThanosStoreCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "100m",
+		Default:     "100m",
 		Small:       "100m",
 		Medium:      "100m",
 		Large:       "100m",
@@ -299,6 +362,8 @@ var (
 		EightXLarge: "100m",
 	}
 	ThanosStoreMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "1Gi",
+		Default:     "1Gi",
 		Small:       "1Gi",
 		Medium:      "1Gi",
 		Large:       "1Gi",
@@ -309,6 +374,8 @@ var (
 	}
 
 	MetricsCollectorCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "10m",
+		Default:     "10m",
 		Small:       "10m",
 		Medium:      "10m",
 		Large:       "10m",
@@ -318,6 +385,8 @@ var (
 		EightXLarge: "10m",
 	}
 	MetricsCollectorMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "100Mi",
+		Default:     "100Mi",
 		Small:       "100Mi",
 		Medium:      "100Mi",
 		Large:       "100Mi",
@@ -348,6 +417,8 @@ var (
 
 	Replicas = map[string]ReplicaMap{
 		ObservatoriumAPI: {
+			Minimal:     &Replicas2,
+			Default:     &Replicas2,
 			Small:       &Replicas2,
 			Medium:      &Replicas2,
 			Large:       &Replicas2,
@@ -357,6 +428,8 @@ var (
 			EightXLarge: &Replicas2,
 		},
 		ThanosQuery: {
+			Minimal:     &Replicas2,
+			Default:     &Replicas2,
 			Small:       &Replicas2,
 			Medium:      &Replicas2,
 			Large:       &Replicas2,
@@ -366,6 +439,8 @@ var (
 			EightXLarge: &Replicas2,
 		},
 		ThanosQueryFrontend: {
+			Minimal:     &Replicas2,
+			Default:     &Replicas2,
 			Small:       &Replicas2,
 			Medium:      &Replicas2,
 			Large:       &Replicas2,
@@ -375,6 +450,8 @@ var (
 			EightXLarge: &Replicas2,
 		},
 		Grafana: {
+			Minimal:     &Replicas2,
+			Default:     &Replicas2,
 			Small:       &Replicas2,
 			Medium:      &Replicas2,
 			Large:       &Replicas2,
@@ -384,6 +461,8 @@ var (
 			EightXLarge: &Replicas2,
 		},
 		RBACQueryProxy: {
+			Minimal:     &Replicas2,
+			Default:     &Replicas2,
 			Small:       &Replicas2,
 			Medium:      &Replicas2,
 			Large:       &Replicas2,
@@ -394,6 +473,8 @@ var (
 		},
 
 		ThanosRule: {
+			Minimal:     &Replicas3,
+			Default:     &Replicas3,
 			Small:       &Replicas3,
 			Medium:      &Replicas3,
 			Large:       &Replicas3,
@@ -403,6 +484,8 @@ var (
 			EightXLarge: &Replicas3,
 		},
 		ThanosReceive: {
+			Minimal:     &Replicas3,
+			Default:     &Replicas3,
 			Small:       &Replicas3,
 			Medium:      &Replicas3,
 			Large:       &Replicas3,
@@ -412,6 +495,8 @@ var (
 			EightXLarge: &Replicas3,
 		},
 		ThanosStoreShard: {
+			Minimal:     &Replicas3,
+			Default:     &Replicas3,
 			Small:       &Replicas3,
 			Medium:      &Replicas3,
 			Large:       &Replicas3,
@@ -421,6 +506,8 @@ var (
 			EightXLarge: &Replicas3,
 		},
 		ThanosStoreMemcached: {
+			Minimal:     &Replicas3,
+			Default:     &Replicas3,
 			Small:       &Replicas3,
 			Medium:      &Replicas3,
 			Large:       &Replicas3,
@@ -430,6 +517,8 @@ var (
 			EightXLarge: &Replicas3,
 		},
 		ThanosQueryFrontendMemcached: {
+			Minimal:     &Replicas3,
+			Default:     &Replicas3,
 			Small:       &Replicas3,
 			Medium:      &Replicas3,
 			Large:       &Replicas3,
@@ -439,6 +528,8 @@ var (
 			EightXLarge: &Replicas3,
 		},
 		Alertmanager: {
+			Minimal:     &Replicas3,
+			Default:     &Replicas3,
 			Small:       &Replicas3,
 			Medium:      &Replicas3,
 			Large:       &Replicas3,

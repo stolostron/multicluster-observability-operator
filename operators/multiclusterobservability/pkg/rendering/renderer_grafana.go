@@ -45,7 +45,7 @@ func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
 	}
 	dep := obj.(*v1.Deployment)
 	dep.Name = config.GetOperandName(config.Grafana)
-	dep.Spec.Replicas = config.GetReplicas(config.Grafana, r.cr.Spec.ReadTShirtSize, r.cr.Spec.AdvancedConfig)
+	dep.Spec.Replicas = config.GetReplicas(config.Grafana, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
 
 	spec := &dep.Spec.Template.Spec
 	imagePullPolicy := config.GetImagePullPolicy(r.cr.Spec)
@@ -57,7 +57,7 @@ func (r *MCORenderer) renderGrafanaDeployments(res *resource.Resource,
 		spec.Containers[0].Image = image
 	}
 	spec.Containers[0].ImagePullPolicy = imagePullPolicy
-	spec.Containers[0].Resources = config.GetResources(config.Grafana, r.cr.Spec.ReadTShirtSize, r.cr.Spec.AdvancedConfig)
+	spec.Containers[0].Resources = config.GetResources(config.Grafana, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
 
 	spec.Containers[1].Image = config.DefaultImgRepository + "/" + config.GrafanaDashboardLoaderName +
 		":" + config.DefaultImgTagSuffix
