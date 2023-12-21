@@ -545,6 +545,11 @@ func newReceiversSpec(
 		mco.Spec.AdvancedConfig.Receive.ServiceAccountAnnotations != nil {
 		receSpec.ServiceAccountAnnotations = mco.Spec.AdvancedConfig.Receive.ServiceAccountAnnotations
 	}
+
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Receive != nil &&
+		mco.Spec.AdvancedConfig.Receive.Containers != nil {
+		receSpec.Containers = mco.Spec.AdvancedConfig.Receive.Containers
+	}
 	return receSpec
 }
 
@@ -641,6 +646,11 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 		ruleSpec.ServiceAccountAnnotations = mco.Spec.AdvancedConfig.Rule.ServiceAccountAnnotations
 	}
 
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Rule != nil &&
+		mco.Spec.AdvancedConfig.Rule.Containers != nil {
+		ruleSpec.Containers = mco.Spec.AdvancedConfig.Rule.Containers
+	}
+
 	return ruleSpec
 }
 
@@ -661,6 +671,11 @@ func newStoreSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) 
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Store != nil &&
 		mco.Spec.AdvancedConfig.Store.ServiceAccountAnnotations != nil {
 		storeSpec.ServiceAccountAnnotations = mco.Spec.AdvancedConfig.Store.ServiceAccountAnnotations
+	}
+
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Store != nil &&
+		mco.Spec.AdvancedConfig.Store.Containers != nil {
+		storeSpec.Containers = mco.Spec.AdvancedConfig.Store.Containers
 	}
 
 	return storeSpec
@@ -749,6 +764,12 @@ func newQueryFrontendSpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1
 		queryFrontendSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosQueryFrontend, mco.Spec.AdvancedConfig)
 	}
 	queryFrontendSpec.Cache = newMemCacheSpec(mcoconfig.ThanosQueryFrontendMemcached, mco)
+
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.QueryFrontend != nil &&
+		mco.Spec.AdvancedConfig.QueryFrontend.Containers != nil {
+		queryFrontendSpec.Containers = mco.Spec.AdvancedConfig.QueryFrontend.Containers
+	}
+
 	return queryFrontendSpec
 }
 
@@ -767,6 +788,10 @@ func newQuerySpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QuerySp
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Query != nil &&
 		mco.Spec.AdvancedConfig.Query.ServiceAccountAnnotations != nil {
 		querySpec.ServiceAccountAnnotations = mco.Spec.AdvancedConfig.Query.ServiceAccountAnnotations
+	}
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Query != nil &&
+		mco.Spec.AdvancedConfig.Query.Containers != nil {
+		querySpec.Containers = mco.Spec.AdvancedConfig.Query.Containers
 	}
 	return querySpec
 }
@@ -840,6 +865,11 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil &&
 		mco.Spec.AdvancedConfig.Compact.ServiceAccountAnnotations != nil {
 		compactSpec.ServiceAccountAnnotations = mco.Spec.AdvancedConfig.Compact.ServiceAccountAnnotations
+	}
+
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Compact != nil &&
+		mco.Spec.AdvancedConfig.Compact.Containers != nil {
+		compactSpec.Containers = mco.Spec.AdvancedConfig.Compact.Containers
 	}
 
 	compactSpec.VolumeClaimTemplate = newVolumeClaimTemplate(
