@@ -589,9 +589,8 @@ func (c *Client) sendRequest(serverURL string, body []byte) error {
 		bodyString := string(bodyBytes)
 		msg := fmt.Sprintf("response status code is %s, response body is %s", resp.Status, bodyString)
 		logger.Log(c.logger, logger.Warn, msg)
-		if resp.StatusCode != http.StatusConflict {
-			return errors.New(msg)
-		}
+		return errors.New(msg)
+
 	}
 	return nil
 }
