@@ -7,6 +7,7 @@ package multiclusterobservability
 import (
 	"bytes"
 	"context"
+	"reflect"
 	"testing"
 
 	"gopkg.in/yaml.v2"
@@ -311,5 +312,129 @@ config:
 		if path != c.expected {
 			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", c.name, path, c.expected)
 		}
+	}
+}
+
+func TestObservatoriumCustomArgs(t *testing.T) {
+	receiveTestArgs := []string{"receive", "--arg1", "--args2"}
+	storeTestArgs := []string{"store", "--arg1", "--args2"}
+	queryTestArgs := []string{"query", "--arg1", "--args2"}
+	ruleTestArgs := []string{"rule", "--arg1", "--args2"}
+	compactTestArgs := []string{"compact", "--arg1", "--args2"}
+	queryFrontendTestArgs := []string{"queryfrontend", "--arg1", "--args2"}
+	mco := &mcov1beta2.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test",
+			Annotations: map[string]string{
+				mcoconfig.AnnotationKeyImageRepository: "quay.io:443/acm-d",
+				mcoconfig.AnnotationKeyImageTagSuffix:  "tag",
+			},
+		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
+					Key:           "key",
+					Name:          "name",
+					TLSSecretName: "secret",
+				},
+				WriteStorage: []*mcoshared.PreConfiguredStorage{
+					{
+						Key:  "write_key",
+						Name: "write_name",
+					},
+				},
+				StorageClass:            storageClassName,
+				AlertmanagerStorageSize: "1Gi",
+				CompactStorageSize:      "1Gi",
+				RuleStorageSize:         "1Gi",
+				ReceiveStorageSize:      "1Gi",
+				StoreStorageSize:        "1Gi",
+			},
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: true,
+				Interval:      300,
+			},
+			AdvancedConfig: &mcov1beta2.AdvancedConfig{
+				Receive: &mcov1beta2.ReceiveSpec{
+					Containers: []corev1.Container{
+						{
+							Args: receiveTestArgs,
+						},
+					},
+				},
+				Store: &mcov1beta2.StoreSpec{
+					Containers: []corev1.Container{
+						{
+							Args: storeTestArgs,
+						},
+					},
+				},
+				Query: &mcov1beta2.QuerySpec{
+					Containers: []corev1.Container{
+						{
+							Args: queryTestArgs,
+						},
+					},
+				},
+				Rule: &mcov1beta2.RuleSpec{
+					Containers: []corev1.Container{
+						{
+							Args: ruleTestArgs,
+						},
+					},
+				},
+				Compact: &mcov1beta2.CompactSpec{
+					Containers: []corev1.Container{
+						{
+							Args: compactTestArgs,
+						},
+					},
+				},
+				QueryFrontend: &mcov1beta2.QueryFrontendSpec{
+					Containers: []corev1.Container{
+						{
+							Args: queryFrontendTestArgs,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	writeStorageS := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "write_name",
+			Namespace: mcoconfig.GetDefaultNamespace(),
+		},
+		Type: "Opaque",
+		Data: map[string][]byte{
+			"write_key": []byte(`url: http://remotewrite/endpoint
+`),
+		},
+	}
+
+	objs := []runtime.Object{mco, writeStorageS}
+	// Create a fake client to mock API calls.
+	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+
+	obs, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+	if !reflect.DeepEqual(obs.Thanos.Receivers.Containers[0].Args, receiveTestArgs) {
+		t.Errorf("Failed to propagate custom args to Receive Observatorium spec")
+	}
+	if !reflect.DeepEqual(obs.Thanos.Store.Containers[0].Args, storeTestArgs) {
+		t.Errorf("Failed to propagate custom args to Store Observatorium spec")
+	}
+	if !reflect.DeepEqual(obs.Thanos.Query.Containers[0].Args, queryTestArgs) {
+		t.Errorf("Failed to propagate custom args to Query Observatorium spec")
+	}
+	if !reflect.DeepEqual(obs.Thanos.Rule.Containers[0].Args, ruleTestArgs) {
+		t.Errorf("Failed to propagate custom args to Rule Observatorium spec")
+	}
+	if !reflect.DeepEqual(obs.Thanos.Compact.Containers[0].Args, compactTestArgs) {
+		t.Errorf("Failed to propagate custom args to Compact Observatorium spec")
+	}
+	if !reflect.DeepEqual(obs.Thanos.QueryFrontend.Containers[0].Args, queryFrontendTestArgs) {
+		t.Errorf("Failed to propagate custom args to QueryFrontend Observatorium spec")
 	}
 }
