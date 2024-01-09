@@ -5,6 +5,8 @@
 package placementrule
 
 import (
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
@@ -80,9 +82,9 @@ func GetAddOnDeploymentPredicates() predicate.Funcs {
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == defaultAddonDeploymentConfig.Name &&
-				e.ObjectNew.GetNamespace() == defaultAddonDeploymentConfig.Namespace {
-				log.Info("default AddonDeploymentConfig is updated")
+			if !reflect.DeepEqual(e.ObjectNew.(*addonv1alpha1.AddOnDeploymentConfig).Spec.ProxyConfig,
+				e.ObjectOld.(*addonv1alpha1.AddOnDeploymentConfig).Spec.ProxyConfig) {
+				log.Info("AddonDeploymentConfig is updated", e.ObjectNew.GetName(), "name", e.ObjectNew.GetNamespace(), "namespace")
 				return true
 			}
 			return false
