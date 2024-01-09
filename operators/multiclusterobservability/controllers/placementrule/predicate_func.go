@@ -91,12 +91,7 @@ func GetAddOnDeploymentPredicates() predicate.Funcs {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetName() == defaultAddonDeploymentConfig.Name &&
-				e.Object.GetNamespace() == defaultAddonDeploymentConfig.Namespace {
-				log.Info("default AddonDeploymentConfig is deleted")
-				return true
-			}
-			return false
+			return true
 		},
 	}
 }

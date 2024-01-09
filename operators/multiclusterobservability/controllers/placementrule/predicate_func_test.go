@@ -193,8 +193,11 @@ func TestAddonDeploymentPredicate(t *testing.T) {
 				}
 			}
 
+			newDefaultAddonDeploymentConfig := defaultAddonDeploymentConfig.DeepCopy()
+			newDefaultAddonDeploymentConfig.Spec.ProxyConfig.HTTPProxy = "http://bar1.com"
 			updateEvent := event.UpdateEvent{
-				ObjectNew: defaultAddonDeploymentConfig,
+				ObjectOld: defaultAddonDeploymentConfig,
+				ObjectNew: newDefaultAddonDeploymentConfig,
 			}
 			if c.expectedUpdate {
 				if !pred.UpdateFunc(updateEvent) {
