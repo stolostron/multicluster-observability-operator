@@ -5,8 +5,9 @@
 package placementrule
 
 import (
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"reflect"
+
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
