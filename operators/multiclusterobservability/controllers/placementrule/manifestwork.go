@@ -324,6 +324,30 @@ func createManifestWorks(
 					container.Env[j].Value = strconv.FormatBool(installProm)
 				}
 			}
+			// If ProxyConfig is specified as part of addonConfig, set the proxy envs
+			if clusterName != localClusterName {
+				for i := range spec.Containers {
+					container := &spec.Containers[i]
+					if addonConfig.Spec.ProxyConfig.HTTPProxy != "" {
+						container.Env = append(container.Env, corev1.EnvVar{
+							Name:  "HTTP_PROXY",
+							Value: addonConfig.Spec.ProxyConfig.HTTPProxy,
+						})
+					}
+					if addonConfig.Spec.ProxyConfig.HTTPSProxy != "" {
+						container.Env = append(container.Env, corev1.EnvVar{
+							Name:  "HTTPS_PROXY",
+							Value: addonConfig.Spec.ProxyConfig.HTTPSProxy,
+						})
+					}
+					if addonConfig.Spec.ProxyConfig.NoProxy != "" {
+						container.Env = append(container.Env, corev1.EnvVar{
+							Name:  "NO_PROXY",
+							Value: addonConfig.Spec.ProxyConfig.NoProxy,
+						})
+					}
+				}
+			}
 
 			if hasCustomRegistry {
 				oldImage := container.Image
@@ -331,33 +355,6 @@ func createManifestWorks(
 				log.Info("Replace the endpoint operator image", "cluster", clusterName, "newImage", newImage)
 				if err == nil {
 					spec.Containers[i].Image = newImage
-				}
-			}
-		}
-	}
-	// If ProxyConfig is specified as part of addonConfig, set the proxy envs
-	for i := range spec.Containers {
-		if spec.Containers[i].Name == "endpoint-observability-operator" {
-			container := &spec.Containers[i]
-
-			if clusterName != localClusterName {
-				if addonConfig.Spec.ProxyConfig.HTTPProxy != "" {
-					container.Env = append(container.Env, corev1.EnvVar{
-						Name:  "HTTP_PROXY",
-						Value: addonConfig.Spec.ProxyConfig.HTTPProxy,
-					})
-				}
-				if addonConfig.Spec.ProxyConfig.HTTPSProxy != "" {
-					container.Env = append(container.Env, corev1.EnvVar{
-						Name:  "HTTPS_PROXY",
-						Value: addonConfig.Spec.ProxyConfig.HTTPSProxy,
-					})
-				}
-				if addonConfig.Spec.ProxyConfig.NoProxy != "" {
-					container.Env = append(container.Env, corev1.EnvVar{
-						Name:  "NO_PROXY",
-						Value: addonConfig.Spec.ProxyConfig.NoProxy,
-					})
 				}
 			}
 		}
