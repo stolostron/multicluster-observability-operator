@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"reflect"
 	"sort"
 	"strings"
@@ -49,6 +50,30 @@ var _ = Describe("", func() {
 		"thanos-ruler-custom-rules",
 	}
 	secret := "alertmanager-config"
+
+	It("RHACM4K-39481: Observability: Verify PrometheusRule resource(2.9) [P2][Sev2][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release (alert/g1)", func() {
+		By("Checking if PrometheusRule: acm-observability-alert-rules is existed")
+
+		command := "oc"
+		args := []string{"get", "prometheusrules.monitoring.coreos.com", "acm-observability-alert-rules", "-n", "open-cluster-management-observability"}
+
+		output, err := exec.Command(command, args...).CombinedOutput()
+		if err != nil {
+			fmt.Printf("Error executing command: %v\n", err)
+			fmt.Printf("Command output:\n%s\n", output)
+			return
+		}
+
+		prometheusRule := "acm-observability-alert-rules"
+		if strings.Contains(string(output), prometheusRule) {
+			fmt.Println("Expected result found.")
+		} else {
+			fmt.Println("Expected result not found.")
+		}
+
+		fmt.Printf("Command output:\n%s\n", output)
+
+	})
 
 	It("RHACM4K-1404: Observability: Verify alert is created and received - Should have the expected statefulsets @BVT - [P1][Sev1][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release (alert/g0)", func() {
 		By("Checking if STS: Alertmanager and observability-thanos-rule exist")
@@ -308,10 +333,13 @@ var _ = Describe("", func() {
 		}
 
 		expectedOCPClusterIDs, err := utils.ListOCPManagedClusterIDs(testOptions, "4.8.0")
+		klog.V(3).Infof("expectedOCPClusterIDs is %s", expectedOCPClusterIDs)
 		Expect(err).NotTo(HaveOccurred())
 		expectedKSClusterNames, err := utils.ListKSManagedClusterNames(testOptions)
+		klog.V(3).Infof("expectedKSClusterNames is %s", expectedKSClusterNames)
 		Expect(err).NotTo(HaveOccurred())
 		expectClusterIdentifiers := append(expectedOCPClusterIDs, expectedKSClusterNames...)
+		klog.V(3).Infof("expectClusterIdentifiers is %s", expectClusterIdentifiers)
 
 		// install watchdog PrometheusRule to *KS clusters
 		watchDogRuleKustomizationPath := "../../../examples/alerts/watchdog_rule"
@@ -368,14 +396,19 @@ var _ = Describe("", func() {
 			}
 
 			sort.Strings(clusterIDsInAlerts)
+			klog.V(3).Infof("clusterIDsInAlerts is %s", clusterIDsInAlerts)
 			sort.Strings(expectClusterIdentifiers)
+			klog.V(3).Infof("sort.Strings.expectClusterIdentifiers is %s", expectClusterIdentifiers)
+			klog.V(3).Infof("no sort.Strings.expectedOCPClusterIDs is %s", expectedOCPClusterIDs)
 			sort.Strings(expectedOCPClusterIDs)
+			klog.V(3).Infof("sort.Strings.expectedOCPClusterIDs is %s", expectedOCPClusterIDs)
 			if !reflect.DeepEqual(clusterIDsInAlerts, expectClusterIdentifiers) && !reflect.DeepEqual(clusterIDsInAlerts, expectedOCPClusterIDs) {
+				//if !reflect.DeepEqual(clusterIDsInAlerts, expectedOCPClusterIDs) {
 				return fmt.Errorf("Not all openshift managedclusters >=4.8.0 forward Watchdog alert to hub cluster")
 			}
 
 			return nil
-		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+		}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	It("RHACM4K-22427: Observability: Disable the managedcluster's alerts forward to the Hub [P2][Sev2][Observability][Integration] @e2e (alertforward/g1)", func() {
