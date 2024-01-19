@@ -324,7 +324,6 @@ func createManifestWorks(
 					container.Env[j].Value = strconv.FormatBool(installProm)
 				}
 			}
-
 			// If ProxyConfig is specified as part of addonConfig, set the proxy envs
 			if clusterName != localClusterName {
 				for i := range spec.Containers {
