@@ -75,15 +75,8 @@ pipeline {
                 
                 if [[ "${params.USE_MINIO}" == true ]]; then
                   export IS_CANARY_ENV=false
-                fi  
-                echo "BASE_DOMAIN: \$BASE_DOMAIN"
-                echo "HUB_CLUSTER_NAME: \$HUB_CLUSTER_NAME"
-                echo "${HUB_CLUSTER_NAME}"
-                echo "${BASE_DOMAIN}"
-                echo "${OC_CLUSTER_USER}"
-                echo "${OC_HUB_CLUSTER_PASS}"
-                echo "${OC_HUB_CLUSTER_API_URL}"                
-                if [[ -z "${HUB_CLUSTER_NAME}" || -z "${BASE_DOMAIN}" || -z "${OC_CLUSTER_USER}" || -z "${OC_HUB_CLUSTER_PASS}" || -z "${OC_HUB_CLUSTER_API_URL}" ]]; then
+                fi                 
+                if [[ -z "${OC_CLUSTER_USER}" || -z "${OC_HUB_CLUSTER_PASS}" || -z "${OC_HUB_CLUSTER_API_URL}" ]]; then
                     echo "Aborting test.. OCP HUB details are required for the test execution"
                     exit 1
                 else
