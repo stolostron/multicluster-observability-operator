@@ -50,8 +50,6 @@ pipeline {
                 echo "HUB_CLUSTER_NAME: \$HUB_CLUSTER_NAME"
                 export HUB_CLUSTER_NAME="\$HUB_CLUSTER_NAME"
                 export BASE_DOMAIN="\$BASE_DOMAIN"
-                export HUB_CLUSTER_NAME="${params.HUB_CLUSTER_NAME}"
-                export BASE_DOMAIN="${params.BASE_DOMAIN}"
                 export MANAGED_CLUSTER_NAME="${params.MANAGED_CLUSTER_NAME}"
                 export MANAGED_CLUSTER_BASE_DOMAIN="${params.MANAGED_CLUSTER_BASE_DOMAIN}"
                 export MANAGED_CLUSTER_USER="${params.MANAGED_CLUSTER_USER}"
