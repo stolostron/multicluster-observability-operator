@@ -98,9 +98,8 @@ type QuerySpec struct {
 	// +optional
 	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
 
-	// WARNING: Use only with guidance from Red Hat Support. Using this incorrectly can lead
-	// to an unrecoverable state and/or data loss. By violating this guidance, Red Hat cannot
-	// support you.
+	// WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can
+	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
 	// +optional
 	Containers []corev1.Container `json:"containers,omitempty"`
 
@@ -113,9 +112,8 @@ type ReceiveSpec struct {
 	// +optional
 	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
 
-	// WARNING: Use only with guidance from Red Hat Support. Using this incorrectly can lead
-	// to an unrecoverable state and/or data loss. By violating this guidance, Red Hat cannot
-	// support you.
+	// WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can
+	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
 	// +optional
 	Containers []corev1.Container `json:"containers,omitempty"`
 
@@ -130,9 +128,9 @@ type StoreSpec struct {
 
 	CommonSpec `json:",inline"`
 
-	// WARNING: Use only with guidance from Red Hat Support. Using this incorrectly can lead
-	// to an unrecoverable state and/or data loss. By violating this guidance, Red Hat cannot
-	// support you.
+
+	// WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can
+	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
 	// +optional
 	Containers []corev1.Container `json:"containers,omitempty"`
 }
@@ -147,9 +145,8 @@ type RuleSpec struct {
 	// +optional
 	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
 
-	// WARNING: Use only with guidance from Red Hat Support. Using this incorrectly can lead
-	// to an unrecoverable state and/or data loss. By violating this guidance, Red Hat cannot
-	// support you.
+	// WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can
+	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
 	// +optional
 	Containers []corev1.Container `json:"containers,omitempty"`
 
@@ -165,9 +162,8 @@ type CompactSpec struct {
 	// +optional
 	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
 
-	// WARNING: Use only with guidance from Red Hat Support. Using this incorrectly can lead
-	// to an unrecoverable state and/or data loss. By violating this guidance, Red Hat cannot
-	// support you.
+	// WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can
+	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
 	// +optional
 	Containers []corev1.Container `json:"containers,omitempty"`
 }
@@ -189,9 +185,8 @@ type CacheConfig struct {
 
 // Thanos QueryFrontend Spec.
 type QueryFrontendSpec struct {
-	// WARNING: Use only with guidance from Red Hat Support. Using this incorrectly can lead
-	// to an unrecoverable state and/or data loss. By violating this guidance, Red Hat cannot
-	// support you.
+	// WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can
+	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
 	// +optional
 	Containers []corev1.Container `json:"containers,omitempty"`
 
