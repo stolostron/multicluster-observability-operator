@@ -128,7 +128,6 @@ type StoreSpec struct {
 
 	CommonSpec `json:",inline"`
 
-
 	// WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can
 	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
 	// +optional
