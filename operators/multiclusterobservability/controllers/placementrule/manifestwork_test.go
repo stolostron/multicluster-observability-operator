@@ -334,6 +334,7 @@ func TestManifestWork(t *testing.T) {
 				HTTPProxy:  "http://foo.com",
 				HTTPSProxy: "https://foo.com",
 				NoProxy:    "bar.com",
+				CABundle:   []byte{0x01, 0x02, 0x03, 0xAB, 0xCD, 0xEF},
 			},
 		},
 	}
@@ -361,6 +362,7 @@ func TestManifestWork(t *testing.T) {
 			foundHTTPProxy := false
 			foundHTTPSProxy := false
 			foundNOProxy := false
+			foundCABundle := false
 			for _, e := range env {
 				if e.Name == "HTTP_PROXY" {
 					foundHTTPProxy = true
@@ -377,6 +379,11 @@ func TestManifestWork(t *testing.T) {
 					if e.Value != "bar.com" {
 						t.Fatalf("NO_PROXY is not set correctly: expected %s, got %s", "bar.com", e.Value)
 					}
+				} else if e.Name == "HTTPS_PROXY_CA_BUNDLE" {
+					foundCABundle = true
+					if e.Value != base64.StdEncoding.EncodeToString([]byte{0x01, 0x02, 0x03, 0xAB, 0xCD, 0xEF}) {
+						t.Fatalf("HTTPS_PROXY_CA_BUNDLE is not set correctly")
+					}
 				}
 			}
 			if !foundHTTPProxy {
@@ -387,6 +394,9 @@ func TestManifestWork(t *testing.T) {
 			}
 			if !foundNOProxy {
 				t.Fatalf("NO_PROXY is not present in env")
+			}
+			if !foundCABundle {
+				t.Fatalf("HTTPS_PROXY_CA_BUNDLE is not present in env")
 			}
 		}
 	}

@@ -6,6 +6,7 @@ package placementrule
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -314,6 +315,7 @@ func createManifestWorks(
 		spec.NodeSelector = map[string]string{}
 		spec.Tolerations = []corev1.Toleration{}
 	}
+	CustomCABundle := false
 	for i, container := range spec.Containers {
 		if container.Name == "endpoint-observability-operator" {
 			for j, env := range container.Env {
@@ -339,6 +341,14 @@ func createManifestWorks(
 							Name:  "HTTPS_PROXY",
 							Value: addonConfig.Spec.ProxyConfig.HTTPSProxy,
 						})
+						//CA is allowed only when HTTPS proxy is set
+						if addonConfig.Spec.ProxyConfig.CABundle != nil {
+							CustomCABundle = true
+							container.Env = append(container.Env, corev1.EnvVar{
+								Name:  "HTTPS_PROXY_CA_BUNDLE",
+								Value: base64.StdEncoding.EncodeToString(addonConfig.Spec.ProxyConfig.CABundle),
+							})
+						}
 					}
 					if addonConfig.Spec.ProxyConfig.NoProxy != "" {
 						container.Env = append(container.Env, corev1.EnvVar{
@@ -359,6 +369,19 @@ func createManifestWorks(
 			}
 		}
 	}
+	if CustomCABundle {
+		for i, manifest := range manifests {
+			if manifest.RawExtension.Object.GetObjectKind().GroupVersionKind().Kind == "Secret" {
+				secret := manifest.RawExtension.Object.DeepCopyObject().(*corev1.Secret)
+				if secret.Name == managedClusterObsCertName {
+					secret.Data["customCa.crt"] = addonConfig.Spec.ProxyConfig.CABundle
+					manifests[i].RawExtension.Object = secret
+					break
+				}
+			}
+		}
+	}
+
 	log.Info(fmt.Sprintf("Cluster: %+v, Spec.NodeSelector (after): %+v", clusterName, spec.NodeSelector))
 	log.Info(fmt.Sprintf("Cluster: %+v, Spec.Tolerations (after): %+v", clusterName, spec.Tolerations))
 	dep.Spec.Template.Spec = spec
