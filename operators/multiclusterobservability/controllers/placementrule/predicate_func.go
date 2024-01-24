@@ -5,6 +5,9 @@
 package placementrule
 
 import (
+	"reflect"
+
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
@@ -71,5 +74,24 @@ func getClusterPreds() predicate.Funcs {
 		CreateFunc: createFunc,
 		UpdateFunc: updateFunc,
 		DeleteFunc: deleteFunc,
+	}
+}
+
+func GetAddOnDeploymentPredicates() predicate.Funcs {
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return true
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if !reflect.DeepEqual(e.ObjectNew.(*addonv1alpha1.AddOnDeploymentConfig).Spec.ProxyConfig,
+				e.ObjectOld.(*addonv1alpha1.AddOnDeploymentConfig).Spec.ProxyConfig) {
+				log.Info("AddonDeploymentConfig is updated", e.ObjectNew.GetName(), "name", e.ObjectNew.GetNamespace(), "namespace")
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return true
+		},
 	}
 }
