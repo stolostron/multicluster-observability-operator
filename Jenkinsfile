@@ -46,7 +46,7 @@ pipeline {
                 export OC_HUB_CLUSTER_API_URL="${params.OC_HUB_CLUSTER_API_URL}"
                 BASE_DOMAIN=$(echo $OC_HUB_CLUSTER_API_URL | awk -F'api\\.|:' '{print $2}')
                 HUB_CLUSTER_NAME=\$(echo \$BASE_DOMAIN | cut -d'.' -f1)
-                echo "BASE_DOMAIN: \$BASE_DOMAIN"
+                echo "BASE_DOMAIN: $BASE_DOMAIN"
                 echo "HUB_CLUSTER_NAME: \$HUB_CLUSTER_NAME"
                 export HUB_CLUSTER_NAME="\$HUB_CLUSTER_NAME"
                 export BASE_DOMAIN="\$BASE_DOMAIN"
