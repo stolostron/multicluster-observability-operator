@@ -44,8 +44,12 @@ pipeline {
                 export OC_HUB_CLUSTER_PASS="${params.OC_HUB_CLUSTER_PASS}"
                 set -x
                 export OC_HUB_CLUSTER_API_URL="${params.OC_HUB_CLUSTER_API_URL}"
-                export HUB_CLUSTER_NAME="${params.HUB_CLUSTER_NAME}"
-                export BASE_DOMAIN="${params.BASE_DOMAIN}"
+                BASE_DOMAIN=\$(echo \${OC_HUB_CLUSTER_API_URL} | awk -F'https://api\\.|:' '{print \$2}')
+                HUB_CLUSTER_NAME=\$(echo \$BASE_DOMAIN | cut -d'.' -f1)
+                echo "BASE_DOMAIN: \$BASE_DOMAIN"
+                echo "HUB_CLUSTER_NAME: \$HUB_CLUSTER_NAME"
+                export HUB_CLUSTER_NAME="\$HUB_CLUSTER_NAME"
+                export BASE_DOMAIN="\$BASE_DOMAIN"
                 export MANAGED_CLUSTER_NAME="${params.MANAGED_CLUSTER_NAME}"
                 export MANAGED_CLUSTER_BASE_DOMAIN="${params.MANAGED_CLUSTER_BASE_DOMAIN}"
                 export MANAGED_CLUSTER_USER="${params.MANAGED_CLUSTER_USER}"
@@ -71,9 +75,8 @@ pipeline {
                 
                 if [[ "${params.USE_MINIO}" == true ]]; then
                   export IS_CANARY_ENV=false
-                fi  
-                
-                if [[ -z "${HUB_CLUSTER_NAME}" || -z "${BASE_DOMAIN}" || -z "${OC_CLUSTER_USER}" || -z "${OC_HUB_CLUSTER_PASS}" || -z "${OC_HUB_CLUSTER_API_URL}" ]]; then
+                fi                 
+                if [[ -z "${OC_CLUSTER_USER}" || -z "${OC_HUB_CLUSTER_PASS}" || -z "${OC_HUB_CLUSTER_API_URL}" ]]; then
                     echo "Aborting test.. OCP HUB details are required for the test execution"
                     exit 1
                 else
