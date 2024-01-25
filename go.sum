@@ -1771,8 +1771,8 @@ github.com/spf13/viper v1.8.1/go.mod h1:o0Pch8wJ9BVSWGQMbra6iw0oQ5oktSIBaujf1rJH
 github.com/stoewer/go-strcase v1.2.0/go.mod h1:IBiWB2sKIp3wVVQ3Y035++gc+knqhUQag1KpM8ahLw8=
 github.com/stolostron/multiclusterhub-operator v0.0.0-20220106205009-2af6f43fd562 h1:ifA576QBRoYFKuym91i5s6orpG1w+G7csDoMxn4FmHE=
 github.com/stolostron/multiclusterhub-operator v0.0.0-20220106205009-2af6f43fd562/go.mod h1:bnUDg8gb0adzST1gzFiivscUlXtE3tYbMtoHsW6DHaY=
-github.com/stolostron/observatorium-operator v0.0.0-20230411203847-4514321263d1 h1:lSmMIJB1zUS99gc2VpahBNw13bHBejHMMfPPGPyhQt0=
-github.com/stolostron/observatorium-operator v0.0.0-20230411203847-4514321263d1/go.mod h1:CqPit+zjsk3vi7XzpB2Xid6nHdy4qV54GfA9a7cfVck=
+github.com/stolostron/observatorium-operator v0.0.0-20240109093235-2f0c855209dd h1:6qPIWdEPGt4WcHyZdCN1Nn20Gf2Xnui5UA3v0M91Cik=
+github.com/stolostron/observatorium-operator v0.0.0-20240109093235-2f0c855209dd/go.mod h1:fFyJt9/dkQ1/4NxiW4CjH4lj7brxGlkA4SscxoLfzYY=
 github.com/streadway/amqp v0.0.0-20190404075320-75d898a42a94/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1SddzLXVw=
 github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1SddzLXVw=
 github.com/streadway/amqp v1.0.0/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1SddzLXVw=

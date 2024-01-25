@@ -65,7 +65,7 @@ type AdvancedConfig struct {
 	ObservatoriumAPI *CommonSpec `json:"observatoriumAPI,omitempty"`
 	// spec for thanos-query-frontend
 	// +optional
-	QueryFrontend *CommonSpec `json:"queryFrontend,omitempty"`
+	QueryFrontend *QueryFrontendSpec `json:"queryFrontend,omitempty"`
 	// spec for thanos-query
 	// +optional
 	Query *QuerySpec `json:"query,omitempty"`
@@ -98,6 +98,11 @@ type QuerySpec struct {
 	// +optional
 	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
 
+	// WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can
+	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
+	// +optional
+	Containers []corev1.Container `json:"containers,omitempty"`
+
 	CommonSpec `json:",inline"`
 }
 
@@ -106,6 +111,11 @@ type ReceiveSpec struct {
 	// Annotations is an unstructured key value map stored with a service account
 	// +optional
 	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
+
+	// WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can
+	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
+	// +optional
+	Containers []corev1.Container `json:"containers,omitempty"`
 
 	CommonSpec `json:",inline"`
 }
@@ -117,6 +127,11 @@ type StoreSpec struct {
 	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
 
 	CommonSpec `json:",inline"`
+
+	// WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can
+	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
+	// +optional
+	Containers []corev1.Container `json:"containers,omitempty"`
 }
 
 // Thanos Rule Spec.
@@ -129,6 +144,11 @@ type RuleSpec struct {
 	// +optional
 	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
 
+	// WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can
+	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
+	// +optional
+	Containers []corev1.Container `json:"containers,omitempty"`
+
 	CommonSpec `json:",inline"`
 }
 
@@ -140,6 +160,11 @@ type CompactSpec struct {
 	// Annotations is an unstructured key value map stored with a service account
 	// +optional
 	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
+
+	// WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can
+	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
+	// +optional
+	Containers []corev1.Container `json:"containers,omitempty"`
 }
 
 // CacheConfig is the spec of memcached.
@@ -153,6 +178,16 @@ type CacheConfig struct {
 	// Max simultaneous connections of Memcached.
 	// +optional
 	ConnectionLimit *int32 `json:"connectionLimit,omitempty"`
+
+	CommonSpec `json:",inline"`
+}
+
+// Thanos QueryFrontend Spec.
+type QueryFrontendSpec struct {
+	// WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can
+	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
+	// +optional
+	Containers []corev1.Container `json:"containers,omitempty"`
 
 	CommonSpec `json:",inline"`
 }
