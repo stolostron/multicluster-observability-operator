@@ -311,7 +311,7 @@ spec:
                     description: spec for thanos-compact
                     properties:
                       containers:
-                        description: The container object, provides a way to override parameters of existing containers. Currently only the `args` value are overwritten.
+                        description: 'WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.'
                         items:
                           description: A single application container that you want to run within a pod.
                           properties:
@@ -1242,7 +1242,7 @@ spec:
                     description: spec for thanos-query
                     properties:
                       containers:
-                        description: The container object, provides a way to override parameters of existing containers. Currently only the `args` value are overwritten.
+                        description: 'WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.'
                         items:
                           description: A single application container that you want to run within a pod.
                           properties:
@@ -2087,7 +2087,7 @@ spec:
                     description: spec for thanos-query-frontend
                     properties:
                       containers:
-                        description: The container object, provides a way to override parameters of existing containers. Currently only the `args` value are overwritten.
+                        description: 'WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.'
                         items:
                           description: A single application container that you want to run within a pod.
                           properties:
@@ -3028,7 +3028,7 @@ spec:
                     description: spec for thanos-receiver
                     properties:
                       containers:
-                        description: The container object, provides a way to override parameters of existing containers. Currently only the `args` value are overwritten.
+                        description: 'WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.'
                         items:
                           description: A single application container that you want to run within a pod.
                           properties:
@@ -3895,7 +3895,7 @@ spec:
                     description: spec for thanos-rule
                     properties:
                       containers:
-                        description: The container object, provides a way to override parameters of existing containers. Currently only the `args` value are overwritten.
+                        description: 'WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.'
                         items:
                           description: A single application container that you want to run within a pod.
                           properties:
@@ -4743,7 +4743,7 @@ spec:
                     description: spec for thanos-store-shard
                     properties:
                       containers:
-                        description: The container object, provides a way to override parameters of existing containers. Currently only the `args` value are overwritten.
+                        description: 'WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.'
                         items:
                           description: A single application container that you want to run within a pod.
                           properties:
