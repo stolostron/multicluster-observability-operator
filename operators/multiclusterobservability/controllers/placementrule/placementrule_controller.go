@@ -379,7 +379,7 @@ func createAllRelatedRes(
 	// create managed cluster resource in the namespace of mco
 	log.Info("To create managedcluster resources", "namespace", request.Namespace)
 	if err = createManagedClusterRes(c, mco,
-		"coleen-local-cluster", config.GetDefaultNamespace(),
+		"local-cluster", "local-cluster",
 		works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false); err != nil {
 		failedCreateManagedClusterRes = true
 		log.Error(err, "Failed to create managedcluster resources", "namespace", request.Namespace)
