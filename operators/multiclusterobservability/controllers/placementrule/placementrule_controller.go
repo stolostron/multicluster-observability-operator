@@ -316,6 +316,7 @@ func createAllRelatedRes(
 
 	currentClusters := []string{}
 	for _, ep := range obsAddonList.Items {
+		log.Info("Coleen To update observabilityAddon", "namespace", ep.Namespace)
 		currentClusters = append(currentClusters, ep.Namespace)
 	}
 
@@ -387,7 +388,7 @@ func createAllRelatedRes(
 
 	failedDeleteOba := false
 	for _, cluster := range currentClusters {
-		log.Info("To delete observabilityAddon", "namespace", cluster)
+		log.Info("Coleen To delete observabilityAddon", "namespace", cluster)
 		err = deleteObsAddon(c, cluster)
 		if err != nil {
 			failedDeleteOba = true
