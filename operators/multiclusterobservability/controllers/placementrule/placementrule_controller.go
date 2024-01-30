@@ -54,6 +54,8 @@ const (
 	managedClusterObsCertName                      = "observability-managed-cluster-certs"
 	nonOCP                                         = "N/A"
 	disableAddonAutomaticInstallationAnnotationKey = "addon.open-cluster-management.io/disable-automatic-installation"
+	MulticlusterGlobalHubAgentName                 = "multicluster-global-hub-agent"
+	MulticlusterGlobalHubAgentNamespace            = "multicluster-global-hub-agent-namespace"
 )
 
 var (
@@ -374,6 +376,15 @@ func createAllRelatedRes(
 	}
 	managedClusterListMutex.RUnlock()
 
+	// create managed cluster resource in the namespace of mco
+	log.Info("To create managedcluster resources", "namespace", request.Namespace)
+	if err = createManagedClusterRes(c, mco,
+		"coleen-local-cluster", config.GetDefaultNamespace(),
+		works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false); err != nil {
+		failedCreateManagedClusterRes = true
+		log.Error(err, "Failed to create managedcluster resources", "namespace", request.Namespace)
+	}
+
 	failedDeleteOba := false
 	for _, cluster := range currentClusters {
 		log.Info("To delete observabilityAddon", "namespace", cluster)
@@ -541,6 +552,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// Watch changes for AddonDeploymentConfig
 	AddonDeploymentPred := GetAddOnDeploymentPredicates()
+
+	mcghAgentDeploymentPred := GetMCGHAgentDeploymentPredicates()
 
 	obsAddonPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
@@ -830,7 +843,10 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(certSecretPred)).
 
 		// secondary watch for alertmanager accessor serviceaccount
-		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred))
+		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred)).
+
+		// secondary watch for MultiClusterGlobalHub deployment
+		Watches(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(mcghAgentDeploymentPred))
 
 	// watch for AddonDeploymentConfig
 	if _, err := r.RESTMapper.RESTMapping(schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "AddOnDeploymentConfig"}, addonv1alpha1.GroupVersion.Version); err == nil {

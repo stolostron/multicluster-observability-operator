@@ -173,6 +173,25 @@ func GetMCHPredicateFunc(c client.Client) predicate.Funcs {
 	}
 }
 
+// Check in MCH Crd if disableHubSelfManagement is set to true
+func GetMCHDisableHubSelfManagementPredicateFunc(c client.Client) predicate.Funcs {
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return true
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.ObjectNew.GetNamespace() == config.GetMCONamespace() &&
+				e.ObjectNew.(*mchv1.MultiClusterHub).Spec.DisableHubSelfManagement {
+				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return false
+		},
+	}
+}
+
 func GetNamespacePredicateFunc() predicate.Funcs {
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {

@@ -95,3 +95,20 @@ func GetAddOnDeploymentPredicates() predicate.Funcs {
 		},
 	}
 }
+
+func GetMCGHAgentDeploymentPredicates() predicate.Funcs {
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			if e.Object.GetName() == MulticlusterGlobalHubAgentName &&  e.Object.GetNamespace() == MulticlusterGlobalHubAgentNamespace) {
+				return true
+			}
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return true
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return true
+		},
+	}
+}

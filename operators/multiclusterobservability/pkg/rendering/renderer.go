@@ -31,6 +31,8 @@ type MCORenderer struct {
 	renderProxyFns        map[string]rendererutil.RenderFn
 }
 
+var Images = map[string]string{}
+
 func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability) *MCORenderer {
 	mcoRenderer := &MCORenderer{
 		renderer: rendererutil.NewRenderer(),
