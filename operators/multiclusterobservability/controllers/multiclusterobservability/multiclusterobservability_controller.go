@@ -22,7 +22,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storev1 "k8s.io/api/storage/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -366,36 +365,36 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	//
 	//metricsCollectorDeployment := GenerateMetricsCollectorForHub(params, instance)
 
-	found := &appsv1.Deployment{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
-		Namespace: config.GetDefaultNamespace()}, found)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			err = r.Client.Create(ctx, metricsCollectorDeployment)
-			if err != nil {
-				log.Error(err, "Failed to create deployment", "name", metricsCollectorName)
-				return ctrl.Result{}, err
-			}
-			log.Info("Created deployment ", "name", metricsCollectorName)
-		} else {
-			log.Error(err, "Failed to check the deployment", "name", metricsCollectorName)
-			return ctrl.Result{}, err
-		}
-	} else {
-		if !reflect.DeepEqual(metricsCollectorDeployment.Spec.Template.Spec, found.Spec.Template.Spec) ||
-			!reflect.DeepEqual(metricsCollectorDeployment.Spec.Replicas, found.Spec.Replicas) {
-			metricsCollectorDeployment.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-			if found.Status.ReadyReplicas != 0 {
-				metricsCollectorDeployment.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
-			}
-			err = r.Client.Update(ctx, metricsCollectorDeployment)
-			if err != nil {
-				log.Error(err, "Failed to update deployment", "name", metricsCollectorName)
-				return ctrl.Result{}, err
-			}
-			log.Info("Updated deployment ", "name", metricsCollectorName)
-		}
-	}
+	//found := &appsv1.Deployment{}
+	//err = r.Client.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
+	//	Namespace: config.GetDefaultNamespace()}, found)
+	//if err != nil {
+	//	if errors.IsNotFound(err) {
+	//		err = r.Client.Create(ctx, metricsCollectorDeployment)
+	//		if err != nil {
+	//			log.Error(err, "Failed to create deployment", "name", metricsCollectorName)
+	//			return ctrl.Result{}, err
+	//		}
+	//		log.Info("Created deployment ", "name", metricsCollectorName)
+	//	} else {
+	//		log.Error(err, "Failed to check the deployment", "name", metricsCollectorName)
+	//		return ctrl.Result{}, err
+	//	}
+	//} else {
+	//	if !reflect.DeepEqual(metricsCollectorDeployment.Spec.Template.Spec, found.Spec.Template.Spec) ||
+	//		!reflect.DeepEqual(metricsCollectorDeployment.Spec.Replicas, found.Spec.Replicas) {
+	//		metricsCollectorDeployment.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+	//		if found.Status.ReadyReplicas != 0 {
+	//			metricsCollectorDeployment.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
+	//		}
+	//		err = r.Client.Update(ctx, metricsCollectorDeployment)
+	//		if err != nil {
+	//			log.Error(err, "Failed to update deployment", "name", metricsCollectorName)
+	//			return ctrl.Result{}, err
+	//		}
+	//		log.Info("Updated deployment ", "name", metricsCollectorName)
+	//	}
+	//}
 
 	if _, ok := os.LookupEnv("UNIT_TEST"); !ok && !isLegacyResourceRemoved {
 		// Delete PrometheusRule from openshift-monitoring namespace
