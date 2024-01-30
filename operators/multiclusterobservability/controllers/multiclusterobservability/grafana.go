@@ -55,9 +55,10 @@ type GrafanaDatasource struct {
 }
 
 type JsonData struct {
-	TLSAuth               bool   `yaml:"tlsAuth,omitempty"`
-	TLSAuthCA             bool   `yaml:"tlsAuthWithCACert,omitempty"`
-	QueryTimeout          string `yaml:"queryTimeout,omitempty"`
+	TLSAuth   bool `yaml:"tlsAuth,omitempty"`
+	TLSAuthCA bool `yaml:"tlsAuthWithCACert,omitempty"`
+	// Timeout is the request timeout in seconds for an HTTP datasource.
+	Timeout               string `yaml:"timeout,omitempty"`
 	HttpMethod            string `yaml:"httpMethod,omitempty"`
 	TimeInterval          string `yaml:"timeInterval,omitempty"`
 	CustomQueryParameters string `yaml:"customQueryParameters,omitempty"`
@@ -96,7 +97,7 @@ func GenerateGrafanaDataSource(
 					config.GetDefaultNamespace(),
 				),
 				JSONData: &JsonData{
-					QueryTimeout:          "300s",
+					Timeout:               "300",
 					CustomQueryParameters: "max_source_resolution=auto",
 					TimeInterval:          fmt.Sprintf("%ds", mco.Spec.ObservabilityAddonSpec.Interval),
 				},
@@ -112,7 +113,7 @@ func GenerateGrafanaDataSource(
 					config.GetDefaultNamespace(),
 				),
 				JSONData: &JsonData{
-					QueryTimeout:          "300s",
+					Timeout:               "300",
 					CustomQueryParameters: "max_source_resolution=auto",
 					TimeInterval:          fmt.Sprintf("%ds", DynamicTimeInterval),
 				},
@@ -192,6 +193,9 @@ func GenerateGrafanaRoute(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.GrafanaRouteName,
 			Namespace: config.GetDefaultNamespace(),
+			Annotations: map[string]string{
+				"haproxy.router.openshift.io/timeout": "300s",
+			},
 		},
 		Spec: routev1.RouteSpec{
 			Port: &routev1.RoutePort{
