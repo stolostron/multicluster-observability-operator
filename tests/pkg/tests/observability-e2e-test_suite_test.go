@@ -216,7 +216,7 @@ func initVars() {
 
 		if testOptions.HubCluster.ClusterServerURL == "" {
 			testOptions.HubCluster.ClusterServerURL = fmt.Sprintf(
-				"https://api.%s:6443",
+				"https://api.%s:443",
 				testOptions.HubCluster.BaseDomain,
 			)
 		}
