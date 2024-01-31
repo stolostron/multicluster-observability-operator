@@ -143,6 +143,7 @@ func removePostponeDeleteAnnotationForManifestwork(c client.Client, namespace st
 }
 
 func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
+	log.Info("Coleen Creating manifestwork", "namespace", work.ObjectMeta.Namespace, "name", work.ObjectMeta.Name)
 	name := work.ObjectMeta.Name
 	namespace := work.ObjectMeta.Namespace
 	found := &workv1.ManifestWork{}
@@ -277,6 +278,7 @@ func createManifestWorks(
 	addonConfig *addonv1alpha1.AddOnDeploymentConfig,
 	installProm bool,
 ) error {
+	log.Info("Coleen Creating manifestworks", "cluster", clusterName, "namespace", clusterNamespace)
 	work := newManifestwork(clusterNamespace+workNameSuffix, clusterNamespace)
 
 	manifests := work.Spec.Workload.Manifests

@@ -8,10 +8,8 @@ import (
 	"context"
 	cerr "errors"
 	"fmt"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"os"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -61,15 +59,6 @@ const (
 )
 
 const (
-	caMounthPath         = "/etc/serving-certs-ca-bundle"
-	caVolName            = "serving-certs-ca-bundle"
-	mtlsCertName         = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
-	mtlsCaName           = "observability-managed-cluster-certs"
-	metricsCollectorName = "hub-metrics-collector-deployment"
-	caConfigmapName      = "metrics-collector-serving-certs-ca-bundle"
-)
-
-const (
 	infoAddingBackupLabel  = "adding backup label"
 	errorAddingBackupLabel = "failed to add backup label"
 )
@@ -83,16 +72,6 @@ var (
 	isStoreStorageSizeChanged        = false
 	isLegacyResourceRemoved          = false
 	lastLogTime                      = time.Now()
-)
-
-var (
-	ocpPromURL           = "https://prometheus-k8s.openshift-monitoring.svc:9091"
-	uwlPromURL           = "https://prometheus-user-workload.openshift-user-workload-monitoring.svc:9092"
-	uwlQueryURL          = "https://thanos-querier.openshift-monitoring.svc:9091"
-	promURL              = "https://prometheus-k8s:9091"
-	installPrometheus, _ = strconv.ParseBool(os.Getenv(operatorconfig.InstallPrometheus))
-	ownerLabelKey        = "owner"
-	ownerLabelValue      = "multicluster-observability-operator"
 )
 
 // MultiClusterObservabilityReconciler reconciles a MultiClusterObservability object
@@ -350,52 +329,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	////create metrics collector for hub cluster
-	//params := metricsollector.CollectorParams{
-	//	isUWL:        false,
-	//	clusterID:    clusterID,
-	//	clusterType:  clusterType,
-	//	obsAddonSpec: *instance.Spec.ObservabilityAddonSpec,
-	//	hubInfo:      hubInfo,
-	//	allowlist:    list,
-	//	replicaCount: 1,
-	//	nodeSelector: instance.Spec.NodeSelector,
-	//	tolerations:  instance.Spec.Tolerations,
-	//}
-	//
-	//metricsCollectorDeployment := GenerateMetricsCollectorForHub(params, instance)
-
-	//found := &appsv1.Deployment{}
-	//err = r.Client.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
-	//	Namespace: config.GetDefaultNamespace()}, found)
-	//if err != nil {
-	//	if errors.IsNotFound(err) {
-	//		err = r.Client.Create(ctx, metricsCollectorDeployment)
-	//		if err != nil {
-	//			log.Error(err, "Failed to create deployment", "name", metricsCollectorName)
-	//			return ctrl.Result{}, err
-	//		}
-	//		log.Info("Created deployment ", "name", metricsCollectorName)
-	//	} else {
-	//		log.Error(err, "Failed to check the deployment", "name", metricsCollectorName)
-	//		return ctrl.Result{}, err
-	//	}
-	//} else {
-	//	if !reflect.DeepEqual(metricsCollectorDeployment.Spec.Template.Spec, found.Spec.Template.Spec) ||
-	//		!reflect.DeepEqual(metricsCollectorDeployment.Spec.Replicas, found.Spec.Replicas) {
-	//		metricsCollectorDeployment.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-	//		if found.Status.ReadyReplicas != 0 {
-	//			metricsCollectorDeployment.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
-	//		}
-	//		err = r.Client.Update(ctx, metricsCollectorDeployment)
-	//		if err != nil {
-	//			log.Error(err, "Failed to update deployment", "name", metricsCollectorName)
-	//			return ctrl.Result{}, err
-	//		}
-	//		log.Info("Updated deployment ", "name", metricsCollectorName)
-	//	}
-	//}
-
 	if _, ok := os.LookupEnv("UNIT_TEST"); !ok && !isLegacyResourceRemoved {
 		// Delete PrometheusRule from openshift-monitoring namespace
 		if err := r.deleteSpecificPrometheusRule(ctx); err != nil {
@@ -530,26 +463,6 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 				builder.WithPredicates(mchPred),
 			)
 		}
-	}
-	mchCrdPred := GetMCHDisableHubSelfManagementPredicateFunc(c)
-	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.GroupVersion.Version); err == nil {
-		mchCrdExists := r.CRDMap[config.MCHCrdName]
-		if mchCrdExists {
-			// secondary watch for MCH
-			ctrBuilder = ctrBuilder.Watches(
-				&source.Kind{Type: &mchv1.MultiClusterHub{}},
-				handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
-					return []reconcile.Request{
-						{NamespacedName: types.NamespacedName{
-							Name:      config.MCHUpdatedRequestName,
-							Namespace: a.GetNamespace(),
-						}},
-					}
-				}),
-				builder.WithPredicates(mchCrdPred),
-			)
-		}
-
 	}
 
 	// create and return a new controller
@@ -984,157 +897,3 @@ func (r *MultiClusterObservabilityReconciler) deleteServiceMonitorInOpenshiftMon
 	}
 	return nil
 }
-
-func int32Ptr(i int32) *int32 { return &i }
-
-//// CreateMetricsCollector creates the metrics collector for hub cluster
-//func GenerateMetricsCollectorForHub(params metricsollector.CollectorParams, instance *mcov1beta2.MultiClusterObservability) *appsv1.Deployment {
-//	volumes := []corev1.Volume{
-//		{
-//			Name: "mtlscerts",
-//			VolumeSource: corev1.VolumeSource{
-//				Secret: &corev1.SecretVolumeSource{
-//					SecretName: mtlsCertName,
-//				},
-//			},
-//		},
-//		{
-//			Name: "mtlsca",
-//			VolumeSource: corev1.VolumeSource{
-//				Secret: &corev1.SecretVolumeSource{
-//					SecretName: mtlsCaName,
-//				},
-//			},
-//		},
-//	}
-//	mounts := []corev1.VolumeMount{
-//		{
-//			Name:      "mtlscerts",
-//			MountPath: "/tlscerts/certs",
-//		},
-//		{
-//			Name:      "mtlsca",
-//			MountPath: "/tlscerts/ca",
-//		},
-//	}
-//	if params.clusterID != "" {
-//		volumes = append(volumes, corev1.Volume{
-//			Name: caVolName,
-//			VolumeSource: corev1.VolumeSource{
-//				ConfigMap: &corev1.ConfigMapVolumeSource{
-//					LocalObjectReference: corev1.LocalObjectReference{
-//						Name: caConfigmapName,
-//					},
-//				},
-//			},
-//		})
-//		mounts = append(mounts, corev1.VolumeMount{
-//			Name:      caVolName,
-//			MountPath: caMounthPath,
-//		})
-//	}
-//
-//	commands := metricsollector.GetCommands(params)
-//
-//	from := promURL
-//	if !installPrometheus {
-//		from = ocpPromURL
-//		if params.isUWL {
-//			from = uwlPromURL
-//		}
-//	}
-//	fromQuery := from
-//	if params.isUWL {
-//		fromQuery = uwlQueryURL
-//	}
-//	name := metricsCollectorName
-//	//if params.isUWL {
-//	//	name = uwlMetricsCollectorName
-//	//}
-//	metricsCollectorDep := &appsv1.Deployment{
-//		ObjectMeta: metav1.ObjectMeta{
-//			Name:      name,
-//			Namespace: config.GetDefaultNamespace(),
-//			Annotations: map[string]string{
-//				ownerLabelKey: ownerLabelValue,
-//			},
-//		},
-//		Spec: appsv1.DeploymentSpec{
-//			Replicas: int32Ptr(params.replicaCount),
-//			//Selector: &metav1.LabelSelector{
-//			//	MatchLabels: map[string]string{
-//			//		selectorKey: selectorValue,
-//			//	},
-//			//},
-//			Template: corev1.PodTemplateSpec{
-//				ObjectMeta: metav1.ObjectMeta{
-//					Annotations: map[string]string{
-//						ownerLabelKey: ownerLabelValue,
-//						operatorconfig.WorkloadPartitioningPodAnnotationKey: operatorconfig.WorkloadPodExpectedValueJSON,
-//					},
-//					//Labels: map[string]string{
-//					//	selectorKey: selectorValue,
-//					//},
-//				},
-//				Spec: corev1.PodSpec{
-//					//ServiceAccountName: serviceAccountName,
-//					Containers: []corev1.Container{
-//						{
-//							Name:    "metrics-collector",
-//							Image:   rendering.Images[operatorconfig.MetricsCollectorKey],
-//							Command: commands,
-//							Env: []corev1.EnvVar{
-//								{
-//									Name:  "FROM",
-//									Value: from,
-//								},
-//								{
-//									Name:  "FROM_QUERY",
-//									Value: fromQuery,
-//								},
-//								{
-//									Name:  "TO",
-//									Value: params.hubInfo.ObservatoriumAPIEndpoint,
-//								},
-//							},
-//							VolumeMounts:    mounts,
-//							ImagePullPolicy: corev1.PullIfNotPresent,
-//						},
-//					},
-//					Volumes:      volumes,
-//					NodeSelector: instance.Spec.NodeSelector,
-//					Tolerations:  instance.Spec.Tolerations,
-//				},
-//			},
-//		},
-//	}
-//
-//	// No proxy config for hub
-//	//if params.httpProxy != "" || params.httpsProxy != "" || params.noProxy != "" {
-//	//	metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
-//	//		corev1.EnvVar{
-//	//			Name:  "HTTP_PROXY",
-//	//			Value: params.httpProxy,
-//	//		},
-//	//		corev1.EnvVar{
-//	//			Name:  "HTTPS_PROXY",
-//	//			Value: params.httpsProxy,
-//	//		},
-//	//		corev1.EnvVar{
-//	//			Name:  "NO_PROXY",
-//	//			Value: params.noProxy,
-//	//		})
-//	//}
-//	//if params.httpsProxy != "" && params.CABundle != "" {
-//	//	metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
-//	//		corev1.EnvVar{
-//	//			Name:  "HTTPS_PROXY_CA_BUNDLE",
-//	//			Value: params.CABundle,
-//	//		})
-//	//}
-//
-//	if instance.Spec.ObservabilityAddonSpec.Resources != nil {
-//		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = instance.Spec.ObservabilityAddonSpec.Resources
-//	}
-//	return metricsCollectorDep
-//}
