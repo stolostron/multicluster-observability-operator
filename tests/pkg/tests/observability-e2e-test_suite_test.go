@@ -223,7 +223,8 @@ func initVars() {
 	} else {
 		Expect(baseDomain).NotTo(BeEmpty(), "The `baseDomain` is required.")
 		testOptions.HubCluster.BaseDomain = baseDomain
-		testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:6443", baseDomain)
+		// testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:6443", baseDomain)
+		testOptions.HubCluster.ClusterServerURL = fmt.Sprintf("https://api.%s:443", baseDomain)
 	}
 
 	if testOptions.HubCluster.User != "" {
