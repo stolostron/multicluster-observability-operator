@@ -1,4 +1,4 @@
-name: lint
+name: lint & check bundle
 
 on:
   push:
@@ -34,3 +34,13 @@ jobs:
 
       - name: Linting, Formatting & vetting
         run: make lint
+
+      - name: install dependencies
+        run: cicd-scripts/install-dependencies.sh
+
+      - name: Make bundle
+        run: make bundle
+
+      # We exclude the dockerfile as we have manually modified that to use a different user
+      - name: check diff
+        run: git diff --exit-code -- . ':(exclude)operators/multiclusterobservability/bundle.Dockerfile'
