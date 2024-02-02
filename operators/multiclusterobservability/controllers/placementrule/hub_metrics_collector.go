@@ -42,6 +42,7 @@ var (
 	installPrometheus, _ = strconv.ParseBool(os.Getenv(operatorconfig.InstallPrometheus))
 	ownerLabelKey        = "owner"
 	ownerLabelValue      = "multicluster-observability-operator"
+	serviceAccountName   = os.Getenv("SERVICE_ACCOUNT")
 )
 
 type HubCollectorParams struct {
@@ -296,7 +297,7 @@ func GenerateMetricsCollectorForHub(ctx context.Context, mcoInstance *mcov1beta2
 					},
 				},
 				Spec: corev1.PodSpec{
-					//ServiceAccountName: serviceAccountName,
+					ServiceAccountName: serviceAccountName,
 					Containers: []corev1.Container{
 						{
 							Name:  "metrics-collector",
