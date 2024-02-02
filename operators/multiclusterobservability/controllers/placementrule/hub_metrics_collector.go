@@ -3,6 +3,9 @@ package placementrule
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
+
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
@@ -15,9 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strconv"
 )
 
 const (

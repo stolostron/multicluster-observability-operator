@@ -377,6 +377,9 @@ func createAllRelatedRes(
 	currentClusters := []string{}
 	for _, ep := range obsAddonList.Items {
 		log.Info("Coleen To update observabilityAddon", "namespace", ep.Namespace)
+		if ep.Namespace == "local-cluster" {
+			continue
+		}
 		currentClusters = append(currentClusters, ep.Namespace)
 	}
 
@@ -402,6 +405,9 @@ func createAllRelatedRes(
 	failedCreateManagedClusterRes := false
 	managedClusterListMutex.RLock()
 	for managedCluster, openshiftVersion := range managedClusterList {
+		if managedCluster == "local-cluster" {
+			continue
+		}
 		currentClusters = commonutil.Remove(currentClusters, managedCluster)
 		if isReconcileRequired(request, managedCluster) {
 			log.Info(
@@ -440,12 +446,10 @@ func createAllRelatedRes(
 	failedDeleteOba := false
 	for _, cluster := range currentClusters {
 		log.Info("Coleen To delete observabilityAddon", "namespace", cluster)
-		if cluster != config.GetDefaultNamespace() {
-			err = deleteObsAddon(c, cluster)
-			if err != nil {
-				failedDeleteOba = true
-				log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
-			}
+		err = deleteObsAddon(c, cluster)
+		if err != nil {
+			failedDeleteOba = true
+			log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
 		}
 	}
 
