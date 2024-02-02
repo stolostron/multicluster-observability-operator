@@ -30,6 +30,8 @@ const (
 	restartLabel         = "cert/time-restarted"
 	defaultInterval      = "30s"
 	limitBytes           = 1073741824
+	selectorKey          = "component"
+	selectorValue        = "metrics-collector"
 )
 
 var (
@@ -278,20 +280,20 @@ func GenerateMetricsCollectorForHub(ctx context.Context, mcoInstance *mcov1beta2
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: int32Ptr(1),
-			//Selector: &metav1.LabelSelector{
-			//	MatchLabels: map[string]string{
-			//		selectorKey: selectorValue,
-			//	},
-			//},
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					selectorKey: selectorValue,
+				},
+			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
 						ownerLabelKey: ownerLabelValue,
 						operatorconfig.WorkloadPartitioningPodAnnotationKey: operatorconfig.WorkloadPodExpectedValueJSON,
 					},
-					//Labels: map[string]string{
-					//	selectorKey: selectorValue,
-					//},
+					Labels: map[string]string{
+						selectorKey: selectorValue,
+					},
 				},
 				Spec: corev1.PodSpec{
 					//ServiceAccountName: serviceAccountName,
