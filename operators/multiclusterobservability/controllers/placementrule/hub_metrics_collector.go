@@ -3,9 +3,10 @@ package placementrule
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"os"
 	"strconv"
+
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
