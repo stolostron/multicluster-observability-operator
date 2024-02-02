@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -52,9 +51,6 @@ type HubCollectorParams struct {
 	allowlist    operatorconfig.MetricsAllowlist
 	nodeSelector map[string]string
 	tolerations  []corev1.Toleration
-	httpProxy    string
-	httpsProxy   string
-	noProxy      string
 	CABundle     string
 	replicaCount int32
 }
@@ -301,8 +297,9 @@ func GenerateMetricsCollectorForHub(ctx context.Context, mcoInstance *mcov1beta2
 					//ServiceAccountName: serviceAccountName,
 					Containers: []corev1.Container{
 						{
-							Name:    "metrics-collector",
-							Image:   rendering.Images[operatorconfig.MetricsCollectorKey],
+							Name:  "metrics-collector",
+							Image: imageListConfigMap.Data[operatorconfig.MetricsCollectorKey],
+							//Image:   rendering.Images[operatorconfig.MetricsCollectorKey],
 							Command: commands,
 							Env: []corev1.EnvVar{
 								{
