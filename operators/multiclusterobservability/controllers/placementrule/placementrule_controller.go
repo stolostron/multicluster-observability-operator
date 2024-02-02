@@ -258,7 +258,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		nodeSelector: mco.Spec.NodeSelector,
 		tolerations:  mco.Spec.Tolerations,
 	}
-	metricsCollectorDeployment, err := GenerateMetricsCollectorForHub(ctx, mco, params)
+	metricsCollectorDeployment, err := GenerateMetricsCollectorForHub(r.Client, ctx, mco, params)
 	if err != nil {
 		log.Error(err, "Failed to generate metrics collector deployment")
 		return ctrl.Result{}, err

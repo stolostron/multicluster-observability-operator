@@ -3,6 +3,7 @@ package placementrule
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"os"
 	"strconv"
 
@@ -198,12 +199,51 @@ func getCommands(params HubCollectorParams) []string {
 	return commands
 }
 
+func createCAConfigmap(ctx context.Context, client client.Client) error {
+	cm := &corev1.ConfigMap{}
+	err := client.Get(ctx, types.NamespacedName{Name: caConfigmapName,
+		Namespace: config.GetDefaultNamespace()}, cm)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			cm := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      caConfigmapName,
+					Namespace: config.GetDefaultNamespace(),
+					Annotations: map[string]string{
+						ownerLabelKey: ownerLabelValue,
+						"service.alpha.openshift.io/inject-cabundle": "true",
+					},
+				},
+				Data: map[string]string{"service-ca.crt": ""},
+			}
+			err = client.Create(ctx, cm)
+			if err == nil {
+				log.Info("Configmap created")
+			} else {
+				log.Error(err, "Failed to create the configmap")
+			}
+			return err
+		} else {
+			log.Error(err, "Failed to check the configmap")
+			return err
+		}
+	} else {
+		log.Info("The configmap already existed")
+	}
+	return nil
+}
+
 func int32Ptr(i int32) *int32 { return &i }
 
 // CreateMetricsCollector creates the metrics collector for hub cluster
-func GenerateMetricsCollectorForHub(ctx context.Context, mcoInstance *mcov1beta2.MultiClusterObservability, params HubCollectorParams) (*appsv1.Deployment, error) {
+func GenerateMetricsCollectorForHub(client client.Client, ctx context.Context, mcoInstance *mcov1beta2.MultiClusterObservability, params HubCollectorParams) (*appsv1.Deployment, error) {
+
+	err := createCAConfigmap(ctx, client)
+	if err != nil {
+		return nil, err
+	}
 	hubInfo := &operatorconfig.HubInfo{}
-	err := yaml.Unmarshal(hubInfoSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
+	err = yaml.Unmarshal(hubInfoSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
 	if err != nil {
 		log.Error(err, "Failed to unmarshal hub info")
 		return nil, err
