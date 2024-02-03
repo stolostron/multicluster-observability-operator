@@ -546,6 +546,7 @@ func generateObservabilityServerCACerts(client client.Client) (*corev1.Secret, e
 		return nil, err
 	}
 
+	log.Info("Coleen Creating observability server CA certs for namespace", "namespace", spokeNameSpace)
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),

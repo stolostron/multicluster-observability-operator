@@ -23,17 +23,18 @@ import (
 )
 
 const (
-	caMounthPath         = "/etc/serving-certs-ca-bundle"
-	caVolName            = "serving-certs-ca-bundle"
-	mtlsCertName         = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
-	mtlsCaName           = "observability-managed-cluster-certs"
-	metricsCollectorName = "hub-metrics-collector-deployment"
-	caConfigmapName      = "metrics-collector-serving-certs-ca-bundle"
-	restartLabel         = "cert/time-restarted"
-	defaultInterval      = "30s"
-	limitBytes           = 1073741824
-	selectorKey          = "component"
-	selectorValue        = "metrics-collector"
+	caMounthPath          = "/etc/serving-certs-ca-bundle"
+	caVolName             = "serving-certs-ca-bundle"
+	mtlsCertName          = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
+	mtlsCaName            = "observability-managed-cluster-certs"
+	metricsCollectorName  = "hub-metrics-collector-deployment"
+	caConfigmapName       = "hub-metrics-collector-serving-certs-ca-bundle"
+	restartLabel          = "cert/time-restarted"
+	defaultInterval       = "30s"
+	limitBytes            = 1073741824
+	selectorKey           = "component"
+	selectorValue         = "metrics-collector"
+	HubClusterObsCertName = "observability-hub-cluster-certs"
 )
 
 var (
@@ -199,6 +200,28 @@ func getCommands(params HubCollectorParams) []string {
 	//}
 	return commands
 }
+func generateObservabilityServerCACertsforHub(client client.Client) (*corev1.Secret, error) {
+	ca := &corev1.Secret{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: config.ServerCACerts,
+		Namespace: config.GetDefaultNamespace()}, ca)
+	if err != nil {
+		return nil, err
+	}
+
+	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: corev1.SchemeGroupVersion.String(),
+			Kind:       "Secret",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      HubClusterObsCertName,
+			Namespace: spokeNameSpace,
+		},
+		Data: map[string][]byte{
+			"ca.crt": ca.Data["tls.crt"],
+		},
+	}, nil
+}
 
 func createCAConfigmap(ctx context.Context, client client.Client) error {
 	cm := &corev1.ConfigMap{}
@@ -262,7 +285,7 @@ func GenerateMetricsCollectorForHub(client client.Client, ctx context.Context, m
 			Name: "mtlsca",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: mtlsCaName,
+					SecretName: HubClusterObsCertName,
 				},
 			},
 		},
