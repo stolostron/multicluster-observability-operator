@@ -199,7 +199,8 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 // generateGlobalManifestResources generates global resources, eg. manifestwork,
 // endpoint-metrics-operator deploy and hubInfo Secret...
 // this function is expensive and should not be called for each reconcile loop.
-func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObservability) (
+func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObservability,
+	installMetricsWithoutAddon bool) (
 	[]workv1.Manifest, *workv1.Manifest, *workv1.Manifest, error) {
 
 	works := []workv1.Manifest{}
@@ -259,6 +260,17 @@ func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClust
 	}}
 	for _, raw := range rawExtensionList {
 		works = append(works, workv1.Manifest{RawExtension: raw})
+	}
+
+	if installMetricsWithoutAddon {
+		err := c.Create(context.TODO(), managedClusterObsCert)
+		if err != nil {
+			log.Error(err, "Failed to create managedClusterObsCert")
+		}
+		err = c.Create(context.TODO(), amAccessorTokenSecret)
+		if err != nil {
+			log.Error(err, "Failed to create amAccessorTokenSecret")
+		}
 	}
 
 	return works, crdv1Work, crdv1beta1Work, nil
@@ -423,7 +435,32 @@ func createManifestWorks(
 
 	work.Spec.Workload.Manifests = manifests
 
-	err = createManifestwork(c, work)
+	if clusterName != clusterNamespace {
+		// install the endpoint operator into open-cluster-management-observability namespace
+		err = c.Create(context.TODO(), obaddon)
+		if err != nil {
+			log.Error(err, "Failed to create observabilityAddon", "namespace", clusterNamespace)
+		}
+		err = c.Create(context.TODO(), allowlist)
+		if err != nil {
+			log.Error(err, "Failed to create allowlist", "namespace", clusterNamespace)
+		}
+		err = c.Create(context.TODO(), dep)
+		if err != nil {
+			log.Error(err, "Failed to create endpoint operator deployment", "namespace", clusterNamespace)
+		}
+		err = c.Create(context.TODO(), hubInfo)
+		if err != nil {
+			log.Error(err, "Failed to create hubInfo", "namespace", clusterNamespace)
+		}
+		err = c.Create(context.TODO(), imageListConfigMap)
+		if err != nil {
+			log.Error(err, "Failed to create imageListConfigMap", "namespace", clusterNamespace)
+		}
+	} else {
+		err = createManifestwork(c, work)
+	}
+
 	return err
 }
 

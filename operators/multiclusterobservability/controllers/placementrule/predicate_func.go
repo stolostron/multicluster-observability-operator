@@ -17,6 +17,10 @@ func getClusterPreds() predicate.Funcs {
 	createFunc := func(e event.CreateEvent) bool {
 		log.Info("CreateFunc", "managedCluster", e.Object.GetName())
 
+		if e.Object.GetName() == "local-cluster" {
+			delete(managedClusterList, "local-cluster")
+		}
+
 		if isAutomaticAddonInstallationDisabled(e.Object) {
 			return false
 		}
