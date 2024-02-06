@@ -385,6 +385,16 @@ func createManifestWorks(
 
 	log.Info(fmt.Sprintf("Cluster: %+v, Spec.NodeSelector (after): %+v", clusterName, spec.NodeSelector))
 	log.Info(fmt.Sprintf("Cluster: %+v, Spec.Tolerations (after): %+v", clusterName, spec.Tolerations))
+	if clusterName != clusterNamespace {
+		spec.Volumes = []corev1.Volume{}
+		spec.Containers[0].VolumeMounts = []corev1.VolumeMount{}
+		for i, env := range spec.Containers[0].Env {
+			if env.Name == "HUB_KUBECONFIG" {
+				spec.Containers[0].Env[i].Value = ""
+				break
+			}
+		}
+	}
 	dep.Spec.Template.Spec = spec
 	manifests = injectIntoWork(manifests, dep)
 	// replace the pull secret and addon components image
@@ -436,9 +446,11 @@ func createManifestWorks(
 
 func createUpdateResources(c client.Client, manifests []workv1.Manifest) error {
 	for _, manifest := range manifests {
-		err := c.Create(context.TODO(), manifest.RawExtension.Object.(client.Object))
+		obj := manifest.RawExtension.Object.(client.Object)
+		obj.SetNamespace(config.GetDefaultNamespace())
+		err := c.Create(context.TODO(), obj)
 		if err != nil && !k8serrors.IsAlreadyExists(err) {
-			log.Error(err, "Failed to create resource", "kind", manifest.RawExtension.Object.GetObjectKind().GroupVersionKind().Kind)
+			log.Error(err, "Failed to create resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
 			return err
 		}
 	}
