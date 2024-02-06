@@ -16,6 +16,7 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,6 +39,7 @@ const (
 	workNameSuffix            = "-observability"
 	localClusterName          = "local-cluster"
 	workPostponeDeleteAnnoKey = "open-cluster-management/postpone-delete"
+	hubEndpointOperatorName   = "endpoint-observability-operator"
 )
 
 // intermediate resources for the manifest work.
@@ -200,7 +202,7 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 // endpoint-metrics-operator deploy and hubInfo Secret...
 // this function is expensive and should not be called for each reconcile loop.
 func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObservability,
-	installMetricsWithoutAddon bool) (
+) (
 	[]workv1.Manifest, *workv1.Manifest, *workv1.Manifest, error) {
 
 	works := []workv1.Manifest{}
@@ -260,17 +262,6 @@ func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClust
 	}}
 	for _, raw := range rawExtensionList {
 		works = append(works, workv1.Manifest{RawExtension: raw})
-	}
-
-	if installMetricsWithoutAddon {
-		err := c.Create(context.TODO(), managedClusterObsCert)
-		if err != nil {
-			log.Error(err, "Failed to create managedClusterObsCert")
-		}
-		err = c.Create(context.TODO(), amAccessorTokenSecret)
-		if err != nil {
-			log.Error(err, "Failed to create amAccessorTokenSecret")
-		}
 	}
 
 	return works, crdv1Work, crdv1beta1Work, nil
@@ -396,6 +387,24 @@ func createManifestWorks(
 
 	log.Info(fmt.Sprintf("Cluster: %+v, Spec.NodeSelector (after): %+v", clusterName, spec.NodeSelector))
 	log.Info(fmt.Sprintf("Cluster: %+v, Spec.Tolerations (after): %+v", clusterName, spec.Tolerations))
+	if clusterName != clusterNamespace {
+		spec.Volumes = []corev1.Volume{}
+		spec.Containers[0].VolumeMounts = []corev1.VolumeMount{}
+		for i, env := range spec.Containers[0].Env {
+			if env.Name == "HUB_KUBECONFIG" {
+				spec.Containers[0].Env[i].Value = ""
+				break
+			}
+		}
+		//Set HUB_ENDPOINT_OPERATOR when the endpoint operator is installed in hub cluster
+		spec.Containers[0].Env = append(spec.Containers[0].Env, corev1.EnvVar{
+			Name:  "HUB_ENDPOINT_OPERATOR",
+			Value: "true",
+		})
+
+		dep.ObjectMeta.Name = hubEndpointOperatorName
+	}
+
 	dep.Spec.Template.Spec = spec
 	manifests = injectIntoWork(manifests, dep)
 	// replace the pull secret and addon components image
@@ -436,32 +445,44 @@ func createManifestWorks(
 	work.Spec.Workload.Manifests = manifests
 
 	if clusterName != clusterNamespace {
-		// install the endpoint operator into open-cluster-management-observability namespace
-		err = c.Create(context.TODO(), obaddon)
-		if err != nil {
-			log.Error(err, "Failed to create observabilityAddon", "namespace", clusterNamespace)
-		}
-		err = c.Create(context.TODO(), allowlist)
-		if err != nil {
-			log.Error(err, "Failed to create allowlist", "namespace", clusterNamespace)
-		}
-		err = c.Create(context.TODO(), dep)
-		if err != nil {
-			log.Error(err, "Failed to create endpoint operator deployment", "namespace", clusterNamespace)
-		}
-		err = c.Create(context.TODO(), hubInfo)
-		if err != nil {
-			log.Error(err, "Failed to create hubInfo", "namespace", clusterNamespace)
-		}
-		err = c.Create(context.TODO(), imageListConfigMap)
-		if err != nil {
-			log.Error(err, "Failed to create imageListConfigMap", "namespace", clusterNamespace)
-		}
+		log.Info("Coleen creating manifestwork in managed cluster and name", "cluster", clusterName)
+		// install the endpoint operator into open-cluster-management-observability namespace for the hub cluster
+		err = createUpdateResourcesForHubMetricsCollection(c, manifests)
 	} else {
 		err = createManifestwork(c, work)
 	}
 
 	return err
+}
+
+func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
+	for _, manifest := range manifests {
+		obj := manifest.RawExtension.Object.(client.Object)
+		log.Info("Coleen updating object in managed cluster and name", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
+		if obj.GetObjectKind().GroupVersionKind().Kind == "Namespace" {
+			log.Info("Skipping namespace creation in managed cluster", "name", obj.GetName())
+			continue
+		}
+		if obj.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
+			continue
+		}
+		log.Info("Coleen updating object in managed cluster and name", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
+		kind := obj.GetObjectKind().GroupVersionKind().Kind
+		if kind != "ClusterRole" && kind != "ClusterRoleBinding" && kind != "CustomResourceDefinition" {
+			obj.SetNamespace(config.GetDefaultNamespace())
+		}
+		if obj.GetObjectKind().GroupVersionKind().Kind == "ClusterRoleBinding" {
+			role := obj.(*rbacv1.ClusterRoleBinding)
+			role.Subjects[0].Namespace = config.GetDefaultNamespace()
+			log.Info("Coleen Setting namespace for rolebinding", "namespace", config.GetDefaultNamespace())
+		}
+		err := c.Create(context.TODO(), obj)
+		if err != nil && !k8serrors.IsAlreadyExists(err) {
+			log.Error(err, "Failed to create resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
+		}
+	}
+
+	return nil
 }
 
 // generateAmAccessorTokenSecret generates the secret that contains the access_token
@@ -669,6 +690,24 @@ func getObservabilityAddon(c client.Client, namespace string,
 		return nil, nil
 	}
 
+	if namespace == config.GetDefaultNamespace() {
+		log.Info("Coleen get observabilityAddon in hub cluster and name", "namespace", namespace, "name", obsAddonName)
+		return &mcov1beta1.ObservabilityAddon{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "observability.open-cluster-management.io/v1beta1",
+				Kind:       "ObservabilityAddon",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      obsAddonName,
+				Namespace: config.GetDefaultNamespace(),
+			},
+			Spec: mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: mco.Spec.ObservabilityAddonSpec.EnableMetrics,
+				Interval:      mco.Spec.ObservabilityAddonSpec.Interval,
+				Resources:     config.GetOBAResources(mco.Spec.ObservabilityAddonSpec),
+			},
+		}, nil
+	}
 	return &mcov1beta1.ObservabilityAddon{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "observability.open-cluster-management.io/v1beta1",

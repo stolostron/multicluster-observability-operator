@@ -7,6 +7,7 @@ package observabilityendpoint
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"reflect"
 	"regexp"
 	"sort"
@@ -112,7 +113,12 @@ func getCommands(params CollectorParams) []string {
 	for _, group := range params.allowlist.CollectRuleGroupList {
 		if group.Selector.MatchExpression != nil {
 			for _, expr := range group.Selector.MatchExpression {
-				if !evluateMatchExpression(expr, clusterID, params.clusterType, params.obsAddonSpec, params.hubInfo,
+				if hubMetricsCollector {
+					if !evluateMatchExpression(expr, clusterID, params.clusterType, params.hubInfo,
+						params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount) {
+						continue
+					}
+				} else if !evluateMatchExpression(expr, clusterID, params.clusterType, params.obsAddonSpec, params.hubInfo,
 					params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount) {
 					continue
 				}
@@ -313,10 +319,28 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 				Value: params.CABundle,
 			})
 	}
+	if hubMetricsCollector {
+		//to avoid hub metrics collector from sending status
+		metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
+			corev1.EnvVar{
+				Name:  "STANDALONE",
+				Value: "true",
+			})
+	}
 
+	if hubMetricsCollector {
+		//Since there is no obsAddOn for hub-metrics-collector, we need to set the resources here
+		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				corev1.ResourceMemory: resource.MustParse("100Mi"),
+				corev1.ResourceCPU:    resource.MustParse("10m"),
+			},
+		}
+	}
 	if params.obsAddonSpec.Resources != nil {
 		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *params.obsAddonSpec.Resources
 	}
+
 	return metricsCollectorDep
 }
 
@@ -406,6 +430,9 @@ func updateMetricsCollector(ctx context.Context, c client.Client, params Collect
 		if !reflect.DeepEqual(deployment.Spec.Template.Spec, found.Spec.Template.Spec) ||
 			!reflect.DeepEqual(deployment.Spec.Replicas, found.Spec.Replicas) ||
 			forceRestart {
+			t1 := reflect.DeepEqual(deployment.Spec.Template.Spec, found.Spec.Template.Spec)
+			t2 := reflect.DeepEqual(deployment.Spec.Replicas, found.Spec.Replicas)
+			log.Info("Coleen deployment.Spec.Template.Spec", "t1", t1, "t2", t2, "forceRestart", forceRestart)
 			deployment.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 			if forceRestart && found.Status.ReadyReplicas != 0 {
 				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")

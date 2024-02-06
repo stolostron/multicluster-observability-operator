@@ -95,11 +95,18 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	reqLogger.Info("Reconciling PlacementRule")
 
 	// TODO
+
+	if _, ok := managedClusterList["local-cluster"]; ok {
+		log.Info("Coleen local-cluster is in the managedClusterList")
+		//Remove from list
+		delete(managedClusterList, "local-cluster")
+	}
 	if _, ok := managedClusterList["local-cluster"]; !ok {
+		log.Info("Coleen local-cluster is not in the managedClusterList")
 		obj := &clusterv1.ManagedCluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "local-cluster",
-				Namespace: "open-cluster-management-observability",
+				Namespace: config.GetDefaultNamespace(),
 				Labels: map[string]string{
 					"openshiftVersion": "mimical",
 				},
@@ -108,6 +115,20 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		installMetricsWithoutAddon = true
 		updateManagedClusterList(obj)
 	}
+	//else if ok {
+	//	log.Info("Coleen local-cluster is in the managedClusterList")
+	//	obj := &clusterv1.ManagedCluster{
+	//		ObjectMeta: metav1.ObjectMeta{
+	//			Name:      "local-cluster",
+	//			Namespace: "open-cluster-management-observability",
+	//			Labels: map[string]string{
+	//				"openshiftVersion": "mimical",
+	//			},
+	//		},
+	//	}
+	//	installMetricsWithoutAddon = true
+	//	updateManagedClusterList(obj)
+	//}
 
 	if config.GetMonitoringCRName() == "" {
 		reqLogger.Info("multicluster observability resource is not available")
@@ -143,7 +164,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// check if the MCH CRD exists
 	mchCrdExists := r.CRDMap[config.MCHCrdName]
-	// requeue after 10 seconds if the mch crd exists and image image manifests map is empty
+	// requeue after 10 seconds if the mch crd exists and image  manifests map is empty
 	if mchCrdExists && len(config.GetImageManifests()) == 0 {
 		// if the mch CR is not ready, then requeue the request after 10s
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
@@ -177,8 +198,11 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if installMetricsWithoutAddon {
 		obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "local-cluster",
-				Namespace: "local-cluster",
+				Name:      obsAddonName,
+				Namespace: config.GetDefaultNamespace(),
+				Labels: map[string]string{
+					ownerLabelKey: ownerLabelValue,
+				},
 			},
 		})
 	}
@@ -190,7 +214,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			mco,
 			obsAddonList,
 			r.CRDMap,
-			installMetricsWithoutAddon,
 		); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -229,12 +252,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	latestClusters := []string{}
 	staleAddons := []string{}
 	for _, addon := range obsAddonList.Items {
+		log.Info("Coleen obsAddonList.Items latest clusters", "namespace", addon.Namespace, "name", addon.Name)
 		latestClusters = append(latestClusters, addon.Namespace)
 		staleAddons = append(staleAddons, addon.Namespace)
+
 	}
 	for _, work := range workList.Items {
 		if work.Name != work.Namespace+workNameSuffix {
-			reqLogger.Info("To delete invalid manifestwork", "name", work.Name, "namespace", work.Namespace)
+			reqLogger.Info("Coleen To delete invalid manifestwork", "name", work.Name, "namespace", work.Namespace)
 			err = deleteManifestWork(r.Client, work.Name, work.Namespace)
 			if err != nil {
 				return ctrl.Result{}, err
@@ -247,6 +272,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				return ctrl.Result{}, err
 			}
 		} else {
+			log.Info("Coleen latestClusters staleaddon remove", "namespace", work.Namespace, "name", work.Name)
 			staleAddons = commonutil.Remove(staleAddons, work.Namespace)
 		}
 	}
@@ -255,6 +281,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// but the managedclusteraddon for observability will not deleted by the cluster manager, so check against the
 	// managedclusteraddon list to remove the managedcluster resources after the managedcluster is detached.
 	for _, mcaddon := range managedclusteraddonList.Items {
+		log.Info("Coleen managedclusteraddonList.Items", "namespace", mcaddon.Namespace, "name", mcaddon.Name)
 		if !slices.Contains(latestClusters, mcaddon.Namespace) {
 			reqLogger.Info("To delete managedcluster resources", "namespace", mcaddon.Namespace)
 			err = deleteManagedClusterRes(r.Client, mcaddon.Namespace)
@@ -268,6 +295,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// delete stale addons if manifestwork does not exist
 	for _, addon := range staleAddons {
+		log.Info("Coleen To delete stale observabilityAddon", "namespace", addon)
 		err = deleteStaleObsAddon(r.Client, addon, true)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -303,7 +331,6 @@ func createAllRelatedRes(
 	mco *mcov1beta2.MultiClusterObservability,
 	obsAddonList *mcov1beta1.ObservabilityAddonList,
 	CRDMap map[string]bool,
-	installMetricsWithoutAddon bool,
 ) error {
 	var err error
 	// create the clusterrole if not there
@@ -348,6 +375,7 @@ func createAllRelatedRes(
 
 	currentClusters := []string{}
 	for _, ep := range obsAddonList.Items {
+		log.Info("Coleen obsAddonList.Items", "namespace", ep.Namespace, "name", ep.Name)
 		currentClusters = append(currentClusters, ep.Namespace)
 	}
 
@@ -357,7 +385,7 @@ func createAllRelatedRes(
 	rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1,
 		endpointMetricsOperatorDeploy, imageListConfigMap, _ = loadTemplates(mco)
 
-	works, crdv1Work, crdv1beta1Work, err := generateGlobalManifestResources(c, mco, installMetricsWithoutAddon)
+	works, crdv1Work, crdv1beta1Work, err := generateGlobalManifestResources(c, mco)
 	if err != nil {
 		return err
 	}
@@ -365,11 +393,12 @@ func createAllRelatedRes(
 	// regenerate the hubinfo secret if empty
 	if hubInfoSecret == nil {
 		var err error
+		log.Info("Coleen generate the hubinfo secret for spokenamespace", "namespace", spokeNameSpace)
 		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap[config.IngressControllerCRD]); err != nil {
 			return err
 		}
 	}
-
+	log.Info("Coleen local-cluster is in the managedClusterList")
 	failedCreateManagedClusterRes := false
 	managedClusterListMutex.RLock()
 	for managedCluster, openshiftVersion := range managedClusterList {
@@ -383,7 +412,10 @@ func createAllRelatedRes(
 				request.Name,
 				"request.namespace",
 				request.Namespace,
+				"openshiftVersion",
+				openshiftVersion,
 			)
+			log.Info("Coleen should be called all the time since managed cluster is in the list")
 			if openshiftVersion == "3" {
 				err = createManagedClusterRes(c, mco,
 					managedCluster, managedCluster,
@@ -393,9 +425,12 @@ func createAllRelatedRes(
 					managedCluster, managedCluster,
 					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, true)
 			} else if openshiftVersion == "mimical" {
+				// create copy of hub-info-secret for local-cluster since hubInfo is global variable
+				hubInfoSecretCopy := hubInfoSecret.DeepCopy()
+				log.Info("Coleen ManagedCluster mimical", "cluster_name", managedCluster)
 				err = createManagedClusterRes(c, mco,
 					managedCluster, config.GetDefaultNamespace(),
-					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
+					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecretCopy, false)
 			} else {
 				err = createManagedClusterRes(c, mco,
 					managedCluster, managedCluster,
@@ -414,12 +449,15 @@ func createAllRelatedRes(
 
 	failedDeleteOba := false
 	for _, cluster := range currentClusters {
-		log.Info("To delete observabilityAddon", "namespace", cluster)
-		err = deleteObsAddon(c, cluster)
-		if err != nil {
-			failedDeleteOba = true
-			log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
+		log.Info("Coleen To delete observabilityAddon if cluster != defaultnamespace", "namespace", cluster)
+		if cluster != config.GetDefaultNamespace() {
+			err = deleteObsAddon(c, cluster)
+			if err != nil {
+				failedDeleteOba = true
+				log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
+			}
 		}
+
 	}
 
 	if failedCreateManagedClusterRes || failedDeleteOba {
@@ -434,6 +472,9 @@ func deleteAllObsAddons(
 	obsAddonList *mcov1beta1.ObservabilityAddonList,
 ) error {
 	for _, ep := range obsAddonList.Items {
+		if ep.Namespace == config.GetDefaultNamespace() {
+			continue
+		}
 		err := deleteObsAddon(client, ep.Namespace)
 		if err != nil {
 			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
@@ -478,6 +519,7 @@ func createManagedClusterRes(
 		log.Error(err, "Failed to create observabilityaddon")
 		return err
 	}
+	log.Info("Coleen create managed cluster resource", "namespace", namespace)
 
 	err = createRolebindings(c, namespace, name)
 	if err != nil {
@@ -579,6 +621,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// Watch changes for AddonDeploymentConfig
 	AddonDeploymentPred := GetAddOnDeploymentPredicates()
+
+	// Watch changes to endpoint-operator deployment
+	hubEndpointOperatorPred := getHubEndpointOperatorPredicates()
 
 	obsAddonPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
@@ -868,7 +913,10 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(certSecretPred)).
 
 		// secondary watch for alertmanager accessor serviceaccount
-		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred))
+		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred)).
+
+		// secondary watch for hub endpoint operator deployment
+		Watches(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(hubEndpointOperatorPred))
 
 	// watch for AddonDeploymentConfig
 	if _, err := r.RESTMapper.RESTMapping(schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "AddOnDeploymentConfig"}, addonv1alpha1.GroupVersion.Version); err == nil {

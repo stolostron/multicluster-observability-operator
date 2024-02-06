@@ -18,6 +18,7 @@ var (
 )
 
 func generateNamespace() *corev1.Namespace {
+	log.Info("Creating namespace for spoke", "namespace", spokeNameSpace)
 	return &corev1.Namespace{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),

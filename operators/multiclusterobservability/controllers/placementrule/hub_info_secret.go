@@ -20,6 +20,7 @@ import (
 // this function should only called when the watched resources are created/updated.
 func generateHubInfoSecret(client client.Client, obsNamespace string,
 	namespace string, ingressCtlCrdExists bool) (*corev1.Secret, error) {
+	log.Info("Coleen - generateHubInfoSecret", "namespace", namespace)
 
 	obsApiRouteHost := ""
 	alertmanagerEndpoint := ""
