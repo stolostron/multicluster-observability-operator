@@ -413,10 +413,12 @@ func createAllRelatedRes(
 	failedDeleteOba := false
 	for _, cluster := range currentClusters {
 		log.Info("To delete observabilityAddon", "namespace", cluster)
-		err = deleteObsAddon(c, cluster)
-		if err != nil {
-			failedDeleteOba = true
-			log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
+		if cluster != config.GetDefaultNamespace() {
+			err = deleteObsAddon(c, cluster)
+			if err != nil {
+				failedDeleteOba = true
+				log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
+			}
 		}
 	}
 

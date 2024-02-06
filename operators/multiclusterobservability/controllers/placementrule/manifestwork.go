@@ -16,6 +16,7 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -447,13 +448,20 @@ func createManifestWorks(
 func createUpdateResources(c client.Client, manifests []workv1.Manifest) error {
 	for _, manifest := range manifests {
 		obj := manifest.RawExtension.Object.(client.Object)
+		if obj.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
+			continue
+		}
 		obj.SetNamespace(config.GetDefaultNamespace())
+		if obj.GetObjectKind().GroupVersionKind().Kind == "ClusterRoleBinding" {
+			role := obj.(*rbacv1.ClusterRoleBinding)
+			role.Subjects[0].Namespace = config.GetDefaultNamespace()
+		}
 		err := c.Create(context.TODO(), obj)
 		if err != nil && !k8serrors.IsAlreadyExists(err) {
 			log.Error(err, "Failed to create resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-			return err
 		}
 	}
+
 	return nil
 }
 
