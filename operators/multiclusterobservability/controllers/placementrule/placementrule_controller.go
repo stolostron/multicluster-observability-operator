@@ -254,10 +254,12 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		obsAddonSpec: *mco.Spec.ObservabilityAddonSpec,
 		//hubInfo:      hubInfo,
 		//allowlist:    list,
-		replicaCount: 1,
-		nodeSelector: mco.Spec.NodeSelector,
-		tolerations:  mco.Spec.Tolerations,
+		replicaCount:        1,
+		nodeSelector:        mco.Spec.NodeSelector,
+		tolerations:         mco.Spec.Tolerations,
+		ingressCtlCrdExists: r.CRDMap[config.IngressControllerCRD],
 	}
+
 	metricsCollectorDeployment, err := GenerateMetricsCollectorForHub(r.Client, ctx, mco, params)
 	if err != nil {
 		log.Error(err, "Failed to generate metrics collector deployment")

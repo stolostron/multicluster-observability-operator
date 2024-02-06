@@ -3,8 +3,11 @@ package placementrule
 import (
 	"context"
 	"fmt"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	"os"
+	"sort"
 	"strconv"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 
@@ -49,16 +52,17 @@ var (
 )
 
 type HubCollectorParams struct {
-	isUWL        bool
-	clusterID    string
-	clusterType  string
-	obsAddonSpec oashared.ObservabilityAddonSpec
-	hubInfo      operatorconfig.HubInfo
-	allowlist    operatorconfig.MetricsAllowlist
-	nodeSelector map[string]string
-	tolerations  []corev1.Toleration
-	CABundle     string
-	replicaCount int32
+	isUWL               bool
+	clusterID           string
+	clusterType         string
+	obsAddonSpec        oashared.ObservabilityAddonSpec
+	hubInfo             operatorconfig.HubInfo
+	allowlist           operatorconfig.MetricsAllowlist
+	nodeSelector        map[string]string
+	tolerations         []corev1.Toleration
+	CABundle            string
+	replicaCount        int32
+	ingressCtlCrdExists bool
 }
 
 func getClusterID(ctx context.Context, c client.Client) (string, error) {
@@ -139,65 +143,65 @@ func getCommands(params HubCollectorParams) []string {
 		commands = append(commands, fmt.Sprintf("--label=\"clusterType=%s\"", params.clusterType))
 	}
 
-	//dynamicMetricList := map[string]bool{}
-	//for _, group := range params.allowlist.CollectRuleGroupList {
-	//	if group.Selector.MatchExpression != nil {
-	//		for _, expr := range group.Selector.MatchExpression {
-	//			if !evluateMatchExpression(expr, clusterID, params.clusterType, params.obsAddonSpec, params.hubInfo,
-	//				params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount) {
-	//				continue
-	//			}
-	//			for _, rule := range group.CollectRuleList {
-	//				matchList := []string{}
-	//				for _, match := range rule.Metrics.MatchList {
-	//					matchList = append(matchList, `"`+strings.ReplaceAll(match, `"`, `\"`)+`"`)
-	//					if name := getNameInMatch(match); name != "" {
-	//						dynamicMetricList[name] = false
-	//					}
-	//				}
-	//				for _, name := range rule.Metrics.NameList {
-	//					dynamicMetricList[name] = false
-	//				}
-	//				matchListStr := "[" + strings.Join(matchList, ",") + "]"
-	//				nameListStr := `["` + strings.Join(rule.Metrics.NameList, `","`) + `"]`
-	//				commands = append(
-	//					commands,
-	//					fmt.Sprintf("--collectrule={\"name\":\"%s\",\"expr\":\"%s\",\"for\":\"%s\",\"names\":%v,\"matches\":%v}",
-	//						rule.Collect, rule.Expr, rule.For, nameListStr, matchListStr),
-	//				)
-	//			}
-	//		}
-	//	}
-	//}
+	dynamicMetricList := map[string]bool{}
+	for _, group := range params.allowlist.CollectRuleGroupList {
+		if group.Selector.MatchExpression != nil {
+			for _, expr := range group.Selector.MatchExpression {
+				if !util.EvaluateMatchExpression(expr, clusterID, params.clusterType, params.obsAddonSpec, params.hubInfo,
+					params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount) {
+					continue
+				}
+				for _, rule := range group.CollectRuleList {
+					matchList := []string{}
+					for _, match := range rule.Metrics.MatchList {
+						matchList = append(matchList, `"`+strings.ReplaceAll(match, `"`, `\"`)+`"`)
+						if name := util.GetNameInMatch(match); name != "" {
+							dynamicMetricList[name] = false
+						}
+					}
+					for _, name := range rule.Metrics.NameList {
+						dynamicMetricList[name] = false
+					}
+					matchListStr := "[" + strings.Join(matchList, ",") + "]"
+					nameListStr := `["` + strings.Join(rule.Metrics.NameList, `","`) + `"]`
+					commands = append(
+						commands,
+						fmt.Sprintf("--collectrule={\"name\":\"%s\",\"expr\":\"%s\",\"for\":\"%s\",\"names\":%v,\"matches\":%v}",
+							rule.Collect, rule.Expr, rule.For, nameListStr, matchListStr),
+					)
+				}
+			}
+		}
+	}
 
-	//for _, metrics := range params.allowlist.NameList {
-	//	if _, ok := dynamicMetricList[metrics]; !ok {
-	//		commands = append(commands, fmt.Sprintf("--match={__name__=\"%s\"}", metrics))
-	//	}
-	//}
-	//for _, match := range params.allowlist.MatchList {
-	//	if name := getNameInMatch(match); name != "" {
-	//		if _, ok := dynamicMetricList[name]; ok {
-	//			continue
-	//		}
-	//	}
-	//	commands = append(commands, fmt.Sprintf("--match={%s}", match))
-	//}
-	//
-	//renamekeys := make([]string, 0, len(params.allowlist.RenameMap))
-	//for k := range params.allowlist.RenameMap {
-	//	renamekeys = append(renamekeys, k)
-	//}
-	//sort.Strings(renamekeys)
-	//for _, k := range renamekeys {
-	//	commands = append(commands, fmt.Sprintf("--rename=\"%s=%s\"", k, params.allowlist.RenameMap[k]))
-	//}
-	//for _, rule := range params.allowlist.RecordingRuleList {
-	//	commands = append(
-	//		commands,
-	//		fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr),
-	//	)
-	//}
+	for _, metrics := range params.allowlist.NameList {
+		if _, ok := dynamicMetricList[metrics]; !ok {
+			commands = append(commands, fmt.Sprintf("--match={__name__=\"%s\"}", metrics))
+		}
+	}
+	for _, match := range params.allowlist.MatchList {
+		if name := util.GetNameInMatch(match); name != "" {
+			if _, ok := dynamicMetricList[name]; ok {
+				continue
+			}
+		}
+		commands = append(commands, fmt.Sprintf("--match={%s}", match))
+	}
+
+	renamekeys := make([]string, 0, len(params.allowlist.RenameMap))
+	for k := range params.allowlist.RenameMap {
+		renamekeys = append(renamekeys, k)
+	}
+	sort.Strings(renamekeys)
+	for _, k := range renamekeys {
+		commands = append(commands, fmt.Sprintf("--rename=\"%s=%s\"", k, params.allowlist.RenameMap[k]))
+	}
+	for _, rule := range params.allowlist.RecordingRuleList {
+		commands = append(
+			commands,
+			fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr),
+		)
+	}
 	return commands
 }
 func generateObservabilityServerCACertsforHub(client client.Client) (*corev1.Secret, error) {
@@ -266,12 +270,18 @@ func GenerateMetricsCollectorForHub(client client.Client, ctx context.Context, m
 	if err != nil {
 		return nil, err
 	}
-	hubInfo := &operatorconfig.HubInfo{}
-	err = yaml.Unmarshal(hubInfoSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
+	_, _ = generateObservabilityServerCACertsforHub(client)
+
+	hubInfoSecretForHub, _ := generateHubInfoSecret(client, config.GetDefaultNamespace(), config.GetDefaultNamespace(), params.ingressCtlCrdExists)
+	hubInfo := operatorconfig.HubInfo{}
+	err = yaml.Unmarshal(hubInfoSecretForHub.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
 	if err != nil {
 		log.Error(err, "Failed to unmarshal hub info")
 		return nil, err
 	}
+	hubInfo.ClusterName = config.GetDefaultNamespace()
+	params.hubInfo = hubInfo
+
 	volumes := []corev1.Volume{
 		{
 			Name: "mtlscerts",
@@ -316,6 +326,29 @@ func GenerateMetricsCollectorForHub(client client.Client, ctx context.Context, m
 			Name:      caVolName,
 			MountPath: caMounthPath,
 		})
+	}
+
+	allowlist, ocp3Allowlist, uwlAllowlist, err := util.GetAllowList(client,
+		operatorconfig.AllowlistConfigMapName, config.GetDefaultNamespace())
+	if err != nil {
+		log.Error(err, "Failed to get metrics allowlist configmap "+operatorconfig.AllowlistConfigMapName)
+		return nil, err
+	}
+
+	customAllowlist, _, customUwlAllowlist, err := util.GetAllowList(client,
+		config.AllowlistCustomConfigMapName, config.GetDefaultNamespace())
+	if err == nil {
+		allowlist, ocp3Allowlist, uwlAllowlist = util.MergeAllowlist(allowlist,
+			customAllowlist, ocp3Allowlist, uwlAllowlist, customUwlAllowlist)
+	} else {
+		log.Info("There is no custom metrics allowlist configmap in the cluster")
+	}
+	if err != nil {
+		return nil, err
+	}
+	params.allowlist = *allowlist
+	if params.clusterType == "ocp3" {
+		params.allowlist = *ocp3Allowlist
 	}
 
 	commands := getCommands(params)
@@ -393,30 +426,6 @@ func GenerateMetricsCollectorForHub(client client.Client, ctx context.Context, m
 			},
 		},
 	}
-
-	// No proxy config for hub
-	//if params.httpProxy != "" || params.httpsProxy != "" || params.noProxy != "" {
-	//	metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
-	//		corev1.EnvVar{
-	//			Name:  "HTTP_PROXY",
-	//			Value: params.httpProxy,
-	//		},
-	//		corev1.EnvVar{
-	//			Name:  "HTTPS_PROXY",
-	//			Value: params.httpsProxy,
-	//		},
-	//		corev1.EnvVar{
-	//			Name:  "NO_PROXY",
-	//			Value: params.noProxy,
-	//		})
-	//}
-	//if params.httpsProxy != "" && params.CABundle != "" {
-	//	metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
-	//		corev1.EnvVar{
-	//			Name:  "HTTPS_PROXY_CA_BUNDLE",
-	//			Value: params.CABundle,
-	//		})
-	//}
 
 	if mcoInstance.Spec.ObservabilityAddonSpec.Resources != nil {
 		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *mcoInstance.Spec.ObservabilityAddonSpec.Resources

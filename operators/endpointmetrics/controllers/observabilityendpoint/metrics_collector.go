@@ -112,7 +112,7 @@ func getCommands(params CollectorParams) []string {
 	for _, group := range params.allowlist.CollectRuleGroupList {
 		if group.Selector.MatchExpression != nil {
 			for _, expr := range group.Selector.MatchExpression {
-				if !evluateMatchExpression(expr, clusterID, params.clusterType, params.obsAddonSpec, params.hubInfo,
+				if !util.EvaluateMatchExpression(expr, clusterID, params.clusterType, params.obsAddonSpec, params.hubInfo,
 					params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount) {
 					continue
 				}
