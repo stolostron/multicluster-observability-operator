@@ -5,9 +5,10 @@
 package util
 
 import (
+	"regexp"
+
 	"golang.org/x/exp/slices"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"regexp"
 )
 
 type evaluateFn func(metav1.LabelSelectorRequirement, ...interface{}) bool

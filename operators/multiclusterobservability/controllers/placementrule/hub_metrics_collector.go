@@ -3,11 +3,12 @@ package placementrule
 import (
 	"context"
 	"fmt"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 
