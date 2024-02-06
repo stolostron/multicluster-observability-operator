@@ -177,8 +177,8 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if installMetricsWithoutAddon {
 		obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "local-cluster",
-				Namespace: "local-cluster",
+				Name:      localClusterName,
+				Namespace: config.GetDefaultNamespace(),
 			},
 		})
 	}
@@ -190,7 +190,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			mco,
 			obsAddonList,
 			r.CRDMap,
-			installMetricsWithoutAddon,
 		); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -303,7 +302,6 @@ func createAllRelatedRes(
 	mco *mcov1beta2.MultiClusterObservability,
 	obsAddonList *mcov1beta1.ObservabilityAddonList,
 	CRDMap map[string]bool,
-	installMetricsWithoutAddon bool,
 ) error {
 	var err error
 	// create the clusterrole if not there
@@ -357,7 +355,7 @@ func createAllRelatedRes(
 	rawExtensionList, obsAddonCRDv1, obsAddonCRDv1beta1,
 		endpointMetricsOperatorDeploy, imageListConfigMap, _ = loadTemplates(mco)
 
-	works, crdv1Work, crdv1beta1Work, err := generateGlobalManifestResources(c, mco, installMetricsWithoutAddon)
+	works, crdv1Work, crdv1beta1Work, err := generateGlobalManifestResources(c, mco)
 	if err != nil {
 		return err
 	}

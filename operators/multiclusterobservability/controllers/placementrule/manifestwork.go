@@ -200,7 +200,7 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 // endpoint-metrics-operator deploy and hubInfo Secret...
 // this function is expensive and should not be called for each reconcile loop.
 func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClusterObservability,
-	installMetricsWithoutAddon bool) (
+) (
 	[]workv1.Manifest, *workv1.Manifest, *workv1.Manifest, error) {
 
 	works := []workv1.Manifest{}
@@ -260,19 +260,6 @@ func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClust
 	}}
 	for _, raw := range rawExtensionList {
 		works = append(works, workv1.Manifest{RawExtension: raw})
-	}
-
-	if installMetricsWithoutAddon {
-		managedClusterObsCert.SetNamespace(config.GetDefaultNamespace())
-		err := c.Create(context.TODO(), managedClusterObsCert)
-		if err != nil {
-			log.Error(err, "Failed to create managedClusterObsCert")
-		}
-		amAccessorTokenSecret.SetNamespace(config.GetDefaultNamespace())
-		err = c.Create(context.TODO(), amAccessorTokenSecret)
-		if err != nil {
-			log.Error(err, "Failed to create amAccessorTokenSecret")
-		}
 	}
 
 	return works, crdv1Work, crdv1beta1Work, nil
@@ -439,36 +426,23 @@ func createManifestWorks(
 
 	if clusterName != clusterNamespace {
 		// install the endpoint operator into open-cluster-management-observability namespace
-		obaddon.SetNamespace(config.GetDefaultNamespace())
-		err = c.Create(context.TODO(), obaddon)
-		if err != nil {
-			log.Error(err, "Failed to create observabilityAddon", "namespace", clusterNamespace)
-		}
-		allowlist.SetNamespace(config.GetDefaultNamespace())
-		err = c.Create(context.TODO(), allowlist)
-		if err != nil {
-			log.Error(err, "Failed to create allowlist", "namespace", clusterNamespace)
-		}
-		dep.SetNamespace(config.GetDefaultNamespace())
-		err = c.Create(context.TODO(), dep)
-		if err != nil {
-			log.Error(err, "Failed to create endpoint operator deployment", "namespace", clusterNamespace)
-		}
-		hubInfo.SetNamespace(config.GetDefaultNamespace())
-		err = c.Create(context.TODO(), hubInfo)
-		if err != nil {
-			log.Error(err, "Failed to create hubInfo", "namespace", clusterNamespace)
-		}
-		imageListConfigMap.SetNamespace(config.GetDefaultNamespace())
-		err = c.Create(context.TODO(), imageListConfigMap)
-		if err != nil {
-			log.Error(err, "Failed to create imageListConfigMap", "namespace", clusterNamespace)
-		}
+		createUpdateResources(c, manifests)
 	} else {
 		err = createManifestwork(c, work)
 	}
 
 	return err
+}
+
+func createUpdateResources(c client.Client, manifests []workv1.Manifest) error {
+	for _, manifest := range manifests {
+		err := c.Create(context.TODO(), manifest.RawExtension.Object.(client.Object))
+		if err != nil && !k8serrors.IsAlreadyExists(err) {
+			log.Error(err, "Failed to create resource", "kind", manifest.RawExtension.Object.GetObjectKind().GroupVersionKind().Kind)
+			return err
+		}
+	}
+	return nil
 }
 
 // generateAmAccessorTokenSecret generates the secret that contains the access_token
