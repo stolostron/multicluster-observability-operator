@@ -263,10 +263,12 @@ func generateGlobalManifestResources(c client.Client, mco *mcov1beta2.MultiClust
 	}
 
 	if installMetricsWithoutAddon {
+		managedClusterObsCert.SetNamespace(config.GetDefaultNamespace())
 		err := c.Create(context.TODO(), managedClusterObsCert)
 		if err != nil {
 			log.Error(err, "Failed to create managedClusterObsCert")
 		}
+		amAccessorTokenSecret.SetNamespace(config.GetDefaultNamespace())
 		err = c.Create(context.TODO(), amAccessorTokenSecret)
 		if err != nil {
 			log.Error(err, "Failed to create amAccessorTokenSecret")
@@ -437,22 +439,27 @@ func createManifestWorks(
 
 	if clusterName != clusterNamespace {
 		// install the endpoint operator into open-cluster-management-observability namespace
+		obaddon.SetNamespace(config.GetDefaultNamespace())
 		err = c.Create(context.TODO(), obaddon)
 		if err != nil {
 			log.Error(err, "Failed to create observabilityAddon", "namespace", clusterNamespace)
 		}
+		allowlist.SetNamespace(config.GetDefaultNamespace())
 		err = c.Create(context.TODO(), allowlist)
 		if err != nil {
 			log.Error(err, "Failed to create allowlist", "namespace", clusterNamespace)
 		}
+		dep.SetNamespace(config.GetDefaultNamespace())
 		err = c.Create(context.TODO(), dep)
 		if err != nil {
 			log.Error(err, "Failed to create endpoint operator deployment", "namespace", clusterNamespace)
 		}
+		hubInfo.SetNamespace(config.GetDefaultNamespace())
 		err = c.Create(context.TODO(), hubInfo)
 		if err != nil {
 			log.Error(err, "Failed to create hubInfo", "namespace", clusterNamespace)
 		}
+		imageListConfigMap.SetNamespace(config.GetDefaultNamespace())
 		err = c.Create(context.TODO(), imageListConfigMap)
 		if err != nil {
 			log.Error(err, "Failed to create imageListConfigMap", "namespace", clusterNamespace)
