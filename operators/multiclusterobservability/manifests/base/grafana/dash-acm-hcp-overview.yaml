@@ -25,7 +25,7 @@ data:
         "gnetId": null,
         "graphTooltip": 0,
         "id": 33,
-        "iteration": 1707270564886,
+        "iteration": 1707320583517,
         "links": [],
         "panels": [
           {
@@ -60,6 +60,7 @@ data:
           },
           {
             "datasource": "$datasource",
+            "description": "These are the worker nodes that can run hosted control planes.",
             "fieldConfig": {
               "defaults": {
                 "color": {
@@ -162,6 +163,7 @@ data:
           },
           {
             "datasource": "$datasource",
+            "description": "This panel displays the current number of unavailable/failing and available hosted control planes. Based on the hosted control plane resource requirements, it also displays the estimated maximum number of hosted control planes that can be hosted in this cluster.",
             "fieldConfig": {
               "defaults": {
                 "color": {
@@ -303,6 +305,7 @@ data:
           },
           {
             "datasource": "$datasource",
+            "description": "These API server loads are used for estimating the maximum number of hosted control planes that can be hosted. For example, the est. Max (low) in the panel below is the estimate maximum number of hosted control planes that can be hosted when all hosted control planes put low load on the API server.",
             "fieldConfig": {
               "defaults": {
                 "color": {
@@ -395,6 +398,7 @@ data:
           },
           {
             "datasource": "$datasource",
+            "description": "This panel displays the current number of unavailable/failing and available hosted control planes. Based on various loads, it also displays the estimated maximum number of hosted control planes that can be hosted in this cluster.",
             "fieldConfig": {
               "defaults": {
                 "color": {
@@ -584,6 +588,7 @@ data:
           },
           {
             "datasource": "$datasource",
+            "description": "This is the list of all hosted control planes in this cluster. Click on the hosted control plane name to see its resource utilization.",
             "fieldConfig": {
               "defaults": {
                 "color": {
@@ -734,9 +739,7 @@ data:
         "refresh": "1m",
         "schemaVersion": 30,
         "style": "dark",
-        "tags": [
-          "ACM"
-        ],
+        "tags": ["ACM"],
         "templating": {
           "list": [
             {
@@ -812,6 +815,6 @@ data:
 kind: ConfigMap
 metadata:
   labels:
-    general-folder: 'true'
+    general-folder: "true"
   name: grafana-dashboard-acm-hcp-overview
   namespace: open-cluster-management-observability
