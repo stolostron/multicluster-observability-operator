@@ -305,7 +305,7 @@ data:
           },
           {
             "datasource": "$datasource",
-            "description": "These API server loads are used for estimating the maximum number of hosted control planes that can be hosted. For example, the est. Max (low) in the panel below is the estimate maximum number of hosted control planes that can be hosted when all hosted control planes put low load on the API server.",
+            "description": "These API server loads are used for estimating the maximum number of hosted control planes that can be hosted. For example, the est. Max. (low QPS) in the panel below is the estimate maximum number of hosted control planes that can be hosted when all hosted control planes put low load on the API server.",
             "fieldConfig": {
               "defaults": {
                 "color": {
