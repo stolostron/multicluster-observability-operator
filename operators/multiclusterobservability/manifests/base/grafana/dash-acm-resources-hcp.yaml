@@ -641,7 +641,9 @@ data:
         ],
         "schemaVersion": 30,
         "style": "dark",
-        "tags": [],
+        "tags": [
+          "ACM"
+        ],
         "templating": {
           "list": [
             {
