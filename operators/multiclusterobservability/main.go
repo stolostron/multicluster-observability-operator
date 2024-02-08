@@ -7,6 +7,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/cloudflare/cfssl/log"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -261,8 +262,9 @@ func main() {
 	}
 
 	mcghCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.MCGHCrdName)
+	log.Info("Coleen Checking if MCGH CRD exists", "exists", mcghCrdExists)
 	if err != nil {
-		setupLog.Error(err, "")
+		setupLog.Error(err, "Coleen")
 		os.Exit(1)
 	}
 
