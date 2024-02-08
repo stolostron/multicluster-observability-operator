@@ -42,6 +42,7 @@ func GetOrCreateHubClient(renew bool) (client.Client, error) {
 		return hubClient, nil
 	}
 	// create the config from the path
+	log.Info("Coleen: hubKubeConfigPath", "hubKubeConfigPath", hubKubeConfigPath)
 	config, err := clientcmd.BuildConfigFromFlags("", hubKubeConfigPath)
 	if err != nil {
 		log.Error(err, "Failed to create the config")
