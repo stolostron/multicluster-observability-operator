@@ -65,6 +65,7 @@ var (
 	isplacementControllerRunnning = false
 	managedClusterList            = map[string]string{}
 	managedClusterListMutex       = &sync.RWMutex{}
+	installMetricsWithoutAddon    = false
 )
 
 // PlacementRuleReconciler reconciles a PlacementRule object
@@ -92,6 +93,21 @@ type PlacementRuleReconciler struct {
 func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling PlacementRule")
+
+	// TODO
+	if _, ok := managedClusterList["local-cluster"]; !ok {
+		obj := &clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "local-cluster",
+				Namespace: "open-cluster-management-observability",
+				Labels: map[string]string{
+					"openshiftVersion": "mimical",
+				},
+			},
+		}
+		installMetricsWithoutAddon = true
+		updateManagedClusterList(obj)
+	}
 
 	if config.GetMonitoringCRName() == "" {
 		reqLogger.Info("multicluster observability resource is not available")
@@ -158,6 +174,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		reqLogger.Error(err, "Failed to list observabilityaddon resource")
 		return ctrl.Result{}, err
 	}
+	if installMetricsWithoutAddon {
+		obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      localClusterName,
+				Namespace: config.GetDefaultNamespace(),
+			},
+		})
+	}
 
 	if !deleteAll {
 		if err := createAllRelatedRes(
@@ -180,6 +204,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err != nil {
 		reqLogger.Error(err, "Failed to list observabilityaddon resource")
 		return ctrl.Result{}, err
+	}
+	if installMetricsWithoutAddon {
+		obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "local-cluster",
+				Namespace: "local-cluster",
+			},
+		})
 	}
 	workList := &workv1.ManifestWorkList{}
 	err = r.Client.List(context.TODO(), workList, opts)
@@ -358,6 +390,10 @@ func createAllRelatedRes(
 				err = createManagedClusterRes(c, mco,
 					managedCluster, managedCluster,
 					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, true)
+			} else if openshiftVersion == "mimical" {
+				err = createManagedClusterRes(c, mco,
+					managedCluster, config.GetDefaultNamespace(),
+					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
 			} else {
 				err = createManagedClusterRes(c, mco,
 					managedCluster, managedCluster,
@@ -377,10 +413,12 @@ func createAllRelatedRes(
 	failedDeleteOba := false
 	for _, cluster := range currentClusters {
 		log.Info("To delete observabilityAddon", "namespace", cluster)
-		err = deleteObsAddon(c, cluster)
-		if err != nil {
-			failedDeleteOba = true
-			log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
+		if cluster != config.GetDefaultNamespace() {
+			err = deleteObsAddon(c, cluster)
+			if err != nil {
+				failedDeleteOba = true
+				log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
+			}
 		}
 	}
 

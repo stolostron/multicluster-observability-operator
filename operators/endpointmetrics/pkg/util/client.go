@@ -28,11 +28,8 @@ var (
 )
 
 var (
-	log = ctrl.Log.WithName("util")
-)
-
-const (
-	hubKubeConfigPath = "/spoke/hub-kubeconfig/kubeconfig"
+	log               = ctrl.Log.WithName("util")
+	hubKubeConfigPath = os.Getenv("HUB_KUBECONFIG")
 )
 
 // GetOrCreateOCPClient get an existing hub client or create new one if it doesn't exist.
