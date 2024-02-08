@@ -136,6 +136,13 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
+	//Check for MulticlusterGlobalHub CRD
+	mcghCrdExists := r.CRDMap[config.MCGHCrdName]
+	//if Multicluster Global hub exists we block metrics-collector creation in spokes
+	if mcghCrdExists {
+		mco.Spec.ObservabilityAddonSpec.EnableMetrics = false
+	}
+
 	if !deleteAll && !mco.Spec.ObservabilityAddonSpec.EnableMetrics {
 		reqLogger.Info("EnableMetrics is set to false. Delete Observability addons")
 		deleteAll = true
@@ -143,7 +150,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// check if the MCH CRD exists
 	mchCrdExists := r.CRDMap[config.MCHCrdName]
-	// requeue after 10 seconds if the mch crd exists and image image manifests map is empty
+	// requeue after 10 seconds if the mch crd exists and image  manifests map is empty
 	if mchCrdExists && len(config.GetImageManifests()) == 0 {
 		// if the mch CR is not ready, then requeue the request after 10s
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
