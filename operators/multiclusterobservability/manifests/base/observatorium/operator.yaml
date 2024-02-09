@@ -23,37 +23,37 @@ spec:
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          - podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app.kubernetes.io/name
-                  operator: In
-                  values:
-                  - observatorium-operator
-              topologyKey: kubernetes.io/hostname
-            weight: 30
-          - podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app.kubernetes.io/name
-                  operator: In
-                  values:
-                  - observatorium-operator
-              topologyKey: topology.kubernetes.io/zone
-            weight: 70
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/name
+                      operator: In
+                      values:
+                        - observatorium-operator
+                topologyKey: kubernetes.io/hostname
+              weight: 30
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/name
+                      operator: In
+                      values:
+                        - observatorium-operator
+                topologyKey: topology.kubernetes.io/zone
+              weight: 70
       containers:
-      - args:
-        - --log-level=info
-        image: quay.io/stolostron/observatorium-operator:2.3.0-SNAPSHOT-2021-07-26-18-43-26
-        imagePullPolicy: "{{MULTICLUSTEROBSERVABILITY_IMAGE_PULL_POLICY}}"
-        name: observatorium-operator
-        resources:
-          limits:
-            cpu: 100m
-            memory: 600Mi
-          requests:
-            cpu: 10m
-            memory: 50Mi
+        - args:
+            - --log-level=info
+          image: quay.io/stolostron/observatorium-operator:2.3.0-SNAPSHOT-2021-07-26-18-43-26
+          imagePullPolicy: "{{MULTICLUSTEROBSERVABILITY_IMAGE_PULL_POLICY}}"
+          name: observatorium-operator
+          resources:
+            limits:
+              cpu: 100m
+              memory: 600Mi
+            requests:
+              cpu: 10m
+              memory: 50Mi
       imagePullSecrets:
-      - name: "{{MULTICLUSTEROBSERVABILITY_IMAGE_PULL_SECRET}}"
+        - name: "{{MULTICLUSTEROBSERVABILITY_IMAGE_PULL_SECRET}}"
       serviceAccountName: observatorium

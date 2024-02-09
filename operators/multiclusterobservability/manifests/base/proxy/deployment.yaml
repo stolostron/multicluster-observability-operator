@@ -21,116 +21,116 @@ spec:
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 70
-            podAffinityTerm:
-              topologyKey: topology.kubernetes.io/zone
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                  - rbac-query-proxy
-          - weight: 30
-            podAffinityTerm:
-              topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                  - rbac-query-proxy
+            - weight: 70
+              podAffinityTerm:
+                topologyKey: topology.kubernetes.io/zone
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - rbac-query-proxy
+            - weight: 30
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - rbac-query-proxy
       containers:
-      - name: rbac-query-proxy
-        image: quay.io/stolostron/rbac-query-proxy:2.3.0-SNAPSHOT-2021-07-26-18-43-26
-        imagePullPolicy: IfNotPresent
-        args:
-        - "--listen-address=0.0.0.0:8080"
-        - "--metrics-server=https://{{OBSERVATORIUM_NAME}}-observatorium-api.{{MCO_NAMESPACE}}.svc.cluster.local:8080/api/metrics/v1/default"
-        ports:
-        - containerPort: 8080
-          name: http
-        volumeMounts:
-        - name: ca-certs
-          mountPath: /var/rbac_proxy/ca
-        - name: client-certs
-          mountPath: /var/rbac_proxy/certs
-        - name: probe-command
-          mountPath: /etc/probe
-        livenessProbe:
-          exec:
-            command:
-            - /bin/sh
-            - -c
-            - /etc/probe/check.sh
-          periodSeconds: 60
-          timeoutSeconds: 1
-          successThreshold: 1
-          failureThreshold: 3
-        resources:
-          requests:
-            cpu: 20m
-            memory: 100Mi
-      - args:
-        - --provider=openshift
-        - --https-address=:8443
-        - --http-address=
-        - --upstream=http://localhost:8080
-        - '--client-id={{MCO_NAMESPACE}}'
-        - '--client-secret-file=/var/run/secrets/kubernetes.io/serviceaccount/token'
-        - '--pass-user-bearer-token=true'
-        - '--pass-access-token=true'
-        - --openshift-sar={"resource":"namespaces","verb":"get"}
-        - --openshift-delegate-urls={"/":{"resource":"namespaces","verb":"get"}}
-        - --tls-cert=/etc/tls/private/tls.crt
-        - --tls-key=/etc/tls/private/tls.key
-        - --openshift-service-account=rbac-query-proxy
-        - --cookie-secret-file=/etc/proxy/secrets/session_secret
-        - --skip-provider-button=true
-        - --openshift-ca=/etc/pki/tls/cert.pem
-        - --openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-        image: quay.io/stolostron/origin-oauth-proxy:4.5
-        imagePullPolicy: IfNotPresent
-        name: oauth-proxy
-        ports:
-        - containerPort: 8443
+        - name: rbac-query-proxy
+          image: quay.io/stolostron/rbac-query-proxy:2.3.0-SNAPSHOT-2021-07-26-18-43-26
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--listen-address=0.0.0.0:8080"
+            - "--metrics-server=https://{{OBSERVATORIUM_NAME}}-observatorium-api.{{MCO_NAMESPACE}}.svc.cluster.local:8080/api/metrics/v1/default"
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: ca-certs
+              mountPath: /var/rbac_proxy/ca
+            - name: client-certs
+              mountPath: /var/rbac_proxy/certs
+            - name: probe-command
+              mountPath: /etc/probe
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - /etc/probe/check.sh
+            periodSeconds: 60
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 20m
+              memory: 100Mi
+        - args:
+            - --provider=openshift
+            - --https-address=:8443
+            - --http-address=
+            - --upstream=http://localhost:8080
+            - '--client-id={{MCO_NAMESPACE}}'
+            - '--client-secret-file=/var/run/secrets/kubernetes.io/serviceaccount/token'
+            - '--pass-user-bearer-token=true'
+            - '--pass-access-token=true'
+            - --openshift-sar={"resource":"namespaces","verb":"get"}
+            - --openshift-delegate-urls={"/":{"resource":"namespaces","verb":"get"}}
+            - --tls-cert=/etc/tls/private/tls.crt
+            - --tls-key=/etc/tls/private/tls.key
+            - --openshift-service-account=rbac-query-proxy
+            - --cookie-secret-file=/etc/proxy/secrets/session_secret
+            - --skip-provider-button=true
+            - --openshift-ca=/etc/pki/tls/cert.pem
+            - --openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          image: quay.io/stolostron/origin-oauth-proxy:4.5
+          imagePullPolicy: IfNotPresent
           name: oauth-proxy
-          protocol: TCP
-        resources:
-          requests:
-            cpu: 1m
-            memory: 20Mi
-        readinessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /oauth/healthz
-            port: 8443
-            scheme: HTTPS
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
-        volumeMounts:
-        - mountPath: /etc/tls/private
-          name: certs
-          readOnly: true
-        - mountPath: /etc/proxy/secrets
-          name: cookie-secret
+          ports:
+            - containerPort: 8443
+              name: oauth-proxy
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 1m
+              memory: 20Mi
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /oauth/healthz
+              port: 8443
+              scheme: HTTPS
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /etc/tls/private
+              name: certs
+              readOnly: true
+            - mountPath: /etc/proxy/secrets
+              name: cookie-secret
       serviceAccountName: rbac-query-proxy
       imagePullSecrets:
-      - name: multiclusterhub-operator-pull-secret
+        - name: multiclusterhub-operator-pull-secret
       volumes:
-      - name: certs
-        secret:
-          secretName: rbac-proxy-certs
-      - name: cookie-secret
-        secret:
-          secretName: rbac-proxy-cookie-secret
-      - name: ca-certs
-        secret:
-          secretName: observability-server-certs
-      - name: client-certs
-        secret:
-          secretName: observability-grafana-certs
-      - name: probe-command
-        configMap:
-          name: rbac-query-proxy-probe
-          defaultMode: 0777
+        - name: certs
+          secret:
+            secretName: rbac-proxy-certs
+        - name: cookie-secret
+          secret:
+            secretName: rbac-proxy-cookie-secret
+        - name: ca-certs
+          secret:
+            secretName: observability-server-certs
+        - name: client-certs
+          secret:
+            secretName: observability-grafana-certs
+        - name: probe-command
+          configMap:
+            name: rbac-query-proxy-probe
+            defaultMode: 0777
