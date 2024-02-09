@@ -4,10 +4,10 @@ metadata:
   name: rbac-query-proxy-ingress
   annotations:
     ingress.open-cluster-management.io/rewrite-target: /
-    kubernetes.io/ingress.class: "ingress-open-cluster-management"
     ingress.open-cluster-management.io/auth-type: "access-token"
     ingress.open-cluster-management.io/secure-backends: "true"
 spec:
+  ingressClassName: ingress-open-cluster-management
   rules:
   - http:
       paths:
