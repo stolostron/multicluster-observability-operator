@@ -143,6 +143,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// start to update mco status
 	StartStatusUpdate(r.Client, instance)
 
+	if r.CRDMap[config.MCGHCrdName] {
+		// Do not start the MCO if the MCGH CRD exists
+		reqLogger.Info("MCGH CRD exists, Observability is not supported")
+		return ctrl.Result{}, nil
+	}
+
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
 	if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
 		// start placement controller
@@ -185,12 +191,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// Do not reconcile objects if this instance of mch is labeled "paused"
 	if config.IsPaused(instance.GetAnnotations()) {
 		reqLogger.Info("MCO reconciliation is paused. Nothing more to do.")
-		return ctrl.Result{}, nil
-	}
-
-	if r.CRDMap[config.MCGHCrdName] {
-		// Do not start the MCO reconciler if the MCGH CRD exists
-		reqLogger.Info("MCGH CRD exists, Observability is not supported")
 		return ctrl.Result{}, nil
 	}
 
