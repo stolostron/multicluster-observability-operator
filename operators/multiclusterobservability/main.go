@@ -266,6 +266,18 @@ func main() {
 		config.IngressControllerCRD:           ingressCtlCrdExists,
 	}
 
+	mcghCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.MCGHCrdName)
+	if err != nil {
+		setupLog.Error(err, "")
+		os.Exit(1)
+	}
+
+	if mcghCrdExists {
+		// Do not start the MCO reconciler if the MCGH CRD exists
+		setupLog.Info("MCGH CRD exists, Observability is not supported")
+		os.Exit(1)
+	}
+
 	if err = (&mcoctrl.MultiClusterObservabilityReconciler{
 		Manager:    mgr,
 		Client:     mgr.GetClient(),
