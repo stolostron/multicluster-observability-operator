@@ -228,7 +228,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	//instance.Namespace = config.GetDefaultNamespace()
 	instance.Spec.StorageConfig.StorageClass = storageClassSelected
 	//Render the templates with a specified CR
-	renderer := rendering.NewMCORenderer(instance)
+	renderer := rendering.NewMCORenderer(instance, r.Client)
 	toDeploy, err := renderer.Render()
 	if err != nil {
 		reqLogger.Error(err, "Failed to render multiClusterMonitoring templates")

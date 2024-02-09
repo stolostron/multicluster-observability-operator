@@ -9,10 +9,6 @@ metadata:
     service.beta.openshift.io/serving-cert-secret-name: alertmanager-tls
 spec:
   ports:
-  - name: web
-    port: 9093
-    protocol: TCP
-    targetPort: web
   - name: oauth-proxy
     port: 9095
     protocol: TCP

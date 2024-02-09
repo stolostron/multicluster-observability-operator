@@ -5,6 +5,8 @@
 package rendering
 
 import (
+	"context"
+	"fmt"
 	"strconv"
 
 	v1 "k8s.io/api/apps/v1"
@@ -12,6 +14,7 @@ import (
 	apiresource "k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/kustomize/api/resource"
 
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -24,7 +27,7 @@ func (r *MCORenderer) newAlertManagerRenderer() {
 		"StatefulSet":           r.renderAlertManagerStatefulSet,
 		"Service":               r.renderer.RenderNamespace,
 		"ServiceAccount":        r.renderer.RenderNamespace,
-		"ConfigMap":             r.renderer.RenderNamespace,
+		"ConfigMap":             r.renderAlertManagerConfigMap,
 		"ClusterRole":           r.renderer.RenderClusterRole,
 		"ClusterRoleBinding":    r.renderer.RenderClusterRoleBinding,
 		"Secret":                r.renderAlertManagerSecret,
@@ -143,6 +146,56 @@ func (r *MCORenderer) renderAlertManagerSecret(res *resource.Resource,
 	}
 
 	return u, nil
+}
+
+func (r *MCORenderer) renderAlertManagerConfigMap(res *resource.Resource,
+	namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+	u, err := r.renderer.RenderNamespace(res, namespace, labels)
+	if err != nil {
+		return nil, err
+	}
+
+	obj := util.GetK8sObj(u.GetKind())
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, obj)
+	if err != nil {
+		return nil, err
+	}
+
+	cm, ok := obj.(*corev1.ConfigMap)
+	if !ok {
+		return nil, fmt.Errorf("failed to convert %q to ConfigMap", u.GetName())
+	}
+
+	if u.GetName() != "alertmanager-clientca-metric" {
+		return &unstructured.Unstructured{}, nil
+	}
+
+	// Retrieve the extension-apiserver-authentication ConfigMap from kube-system namespace
+	namespacedName := types.NamespacedName{
+		Name:      "extension-apiserver-authentication",
+		Namespace: "kube-system",
+	}
+	sourceConfigMap := &corev1.ConfigMap{}
+	err = r.kubeClient.Get(context.Background(), namespacedName, sourceConfigMap)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching source ConfigMap: %w", err)
+	}
+
+	// Extract the CA certificate data
+	caData, exists := sourceConfigMap.Data["client-ca-file"]
+	if !exists {
+		return nil, fmt.Errorf("client-ca-file not found in source ConfigMap")
+	}
+
+	// Update the ConfigMap with the CA certificate data
+	cm.Data["client-ca-file"] = caData
+
+	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	return &unstructured.Unstructured{Object: unstructuredObj}, nil
 }
 
 func (r *MCORenderer) renderAlertManagerTemplates(templates []*resource.Resource,

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alertmanager-kube-rbac-proxy-metric
+  namespace: open-cluster-management-observability
+stringData:
+  config.yaml: |-
+    "authorization":
+      "static":
+      - "path": "/metrics"
+        "resourceRequest": false
+        "user":
+          "name": "system:serviceaccount:openshift-monitoring:prometheus-k8s"
+        "verb": "get"    
+type: Opaque
