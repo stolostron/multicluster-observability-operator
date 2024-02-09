@@ -188,6 +188,12 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, nil
 	}
 
+	if r.CRDMap[config.MCGHCrdName] {
+		// Do not start the MCO reconciler if the MCGH CRD exists
+		reqLogger.Info("MCGH CRD exists, Observability is not supported")
+		return ctrl.Result{}, nil
+	}
+
 	if _, ok := config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Name]; !ok {
 		log.Info(infoAddingBackupLabel, "Secret", instance.Spec.StorageConfig.MetricObjectStorage.Name)
 		config.BackupResourceMap[instance.Spec.StorageConfig.MetricObjectStorage.Name] = config.ResourceTypeSecret
