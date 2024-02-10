@@ -7,7 +7,7 @@ require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cloudflare/cfssl v1.6.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
-	github.com/go-co-op/gocron v1.18.0
+	github.com/go-co-op/gocron v1.23.0
 	github.com/go-kit/log v0.2.1
 	github.com/go-logr/logr v1.2.4
 	github.com/gogo/protobuf v1.3.2
@@ -22,7 +22,7 @@ require (
 	github.com/openshift/cluster-monitoring-operator v0.0.0-20230118025836-20fcb9f6ef4e
 	github.com/openshift/hypershift v0.1.11
 	github.com/prometheus-community/prom-label-proxy v0.6.0
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.57.0
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.58.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.53.1
 	github.com/prometheus/alertmanager v0.25.1
 	github.com/prometheus/client_golang v1.17.0
@@ -31,7 +31,7 @@ require (
 	github.com/prometheus/prometheus v1.8.2-0.20211214150951-52c693a63be1
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
-	github.com/stolostron/multiclusterhub-operator v0.0.0-20220106205009-2af6f43fd562
+	github.com/stolostron/multiclusterhub-operator v0.0.0-20220902185016-e81ccfbecf55
 	github.com/stolostron/observatorium-operator v0.0.0-20240109093235-2f0c855209dd
 	github.com/stretchr/testify v1.8.4
 	github.com/thanos-io/thanos v0.30.0
@@ -96,6 +96,7 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/grafana/regexp v0.0.0-20221122212121-6b5c0a4cb7fd // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.0-rc.2.0.20201207153454-9f6bf00c00a7 // indirect
+	github.com/huandu/xstrings v1.4.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
