@@ -437,7 +437,7 @@ func createManifestWorks(
 
 	if clusterName != clusterNamespace {
 		// install the endpoint operator into open-cluster-management-observability namespace
-		createUpdateResources(c, manifests)
+		err = createUpdateResources(c, manifests)
 	} else {
 		err = createManifestwork(c, work)
 	}
