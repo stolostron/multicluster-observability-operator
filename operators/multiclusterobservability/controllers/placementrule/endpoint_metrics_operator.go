@@ -114,6 +114,7 @@ func updateRes(r *resource.Resource,
 	// set namespace for rolebinding
 	if r.GetKind() == "ClusterRoleBinding" && r.GetName() == rolebindingName {
 		binding := obj.(*rbacv1.ClusterRoleBinding)
+		log.Info("Coleen Setting namespace for rolebinding", "namespace", spokeNameSpace)
 		binding.Subjects[0].Namespace = spokeNameSpace
 	}
 	// set images for components in managed clusters

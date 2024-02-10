@@ -96,6 +96,20 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// TODO
 	if _, ok := managedClusterList["local-cluster"]; !ok {
+		log.Info("Coleen local-cluster is not in the managedClusterList")
+		obj := &clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "local-cluster",
+				Namespace: "open-cluster-management-observability",
+				Labels: map[string]string{
+					"openshiftVersion": "mimical",
+				},
+			},
+		}
+		installMetricsWithoutAddon = true
+		updateManagedClusterList(obj)
+	} else if ok {
+		log.Info("Coleen local-cluster is in the managedClusterList")
 		obj := &clusterv1.ManagedCluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "local-cluster",
@@ -134,14 +148,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if config.IsPaused(mco.GetAnnotations()) {
 		reqLogger.Info("MCO reconciliation is paused. Nothing more to do.")
 		return ctrl.Result{}, nil
-	}
-
-	//Check for MulticlusterGlobalHub CRD
-	mcghCrdExists := r.CRDMap[config.MCGHCrdName]
-	log.Info("Coleen MulticlusterGlobalHub CRD exists", "exists", mcghCrdExists)
-	//if Multicluster Global hub exists we block metrics-collector creation in spokes
-	if mcghCrdExists {
-		mco.Spec.ObservabilityAddonSpec.EnableMetrics = false
 	}
 
 	if !deleteAll && !mco.Spec.ObservabilityAddonSpec.EnableMetrics {
@@ -354,6 +360,7 @@ func createAllRelatedRes(
 
 	currentClusters := []string{}
 	for _, ep := range obsAddonList.Items {
+		log.Info("Coleen obsAddonList.Items", "namespace", ep.Namespace, "name", ep.Name)
 		currentClusters = append(currentClusters, ep.Namespace)
 	}
 
@@ -399,6 +406,7 @@ func createAllRelatedRes(
 					managedCluster, managedCluster,
 					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, true)
 			} else if openshiftVersion == "mimical" {
+				log.Info("Coleen ManagedCluster mimical", "cluster_name", managedCluster)
 				err = createManagedClusterRes(c, mco,
 					managedCluster, config.GetDefaultNamespace(),
 					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
@@ -486,6 +494,7 @@ func createManagedClusterRes(
 		log.Error(err, "Failed to create observabilityaddon")
 		return err
 	}
+	log.Info("Coleen create managed cluster resource", "namespace", namespace)
 
 	err = createRolebindings(c, namespace, name)
 	if err != nil {
