@@ -194,6 +194,9 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      obsAddonName,
 				Namespace: config.GetDefaultNamespace(),
+				Labels: map[string]string{
+					ownerLabelKey: ownerLabelValue,
+				},
 			},
 		})
 	}
