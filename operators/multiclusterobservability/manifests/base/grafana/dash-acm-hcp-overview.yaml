@@ -731,6 +731,33 @@ data:
                     "version": "Version"
                   }
                 }
+              },
+              {
+                "id": "filterByValue",
+                "options": {
+                  "filters": [
+                    {
+                      "config": {
+                        "id": "greater",
+                        "options": {
+                          "value": 0
+                        }
+                      },
+                      "fieldName": "HCP name"
+                    },
+                    {
+                      "config": {
+                        "id": "equal",
+                        "options": {
+                          "value": ""
+                        }
+                      },
+                      "fieldName": "HCP name"
+                    }
+                  ],
+                  "match": "any",
+                  "type": "exclude"
+                }
               }
             ],
             "type": "table"
