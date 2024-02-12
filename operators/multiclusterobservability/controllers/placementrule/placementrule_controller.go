@@ -410,7 +410,7 @@ func createAllRelatedRes(
 			return err
 		}
 	}
-
+	log.Info("Coleen local-cluster is in the managedClusterList")
 	failedCreateManagedClusterRes := false
 	managedClusterListMutex.RLock()
 	for managedCluster, openshiftVersion := range managedClusterList {
@@ -425,6 +425,7 @@ func createAllRelatedRes(
 				"request.namespace",
 				request.Namespace,
 			)
+			log.Info("Coleen should be called all the time since managed cluster is in the list")
 			if openshiftVersion == "3" {
 				err = createManagedClusterRes(c, mco,
 					managedCluster, managedCluster,
