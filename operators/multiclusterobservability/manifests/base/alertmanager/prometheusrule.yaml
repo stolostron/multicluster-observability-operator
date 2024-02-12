@@ -13,7 +13,8 @@ spec:
           annotations:
             summary: "Error in remote write."
             description: "There are errors when sending requests to remote write endpoint: {{ $labels.name }}"
-          expr: increase(acm_remote_write_requests_total{code!~"2.*"}[5m]) > 10
+          expr: sum by (code)(rate(acm_remote_write_requests_total{code!~"2.*"}[5m])) > 10
+          for: 10m
           labels:
             severity: critical
     - name: acm-thanos-compact
