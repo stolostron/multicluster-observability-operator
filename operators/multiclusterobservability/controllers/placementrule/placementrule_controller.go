@@ -247,7 +247,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	staleAddons := []string{}
 	for _, addon := range obsAddonList.Items {
 		log.Info("Coleen obsAddonList.Items", "namespace", addon.Namespace, "name", addon.Name)
-		if installMetricsWithoutAddon {
+		if addon.Namespace == config.GetDefaultNamespace() {
 			latestClusters = append(latestClusters, "local-cluster")
 			staleAddons = append(staleAddons, "local-cluster")
 
