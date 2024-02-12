@@ -100,7 +100,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		obj := &clusterv1.ManagedCluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "local-cluster",
-				Namespace: "open-cluster-management-observability",
+				Namespace: "local-cluster",
 				Labels: map[string]string{
 					"openshiftVersion": "mimical",
 				},
@@ -193,7 +193,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      obsAddonName,
-				Namespace: config.GetDefaultNamespace(),
+				Namespace: "local-cluster",
 				Labels: map[string]string{
 					ownerLabelKey: ownerLabelValue,
 				},
