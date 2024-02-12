@@ -436,6 +436,7 @@ func createManifestWorks(
 	work.Spec.Workload.Manifests = manifests
 
 	if clusterName != clusterNamespace {
+		log.Info("Coleen creating manifestwork in managed cluster and name", "cluster", clusterName, "name")
 		// install the endpoint operator into open-cluster-management-observability namespace
 		err = createUpdateResources(c, manifests)
 	} else {
@@ -451,10 +452,12 @@ func createUpdateResources(c client.Client, manifests []workv1.Manifest) error {
 		if obj.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
 			continue
 		}
+		log.Info("Coleen updating object in managed cluster and name", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 		obj.SetNamespace(config.GetDefaultNamespace())
 		if obj.GetObjectKind().GroupVersionKind().Kind == "ClusterRoleBinding" {
 			role := obj.(*rbacv1.ClusterRoleBinding)
 			role.Subjects[0].Namespace = config.GetDefaultNamespace()
+			log.Info("Coleen Setting namespace for rolebinding", "namespace", config.GetDefaultNamespace())
 		}
 		err := c.Create(context.TODO(), obj)
 		if err != nil && !k8serrors.IsAlreadyExists(err) {
