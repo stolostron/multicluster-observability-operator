@@ -436,7 +436,7 @@ func createManifestWorks(
 	work.Spec.Workload.Manifests = manifests
 
 	if clusterName != clusterNamespace {
-		log.Info("Coleen creating manifestwork in managed cluster and name", "cluster", clusterName, "name")
+		log.Info("Coleen creating manifestwork in managed cluster and name", "cluster", clusterName)
 		// install the endpoint operator into open-cluster-management-observability namespace
 		err = createUpdateResources(c, manifests)
 	} else {
