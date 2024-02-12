@@ -34,6 +34,9 @@ func getClusterPreds() predicate.Funcs {
 	updateFunc := func(e event.UpdateEvent) bool {
 		log.Info("UpdateFunc", "managedCluster", e.ObjectNew.GetName())
 
+		//if e.ObjectOld.GetName() == "local-cluster" {
+		//	return false
+		//}
 		if e.ObjectNew.GetResourceVersion() == e.ObjectOld.GetResourceVersion() {
 			return false
 		}

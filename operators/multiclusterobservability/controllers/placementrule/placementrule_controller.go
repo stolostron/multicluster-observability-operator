@@ -108,20 +108,21 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 		installMetricsWithoutAddon = true
 		updateManagedClusterList(obj)
-	} else if ok {
-		log.Info("Coleen local-cluster is in the managedClusterList")
-		obj := &clusterv1.ManagedCluster{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "local-cluster",
-				Namespace: "open-cluster-management-observability",
-				Labels: map[string]string{
-					"openshiftVersion": "mimical",
-				},
-			},
-		}
-		installMetricsWithoutAddon = true
-		updateManagedClusterList(obj)
 	}
+	//else if ok {
+	//	log.Info("Coleen local-cluster is in the managedClusterList")
+	//	obj := &clusterv1.ManagedCluster{
+	//		ObjectMeta: metav1.ObjectMeta{
+	//			Name:      "local-cluster",
+	//			Namespace: "open-cluster-management-observability",
+	//			Labels: map[string]string{
+	//				"openshiftVersion": "mimical",
+	//			},
+	//		},
+	//	}
+	//	installMetricsWithoutAddon = true
+	//	updateManagedClusterList(obj)
+	//}
 
 	if config.GetMonitoringCRName() == "" {
 		reqLogger.Info("multicluster observability resource is not available")
