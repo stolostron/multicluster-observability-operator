@@ -449,11 +449,14 @@ func createManifestWorks(
 func createUpdateResources(c client.Client, manifests []workv1.Manifest) error {
 	for _, manifest := range manifests {
 		obj := manifest.RawExtension.Object.(client.Object)
-		if obj.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
-			continue
-		}
+		//if obj.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
+		//	continue
+		//}
 		log.Info("Coleen updating object in managed cluster and name", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
-		obj.SetNamespace(config.GetDefaultNamespace())
+		kind := obj.GetObjectKind().GroupVersionKind().Kind
+		if kind != "ClusterRole" && kind != "ClusterRoleBinding" && kind != "CustomResourceDefinition" {
+			obj.SetNamespace(config.GetDefaultNamespace())
+		}
 		if obj.GetObjectKind().GroupVersionKind().Kind == "ClusterRoleBinding" {
 			role := obj.(*rbacv1.ClusterRoleBinding)
 			role.Subjects[0].Namespace = config.GetDefaultNamespace()
