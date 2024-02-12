@@ -457,7 +457,7 @@ func createUpdateResources(c client.Client, manifests []workv1.Manifest) error {
 		if obj.GetObjectKind().GroupVersionKind().Kind == "ClusterRoleBinding" {
 			role := obj.(*rbacv1.ClusterRoleBinding)
 			role.Subjects[0].Namespace = config.GetDefaultNamespace()
-			log.Info("Coleen Setting namespace for rolebinding", "namespace", config.GetDefaultNamespace())
+			log.Info("Coleen Setting namespace for rolebinding in hubmetrics-collector", "namespace", config.GetDefaultNamespace())
 		}
 		err := c.Create(context.TODO(), obj)
 		if err != nil && !k8serrors.IsAlreadyExists(err) {
