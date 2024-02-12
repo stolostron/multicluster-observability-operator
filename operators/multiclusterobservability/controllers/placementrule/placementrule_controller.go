@@ -437,7 +437,7 @@ func createAllRelatedRes(
 			} else if openshiftVersion == "mimical" {
 				log.Info("Coleen ManagedCluster mimical", "cluster_name", managedCluster)
 				err = createManagedClusterRes(c, mco,
-					managedCluster, config.GetDefaultNamespace(),
+					managedCluster, "local-cluster",
 					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
 			} else {
 				err = createManagedClusterRes(c, mco,
