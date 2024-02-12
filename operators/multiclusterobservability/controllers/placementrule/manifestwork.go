@@ -674,7 +674,7 @@ func getObservabilityAddon(c client.Client, namespace string,
 	}
 
 	if namespace == config.GetDefaultNamespace() {
-		log.Info("Coleen get observabilityAddon in hub cluster and name", "namespace", namespace, "name", obsAddonName")
+		log.Info("Coleen get observabilityAddon in hub cluster and name", "namespace", namespace, "name", obsAddonName)
 		return &mcov1beta1.ObservabilityAddon{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "observability.open-cluster-management.io/v1beta1",
