@@ -113,6 +113,7 @@ func updateRes(r *resource.Resource,
 	}
 	// set namespace for rolebinding
 	if !installMetricsWithoutAddon {
+		log.Info("Coleen should not enter here as installMetricsWithoutAddon is false")
 		//only change the spokeNameSpace to the non-hub managed clusters
 		if r.GetKind() == "ClusterRoleBinding" && r.GetName() == rolebindingName {
 			binding := obj.(*rbacv1.ClusterRoleBinding)
