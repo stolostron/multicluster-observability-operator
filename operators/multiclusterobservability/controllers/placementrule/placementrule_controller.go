@@ -192,8 +192,8 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if installMetricsWithoutAddon {
 		obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      obsAddonName,
-				Namespace: "local-cluster",
+				Name:      localClusterName,
+				Namespace: config.GetDefaultNamespace(),
 				Labels: map[string]string{
 					ownerLabelKey: ownerLabelValue,
 				},
@@ -223,14 +223,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		reqLogger.Error(err, "Failed to list observabilityaddon resource")
 		return ctrl.Result{}, err
 	}
-	//if installMetricsWithoutAddon {
-	//	obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
-	//		ObjectMeta: metav1.ObjectMeta{
-	//			Name:      "local-cluster",
-	//			Namespace: "local-cluster",
-	//		},
-	//	})
-	//}
+	if installMetricsWithoutAddon {
+		obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "local-cluster",
+				Namespace: "local-cluster",
+			},
+		})
+	}
 	workList := &workv1.ManifestWorkList{}
 	err = r.Client.List(context.TODO(), workList, opts)
 	if err != nil {
@@ -247,19 +247,12 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	staleAddons := []string{}
 	for _, addon := range obsAddonList.Items {
 		log.Info("Coleen obsAddonList.Items", "namespace", addon.Namespace, "name", addon.Name)
-		if addon.Namespace == config.GetDefaultNamespace() {
-			latestClusters = append(latestClusters, "local-cluster")
-			staleAddons = append(staleAddons, "local-cluster")
-		} else {
-			latestClusters = append(latestClusters, addon.Namespace)
-			staleAddons = append(staleAddons, addon.Namespace)
-		}
+		latestClusters = append(latestClusters, addon.Namespace)
+		staleAddons = append(staleAddons, addon.Namespace)
+
 	}
 	for _, work := range workList.Items {
 		if work.Name != work.Namespace+workNameSuffix {
-			if work.Namespace == config.GetDefaultNamespace() {
-				continue
-			}
 			reqLogger.Info("Coleen To delete invalid manifestwork", "name", work.Name, "namespace", work.Namespace)
 			err = deleteManifestWork(r.Client, work.Name, work.Namespace)
 			if err != nil {
@@ -267,10 +260,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			}
 		}
 		if !slices.Contains(latestClusters, work.Namespace) {
-			if work.Namespace == config.GetDefaultNamespace() && slices.Contains(latestClusters, localClusterName) {
-				staleAddons = commonutil.Remove(staleAddons, work.Namespace)
-				continue
-			}
 			reqLogger.Info("To delete manifestwork", "namespace", work.Namespace)
 			err = deleteManagedClusterRes(r.Client, work.Namespace)
 			if err != nil {
@@ -288,10 +277,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	for _, mcaddon := range managedclusteraddonList.Items {
 		log.Info("Coleen managedclusteraddonList.Items", "namespace", mcaddon.Namespace, "name", mcaddon.Name)
 		if !slices.Contains(latestClusters, mcaddon.Namespace) {
-			if mcaddon.Namespace == config.GetDefaultNamespace() {
-				staleAddons = commonutil.Remove(staleAddons, mcaddon.Namespace)
-				continue
-			}
 			reqLogger.Info("To delete managedcluster resources", "namespace", mcaddon.Namespace)
 			err = deleteManagedClusterRes(r.Client, mcaddon.Namespace)
 			if err != nil {
@@ -460,10 +445,12 @@ func createAllRelatedRes(
 	failedDeleteOba := false
 	for _, cluster := range currentClusters {
 		log.Info("Coleen To delete observabilityAddon if cluster != defaultnamespace", "namespace", cluster)
-		err = deleteObsAddon(c, cluster)
-		if err != nil {
-			failedDeleteOba = true
-			log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
+		if cluster != config.GetDefaultNamespace() {
+			err = deleteObsAddon(c, cluster)
+			if err != nil {
+				failedDeleteOba = true
+				log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
+			}
 		}
 
 	}
