@@ -5,7 +5,11 @@
 package placementrule
 
 import (
+	"context"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"os"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,8 +36,8 @@ func generateNamespace() *corev1.Namespace {
 	}
 }
 
-func generateLocalClusterNamespace() *corev1.Namespace {
-	return &corev1.Namespace{
+func generateLocalClusterNamespace(r client.Client) error {
+	namespace := &corev1.Namespace{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),
 			Kind:       "Namespace",
@@ -45,4 +49,16 @@ func generateLocalClusterNamespace() *corev1.Namespace {
 			},
 		},
 	}
+	found := &corev1.Namespace{}
+	err := r.Get(context.TODO(), types.NamespacedName{Name: localClusterName}, found)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			err = r.Create(context.TODO(), namespace)
+			if err != nil {
+				log.Error(err, "Failed to create namespace", "namespace", namespace.Name)
+				return err
+			}
+		}
+	}
+	return nil
 }
