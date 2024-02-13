@@ -104,7 +104,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if obsAddon == nil {
 		deleteFlag = true
 	}
-	isHypershift := false
+	isHypershift := true
 	if os.Getenv("UNIT_TEST") != "true" {
 		crdClient, err := operatorutil.GetOrCreateCRDClient()
 		if err != nil {
