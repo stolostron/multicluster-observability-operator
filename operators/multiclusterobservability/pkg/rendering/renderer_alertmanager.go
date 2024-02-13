@@ -155,47 +155,46 @@ func (r *MCORenderer) renderAlertManagerConfigMap(res *resource.Resource,
 		return nil, err
 	}
 
-	obj := util.GetK8sObj(u.GetKind())
-	err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, obj)
-	if err != nil {
-		return nil, err
+	if u.GetName() == "alertmanager-clientca-metric" {
+		cm := &corev1.ConfigMap{}
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert %q to ConfigMap: %w", u.GetName(), err)
+		}
+
+		// Retrieve the extension-apiserver-authentication ConfigMap from kube-system namespace
+		namespacedName := types.NamespacedName{
+			Name:      "extension-apiserver-authentication",
+			Namespace: "kube-system",
+		}
+		sourceConfigMap := &corev1.ConfigMap{}
+		err = r.kubeClient.Get(context.Background(), namespacedName, sourceConfigMap)
+		if err != nil {
+			return nil, fmt.Errorf("error fetching source ConfigMap: %w", err)
+		}
+
+		// Extract the CA certificate data
+		caData, exists := sourceConfigMap.Data["client-ca-file"]
+		if !exists {
+			return nil, fmt.Errorf("client-ca-file not found in source ConfigMap")
+		}
+
+		if len(caData) == 0 {
+			return nil, fmt.Errorf("client-ca-file is empty in source ConfigMap")
+		}
+
+		// Update the ConfigMap with the CA certificate data
+		cm.Data["client-ca-file"] = caData
+
+		unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+		if err != nil {
+			return nil, err
+		}
+
+		return &unstructured.Unstructured{Object: unstructuredObj}, nil
 	}
 
-	cm, ok := obj.(*corev1.ConfigMap)
-	if !ok {
-		return nil, fmt.Errorf("failed to convert %q to ConfigMap", u.GetName())
-	}
-
-	if u.GetName() != "alertmanager-clientca-metric" {
-		return &unstructured.Unstructured{}, nil
-	}
-
-	// Retrieve the extension-apiserver-authentication ConfigMap from kube-system namespace
-	namespacedName := types.NamespacedName{
-		Name:      "extension-apiserver-authentication",
-		Namespace: "kube-system",
-	}
-	sourceConfigMap := &corev1.ConfigMap{}
-	err = r.kubeClient.Get(context.Background(), namespacedName, sourceConfigMap)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching source ConfigMap: %w", err)
-	}
-
-	// Extract the CA certificate data
-	caData, exists := sourceConfigMap.Data["client-ca-file"]
-	if !exists {
-		return nil, fmt.Errorf("client-ca-file not found in source ConfigMap")
-	}
-
-	// Update the ConfigMap with the CA certificate data
-	cm.Data["client-ca-file"] = caData
-
-	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
-	if err != nil {
-		return nil, err
-	}
-
-	return &unstructured.Unstructured{Object: unstructuredObj}, nil
+	return u, nil
 }
 
 func (r *MCORenderer) renderAlertManagerTemplates(templates []*resource.Resource,

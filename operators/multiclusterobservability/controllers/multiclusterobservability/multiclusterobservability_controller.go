@@ -35,6 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
@@ -442,7 +443,20 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(secretPred)).
 		// Watch the namespace for changes
 		Watches(&source.Kind{Type: &corev1.Namespace{}}, &handler.EnqueueRequestForObject{},
-			builder.WithPredicates(namespacePred))
+			builder.WithPredicates(namespacePred)).
+		// Watch the kube-system extension-apiserver-authentication ConfigMap for changes
+		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, handler.EnqueueRequestsFromMapFunc(
+			func(a client.Object) []reconcile.Request {
+				if a.GetName() == "extension-apiserver-authentication" && a.GetNamespace() == "kube-system" {
+					return []reconcile.Request{
+						{NamespacedName: types.NamespacedName{
+							Name:      "alertmanager-clientca-metric",
+							Namespace: config.GetMCONamespace(),
+						}},
+					}
+				}
+				return nil
+			}), builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}))
 
 	mchGroupKind := schema.GroupKind{Group: mchv1.GroupVersion.Group, Kind: "MultiClusterHub"}
 	if _, err := r.RESTMapper.RESTMapping(mchGroupKind, mchv1.GroupVersion.Version); err == nil {

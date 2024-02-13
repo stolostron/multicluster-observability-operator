@@ -171,12 +171,6 @@ spec:
           requests:
             cpu: 10m
             memory: 15Mi
-        # securityContext:
-        #   allowPrivilegeEscalation: false
-        #   capabilities:
-        #     drop:
-        #     - ALL
-        #   readOnlyRootFilesystem: true
         volumeMounts:
         - mountPath: /etc/tls/private
           name: tls-metrics-secret
