@@ -369,11 +369,7 @@ func createAllRelatedRes(
 	currentClusters := []string{}
 	for _, ep := range obsAddonList.Items {
 		log.Info("Coleen obsAddonList.Items", "namespace", ep.Namespace, "name", ep.Name)
-		if ep.Namespace == config.GetDefaultNamespace() {
-			currentClusters = append(currentClusters, localClusterName)
-		} else {
-			currentClusters = append(currentClusters, ep.Namespace)
-		}
+		currentClusters = append(currentClusters, ep.Namespace)
 	}
 
 	// need to reload the template and update the the corresponding resources
