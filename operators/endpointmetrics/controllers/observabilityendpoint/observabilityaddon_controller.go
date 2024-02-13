@@ -32,6 +32,7 @@ import (
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
+	operatorutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 var (
@@ -104,16 +105,16 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		deleteFlag = true
 	}
 	isHypershift := false
-	//if os.Getenv("UNIT_TEST") != "true" {
-	//	crdClient, err := operatorutil.GetOrCreateCRDClient()
-	//	if err != nil {
-	//		return ctrl.Result{}, err
-	//	}
-	//	isHypershift, err = operatorutil.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
-	//	if err != nil {
-	//		return ctrl.Result{}, err
-	//	}
-	//}
+	if os.Getenv("UNIT_TEST") != "true" {
+		crdClient, err := operatorutil.GetOrCreateCRDClient()
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		isHypershift, err = operatorutil.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 	deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift)
 	if err != nil {
 		return ctrl.Result{}, err

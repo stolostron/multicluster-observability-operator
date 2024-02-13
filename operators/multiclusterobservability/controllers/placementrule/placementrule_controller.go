@@ -100,7 +100,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		obj := &clusterv1.ManagedCluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "local-cluster",
-				Namespace: "local-cluster",
+				Namespace: config.GetDefaultNamespace(),
 				Labels: map[string]string{
 					"openshiftVersion": "mimical",
 				},
@@ -437,10 +437,10 @@ func createAllRelatedRes(
 					managedCluster, managedCluster,
 					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, true)
 			} else if openshiftVersion == "mimical" {
-				generateLocalClusterNamespace(c)
+				//generateLocalClusterNamespace(c)
 				log.Info("Coleen ManagedCluster mimical", "cluster_name", managedCluster)
 				err = createManagedClusterRes(c, mco,
-					managedCluster, "local-cluster",
+					managedCluster, config.GetDefaultNamespace(),
 					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
 			} else {
 				err = createManagedClusterRes(c, mco,
