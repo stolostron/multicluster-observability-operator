@@ -76,6 +76,9 @@ spec:
               name: config-volume
             - mountPath: /alertmanager
               name: alertmanager-db
+          securityContext:
+            privileged: false
+            readOnlyRootFilesystem: true
         - args:
             - -webhook-url=http://localhost:9093/-/reload
             - -volume-dir=/etc/alertmanager/config
@@ -94,6 +97,9 @@ spec:
             - mountPath: /etc/tls/private
               name: tls-secret
               readOnly: true
+          securityContext:
+            privileged: false
+            readOnlyRootFilesystem: true
         - args:
             - --provider=openshift
             - --https-address=:9095
@@ -138,6 +144,9 @@ spec:
               readOnly: true
             - mountPath: /etc/proxy/secrets
               name: alertmanager-proxy
+          securityContext:
+            privileged: false
+            readOnlyRootFilesystem: true
       serviceAccount: alertmanager
       serviceAccountName: alertmanager
       volumes:

@@ -63,6 +63,9 @@ spec:
               name: grafana-datasources
             - mountPath: /etc/grafana
               name: grafana-config
+          securityContext:
+            privileged: false
+            readOnlyRootFilesystem: true
         - name: grafana-dashboard-loader
           env:
             - name: POD_NAMESPACE
@@ -75,6 +78,9 @@ spec:
             requests:
               cpu: 4m
               memory: 50Mi
+          securityContext:
+            privileged: false
+            readOnlyRootFilesystem: true
         - readinessProbe:
             httpGet:
               path: /oauth/healthz
@@ -114,6 +120,9 @@ spec:
             - '--scope=user:full'
             - '--openshift-ca=/etc/pki/tls/cert.pem'
             - '--openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
+          securityContext:
+            privileged: false
+            readOnlyRootFilesystem: true
       serviceAccount: grafana
       imagePullSecrets:
         - name: multiclusterhub-operator-pull-secret

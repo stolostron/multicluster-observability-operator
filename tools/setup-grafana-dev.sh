@@ -63,7 +63,8 @@ deploy() {
   $sed_command "s~secretName: grafana-tls$~secretName: grafana-tls-dev~g" grafana-dev-deploy.yaml
   $sed_command "s~--client-id=.*$~--client-id=grafana-proxy-client-dev~g" grafana-dev-deploy.yaml
   $sed_command "s~--client-secret=.*$~--client-secret=grafana-proxy-client-dev~g" grafana-dev-deploy.yaml
-  $sed_command "s~  securityContext:.*$~  securityContext: {fsGroup: ${GROUP_ID}}~g" grafana-dev-deploy.yaml
+  $sed_command "s~  securityContext:\n*$~  securityContext:\n            fsGroup: ${GROUP_ID}~g" grafana-dev-deploy.yaml
+  $sed_command "s~  securityContext: {}*$~  securityContext: {fsGroup: ${GROUP_ID}}~g" grafana-dev-deploy.yaml
   sed "s~- emptyDir: {}$~- persistentVolumeClaim:$            claimName: grafana-dev~g" grafana-dev-deploy.yaml >grafana-dev-deploy.yaml.bak
   tr $ '\n' <grafana-dev-deploy.yaml.bak >grafana-dev-deploy.yaml
   kubectl apply -f grafana-dev-deploy.yaml

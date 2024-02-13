@@ -70,6 +70,9 @@ spec:
             requests:
               cpu: 20m
               memory: 100Mi
+          securityContext:
+            privileged: false
+            readOnlyRootFilesystem: true
         - args:
             - --provider=openshift
             - --https-address=:8443
@@ -114,6 +117,9 @@ spec:
               readOnly: true
             - mountPath: /etc/proxy/secrets
               name: cookie-secret
+          securityContext:
+            privileged: false
+            readOnlyRootFilesystem: true
       serviceAccountName: rbac-query-proxy
       imagePullSecrets:
         - name: multiclusterhub-operator-pull-secret
