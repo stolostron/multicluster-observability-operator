@@ -223,14 +223,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		reqLogger.Error(err, "Failed to list observabilityaddon resource")
 		return ctrl.Result{}, err
 	}
-	if installMetricsWithoutAddon {
-		obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "local-cluster",
-				Namespace: "local-cluster",
-			},
-		})
-	}
+	//if installMetricsWithoutAddon {
+	//	obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
+	//		ObjectMeta: metav1.ObjectMeta{
+	//			Name:      "local-cluster",
+	//			Namespace: "local-cluster",
+	//		},
+	//	})
+	//}
 	workList := &workv1.ManifestWorkList{}
 	err = r.Client.List(context.TODO(), workList, opts)
 	if err != nil {
@@ -424,6 +424,8 @@ func createAllRelatedRes(
 				request.Name,
 				"request.namespace",
 				request.Namespace,
+				"openshiftVersion",
+				openshiftVersion,
 			)
 			log.Info("Coleen should be called all the time since managed cluster is in the list")
 			if openshiftVersion == "3" {
@@ -435,6 +437,7 @@ func createAllRelatedRes(
 					managedCluster, managedCluster,
 					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, true)
 			} else if openshiftVersion == "mimical" {
+				generateLocalClusterNamespace()
 				log.Info("Coleen ManagedCluster mimical", "cluster_name", managedCluster)
 				err = createManagedClusterRes(c, mco,
 					managedCluster, "local-cluster",
