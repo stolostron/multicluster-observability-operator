@@ -449,6 +449,11 @@ func createManifestWorks(
 func createUpdateResources(c client.Client, manifests []workv1.Manifest) error {
 	for _, manifest := range manifests {
 		obj := manifest.RawExtension.Object.(client.Object)
+		log.Info("Coleen updating object in managed cluster and name", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
+		if obj.GetObjectKind().GroupVersionKind().Kind == "Namespace" {
+			log.Info("Skipping namespace creation in managed cluster", "name", obj.GetName())
+			continue
+		}
 		//if obj.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
 		//	continue
 		//}
