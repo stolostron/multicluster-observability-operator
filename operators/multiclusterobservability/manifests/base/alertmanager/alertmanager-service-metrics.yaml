@@ -9,7 +9,6 @@ metadata:
   labels:
     app: multicluster-observability-alertmanager-metrics
   name: alertmanager-metrics
-  namespace: open-cluster-management-observability
 spec:
   ports:
   - name: metrics

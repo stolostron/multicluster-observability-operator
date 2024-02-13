@@ -68,12 +68,6 @@ spec:
           requests:
             cpu: 4m
             memory: 200Mi
-        # securityContext:
-        #   allowPrivilegeEscalation: false
-        #   capabilities:
-        #     drop:
-        #     - ALL
-        #   readOnlyRootFilesystem: true
         startupProbe:
           exec:
             command:
@@ -201,11 +195,9 @@ spec:
         secret:
           defaultMode: 420
           secretName: alertmanager-tls-metrics
-      # Secret containing the kube-rbac-proxy configuration (see below).
       - name: kube-rbac-proxy-metric
         secret:
           secretName: alertmanager-kube-rbac-proxy-metric
-      # ConfigMap containing the CA used to verify the client certificate.
       - name: metrics-client-ca
         configMap:
           name: alertmanager-clientca-metric

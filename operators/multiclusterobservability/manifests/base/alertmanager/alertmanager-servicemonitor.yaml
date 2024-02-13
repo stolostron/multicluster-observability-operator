@@ -2,7 +2,6 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: alertmanager
-  namespace: open-cluster-management-observability
 spec:
   endpoints:
   - interval: 30s
@@ -10,12 +9,6 @@ spec:
     port: metrics
     scheme: https
     tlsConfig:
-      # ca:
-      #   configMap:
-      #     # The CA file used by Prometheus to verify the server's certificate.
-      #     # It's the cluster's CA bundle from the service CA operator.
-      #     name: alertmanager-ca-bundle
-      #     key: service-ca.crt
       # The name of the server (CN) in the server's certificate.
       serverName: alertmanager-metrics.open-cluster-management-observability.svc
        # The CA file used by Prometheus to verify the server's certificate.

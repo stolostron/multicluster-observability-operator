@@ -3,4 +3,3 @@ data: {}
 kind: ConfigMap
 metadata:
   name: alertmanager-clientca-metric
-  namespace: open-cluster-management-observability 
