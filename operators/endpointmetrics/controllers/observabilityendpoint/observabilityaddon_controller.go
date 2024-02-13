@@ -116,12 +116,15 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, err
 		}
 	}
-	deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	if deleted || deleteFlag {
-		return ctrl.Result{}, nil
+	hubName := os.Getenv("HUB_NAMESPACE")
+	if hubName != "open-cluster-management-observability" {
+		deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if deleted || deleteFlag {
+			return ctrl.Result{}, nil
+		}
 	}
 
 	// retrieve the hubInfo
