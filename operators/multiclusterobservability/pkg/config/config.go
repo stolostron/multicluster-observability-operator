@@ -147,6 +147,7 @@ const (
 	ConfigmapReloaderImgName      = "origin-configmap-reloader"
 	ConfigmapReloaderImgTagSuffix = "4.8.0"
 	ConfigmapReloaderKey          = "configmap_reloader"
+	KubeRBACProxyKey              = "kube_rbac_proxy"
 
 	OauthProxyImgRepo      = "quay.io/stolostron"
 	OauthProxyImgName      = "origin-oauth-proxy"

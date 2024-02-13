@@ -106,6 +106,15 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource,
 		spec.Containers[2].Image = image
 	}
 	spec.Containers[2].ImagePullPolicy = imagePullPolicy
+
+	// fail if kube-rbac-proxy container is not at the expected index
+	if spec.Containers[3].Name != "kube-rbac-proxy" {
+		return nil, fmt.Errorf("kube-rbac-proxy container not found in statefulset")
+	}
+	if ok, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.DefaultImgRepository, mcoconfig.KubeRBACProxyKey); ok {
+		spec.Containers[3].Image = image
+	}
+
 	//replace the volumeClaimTemplate
 	dep.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = &r.cr.Spec.StorageConfig.StorageClass
 	dep.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] =

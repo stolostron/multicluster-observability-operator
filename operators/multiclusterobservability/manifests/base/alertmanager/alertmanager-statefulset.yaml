@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: alertmanager
-  namespace: open-cluster-management-observability 
+  namespace: open-cluster-management
   labels:
     app: multicluster-observability-alertmanager
     alertmanager: observability
@@ -146,7 +146,7 @@ spec:
           readOnly: true
         - mountPath: /etc/proxy/secrets
           name: alertmanager-proxy
-      - image: quay.io/brancz/kube-rbac-proxy:v0.15.0
+      - image: quay.io/stolostron/kube-rbac-proxy:2.10.0-SNAPSHOT-2024-02-13-14-12-35
         name: kube-rbac-proxy
         args:
         - --secure-listen-address=0.0.0.0:9096
