@@ -250,7 +250,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		if addon.Namespace == config.GetDefaultNamespace() {
 			latestClusters = append(latestClusters, "local-cluster")
 			staleAddons = append(staleAddons, "local-cluster")
-
 		} else {
 			latestClusters = append(latestClusters, addon.Namespace)
 			staleAddons = append(staleAddons, addon.Namespace)
@@ -268,7 +267,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			}
 		}
 		if !slices.Contains(latestClusters, work.Namespace) {
-			if work.Namespace == config.GetDefaultNamespace() {
+			if work.Namespace == config.GetDefaultNamespace() && slices.Contains(latestClusters, localClusterName) {
 				staleAddons = commonutil.Remove(staleAddons, work.Namespace)
 				continue
 			}
@@ -481,6 +480,9 @@ func deleteAllObsAddons(
 	obsAddonList *mcov1beta1.ObservabilityAddonList,
 ) error {
 	for _, ep := range obsAddonList.Items {
+		if ep.Namespace == config.GetDefaultNamespace() {
+			continue
+		}
 		err := deleteObsAddon(client, ep.Namespace)
 		if err != nil {
 			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
