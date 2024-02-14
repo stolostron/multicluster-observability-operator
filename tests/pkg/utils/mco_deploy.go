@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -162,6 +163,9 @@ func PrintAllMCOPodsStatus(opt TestOptions) {
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
+
+	// Print mch-image-manifest configmap
+	klog.V(1).Infof("mch-image-manifest configmap: %v", config.GetImageManifests())
 
 	klog.V(1).Infof("Get %d pods in %q namespace", len(podList), MCO_NAMESPACE)
 	for _, pod := range podList {
