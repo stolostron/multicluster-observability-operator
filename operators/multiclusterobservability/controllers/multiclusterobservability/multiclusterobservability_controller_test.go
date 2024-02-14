@@ -107,6 +107,7 @@ var testImagemanifestsMap = map[string]string{
 	"rbac_query_proxy":             "test.io/rbac-query-proxy:test",
 	"thanos":                       "test.io/thanos:test",
 	"thanos_receive_controller":    "test.io/thanos_receive_controller:test",
+	"kube_rbac_proxy":              "test.io/kube-rbac-proxy:test",
 }
 
 func newTestImageManifestsConfigMap(namespace, version string) *corev1.ConfigMap {
@@ -316,9 +317,18 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	testAmRouteBYOCaSecret := newTestCert(config.AlertmanagerRouteBYOCAName, namespace)
 	testAmRouteBYOCertSecret := newTestCert(config.AlertmanagerRouteBYOCERTName, namespace)
 	clustermgmtAddon := newClusterManagementAddon()
+	extensionApiserverAuthenticationCM := &corev1.ConfigMap{ // required by alertmanager
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "extension-apiserver-authentication",
+			Namespace: "kube-system",
+		},
+		Data: map[string]string{
+			"client-ca-file": "test",
+		},
+	}
 
 	objs := []runtime.Object{mco, svc, serverCACerts, clientCACerts, proxyRouteBYOCACerts, grafanaCert, serverCert,
-		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, proxyRouteBYOCert, clustermgmtAddon}
+		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, proxyRouteBYOCert, clustermgmtAddon, extensionApiserverAuthenticationCM}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
@@ -711,9 +721,18 @@ func TestImageReplaceForMCO(t *testing.T) {
 	testAmRouteBYOCaSecret := newTestCert(config.AlertmanagerRouteBYOCAName, namespace)
 	testAmRouteBYOCertSecret := newTestCert(config.AlertmanagerRouteBYOCERTName, namespace)
 	clustermgmtAddon := newClusterManagementAddon()
+	extensionApiserverAuthenticationCM := &corev1.ConfigMap{ // required by alertmanager
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "extension-apiserver-authentication",
+			Namespace: "kube-system",
+		},
+		Data: map[string]string{
+			"client-ca-file": "test",
+		},
+	}
 
 	objs := []runtime.Object{mco, observatoriumAPIsvc, serverCACerts, clientCACerts, grafanaCert, serverCert,
-		testMCHInstance, imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon}
+		testMCHInstance, imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon, extensionApiserverAuthenticationCM}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
