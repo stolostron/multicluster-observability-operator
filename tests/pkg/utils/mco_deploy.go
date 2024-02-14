@@ -155,23 +155,57 @@ func PrintAllMCOPodsStatus(opt TestOptions) {
 	}
 
 	if len(podList) == 0 {
-		klog.V(1).Infof("Failed to get pod in <%s> namespace", MCO_NAMESPACE)
+		klog.V(1).Infof("Failed to get pod in %q namespace", MCO_NAMESPACE)
 	}
 
-	klog.V(1).Infof("Get <%v> pods in <%s> namespace", len(podList), MCO_NAMESPACE)
+	hubClient := NewKubeClient(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	klog.V(1).Infof("Get %d pods in %q namespace", len(podList), MCO_NAMESPACE)
 	for _, pod := range podList {
-		isReady := false
 		if pod.Status.Phase == corev1.PodRunning {
-			isReady = true
+			continue
 		}
 
 		// only print not ready pod status
-		if !isReady {
-			klog.V(1).Infof("Pod <%s> is not <Ready> on <%s> status due to %#v\n",
-				pod.Name,
-				pod.Status.Phase,
-				pod.Status)
+		klog.V(1).Infof("Pod %q is not ready with phase %q and status: %s\n",
+			pod.Name,
+			pod.Status.Phase,
+			pod.Status.String())
+
+		// print pod events
+		events, err := hubClient.CoreV1().Events(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
+			FieldSelector: "involvedObject.name=" + pod.Name,
+		})
+		if err != nil {
+			klog.Errorf("Failed to get events for pod %s: %s", pod.Name, err.Error())
 		}
+		for _, event := range events.Items {
+			klog.V(1).Infof("Pod %q event: %s", pod.Name, event.Message)
+		}
+
+		// print pod containers logs
+		for _, container := range pod.Spec.Containers {
+			logsRes := hubClient.CoreV1().Pods(MCO_NAMESPACE).GetLogs(pod.Name, &corev1.PodLogOptions{
+				Container: container.Name,
+			}).Do(context.Background())
+
+			if logsRes.Error() != nil {
+				klog.Errorf("Failed to get logs for pod %q: %s", pod.Name, logsRes.Error())
+				continue
+			}
+
+			logs, err := logsRes.Raw()
+			if err != nil {
+				klog.Errorf("Failed to get logs for pod %q container %q: %s", pod.Name, container.Name, err.Error())
+				continue
+			}
+
+			klog.V(1).Infof("Pod %q container %q logs: %s", pod.Name, container.Name, string(logs))
+		}
+
 	}
 }
 
