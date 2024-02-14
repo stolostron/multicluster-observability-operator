@@ -35,6 +35,7 @@ func (r *MCORenderer) newAlertManagerRenderer() {
 		"RoleBinding":           r.renderer.RenderNamespace,
 		"Ingress":               r.renderer.RenderNamespace,
 		"PersistentVolumeClaim": r.renderer.RenderNamespace,
+		"ServiceMonitor":        r.renderer.RenderNamespace,
 	}
 }
 
