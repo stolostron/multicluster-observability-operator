@@ -565,6 +565,7 @@ data:
                 "expr": "mce_hs_addon_qps_based_hcp_capacity_gauge{qps_rate=\"average\"}",
                 "hide": false,
                 "interval": "",
+                "instant": true,
                 "legendFormat": "est. Max. (avg QPS)",
                 "refId": "F"
               }
