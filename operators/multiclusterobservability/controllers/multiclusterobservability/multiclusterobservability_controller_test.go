@@ -310,6 +310,14 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	clientCACerts := newTestCert(config.ClientCACerts, namespace)
 	grafanaCert := newTestCert(config.GrafanaCerts, namespace)
 	serverCert := newTestCert(config.ServerCerts, namespace)
+	obsAPICert := newTestCert(config.GetOperandNamePrefix()+config.ObservatoriumAPI, namespace)
+	obsAPIConfigMap := &corev1.ConfigMap{
+		TypeMeta:   metav1.TypeMeta{Kind: "ConfigMap"},
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetOperandNamePrefix() + "observatorium-api", Namespace: namespace},
+		Data: map[string]string{
+			"config.yaml": "test",
+		},
+	}
 	// byo case for proxy
 	proxyRouteBYOCACerts := newTestCert(config.ProxyRouteBYOCAName, namespace)
 	proxyRouteBYOCert := newTestCert(config.ProxyRouteBYOCERTName, namespace)
@@ -319,23 +327,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	clustermgmtAddon := newClusterManagementAddon()
 
 	objs := []runtime.Object{mco, svc, serverCACerts, clientCACerts, proxyRouteBYOCACerts, grafanaCert, serverCert,
-		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, proxyRouteBYOCert, clustermgmtAddon}
-	objs = append(objs, []runtime.Object{
-		&corev1.Secret{
-			TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetOperandNamePrefix() + "observatorium-api", Namespace: namespace},
-			Data: map[string][]byte{
-				"tls.crt": []byte("test"),
-			},
-		},
-		&corev1.ConfigMap{
-			TypeMeta:   metav1.TypeMeta{Kind: "ConfigMap"},
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetOperandNamePrefix() + "observatorium-api", Namespace: namespace},
-			Data: map[string]string{
-				"config.yaml": "test",
-			},
-		},
-	}...)
+		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, proxyRouteBYOCert, clustermgmtAddon, obsAPICert, obsAPIConfigMap}
 
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
@@ -722,6 +714,14 @@ func TestImageReplaceForMCO(t *testing.T) {
 	clientCACerts := newTestCert(config.ClientCACerts, namespace)
 	grafanaCert := newTestCert(config.GrafanaCerts, namespace)
 	serverCert := newTestCert(config.ServerCerts, namespace)
+	obsAPICert := newTestCert(config.GetOperandNamePrefix()+config.ObservatoriumAPI, namespace)
+	obsAPIConfigMap := &corev1.ConfigMap{
+		TypeMeta:   metav1.TypeMeta{Kind: "ConfigMap"},
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetOperandNamePrefix() + "observatorium-api", Namespace: namespace},
+		Data: map[string]string{
+			"config.yaml": "test",
+		},
+	}
 	// create the image manifest configmap
 	testMCHInstance := newMCHInstanceWithVersion(config.GetMCONamespace(), version)
 	imageManifestsCM := newTestImageManifestsConfigMap(config.GetMCONamespace(), version)
@@ -731,7 +731,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	clustermgmtAddon := newClusterManagementAddon()
 
 	objs := []runtime.Object{mco, observatoriumAPIsvc, serverCACerts, clientCACerts, grafanaCert, serverCert,
-		testMCHInstance, imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon}
+		testMCHInstance, imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon, obsAPICert, obsAPIConfigMap}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
