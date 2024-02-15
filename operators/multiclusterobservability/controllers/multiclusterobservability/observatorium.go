@@ -10,7 +10,8 @@ import (
 
 	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
 	// changes and thus it's not a security issue.
-	"crypto/md5" // nolint:gosec
+	// nolint:gosec
+	"crypto/md5"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -54,7 +55,8 @@ const (
 	endpointsRestartLabel = "endpoints/time-restarted"
 )
 
-// Fetch contents of the secrets: observability-server-certs, observability-client-ca-certs, observability-observatorium-api.
+// Fetch contents of the secrets: observability-server-certs, observability-client-ca-certs,
+// observability-observatorium-api.
 // Fetch contents of the configmap: observability-observatorium-api.
 // Concatenate all of the above and hash their contents.
 // If any of the secrets or configmaps aren't found, an empty struct of the respective type is used for the hash.
@@ -70,10 +72,14 @@ func hashObservatoriumCRConfig(cl client.Client) (string, error) {
 
 	// The usage of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
 	// changes and thus it's not a security issue.
-	hasher := md5.New() // nolint:gosec
+	// nolint:gosec
+	hasher := md5.New()
 	for _, secret := range secretsToQuery {
 		resultSecret := &v1.Secret{}
-		err := cl.Get(context.TODO(), types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, resultSecret)
+		err := cl.Get(context.TODO(), types.NamespacedName{
+			Name:      secret.Name,
+			Namespace: secret.Namespace,
+		}, resultSecret)
 		if err != nil && !k8serrors.IsNotFound(err) {
 			return "", err
 		}
@@ -85,7 +91,10 @@ func hashObservatoriumCRConfig(cl client.Client) (string, error) {
 	}
 
 	resultConfigMap := &v1.ConfigMap{}
-	err := cl.Get(context.TODO(), types.NamespacedName{Name: configMapToQuery.Name, Namespace: configMapToQuery.Namespace}, resultConfigMap)
+	err := cl.Get(context.TODO(), types.NamespacedName{
+		Name:      configMapToQuery.Name,
+		Namespace: configMapToQuery.Namespace,
+	}, resultConfigMap)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		return "", err
 	}
