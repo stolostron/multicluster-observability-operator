@@ -22,9 +22,10 @@ import (
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 
+	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
+
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
-	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 )
 
 var (
@@ -173,6 +174,38 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	observatoriumv1alpha1.AddToScheme(s)
 
 	objs := []runtime.Object{mco}
+	objs = append(objs, []runtime.Object{
+		&corev1.Secret{
+			TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
+			ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.ServerCerts, Namespace: namespace},
+			Data: map[string][]byte{
+				"tls.crt": []byte("server-cert"),
+				"tls.key": []byte("server-key"),
+			},
+		},
+		&corev1.Secret{
+			TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
+			ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.ClientCACerts, Namespace: namespace},
+			Data: map[string][]byte{
+				"tls.crt": []byte("client-ca-cert"),
+			},
+		},
+		&corev1.Secret{
+			TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
+			ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.GetOperandNamePrefix() + "observatorium-api", Namespace: namespace},
+			Data: map[string][]byte{
+				"tls.crt": []byte("test"),
+			},
+		},
+		&corev1.ConfigMap{
+			TypeMeta:   metav1.TypeMeta{Kind: "ConfigMap"},
+			ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.GetOperandNamePrefix() + "observatorium-api", Namespace: namespace},
+			Data: map[string]string{
+				"config.yaml": "test",
+			},
+		},
+	}...)
+
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	mcoconfig.SetOperandNames(cl)
@@ -197,6 +230,15 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	newSpec, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
 	oldSpecBytes, _ := yaml.Marshal(oldSpec)
 	newSpecBytes, _ := yaml.Marshal(newSpec)
+
+	hash, configHashFound := observatoriumCRFound.Labels["config-hash"]
+	if !configHashFound {
+		t.Errorf("config-hash label not found in Observatorium CR")
+	}
+	const expectedConfigHash = "06869d277adcef9eb22f81d61c964393"
+	if hash != expectedConfigHash {
+		t.Errorf("config-hash label contains unexpected hash. Want: '%s', got '%s'", expectedConfigHash, hash)
+	}
 
 	if res := bytes.Compare(newSpecBytes, oldSpecBytes); res != 0 {
 		t.Errorf("%v should be equal to %v", string(oldSpecBytes), string(newSpecBytes))
