@@ -7,10 +7,9 @@ package multiclusterobservability
 import (
 	"bytes"
 	"context"
-
 	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
 	// changes and thus it's not a security issue.
-	// nolint:gosec
+	//nolint:gosec
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
@@ -58,6 +57,7 @@ const (
 // Fetch contents of the secrets: observability-server-certs, observability-client-ca-certs, observability-observatorium-api.
 // Fetch contents of the configmap: observability-observatorium-api.
 // Concatenate all of the above and hash their contents.
+// If any of the secrets or configmaps aren't found, an empty struct of the respective type is used for the hash.
 func hashObservatoriumCRConfig(cl client.Client) (string, error) {
 	secretsToQuery := []metav1.ObjectMeta{
 		{Name: mcoconfig.ServerCerts, Namespace: mcoconfig.GetDefaultNamespace()},
@@ -70,7 +70,7 @@ func hashObservatoriumCRConfig(cl client.Client) (string, error) {
 
 	// The usage of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
 	// changes and thus it's not a security issue.
-	// nolint:gosec
+	//nolint:gosec
 	hasher := md5.New()
 	for _, secret := range secretsToQuery {
 		resultSecret := &v1.Secret{}

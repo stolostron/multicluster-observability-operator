@@ -7,6 +7,7 @@ package multiclusterobservability
 import (
 	"bytes"
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -247,6 +248,76 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	_, err = GenerateObservatoriumCR(cl, s, mco)
 	if err != nil {
 		t.Errorf("Failed to update observatorium due to %v", err)
+	}
+}
+
+func TestHashObservatoriumCRWithConfig(t *testing.T) {
+	namespace := mcoconfig.GetDefaultNamespace()
+
+	tt := []struct {
+		name         string
+		objs         []runtime.Object
+		expectedHash string
+		expectedErr  error
+	}{
+		{
+			name:         "With Observatorium's secrets and configmap present",
+			expectedHash: "06869d277adcef9eb22f81d61c964393",
+			objs: []runtime.Object{
+				&corev1.Secret{
+					TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
+					ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.ServerCerts, Namespace: namespace},
+					Data: map[string][]byte{
+						"tls.crt": []byte("server-cert"),
+						"tls.key": []byte("server-key"),
+					},
+				},
+				&corev1.Secret{
+					TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
+					ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.ClientCACerts, Namespace: namespace},
+					Data: map[string][]byte{
+						"tls.crt": []byte("client-ca-cert"),
+					},
+				},
+				&corev1.Secret{
+					TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
+					ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: namespace},
+					Data: map[string][]byte{
+						"tls.crt": []byte("test"),
+					},
+				},
+				&corev1.ConfigMap{
+					TypeMeta:   metav1.TypeMeta{Kind: "ConfigMap"},
+					ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: namespace},
+					Data: map[string]string{
+						"config.yaml": "test",
+					},
+				},
+			},
+		},
+		{
+			name: "Without Observatorium's secrets and configmap present",
+			// The hash is still calculated when the configmaps and secrets aren't presented, because the implementation
+			// is hashing an empty object for each one of them if they aren't found.
+			expectedHash: "1b7799225be7c98c78387c6aff5b0eed",
+			objs:         []runtime.Object{},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create a fake client to mock API calls.
+			cl := fake.NewClientBuilder().WithRuntimeObjects(tc.objs...).Build()
+			hash, err := hashObservatoriumCRConfig(cl)
+
+			if !errors.Is(err, tc.expectedErr) {
+				t.Errorf("unexpected error: %v\nwant: %v", err, tc.expectedErr)
+			}
+
+			if hash != tc.expectedHash {
+				t.Errorf("config-hash label contains unexpected hash. Want: '%s', got '%s'", tc.expectedHash, hash)
+			}
+		})
 	}
 }
 
