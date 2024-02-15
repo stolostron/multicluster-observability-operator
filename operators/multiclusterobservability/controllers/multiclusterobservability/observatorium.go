@@ -7,7 +7,6 @@ package multiclusterobservability
 import (
 	"bytes"
 	"context"
-
 	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
 	// changes and thus it's not a security issue.
 	// nolint:gosec
@@ -75,7 +74,7 @@ func hashObservatoriumCRConfig(cl client.Client) (string, error) {
 	for _, secret := range secretsToQuery {
 		resultSecret := &v1.Secret{}
 		err := cl.Get(context.TODO(), types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, resultSecret)
-		if err != nil {
+		if err != nil && !k8serrors.IsNotFound(err) {
 			return "", err
 		}
 		secretData, err := yaml.Marshal(resultSecret.Data)
@@ -87,7 +86,7 @@ func hashObservatoriumCRConfig(cl client.Client) (string, error) {
 
 	resultConfigMap := &v1.ConfigMap{}
 	err := cl.Get(context.TODO(), types.NamespacedName{Name: configMapToQuery.Name, Namespace: configMapToQuery.Namespace}, resultConfigMap)
-	if err != nil {
+	if err != nil && !k8serrors.IsNotFound(err) {
 		return "", err
 	}
 	configMapData, err := yaml.Marshal(resultConfigMap.Data)
