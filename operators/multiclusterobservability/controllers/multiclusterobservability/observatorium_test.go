@@ -192,14 +192,14 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 		},
 		&corev1.Secret{
 			TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
-			ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.GetOperandNamePrefix() + "observatorium-api", Namespace: namespace},
+			ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: namespace},
 			Data: map[string][]byte{
 				"tls.crt": []byte("test"),
 			},
 		},
 		&corev1.ConfigMap{
 			TypeMeta:   metav1.TypeMeta{Kind: "ConfigMap"},
-			ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.GetOperandNamePrefix() + "observatorium-api", Namespace: namespace},
+			ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: namespace},
 			Data: map[string]string{
 				"config.yaml": "test",
 			},
