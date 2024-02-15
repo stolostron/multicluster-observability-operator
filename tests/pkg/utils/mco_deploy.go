@@ -14,13 +14,13 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 )
 
@@ -165,7 +165,12 @@ func PrintAllMCOPodsStatus(opt TestOptions) {
 		opt.HubCluster.KubeContext)
 
 	// Print mch-image-manifest configmap
-	klog.V(1).Infof("mch-image-manifest configmap: %v", config.GetImageManifests())
+	mchImageManifestCM, err := ReadImageManifestConfigMap(hubClient)
+	if err != nil {
+		klog.Errorf("Failed to get mch-image-manifest configmap: %s", err.Error())
+	} else {
+		klog.V(1).Infof("mch-image-manifest configmap: %v", mchImageManifestCM)
+	}
 
 	klog.V(1).Infof("Get %d pods in %q namespace", len(podList), MCO_NAMESPACE)
 	for _, pod := range podList {
@@ -211,6 +216,24 @@ func PrintAllMCOPodsStatus(opt TestOptions) {
 		}
 
 	}
+}
+
+// ReadImageManifestConfigMap reads configmap with the label ocm-configmap-type=image-manifest.
+func ReadImageManifestConfigMap(c kubernetes.Interface) (map[string]string, error) {
+	listOpts := metav1.ListOptions{
+		LabelSelector: "ocm-configmap-type=image-manifest",
+	}
+
+	imageCMList, err := c.CoreV1().ConfigMaps("open-cluster-management").List(context.TODO(), listOpts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list mch-image-manifest configmaps: %w", err)
+	}
+
+	if len(imageCMList.Items) != 1 {
+		return nil, fmt.Errorf("found %d mch-image-manifest configmaps, expected 1", len(imageCMList.Items))
+	}
+
+	return imageCMList.Items[0].Data, nil
 }
 
 func PrintMCOObject(opt TestOptions) {
