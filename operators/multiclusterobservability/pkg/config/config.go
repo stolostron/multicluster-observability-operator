@@ -148,6 +148,7 @@ const (
 	ConfigmapReloaderImgTagSuffix = "4.8.0"
 	ConfigmapReloaderKey          = "configmap_reloader"
 	KubeRBACProxyKey              = "kube_rbac_proxy"
+	KubeRBACProxyImgName          = "kube-rbac-proxy"
 
 	OauthProxyImgRepo      = "quay.io/stolostron"
 	OauthProxyImgName      = "origin-oauth-proxy"
@@ -458,7 +459,7 @@ func ReplaceImage(annotations map[string]string, imageRepo, componentName string
 		return false, ""
 	} else {
 		image, found := imageManifests[componentName]
-		log.V(1).Info("image replacement", "componentName", image)
+		log.V(1).Info("image replacement", "componentName", componentName, "image", image)
 		if found {
 			return true, image
 		}

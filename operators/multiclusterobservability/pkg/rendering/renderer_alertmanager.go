@@ -112,7 +112,7 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource,
 	if spec.Containers[3].Name != "kube-rbac-proxy" {
 		return nil, fmt.Errorf("kube-rbac-proxy container not found in statefulset")
 	}
-	if ok, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.DefaultImgRepository, mcoconfig.KubeRBACProxyKey); ok {
+	if ok, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.DefaultImgRepository+"/"+mcoconfig.KubeRBACProxyImgName, mcoconfig.KubeRBACProxyKey); ok {
 		spec.Containers[3].Image = image
 	}
 
