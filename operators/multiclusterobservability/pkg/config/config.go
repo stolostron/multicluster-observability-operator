@@ -445,11 +445,11 @@ func ReplaceImage(annotations map[string]string, imageRepo, componentName string
 			repoSlice := strings.Split(imageRepo, "/")
 			imageName := strings.Split(repoSlice[len(repoSlice)-1], ":")[0]
 			image := annotationImageRepo + "/" + imageName + ":" + tagSuffix
-			log.V(1).Info("image replacement", "componentName", image)
+			log.V(1).Info("image replacement: has tag suffix", "componentName", componentName, "imageRepo", imageRepo, "image", image)
 			return true, image
 		} else if !hasTagSuffix {
 			image, found := imageManifests[componentName]
-			log.V(1).Info("image replacement", "componentName", image)
+			log.V(1).Info("image replacement", "componentName", componentName, "image", image)
 			if found {
 				return true, image
 			}
