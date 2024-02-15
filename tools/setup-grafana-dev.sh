@@ -27,15 +27,15 @@ EOF
 }
 
 deploy() {
-  kubectl get secret -n "$obs_namespace" grafana-config -o 'go-template={{index .data "grafana.ini"}}' | base64 --decode >grafana-dev-config.ini
+  oc get secret -n "$obs_namespace" grafana-config -o 'go-template={{index .data "grafana.ini"}}' | base64 --decode >grafana-dev-config.ini
   if [ $? -ne 0 ]; then
     echo "Failed to get grafana config secret"
     exit 1
   fi
   $sed_command "s~%(domain)s/grafana/$~%(domain)s/grafana-dev/~g" grafana-dev-config.ini
-  kubectl create secret generic grafana-dev-config -n "$obs_namespace" --from-file=grafana.ini=grafana-dev-config.ini
+  oc create secret generic grafana-dev-config -n "$obs_namespace" --from-file=grafana.ini=grafana-dev-config.ini
 
-  kubectl get deployment -n "$obs_namespace" -l app=multicluster-observability-grafana -o yaml >grafana-dev-deploy.yaml
+  oc get deployment -n "$obs_namespace" -l app=multicluster-observability-grafana -o yaml >grafana-dev-deploy.yaml
   if [ $? -ne 0 ]; then
     echo "Failed to get grafana deployment"
     exit 1
@@ -48,13 +48,13 @@ deploy() {
   $sed_command "s~grafana-config$~grafana-dev-config~g" grafana-dev-deploy.yaml
   $sed_command "s~- multicluster-observability-grafana$~- multicluster-observability-grafana-dev~g" grafana-dev-deploy.yaml
 
-  POD_NAME=$(kubectl get pods -n "$obs_namespace" -l app=multicluster-observability-grafana | grep grafana | awk '{split($0, a, " "); print a[1]}' | head -n 1)
+  POD_NAME=$(oc get pods -n "$obs_namespace" -l app=multicluster-observability-grafana | grep grafana | awk '{split($0, a, " "); print a[1]}' | head -n 1)
   if [ -z "$POD_NAME" ]; then
     echo "Failed to get grafana pod name"
     exit 1
   fi
 
-  GROUP_ID=$(kubectl get pods "$POD_NAME" -n "$obs_namespace" -o jsonpath='{.spec.securityContext.fsGroup}')
+  GROUP_ID=$(oc get pods "$POD_NAME" -n "$obs_namespace" -o jsonpath='{.spec.securityContext.fsGroup}')
   if [[ ${GROUP_ID} == "grafana" ]]; then
     GROUP_ID=472
   fi
@@ -67,9 +67,9 @@ deploy() {
   $sed_command "s~  securityContext: {}*$~  securityContext: {fsGroup: ${GROUP_ID}}~g" grafana-dev-deploy.yaml
   sed "s~- emptyDir: {}$~- persistentVolumeClaim:$            claimName: grafana-dev~g" grafana-dev-deploy.yaml >grafana-dev-deploy.yaml.bak
   tr $ '\n' <grafana-dev-deploy.yaml.bak >grafana-dev-deploy.yaml
-  kubectl apply -f grafana-dev-deploy.yaml
+  oc apply -f grafana-dev-deploy.yaml
 
-  kubectl get svc -n "$obs_namespace" -l app=multicluster-observability-grafana -o yaml >grafana-dev-svc.yaml
+  oc get svc -n "$obs_namespace" -l app=multicluster-observability-grafana -o yaml >grafana-dev-svc.yaml
   if [ $? -ne 0 ]; then
     echo "Failed to get grafana service"
     exit 1
@@ -83,34 +83,34 @@ deploy() {
   $sed_command "s~service.alpha.openshift.io/serving-cert-secret-name:.*$~service.alpha.openshift.io/serving-cert-secret-name: grafana-tls-dev~g" grafana-dev-svc.yaml
   $sed_command "s~service.alpha.openshift.io/serving-cert-signed-by:.*$~~g" grafana-dev-svc.yaml
   $sed_command "s~service.beta.openshift.io/serving-cert-signed-by:.*$~~g" grafana-dev-svc.yaml
-  kubectl apply -f grafana-dev-svc.yaml
+  oc apply -f grafana-dev-svc.yaml
 
-  kubectl get sa -n "$obs_namespace" grafana -o yaml >grafana-dev-sa.yaml
+  oc get sa -n "$obs_namespace" grafana -o yaml >grafana-dev-sa.yaml
   if [ $? -ne 0 ]; then
     echo "Failed to get grafana serviceaccount"
     exit 1
   fi
   $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-sa.yaml
   $sed_command 's/{"kind":"Route","name":"grafana"}/{"kind":"Route","name":"grafana-dev"}/g' grafana-dev-sa.yaml
-  kubectl apply -f grafana-dev-sa.yaml
+  oc apply -f grafana-dev-sa.yaml
 
-  kubectl get clusterrolebinding open-cluster-management:grafana-crb -o yaml >grafana-dev-crb.yaml
+  oc get clusterrolebinding open-cluster-management:grafana-crb -o yaml >grafana-dev-crb.yaml
   if [ $? -ne 0 ]; then
     echo "Failed to get grafana cluster role binding"
     exit 1
   fi
   $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-crb.yaml
   $sed_command "s~name: open-cluster-management:grafana-crb$~name: open-cluster-management:grafana-crb-dev~g" grafana-dev-crb.yaml
-  kubectl apply -f grafana-dev-crb.yaml
+  oc apply -f grafana-dev-crb.yaml
 
-  kubectl get route -n "$obs_namespace" grafana -o yaml >grafana-dev-route.yaml
+  oc get route -n "$obs_namespace" grafana -o yaml >grafana-dev-route.yaml
   if [ $? -ne 0 ]; then
     echo "Failed to get grafana route"
     exit 1
   fi
   $sed_command "s~name: grafana$~name: grafana-dev~g" grafana-dev-route.yaml
   $sed_command "s~host:.*$~~g" grafana-dev-route.yaml
-  kubectl apply -f grafana-dev-route.yaml
+  oc apply -f grafana-dev-route.yaml
 
   cat >grafana-pvc.yaml <<EOL
 kind: PersistentVolumeClaim
@@ -126,15 +126,15 @@ spec:
       storage: 1Gi
   storageClassName: gp2
 EOL
-  storage_class=$(kubectl get pvc -n "$obs_namespace" | awk '{print $6}' | awk 'NR==2')
+  storage_class=$(oc get pvc -n "$obs_namespace" | awk '{print $6}' | awk 'NR==2')
   if [ -z "$storage_class" ]; then
     echo "Failed to get storage class"
     exit 1
   fi
   $sed_command "s~gp2$~${storage_class}~g" grafana-pvc.yaml
-  kubectl apply -f grafana-pvc.yaml
+  oc apply -f grafana-pvc.yaml
 
-  kubectl get oauthclient grafana-proxy-client -o yaml >grafana-dev-oauthclient.yaml
+  oc get oauthclient grafana-proxy-client -o yaml >grafana-dev-oauthclient.yaml
   if [ $? -ne 0 ]; then
     echo "Failed to get grafana oauthclient"
     exit 1
@@ -142,29 +142,29 @@ EOL
   $sed_command "s~name: grafana-proxy-client$~name: grafana-proxy-client-dev~g" grafana-dev-oauthclient.yaml
   $sed_command "s/https:\/\/grafana-/https:\/\/grafana-dev-/g" grafana-dev-oauthclient.yaml
   $sed_command "s~secret: .*$~secret: grafana-proxy-client-dev~g" grafana-dev-oauthclient.yaml
-  kubectl apply -f grafana-dev-oauthclient.yaml
+  oc apply -f grafana-dev-oauthclient.yaml
 
   # clean all tmp files
   rm -rf grafana-dev-deploy.yaml* grafana-dev-svc.yaml* grafana-dev-sa.yaml* grafana-dev-route.yaml* grafana-dev-crb.yaml* grafana-dev-oauthclient.yaml* grafana-dev-config.ini* grafana-pvc.yaml*
 
   # delete ownerReferences
-  kubectl -n "$obs_namespace" patch deployment grafana-dev -p '{"metadata": {"ownerReferences":null}}'
-  kubectl -n "$obs_namespace" patch svc grafana-dev -p '{"metadata": {"ownerReferences":null}}'
-  kubectl -n "$obs_namespace" patch route grafana-dev -p '{"metadata": {"ownerReferences":null}}'
-  kubectl patch oauthclient grafana-proxy-client-dev -p '{"metadata": {"ownerReferences":null}}'
-  kubectl patch clusterrolebinding open-cluster-management:grafana-crb-dev -p '{"metadata": {"ownerReferences":null}}'
-  echo -e "\nGrafana dev URL: $(kubectl get route grafana-dev -n open-cluster-management-observability --no-headers | awk '{print $2}')"
+  oc -n "$obs_namespace" patch deployment grafana-dev -p '{"metadata": {"ownerReferences":null}}'
+  oc -n "$obs_namespace" patch svc grafana-dev -p '{"metadata": {"ownerReferences":null}}'
+  oc -n "$obs_namespace" patch route grafana-dev -p '{"metadata": {"ownerReferences":null}}'
+  oc patch oauthclient grafana-proxy-client-dev -p '{"metadata": {"ownerReferences":null}}'
+  oc patch clusterrolebinding open-cluster-management:grafana-crb-dev -p '{"metadata": {"ownerReferences":null}}'
+  echo -e "\nGrafana dev URL: $(oc get route grafana-dev -n open-cluster-management-observability --no-headers | awk '{print $2}')"
 }
 
 clean() {
-  kubectl delete secret -n "$obs_namespace" grafana-dev-config
-  kubectl delete deployment -n "$obs_namespace" grafana-dev
-  kubectl delete svc -n "$obs_namespace" grafana-dev
-  kubectl delete sa -n "$obs_namespace" grafana-dev
-  kubectl delete route -n "$obs_namespace" grafana-dev
-  kubectl delete pvc -n "$obs_namespace" grafana-dev
-  kubectl delete oauthclient grafana-proxy-client-dev
-  kubectl delete clusterrolebinding open-cluster-management:grafana-crb-dev
+  oc delete secret -n "$obs_namespace" grafana-dev-config
+  oc delete deployment -n "$obs_namespace" grafana-dev
+  oc delete svc -n "$obs_namespace" grafana-dev
+  oc delete sa -n "$obs_namespace" grafana-dev
+  oc delete route -n "$obs_namespace" grafana-dev
+  oc delete pvc -n "$obs_namespace" grafana-dev
+  oc delete oauthclient grafana-proxy-client-dev
+  oc delete clusterrolebinding open-cluster-management:grafana-crb-dev
 }
 
 msg() {
