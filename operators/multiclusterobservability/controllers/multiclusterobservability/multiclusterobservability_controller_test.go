@@ -34,12 +34,13 @@ import (
 
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
+
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
-	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
 func init() {
@@ -58,7 +59,7 @@ func setupTest(t *testing.T) func() {
 	manifestsPath := path.Join(wd, "../../manifests")
 	os.Setenv("TEMPLATES_PATH", testManifestsPath)
 	templates.ResetTemplates()
-	//clean up the manifest path if left over from previous test
+	// clean up the manifest path if left over from previous test
 	if fi, err := os.Lstat(testManifestsPath); err == nil && fi.Mode()&os.ModeSymlink != 0 {
 		if err = os.Remove(testManifestsPath); err != nil {
 			t.Logf("Failed to delete symlink(%s) for the test manifests: (%v)", testManifestsPath, err)
@@ -310,7 +311,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	clientCACerts := newTestCert(config.ClientCACerts, namespace)
 	grafanaCert := newTestCert(config.GrafanaCerts, namespace)
 	serverCert := newTestCert(config.ServerCerts, namespace)
-	//byo case for proxy
+	// byo case for proxy
 	proxyRouteBYOCACerts := newTestCert(config.ProxyRouteBYOCAName, namespace)
 	proxyRouteBYOCert := newTestCert(config.ProxyRouteBYOCERTName, namespace)
 	// byo case for the alertmanager route
@@ -349,10 +350,10 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	//wait for update status
+	// wait for update status
 	time.Sleep(1 * time.Second)
 
-	//verify openshiftcluster monitoring label is set to true in namespace
+	// verify openshiftcluster monitoring label is set to true in namespace
 	updatedNS := &corev1.Namespace{}
 	err = cl.Get(context.TODO(), types.NamespacedName{
 		Name: namespace,
@@ -408,7 +409,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	//wait for update status
+	// wait for update status
 	time.Sleep(1 * time.Second)
 
 	updatedObjectStoreSecret := &corev1.Secret{}
@@ -444,7 +445,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	//wait for update status
+	// wait for update status
 	time.Sleep(1 * time.Second)
 
 	updatedConfigmap := &corev1.ConfigMap{}
@@ -483,7 +484,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	//wait for update status
+	// wait for update status
 	time.Sleep(1 * time.Second)
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
@@ -519,7 +520,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 			t.Fatalf("reconcile: (%v)", err)
 		}
 	}
-	//wait for update status
+	// wait for update status
 	time.Sleep(1 * time.Second)
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
@@ -562,7 +563,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	//wait for update status
+	// wait for update status
 	time.Sleep(1 * time.Second)
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
@@ -596,7 +597,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	//wait for update status
+	// wait for update status
 	time.Sleep(1 * time.Second)
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
@@ -636,7 +637,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
-	//wait for update status
+	// wait for update status
 	time.Sleep(1 * time.Second)
 
 	updatedMCO = &mcov1beta2.MultiClusterObservability{}
@@ -650,7 +651,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		t.Errorf("Failed to get correct MCO status, expect Ready")
 	}
 
-	//Test finalizer
+	// Test finalizer
 	mco.ObjectMeta.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 	mco.ObjectMeta.Finalizers = []string{resFinalizer, "test-finalizerr"}
 	mco.ObjectMeta.ResourceVersion = updatedMCO.ObjectMeta.ResourceVersion
@@ -757,7 +758,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 
-	//wait for update status
+	// wait for update status
 	time.Sleep(1 * time.Second)
 
 	expectedDeploymentNames := []string{
@@ -830,7 +831,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 
 	// stop update status routine
 	stopStatusUpdate <- struct{}{}
-	//wait for update status
+	// wait for update status
 	time.Sleep(1 * time.Second)
 }
 
@@ -1032,7 +1033,7 @@ func TestPrometheusRulesRemovedFromOpenshiftMonitoringNamespace(t *testing.T) {
 			Name:      "acm-observability-alert-rules",
 			Namespace: "openshift-monitoring",
 		},
-		//Sample rules
+		// Sample rules
 		Spec: monitoringv1.PrometheusRuleSpec{
 			Groups: []monitoringv1.RuleGroup{
 				{
