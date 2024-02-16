@@ -37,8 +37,7 @@ func CheckOBAStatus(opt TestOptions, namespace, status string) error {
 	if strings.Contains(obaStatus, status) {
 		return nil
 	} else {
-		PrintAllOBAPodsStatus(opt)
-		return fmt.Errorf("observability-addon is not ready for managed cluster %s with status: %s", namespace, obaStatus)
+		return fmt.Errorf("observability-addon is not ready for managed cluster %q with status %q: %v", namespace, obaStatus, oba.Object)
 	}
 }
 

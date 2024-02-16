@@ -52,33 +52,6 @@ func installMCO() {
 		Expect(string(pod.Status.Phase)).To(Equal("Running"))
 	}
 
-	// print mco logs if MCO installation failed
-	defer func(testOptions utils.TestOptions, isHub bool, namespace, podName, containerName string, previous bool, tailLines int64) {
-		if testFailed {
-			mcoLogs, err := utils.GetPodLogs(
-				testOptions,
-				isHub,
-				namespace,
-				podName,
-				containerName,
-				previous,
-				tailLines,
-			)
-			Expect(err).NotTo(HaveOccurred())
-			fmt.Fprintf(GinkgoWriter, "[DEBUG] MCO is installed failed, checking MCO operator logs:\n%s\n", mcoLogs)
-		} else {
-			fmt.Fprintf(GinkgoWriter, "[DEBUG] MCO is installed successfully!\n")
-		}
-	}(
-		testOptions,
-		false,
-		mcoNs,
-		mcoPod,
-		"multicluster-observability-operator",
-		false,
-		1000,
-	)
-
 	By("Checking Required CRDs are created")
 	Eventually(func() error {
 		return utils.HaveCRDs(testOptions.HubCluster, testOptions.KubeConfig,
@@ -209,19 +182,25 @@ func installMCO() {
 	time.Sleep(60 * time.Second)
 
 	By("Waiting for MCO ready status")
-	Eventually(func() error {
+	mcoTestSucceded := Eventually(func() error {
 		err = utils.CheckMCOComponents(testOptions)
 		if err != nil {
 			testFailed = true
-			utils.PrintAllMCOPodsStatus(testOptions)
 			return err
 		}
+		fmt.Fprintf(GinkgoWriter, "[DEBUG] MCO is installed successfully!\n")
 		testFailed = false
 		return nil
-	}, EventuallyTimeoutMinute*25, EventuallyIntervalSecond*10).Should(Succeed())
+	}, EventuallyTimeoutMinute*25, EventuallyIntervalSecond*20).Should(Succeed())
+	if !mcoTestSucceded {
+		mcoLogs, err := utils.GetPodLogs(testOptions, true, mcoNs, mcoPod, "multicluster-observability-operator", false, 1000)
+		Expect(err).NotTo(HaveOccurred())
+		fmt.Fprintf(GinkgoWriter, "[DEBUG] MCO is installed failed, checking MCO operator logs:\n%s\n", mcoLogs)
+		utils.PrintAllMCOPodsStatus(testOptions)
+	}
 
 	By("Check endpoint-operator and metrics-collector pods are ready")
-	Eventually(func() error {
+	obaTestSucceded := Eventually(func() error {
 		err = utils.CheckAllOBAsEnabled(testOptions)
 		if err != nil {
 			testFailed = true
@@ -229,7 +208,11 @@ func installMCO() {
 		}
 		testFailed = false
 		return nil
-	}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*10).Should(Succeed())
+	}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*20).Should(Succeed())
+	if !obaTestSucceded {
+		fmt.Fprintf(GinkgoWriter, "[DEBUG] Addon failed, checking pods:\n")
+		utils.PrintAllOBAPodsStatus(testOptions)
+	}
 
 	By("Check clustermanagementaddon CR is created")
 	Eventually(func() error {
