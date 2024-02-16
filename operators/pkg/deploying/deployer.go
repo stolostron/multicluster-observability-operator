@@ -13,6 +13,7 @@ import (
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -49,6 +50,7 @@ func NewDeployer(client client.Client) *Deployer {
 		"CustomResourceDefinition": deployer.updateCRD,
 		"Prometheus":               deployer.updatePrometheus,
 		"PrometheusRule":           deployer.updatePrometheusRule,
+		"Ingress":                  deployer.updateIngress,
 	}
 	return deployer
 }
@@ -355,5 +357,28 @@ func (d *Deployer) updatePrometheusRule(desiredObj, runtimeObj *unstructured.Uns
 
 		return d.client.Update(context.TODO(), desiredPrometheusRule)
 	}
+	return nil
+}
+
+func (d *Deployer) updateIngress(desiredObj, runtimeObj *unstructured.Unstructured) error {
+	runtimeJSON, _ := runtimeObj.MarshalJSON()
+	runtimeIngress := &networkingv1.Ingress{}
+	err := json.Unmarshal(runtimeJSON, runtimeIngress)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime Ingress %s", runtimeObj.GetName()))
+	}
+
+	desiredJSON, _ := desiredObj.MarshalJSON()
+	desiredIngress := &networkingv1.Ingress{}
+	err = json.Unmarshal(desiredJSON, desiredIngress)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to Unmarshal Ingress %s", runtimeObj.GetName()))
+	}
+
+	if !apiequality.Semantic.DeepDerivative(desiredIngress.Spec, runtimeIngress.Spec) {
+		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
+		return d.client.Update(context.TODO(), desiredIngress)
+	}
+
 	return nil
 }

@@ -11,6 +11,7 @@ import (
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -469,6 +470,68 @@ func TestDeploy(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "create and update an ingress",
+			createObj: &networkingv1.Ingress{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "networking.k8s.io/v1",
+					Kind:       "Ingress",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-ingress",
+					Namespace: "ns1",
+				},
+				Spec: networkingv1.IngressSpec{
+					IngressClassName: toPtr(t, "test-class"),
+				},
+			},
+			updateObj: &networkingv1.Ingress{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "networking.k8s.io/v1",
+					Kind:       "Ingress",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "test-ingress",
+					Namespace:       "ns1",
+					ResourceVersion: "1",
+					Annotations: map[string]string{
+						"test-annotation": "test-value",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					IngressClassName: toPtr(t, "test-class-changed"),
+					TLS: []networkingv1.IngressTLS{
+						{
+							Hosts:      []string{"test-host"},
+							SecretName: "test",
+						},
+					},
+				},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{
+					Name:      "test-ingress",
+					Namespace: "ns1",
+				}
+				obj := &networkingv1.Ingress{}
+				client.Get(context.Background(), namespacedName, obj)
+
+				if len(obj.Spec.TLS) != 1 {
+					t.Fatalf("fail to update the ingress")
+				}
+
+				if obj.Spec.TLS[0].SecretName != "test" {
+					t.Fatalf("fail to update the ingress")
+				}
+
+				if *obj.Spec.IngressClassName != "test-class-changed" {
+					t.Fatalf("fail to update the ingress")
+				}
+				if obj.Annotations["test-annotation"] != "test-value" {
+					t.Fatalf("fail to update the ingress")
+				}
+			},
+		},
 	}
 
 	scheme := runtime.NewScheme()
@@ -477,6 +540,7 @@ func TestDeploy(t *testing.T) {
 	appsv1.AddToScheme(scheme)
 	rbacv1.AddToScheme(scheme)
 	prometheusv1.AddToScheme(scheme)
+	networkingv1.AddToScheme(scheme)
 	client := fake.NewClientBuilder().WithScheme(scheme).Build()
 
 	deployer := NewDeployer(client)
@@ -486,13 +550,13 @@ func TestDeploy(t *testing.T) {
 			createObjUns, _ := runtime.DefaultUnstructuredConverter.ToUnstructured(c.createObj)
 			err := deployer.Deploy(&unstructured.Unstructured{Object: createObjUns})
 			if err != nil {
-				t.Fatalf("Cannot create the deployment %v", err)
+				t.Fatalf("Cannot create the resource %v", err)
 			}
 			if c.updateObj != nil {
 				updateObjUns, _ := runtime.DefaultUnstructuredConverter.ToUnstructured(c.updateObj)
 				err = deployer.Deploy(&unstructured.Unstructured{Object: updateObjUns})
 				if err != nil {
-					t.Fatalf("Cannot update the deployment %v", err)
+					t.Fatalf("Cannot update the resource %v", err)
 				}
 			}
 
@@ -500,4 +564,9 @@ func TestDeploy(t *testing.T) {
 		})
 	}
 
+}
+
+func toPtr(t *testing.T, s string) *string {
+	t.Helper()
+	return &s
 }
