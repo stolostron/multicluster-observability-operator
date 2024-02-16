@@ -7,13 +7,14 @@ package observabilityendpoint
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"

@@ -7,9 +7,10 @@ package observabilityendpoint
 import (
 	"context"
 	"fmt"
-	operatorutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	"os"
 	"strconv"
+
+	operatorutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
