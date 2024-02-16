@@ -7,7 +7,6 @@ package multiclusterobservability
 import (
 	"bytes"
 	"context"
-
 	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
 	// changes and thus it's not a security issue.
 	// nolint:gosec
@@ -47,7 +46,8 @@ const (
 	endpointsConfigName = "observability-remotewrite-endpoints"
 	endpointsKey        = "endpoints.yaml"
 
-	obsAPIGateway = "observatorium-api"
+	obsAPIGateway            = "observatorium-api"
+	obsCRConfigHashLabelName = "config-hash"
 
 	readOnlyRoleName  = "read-only-metrics"
 	writeOnlyRoleName = "write-only-metrics"
@@ -138,7 +138,7 @@ func GenerateObservatoriumCR(
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
-	labels["config-hash"] = hash
+	labels[obsCRConfigHashLabelName] = hash
 
 	observatoriumCR := &obsv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
@@ -182,7 +182,7 @@ func GenerateObservatoriumCR(
 	newSpec := observatoriumCR.Spec
 	oldSpecBytes, _ := yaml.Marshal(oldSpec)
 	newSpecBytes, _ := yaml.Marshal(newSpec)
-	if bytes.Equal(newSpecBytes, oldSpecBytes) && hash == observatoriumCRFound.Labels["config-hash"] {
+	if bytes.Equal(newSpecBytes, oldSpecBytes) && hash == observatoriumCRFound.Labels[obsCRConfigHashLabelName] {
 		return nil, nil
 	}
 
@@ -199,7 +199,7 @@ func GenerateObservatoriumCR(
 
 	newObj := observatoriumCRFound.DeepCopy()
 	newObj.Spec = newSpec
-	newObj.Labels["config-hash"] = observatoriumCR.Labels["config-hash"]
+	newObj.Labels[obsCRConfigHashLabelName] = observatoriumCR.Labels[obsCRConfigHashLabelName]
 	err = cl.Update(context.TODO(), newObj)
 	if err != nil {
 		log.Error(err, "Failed to update observatorium CR %s", "name", observatoriumCR.Name)
