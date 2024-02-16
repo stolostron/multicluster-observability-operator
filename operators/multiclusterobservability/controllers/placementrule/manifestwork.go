@@ -6,10 +6,16 @@ package placementrule
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	certificatesv1 "k8s.io/api/certificates/v1"
 	"os"
 	"strconv"
 	"strings"
@@ -29,6 +35,7 @@ import (
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
@@ -42,6 +49,7 @@ const (
 	workPostponeDeleteAnnoKey = "open-cluster-management/postpone-delete"
 	hubEndpointOperatorName   = "endpoint-observability-operator"
 	hubMetricsCollectorName   = "metrics-collector-deployment"
+	mtlsCertName              = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
 )
 
 // intermediate resources for the manifest work.
@@ -458,7 +466,52 @@ func createManifestWorks(
 	return err
 }
 
+func createCSR() []byte {
+	keys, _ := rsa.GenerateKey(rand.Reader, 2048)
+
+	var csrTemplate = x509.CertificateRequest{
+		Subject: pkix.Name{
+			Country: []string{"US"},
+		},
+		SignatureAlgorithm: x509.SHA512WithRSA,
+	}
+	csrCertificate, _ := x509.CreateCertificateRequest(rand.Reader, &csrTemplate, keys)
+	csr := pem.EncodeToMemory(&pem.Block{
+		Type: "CERTIFICATE REQUEST", Bytes: csrCertificate,
+	})
+	return csr
+}
+
 func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
+
+	//create csr for hub metrics collection
+	csr := &certificatesv1.CertificateSigningRequest{
+		Spec: certificatesv1.CertificateSigningRequestSpec{
+			Request: createCSR(),
+			Usages:  []certificatesv1.KeyUsage{certificatesv1.UsageCertSign, certificatesv1.UsageClientAuth},
+		},
+	}
+	signedClientCert := certificates.Sign(csr)
+	if signedClientCert == nil {
+		log.Error(nil, "Failed to sign CSR")
+		return errors.New("Failed to sign CSR")
+	} else {
+		//Create a secret
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      mtlsCertName,
+				Namespace: config.GetDefaultNamespace(),
+			},
+			Data: map[string][]byte{
+				"tls.crt": signedClientCert,
+			},
+		}
+		err := c.Create(context.TODO(), secret)
+		if err != nil && !k8serrors.IsAlreadyExists(err) {
+			log.Error(err, "Failed to create secret", "name", "hub-metrics-collection-client-certs")
+			return err
+		}
+	}
 	//Make a deep copy of all the manifests since there are some global resources that can be updated due to this function
 	manifestsCopy := make([]workv1.Manifest, len(manifests))
 	for i, manifest := range manifests {

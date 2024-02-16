@@ -39,7 +39,7 @@ func getClient(s *runtime.Scheme) (client.Client, error) {
 	return c, nil
 }
 
-func sign(csr *certificatesv1.CertificateSigningRequest) []byte {
+func Sign(csr *certificatesv1.CertificateSigningRequest) []byte {
 	c, err := getClient(nil)
 	if err != nil {
 		log.Error(err, err.Error())
