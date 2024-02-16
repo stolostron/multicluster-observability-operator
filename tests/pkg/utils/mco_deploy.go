@@ -181,14 +181,20 @@ func LogPodsDebugInfo(hubClient kubernetes.Interface, pods []corev1.Pod) {
 	}
 
 	ns := pods[0].Namespace
+	podsNames := make([]string, 0, len(pods))
+	for _, pod := range pods {
+		podsNames = append(podsNames, pod.Name)
+	}
 
-	klog.V(1).Infof("Get not running pods debug info in namespace %q", ns)
+	klog.V(1).Infof("Checking pods %v in namespace %q", podsNames, ns)
+	notRunningPodsCount := 0
 	for _, pod := range pods {
 		if pod.Status.Phase == corev1.PodRunning {
 			continue
 		}
 
 		// only print not ready pod status
+		notRunningPodsCount++
 		klog.V(1).Infof("Pod %q is not ready with phase %q and status: %s\n",
 			pod.Name,
 			pod.Status.Phase,
@@ -201,9 +207,12 @@ func LogPodsDebugInfo(hubClient kubernetes.Interface, pods []corev1.Pod) {
 		if err != nil {
 			klog.Errorf("Failed to get events for pod %s: %s", pod.Name, err.Error())
 		}
+
+		podEvents := make([]string, 0, len(events.Items))
 		for _, event := range events.Items {
-			klog.V(1).Infof("Pod %q event: %s", pod.Name, event.Message)
+			podEvents = append(podEvents, fmt.Sprintf("%s %s (%d): %s", event.Reason, event.LastTimestamp, event.Count, event.Message))
 		}
+		klog.V(1).Infof("Pod %q events: \n%s", pod.Name, strings.Join(podEvents, "\n"))
 
 		// print pod containers logs
 		for _, container := range pod.Spec.Containers {
@@ -222,9 +231,13 @@ func LogPodsDebugInfo(hubClient kubernetes.Interface, pods []corev1.Pod) {
 				continue
 			}
 
-			klog.V(1).Infof("Pod %q container %q logs: %s", pod.Name, container.Name, string(logs))
+			delimitedLogs := fmt.Sprintf("========== START OF LOGS ==========\n%s\n========== END OF LOGS ==========", string(logs))
+			klog.V(1).Infof("Pod %q container %q logs: \n%s", pod.Name, container.Name, delimitedLogs)
 		}
+	}
 
+	if notRunningPodsCount == 0 {
+		klog.V(1).Infof("All pods are running in namespace %q", ns)
 	}
 }
 

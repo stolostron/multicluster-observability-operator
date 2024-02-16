@@ -25,11 +25,13 @@ func installMCO() {
 		return
 	}
 
+	klog.V(5).Infof("Create kubeclient for url %s using kubeconfig path %s\n", testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig)
 	hubClient := utils.NewKubeClient(
 		testOptions.HubCluster.ClusterServerURL,
 		testOptions.KubeConfig,
 		testOptions.HubCluster.KubeContext)
 
+	klog.V(5).Infof("Create kubeclient dynamic for url %s using kubeconfig path %s\n", testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig)
 	dynClient := utils.NewKubeClientDynamic(
 		testOptions.HubCluster.ClusterServerURL,
 		testOptions.KubeConfig,
@@ -186,7 +188,7 @@ func installMCO() {
 				testOptions.HubCluster.KubeContext,
 				yamlB,
 			)
-		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
 
 	} else {
 		By("Apply MCO instance of v1beta2")
@@ -201,7 +203,7 @@ func installMCO() {
 				testOptions.HubCluster.KubeContext,
 				yamlB,
 			)
-		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
 	}
 	// wait for pod restarting
 	time.Sleep(60 * time.Second)
@@ -239,7 +241,7 @@ func installMCO() {
 		}
 		testFailed = false
 		return nil
-	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
 
 	BearerToken, err = utils.FetchBearerToken(testOptions)
 	if err != nil {
