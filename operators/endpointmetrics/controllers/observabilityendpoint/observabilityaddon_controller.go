@@ -42,13 +42,14 @@ var (
 )
 
 const (
-	obAddonName       = "observability-addon"
-	mcoCRName         = "observability"
-	ownerLabelKey     = "owner"
-	ownerLabelValue   = "observabilityaddon"
-	obsAddonFinalizer = "observability.open-cluster-management.io/addon-cleanup"
-	promSvcName       = "prometheus-k8s"
-	promNamespace     = "openshift-monitoring"
+	obAddonName                   = "observability-addon"
+	mcoCRName                     = "observability"
+	ownerLabelKey                 = "owner"
+	ownerLabelValue               = "observabilityaddon"
+	obsAddonFinalizer             = "observability.open-cluster-management.io/addon-cleanup"
+	promSvcName                   = "prometheus-k8s"
+	promNamespace                 = "openshift-monitoring"
+	hubMetricsCollectionNamespace = "open-cluster-management-observability"
 )
 
 var (
@@ -359,6 +360,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 	if os.Getenv("NAMESPACE") != "" {
 		namespace = os.Getenv("NAMESPACE")
 	}
+	log.Info("Coleen endpoint reconciler namespace", "namespace", namespace)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(
 			&oav1beta1.ObservabilityAddon{},

@@ -29,7 +29,9 @@ func getPred(name string, namespace string,
 	}
 	if create {
 		createFunc = func(e event.CreateEvent) bool {
-			if e.Object.GetName() == name && (namespace == "" || e.Object.GetNamespace() == namespace) {
+			if e.Object.GetName() == name && (namespace == "" || e.Object.GetNamespace() == namespace ||
+				// for mertics collection deployment in hub cluster
+				e.Object.GetNamespace() == hubMetricsCollectionNamespace) {
 				return true
 			}
 			return false
@@ -37,7 +39,10 @@ func getPred(name string, namespace string,
 	}
 	if update {
 		updateFunc = func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == name && (namespace == "" || e.ObjectNew.GetNamespace() == namespace) &&
+			if e.ObjectNew.GetName() == name &&
+				(namespace == "" || e.ObjectNew.GetNamespace() == namespace ||
+					// for mertics collection deployment in hub cluster
+					e.ObjectNew.GetNamespace() == hubMetricsCollectionNamespace) &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				// also check objectNew string in case Kind is empty
 				if strings.HasPrefix(fmt.Sprint(e.ObjectNew), "&Deployment") ||
