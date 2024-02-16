@@ -94,8 +94,10 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling PlacementRule")
 
-	// TODO
-
+	// ACM 8509: Special case for hub/local cluster metrics collection
+	// We want to ensure that the local-cluster is always in the managedClusterList
+	// This is a workaround for the fact that the local-cluster is not in the managedClusterList
+	// when hubSelfManagement is disabled
 	if _, ok := managedClusterList["local-cluster"]; ok {
 		log.Info("Coleen local-cluster is in the managedClusterList")
 		//Remove from list
@@ -115,20 +117,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		installMetricsWithoutAddon = true
 		updateManagedClusterList(obj)
 	}
-	//else if ok {
-	//	log.Info("Coleen local-cluster is in the managedClusterList")
-	//	obj := &clusterv1.ManagedCluster{
-	//		ObjectMeta: metav1.ObjectMeta{
-	//			Name:      "local-cluster",
-	//			Namespace: "open-cluster-management-observability",
-	//			Labels: map[string]string{
-	//				"openshiftVersion": "mimical",
-	//			},
-	//		},
-	//	}
-	//	installMetricsWithoutAddon = true
-	//	updateManagedClusterList(obj)
-	//}
 
 	if config.GetMonitoringCRName() == "" {
 		reqLogger.Info("multicluster observability resource is not available")
@@ -229,14 +217,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		reqLogger.Error(err, "Failed to list observabilityaddon resource")
 		return ctrl.Result{}, err
 	}
-	if installMetricsWithoutAddon {
-		obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "local-cluster",
-				Namespace: "local-cluster",
-			},
-		})
-	}
+	//if installMetricsWithoutAddon {
+	//	obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
+	//		ObjectMeta: metav1.ObjectMeta{
+	//			Name:      "local-cluster",
+	//			Namespace: "local-cluster",
+	//		},
+	//	})
+	//}
 	workList := &workv1.ManifestWorkList{}
 	err = r.Client.List(context.TODO(), workList, opts)
 	if err != nil {
@@ -259,7 +247,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 	for _, work := range workList.Items {
 		if work.Name != work.Namespace+workNameSuffix {
-			reqLogger.Info("Coleen To delete invalid manifestwork", "name", work.Name, "namespace", work.Namespace)
+			reqLogger.Info("To delete invalid manifestwork", "name", work.Name, "namespace", work.Namespace)
 			err = deleteManifestWork(r.Client, work.Name, work.Namespace)
 			if err != nil {
 				return ctrl.Result{}, err
@@ -272,7 +260,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				return ctrl.Result{}, err
 			}
 		} else {
-			log.Info("Coleen latestClusters staleaddon remove", "namespace", work.Namespace, "name", work.Name)
 			staleAddons = commonutil.Remove(staleAddons, work.Namespace)
 		}
 	}
@@ -425,7 +412,7 @@ func createAllRelatedRes(
 					managedCluster, managedCluster,
 					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, true)
 			} else if openshiftVersion == "mimical" {
-				// create copy of hub-info-secret for local-cluster since hubInfo is global variable
+				// Create copy of hub-info-secret for local-cluster since hubInfo is global variable
 				hubInfoSecretCopy := hubInfoSecret.DeepCopy()
 				log.Info("Coleen ManagedCluster mimical", "cluster_name", managedCluster)
 				err = createManagedClusterRes(c, mco,

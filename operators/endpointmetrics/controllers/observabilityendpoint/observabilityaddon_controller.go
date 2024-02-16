@@ -92,7 +92,8 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 	hubObsAddon := &oav1beta1.ObservabilityAddon{}
 	obsAddon := &oav1beta1.ObservabilityAddon{}
-
+	// ACM 8509: Special case for hub/local cluster metrics collection
+	// We do not have an ObservabilityAddon instance in the local cluster so skipping the below block
 	if !hubMetricsCollector {
 
 		err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
@@ -179,6 +180,8 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		if err != nil {
 			if errors.IsNotFound(err) {
 				log.Error(err, "OCP prometheus service does not exist")
+				// ACM 8509: Special case for hub/local cluster metrics collection
+				// We do not report status for hub endpoint operator
 				if !hubMetricsCollector {
 					util.ReportStatus(ctx, r.Client, obsAddon, "NotSupported")
 				}

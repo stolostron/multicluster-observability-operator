@@ -326,9 +326,6 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 				Name:  "STANDALONE",
 				Value: "true",
 			})
-	}
-
-	if hubMetricsCollector {
 		//Since there is no obsAddOn for hub-metrics-collector, we need to set the resources here
 		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = corev1.ResourceRequirements{
 			Limits: corev1.ResourceList{

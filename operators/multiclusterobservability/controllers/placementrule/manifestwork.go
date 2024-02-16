@@ -445,8 +445,9 @@ func createManifestWorks(
 	work.Spec.Workload.Manifests = manifests
 
 	if clusterName != clusterNamespace {
-		log.Info("Coleen creating manifestwork in managed cluster and name", "cluster", clusterName)
+		// ACM 8509: Special case for hub/local cluster metrics collection
 		// install the endpoint operator into open-cluster-management-observability namespace for the hub cluster
+		log.Info("Creating resource for hub metrics collection", "cluster", clusterName)
 		err = createUpdateResourcesForHubMetricsCollection(c, manifests)
 	} else {
 		err = createManifestwork(c, work)
@@ -456,14 +457,17 @@ func createManifestWorks(
 }
 
 func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
-	for _, manifest := range manifests {
+	//Make a deep copy of all the manifests since there are some global resources that can be updated due to this function
+	manifestsCopy := make([]workv1.Manifest, len(manifests))
+	for i, manifest := range manifests {
+		obj := manifest.RawExtension.Object.DeepCopyObject()
+		manifestsCopy[i] = workv1.Manifest{RawExtension: runtime.RawExtension{Object: obj}}
+	}
+	for _, manifest := range manifestsCopy {
 		obj := manifest.RawExtension.Object.(client.Object)
 		log.Info("Coleen updating object in managed cluster and name", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
-		if obj.GetObjectKind().GroupVersionKind().Kind == "Namespace" {
-			log.Info("Skipping namespace creation in managed cluster", "name", obj.GetName())
-			continue
-		}
-		if obj.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
+		if obj.GetObjectKind().GroupVersionKind().Kind == "Namespace" || obj.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
+			// We do not want to create ObservabilityAddon and namespace open-cluster-management-add-on observability for hub cluster
 			continue
 		}
 		log.Info("Coleen updating object in managed cluster and name", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
