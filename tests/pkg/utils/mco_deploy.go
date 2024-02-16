@@ -172,8 +172,18 @@ func PrintAllMCOPodsStatus(opt TestOptions) {
 		klog.V(1).Infof("mch-image-manifest configmap: %v", mchImageManifestCM)
 	}
 
-	klog.V(1).Infof("Get %d pods in %q namespace", len(podList), MCO_NAMESPACE)
-	for _, pod := range podList {
+	LogPodsDebugInfo(hubClient, podList)
+}
+
+func LogPodsDebugInfo(hubClient kubernetes.Interface, pods []corev1.Pod) {
+	if len(pods) == 0 {
+		return
+	}
+
+	ns := pods[0].Namespace
+
+	klog.V(1).Infof("Get not running pods debug info in namespace %q", ns)
+	for _, pod := range pods {
 		if pod.Status.Phase == corev1.PodRunning {
 			continue
 		}
@@ -185,7 +195,7 @@ func PrintAllMCOPodsStatus(opt TestOptions) {
 			pod.Status.String())
 
 		// print pod events
-		events, err := hubClient.CoreV1().Events(MCO_NAMESPACE).List(context.TODO(), metav1.ListOptions{
+		events, err := hubClient.CoreV1().Events(ns).List(context.TODO(), metav1.ListOptions{
 			FieldSelector: "involvedObject.name=" + pod.Name,
 		})
 		if err != nil {
@@ -197,7 +207,7 @@ func PrintAllMCOPodsStatus(opt TestOptions) {
 
 		// print pod containers logs
 		for _, container := range pod.Spec.Containers {
-			logsRes := hubClient.CoreV1().Pods(MCO_NAMESPACE).GetLogs(pod.Name, &corev1.PodLogOptions{
+			logsRes := hubClient.CoreV1().Pods(ns).GetLogs(pod.Name, &corev1.PodLogOptions{
 				Container: container.Name,
 			}).Do(context.Background())
 
@@ -282,29 +292,16 @@ func GetAllOBAPods(opt TestOptions) ([]corev1.Pod, error) {
 func PrintAllOBAPodsStatus(opt TestOptions) {
 	podList, err := GetAllOBAPods(opt)
 	if err != nil {
-		klog.Errorf("Failed to get all OBA pods")
-	}
-
-	if len(podList) == 0 {
-		klog.V(1).Infof("Failed to get pod in <%s> namespace from managedcluster", MCO_ADDON_NAMESPACE)
+		klog.Errorf("Failed to get all OBA pods: %v", err)
+		return
 	}
 
 	klog.V(1).Infof("Get <%v> pods in <%s> namespace from managedcluster", len(podList), MCO_ADDON_NAMESPACE)
-
-	for _, pod := range podList {
-		isReady := false
-		if pod.Status.Phase == corev1.PodRunning {
-			isReady = true
-		}
-
-		// only print not ready pod status
-		if !isReady {
-			klog.V(1).Infof("Pod <%s> is not <Ready> on <%s> status due to %#v\n",
-				pod.Name,
-				pod.Status.Phase,
-				pod.Status)
-		}
+	if len(podList) == 0 {
+		return
 	}
+
+	LogPodsDebugInfo(getKubeClient(opt, false), podList)
 }
 
 func CheckAllPodNodeSelector(opt TestOptions, nodeSelector map[string]interface{}) error {
