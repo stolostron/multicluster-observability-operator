@@ -7,7 +7,6 @@ package multiclusterobservability
 import (
 	"bytes"
 	"context"
-
 	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
 	// changes and thus it's not a security issue.
 	// nolint:gosec
@@ -178,11 +177,13 @@ func GenerateObservatoriumCR(
 		return &ctrl.Result{}, err
 	}
 
+	foundHash := observatoriumCRFound.Labels["config-hash"]
+
 	oldSpec := observatoriumCRFound.Spec
 	newSpec := observatoriumCR.Spec
 	oldSpecBytes, _ := yaml.Marshal(oldSpec)
 	newSpecBytes, _ := yaml.Marshal(newSpec)
-	if bytes.Equal(newSpecBytes, oldSpecBytes) {
+	if bytes.Equal(newSpecBytes, oldSpecBytes) && hash == foundHash {
 		return nil, nil
 	}
 
