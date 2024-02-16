@@ -178,13 +178,11 @@ func GenerateObservatoriumCR(
 		return &ctrl.Result{}, err
 	}
 
-	foundHash := observatoriumCRFound.Labels["config-hash"]
-
 	oldSpec := observatoriumCRFound.Spec
 	newSpec := observatoriumCR.Spec
 	oldSpecBytes, _ := yaml.Marshal(oldSpec)
 	newSpecBytes, _ := yaml.Marshal(newSpec)
-	if bytes.Equal(newSpecBytes, oldSpecBytes) && hash == foundHash {
+	if bytes.Equal(newSpecBytes, oldSpecBytes) && hash == observatoriumCRFound.Labels["config-hash"] {
 		return nil, nil
 	}
 
@@ -201,6 +199,7 @@ func GenerateObservatoriumCR(
 
 	newObj := observatoriumCRFound.DeepCopy()
 	newObj.Spec = newSpec
+	newObj.Labels["config-hash"] = observatoriumCR.Labels["config-hash"]
 	err = cl.Update(context.TODO(), newObj)
 	if err != nil {
 		log.Error(err, "Failed to update observatorium CR %s", "name", observatoriumCR.Name)
