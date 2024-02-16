@@ -212,7 +212,8 @@ func LogPodsDebugInfo(hubClient kubernetes.Interface, pods []corev1.Pod) {
 		for _, event := range events.Items {
 			podEvents = append(podEvents, fmt.Sprintf("%s %s (%d): %s", event.Reason, event.LastTimestamp, event.Count, event.Message))
 		}
-		klog.V(1).Infof("Pod %q events: \n%s", pod.Name, strings.Join(podEvents, "\n"))
+		formattedEvents := ">>>>>>>>>> pod events >>>>>>>>>>\n" + strings.Join(podEvents, "\n") + "\n<<<<<<<<<< pod events <<<<<<<<<<"
+		klog.V(1).Infof("Pod %q events: \n%s", pod.Name, formattedEvents)
 
 		// print pod containers logs
 		for _, container := range pod.Spec.Containers {
@@ -231,7 +232,7 @@ func LogPodsDebugInfo(hubClient kubernetes.Interface, pods []corev1.Pod) {
 				continue
 			}
 
-			delimitedLogs := fmt.Sprintf("========== START OF LOGS ==========\n%s\n========== END OF LOGS ==========", string(logs))
+			delimitedLogs := fmt.Sprintf(">>>>>>>>>> container logs >>>>>>>>>>\n%s<<<<<<<<<< container logs <<<<<<<<<<", string(logs))
 			klog.V(1).Infof("Pod %q container %q logs: \n%s", pod.Name, container.Name, delimitedLogs)
 		}
 	}

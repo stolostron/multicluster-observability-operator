@@ -208,7 +208,6 @@ func LoadConfig(url, kubeconfig, ctx string) (*rest.Config, error) {
 	if kubeconfig == "" {
 		kubeconfig = os.Getenv("KUBECONFIG")
 	}
-	// klog.V(5).Infof("Kubeconfig path %s\n", kubeconfig)
 	// If we have an explicit indication of where the kubernetes config lives, read that.
 	if kubeconfig != "" {
 		if ctx == "" {

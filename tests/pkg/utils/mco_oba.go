@@ -32,11 +32,13 @@ func CheckOBAStatus(opt TestOptions, namespace, status string) error {
 	if err != nil {
 		return err
 	}
-	if oba.Object["status"] != nil && strings.Contains(fmt.Sprint(oba.Object["status"]), status) {
+
+	obaStatus := fmt.Sprint(oba.Object["status"])
+	if strings.Contains(obaStatus, status) {
 		return nil
 	} else {
 		PrintAllOBAPodsStatus(opt)
-		return fmt.Errorf("observability-addon is not ready for managed cluster %s", namespace)
+		return fmt.Errorf("observability-addon is not ready for managed cluster %s with status: %s", namespace, obaStatus)
 	}
 }
 
@@ -77,24 +79,14 @@ func CheckAllOBAsEnabled(opt TestOptions) error {
 	if err != nil {
 		return err
 	}
-	klog.V(1).Infof("Have the following managedclusters: <%v>", clusters)
+	klog.V(1).Infof("Check OBA status for managedclusters: %v", clusters)
 
 	for _, cluster := range clusters {
-		klog.V(1).Infof("Check OBA status for cluster <%v>", cluster)
 		err = CheckOBAStatus(opt, cluster, OBMAddonEnabledMessage)
 		if err != nil {
+			klog.V(1).Infof("Error checking OBA status for cluster %q: %v", cluster, err)
 			return err
 		}
-
-		// klog.V(1).Infof("Check managedcluster addon status for cluster <%v>", cluster)
-		// // NOTE: Managed cluster add-on status gets set to "Cluster metrics sent successfully"
-		// // for a very brief period of time, but it quickly gets overwritten with
-		// // "observability-controller add-on is available" when managed cluster addon's lease gets updated.
-		// // Updating the test case to only check for the later more persistent message.
-		// err = CheckManagedClusterAddonsStatus(opt, cluster, ManagedClusterAddOnEnabledMessage)
-		// if err != nil {
-		// 	return err
-		// }
 	}
 	return nil
 }
