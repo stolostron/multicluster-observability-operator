@@ -358,6 +358,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 	if os.Getenv("NAMESPACE") != "" {
 		namespace = os.Getenv("NAMESPACE")
 	}
+	log.Info("Coleen endpoint reconciler namespace", "namespace", namespace)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(
 			&oav1beta1.ObservabilityAddon{},
