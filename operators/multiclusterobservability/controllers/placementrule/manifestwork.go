@@ -466,7 +466,7 @@ func createManifestWorks(
 	return err
 }
 
-func createCSR() []byte {
+func createCSR() ([]byte, []byte) {
 	keys, _ := rsa.GenerateKey(rand.Reader, 2048)
 
 	var csrTemplate = x509.CertificateRequest{
@@ -479,15 +479,21 @@ func createCSR() []byte {
 	csr := pem.EncodeToMemory(&pem.Block{
 		Type: "CERTIFICATE REQUEST", Bytes: csrCertificate,
 	})
-	return csr
+
+	privateKey := pem.EncodeToMemory(&pem.Block{
+		Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(keys),
+	})
+
+	return csr, privateKey
 }
 
 func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
 
 	//create csr for hub metrics collection
+	csrBytes, privateKeyBytes := createCSR()
 	csr := &certificatesv1.CertificateSigningRequest{
 		Spec: certificatesv1.CertificateSigningRequestSpec{
-			Request: createCSR(),
+			Request: csrBytes,
 			Usages:  []certificatesv1.KeyUsage{certificatesv1.UsageCertSign, certificatesv1.UsageClientAuth},
 		},
 	}
@@ -504,6 +510,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			},
 			Data: map[string][]byte{
 				"tls.crt": signedClientCert,
+				"tls.key": privateKeyBytes,
 			},
 		}
 		err := c.Create(context.TODO(), secret)
