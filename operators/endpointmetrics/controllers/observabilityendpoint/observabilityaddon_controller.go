@@ -78,7 +78,6 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	log := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	log.Info("Reconciling")
 
-	// Fetch the ObservabilityAddon instance in hub cluster
 	log.Info("Coleen hubnamespace", "hubNamespace", hubNamespace, "namespace", namespace, "hubMetricsCollector", hubMetricsCollector)
 	isHypershift := true
 	if os.Getenv("UNIT_TEST") != "true" {
@@ -94,10 +93,11 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 	hubObsAddon := &oav1beta1.ObservabilityAddon{}
 	obsAddon := &oav1beta1.ObservabilityAddon{}
+
 	// ACM 8509: Special case for hub/local cluster metrics collection
 	// We do not have an ObservabilityAddon instance in the local cluster so skipping the below block
 	if !hubMetricsCollector {
-
+		// Fetch the ObservabilityAddon instance in hub cluster
 		err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
 		if err != nil {
 			hubClient, obsAddon, err := util.RenewAndRetry(ctx)
@@ -135,6 +135,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, nil
 		}
 	}
+
 	// retrieve the hubInfo
 	hubSecret := &corev1.Secret{}
 	err := r.Client.Get(
