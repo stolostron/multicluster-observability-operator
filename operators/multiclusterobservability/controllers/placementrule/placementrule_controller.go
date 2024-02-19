@@ -242,7 +242,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	for _, addon := range obsAddonList.Items {
 		latestClusters = append(latestClusters, addon.Namespace)
 		staleAddons = append(staleAddons, addon.Namespace)
-
 	}
 	for _, work := range workList.Items {
 		if work.Name != work.Namespace+workNameSuffix {
@@ -280,7 +279,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// delete stale addons if manifestwork does not exist
 	for _, addon := range staleAddons {
-		log.Info("To delete stale observabilityAddon", "namespace", addon)
 		err = deleteStaleObsAddon(r.Client, addon, true)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -305,7 +303,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		if len(workList.Items) == 0 {
 			err = deleteGlobalResource(r.Client)
 		}
-
 	}
 
 	return ctrl.Result{}, err
@@ -361,7 +358,6 @@ func createAllRelatedRes(
 
 	currentClusters := []string{}
 	for _, ep := range obsAddonList.Items {
-		log.Info("Coleen obsAddonList.Items", "namespace", ep.Namespace, "name", ep.Name)
 		currentClusters = append(currentClusters, ep.Namespace)
 	}
 
@@ -379,12 +375,11 @@ func createAllRelatedRes(
 	// regenerate the hubinfo secret if empty
 	if hubInfoSecret == nil {
 		var err error
-		log.Info("Coleen generate the hubinfo secret for spokenamespace", "namespace", spokeNameSpace)
 		if hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, CRDMap[config.IngressControllerCRD]); err != nil {
 			return err
 		}
 	}
-	log.Info("Coleen local-cluster is in the managedClusterList")
+
 	failedCreateManagedClusterRes := false
 	managedClusterListMutex.RLock()
 	for managedCluster, openshiftVersion := range managedClusterList {
@@ -401,7 +396,6 @@ func createAllRelatedRes(
 				"openshiftVersion",
 				openshiftVersion,
 			)
-			log.Info("Coleen should be called all the time since managed cluster is in the list")
 			if openshiftVersion == "3" {
 				err = createManagedClusterRes(c, mco,
 					managedCluster, managedCluster,
@@ -413,7 +407,6 @@ func createAllRelatedRes(
 			} else if openshiftVersion == "mimical" {
 				// Create copy of hub-info-secret for local-cluster since hubInfo is global variable
 				hubInfoSecretCopy := hubInfoSecret.DeepCopy()
-				log.Info("Coleen ManagedCluster mimical", "cluster_name", managedCluster)
 				err = createManagedClusterRes(c, mco,
 					managedCluster, config.GetDefaultNamespace(),
 					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecretCopy, false)
@@ -501,7 +494,6 @@ func createManagedClusterRes(
 		log.Error(err, "Failed to create observabilityaddon")
 		return err
 	}
-	log.Info("Coleen create managed cluster resource", "namespace", namespace)
 
 	err = createRolebindings(c, namespace, name)
 	if err != nil {
