@@ -7,6 +7,8 @@ package placementrule
 import (
 	"reflect"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+
 	appsv1 "k8s.io/api/apps/v1"
 
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
@@ -111,14 +113,15 @@ func getHubEndpointOperatorPredicates() predicate.Funcs {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == hubEndpointOperatorName && !reflect.DeepEqual(e.ObjectNew.(*appsv1.Deployment).Spec.Template.Spec,
-				e.ObjectOld.(*appsv1.Deployment).Spec.Template.Spec) {
+			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() && e.ObjectNew.GetName() == hubEndpointOperatorName &&
+				!reflect.DeepEqual(e.ObjectNew.(*appsv1.Deployment).Spec.Template.Spec,
+					e.ObjectOld.(*appsv1.Deployment).Spec.Template.Spec) {
 				return true
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetName() == hubEndpointOperatorName {
+			if e.Object.GetNamespace() == config.GetDefaultNamespace() && e.Object.GetName() == hubEndpointOperatorName {
 				return true
 			}
 			return false

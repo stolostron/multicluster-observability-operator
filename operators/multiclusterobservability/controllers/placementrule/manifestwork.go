@@ -481,6 +481,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		err := c.Create(context.TODO(), obj)
 		if err != nil && !k8serrors.IsAlreadyExists(err) {
 			log.Error(err, "Failed to create resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
+			return err
 		}
 	}
 
