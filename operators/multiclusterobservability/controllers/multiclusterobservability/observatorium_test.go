@@ -235,7 +235,6 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 	if hash != observatoriumEmptyConfigHash {
 		t.Errorf("config-hash label contains unexpected hash. Want: '%s', got '%s'", observatoriumEmptyConfigHash, hash)
 	}
-	createdSpecBytes, _ := yaml.Marshal(createdObservatoriumCR.Spec)
 
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
@@ -258,12 +257,13 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 	if !updatedHashFound {
 		t.Errorf("config-hash label not found in Observatorium CR")
 	}
-	updatedSpecBytes, _ := yaml.Marshal(updatedObservatorium.Spec)
-
 	const expectedConfigHash = "06869d277adcef9eb22f81d61c964393"
 	if updatedHash != expectedConfigHash {
 		t.Errorf("config-hash label contains unexpected hash. Want: '%s', got '%s'", expectedConfigHash, hash)
 	}
+
+	createdSpecBytes, _ := yaml.Marshal(createdObservatoriumCR.Spec)
+	updatedSpecBytes, _ := yaml.Marshal(updatedObservatorium.Spec)
 
 	if res := bytes.Compare(updatedSpecBytes, createdSpecBytes); res != 0 {
 		t.Errorf("%v should be equal to %v", string(createdSpecBytes), string(updatedSpecBytes))
@@ -352,22 +352,17 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	}
 
 	// Check if this Observatorium CR already exists
-	observatoriumCRFound := &observatoriumv1alpha1.Observatorium{}
+	createdObservatoriumCR := &observatoriumv1alpha1.Observatorium{}
 	cl.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      mcoconfig.GetDefaultCRName(),
 			Namespace: namespace,
 		},
-		observatoriumCRFound,
+		createdObservatoriumCR,
 	)
 
-	oldSpec := observatoriumCRFound.Spec
-	newSpec, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
-	oldSpecBytes, _ := yaml.Marshal(oldSpec)
-	newSpecBytes, _ := yaml.Marshal(newSpec)
-
-	hash, configHashFound := observatoriumCRFound.Labels["config-hash"]
+	hash, configHashFound := createdObservatoriumCR.Labels["config-hash"]
 	if !configHashFound {
 		t.Errorf("config-hash label not found in Observatorium CR")
 	}
@@ -375,6 +370,10 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	if hash != expectedConfigHash {
 		t.Errorf("config-hash label contains unexpected hash. Want: '%s', got '%s'", expectedConfigHash, hash)
 	}
+
+	oldSpecBytes, _ := yaml.Marshal(createdObservatoriumCR.Spec)
+	newSpec, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+	newSpecBytes, _ := yaml.Marshal(newSpec)
 
 	if res := bytes.Compare(newSpecBytes, oldSpecBytes); res != 0 {
 		t.Errorf("%v should be equal to %v", string(oldSpecBytes), string(newSpecBytes))
