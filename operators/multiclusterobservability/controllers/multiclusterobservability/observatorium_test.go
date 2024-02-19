@@ -228,7 +228,7 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 	}
 
 	// Create a fake client to mock API calls.
-	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	cl := fake.NewClientBuilder().WithRuntimeObjects(append(objs, createdObservatoriumCR)...).Build()
 	mcoconfig.SetOperandNames(cl)
 
 	_, err = GenerateObservatoriumCR(cl, s, mco)
