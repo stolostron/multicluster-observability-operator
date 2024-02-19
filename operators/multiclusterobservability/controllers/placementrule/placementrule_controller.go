@@ -96,12 +96,10 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// ACM 8509: Special case for hub/local cluster metrics collection
 	// We want to ensure that the local-cluster is always in the managedClusterList
-	// This is a workaround for the fact that the local-cluster is not in the managedClusterList
+	// In the case when hubSelfManagement is enabled, we will delete
 	// when hubSelfManagement is disabled
-	if _, ok := managedClusterList["local-cluster"]; ok {
-		//Remove from list
-		delete(managedClusterList, "local-cluster")
-	}
+
+	delete(managedClusterList, "local-cluster")
 	if _, ok := managedClusterList["local-cluster"]; !ok {
 		obj := &clusterv1.ManagedCluster{
 			ObjectMeta: metav1.ObjectMeta{
@@ -207,6 +205,11 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		if err := deleteAllObsAddons(r.Client, obsAddonList); err != nil {
 			return ctrl.Result{}, err
 		}
+		// Delete Hub endpoint-obseravbility-operator deployment when MCO is deleted
+		if err = deleteHubEndpointMetricsOperator(r.Client); err != nil {
+			return ctrl.Result{}, err
+		}
+
 	}
 
 	obsAddonList = &mcov1beta1.ObservabilityAddonList{}
@@ -303,6 +306,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		if len(workList.Items) == 0 {
 			err = deleteGlobalResource(r.Client)
 		}
+
 	}
 
 	return ctrl.Result{}, err

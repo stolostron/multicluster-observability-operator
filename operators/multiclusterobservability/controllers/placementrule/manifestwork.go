@@ -488,6 +488,22 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 	return nil
 }
 
+// Detele endpoint operator resources for hub metrics collection
+func deleteHubEndpointMetricsOperator(c client.Client) error {
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hubEndpointOperatorName,
+			Namespace: config.GetDefaultNamespace(),
+		},
+	}
+	err := c.Delete(context.TODO(), dep)
+	if err != nil && !k8serrors.IsNotFound(err) {
+		log.Error(err, "Failed to delete endpoint operator deployment in the hub")
+		return err
+	}
+	return nil
+}
+
 // generateAmAccessorTokenSecret generates the secret that contains the access_token
 // for the Alertmanager in the Hub cluster
 func generateAmAccessorTokenSecret(cl client.Client) (*corev1.Secret, error) {
