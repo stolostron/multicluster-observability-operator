@@ -556,6 +556,7 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 			halfInterval = 2
 		}
 		b.MaxElapsedTime = interval / time.Duration(halfInterval)
+		logger.Log(c.logger, logger.Warn, "msg", "start to send", "request", req.URL.String())
 		retryable := func() error {
 			return c.sendRequest(req.URL.String(), compressed)
 		}
@@ -574,6 +575,7 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 
 func (c *Client) sendRequest(serverURL string, body []byte) error {
 	req1, err := http.NewRequest(http.MethodPost, serverURL, bytes.NewBuffer(body))
+	logger.Log(c.logger, logger.Debug, "msg", "Coleen forwarding request", "url", serverURL, "body", string(body))
 	if err != nil {
 		msg := "failed to create forwarding request"
 		logger.Log(c.logger, logger.Warn, "msg", msg, "err", err)
