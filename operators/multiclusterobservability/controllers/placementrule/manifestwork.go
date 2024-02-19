@@ -443,16 +443,14 @@ func createManifestWorks(
 	manifests = injectIntoWork(manifests, hubInfo)
 
 	work.Spec.Workload.Manifests = manifests
-	err = createManifestwork(c, work)
-	if err != nil {
-		return err
-	}
 
 	if clusterName != clusterNamespace {
 		// ACM 8509: Special case for hub/local cluster metrics collection
 		// install the endpoint operator into open-cluster-management-observability namespace for the hub cluster
 		log.Info("Creating resource for hub metrics collection", "cluster", clusterName)
 		err = createUpdateResourcesForHubMetricsCollection(c, manifests)
+	} else {
+		err = createManifestwork(c, work)
 	}
 
 	return err
