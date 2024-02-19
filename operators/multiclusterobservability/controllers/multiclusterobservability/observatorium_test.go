@@ -137,18 +137,13 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 }
 
 func TestUpdateObservatoriumCR(t *testing.T) {
-	var (
-		namespace = mcoconfig.GetDefaultNamespace()
-	)
+	namespace := mcoconfig.GetDefaultNamespace()
 
 	// A MultiClusterObservability object with metadata and spec.
 	mco := &mcov1beta2.MultiClusterObservability{
 		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: mcoconfig.GetDefaultCRName(),
-			Annotations: map[string]string{
-				mcoconfig.AnnotationKeyImageTagSuffix: "tag",
-			},
 		},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			StorageConfig: &mcov1beta2.StorageConfig{
@@ -219,14 +214,10 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 
 	// Check if this Observatorium CR already exists
 	createdObservatoriumCR := &observatoriumv1alpha1.Observatorium{}
-	noConfigCl.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      mcoconfig.GetDefaultCRName(),
-			Namespace: namespace,
-		},
-		createdObservatoriumCR,
-	)
+	noConfigCl.Get(context.TODO(), types.NamespacedName{
+		Name:      mcoconfig.GetDefaultCRName(),
+		Namespace: namespace,
+	}, createdObservatoriumCR)
 	hash, configHashFound := createdObservatoriumCR.Labels[obsCRConfigHashLabelName]
 	if !configHashFound {
 		t.Errorf("config-hash label not found in Observatorium CR")
@@ -246,14 +237,10 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 	}
 	objs = append(objs, []runtime.Object{createdObservatoriumCR}...)
 	updatedObservatorium := &observatoriumv1alpha1.Observatorium{}
-	cl.Get(
-		context.TODO(),
-		types.NamespacedName{
-			Name:      mcoconfig.GetDefaultCRName(),
-			Namespace: namespace,
-		},
-		updatedObservatorium,
-	)
+	cl.Get(context.TODO(), types.NamespacedName{
+		Name:      mcoconfig.GetDefaultCRName(),
+		Namespace: namespace,
+	}, updatedObservatorium)
 	updatedHash, updatedHashFound := updatedObservatorium.Labels[obsCRConfigHashLabelName]
 	if !updatedHashFound {
 		t.Errorf("config-hash label not found in Observatorium CR")
@@ -265,7 +252,6 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 
 	createdSpecBytes, _ := yaml.Marshal(createdObservatoriumCR.Spec)
 	updatedSpecBytes, _ := yaml.Marshal(updatedObservatorium.Spec)
-
 	if res := bytes.Compare(updatedSpecBytes, createdSpecBytes); res != 0 {
 		t.Errorf("%v should be equal to %v", string(createdSpecBytes), string(updatedSpecBytes))
 	}
