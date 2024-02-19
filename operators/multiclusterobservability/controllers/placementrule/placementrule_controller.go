@@ -205,7 +205,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			return ctrl.Result{}, err
 		}
 		// Delete Hub endpoint-obseravbility-operator deployment when MCO is deleted
-		if err = deleteHubEndpointMetricsOperator(r.Client); err != nil {
+		if err = deleteHubMetricsCollectionDeployments(r.Client); err != nil {
 			return ctrl.Result{}, err
 		}
 

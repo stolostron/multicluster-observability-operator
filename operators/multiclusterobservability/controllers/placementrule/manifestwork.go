@@ -41,6 +41,7 @@ const (
 	localClusterName          = "local-cluster"
 	workPostponeDeleteAnnoKey = "open-cluster-management/postpone-delete"
 	hubEndpointOperatorName   = "endpoint-observability-operator"
+	hubMetricsCollectorName   = "metrics-collector"
 )
 
 // intermediate resources for the manifest work.
@@ -489,16 +490,27 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 }
 
 // Detele endpoint operator resources for hub metrics collection
-func deleteHubEndpointMetricsOperator(c client.Client) error {
-	dep := &appsv1.Deployment{
+func deleteHubMetricsCollectionDeployments(c client.Client) error {
+	hubEndpointOperatorDep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      hubEndpointOperatorName,
 			Namespace: config.GetDefaultNamespace(),
 		},
 	}
-	err := c.Delete(context.TODO(), dep)
+	err := c.Delete(context.TODO(), hubEndpointOperatorDep)
 	if err != nil && !k8serrors.IsNotFound(err) {
 		log.Error(err, "Failed to delete endpoint operator deployment in the hub")
+		return err
+	}
+	hubMetricsCollectorDep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hubMetricsCollectorName,
+			Namespace: config.GetDefaultNamespace(),
+		},
+	}
+	err = c.Delete(context.TODO(), hubMetricsCollectorDep)
+	if err != nil && !k8serrors.IsNotFound(err) {
+		log.Error(err, "Failed to delete metrics collector deployment in the hub")
 		return err
 	}
 	return nil
