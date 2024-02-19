@@ -96,9 +96,8 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// ACM 8509: Special case for hub/local cluster metrics collection
 	// We want to ensure that the local-cluster is always in the managedClusterList
-	// In the case when hubSelfManagement is enabled, we will delete
-	// when hubSelfManagement is disabled
-
+	// In the case when hubSelfManagement is enabled, we will delete it from the list and modify the object
+	// to cater to the use case of deploying in open-cluster-management-observability namespace
 	delete(managedClusterList, "local-cluster")
 	if _, ok := managedClusterList["local-cluster"]; !ok {
 		obj := &clusterv1.ManagedCluster{
