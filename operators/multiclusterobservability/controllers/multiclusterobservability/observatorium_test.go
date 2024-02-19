@@ -244,6 +244,7 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to update observatorium due to %v", err)
 	}
+	objs = append(objs, []runtime.Object{createdObservatoriumCR}...)
 	updatedObservatorium := &observatoriumv1alpha1.Observatorium{}
 	cl.Get(
 		context.TODO(),
