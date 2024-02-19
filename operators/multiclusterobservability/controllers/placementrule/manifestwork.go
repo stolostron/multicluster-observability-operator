@@ -41,7 +41,7 @@ const (
 	localClusterName          = "local-cluster"
 	workPostponeDeleteAnnoKey = "open-cluster-management/postpone-delete"
 	hubEndpointOperatorName   = "endpoint-observability-operator"
-	hubMetricsCollectorName   = "metrics-collector"
+	hubMetricsCollectorName   = "metrics-collector-deployment"
 )
 
 // intermediate resources for the manifest work.
