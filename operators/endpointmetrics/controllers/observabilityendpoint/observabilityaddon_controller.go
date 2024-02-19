@@ -119,7 +119,6 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 				return ctrl.Result{}, err
 			}
 		}
-		log.Info("Coleen ObservabilityAddon instance", "obsAddon", obsAddon.Name, "namespace", obsAddon.Namespace, "hubObsAddon", hubObsAddon.Name, "hubNamespace", hubObsAddon.Namespace)
 
 		// Init finalizers
 		deleteFlag := false
