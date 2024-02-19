@@ -50,6 +50,7 @@ const (
 	hubEndpointOperatorName   = "endpoint-observability-operator"
 	hubMetricsCollectorName   = "metrics-collector-deployment"
 	mtlsCertName              = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
+	clientCACertificateCN     = "observability-client-ca-certificate"
 )
 
 // intermediate resources for the manifest work.
@@ -471,7 +472,9 @@ func createCSR() ([]byte, []byte) {
 
 	var csrTemplate = x509.CertificateRequest{
 		Subject: pkix.Name{
-			Country: []string{"US"},
+			Organization: []string{"Red Hat, Inc."},
+			Country:      []string{"US"},
+			CommonName:   clientCACertificateCN,
 		},
 		SignatureAlgorithm: x509.SHA512WithRSA,
 	}
