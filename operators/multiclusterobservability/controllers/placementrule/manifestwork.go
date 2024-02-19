@@ -465,12 +465,10 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 	}
 	for _, manifest := range manifestsCopy {
 		obj := manifest.RawExtension.Object.(client.Object)
-		log.Info("Coleen updating object in managed cluster and name", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 		if obj.GetObjectKind().GroupVersionKind().Kind == "Namespace" || obj.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
 			// We do not want to create ObservabilityAddon and namespace open-cluster-management-add-on observability for hub cluster
 			continue
 		}
-		log.Info("Coleen updating object in managed cluster and name", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 		kind := obj.GetObjectKind().GroupVersionKind().Kind
 		if kind != "ClusterRole" && kind != "ClusterRoleBinding" && kind != "CustomResourceDefinition" {
 			obj.SetNamespace(config.GetDefaultNamespace())
@@ -478,7 +476,6 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		if obj.GetObjectKind().GroupVersionKind().Kind == "ClusterRoleBinding" {
 			role := obj.(*rbacv1.ClusterRoleBinding)
 			role.Subjects[0].Namespace = config.GetDefaultNamespace()
-			log.Info("Coleen Setting namespace for rolebinding", "namespace", config.GetDefaultNamespace())
 		}
 		err := c.Create(context.TODO(), obj)
 		if err != nil && !k8serrors.IsAlreadyExists(err) {
@@ -695,7 +692,6 @@ func getObservabilityAddon(c client.Client, namespace string,
 	}
 
 	if namespace == config.GetDefaultNamespace() {
-		log.Info("Coleen get observabilityAddon in hub cluster and name", "namespace", namespace, "name", obsAddonName)
 		return &mcov1beta1.ObservabilityAddon{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "observability.open-cluster-management.io/v1beta1",

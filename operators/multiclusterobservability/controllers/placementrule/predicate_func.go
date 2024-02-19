@@ -17,10 +17,8 @@ import (
 func getClusterPreds() predicate.Funcs {
 
 	createFunc := func(e event.CreateEvent) bool {
-		log.Info("Coleen CreateFunc", "managedCluster", e.Object.GetName())
 
 		if e.Object.GetName() == "local-cluster" {
-			log.Info("Coleen CreateFunc", "local-cluster", e.Object.GetName())
 			delete(managedClusterList, "local-cluster")
 		}
 

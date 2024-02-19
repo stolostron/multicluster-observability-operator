@@ -78,7 +78,6 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	log := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	log.Info("Reconciling")
 
-	log.Info("Coleen hubnamespace", "hubNamespace", hubNamespace, "namespace", namespace, "hubMetricsCollector", hubMetricsCollector)
 	isHypershift := true
 	if os.Getenv("UNIT_TEST") != "true" {
 		crdClient, err := operatorutil.GetOrCreateCRDClient()
@@ -86,7 +85,6 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, err
 		}
 		isHypershift, err = operatorutil.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
-		log.Info("Coleen isHypershift", "isHypershift", isHypershift)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -143,13 +141,12 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		hubSecret,
 	)
 	if err != nil {
-		log.Error(err, "Coleen Failed to get hub info secret")
 		return ctrl.Result{}, err
 	}
 	hubInfo := &operatorconfig.HubInfo{}
 	err = yaml.Unmarshal(hubSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
 	if err != nil {
-		log.Error(err, "Coleen git dFailed to unmarshal hub info")
+		log.Error(err, "Failed to unmarshal hub info")
 		return ctrl.Result{}, err
 	}
 	hubInfo.ClusterName = string(hubSecret.Data[operatorconfig.ClusterNameKey])
@@ -261,7 +258,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			util.ReportStatus(ctx, r.Client, obsAddon, "Deployed")
 		}
 	} else if hubMetricsCollector {
-		log.Info("Coleen creating hub metrics collector")
+		log.Info("Creating hub metrics collector")
 		_, err := updateMetricsCollectors(
 			ctx,
 			r.Client,
@@ -361,7 +358,6 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 	if os.Getenv("NAMESPACE") != "" {
 		namespace = os.Getenv("NAMESPACE")
 	}
-	log.Info("Coleen endpoint reconciler namespace", "namespace", namespace)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(
 			&oav1beta1.ObservabilityAddon{},

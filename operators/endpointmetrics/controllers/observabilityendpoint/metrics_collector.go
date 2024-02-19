@@ -428,9 +428,6 @@ func updateMetricsCollector(ctx context.Context, c client.Client, params Collect
 		if !reflect.DeepEqual(deployment.Spec.Template.Spec, found.Spec.Template.Spec) ||
 			!reflect.DeepEqual(deployment.Spec.Replicas, found.Spec.Replicas) ||
 			forceRestart {
-			t1 := reflect.DeepEqual(deployment.Spec.Template.Spec, found.Spec.Template.Spec)
-			t2 := reflect.DeepEqual(deployment.Spec.Replicas, found.Spec.Replicas)
-			log.Info("Coleen deployment.Spec.Template.Spec", "t1", t1, "t2", t2, "forceRestart", forceRestart)
 			deployment.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
 			if forceRestart && found.Status.ReadyReplicas != 0 {
 				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")

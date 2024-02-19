@@ -99,12 +99,10 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// This is a workaround for the fact that the local-cluster is not in the managedClusterList
 	// when hubSelfManagement is disabled
 	if _, ok := managedClusterList["local-cluster"]; ok {
-		log.Info("Coleen local-cluster is in the managedClusterList")
 		//Remove from list
 		delete(managedClusterList, "local-cluster")
 	}
 	if _, ok := managedClusterList["local-cluster"]; !ok {
-		log.Info("Coleen local-cluster is not in the managedClusterList")
 		obj := &clusterv1.ManagedCluster{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "local-cluster",
@@ -240,7 +238,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	latestClusters := []string{}
 	staleAddons := []string{}
 	for _, addon := range obsAddonList.Items {
-		log.Info("Coleen obsAddonList.Items latest clusters", "namespace", addon.Namespace, "name", addon.Name)
 		latestClusters = append(latestClusters, addon.Namespace)
 		staleAddons = append(staleAddons, addon.Namespace)
 
@@ -268,7 +265,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// but the managedclusteraddon for observability will not deleted by the cluster manager, so check against the
 	// managedclusteraddon list to remove the managedcluster resources after the managedcluster is detached.
 	for _, mcaddon := range managedclusteraddonList.Items {
-		log.Info("Coleen managedclusteraddonList.Items", "namespace", mcaddon.Namespace, "name", mcaddon.Name)
 		if !slices.Contains(latestClusters, mcaddon.Namespace) {
 			reqLogger.Info("To delete managedcluster resources", "namespace", mcaddon.Namespace)
 			err = deleteManagedClusterRes(r.Client, mcaddon.Namespace)
@@ -282,7 +278,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// delete stale addons if manifestwork does not exist
 	for _, addon := range staleAddons {
-		log.Info("Coleen To delete stale observabilityAddon", "namespace", addon)
+		log.Info("To delete stale observabilityAddon", "namespace", addon)
 		err = deleteStaleObsAddon(r.Client, addon, true)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -436,7 +432,6 @@ func createAllRelatedRes(
 
 	failedDeleteOba := false
 	for _, cluster := range currentClusters {
-		log.Info("Coleen To delete observabilityAddon if cluster != defaultnamespace", "namespace", cluster)
 		if cluster != config.GetDefaultNamespace() {
 			err = deleteObsAddon(c, cluster)
 			if err != nil {
@@ -459,9 +454,6 @@ func deleteAllObsAddons(
 	obsAddonList *mcov1beta1.ObservabilityAddonList,
 ) error {
 	for _, ep := range obsAddonList.Items {
-		if ep.Namespace == config.GetDefaultNamespace() {
-			continue
-		}
 		err := deleteObsAddon(client, ep.Namespace)
 		if err != nil {
 			log.Error(err, "Failed to delete observabilityaddon", "namespace", ep.Namespace)
