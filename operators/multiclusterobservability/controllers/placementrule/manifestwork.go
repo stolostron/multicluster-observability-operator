@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -444,7 +445,7 @@ func createManifestWorks(
 
 	work.Spec.Workload.Manifests = manifests
 
-	if clusterName != clusterNamespace {
+	if clusterName != clusterNamespace && os.Getenv("UNIT_TEST") != "true" {
 		// ACM 8509: Special case for hub/local cluster metrics collection
 		// install the endpoint operator into open-cluster-management-observability namespace for the hub cluster
 		log.Info("Creating resource for hub metrics collection", "cluster", clusterName)

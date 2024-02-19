@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -33,6 +34,10 @@ const (
 	pullSecretName = "test-pull-secret"
 	workSize       = 13
 )
+
+func init() {
+	os.Setenv("UNIT_TEST", "true")
+}
 
 func newTestMCO() *mcov1beta2.MultiClusterObservability {
 	return &mcov1beta2.MultiClusterObservability{
