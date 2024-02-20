@@ -14,12 +14,14 @@ import (
 	"strings"
 	"time"
 
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
@@ -89,6 +91,7 @@ func getCommands(params CollectorParams) []string {
 	}
 	commands := []string{
 		"/usr/bin/metrics-collector",
+		"--listen=:8080",
 		"--from=$(FROM)",
 		"--from-query=$(FROM_QUERY)",
 		"--to-upload=$(TO)",
@@ -287,6 +290,11 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 							},
 							VolumeMounts:    mounts,
 							ImagePullPolicy: corev1.PullIfNotPresent,
+							Ports: []corev1.ContainerPort{
+								{
+									ContainerPort: 8080,
+								},
+							},
 						},
 					},
 					Volumes:      volumes,
@@ -344,6 +352,53 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *params.obsAddonSpec.Resources
 	}
 	return metricsCollectorDep
+}
+
+// createServiceMonitor creates a ServiceMonitor for the metrics collector.
+func createServiceMonitor(params CollectorParams) *promv1.ServiceMonitor {
+	port := intstr.FromString("8080")
+	name := metricsCollectorName
+	replace := "acm_metrics_collector_${1}"
+	if params.isUWL {
+		name = uwlMetricsCollectorName
+		replace = "acm_uwl_metrics_collector_${1}"
+	}
+
+	return &promv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app": name,
+			},
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
+		},
+		Spec: promv1.ServiceMonitorSpec{
+			Selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					selectorKey: selectorValue,
+				},
+			},
+			NamespaceSelector: promv1.NamespaceSelector{
+				MatchNames: []string{namespace},
+			},
+			Endpoints: []promv1.Endpoint{
+				{
+					TargetPort: &port,
+					Path:       "/metrics",
+					MetricRelabelConfigs: []*promv1.RelabelConfig{
+						{
+							Action:      "replace",
+							Regex:       "(.+)",
+							Replacement: replace,
+						},
+					},
+				},
+			},
+		},
+	}
 }
 
 func updateMetricsCollectors(ctx context.Context, c client.Client, obsAddonSpec oashared.ObservabilityAddonSpec,
@@ -412,9 +467,27 @@ func updateMetricsCollector(ctx context.Context, c client.Client, params Collect
 		name = uwlMetricsCollectorName
 	}
 	log.Info("updateMetricsCollector", "name", name)
+
+	serviceMonitor := createServiceMonitor(params)
+	foundSM := &promv1.ServiceMonitor{}
+	err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, foundSM)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			err = c.Create(ctx, serviceMonitor)
+			if err != nil {
+				log.Error(err, "Failed to create service monitor", "name", name)
+				return false, err
+			}
+			log.Info("Created servicemonitor ", "name", name)
+		} else {
+			log.Error(err, "Failed to check the deployment", "name", name)
+			return false, err
+		}
+	}
+
 	deployment := createDeployment(params)
 	found := &appsv1.Deployment{}
-	err := c.Get(ctx, types.NamespacedName{Name: name,
+	err = c.Get(ctx, types.NamespacedName{Name: name,
 		Namespace: namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -465,6 +538,24 @@ func deleteMetricsCollector(ctx context.Context, c client.Client, name string) e
 		return err
 	}
 	log.Info("metrics collector deployment deleted", "name", name)
+
+	foundSM := &promv1.ServiceMonitor{}
+	err = c.Get(ctx, types.NamespacedName{Name: name,
+		Namespace: namespace}, foundSM)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("The metrics collector servicemonitor does not exist", "name", name)
+			return nil
+		}
+		log.Error(err, "Failed to check the metrics collector servicemonitor", "name", name)
+		return err
+	}
+	err = c.Delete(ctx, foundSM)
+	if err != nil {
+		log.Error(err, "Failed to delete the metrics collector servicemonitor", "name", name)
+		return err
+	}
+	log.Info("metrics collector servicemonitor deleted", "name", name)
 	return nil
 }
 
