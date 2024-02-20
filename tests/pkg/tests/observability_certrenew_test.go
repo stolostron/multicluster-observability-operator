@@ -49,7 +49,6 @@ var _ = Describe("Observability:", func() {
 			if collectorPodName == "" {
 				return false
 			}
-			hubPodsName = []string{}
 			_, apiPodList := utils.GetPodList(
 				testOptions,
 				true,
