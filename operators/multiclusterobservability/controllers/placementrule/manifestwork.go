@@ -519,7 +519,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		//Create a secret
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      mtlsCertName,
+				Name:      operatorconfig.MtlsCertName,
 				Namespace: config.GetDefaultNamespace(),
 			},
 			Data: map[string][]byte{
