@@ -6,12 +6,21 @@ package placementrule
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
+
+	certificatesv1 "k8s.io/api/certificates/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -27,6 +36,7 @@ import (
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
@@ -35,9 +45,13 @@ import (
 )
 
 const (
-	workNameSuffix            = "-observability"
-	localClusterName          = "local-cluster"
-	workPostponeDeleteAnnoKey = "open-cluster-management/postpone-delete"
+	workNameSuffix             = "-observability"
+	localClusterName           = "local-cluster"
+	workPostponeDeleteAnnoKey  = "open-cluster-management/postpone-delete"
+	hubEndpointOperatorName    = "endpoint-observability-operator"
+	hubMetricsCollectorName    = "metrics-collector-deployment"
+	hubUwlMetricsCollectorName = "uwl-metrics-collector-deployment"
+	hubUwlMetricsCollectorNs   = "openshift-user-workload-monitoring"
 )
 
 // intermediate resources for the manifest work.
@@ -384,6 +398,25 @@ func createManifestWorks(
 
 	log.Info(fmt.Sprintf("Cluster: %+v, Spec.NodeSelector (after): %+v", clusterName, spec.NodeSelector))
 	log.Info(fmt.Sprintf("Cluster: %+v, Spec.Tolerations (after): %+v", clusterName, spec.Tolerations))
+
+	if clusterName != clusterNamespace {
+		spec.Volumes = []corev1.Volume{}
+		spec.Containers[0].VolumeMounts = []corev1.VolumeMount{}
+		for i, env := range spec.Containers[0].Env {
+			if env.Name == "HUB_KUBECONFIG" {
+				spec.Containers[0].Env[i].Value = ""
+				break
+			}
+		}
+		//Set HUB_ENDPOINT_OPERATOR when the endpoint operator is installed in hub cluster
+		spec.Containers[0].Env = append(spec.Containers[0].Env, corev1.EnvVar{
+			Name:  "HUB_ENDPOINT_OPERATOR",
+			Value: "true",
+		})
+
+		dep.ObjectMeta.Name = hubEndpointOperatorName
+	}
+
 	dep.Spec.Template.Spec = spec
 	manifests = injectIntoWork(manifests, dep)
 	// replace the pull secret and addon components image
@@ -423,8 +456,136 @@ func createManifestWorks(
 
 	work.Spec.Workload.Manifests = manifests
 
-	err = createManifestwork(c, work)
+	if clusterName != clusterNamespace && os.Getenv("UNIT_TEST") != "true" {
+		// ACM 8509: Special case for hub/local cluster metrics collection
+		// install the endpoint operator into open-cluster-management-observability namespace for the hub cluster
+		log.Info("Creating resource for hub metrics collection", "cluster", clusterName)
+		err = createUpdateResourcesForHubMetricsCollection(c, manifests)
+	} else {
+		err = createManifestwork(c, work)
+	}
+
 	return err
+}
+
+func createCSR() ([]byte, []byte) {
+	keys, _ := rsa.GenerateKey(rand.Reader, 2048)
+
+	oidOrganization := []int{2, 5, 4, 11} // Object Identifier (OID) for Organization Unit
+	oidUser := []int{2, 5, 4, 3}          // Object Identifier (OID) for User
+
+	var csrTemplate = x509.CertificateRequest{
+		Subject: pkix.Name{
+			Organization: []string{"Red Hat, Inc."},
+			Country:      []string{"US"},
+			CommonName:   operatorconfig.ClientCACertificateCN,
+			ExtraNames: []pkix.AttributeTypeAndValue{
+				{Type: oidOrganization, Value: "acm"},
+				{Type: oidUser, Value: "managed-cluster-observability"},
+			},
+		},
+		DNSNames:           []string{"observability-controller.addon.open-cluster-management.io"},
+		SignatureAlgorithm: x509.SHA512WithRSA,
+	}
+	csrCertificate, _ := x509.CreateCertificateRequest(rand.Reader, &csrTemplate, keys)
+	csr := pem.EncodeToMemory(&pem.Block{
+		Type: "CERTIFICATE REQUEST", Bytes: csrCertificate,
+	})
+
+	privateKey := pem.EncodeToMemory(&pem.Block{
+		Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(keys),
+	})
+
+	return csr, privateKey
+}
+
+func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
+
+	//create csr for hub metrics collection
+	csrBytes, privateKeyBytes := createCSR()
+	csr := &certificatesv1.CertificateSigningRequest{
+		Spec: certificatesv1.CertificateSigningRequestSpec{
+			Request: csrBytes,
+			Usages:  []certificatesv1.KeyUsage{certificatesv1.UsageDigitalSignature, certificatesv1.UsageClientAuth},
+		},
+	}
+	signedClientCert := certificates.Sign(csr)
+	if signedClientCert == nil {
+		log.Error(nil, "failed to sign CSR")
+		return errors.New("failed to sign CSR")
+	} else {
+		//Create a secret
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      operatorconfig.MtlsCertName,
+				Namespace: config.GetDefaultNamespace(),
+			},
+			Data: map[string][]byte{
+				"tls.crt": signedClientCert,
+				"tls.key": privateKeyBytes,
+			},
+		}
+		err := c.Create(context.TODO(), secret)
+		if err != nil && !k8serrors.IsAlreadyExists(err) {
+			log.Error(err, "Failed to create secret", "name", "hub-metrics-collection-client-certs")
+			return err
+		}
+	}
+	//Make a deep copy of all the manifests since there are some global resources that can be updated due to this function
+	manifestsCopy := make([]workv1.Manifest, len(manifests))
+	for i, manifest := range manifests {
+		obj := manifest.RawExtension.Object.DeepCopyObject()
+		manifestsCopy[i] = workv1.Manifest{RawExtension: runtime.RawExtension{Object: obj}}
+	}
+	for _, manifest := range manifestsCopy {
+		obj := manifest.RawExtension.Object.(client.Object)
+		if obj.GetObjectKind().GroupVersionKind().Kind == "Namespace" || obj.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
+			// We do not want to create ObservabilityAddon and namespace open-cluster-management-add-on observability for hub cluster
+			continue
+		}
+		kind := obj.GetObjectKind().GroupVersionKind().Kind
+		if kind != "ClusterRole" && kind != "ClusterRoleBinding" && kind != "CustomResourceDefinition" {
+			obj.SetNamespace(config.GetDefaultNamespace())
+		}
+		if obj.GetObjectKind().GroupVersionKind().Kind == "ClusterRoleBinding" {
+			role := obj.(*rbacv1.ClusterRoleBinding)
+			role.Subjects[0].Namespace = config.GetDefaultNamespace()
+		}
+		err := c.Create(context.TODO(), obj)
+		if err != nil && !k8serrors.IsAlreadyExists(err) {
+			log.Error(err, "Failed to create resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Detele endpoint operator resources for hub metrics collection
+func deleteHubMetricsCollectionDeployments(c client.Client) error {
+	hubEndpointOperatorDep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hubEndpointOperatorName,
+			Namespace: config.GetDefaultNamespace(),
+		},
+	}
+	err := c.Delete(context.TODO(), hubEndpointOperatorDep)
+	if err != nil && !k8serrors.IsNotFound(err) {
+		log.Error(err, "Failed to delete endpoint operator deployment in the hub")
+		return err
+	}
+	hubMetricsCollectorDep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hubMetricsCollectorName,
+			Namespace: config.GetDefaultNamespace(),
+		},
+	}
+	err = c.Delete(context.TODO(), hubMetricsCollectorDep)
+	if err != nil && !k8serrors.IsNotFound(err) {
+		log.Error(err, "Failed to delete metrics collector deployment in the hub")
+		return err
+	}
+	return nil
 }
 
 // generateAmAccessorTokenSecret generates the secret that contains the access_token
@@ -632,6 +793,23 @@ func getObservabilityAddon(c client.Client, namespace string,
 		return nil, nil
 	}
 
+	if namespace == config.GetDefaultNamespace() {
+		return &mcov1beta1.ObservabilityAddon{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "observability.open-cluster-management.io/v1beta1",
+				Kind:       "ObservabilityAddon",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      obsAddonName,
+				Namespace: config.GetDefaultNamespace(),
+			},
+			Spec: mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: mco.Spec.ObservabilityAddonSpec.EnableMetrics,
+				Interval:      mco.Spec.ObservabilityAddonSpec.Interval,
+				Resources:     config.GetOBAResources(mco.Spec.ObservabilityAddonSpec),
+			},
+		}, nil
+	}
 	return &mcov1beta1.ObservabilityAddon{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "observability.open-cluster-management.io/v1beta1",

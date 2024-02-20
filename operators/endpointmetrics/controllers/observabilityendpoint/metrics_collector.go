@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -112,7 +114,12 @@ func getCommands(params CollectorParams) []string {
 	for _, group := range params.allowlist.CollectRuleGroupList {
 		if group.Selector.MatchExpression != nil {
 			for _, expr := range group.Selector.MatchExpression {
-				if !evluateMatchExpression(expr, clusterID, params.clusterType, params.obsAddonSpec, params.hubInfo,
+				if hubMetricsCollector {
+					if !evluateMatchExpression(expr, clusterID, params.clusterType, params.hubInfo,
+						params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount) {
+						continue
+					}
+				} else if !evluateMatchExpression(expr, clusterID, params.clusterType, params.obsAddonSpec, params.hubInfo,
 					params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount) {
 					continue
 				}
@@ -314,6 +321,22 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			})
 	}
 
+	if hubMetricsCollector {
+		//to avoid hub metrics collector from sending status
+		metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
+			corev1.EnvVar{
+				Name:  "STANDALONE",
+				Value: "true",
+			})
+		//Since there is no obsAddOn for hub-metrics-collector, we need to set the resources here
+		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				corev1.ResourceMemory: resource.MustParse("100Mi"),
+				corev1.ResourceCPU:    resource.MustParse("10m"),
+			},
+		}
+	}
+
 	privileged := false
 	readOnlyRootFilesystem := true
 
@@ -325,6 +348,7 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 	if params.obsAddonSpec.Resources != nil {
 		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *params.obsAddonSpec.Resources
 	}
+
 	return metricsCollectorDep
 }
 
