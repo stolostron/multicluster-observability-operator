@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	certificatesv1 "k8s.io/api/certificates/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -505,7 +506,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 	csr := &certificatesv1.CertificateSigningRequest{
 		Spec: certificatesv1.CertificateSigningRequestSpec{
 			Request: csrBytes,
-			Usages: []certificatesv1.KeyUsage{certificatesv1.UsageDigitalSignature, certificatesv1.UsageClientAuth},
+			Usages:  []certificatesv1.KeyUsage{certificatesv1.UsageDigitalSignature, certificatesv1.UsageClientAuth},
 		},
 	}
 	signedClientCert := certificates.Sign(csr)
