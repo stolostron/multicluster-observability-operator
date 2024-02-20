@@ -556,6 +556,7 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 			halfInterval = 2
 		}
 		b.MaxElapsedTime = interval / time.Duration(halfInterval)
+		logger.Log(c.logger, logger.Warn, "msg", "start to send", "request", req.URL.String())
 		retryable := func() error {
 			return c.sendRequest(req.URL.String(), compressed)
 		}
