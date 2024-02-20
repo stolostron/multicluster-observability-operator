@@ -142,6 +142,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
+	//Check for MulticlusterGlobalHub CRD
+	mcghCrdExists := r.CRDMap[config.MCGHCrdName]
+	log.Info("Coleen MulticlusterGlobalHub CRD exists", "exists", mcghCrdExists)
+	//if Multicluster Global hub exists we block metrics-collector creation in spokes
+	if mcghCrdExists {
+		mco.Spec.ObservabilityAddonSpec.EnableMetrics = false
+	}
+
 	if !deleteAll && !mco.Spec.ObservabilityAddonSpec.EnableMetrics {
 		reqLogger.Info("EnableMetrics is set to false. Delete Observability addons")
 		deleteAll = true

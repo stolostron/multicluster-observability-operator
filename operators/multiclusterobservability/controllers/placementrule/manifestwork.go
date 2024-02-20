@@ -506,9 +506,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 	csr := &certificatesv1.CertificateSigningRequest{
 		Spec: certificatesv1.CertificateSigningRequestSpec{
 			Request: csrBytes,
-			//Usages:  []certificatesv1.KeyUsage{certificatesv1.UsageCertSign, certificatesv1.UsageClientAuth},
 			Usages: []certificatesv1.KeyUsage{certificatesv1.UsageDigitalSignature, certificatesv1.UsageClientAuth},
-			//[]x509.KeyUsage{x509.KeyUsageKeyEncipherment, x509.KeyUsageDigitalSignature}
 		},
 	}
 	signedClientCert := certificates.Sign(csr)
@@ -545,7 +543,6 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			// We do not want to create ObservabilityAddon and namespace open-cluster-management-add-on observability for hub cluster
 			continue
 		}
-
 		kind := obj.GetObjectKind().GroupVersionKind().Kind
 		if kind != "ClusterRole" && kind != "ClusterRoleBinding" && kind != "CustomResourceDefinition" {
 			obj.SetNamespace(config.GetDefaultNamespace())

@@ -26,6 +26,10 @@ func getClusterPreds() predicate.Funcs {
 			delete(managedClusterList, "local-cluster")
 		}
 
+		if e.Object.GetName() == "local-cluster" {
+			delete(managedClusterList, "local-cluster")
+		}
+
 		if isAutomaticAddonInstallationDisabled(e.Object) {
 			return false
 		}
