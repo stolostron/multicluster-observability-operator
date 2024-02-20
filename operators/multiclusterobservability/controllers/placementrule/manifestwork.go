@@ -471,11 +471,18 @@ func createManifestWorks(
 func createCSR() ([]byte, []byte) {
 	keys, _ := rsa.GenerateKey(rand.Reader, 2048)
 
+	oidOrganization := []int{2, 5, 4, 11} // Object Identifier (OID) for Organization Unit
+	oidUser := []int{2, 5, 4, 3}          // Object Identifier (OID) for User
+
 	var csrTemplate = x509.CertificateRequest{
 		Subject: pkix.Name{
 			Organization: []string{"Red Hat, Inc."},
 			Country:      []string{"US"},
 			CommonName:   clientCACertificateCN,
+			ExtraNames: []pkix.AttributeTypeAndValue{
+				{Type: oidOrganization, Value: "acm"},
+				{Type: oidUser, Value: "managed-cluster-observability"},
+			},
 		},
 		SignatureAlgorithm: x509.SHA512WithRSA,
 	}
@@ -498,15 +505,15 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 	csr := &certificatesv1.CertificateSigningRequest{
 		Spec: certificatesv1.CertificateSigningRequestSpec{
 			Request: csrBytes,
-			Usages:  []certificatesv1.KeyUsage{certificatesv1.UsageDigitalSignature, certificatesv1.UsageClientAuth},
+			Usages:  []certificatesv1.KeyUsage{certificatesv1.UsageCertSign, certificatesv1.UsageClientAuth},
+			//Usages:  []certificatesv1.KeyUsage{certificatesv1.UsageDigitalSignature, certificatesv1.UsageClientAuth},
 			//[]x509.KeyUsage{x509.KeyUsageKeyEncipherment, x509.KeyUsageDigitalSignature}
-
 		},
 	}
 	signedClientCert := certificates.Sign(csr)
 	if signedClientCert == nil {
-		log.Error(nil, "Failed to sign CSR")
-		return errors.New("Failed to sign CSR")
+		log.Error(nil, "failed to sign CSR")
+		return errors.New("failed to sign CSR")
 	} else {
 		//Create a secret
 		secret := &corev1.Secret{
