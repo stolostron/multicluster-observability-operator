@@ -10,6 +10,8 @@ import (
 	"os"
 	"strconv"
 
+	operatorutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
+
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -32,7 +34,6 @@ import (
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
-	operatorutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 var (
@@ -42,18 +43,20 @@ var (
 )
 
 const (
-	obAddonName       = "observability-addon"
-	mcoCRName         = "observability"
-	ownerLabelKey     = "owner"
-	ownerLabelValue   = "observabilityaddon"
-	obsAddonFinalizer = "observability.open-cluster-management.io/addon-cleanup"
-	promSvcName       = "prometheus-k8s"
-	promNamespace     = "openshift-monitoring"
+	obAddonName                   = "observability-addon"
+	mcoCRName                     = "observability"
+	ownerLabelKey                 = "owner"
+	ownerLabelValue               = "observabilityaddon"
+	obsAddonFinalizer             = "observability.open-cluster-management.io/addon-cleanup"
+	promSvcName                   = "prometheus-k8s"
+	promNamespace                 = "openshift-monitoring"
+	hubMetricsCollectionNamespace = "open-cluster-management-observability"
 )
 
 var (
-	namespace    = os.Getenv("WATCH_NAMESPACE")
-	hubNamespace = os.Getenv("HUB_NAMESPACE")
+	namespace           = os.Getenv("WATCH_NAMESPACE")
+	hubNamespace        = os.Getenv("HUB_NAMESPACE")
+	hubMetricsCollector = os.Getenv("HUB_ENDPOINT_OPERATOR") == "true"
 )
 
 // ObservabilityAddonReconciler reconciles a ObservabilityAddon object.
@@ -75,35 +78,6 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	log := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	log.Info("Reconciling")
 
-	// Fetch the ObservabilityAddon instance in hub cluster
-	hubObsAddon := &oav1beta1.ObservabilityAddon{}
-	err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
-	if err != nil {
-		hubClient, obsAddon, err := util.RenewAndRetry(ctx)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		r.HubClient = hubClient
-		hubObsAddon = obsAddon
-	}
-
-	// Fetch the ObservabilityAddon instance in local cluster
-	obsAddon := &oav1beta1.ObservabilityAddon{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: namespace}, obsAddon)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			obsAddon = nil
-		} else {
-			log.Error(err, "Failed to get observabilityaddon", "namespace", namespace)
-			return ctrl.Result{}, err
-		}
-	}
-
-	// Init finalizers
-	deleteFlag := false
-	if obsAddon == nil {
-		deleteFlag = true
-	}
 	isHypershift := true
 	if os.Getenv("UNIT_TEST") != "true" {
 		crdClient, err := operatorutil.GetOrCreateCRDClient()
@@ -115,17 +89,53 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, err
 		}
 	}
-	deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	if deleted || deleteFlag {
-		return ctrl.Result{}, nil
+	hubObsAddon := &oav1beta1.ObservabilityAddon{}
+	obsAddon := &oav1beta1.ObservabilityAddon{}
+
+	// ACM 8509: Special case for hub/local cluster metrics collection
+	// We do not have an ObservabilityAddon instance in the local cluster so skipping the below block
+	if !hubMetricsCollector {
+		// Fetch the ObservabilityAddon instance in hub cluster
+		err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
+		if err != nil {
+			hubClient, obsAddon, err := util.RenewAndRetry(ctx)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			r.HubClient = hubClient
+			hubObsAddon = obsAddon
+		}
+
+		// Fetch the ObservabilityAddon instance in local cluster
+
+		err = r.Client.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: namespace}, obsAddon)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				obsAddon = nil
+			} else {
+				log.Error(err, "Failed to get observabilityaddon", "namespace", namespace)
+				return ctrl.Result{}, err
+			}
+		}
+
+		// Init finalizers
+		deleteFlag := false
+		if obsAddon == nil {
+			deleteFlag = true
+		}
+
+		deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if deleted || deleteFlag {
+			return ctrl.Result{}, nil
+		}
 	}
 
 	// retrieve the hubInfo
 	hubSecret := &corev1.Secret{}
-	err = r.Client.Get(
+	err := r.Client.Get(
 		ctx,
 		types.NamespacedName{Name: operatorconfig.HubInfoSecretName, Namespace: namespace},
 		hubSecret,
@@ -169,7 +179,11 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		if err != nil {
 			if errors.IsNotFound(err) {
 				log.Error(err, "OCP prometheus service does not exist")
-				util.ReportStatus(ctx, r.Client, obsAddon, "NotSupported")
+				// ACM 8509: Special case for hub/local cluster metrics collection
+				// We do not report status for hub endpoint operator
+				if !hubMetricsCollector {
+					util.ReportStatus(ctx, r.Client, obsAddon, "NotSupported")
+				}
 				return ctrl.Result{}, nil
 			}
 			log.Error(err, "Failed to check prometheus resource")
@@ -222,11 +236,11 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	if obsAddon.Spec.EnableMetrics {
-		forceRestart := false
-		if req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == caConfigmapName {
-			forceRestart = true
-		}
+	forceRestart := false
+	if req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == caConfigmapName {
+		forceRestart = true
+	}
+	if obsAddon.Spec.EnableMetrics && !hubMetricsCollector {
 		created, err := updateMetricsCollectors(
 			ctx,
 			r.Client,
@@ -242,6 +256,20 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 		if created {
 			util.ReportStatus(ctx, r.Client, obsAddon, "Deployed")
+		}
+	} else if hubMetricsCollector {
+		log.Info("Creating hub metrics collector")
+		_, err := updateMetricsCollectors(
+			ctx,
+			r.Client,
+			obsAddon.Spec,
+			*hubInfo, clusterID,
+			clusterType,
+			1,
+			forceRestart)
+		if err != nil {
+			log.Info("Error while creating hub metrics collector")
+			return ctrl.Result{}, err
 		}
 	} else {
 		deleted, err := updateMetricsCollectors(ctx, r.Client, obsAddon.Spec, *hubInfo, clusterID, clusterType, 0, false)
