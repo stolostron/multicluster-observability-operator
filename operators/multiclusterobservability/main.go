@@ -7,7 +7,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/cloudflare/cfssl/log"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
