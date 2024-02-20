@@ -178,23 +178,13 @@ func GenerateObservatoriumCR(
 	} else if err != nil {
 		return &ctrl.Result{}, err
 	}
-	log.Info(
-		"Observatorium CR already exists",
-		"config-hash",
-		observatoriumCRFound.Labels[obsCRConfigHashLabelName],
-	)
-	log.Info(
-		"Desired Observatorium CR config hash",
-		"config-hash",
-		observatoriumCR.Labels[obsCRConfigHashLabelName],
-	)
 
 	oldSpec := observatoriumCRFound.Spec
 	newSpec := observatoriumCR.Spec
 	oldSpecBytes, _ := yaml.Marshal(oldSpec)
 	newSpecBytes, _ := yaml.Marshal(newSpec)
-	if bytes.Equal(newSpecBytes, oldSpecBytes) &&
-		labels[obsCRConfigHashLabelName] == observatoriumCRFound.Labels[obsCRConfigHashLabelName] {
+	if bytes.Equal(newSpecBytes, oldSpecBytes) { // &&
+		// labels[obsCRConfigHashLabelName] == observatoriumCRFound.Labels[obsCRConfigHashLabelName] {
 		return nil, nil
 	}
 
