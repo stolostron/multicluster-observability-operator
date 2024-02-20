@@ -984,27 +984,27 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&source.Kind{Type: &corev1.Secret{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(operatorconfig.HubInfoSecretName, config.GetDefaultNamespace(), true, true, false)),
+			builder.WithPredicates(getPred(operatorconfig.HubInfoSecretName, config.GetDefaultNamespace(), true, true, true)),
 		).
 		Watches(
 			&source.Kind{Type: &corev1.Secret{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(mtlsCertName, config.GetDefaultNamespace(), true, true, false)),
+			builder.WithPredicates(getPred(operatorconfig.MtlsCertName, config.GetDefaultNamespace(), true, true, true)),
 		).
 		Watches(
 			&source.Kind{Type: &corev1.Secret{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(managedClusterObsCertName, config.GetDefaultNamespace(), true, true, false)),
+			builder.WithPredicates(getPred(managedClusterObsCertName, config.GetDefaultNamespace(), true, true, true)),
 		).
 		Watches(
 			&source.Kind{Type: &corev1.Secret{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(config.AlertmanagerAccessorSecretName, config.GetDefaultNamespace(), true, true, false)),
+			builder.WithPredicates(getPred(config.AlertmanagerAccessorSecretName, config.GetDefaultNamespace(), true, true, true)),
 		).
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(operatorconfig.AllowlistConfigMapName, config.GetDefaultNamespace(), true, true, false)),
+			builder.WithPredicates(getPred(operatorconfig.AllowlistConfigMapName, config.GetDefaultNamespace(), true, true, true)),
 		).
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
@@ -1034,7 +1034,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(operatorconfig.ImageConfigMap, config.GetDefaultNamespace(), true, true, false)),
+			builder.WithPredicates(getPred(operatorconfig.ImageConfigMap, config.GetDefaultNamespace(), true, true, true)),
 		).
 		Watches(
 			&source.Kind{Type: &appsv1.StatefulSet{}},

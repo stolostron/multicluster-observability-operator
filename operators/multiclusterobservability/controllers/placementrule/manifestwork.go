@@ -52,8 +52,6 @@ const (
 	hubMetricsCollectorName    = "metrics-collector-deployment"
 	hubUwlMetricsCollectorName = "uwl-metrics-collector-deployment"
 	hubUwlMetricsCollectorNs   = "openshift-user-workload-monitoring"
-	mtlsCertName               = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
-	clientCACertificateCN      = "observability-client-ca-certificate"
 )
 
 // intermediate resources for the manifest work.
@@ -480,7 +478,7 @@ func createCSR() ([]byte, []byte) {
 		Subject: pkix.Name{
 			Organization: []string{"Red Hat, Inc."},
 			Country:      []string{"US"},
-			CommonName:   clientCACertificateCN,
+			CommonName:   operatorconfig.ClientCACertificateCN,
 			ExtraNames: []pkix.AttributeTypeAndValue{
 				{Type: oidOrganization, Value: "acm"},
 				{Type: oidUser, Value: "managed-cluster-observability"},
