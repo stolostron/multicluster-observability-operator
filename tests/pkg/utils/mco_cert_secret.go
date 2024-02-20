@@ -47,3 +47,37 @@ func DeleteCertSecret(opt TestOptions) error {
 	}
 	return err
 }
+
+func EnsureCertSecretExists(opt TestOptions) error {
+	clientKube := NewKubeClient(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	klog.V(1).Infof("Ensure certificate secret exists")
+
+	_, err := clientKube.CoreV1().Secrets(MCO_NAMESPACE).Get(context.TODO(), ServerCACerts, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("Failed to get certificate secret %s due to %v", ServerCACerts, err)
+		return err
+	}
+
+	_, err = clientKube.CoreV1().Secrets(MCO_NAMESPACE).Get(context.TODO(), ClientCACerts, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("Failed to get certificate secret %s due to %v", ClientCACerts, err)
+		return err
+	}
+
+	_, err = clientKube.CoreV1().Secrets(MCO_NAMESPACE).Get(context.TODO(), ServerCerts, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("Failed to get certificate secret %s due to %v", ServerCerts, err)
+		return err
+	}
+
+	_, err = clientKube.CoreV1().Secrets(MCO_NAMESPACE).Get(context.TODO(), GrafanaCerts, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("Failed to get certificate secret %s due to %v", GrafanaCerts, err)
+		return err
+	}
+	return nil
+}
