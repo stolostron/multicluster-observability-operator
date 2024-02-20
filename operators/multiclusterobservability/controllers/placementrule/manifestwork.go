@@ -15,10 +15,11 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	certificatesv1 "k8s.io/api/certificates/v1"
 	"os"
 	"strconv"
 	"strings"
+
+	certificatesv1 "k8s.io/api/certificates/v1"
 
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
