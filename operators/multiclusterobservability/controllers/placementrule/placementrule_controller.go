@@ -7,11 +7,12 @@ package placementrule
 import (
 	"context"
 	"errors"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"reflect"
 	"strings"
 	"sync"
 	"time"
+
+	rbacv1 "k8s.io/api/rbac/v1"
 
 	"github.com/go-logr/logr"
 	operatorv1 "github.com/openshift/api/operator/v1"
@@ -693,6 +694,10 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Object.GetName() == config.ServerCACerts &&
+				e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				return true
+			}
 			return false
 		},
 	}
