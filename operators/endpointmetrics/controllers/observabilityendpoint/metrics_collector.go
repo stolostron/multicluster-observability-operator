@@ -314,6 +314,14 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			})
 	}
 
+	privileged := false
+	readOnlyRootFilesystem := true
+
+	metricsCollectorDep.Spec.Template.Spec.Containers[0].SecurityContext = &corev1.SecurityContext{
+		Privileged:             &privileged,
+		ReadOnlyRootFilesystem: &readOnlyRootFilesystem,
+	}
+
 	if params.obsAddonSpec.Resources != nil {
 		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *params.obsAddonSpec.Resources
 	}
