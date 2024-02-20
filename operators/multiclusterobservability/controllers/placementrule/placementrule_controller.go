@@ -56,6 +56,7 @@ const (
 	managedClusterObsCertName                      = "observability-managed-cluster-certs"
 	nonOCP                                         = "N/A"
 	disableAddonAutomaticInstallationAnnotationKey = "addon.open-cluster-management.io/disable-automatic-installation"
+	
 )
 
 var (
