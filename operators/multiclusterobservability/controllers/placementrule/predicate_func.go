@@ -5,7 +5,9 @@
 package placementrule
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 
@@ -123,5 +125,57 @@ func getHubEndpointOperatorPredicates() predicate.Funcs {
 			}
 			return false
 		},
+	}
+}
+
+func getPred(name string, namespace string,
+	create bool, update bool, delete bool) predicate.Funcs {
+	createFunc := func(e event.CreateEvent) bool {
+		return false
+	}
+	updateFunc := func(e event.UpdateEvent) bool {
+		return false
+	}
+	deleteFunc := func(e event.DeleteEvent) bool {
+		return false
+	}
+	if create {
+		createFunc = func(e event.CreateEvent) bool {
+			if e.Object.GetName() == name && (e.Object.GetNamespace() == namespace) {
+				return true
+			}
+			return false
+		}
+	}
+	if update {
+		updateFunc = func(e event.UpdateEvent) bool {
+			if e.ObjectNew.GetName() == name && (e.ObjectNew.GetNamespace() == namespace) &&
+				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+				// also check objectNew string in case Kind is empty
+				if strings.HasPrefix(fmt.Sprint(e.ObjectNew), "&Deployment") ||
+					e.ObjectNew.GetObjectKind().GroupVersionKind().Kind == "Deployment" {
+					if !reflect.DeepEqual(e.ObjectNew.(*appsv1.Deployment).Spec.Template.Spec,
+						e.ObjectOld.(*appsv1.Deployment).Spec.Template.Spec) {
+						return true
+					}
+				} else {
+					return true
+				}
+			}
+			return false
+		}
+	}
+	if delete {
+		deleteFunc = func(e event.DeleteEvent) bool {
+			if e.Object.GetName() == name && (e.Object.GetNamespace() == namespace) {
+				return true
+			}
+			return false
+		}
+	}
+	return predicate.Funcs{
+		CreateFunc: createFunc,
+		UpdateFunc: updateFunc,
+		DeleteFunc: deleteFunc,
 	}
 }

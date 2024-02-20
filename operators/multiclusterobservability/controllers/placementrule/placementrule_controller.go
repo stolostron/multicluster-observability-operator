@@ -7,6 +7,7 @@ package placementrule
 import (
 	"context"
 	"errors"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"reflect"
 	"strings"
 	"sync"
@@ -976,10 +977,10 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			)
 		}
 	}
-	// secondary watch for hub endpoint operator deployment
 
-	ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(hubEndpointOperatorPred))
-	/*
+	// ACM 8509: Special case for hub/local cluster metrics collection
+	// secondary watch for hub endpoint operator deployment
+	ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(hubEndpointOperatorPred)).
 		Watches(
 			&source.Kind{Type: &corev1.Secret{}},
 			&handler.EnqueueRequestForObject{},
@@ -993,17 +994,17 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&source.Kind{Type: &corev1.Secret{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(mtlsCaName, config.GetDefaultNamespace(), true, true, false)),
+			builder.WithPredicates(getPred(managedClusterObsCertName, config.GetDefaultNamespace(), true, true, false)),
 		).
 		Watches(
 			&source.Kind{Type: &corev1.Secret{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(hubAmAccessorSecretName, config.GetDefaultNamespace(), true, true, false)),
+			builder.WithPredicates(getPred(config.AlertmanagerAccessorSecretName, config.GetDefaultNamespace(), true, true, false)),
 		).
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(operatorconfig.AllowlistConfigMapName, namespace, true, true, false)),
+			builder.WithPredicates(getPred(operatorconfig.AllowlistConfigMapName, config.GetDefaultNamespace(), true, true, false)),
 		).
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
@@ -1013,34 +1014,33 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(caConfigmapName, namespace, false, true, true)),
+			builder.WithPredicates(getPred(operatorconfig.CaConfigmapName, config.GetDefaultNamespace(), false, true, true)),
 		).
 		Watches(
 			&source.Kind{Type: &appsv1.Deployment{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(metricsCollectorName, namespace, true, true, true)),
+			builder.WithPredicates(getPred(hubMetricsCollectorName, config.GetDefaultNamespace(), true, true, true)),
 		).
 		Watches(
 			&source.Kind{Type: &appsv1.Deployment{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(uwlMetricsCollectorName, namespace, true, true, true)),
+			builder.WithPredicates(getPred(hubUwlMetricsCollectorName, config.GetDefaultNamespace(), true, true, true)),
 		).
 		Watches(
 			&source.Kind{Type: &rbacv1.ClusterRoleBinding{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(clusterRoleBindingName, "", false, true, true)),
+			builder.WithPredicates(getPred(operatorconfig.ClusterRoleBindingName, "", false, true, true)),
 		).
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(operatorconfig.ImageConfigMap, namespace, true, true, false)),
+			builder.WithPredicates(getPred(operatorconfig.ImageConfigMap, config.GetDefaultNamespace(), true, true, false)),
 		).
 		Watches(
 			&source.Kind{Type: &appsv1.StatefulSet{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, uwlNamespace, true, false, true)),
+			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, hubUwlMetricsCollectorNs, true, false, true)),
 		)
-	*/
 	// create and return a new controller
 	return ctrBuilder.Complete(r)
 }

@@ -66,7 +66,8 @@ func getPred(name string, namespace string,
 	}
 	if delete {
 		deleteFunc = func(e event.DeleteEvent) bool {
-			if e.Object.GetName() == name && (namespace == "" || e.Object.GetNamespace() == namespace) {
+			if e.Object.GetName() == name && (namespace == "" || e.Object.GetNamespace() == namespace ||
+				e.Object.GetNamespace() == hubMetricsCollectionNamespace) {
 				return true
 			}
 			return false

@@ -45,13 +45,15 @@ import (
 )
 
 const (
-	workNameSuffix            = "-observability"
-	localClusterName          = "local-cluster"
-	workPostponeDeleteAnnoKey = "open-cluster-management/postpone-delete"
-	hubEndpointOperatorName   = "endpoint-observability-operator"
-	hubMetricsCollectorName   = "metrics-collector-deployment"
-	mtlsCertName              = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
-	clientCACertificateCN     = "observability-client-ca-certificate"
+	workNameSuffix             = "-observability"
+	localClusterName           = "local-cluster"
+	workPostponeDeleteAnnoKey  = "open-cluster-management/postpone-delete"
+	hubEndpointOperatorName    = "endpoint-observability-operator"
+	hubMetricsCollectorName    = "metrics-collector-deployment"
+	hubUwlMetricsCollectorName = "uwl-metrics-collector-deployment"
+	hubUwlMetricsCollectorNs   = "openshift-user-workload-monitoring"
+	mtlsCertName               = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
+	clientCACertificateCN      = "observability-client-ca-certificate"
 )
 
 // intermediate resources for the manifest work.
