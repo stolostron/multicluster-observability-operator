@@ -7,7 +7,6 @@ package placementrule
 import (
 	"context"
 	"errors"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"reflect"
 	"strings"
 	"sync"
@@ -978,7 +977,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}
 	}
 	// secondary watch for hub endpoint operator deployment
-	ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(hubEndpointOperatorPred)).
+
+	ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(hubEndpointOperatorPred))
+	/*
 		Watches(
 			&source.Kind{Type: &corev1.Secret{}},
 			&handler.EnqueueRequestForObject{},
@@ -1039,7 +1040,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, uwlNamespace, true, false, true)),
 		)
-
+	*/
 	// create and return a new controller
 	return ctrBuilder.Complete(r)
 }
