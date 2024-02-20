@@ -67,6 +67,7 @@ var (
 	isplacementControllerRunnning = false
 	managedClusterList            = map[string]string{}
 	managedClusterListMutex       = &sync.RWMutex{}
+	installMetricsWithoutAddon    = false
 )
 
 // PlacementRuleReconciler reconciles a PlacementRule object
