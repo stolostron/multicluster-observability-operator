@@ -57,6 +57,9 @@ spec:
             - name: hub-kubeconfig-secret
               mountPath: "/spoke/hub-kubeconfig"
               readOnly: true
+          securityContext:
+            privileged: false
+            readOnlyRootFilesystem: true
       volumes:
         - name: hub-kubeconfig-secret
           secret:

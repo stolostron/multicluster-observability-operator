@@ -7,6 +7,12 @@ package multiclusterobservability
 import (
 	"bytes"
 	"context"
+
+	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
+	// changes and thus it's not a security issue.
+	// nolint:gosec
+	"crypto/md5" // #nosec G401 G501
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -49,6 +55,58 @@ const (
 	endpointsRestartLabel = "endpoints/time-restarted"
 )
 
+// Fetch contents of the secrets: observability-server-certs, observability-client-ca-certs,
+// observability-observatorium-api.
+// Fetch contents of the configmap: observability-observatorium-api.
+// Concatenate all of the above and hash their contents.
+// If any of the secrets or configmaps aren't found, an empty struct of the respective type is used for the hash.
+func hashObservatoriumCRConfig(cl client.Client) (string, error) {
+	secretsToQuery := []metav1.ObjectMeta{
+		{Name: mcoconfig.ServerCerts, Namespace: mcoconfig.GetDefaultNamespace()},
+		{Name: mcoconfig.ClientCACerts, Namespace: mcoconfig.GetDefaultNamespace()},
+		{Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: mcoconfig.GetDefaultNamespace()},
+	}
+	configMapToQuery := metav1.ObjectMeta{
+		Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: mcoconfig.GetDefaultNamespace(),
+	}
+
+	// The usage of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
+	// changes and thus it's not a security issue.
+	// nolint:gosec
+	hasher := md5.New() // #nosec G401 G501
+	for _, secret := range secretsToQuery {
+		resultSecret := &v1.Secret{}
+		err := cl.Get(context.TODO(), types.NamespacedName{
+			Name:      secret.Name,
+			Namespace: secret.Namespace,
+		}, resultSecret)
+		if err != nil && !k8serrors.IsNotFound(err) {
+			return "", err
+		}
+		secretData, err := yaml.Marshal(resultSecret.Data)
+		if err != nil {
+			return "", err
+		}
+		hasher.Write(secretData)
+	}
+
+	resultConfigMap := &v1.ConfigMap{}
+	err := cl.Get(context.TODO(), types.NamespacedName{
+		Name:      configMapToQuery.Name,
+		Namespace: configMapToQuery.Namespace,
+	}, resultConfigMap)
+	if err != nil && !k8serrors.IsNotFound(err) {
+		return "", err
+	}
+	configMapData, err := yaml.Marshal(resultConfigMap.Data)
+	if err != nil {
+		return "", err
+	}
+	hasher.Write(configMapData)
+
+	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
 // GenerateObservatoriumCR returns Observatorium cr defined in MultiClusterObservability
 func GenerateObservatoriumCR(
 	cl client.Client, scheme *runtime.Scheme,
@@ -75,6 +133,13 @@ func GenerateObservatoriumCR(
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
+
+	hash, err := hashObservatoriumCRConfig(cl)
+	if err != nil {
+		return &ctrl.Result{}, err
+	}
+	labels["config-hash"] = hash
+
 	observatoriumCR := &obsv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      mcoconfig.GetOperandName(mcoconfig.Observatorium),
@@ -439,7 +504,7 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		apiSpec.Resources = mcoconfig.GetResources(mcoconfig.ObservatoriumAPI, mco.Spec.AdvancedConfig)
 	}
-	//set the default observatorium components' image
+	// set the default observatorium components' image
 	apiSpec.Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.ObservatoriumAPIImgName +
 		":" + mcoconfig.DefaultImgTagSuffix
 	replace, image := mcoconfig.ReplaceImage(mco.Annotations, apiSpec.Image, mcoconfig.ObservatoriumAPIImgName)
@@ -601,8 +666,8 @@ func newRuleSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) o
 		mco.Spec.StorageConfig.RuleStorageSize,
 		scSelected)
 
-	//configure alertmanager in ruler
-	//ruleSpec.AlertmanagerURLs = []string{mcoconfig.AlertmanagerURL}
+	// configure alertmanager in ruler
+	// ruleSpec.AlertmanagerURLs = []string{mcoconfig.AlertmanagerURL}
 	ruleSpec.AlertmanagerConfigFile = obsv1alpha1.AlertmanagerConfigFile{
 		Name: mcoconfig.AlertmanagersDefaultConfigMapName,
 		Key:  mcoconfig.AlertmanagersDefaultConfigFileKey,
@@ -826,8 +891,8 @@ func newReceiverControllerSpec(mco *mcov1beta2.MultiClusterObservability) obsv1a
 
 func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string) obsv1alpha1.CompactSpec {
 	compactSpec := obsv1alpha1.CompactSpec{}
-	//Compactor, generally, does not need to be highly available.
-	//Compactions are needed from time to time, only when new blocks appear.
+	// Compactor, generally, does not need to be highly available.
+	// Compactions are needed from time to time, only when new blocks appear.
 	compactSpec.Replicas = &mcoconfig.Replicas1
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		compactSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosCompact, mco.Spec.AdvancedConfig)
