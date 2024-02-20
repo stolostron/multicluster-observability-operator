@@ -23,6 +23,10 @@ const (
 	UwlMetricsConfigMapKey       = "uwl_metrics_list.yaml"
 	PrometheusUserWorkload       = "prometheus-user-workload"
 	MetricsOcp311ConfigMapKey    = "ocp311_metrics_list.yaml"
+	ClusterRoleBindingName       = "metrics-collector-view"
+	CaConfigmapName              = "metrics-collector-serving-certs-ca-bundle"
+	MtlsCertName                 = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
+	ClientCACertificateCN        = "observability-client-ca-certificate"
 )
 
 const (
