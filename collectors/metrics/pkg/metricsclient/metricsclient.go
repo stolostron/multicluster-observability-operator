@@ -575,7 +575,6 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 
 func (c *Client) sendRequest(serverURL string, body []byte) error {
 	req1, err := http.NewRequest(http.MethodPost, serverURL, bytes.NewBuffer(body))
-	logger.Log(c.logger, logger.Debug, "msg", "Coleen forwarding request", "url", serverURL)
 	if err != nil {
 		msg := "failed to create forwarding request"
 		logger.Log(c.logger, logger.Warn, "msg", msg, "err", err)
