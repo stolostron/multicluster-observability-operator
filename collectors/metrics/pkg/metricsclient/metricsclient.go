@@ -54,8 +54,12 @@ type Client struct {
 }
 
 type ClientMetrics struct {
-	GaugeRequestRetrieve *prometheus.GaugeVec
-	GaugeRequestSend     *prometheus.GaugeVec
+	// TODO(saswatamcode): Remove this eventually.
+	GaugeRequestSend *prometheus.GaugeVec
+
+	FederateRequests *prometheus.CounterVec
+
+	ForwardRemoteWriteRequests *prometheus.CounterVec
 }
 
 type PartitionedMetrics struct {
@@ -100,18 +104,18 @@ func (c *Client) RetrievRecordingMetrics(
 	err := withCancel(ctx, c.client, req, func(resp *http.Response) error {
 		switch resp.StatusCode {
 		case http.StatusOK:
-			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
+			c.metrics.FederateRequests.WithLabelValues("recording", "200").Inc()
 		case http.StatusUnauthorized:
-			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
+			c.metrics.FederateRequests.WithLabelValues("recording", "401").Inc()
 			return fmt.Errorf("prometheus server requires authentication: %s", resp.Request.URL)
 		case http.StatusForbidden:
-			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
+			c.metrics.FederateRequests.WithLabelValues("recording", "403").Inc()
 			return fmt.Errorf("prometheus server forbidden: %s", resp.Request.URL)
 		case http.StatusBadRequest:
-			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
+			c.metrics.FederateRequests.WithLabelValues("recording", "400").Inc()
 			return fmt.Errorf("bad request: %s", resp.Request.URL)
 		default:
-			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
+			c.metrics.FederateRequests.WithLabelValues("recording", strconv.Itoa(resp.StatusCode)).Inc()
 			return fmt.Errorf("prometheus server reported unexpected error code: %d", resp.StatusCode)
 		}
 
@@ -192,18 +196,18 @@ func (c *Client) Retrieve(ctx context.Context, req *http.Request) ([]*clientmode
 	err := withCancel(ctx, c.client, req, func(resp *http.Response) error {
 		switch resp.StatusCode {
 		case http.StatusOK:
-			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "200").Inc()
+			c.metrics.FederateRequests.WithLabelValues("normal", "200").Inc()
 		case http.StatusUnauthorized:
-			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "401").Inc()
+			c.metrics.FederateRequests.WithLabelValues("normal", "401").Inc()
 			return fmt.Errorf("prometheus server requires authentication: %s", resp.Request.URL)
 		case http.StatusForbidden:
-			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "403").Inc()
+			c.metrics.FederateRequests.WithLabelValues("normal", "403").Inc()
 			return fmt.Errorf("prometheus server forbidden: %s", resp.Request.URL)
 		case http.StatusBadRequest:
-			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, "400").Inc()
+			c.metrics.FederateRequests.WithLabelValues("normal", "400").Inc()
 			return fmt.Errorf("bad request: %s", resp.Request.URL)
 		default:
-			c.metrics.GaugeRequestRetrieve.WithLabelValues(c.metricsName, strconv.Itoa(resp.StatusCode)).Inc()
+			c.metrics.FederateRequests.WithLabelValues("normal", strconv.Itoa(resp.StatusCode)).Inc()
 			return fmt.Errorf("prometheus server reported unexpected error code: %d", resp.StatusCode)
 		}
 
@@ -231,6 +235,8 @@ func (c *Client) Retrieve(ctx context.Context, req *http.Request) ([]*clientmode
 	return families, nil
 }
 
+// Send sends the given metric families to the given URL.
+// TODO(saswatamcode): This is no longer used, remove it in the future.
 func (c *Client) Send(ctx context.Context, req *http.Request, families []*clientmodel.MetricFamily) error {
 	buf := &bytes.Buffer{}
 	if err := Write(buf, families); err != nil {
@@ -284,6 +290,7 @@ func (c *Client) Send(ctx context.Context, req *http.Request, families []*client
 	})
 }
 
+// // TODO(saswatamcode): This is no longer used, remove it in the future.
 func Read(r io.Reader) ([]*clientmodel.MetricFamily, error) {
 	decompress := snappy.NewReader(r)
 	decoder := expfmt.NewDecoder(decompress, expfmt.FmtProtoDelim)
@@ -301,6 +308,7 @@ func Read(r io.Reader) ([]*clientmodel.MetricFamily, error) {
 	return families, nil
 }
 
+// TODO(saswatamcode): This is no longer used, remove it in the future.
 func Write(w io.Writer, families []*clientmodel.MetricFamily) error {
 	// output the filtered set
 	compress := snappy.NewBufferedWriter(w)
@@ -577,6 +585,7 @@ func (c *Client) sendRequest(serverURL string, body []byte) error {
 	if err != nil {
 		msg := "failed to create forwarding request"
 		logger.Log(c.logger, logger.Warn, "msg", msg, "err", err)
+		c.metrics.ForwardRemoteWriteRequests.WithLabelValues("0").Inc()
 		return errors.New(msg)
 	}
 
@@ -591,8 +600,11 @@ func (c *Client) sendRequest(serverURL string, body []byte) error {
 	if err != nil {
 		msg := "failed to forward request"
 		logger.Log(c.logger, logger.Warn, "msg", msg, "err", err)
+		c.metrics.ForwardRemoteWriteRequests.WithLabelValues("0").Inc()
 		return errors.New(msg)
 	}
+
+	c.metrics.ForwardRemoteWriteRequests.WithLabelValues(strconv.Itoa(resp.StatusCode)).Inc()
 
 	if resp.StatusCode/100 != 2 {
 		// surfacing upstreams error to our users too
