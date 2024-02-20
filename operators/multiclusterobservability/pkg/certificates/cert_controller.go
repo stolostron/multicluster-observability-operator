@@ -122,8 +122,9 @@ func updateDeployLabel(c client.Client, dName string, isUpdate bool) {
 		return
 	}
 	if isUpdate || dep.Status.ReadyReplicas != 0 {
-		dep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
-		err := c.Patch(context.TODO(), dep, client.StrategicMergeFrom(dep))
+		newDep := dep.DeepCopy()
+		newDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
+		err := c.Patch(context.TODO(), newDep, client.StrategicMergeFrom(dep))
 		if err != nil {
 			log.Error(err, "Failed to update the deployment", "name", dName)
 		} else {
