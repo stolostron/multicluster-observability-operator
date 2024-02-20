@@ -545,6 +545,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			// We do not want to create ObservabilityAddon and namespace open-cluster-management-add-on observability for hub cluster
 			continue
 		}
+
 		kind := obj.GetObjectKind().GroupVersionKind().Kind
 		if kind != "ClusterRole" && kind != "ClusterRoleBinding" && kind != "CustomResourceDefinition" {
 			obj.SetNamespace(config.GetDefaultNamespace())
