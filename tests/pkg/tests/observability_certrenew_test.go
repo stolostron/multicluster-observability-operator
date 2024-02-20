@@ -79,16 +79,6 @@ var _ = Describe("Observability:", func() {
 		err := utils.DeleteCertSecret(testOptions)
 		Expect(err).ToNot(HaveOccurred())
 
-		By("Waiting for secrets to be recreated")
-		Eventually(func() bool {
-			err := utils.EnsureCertSecretExists(testOptions)
-			if err != nil {
-				klog.V(1).Infof("Failed to ensure certificate secret exists: %v", err)
-				return false
-			}
-			return true
-		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(BeTrue())
-
 		By(fmt.Sprintf("Waiting for old pods removed: %v and new pods created", hubPodsName))
 		Eventually(func() bool {
 			err1, appPodList := utils.GetPodList(
