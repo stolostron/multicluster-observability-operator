@@ -249,6 +249,7 @@ const (
 	IngressControllerCRD           = "ingresscontrollers.operator.openshift.io"
 	MCHCrdName                     = "multiclusterhubs.operator.open-cluster-management.io"
 	MCOCrdName                     = "multiclusterobservabilities.observability.open-cluster-management.io"
+	MCGHCrdName                    = "multiclusterglobalhubs.operator.open-cluster-management.io"
 	StorageVersionMigrationCrdName = "storageversionmigrations.migration.k8s.io"
 	MCGHCrdName                    = "multiclusterglobalhubs.operator.open-cluster-management.io"
 )

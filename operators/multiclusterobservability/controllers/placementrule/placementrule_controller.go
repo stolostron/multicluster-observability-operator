@@ -65,6 +65,7 @@ var (
 	isplacementControllerRunnning = false
 	managedClusterList            = map[string]string{}
 	managedClusterListMutex       = &sync.RWMutex{}
+	installMetricsWithoutAddon    = false
 )
 
 // PlacementRuleReconciler reconciles a PlacementRule object
@@ -93,6 +94,21 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling PlacementRule")
 
+	// TODO
+	if _, ok := managedClusterList["local-cluster"]; !ok {
+		obj := &clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "local-cluster",
+				Namespace: "open-cluster-management-observability",
+				Labels: map[string]string{
+					"openshiftVersion": "mimical",
+				},
+			},
+		}
+		installMetricsWithoutAddon = true
+		updateManagedClusterList(obj)
+	}
+
 	if config.GetMonitoringCRName() == "" {
 		reqLogger.Info("multicluster observability resource is not available")
 		return ctrl.Result{}, nil
@@ -120,6 +136,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
+	//Check for MulticlusterGlobalHub CRD
+	mcghCrdExists := r.CRDMap[config.MCGHCrdName]
+	log.Info("Coleen MulticlusterGlobalHub CRD exists", "exists", mcghCrdExists)
+	//if Multicluster Global hub exists we block metrics-collector creation in spokes
+	if mcghCrdExists {
+		mco.Spec.ObservabilityAddonSpec.EnableMetrics = false
+	}
+
 	if !deleteAll && !mco.Spec.ObservabilityAddonSpec.EnableMetrics {
 		reqLogger.Info("EnableMetrics is set to false. Delete Observability addons")
 		deleteAll = true
@@ -127,7 +151,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// check if the MCH CRD exists
 	mchCrdExists := r.CRDMap[config.MCHCrdName]
-	// requeue after 10 seconds if the mch crd exists and image image manifests map is empty
+	// requeue after 10 seconds if the mch crd exists and image  manifests map is empty
 	if mchCrdExists && len(config.GetImageManifests()) == 0 {
 		// if the mch CR is not ready, then requeue the request after 10s
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
@@ -158,6 +182,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		reqLogger.Error(err, "Failed to list observabilityaddon resource")
 		return ctrl.Result{}, err
 	}
+	if installMetricsWithoutAddon {
+		obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      localClusterName,
+				Namespace: config.GetDefaultNamespace(),
+			},
+		})
+	}
 
 	if !deleteAll {
 		if err := createAllRelatedRes(
@@ -180,6 +212,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err != nil {
 		reqLogger.Error(err, "Failed to list observabilityaddon resource")
 		return ctrl.Result{}, err
+	}
+	if installMetricsWithoutAddon {
+		obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "local-cluster",
+				Namespace: "local-cluster",
+			},
+		})
 	}
 	workList := &workv1.ManifestWorkList{}
 	err = r.Client.List(context.TODO(), workList, opts)
@@ -358,6 +398,10 @@ func createAllRelatedRes(
 				err = createManagedClusterRes(c, mco,
 					managedCluster, managedCluster,
 					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, true)
+			} else if openshiftVersion == "mimical" {
+				err = createManagedClusterRes(c, mco,
+					managedCluster, config.GetDefaultNamespace(),
+					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)
 			} else {
 				err = createManagedClusterRes(c, mco,
 					managedCluster, managedCluster,
@@ -377,10 +421,12 @@ func createAllRelatedRes(
 	failedDeleteOba := false
 	for _, cluster := range currentClusters {
 		log.Info("To delete observabilityAddon", "namespace", cluster)
-		err = deleteObsAddon(c, cluster)
-		if err != nil {
-			failedDeleteOba = true
-			log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
+		if cluster != config.GetDefaultNamespace() {
+			err = deleteObsAddon(c, cluster)
+			if err != nil {
+				failedDeleteOba = true
+				log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
+			}
 		}
 	}
 
