@@ -34,6 +34,8 @@ spec:
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: true
         ports:
         - containerPort: 9443
           name: webhook-server
