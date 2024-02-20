@@ -231,11 +231,11 @@ func NewWorkerMetrics(reg *prometheus.Registry) *workerMetrics {
 			Name: "federate_errors_total",
 			Help: "The number of times federating metrics has failed",
 		}, []string{"type"}),
-		forwardRemoteWriteRequests: prometheus.NewCounter(prometheus.CounterOpts{
+		forwardRemoteWriteRequests: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "forward_write_requests_total",
 			Help: "Counter of forward remote write requests.",
 		}),
-		forwardRemoteWriteErrors: prometheus.NewCounter(prometheus.CounterOpts{
+		forwardRemoteWriteErrors: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "forward_write_errors_total",
 			Help: "Counter of forward remote write errors.",
 		}),
