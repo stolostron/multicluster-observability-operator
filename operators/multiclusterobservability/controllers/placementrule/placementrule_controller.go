@@ -178,6 +178,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err != nil {
 		reqLogger.Error(err, "Failed to list observabilityaddon resource")
 		return ctrl.Result{}, err
+	}	
     
 	if installMetricsWithoutAddon {
 		obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
