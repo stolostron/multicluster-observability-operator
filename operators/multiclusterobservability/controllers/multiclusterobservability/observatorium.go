@@ -7,7 +7,6 @@ package multiclusterobservability
 import (
 	"bytes"
 	"context"
-
 	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
 	// changes and thus it's not a security issue.
 	// nolint:gosec
@@ -113,8 +112,14 @@ func GenerateObservatoriumCR(
 	cl client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
 
+	hash, err := hashObservatoriumCRConfig(cl)
+	if err != nil {
+		return &ctrl.Result{}, err
+	}
+
 	labels := map[string]string{
-		"app": mcoconfig.GetOperandName(mcoconfig.Observatorium),
+		"app":                    mcoconfig.GetOperandName(mcoconfig.Observatorium),
+		obsCRConfigHashLabelName: hash,
 	}
 
 	storageClassSelected, err := getStorageClass(mco, cl)
@@ -134,12 +139,6 @@ func GenerateObservatoriumCR(
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
-
-	hash, err := hashObservatoriumCRConfig(cl)
-	if err != nil {
-		return &ctrl.Result{}, err
-	}
-	labels[obsCRConfigHashLabelName] = hash
 
 	observatoriumCR := &obsv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
@@ -178,12 +177,23 @@ func GenerateObservatoriumCR(
 	} else if err != nil {
 		return &ctrl.Result{}, err
 	}
+	log.Info(
+		"Observatorium CR already exists",
+		"config-hash",
+		observatoriumCRFound.Labels[obsCRConfigHashLabelName],
+	)
+	log.Info(
+		"Desired Observatorium CR config hash",
+		"config-hash",
+		observatoriumCR.Labels[obsCRConfigHashLabelName],
+	)
 
 	oldSpec := observatoriumCRFound.Spec
 	newSpec := observatoriumCR.Spec
 	oldSpecBytes, _ := yaml.Marshal(oldSpec)
 	newSpecBytes, _ := yaml.Marshal(newSpec)
-	if bytes.Equal(newSpecBytes, oldSpecBytes) && hash == observatoriumCRFound.Labels[obsCRConfigHashLabelName] {
+	if bytes.Equal(newSpecBytes, oldSpecBytes) &&
+		labels[obsCRConfigHashLabelName] == observatoriumCRFound.Labels[obsCRConfigHashLabelName] {
 		return nil, nil
 	}
 
