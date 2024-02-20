@@ -484,6 +484,7 @@ func createCSR() ([]byte, []byte) {
 				{Type: oidUser, Value: "managed-cluster-observability"},
 			},
 		},
+		DNSNames:           []string{"observability-controller.addon.open-cluster-management.io"},
 		SignatureAlgorithm: x509.SHA512WithRSA,
 	}
 	csrCertificate, _ := x509.CreateCertificateRequest(rand.Reader, &csrTemplate, keys)
