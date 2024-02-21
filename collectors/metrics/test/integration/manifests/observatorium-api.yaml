@@ -41,6 +41,8 @@ spec:
         - --web.internal.listen=0.0.0.0:8448
         - --metrics.read.endpoint=http://observability-observatorium-thanos-query-frontend.open-cluster-management-observability.svc.cluster.local:9090
         - --metrics.write.endpoint=http://observability-observatorium-thanos-receive-default:19291
+        - --metrics.write-timeout=5m
+        - --server.read-header-timeout=10s
         - --log.level=warn
         - --rbac.config=/etc/observatorium/rbac.yaml
         - --tenants.config=/etc/observatorium/tenants.yaml
@@ -89,4 +91,5 @@ spec:
       - name: observatorium-certs
         secret:
           defaultMode: 420
-          secretName: observatorium-certs    
+          secretName: observatorium-certs
+
