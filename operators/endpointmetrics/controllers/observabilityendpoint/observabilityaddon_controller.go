@@ -26,6 +26,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
@@ -410,6 +412,24 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			&source.Kind{Type: &appsv1.StatefulSet{}},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, uwlNamespace, true, false, true)),
+		).
+		// Watch the kube-system extension-apiserver-authentication ConfigMap for changes
+		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, handler.EnqueueRequestsFromMapFunc(
+			func(a client.Object) []reconcile.Request {
+				if a.GetName() == "extension-apiserver-authentication" && a.GetNamespace() == "kube-system" {
+					return []reconcile.Request{
+						{NamespacedName: types.NamespacedName{
+							Name:      "metrics-collector-clientca-metric",
+							Namespace: namespace,
+						}},
+						{NamespacedName: types.NamespacedName{
+							Name:      "uwl-metrics-collector-clientca-metric",
+							Namespace: namespace,
+						}},
+					}
+				}
+				return nil
+			}), builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
 		).
 		Complete(r)
 }

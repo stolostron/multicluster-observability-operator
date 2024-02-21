@@ -142,7 +142,17 @@ alertmanager-router-ca: |
 	amAccessSrt := newAMAccessorSecret()
 	allowList := getAllowlistCM()
 	images := newImagesCM()
-	objs := []runtime.Object{hubInfo, amAccessSrt, allowList, images, cv, infra}
+	objs := []runtime.Object{hubInfo, amAccessSrt, allowList, images, cv, infra,
+		&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "extension-apiserver-authentication",
+				Namespace: "kube-system",
+			},
+			Data: map[string]string{
+				"client-ca-file": "test",
+			},
+		},
+	}
 
 	hubClient := fake.NewClientBuilder().WithRuntimeObjects(hubObjs...).Build()
 	util.SetHubClient(hubClient)

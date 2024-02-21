@@ -165,7 +165,15 @@ func TestMetricsCollector(t *testing.T) {
 	}
 
 	ctx := context.TODO()
-	objs := []runtime.Object{getAllowlistCM(), getCustomAllowlistCM()}
+	objs := []runtime.Object{getAllowlistCM(), getCustomAllowlistCM(), &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "extension-apiserver-authentication",
+			Namespace: "kube-system",
+		},
+		Data: map[string]string{
+			"client-ca-file": "test",
+		},
+	}}
 	promv1.AddToScheme(scheme.Scheme)
 	c := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(objs...).Build()
 
