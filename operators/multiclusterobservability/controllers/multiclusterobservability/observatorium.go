@@ -229,7 +229,6 @@ func getTLSSecretMountPath(client client.Client,
 		return "", nil
 	}
 	return path.Dir(caFile), nil
-	return path.Dir(caFile), nil
 }
 
 func updateTenantID(
