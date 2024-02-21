@@ -178,6 +178,13 @@ func getCommands(params CollectorParams) []string {
 }
 
 func createDeployment(params CollectorParams) *appsv1.Deployment {
+	mtlsCaSecret := mtlsCaName
+	if hubMetricsCollector {
+		// ACM 8509: // ACM 8509: Special case for hub/local cluster metrics collection
+		// When the server-ca-cert is rotated on the hub, the managed-cluster-certs for hub
+		// is not automatically rotated hence forcing this to use the server-ca-cert
+		mtlsCaSecret = "observability-server-ca-certs"
+	}
 	volumes := []corev1.Volume{
 		{
 			Name: "mtlscerts",
@@ -191,7 +198,7 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			Name: "mtlsca",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: mtlsCaName,
+					SecretName: mtlsCaSecret,
 				},
 			},
 		},
@@ -348,7 +355,6 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 	if params.obsAddonSpec.Resources != nil {
 		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *params.obsAddonSpec.Resources
 	}
-
 	return metricsCollectorDep
 }
 
