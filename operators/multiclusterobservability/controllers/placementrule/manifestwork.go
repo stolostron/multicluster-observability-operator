@@ -69,6 +69,7 @@ var (
 	imageListConfigMap            *corev1.ConfigMap
 
 	rawExtensionList []runtime.RawExtension
+	hubManifestCopy  []workv1.Manifest
 )
 
 func deleteManifestWork(c client.Client, name string, namespace string) error {
@@ -499,9 +500,7 @@ func createCSR() ([]byte, []byte) {
 	return csr, privateKey
 }
 
-func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
-
-	//create csr for hub metrics collection
+func createMtlsCertSecretForHubCollector(c client.Client) error {
 	csrBytes, privateKeyBytes := createCSR()
 	csr := &certificatesv1.CertificateSigningRequest{
 		Spec: certificatesv1.CertificateSigningRequestSpec{
@@ -531,13 +530,24 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			return err
 		}
 	}
+	return nil
+}
+
+func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
+	//create csr for hub metrics collection
+	err := createMtlsCertSecretForHubCollector(c)
+	if err != nil {
+		log.Error(err, "Failed to create client cert secret for hub metrics collection")
+		return err
+	}
+
 	//Make a deep copy of all the manifests since there are some global resources that can be updated due to this function
-	manifestsCopy := make([]workv1.Manifest, len(manifests))
+	hubManifestsCopy := make([]workv1.Manifest, len(manifests))
 	for i, manifest := range manifests {
 		obj := manifest.RawExtension.Object.DeepCopyObject()
-		manifestsCopy[i] = workv1.Manifest{RawExtension: runtime.RawExtension{Object: obj}}
+		hubManifestsCopy[i] = workv1.Manifest{RawExtension: runtime.RawExtension{Object: obj}}
 	}
-	for _, manifest := range manifestsCopy {
+	for _, manifest := range hubManifestsCopy {
 		obj := manifest.RawExtension.Object.(client.Object)
 		if obj.GetObjectKind().GroupVersionKind().Kind == "Namespace" || obj.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
 			// We do not want to create ObservabilityAddon and namespace open-cluster-management-add-on observability for hub cluster
@@ -557,35 +567,19 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			return err
 		}
 	}
-
 	return nil
 }
 
-// Detele endpoint operator resources for hub metrics collection
+// Delete resources created for hub metrics collection
 func deleteHubMetricsCollectionDeployments(c client.Client) error {
-	hubEndpointOperatorDep := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      hubEndpointOperatorName,
-			Namespace: config.GetDefaultNamespace(),
-		},
+	for _, manifest := range hubManifestCopy {
+		obj := manifest.RawExtension.Object.(client.Object)
+		err := c.Delete(context.TODO(), obj)
+		if err != nil && !k8serrors.IsNotFound(err) {
+			log.Error(err, "Failed to delete resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
+			return err
+		}
 	}
-	err := c.Delete(context.TODO(), hubEndpointOperatorDep)
-	if err != nil && !k8serrors.IsNotFound(err) {
-		log.Error(err, "Failed to delete endpoint operator deployment in the hub")
-		return err
-	}
-	hubMetricsCollectorDep := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      hubMetricsCollectorName,
-			Namespace: config.GetDefaultNamespace(),
-		},
-	}
-	err = c.Delete(context.TODO(), hubMetricsCollectorDep)
-	if err != nil && !k8serrors.IsNotFound(err) {
-		log.Error(err, "Failed to delete metrics collector deployment in the hub")
-		return err
-	}
-	return nil
 }
 
 // generateAmAccessorTokenSecret generates the secret that contains the access_token
