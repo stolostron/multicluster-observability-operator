@@ -34,8 +34,10 @@ import (
 const (
 	metricsCollectorName    = "metrics-collector-deployment"
 	uwlMetricsCollectorName = "uwl-metrics-collector-deployment"
+	metricsCollector        = "metrics-collector"
+	uwlMetricsCollector     = "uwl-metrics-collector"
 	selectorKey             = "component"
-	selectorValue           = "metrics-collector"
+	selectorValue           = metricsCollector
 	caMounthPath            = "/etc/serving-certs-ca-bundle"
 	caVolName               = "serving-certs-ca-bundle"
 	mtlsCertName            = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
@@ -182,9 +184,9 @@ func getCommands(params CollectorParams) []string {
 
 func createDeployment(params CollectorParams) *appsv1.Deployment {
 	falsePtr := false
-	secretName := "metrics-collector"
+	secretName := metricsCollector
 	if params.isUWL {
-		secretName = "uwl-metrics-collector"
+		secretName = uwlMetricsCollector
 	}
 	volumes := []corev1.Volume{
 		{
@@ -303,7 +305,7 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 					ServiceAccountName: serviceAccountName,
 					Containers: []corev1.Container{
 						{
-							Name:    "metrics-collector",
+							Name:    metricsCollector,
 							Image:   rendering.Images[operatorconfig.MetricsCollectorKey],
 							Command: commands,
 							Env: []corev1.EnvVar{
@@ -437,9 +439,9 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 }
 
 func createKubeRbacProxySecret(params CollectorParams) *corev1.Secret {
-	name := "metrics-collector"
+	name := metricsCollector
 	if params.isUWL {
-		name = "uwl-metrics-collector"
+		name = uwlMetricsCollector
 	}
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -462,9 +464,9 @@ func createKubeRbacProxySecret(params CollectorParams) *corev1.Secret {
 }
 
 func createService(params CollectorParams) *corev1.Service {
-	name := "metrics-collector"
+	name := metricsCollector
 	if params.isUWL {
-		name = "uwl-metrics-collector"
+		name = uwlMetricsCollector
 	}
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -495,9 +497,9 @@ func createService(params CollectorParams) *corev1.Service {
 }
 
 func createClientCAConfigMap(params CollectorParams) *corev1.ConfigMap {
-	name := "metrics-collector"
+	name := metricsCollector
 	if params.isUWL {
-		name = "uwl-metrics-collector"
+		name = uwlMetricsCollector
 	}
 
 	return &corev1.ConfigMap{
@@ -510,10 +512,10 @@ func createClientCAConfigMap(params CollectorParams) *corev1.ConfigMap {
 
 // createServiceMonitor creates a ServiceMonitor for the metrics collector.
 func createServiceMonitor(params CollectorParams) *promv1.ServiceMonitor {
-	name := "metrics-collector"
+	name := metricsCollector
 	replace := "acm_metrics_collector_${1}"
 	if params.isUWL {
-		name = "uwl-metrics-collector"
+		name = uwlMetricsCollector
 		replace = "acm_uwl_metrics_collector_${1}"
 	}
 
@@ -661,9 +663,9 @@ func syncClientCA(ctx context.Context, c client.Client, cfgMap *corev1.ConfigMap
 func updateMetricsCollector(ctx context.Context, c client.Client, params CollectorParams,
 	forceRestart bool) (bool, error) {
 	name := metricsCollectorName
-	resourceName := "metrics-collector"
+	resourceName := metricsCollector
 	if params.isUWL {
-		resourceName = "uwl-metrics-collector"
+		resourceName = uwlMetricsCollector
 		name = uwlMetricsCollectorName
 	}
 
