@@ -438,7 +438,6 @@ func createAllRelatedRes(
 				log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
 			}
 		}
-
 	}
 
 	if failedCreateManagedClusterRes || failedDeleteOba {
