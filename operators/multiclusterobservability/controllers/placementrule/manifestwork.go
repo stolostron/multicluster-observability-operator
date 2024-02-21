@@ -580,6 +580,7 @@ func deleteHubMetricsCollectionDeployments(c client.Client) error {
 			return err
 		}
 	}
+	return nil
 }
 
 // generateAmAccessorTokenSecret generates the secret that contains the access_token
