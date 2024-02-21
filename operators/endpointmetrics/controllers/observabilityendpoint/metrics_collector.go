@@ -39,6 +39,7 @@ const (
 	caVolName               = "serving-certs-ca-bundle"
 	mtlsCertName            = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
 	mtlsCaName              = "observability-managed-cluster-certs"
+	mtlsServerCaName        = "observability-server-ca-certs"
 	limitBytes              = 1073741824
 	defaultInterval         = "30s"
 	uwlNamespace            = "openshift-user-workload-monitoring"
@@ -183,7 +184,7 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 		// ACM 8509: // ACM 8509: Special case for hub/local cluster metrics collection
 		// When the server-ca-cert is rotated on the hub, the managed-cluster-certs for hub
 		// is not automatically rotated hence forcing this to use the server-ca-cert
-		mtlsCaSecret = "observability-server-ca-certs"
+		mtlsCaSecret = mtlsServerCaName
 	}
 	volumes := []corev1.Volume{
 		{
