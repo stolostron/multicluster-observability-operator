@@ -332,7 +332,7 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 						},
 						{
 							Name:  "kube-rbac-proxy",
-							Image: "quay.io/stolostron/kube-rbac-proxy:2.4.0-SNAPSHOT-2021-08-11-14-15-20",
+							Image: "quay.io/stolostron/kube-rbac-proxy:2.10.0-SNAPSHOT-2024-02-21-15-26-50",
 							Args: []string{
 								"--secure-listen-address=0.0.0.0:8443",
 								"--upstream=http://127.0.0.1:8080",
