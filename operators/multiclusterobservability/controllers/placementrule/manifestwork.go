@@ -542,12 +542,12 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 	}
 
 	//Make a deep copy of all the manifests since there are some global resources that can be updated due to this function
-	hubManifestsCopy := make([]workv1.Manifest, len(manifests))
+	hubManifestCopy = make([]workv1.Manifest, len(manifests))
 	for i, manifest := range manifests {
 		obj := manifest.RawExtension.Object.DeepCopyObject()
-		hubManifestsCopy[i] = workv1.Manifest{RawExtension: runtime.RawExtension{Object: obj}}
+		hubManifestCopy[i] = workv1.Manifest{RawExtension: runtime.RawExtension{Object: obj}}
 	}
-	for _, manifest := range hubManifestsCopy {
+	for _, manifest := range hubManifestCopy {
 		obj := manifest.RawExtension.Object.(client.Object)
 		if obj.GetObjectKind().GroupVersionKind().Kind == "Namespace" || obj.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
 			// We do not want to create ObservabilityAddon and namespace open-cluster-management-add-on observability for hub cluster
