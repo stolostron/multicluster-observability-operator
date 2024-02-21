@@ -22,24 +22,24 @@ spec:
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 70
-            podAffinityTerm:
-              topologyKey: topology.kubernetes.io/zone
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                  - multicluster-observability-alertmanager
-          - weight: 30
-            podAffinityTerm:
-              topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                  - multicluster-observability-alertmanager
+            - weight: 70
+              podAffinityTerm:
+                topologyKey: topology.kubernetes.io/zone
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - multicluster-observability-alertmanager
+            - weight: 30
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - multicluster-observability-alertmanager
       containers:
       - args:
         - --config.file=/etc/alertmanager/config/alertmanager.yaml
@@ -84,6 +84,9 @@ spec:
           name: config-volume
         - mountPath: /alertmanager
           name: alertmanager-db
+        securityContext:
+          privileged: false
+          readOnlyRootFilesystem: true
       - args:
         - -webhook-url=http://localhost:9093/-/reload
         - -volume-dir=/etc/alertmanager/config
@@ -102,6 +105,9 @@ spec:
         - mountPath: /etc/tls/private
           name: tls-secret
           readOnly: true
+        securityContext:
+          privileged: false
+          readOnlyRootFilesystem: true
       - args:
         - --provider=openshift
         - --https-address=:9095
@@ -146,6 +152,9 @@ spec:
           readOnly: true
         - mountPath: /etc/proxy/secrets
           name: alertmanager-proxy
+        securityContext:
+          privileged: false
+          readOnlyRootFilesystem: true
       - image: quay.io/stolostron/kube-rbac-proxy:2.10.0-SNAPSHOT-2024-02-13-14-12-35
         name: kube-rbac-proxy
         args:
@@ -175,7 +184,9 @@ spec:
         - mountPath: /etc/tls/client
           name: metrics-client-ca
           readOnly: true
-
+        securityContext:
+          privileged: false
+          readOnlyRootFilesystem: true
       serviceAccount: alertmanager
       serviceAccountName: alertmanager
       volumes:
@@ -202,12 +213,12 @@ spec:
         configMap:
           name: alertmanager-clientca-metric
   volumeClaimTemplates:
-  - metadata:
-      name: alertmanager-db
-    spec:
-      accessModes:
-      - ReadWriteOnce
-      resources:
-        requests:
-          storage: 10Gi
-      storageClassName: "gp2"
+    - metadata:
+        name: alertmanager-db
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        storageClassName: "gp2"
