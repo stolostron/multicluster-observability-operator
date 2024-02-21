@@ -136,6 +136,107 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	}
 }
 
+func TestUpdateObservatoriumCR(t *testing.T) {
+	namespace := mcoconfig.GetDefaultNamespace()
+
+	// A MultiClusterObservability object with metadata and spec.
+	mco := &mcov1beta2.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: mcoconfig.GetDefaultCRName(),
+		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
+					Key:  "test",
+					Name: "test",
+				},
+				StorageClass:            storageClassName,
+				AlertmanagerStorageSize: "1Gi",
+				CompactStorageSize:      "1Gi",
+				RuleStorageSize:         "1Gi",
+				ReceiveStorageSize:      "1Gi",
+				StoreStorageSize:        "1Gi",
+			},
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: true,
+				Interval:      300,
+			},
+		},
+	}
+	// Register operator types with the runtime scheme.
+	s := scheme.Scheme
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	observatoriumv1alpha1.AddToScheme(s)
+
+	objs := []runtime.Object{mco}
+	objs = append(objs, []runtime.Object{
+		&corev1.ConfigMap{
+			TypeMeta:   metav1.TypeMeta{Kind: "ConfigMap"},
+			ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: namespace},
+			Data: map[string]string{
+				"config.yaml": "test",
+			},
+		},
+	}...)
+
+	// Create a fake client to mock API calls.
+	// This should have no extra objects beyond the CMO CRD.
+	noConfigCl := fake.NewClientBuilder().WithRuntimeObjects(mco).Build()
+	mcoconfig.SetOperandNames(noConfigCl)
+
+	_, err := GenerateObservatoriumCR(noConfigCl, s, mco)
+	if err != nil {
+		t.Errorf("Failed to create observatorium due to %v", err)
+	}
+
+	// Check if this Observatorium CR already exists
+	createdObservatoriumCR := &observatoriumv1alpha1.Observatorium{}
+	noConfigCl.Get(context.TODO(), types.NamespacedName{
+		Name:      mcoconfig.GetDefaultCRName(),
+		Namespace: namespace,
+	}, createdObservatoriumCR)
+	hash, configHashFound := createdObservatoriumCR.Labels[obsCRConfigHashLabelName]
+	if !configHashFound {
+		t.Errorf("config-hash label not found in Observatorium CR")
+	}
+	const observatoriumEmptyConfigHash = "8a80554c91d9fca8acb82f023de02f11"
+	if hash != observatoriumEmptyConfigHash {
+		t.Errorf("config-hash label contains unexpected hash. Want: '%s', got '%s'", observatoriumEmptyConfigHash, hash)
+	}
+
+	// Create a fake client to mock API calls.
+	cl := fake.NewClientBuilder().WithRuntimeObjects(append(objs, createdObservatoriumCR)...).Build()
+	mcoconfig.SetOperandNames(cl)
+
+	_, err = GenerateObservatoriumCR(cl, s, mco)
+	if err != nil {
+		t.Errorf("Failed to update observatorium due to %v", err)
+	}
+	objs = append(objs, []runtime.Object{createdObservatoriumCR}...)
+	updatedObservatorium := &observatoriumv1alpha1.Observatorium{}
+	cl.Get(context.TODO(), types.NamespacedName{
+		Name:      mcoconfig.GetDefaultCRName(),
+		Namespace: namespace,
+	}, updatedObservatorium)
+	updatedHash, updatedHashFound := updatedObservatorium.Labels[obsCRConfigHashLabelName]
+	if !updatedHashFound {
+		t.Errorf("config-hash label not found in Observatorium CR")
+	}
+
+	const expectedConfigHash = "321c72e32663033537aa77c56d90834b"
+	if updatedHash != expectedConfigHash {
+		t.Errorf("config-hash label contains unexpected hash. Want: '%s', got '%s'", expectedConfigHash, updatedHash)
+	}
+
+	createdSpecBytes, _ := yaml.Marshal(createdObservatoriumCR.Spec)
+	updatedSpecBytes, _ := yaml.Marshal(updatedObservatorium.Spec)
+	if res := bytes.Compare(updatedSpecBytes, createdSpecBytes); res != 0 {
+		t.Errorf("%v should be equal to %v", string(createdSpecBytes), string(updatedSpecBytes))
+	}
+
+}
+
 func TestNoUpdateObservatoriumCR(t *testing.T) {
 	var (
 		namespace = mcoconfig.GetDefaultNamespace()
@@ -217,29 +318,28 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	}
 
 	// Check if this Observatorium CR already exists
-	observatoriumCRFound := &observatoriumv1alpha1.Observatorium{}
+	createdObservatoriumCR := &observatoriumv1alpha1.Observatorium{}
 	cl.Get(
 		context.TODO(),
 		types.NamespacedName{
 			Name:      mcoconfig.GetDefaultCRName(),
 			Namespace: namespace,
 		},
-		observatoriumCRFound,
+		createdObservatoriumCR,
 	)
 
-	oldSpec := observatoriumCRFound.Spec
-	newSpec, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
-	oldSpecBytes, _ := yaml.Marshal(oldSpec)
-	newSpecBytes, _ := yaml.Marshal(newSpec)
-
-	hash, configHashFound := observatoriumCRFound.Labels["config-hash"]
+	hash, configHashFound := createdObservatoriumCR.Labels["config-hash"]
 	if !configHashFound {
 		t.Errorf("config-hash label not found in Observatorium CR")
 	}
-	const expectedConfigHash = "06869d277adcef9eb22f81d61c964393"
+	const expectedConfigHash = "321c72e32663033537aa77c56d90834b"
 	if hash != expectedConfigHash {
 		t.Errorf("config-hash label contains unexpected hash. Want: '%s', got '%s'", expectedConfigHash, hash)
 	}
+
+	oldSpecBytes, _ := yaml.Marshal(createdObservatoriumCR.Spec)
+	newSpec, _ := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+	newSpecBytes, _ := yaml.Marshal(newSpec)
 
 	if res := bytes.Compare(newSpecBytes, oldSpecBytes); res != 0 {
 		t.Errorf("%v should be equal to %v", string(oldSpecBytes), string(newSpecBytes))
@@ -262,30 +362,8 @@ func TestHashObservatoriumCRWithConfig(t *testing.T) {
 	}{
 		{
 			name:         "With Observatorium's secrets and configmap present",
-			expectedHash: "06869d277adcef9eb22f81d61c964393",
+			expectedHash: "321c72e32663033537aa77c56d90834b",
 			objs: []runtime.Object{
-				&corev1.Secret{
-					TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
-					ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.ServerCerts, Namespace: namespace},
-					Data: map[string][]byte{
-						"tls.crt": []byte("server-cert"),
-						"tls.key": []byte("server-key"),
-					},
-				},
-				&corev1.Secret{
-					TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
-					ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.ClientCACerts, Namespace: namespace},
-					Data: map[string][]byte{
-						"tls.crt": []byte("client-ca-cert"),
-					},
-				},
-				&corev1.Secret{
-					TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
-					ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: namespace},
-					Data: map[string][]byte{
-						"tls.crt": []byte("test"),
-					},
-				},
 				&corev1.ConfigMap{
 					TypeMeta:   metav1.TypeMeta{Kind: "ConfigMap"},
 					ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: namespace},
@@ -297,9 +375,9 @@ func TestHashObservatoriumCRWithConfig(t *testing.T) {
 		},
 		{
 			name: "Without Observatorium's secrets and configmap present",
-			// The hash is still calculated when the configmaps and secrets aren't presented, because the implementation
-			// is hashing an empty object for each one of them if they aren't found.
-			expectedHash: "1b7799225be7c98c78387c6aff5b0eed",
+			// The hash is still calculated when the configmap isn't present, because the implementation
+			// is hashing an empty object if it isn't found.
+			expectedHash: "8a80554c91d9fca8acb82f023de02f11",
 			objs:         []runtime.Object{},
 		},
 	}
