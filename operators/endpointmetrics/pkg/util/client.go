@@ -28,8 +28,11 @@ var (
 )
 
 var (
-	log               = ctrl.Log.WithName("util")
-	hubKubeConfigPath = os.Getenv("HUB_KUBECONFIG")
+	log = ctrl.Log.WithName("util")
+)
+
+const (
+	hubKubeConfigPath = "/spoke/hub-kubeconfig/kubeconfig"
 )
 
 // GetOrCreateOCPClient get an existing hub client or create new one if it doesn't exist.
@@ -42,7 +45,6 @@ func GetOrCreateHubClient(renew bool) (client.Client, error) {
 		return hubClient, nil
 	}
 	// create the config from the path
-	log.Info("Coleen: hubKubeConfigPath", "hubKubeConfigPath", hubKubeConfigPath)
 	config, err := clientcmd.BuildConfigFromFlags("", hubKubeConfigPath)
 	if err != nil {
 		log.Error(err, "Failed to create the config")
