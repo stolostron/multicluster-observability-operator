@@ -7,7 +7,6 @@ package multiclusterobservability
 import (
 	"bytes"
 	"context"
-
 	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
 	// changes and thus it's not a security issue.
 	// nolint:gosec
@@ -56,17 +55,11 @@ const (
 	endpointsRestartLabel = "endpoints/time-restarted"
 )
 
-// Fetch contents of the secrets: observability-server-certs, observability-client-ca-certs,
-// observability-observatorium-api.
+// Fetch contents of the secret: observability-observatorium-api.
 // Fetch contents of the configmap: observability-observatorium-api.
 // Concatenate all of the above and hash their contents.
 // If any of the secrets or configmaps aren't found, an empty struct of the respective type is used for the hash.
 func hashObservatoriumCRConfig(cl client.Client) (string, error) {
-	secretsToQuery := []metav1.ObjectMeta{
-		{Name: mcoconfig.ServerCerts, Namespace: mcoconfig.GetDefaultNamespace()},
-		{Name: mcoconfig.ClientCACerts, Namespace: mcoconfig.GetDefaultNamespace()},
-		{Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: mcoconfig.GetDefaultNamespace()},
-	}
 	configMapToQuery := metav1.ObjectMeta{
 		Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: mcoconfig.GetDefaultNamespace(),
 	}
@@ -75,22 +68,6 @@ func hashObservatoriumCRConfig(cl client.Client) (string, error) {
 	// changes and thus it's not a security issue.
 	// nolint:gosec
 	hasher := md5.New() // #nosec G401 G501
-	for _, secret := range secretsToQuery {
-		resultSecret := &v1.Secret{}
-		err := cl.Get(context.TODO(), types.NamespacedName{
-			Name:      secret.Name,
-			Namespace: secret.Namespace,
-		}, resultSecret)
-		if err != nil && !k8serrors.IsNotFound(err) {
-			return "", err
-		}
-		secretData, err := yaml.Marshal(resultSecret.Data)
-		if err != nil {
-			return "", err
-		}
-		hasher.Write(secretData)
-	}
-
 	resultConfigMap := &v1.ConfigMap{}
 	err := cl.Get(context.TODO(), types.NamespacedName{
 		Name:      configMapToQuery.Name,

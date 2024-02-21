@@ -171,28 +171,6 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 
 	objs := []runtime.Object{mco}
 	objs = append(objs, []runtime.Object{
-		&corev1.Secret{
-			TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
-			ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.ServerCerts, Namespace: namespace},
-			Data: map[string][]byte{
-				"tls.crt": []byte("server-cert"),
-				"tls.key": []byte("server-key"),
-			},
-		},
-		&corev1.Secret{
-			TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
-			ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.ClientCACerts, Namespace: namespace},
-			Data: map[string][]byte{
-				"tls.crt": []byte("client-ca-cert"),
-			},
-		},
-		&corev1.Secret{
-			TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
-			ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: namespace},
-			Data: map[string][]byte{
-				"tls.crt": []byte("test"),
-			},
-		},
 		&corev1.ConfigMap{
 			TypeMeta:   metav1.TypeMeta{Kind: "ConfigMap"},
 			ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: namespace},
@@ -222,7 +200,7 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 	if !configHashFound {
 		t.Errorf("config-hash label not found in Observatorium CR")
 	}
-	const observatoriumEmptyConfigHash = "1b7799225be7c98c78387c6aff5b0eed"
+	const observatoriumEmptyConfigHash = "8a80554c91d9fca8acb82f023de02f11"
 	if hash != observatoriumEmptyConfigHash {
 		t.Errorf("config-hash label contains unexpected hash. Want: '%s', got '%s'", observatoriumEmptyConfigHash, hash)
 	}
@@ -245,9 +223,10 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 	if !updatedHashFound {
 		t.Errorf("config-hash label not found in Observatorium CR")
 	}
-	const expectedConfigHash = "06869d277adcef9eb22f81d61c964393"
+
+	const expectedConfigHash = "321c72e32663033537aa77c56d90834b"
 	if updatedHash != expectedConfigHash {
-		t.Errorf("config-hash label contains unexpected hash. Want: '%s', got '%s'", expectedConfigHash, hash)
+		t.Errorf("config-hash label contains unexpected hash. Want: '%s', got '%s'", expectedConfigHash, updatedHash)
 	}
 
 	createdSpecBytes, _ := yaml.Marshal(createdObservatoriumCR.Spec)
@@ -353,7 +332,7 @@ func TestNoUpdateObservatoriumCR(t *testing.T) {
 	if !configHashFound {
 		t.Errorf("config-hash label not found in Observatorium CR")
 	}
-	const expectedConfigHash = "06869d277adcef9eb22f81d61c964393"
+	const expectedConfigHash = "321c72e32663033537aa77c56d90834b"
 	if hash != expectedConfigHash {
 		t.Errorf("config-hash label contains unexpected hash. Want: '%s', got '%s'", expectedConfigHash, hash)
 	}
