@@ -362,30 +362,8 @@ func TestHashObservatoriumCRWithConfig(t *testing.T) {
 	}{
 		{
 			name:         "With Observatorium's secrets and configmap present",
-			expectedHash: "06869d277adcef9eb22f81d61c964393",
+			expectedHash: "321c72e32663033537aa77c56d90834b",
 			objs: []runtime.Object{
-				&corev1.Secret{
-					TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
-					ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.ServerCerts, Namespace: namespace},
-					Data: map[string][]byte{
-						"tls.crt": []byte("server-cert"),
-						"tls.key": []byte("server-key"),
-					},
-				},
-				&corev1.Secret{
-					TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
-					ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.ClientCACerts, Namespace: namespace},
-					Data: map[string][]byte{
-						"tls.crt": []byte("client-ca-cert"),
-					},
-				},
-				&corev1.Secret{
-					TypeMeta:   metav1.TypeMeta{Kind: "Secret"},
-					ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: namespace},
-					Data: map[string][]byte{
-						"tls.crt": []byte("test"),
-					},
-				},
 				&corev1.ConfigMap{
 					TypeMeta:   metav1.TypeMeta{Kind: "ConfigMap"},
 					ObjectMeta: metav1.ObjectMeta{Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: namespace},
@@ -397,9 +375,9 @@ func TestHashObservatoriumCRWithConfig(t *testing.T) {
 		},
 		{
 			name: "Without Observatorium's secrets and configmap present",
-			// The hash is still calculated when the configmaps and secrets aren't presented, because the implementation
-			// is hashing an empty object for each one of them if they aren't found.
-			expectedHash: "1b7799225be7c98c78387c6aff5b0eed",
+			// The hash is still calculated when the configmap isn't present, because the implementation
+			// is hashing an empty object if it isn't found.
+			expectedHash: "8a80554c91d9fca8acb82f023de02f11",
 			objs:         []runtime.Object{},
 		},
 	}
