@@ -574,6 +574,8 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 func deleteHubMetricsCollectionDeployments(c client.Client) error {
 	for _, manifest := range hubManifestCopy {
 		obj := manifest.RawExtension.Object.(client.Object)
+		log.Info("Coleen Deleting resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName(), "namespace", obj.GetNamespace())
+
 		err := c.Delete(context.TODO(), obj)
 		if err != nil && !k8serrors.IsNotFound(err) {
 			log.Error(err, "Failed to delete resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)

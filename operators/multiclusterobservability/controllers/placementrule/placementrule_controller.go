@@ -182,15 +182,15 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	if installMetricsWithoutAddon {
-		obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      obsAddonName,
-				Namespace: config.GetDefaultNamespace(),
-				Labels: map[string]string{
-					ownerLabelKey: ownerLabelValue,
-				},
-			},
-		})
+		//obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
+		//	ObjectMeta: metav1.ObjectMeta{
+		//		Name:      obsAddonName,
+		//		Namespace: config.GetDefaultNamespace(),
+		//		Labels: map[string]string{
+		//			ownerLabelKey: ownerLabelValue,
+		//		},
+		//	},
+		//})
 	}
 
 	if !deleteAll {
@@ -491,13 +491,17 @@ func createManagedClusterRes(
 	hubInfo *corev1.Secret,
 	installProm bool,
 ) error {
-	err := createObsAddon(c, namespace)
-	if err != nil {
-		log.Error(err, "Failed to create observabilityaddon")
-		return err
+	//ACM-8509: Special case for hub/local cluster metrics collection
+	// Do not create ObservabilityAddon for local-cluster
+	if namespace == config.GetDefaultNamespace() {
+		err := createObsAddon(c, namespace)
+		if err != nil {
+			log.Error(err, "Failed to create observabilityaddon")
+			return err
+		}
 	}
 
-	err = createRolebindings(c, namespace, name)
+	err := createRolebindings(c, namespace, name)
 	if err != nil {
 		return err
 	}
