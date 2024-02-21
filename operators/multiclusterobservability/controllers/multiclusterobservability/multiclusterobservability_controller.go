@@ -364,7 +364,10 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 			log.Error(err, "Failed to remove cluster scoped resources")
 			return false, err
 		}
-
+		if err := placementctrl.DeleteHubMetricsCollectionDeployments(r.Client); err != nil {
+			log.Error(err, "Failed to delete hub metrics collection deployments and resources")
+			return false, err
+		}
 		// clean up operand names
 		config.CleanUpOperandNames()
 

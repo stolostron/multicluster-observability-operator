@@ -571,7 +571,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 }
 
 // Delete resources created for hub metrics collection
-func deleteHubMetricsCollectionDeployments(c client.Client) error {
+func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 	log.Info("Coleen Deleting resources for hub metrics collection")
 	for _, manifest := range hubManifestCopy {
 		obj := manifest.RawExtension.Object.(client.Object)
