@@ -172,10 +172,10 @@ func PrintAllMCOPodsStatus(opt TestOptions) {
 		klog.V(1).Infof("mch-image-manifest configmap: %v", mchImageManifestCM)
 	}
 
-	LogPodsDebugInfo(hubClient, podList)
+	LogPodsDebugInfo(hubClient, podList, false)
 }
 
-func LogPodsDebugInfo(hubClient kubernetes.Interface, pods []corev1.Pod) {
+func LogPodsDebugInfo(hubClient kubernetes.Interface, pods []corev1.Pod, force bool) {
 	if len(pods) == 0 {
 		return
 	}
@@ -190,15 +190,17 @@ func LogPodsDebugInfo(hubClient kubernetes.Interface, pods []corev1.Pod) {
 	notRunningPodsCount := 0
 	for _, pod := range pods {
 		if pod.Status.Phase == corev1.PodRunning {
-			continue
-		}
+			// only print not ready pod status
+			notRunningPodsCount++
+			klog.V(1).Infof("Pod %q is not ready with phase %q and status: %s\n",
+				pod.Name,
+				pod.Status.Phase,
+				pod.Status.String())
 
-		// only print not ready pod status
-		notRunningPodsCount++
-		klog.V(1).Infof("Pod %q is not ready with phase %q and status: %s\n",
-			pod.Name,
-			pod.Status.Phase,
-			pod.Status.String())
+			if !force {
+				continue
+			}
+		}
 
 		// print pod events
 		events, err := hubClient.CoreV1().Events(ns).List(context.TODO(), metav1.ListOptions{
@@ -315,7 +317,7 @@ func PrintAllOBAPodsStatus(opt TestOptions) {
 		return
 	}
 
-	LogPodsDebugInfo(getKubeClient(opt, false), podList)
+	LogPodsDebugInfo(getKubeClient(opt, false), podList, false)
 }
 
 func CheckAllPodNodeSelector(opt TestOptions, nodeSelector map[string]interface{}) error {
