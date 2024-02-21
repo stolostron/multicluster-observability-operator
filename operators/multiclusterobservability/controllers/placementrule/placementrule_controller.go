@@ -204,10 +204,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			return ctrl.Result{}, err
 		}
 	} else {
-		// Delete Hub endpoint-obseravbility-operator deployment when MCO is deleted
-		if err = deleteHubMetricsCollectionDeployments(r.Client); err != nil {
-			return ctrl.Result{}, err
-		}
 		if err := deleteAllObsAddons(r.Client, obsAddonList); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -304,6 +300,11 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 		if len(workList.Items) == 0 {
 			err = deleteGlobalResource(r.Client)
+			log.Info("Coleen - deleteAll is true")
+			// Delete Hub endpoint-obseravbility-operator deployment when MCO is deleted
+			if err = deleteHubMetricsCollectionDeployments(r.Client); err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 	}
 
