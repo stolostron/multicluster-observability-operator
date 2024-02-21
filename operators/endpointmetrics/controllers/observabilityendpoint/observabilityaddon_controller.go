@@ -181,9 +181,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 				log.Error(err, "OCP prometheus service does not exist")
 				// ACM 8509: Special case for hub/local cluster metrics collection
 				// We do not report status for hub endpoint operator
-				if !hubMetricsCollector {
-					util.ReportStatus(ctx, r.Client, obsAddon, "NotSupported")
-				}
+				util.ReportStatus(ctx, r.Client, obsAddon, "NotSupported", !hubMetricsCollector)
 				return ctrl.Result{}, nil
 			}
 			log.Error(err, "Failed to check prometheus resource")
@@ -240,7 +238,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == caConfigmapName {
 		forceRestart = true
 	}
-	if obsAddon.Spec.EnableMetrics && !hubMetricsCollector {
+	if obsAddon.Spec.EnableMetrics {
 		created, err := updateMetricsCollectors(
 			ctx,
 			r.Client,
@@ -251,25 +249,11 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			forceRestart)
 
 		if err != nil {
-			util.ReportStatus(ctx, r.Client, obsAddon, "Degraded")
+			util.ReportStatus(ctx, r.Client, obsAddon, "Degraded", !hubMetricsCollector)
 			return ctrl.Result{}, err
 		}
 		if created {
-			util.ReportStatus(ctx, r.Client, obsAddon, "Deployed")
-		}
-	} else if hubMetricsCollector {
-		log.Info("Creating hub metrics collector")
-		_, err := updateMetricsCollectors(
-			ctx,
-			r.Client,
-			obsAddon.Spec,
-			*hubInfo, clusterID,
-			clusterType,
-			1,
-			forceRestart)
-		if err != nil {
-			log.Info("Error while creating hub metrics collector")
-			return ctrl.Result{}, err
+			util.ReportStatus(ctx, r.Client, obsAddon, "Deployed", !hubMetricsCollector)
 		}
 	} else {
 		deleted, err := updateMetricsCollectors(ctx, r.Client, obsAddon.Spec, *hubInfo, clusterID, clusterType, 0, false)
@@ -277,7 +261,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, err
 		}
 		if deleted {
-			util.ReportStatus(ctx, r.Client, obsAddon, "Disabled")
+			util.ReportStatus(ctx, r.Client, obsAddon, "Disabled", !hubMetricsCollector)
 		}
 	}
 
