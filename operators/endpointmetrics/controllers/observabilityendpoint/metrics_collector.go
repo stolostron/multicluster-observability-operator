@@ -342,6 +342,7 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 								"--client-ca-file=/etc/tls/client/client-ca-file",
 								"--logtostderr=true",
 								"--allow-paths=/metrics",
+								"--tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
 							},
 							Ports: []corev1.ContainerPort{
 								{
@@ -472,7 +473,7 @@ func createService(params CollectorParams) *corev1.Service {
 			Name:      name,
 			Namespace: namespace,
 			Labels: map[string]string{
-				selectorKey: selectorValue,
+				selectorKey: name,
 			},
 			Annotations: map[string]string{
 				ownerLabelKey: ownerLabelValue,
@@ -481,12 +482,12 @@ func createService(params CollectorParams) *corev1.Service {
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
-				selectorKey: selectorValue,
+				selectorKey: name,
 			},
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "metrics",
-					Port:       8080,
+					Port:       8443,
 					TargetPort: intstr.FromString("metrics"),
 				},
 			},
@@ -523,7 +524,7 @@ func createServiceMonitor(params CollectorParams) *promv1.ServiceMonitor {
 			Name:      name,
 			Namespace: namespace,
 			Labels: map[string]string{
-				"app": name,
+				selectorKey: name,
 			},
 			Annotations: map[string]string{
 				ownerLabelKey: ownerLabelValue,
@@ -532,7 +533,7 @@ func createServiceMonitor(params CollectorParams) *promv1.ServiceMonitor {
 		Spec: promv1.ServiceMonitorSpec{
 			Selector: metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					selectorKey: selectorValue,
+					selectorKey: name,
 				},
 			},
 			NamespaceSelector: promv1.NamespaceSelector{
@@ -553,9 +554,11 @@ func createServiceMonitor(params CollectorParams) *promv1.ServiceMonitor {
 					},
 					MetricRelabelConfigs: []*promv1.RelabelConfig{
 						{
-							Action:      "replace",
-							Regex:       "(.+)",
-							Replacement: replace,
+							Action:       "replace",
+							Regex:        "(.+)",
+							Replacement:  replace,
+							SourceLabels: []string{"__name__"},
+							TargetLabel:  "__name__",
 						},
 					},
 				},

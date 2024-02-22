@@ -45,14 +45,15 @@ var (
 )
 
 const (
-	obAddonName                   = "observability-addon"
-	mcoCRName                     = "observability"
-	ownerLabelKey                 = "owner"
-	ownerLabelValue               = "observabilityaddon"
-	obsAddonFinalizer             = "observability.open-cluster-management.io/addon-cleanup"
-	promSvcName                   = "prometheus-k8s"
-	promNamespace                 = "openshift-monitoring"
-	hubMetricsCollectionNamespace = "open-cluster-management-observability"
+	obAddonName                     = "observability-addon"
+	mcoCRName                       = "observability"
+	ownerLabelKey                   = "owner"
+	ownerLabelValue                 = "observabilityaddon"
+	obsAddonFinalizer               = "observability.open-cluster-management.io/addon-cleanup"
+	promSvcName                     = "prometheus-k8s"
+	promNamespace                   = "openshift-monitoring"
+	openShiftClusterMonitoringlabel = "openshift.io/cluster-monitoring"
+	hubMetricsCollectionNamespace   = "open-cluster-management-observability"
 )
 
 var (
@@ -341,6 +342,35 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		log.Info("Finalizer added to observabilityaddon resource")
 	}
 	return false, nil
+}
+
+func (r *ObservabilityAddonReconciler) ensureOpenShiftNamespaceLabel(ctx context.Context) error {
+	existingNs := &corev1.Namespace{}
+	resNS := namespace
+
+	err := r.Client.Get(ctx, types.NamespacedName{Name: resNS}, existingNs)
+	if err != nil || errors.IsNotFound(err) {
+		log.Error(err, fmt.Sprintf("Failed to find namespace for Endpoint Operator: %s", resNS))
+		return err
+	}
+
+	if existingNs.ObjectMeta.Labels == nil || len(existingNs.ObjectMeta.Labels) == 0 {
+		existingNs.ObjectMeta.Labels = make(map[string]string)
+	}
+
+	if _, ok := existingNs.ObjectMeta.Labels[openShiftClusterMonitoringlabel]; !ok {
+		log.Info(fmt.Sprintf("Adding label: %s to namespace: %s", openShiftClusterMonitoringlabel, resNS))
+		existingNs.ObjectMeta.Labels[openShiftClusterMonitoringlabel] = "true"
+
+		err = r.Client.Update(ctx, existingNs)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Failed to update namespace for Endpoint Operator: %s with the label: %s",
+				namespace, openShiftClusterMonitoringlabel))
+			return err
+		}
+	}
+
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
