@@ -25,11 +25,13 @@ func installMCO() {
 		return
 	}
 
+	klog.V(5).Infof("Create kubeclient for url %s using kubeconfig path %s\n", testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig)
 	hubClient := utils.NewKubeClient(
 		testOptions.HubCluster.ClusterServerURL,
 		testOptions.KubeConfig,
 		testOptions.HubCluster.KubeContext)
 
+	klog.V(5).Infof("Create kubeclient dynamic for url %s using kubeconfig path %s\n", testOptions.HubCluster.ClusterServerURL, testOptions.KubeConfig)
 	dynClient := utils.NewKubeClientDynamic(
 		testOptions.HubCluster.ClusterServerURL,
 		testOptions.KubeConfig,
@@ -49,33 +51,6 @@ func installMCO() {
 		Expect(string(mcoPod)).NotTo(Equal(""))
 		Expect(string(pod.Status.Phase)).To(Equal("Running"))
 	}
-
-	// print mco logs if MCO installation failed
-	defer func(testOptions utils.TestOptions, isHub bool, namespace, podName, containerName string, previous bool, tailLines int64) {
-		if testFailed {
-			mcoLogs, err := utils.GetPodLogs(
-				testOptions,
-				isHub,
-				namespace,
-				podName,
-				containerName,
-				previous,
-				tailLines,
-			)
-			Expect(err).NotTo(HaveOccurred())
-			fmt.Fprintf(GinkgoWriter, "[DEBUG] MCO is installed failed, checking MCO operator logs:\n%s\n", mcoLogs)
-		} else {
-			fmt.Fprintf(GinkgoWriter, "[DEBUG] MCO is installed successfully!\n")
-		}
-	}(
-		testOptions,
-		false,
-		mcoNs,
-		mcoPod,
-		"multicluster-observability-operator",
-		false,
-		1000,
-	)
 
 	By("Checking Required CRDs are created")
 	Eventually(func() error {
@@ -186,7 +161,7 @@ func installMCO() {
 				testOptions.HubCluster.KubeContext,
 				yamlB,
 			)
-		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
 
 	} else {
 		By("Apply MCO instance of v1beta2")
@@ -201,33 +176,59 @@ func installMCO() {
 				testOptions.HubCluster.KubeContext,
 				yamlB,
 			)
-		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
 	}
 	// wait for pod restarting
 	time.Sleep(60 * time.Second)
 
+	mcoTestFailed := false
+	defer func() {
+		if !mcoTestFailed {
+			return
+		}
+
+		mcoLogs, err := utils.GetPodLogs(testOptions, true, mcoNs, mcoPod, "multicluster-observability-operator", false, 1000)
+		Expect(err).NotTo(HaveOccurred())
+		fmt.Fprintf(GinkgoWriter, "[DEBUG] MCO is installed failed, checking MCO operator logs:\n%s\n", mcoLogs)
+		utils.PrintAllMCOPodsStatus(testOptions)
+
+	}()
 	By("Waiting for MCO ready status")
 	Eventually(func() error {
 		err = utils.CheckMCOComponents(testOptions)
 		if err != nil {
 			testFailed = true
-			utils.PrintAllMCOPodsStatus(testOptions)
+			mcoTestFailed = true
 			return err
 		}
+		fmt.Fprintf(GinkgoWriter, "[DEBUG] MCO is installed successfully!\n")
 		testFailed = false
+		mcoTestFailed = false
 		return nil
-	}, EventuallyTimeoutMinute*25, EventuallyIntervalSecond*10).Should(Succeed())
+	}, EventuallyTimeoutMinute*15, EventuallyIntervalSecond*20).Should(Succeed())
 
+	obaTestFailed := false
+	defer func() {
+		if !obaTestFailed {
+			return
+		}
+
+		fmt.Fprintf(GinkgoWriter, "[DEBUG] Addon failed, checking pods:\n")
+		utils.PrintAllOBAPodsStatus(testOptions)
+	}()
 	By("Check endpoint-operator and metrics-collector pods are ready")
 	Eventually(func() error {
 		err = utils.CheckAllOBAsEnabled(testOptions)
 		if err != nil {
+			obaTestFailed = true
 			testFailed = true
 			return err
 		}
+		fmt.Fprintf(GinkgoWriter, "[DEBUG] Addon is installed successfully!\n")
+		obaTestFailed = false
 		testFailed = false
 		return nil
-	}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*10).Should(Succeed())
+	}, EventuallyTimeoutMinute*15, EventuallyIntervalSecond*20).Should(Succeed())
 
 	By("Check clustermanagementaddon CR is created")
 	Eventually(func() error {
@@ -239,7 +240,7 @@ func installMCO() {
 		}
 		testFailed = false
 		return nil
-	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
 
 	BearerToken, err = utils.FetchBearerToken(testOptions)
 	if err != nil {

@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 )
 
@@ -155,24 +156,110 @@ func PrintAllMCOPodsStatus(opt TestOptions) {
 	}
 
 	if len(podList) == 0 {
-		klog.V(1).Infof("Failed to get pod in <%s> namespace", MCO_NAMESPACE)
+		klog.V(1).Infof("Failed to get pod in %q namespace", MCO_NAMESPACE)
 	}
 
-	klog.V(1).Infof("Get <%v> pods in <%s> namespace", len(podList), MCO_NAMESPACE)
-	for _, pod := range podList {
-		isReady := false
-		if pod.Status.Phase == corev1.PodRunning {
-			isReady = true
+	hubClient := NewKubeClient(
+		opt.HubCluster.ClusterServerURL,
+		opt.KubeConfig,
+		opt.HubCluster.KubeContext)
+
+	// Print mch-image-manifest configmap
+	mchImageManifestCM, err := ReadImageManifestConfigMap(hubClient)
+	if err != nil {
+		klog.Errorf("Failed to get mch-image-manifest configmap: %s", err.Error())
+	} else {
+		klog.V(1).Infof("mch-image-manifest configmap: %v", mchImageManifestCM)
+	}
+
+	LogPodsDebugInfo(hubClient, podList, false)
+}
+
+func LogPodsDebugInfo(hubClient kubernetes.Interface, pods []corev1.Pod, force bool) {
+	if len(pods) == 0 {
+		return
+	}
+
+	ns := pods[0].Namespace
+	podsNames := make([]string, 0, len(pods))
+	for _, pod := range pods {
+		podsNames = append(podsNames, pod.Name)
+	}
+
+	klog.V(1).Infof("Checking pods %v in namespace %q", podsNames, ns)
+	notRunningPodsCount := 0
+	for _, pod := range pods {
+		if pod.Status.Phase != corev1.PodRunning {
+			notRunningPodsCount++
 		}
 
-		// only print not ready pod status
-		if !isReady {
-			klog.V(1).Infof("Pod <%s> is not <Ready> on <%s> status due to %#v\n",
-				pod.Name,
-				pod.Status.Phase,
-				pod.Status)
+		if pod.Status.Phase == corev1.PodRunning && !force {
+			continue
+		}
+
+		klog.V(1).Infof("Pod %q is in phase %q and status: %s\n",
+			pod.Name,
+			pod.Status.Phase,
+			pod.Status.String())
+
+		// print pod events
+		events, err := hubClient.CoreV1().Events(ns).List(context.TODO(), metav1.ListOptions{
+			FieldSelector: "involvedObject.name=" + pod.Name,
+		})
+		if err != nil {
+			klog.Errorf("Failed to get events for pod %s: %s", pod.Name, err.Error())
+		}
+
+		podEvents := make([]string, 0, len(events.Items))
+		for _, event := range events.Items {
+			podEvents = append(podEvents, fmt.Sprintf("%s %s (%d): %s", event.Reason, event.LastTimestamp, event.Count, event.Message))
+		}
+		formattedEvents := ">>>>>>>>>> pod events >>>>>>>>>>\n" + strings.Join(podEvents, "\n") + "\n<<<<<<<<<< pod events <<<<<<<<<<"
+		klog.V(1).Infof("Pod %q events: \n%s", pod.Name, formattedEvents)
+
+		// print pod containers logs
+		for _, container := range pod.Spec.Containers {
+			logsRes := hubClient.CoreV1().Pods(ns).GetLogs(pod.Name, &corev1.PodLogOptions{
+				Container: container.Name,
+			}).Do(context.Background())
+
+			if logsRes.Error() != nil {
+				klog.Errorf("Failed to get logs for pod %q: %s", pod.Name, logsRes.Error())
+				continue
+			}
+
+			logs, err := logsRes.Raw()
+			if err != nil {
+				klog.Errorf("Failed to get logs for pod %q container %q: %s", pod.Name, container.Name, err.Error())
+				continue
+			}
+
+			delimitedLogs := fmt.Sprintf(">>>>>>>>>> container logs >>>>>>>>>>\n%s<<<<<<<<<< container logs <<<<<<<<<<", string(logs))
+			klog.V(1).Infof("Pod %q container %q logs: \n%s", pod.Name, container.Name, delimitedLogs)
 		}
 	}
+
+	if notRunningPodsCount == 0 {
+		klog.V(1).Infof("All pods are running in namespace %q", ns)
+	}
+}
+
+// ReadImageManifestConfigMap reads configmap with the label ocm-configmap-type=image-manifest.
+func ReadImageManifestConfigMap(c kubernetes.Interface) (map[string]string, error) {
+	listOpts := metav1.ListOptions{
+		LabelSelector: "ocm-configmap-type=image-manifest",
+	}
+
+	imageCMList, err := c.CoreV1().ConfigMaps("open-cluster-management").List(context.TODO(), listOpts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list mch-image-manifest configmaps: %w", err)
+	}
+
+	if len(imageCMList.Items) != 1 {
+		return nil, fmt.Errorf("found %d mch-image-manifest configmaps, expected 1", len(imageCMList.Items))
+	}
+
+	return imageCMList.Items[0].Data, nil
 }
 
 func PrintMCOObject(opt TestOptions) {
@@ -221,29 +308,20 @@ func GetAllOBAPods(opt TestOptions) ([]corev1.Pod, error) {
 func PrintAllOBAPodsStatus(opt TestOptions) {
 	podList, err := GetAllOBAPods(opt)
 	if err != nil {
-		klog.Errorf("Failed to get all OBA pods")
-	}
-
-	if len(podList) == 0 {
-		klog.V(1).Infof("Failed to get pod in <%s> namespace from managedcluster", MCO_ADDON_NAMESPACE)
+		klog.Errorf("Failed to get all OBA pods: %v", err)
+		return
 	}
 
 	klog.V(1).Infof("Get <%v> pods in <%s> namespace from managedcluster", len(podList), MCO_ADDON_NAMESPACE)
-
-	for _, pod := range podList {
-		isReady := false
-		if pod.Status.Phase == corev1.PodRunning {
-			isReady = true
-		}
-
-		// only print not ready pod status
-		if !isReady {
-			klog.V(1).Infof("Pod <%s> is not <Ready> on <%s> status due to %#v\n",
-				pod.Name,
-				pod.Status.Phase,
-				pod.Status)
-		}
+	if len(podList) == 0 {
+		return
 	}
+
+	force := false
+	if len(podList) == 1 { // only the operator is up
+		force = true
+	}
+	LogPodsDebugInfo(getKubeClient(opt, false), podList, force)
 }
 
 func CheckAllPodNodeSelector(opt TestOptions, nodeSelector map[string]interface{}) error {
