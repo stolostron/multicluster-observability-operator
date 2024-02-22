@@ -488,7 +488,7 @@ func createService(params CollectorParams) *corev1.Service {
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "metrics",
-					Port:       8000,
+					Port:       8080,
 					TargetPort: intstr.FromString("metrics"),
 				},
 			},
@@ -544,7 +544,7 @@ func createServiceMonitor(params CollectorParams) *promv1.ServiceMonitor {
 				{
 					Port:   "metrics",
 					Path:   "/metrics",
-					Scheme: "https",
+					Scheme: "http",
 					// TODO(saswatamcode): Enable later.
 					// TLSConfig: &promv1.TLSConfig{
 					// 	CAFile:   "/etc/prometheus/configmaps/serving-certs-ca-bundle/service-ca.crt",
