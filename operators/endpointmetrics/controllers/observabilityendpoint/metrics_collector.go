@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -329,7 +331,7 @@ func createDeployment(params CollectorParams, c client.Client) *appsv1.Deploymen
 			})
 
 		//Since there is no obsAddOn for hub-metrics-collector, we need to set the resources here
-		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *util.GetResourceRequirementsforHubMetricsCollector(c)
+		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = config.HubMetricsCollectorResources
 	}
 
 	privileged := false
