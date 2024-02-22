@@ -19,8 +19,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/ocp_monitoring"
-
 	certificatesv1 "k8s.io/api/certificates/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 
@@ -594,17 +592,17 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 
 		}
 	}
-	err := ocp_monitoring.RevertHubClusterMonitoringConfig(context.TODO(), c)
+	err := RevertHubClusterMonitoringConfig(context.TODO(), c)
 	if err != nil {
 		log.Error(err, "Failed to revert cluster monitoring config")
 		return err
 	}
-	err = ocp_monitoring.DeleteHubMonitoringClusterRoleBinding(context.TODO(), c)
+	err = DeleteHubMonitoringClusterRoleBinding(context.TODO(), c)
 	if err != nil {
 		log.Error(err, "Failed to delete monitoring cluster role binding for hub metrics collection")
 		return err
 	}
-	err = ocp_monitoring.DeleteHubCAConfigmap(context.TODO(), c)
+	err = DeleteHubCAConfigmap(context.TODO(), c)
 	if err != nil {
 		log.Error(err, "Failed to delete CA configmap for hub metrics collection")
 		return err
@@ -623,7 +621,7 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 		}
 	}
 	if isHypershift {
-		err = ocp_monitoring.DeleteServiceMonitors(context.TODO(), c)
+		err = DeleteServiceMonitors(context.TODO(), c)
 		if err != nil {
 			log.Error(err, "Failed to delete service monitors for hub metrics collection")
 			return err
