@@ -7,14 +7,14 @@ package observabilityendpoint
 import (
 	"context"
 	"fmt"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-
-	"k8s.io/apimachinery/pkg/api/resource"
 
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -178,7 +178,7 @@ func getCommands(params CollectorParams) []string {
 	return commands
 }
 
-func createDeployment(params CollectorParams) *appsv1.Deployment {
+func createDeployment(params CollectorParams, c client.Client) *appsv1.Deployment {
 	volumes := []corev1.Volume{
 		{
 			Name: "mtlscerts",
@@ -323,19 +323,24 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 	}
 
 	if hubMetricsCollector {
+		mco := &mcov1beta2.MultiClusterObservability{}
+		err := c.Get(context.TODO(),
+			types.NamespacedName{
+				Name: config.GetMonitoringCRName(),
+			}, mco)
+		if err != nil {
+			log.Error(err, "Failed to get mco")
+			return nil
+		}
 		//to avoid hub metrics collector from sending status
 		metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
 			corev1.EnvVar{
 				Name:  "STANDALONE",
 				Value: "true",
 			})
+
 		//Since there is no obsAddOn for hub-metrics-collector, we need to set the resources here
-		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = corev1.ResourceRequirements{
-			Limits: corev1.ResourceList{
-				corev1.ResourceMemory: resource.MustParse("100Mi"),
-				corev1.ResourceCPU:    resource.MustParse("10m"),
-			},
-		}
+		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *config.GetOBAResources(mco.Spec.ObservabilityAddonSpec)
 	}
 
 	privileged := false
@@ -418,7 +423,7 @@ func updateMetricsCollector(ctx context.Context, c client.Client, params Collect
 		name = uwlMetricsCollectorName
 	}
 	log.Info("updateMetricsCollector", "name", name)
-	deployment := createDeployment(params)
+	deployment := createDeployment(params, c)
 	found := &appsv1.Deployment{}
 	err := c.Get(ctx, types.NamespacedName{Name: name,
 		Namespace: namespace}, found)
