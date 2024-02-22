@@ -238,7 +238,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == caConfigmapName {
 		forceRestart = true
 	}
-	if obsAddon.Spec.EnableMetrics {
+	if obsAddon.Spec.EnableMetrics || hubMetricsCollector {
 		created, err := updateMetricsCollectors(
 			ctx,
 			r.Client,
