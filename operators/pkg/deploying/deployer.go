@@ -273,6 +273,7 @@ func (d *Deployer) updateCRD(desiredObj, runtimeObj *unstructured.Unstructured) 
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Failed to Unmarshal CRD %s", runtimeObj.GetName()))
 	}
+	desiredCRD.ObjectMeta.ResourceVersion = runtimeCRD.ObjectMeta.ResourceVersion
 
 	if !apiequality.Semantic.DeepDerivative(desiredCRD.Spec, runtimeCRD.Spec) {
 		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
