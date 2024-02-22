@@ -143,7 +143,7 @@ var _ = Describe("Observability:", func() {
 					return err
 				}
 				return nil
-			}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
+			}, EventuallyTimeoutMinute*15, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 	})
 

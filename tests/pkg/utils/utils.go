@@ -56,7 +56,6 @@ func NewUnversionedRestClient(url, kubeconfig, ctx string) *rest.RESTClient {
 }
 
 func NewKubeClient(url, kubeconfig, ctx string) kubernetes.Interface {
-	klog.V(5).Infof("Create kubeclient for url %s using kubeconfig path %s\n", url, kubeconfig)
 	config, err := LoadConfig(url, kubeconfig, ctx)
 	if err != nil {
 		panic(err)
@@ -71,7 +70,6 @@ func NewKubeClient(url, kubeconfig, ctx string) kubernetes.Interface {
 }
 
 func NewKubeClientDynamic(url, kubeconfig, ctx string) dynamic.Interface {
-	klog.V(5).Infof("Create kubeclient dynamic for url %s using kubeconfig path %s\n", url, kubeconfig)
 	config, err := LoadConfig(url, kubeconfig, ctx)
 	if err != nil {
 		panic(err)
@@ -210,7 +208,6 @@ func LoadConfig(url, kubeconfig, ctx string) (*rest.Config, error) {
 	if kubeconfig == "" {
 		kubeconfig = os.Getenv("KUBECONFIG")
 	}
-	klog.V(5).Infof("Kubeconfig path %s\n", kubeconfig)
 	// If we have an explicit indication of where the kubernetes config lives, read that.
 	if kubeconfig != "" {
 		if ctx == "" {
@@ -255,7 +252,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 		}
 
 		obj := &unstructured.Unstructured{}
-		klog.V(5).Infof("obj:%v\n", obj.Object)
 		err := yaml.Unmarshal([]byte(f), obj)
 		if err != nil {
 			return err
@@ -268,15 +264,12 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 			kind = v.(string)
 		}
 
-		klog.V(5).Infof("kind: %s\n", kind)
-
 		var apiVersion string
 		if v, ok := obj.Object["apiVersion"]; !ok {
 			return fmt.Errorf("apiVersion attribute not found in %s", f)
 		} else {
 			apiVersion = v.(string)
 		}
-		klog.V(5).Infof("apiVersion: %s\n", apiVersion)
 
 		clientKube := NewKubeClient(url, kubeconfig, ctx)
 		clientAPIExtension := NewKubeClientAPIExtension(url, kubeconfig, ctx)
