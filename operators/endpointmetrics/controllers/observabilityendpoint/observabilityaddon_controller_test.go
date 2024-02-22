@@ -152,6 +152,11 @@ alertmanager-router-ca: |
 				"client-ca-file": "test",
 			},
 		},
+		&corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-ns",
+			},
+		},
 	}
 
 	hubClient := fake.NewClientBuilder().WithRuntimeObjects(hubObjs...).Build()

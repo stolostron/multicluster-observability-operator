@@ -288,7 +288,7 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			Replicas: int32Ptr(params.replicaCount),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					selectorKey: selectorValue,
+					selectorKey: secretName,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
@@ -298,7 +298,7 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 						operatorconfig.WorkloadPartitioningPodAnnotationKey: operatorconfig.WorkloadPodExpectedValueJSON,
 					},
 					Labels: map[string]string{
-						selectorKey: selectorValue,
+						selectorKey: secretName,
 					},
 				},
 				Spec: corev1.PodSpec{
