@@ -19,7 +19,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -183,7 +182,7 @@ func getCommands(params CollectorParams) []string {
 }
 
 func createDeployment(params CollectorParams) *appsv1.Deployment {
-	falsePtr := false
+	// falsePtr := false
 	secretName := metricsCollector
 	if params.isUWL {
 		secretName = uwlMetricsCollector
@@ -327,60 +326,62 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 							Ports: []corev1.ContainerPort{
 								{
 									ContainerPort: 8080,
-								},
-							},
-						},
-						{
-							Name:  "kube-rbac-proxy",
-							Image: "quay.io/stolostron/kube-rbac-proxy:2.10.0-SNAPSHOT-2024-02-21-15-26-50",
-							Args: []string{
-								"--secure-listen-address=0.0.0.0:8443",
-								"--upstream=http://127.0.0.1:8080",
-								"--config-file=/etc/kube-rbac-proxy/config.yaml",
-								"--tls-cert-file=/etc/tls/private/tls.crt",
-								"--tls-private-key-file=/etc/tls/private/tls.key",
-								"--client-ca-file=/etc/tls/client/client-ca-file",
-								"--logtostderr=true",
-								"--allow-paths=/metrics",
-								"--tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
-							},
-							Ports: []corev1.ContainerPort{
-								{
-									ContainerPort: 8443,
 									Name:          "metrics",
 								},
 							},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("1m"),
-									corev1.ResourceMemory: resource.MustParse("15Mi"),
-								},
-							},
-							SecurityContext: &corev1.SecurityContext{
-								AllowPrivilegeEscalation: &falsePtr,
-								Capabilities: &corev1.Capabilities{
-									Drop: []corev1.Capability{"ALL"},
-								},
-							},
-							TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "secret-kube-rbac-proxy-metric",
-									MountPath: "/etc/kube-rbac-proxy",
-									ReadOnly:  true,
-								},
-								{
-									Name:      "secret-kube-rbac-proxy-tls",
-									MountPath: "/etc/tls/private",
-									ReadOnly:  true,
-								},
-								{
-									Name:      "metrics-client-ca",
-									MountPath: "/etc/tls/client",
-									ReadOnly:  true,
-								},
-							},
 						},
+						// TODO(saswatamcode): Enable this alter
+						// {
+						// 	Name:  "kube-rbac-proxy",
+						// 	Image: "quay.io/stolostron/kube-rbac-proxy:2.10.0-SNAPSHOT-2024-02-21-15-26-50",
+						// 	Args: []string{
+						// 		"--secure-listen-address=0.0.0.0:8443",
+						// 		"--upstream=http://127.0.0.1:8080",
+						// 		"--config-file=/etc/kube-rbac-proxy/config.yaml",
+						// 		"--tls-cert-file=/etc/tls/private/tls.crt",
+						// 		"--tls-private-key-file=/etc/tls/private/tls.key",
+						// 		"--client-ca-file=/etc/tls/client/client-ca-file",
+						// 		"--logtostderr=true",
+						// 		"--allow-paths=/metrics",
+						// 		"--tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
+						// 	},
+						// 	Ports: []corev1.ContainerPort{
+						// 		{
+						// 			ContainerPort: 8443,
+						// 			Name:          "metrics",
+						// 		},
+						// 	},
+						// 	Resources: corev1.ResourceRequirements{
+						// 		Requests: corev1.ResourceList{
+						// 			corev1.ResourceCPU:    resource.MustParse("1m"),
+						// 			corev1.ResourceMemory: resource.MustParse("15Mi"),
+						// 		},
+						// 	},
+						// 	SecurityContext: &corev1.SecurityContext{
+						// 		AllowPrivilegeEscalation: &falsePtr,
+						// 		Capabilities: &corev1.Capabilities{
+						// 			Drop: []corev1.Capability{"ALL"},
+						// 		},
+						// 	},
+						// 	TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+						// 	VolumeMounts: []corev1.VolumeMount{
+						// 		{
+						// 			Name:      "secret-kube-rbac-proxy-metric",
+						// 			MountPath: "/etc/kube-rbac-proxy",
+						// 			ReadOnly:  true,
+						// 		},
+						// 		{
+						// 			Name:      "secret-kube-rbac-proxy-tls",
+						// 			MountPath: "/etc/tls/private",
+						// 			ReadOnly:  true,
+						// 		},
+						// 		{
+						// 			Name:      "metrics-client-ca",
+						// 			MountPath: "/etc/tls/client",
+						// 			ReadOnly:  true,
+						// 		},
+						// 	},
+						// },
 					},
 					Volumes:      volumes,
 					NodeSelector: params.nodeSelector,
@@ -487,7 +488,7 @@ func createService(params CollectorParams) *corev1.Service {
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "metrics",
-					Port:       8443,
+					Port:       8000,
 					TargetPort: intstr.FromString("metrics"),
 				},
 			},
@@ -544,14 +545,15 @@ func createServiceMonitor(params CollectorParams) *promv1.ServiceMonitor {
 					Port:   "metrics",
 					Path:   "/metrics",
 					Scheme: "https",
-					TLSConfig: &promv1.TLSConfig{
-						CAFile:   "/etc/prometheus/configmaps/serving-certs-ca-bundle/service-ca.crt",
-						CertFile: "/etc/prometheus/secrets/metrics-client-certs/tls.crt",
-						KeyFile:  "/etc/prometheus/secrets/metrics-client-certs/tls.key",
-						SafeTLSConfig: promv1.SafeTLSConfig{
-							ServerName: name + "." + namespace + ".svc",
-						},
-					},
+					// TODO(saswatamcode): Enable later.
+					// TLSConfig: &promv1.TLSConfig{
+					// 	CAFile:   "/etc/prometheus/configmaps/serving-certs-ca-bundle/service-ca.crt",
+					// 	CertFile: "/etc/prometheus/secrets/metrics-client-certs/tls.crt",
+					// 	KeyFile:  "/etc/prometheus/secrets/metrics-client-certs/tls.key",
+					// 	SafeTLSConfig: promv1.SafeTLSConfig{
+					// 		ServerName: name + "." + namespace + ".svc",
+					// 	},
+					// },
 					MetricRelabelConfigs: []*promv1.RelabelConfig{
 						{
 							Action:       "replace",
