@@ -607,26 +607,26 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 		log.Error(err, "Failed to delete CA configmap for hub metrics collection")
 		return err
 	}
-	isHypershift := true
-	if os.Getenv("UNIT_TEST") != "true" {
-		crdClient, err := util.GetOrCreateCRDClient()
-		if err != nil {
-			log.Error(err, "Failed to create CRD client")
-			return err
-		}
-		isHypershift, err = util.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
-		if err != nil {
-			log.Error(err, "Failed to check if the CRD hostedclusters.hypershift.openshift.io exists")
-			return err
-		}
-	}
-	if isHypershift {
-		err = DeleteServiceMonitors(context.TODO(), c)
-		if err != nil {
-			log.Error(err, "Failed to delete service monitors for hub metrics collection")
-			return err
-		}
-	}
+	//isHypershift := true
+	//if os.Getenv("UNIT_TEST") != "true" {
+	//	crdClient, err := util.GetOrCreateCRDClient()
+	//	if err != nil {
+	//		log.Error(err, "Failed to create CRD client")
+	//		return err
+	//	}
+	//	isHypershift, err = util.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
+	//	if err != nil {
+	//		log.Error(err, "Failed to check if the CRD hostedclusters.hypershift.openshift.io exists")
+	//		return err
+	//	}
+	//}
+	//if isHypershift {
+	//	err = DeleteServiceMonitors(context.TODO(), c)
+	//	if err != nil {
+	//		log.Error(err, "Failed to delete service monitors for hub metrics collection")
+	//		return err
+	//	}
+	//}
 	return nil
 }
 
