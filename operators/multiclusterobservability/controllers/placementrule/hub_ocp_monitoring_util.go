@@ -35,12 +35,6 @@ const ( // #nosec G101 -- Not a hardcoded credential.
 	kubeApiServiceMonitor          = "acm-kube-apiserver"
 )
 
-var (
-	//log                             = logf.Log.WithName("ocp_monitoring")
-	clusterMonitoringConfigReverted = false
-	persistedRevertStateRead        = false
-)
-
 // revertClusterMonitoringConfig reverts the configmap cluster-monitoring-config and relevant resources
 // (observability-alertmanager-accessor and hub-alertmanager-router-ca) for the openshift cluster monitoring stack.
 func RevertHubClusterMonitoringConfig(ctx context.Context, client client.Client) error {
