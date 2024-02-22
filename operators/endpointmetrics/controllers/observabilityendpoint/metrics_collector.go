@@ -14,9 +14,6 @@ import (
 	"strings"
 	"time"
 
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -324,15 +321,6 @@ func createDeployment(params CollectorParams, c client.Client) *appsv1.Deploymen
 	}
 
 	if hubMetricsCollector {
-		mco := &mcov1beta2.MultiClusterObservability{}
-		err := c.Get(context.TODO(),
-			types.NamespacedName{
-				Name: config.GetMonitoringCRName(),
-			}, mco)
-		if err != nil {
-			log.Error(err, "Failed to get mco")
-			return nil
-		}
 		//to avoid hub metrics collector from sending status
 		metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
 			corev1.EnvVar{
@@ -341,7 +329,7 @@ func createDeployment(params CollectorParams, c client.Client) *appsv1.Deploymen
 			})
 
 		//Since there is no obsAddOn for hub-metrics-collector, we need to set the resources here
-		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *config.GetOBAResources(mco.Spec.ObservabilityAddonSpec)
+		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *util.GetResourceRequirementsforHubMetricsCollector(c)
 	}
 
 	privileged := false
