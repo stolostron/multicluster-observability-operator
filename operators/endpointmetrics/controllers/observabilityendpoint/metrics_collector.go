@@ -15,7 +15,6 @@ import (
 	"time"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -564,7 +563,7 @@ func createAlertingRule(params CollectorParams) *monitoringv1.PrometheusRule {
 }
 
 // createServiceMonitor creates a ServiceMonitor for the metrics collector.
-func createServiceMonitor(params CollectorParams) *promv1.ServiceMonitor {
+func createServiceMonitor(params CollectorParams) *monitoringv1.ServiceMonitor {
 	name := metricsCollector
 	replace := "acm_metrics_collector_${1}"
 	if params.isUWL {
@@ -572,7 +571,7 @@ func createServiceMonitor(params CollectorParams) *promv1.ServiceMonitor {
 		replace = "acm_uwl_metrics_collector_${1}"
 	}
 
-	return &promv1.ServiceMonitor{
+	return &monitoringv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
@@ -583,30 +582,30 @@ func createServiceMonitor(params CollectorParams) *promv1.ServiceMonitor {
 				ownerLabelKey: ownerLabelValue,
 			},
 		},
-		Spec: promv1.ServiceMonitorSpec{
+		Spec: monitoringv1.ServiceMonitorSpec{
 			Selector: metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					selectorKey: name,
 				},
 			},
-			NamespaceSelector: promv1.NamespaceSelector{
+			NamespaceSelector: monitoringv1.NamespaceSelector{
 				MatchNames: []string{namespace},
 			},
-			Endpoints: []promv1.Endpoint{
+			Endpoints: []monitoringv1.Endpoint{
 				{
 					Port:   "metrics",
 					Path:   "/metrics",
 					Scheme: "http",
 					// TODO(saswatamcode): Enable later.
-					// TLSConfig: &promv1.TLSConfig{
+					// TLSConfig: &monitoringv1.TLSConfig{
 					// 	CAFile:   "/etc/prometheus/configmaps/serving-certs-ca-bundle/service-ca.crt",
 					// 	CertFile: "/etc/prometheus/secrets/metrics-client-certs/tls.crt",
 					// 	KeyFile:  "/etc/prometheus/secrets/metrics-client-certs/tls.key",
-					// 	SafeTLSConfig: promv1.SafeTLSConfig{
+					// 	SafeTLSConfig: monitoringv1.SafeTLSConfig{
 					// 		ServerName: name + "." + namespace + ".svc",
 					// 	},
 					// },
-					MetricRelabelConfigs: []*promv1.RelabelConfig{
+					MetricRelabelConfigs: []*monitoringv1.RelabelConfig{
 						{
 							Action:       "replace",
 							Regex:        "(.+)",
@@ -788,7 +787,7 @@ func updateMetricsCollector(ctx context.Context, c client.Client, params Collect
 		}
 	}
 
-	foundSM := &promv1.ServiceMonitor{}
+	foundSM := &monitoringv1.ServiceMonitor{}
 	err = c.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: namespace}, foundSM)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -876,7 +875,7 @@ func deleteMetricsCollector(ctx context.Context, c client.Client, name string) e
 	}
 	log.Info("metrics collector deployment deleted", "name", name)
 
-	foundSM := &promv1.ServiceMonitor{}
+	foundSM := &monitoringv1.ServiceMonitor{}
 	if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment"),
 		Namespace: namespace}, foundSM); err != nil {
 		if errors.IsNotFound(err) {
