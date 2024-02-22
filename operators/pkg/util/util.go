@@ -8,13 +8,14 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	mco_config "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	corev1 "k8s.io/api/core/v1"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"time"
+
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mco_config "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	corev1 "k8s.io/api/core/v1"
 
 	appv1 "k8s.io/api/apps/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
