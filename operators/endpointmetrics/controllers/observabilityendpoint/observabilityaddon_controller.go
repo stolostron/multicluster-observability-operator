@@ -99,6 +99,10 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	// ACM 8509: Special case for hub/local cluster metrics collection
 	// We do not have an ObservabilityAddon instance in the local cluster so skipping the below block
 	if !hubMetricsCollector {
+		if err := r.ensureOpenShiftNamespaceLabel(ctx); err != nil {
+			return ctrl.Result{}, err
+		}
+
 		// Fetch the ObservabilityAddon instance in hub cluster
 		err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
 		if err != nil {
@@ -111,7 +115,6 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 
 		// Fetch the ObservabilityAddon instance in local cluster
-
 		err = r.Client.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: namespace}, obsAddon)
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -126,6 +129,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			deleteFlag = true
 		}
 	}
+
 	// Init finalizers
 	deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift)
 	if err != nil {
