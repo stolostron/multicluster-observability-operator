@@ -19,6 +19,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/ocp_monitoring"
+
 	certificatesv1 "k8s.io/api/certificates/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 
@@ -541,6 +543,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 	for i, manifest := range manifests {
 		obj := manifest.RawExtension.Object.DeepCopyObject()
 		hubManifestCopy[i] = workv1.Manifest{RawExtension: runtime.RawExtension{Object: obj}}
+		hubManifestCopy[i] = workv1.Manifest{RawExtension: runtime.RawExtension{Object: obj}}
 	}
 	for _, manifest := range hubManifestCopy {
 		obj := manifest.RawExtension.Object.(client.Object)
@@ -589,6 +592,41 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 			log.Error(err, "Failed to delete hub metrics-collector deployment")
 			return err
 
+		}
+	}
+	err := ocp_monitoring.RevertHubClusterMonitoringConfig(context.TODO(), c)
+	if err != nil {
+		log.Error(err, "Failed to revert cluster monitoring config")
+		return err
+	}
+	err = ocp_monitoring.DeleteHubMonitoringClusterRoleBinding(context.TODO(), c)
+	if err != nil {
+		log.Error(err, "Failed to delete monitoring cluster role binding for hub metrics collection")
+		return err
+	}
+	err = ocp_monitoring.DeleteHubCAConfigmap(context.TODO(), c)
+	if err != nil {
+		log.Error(err, "Failed to delete CA configmap for hub metrics collection")
+		return err
+	}
+	isHypershift := true
+	if os.Getenv("UNIT_TEST") != "true" {
+		crdClient, err := util.GetOrCreateCRDClient()
+		if err != nil {
+			log.Error(err, "Failed to create CRD client")
+			return err
+		}
+		isHypershift, err = util.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
+		if err != nil {
+			log.Error(err, "Failed to check if the CRD hostedclusters.hypershift.openshift.io exists")
+			return err
+		}
+	}
+	if isHypershift {
+		err = ocp_monitoring.DeleteServiceMonitors(context.TODO(), c)
+		if err != nil {
+			log.Error(err, "Failed to delete service monitors for hub metrics collection")
+			return err
 		}
 	}
 	return nil
