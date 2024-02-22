@@ -500,7 +500,7 @@ func createCSR() ([]byte, []byte) {
 	return csr, privateKey
 }
 
-func createMtlsCertSecretForHubCollector(c client.Client) error {
+func createMtlsCertSecretForHubCollector() (*corev1.Secret, error) {
 	csrBytes, privateKeyBytes := createCSR()
 	csr := &certificatesv1.CertificateSigningRequest{
 		Spec: certificatesv1.CertificateSigningRequestSpec{
@@ -511,10 +511,10 @@ func createMtlsCertSecretForHubCollector(c client.Client) error {
 	signedClientCert := certificates.Sign(csr)
 	if signedClientCert == nil {
 		log.Error(nil, "failed to sign CSR")
-		return errors.New("failed to sign CSR")
+		return nil, errors.New("failed to sign CSR")
 	} else {
 		//Create a secret
-		secret := &corev1.Secret{
+		return &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      operatorconfig.MtlsCertName,
 				Namespace: config.GetDefaultNamespace(),
@@ -523,23 +523,18 @@ func createMtlsCertSecretForHubCollector(c client.Client) error {
 				"tls.crt": signedClientCert,
 				"tls.key": privateKeyBytes,
 			},
-		}
-		err := c.Create(context.TODO(), secret)
-		if err != nil && !k8serrors.IsAlreadyExists(err) {
-			log.Error(err, "Failed to create secret", "name", "hub-metrics-collection-client-certs")
-			return err
-		}
+		}, nil
 	}
-	return nil
 }
 
 func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
 	//create csr for hub metrics collection
-	err := createMtlsCertSecretForHubCollector(c)
+	hubMtlsSecret, err := createMtlsCertSecretForHubCollector()
 	if err != nil {
 		log.Error(err, "Failed to create client cert secret for hub metrics collection")
 		return err
 	}
+	manifests = injectIntoWork(manifests, hubMtlsSecret)
 
 	//Make a deep copy of all the manifests since there are some global resources that can be updated due to this function
 	hubManifestCopy = make([]workv1.Manifest, len(manifests))
@@ -581,6 +576,19 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 		if err != nil && !k8serrors.IsNotFound(err) {
 			log.Error(err, "Failed to delete resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
 			return err
+		}
+	}
+	for _, name := range []string{hubMetricsCollectorName, hubUwlMetricsCollectorName} {
+		err := c.Delete(context.TODO(), &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: config.GetDefaultNamespace(),
+			},
+		})
+		if err != nil && !k8serrors.IsNotFound(err) {
+			log.Error(err, "Failed to delete hub metrics-collector deployment")
+			return err
+
 		}
 	}
 	return nil
