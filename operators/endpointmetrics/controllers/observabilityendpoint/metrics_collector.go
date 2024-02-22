@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -511,6 +512,57 @@ func createClientCAConfigMap(params CollectorParams) *corev1.ConfigMap {
 	}
 }
 
+func createAlertingRule(params CollectorParams) *monitoringv1.PrometheusRule {
+	name := metricsCollector
+	alert := "MetricsCollector"
+	replace := "acm_metrics_collector_"
+	if params.isUWL {
+		name = uwlMetricsCollector
+		alert = "UWLMetricsCollector"
+		replace = "acm_uwl_metrics_collector_"
+	}
+
+	return &monitoringv1.PrometheusRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "acm-" + name + "-alerting-rules",
+			Namespace: namespace,
+		},
+		Spec: monitoringv1.PrometheusRuleSpec{
+			Groups: []monitoringv1.RuleGroup{
+				{
+					Name: name + "-rules",
+					Rules: []monitoringv1.Rule{
+						{
+							Alert: "ACM" + alert + "FederationError",
+							Annotations: map[string]string{
+								"summary":     "Error federating from in-cluster Prometheus.",
+								"description": "There are errors when federating from platform Prometheus",
+							},
+							Expr: intstr.FromString(`(sum by (status_code, type) (rate(` + replace + `federate_requests_total{status_code!~"2.*"}[10m]))) > 10`),
+							For:  "10m",
+							Labels: map[string]string{
+								"severity": "critical",
+							},
+						},
+						{
+							Alert: "ACM" + alert + "ForwardRemoteWriteError",
+							Annotations: map[string]string{
+								"summary":     "Error forwarding to Hub Thanos.",
+								"description": "There are errors when remote writing to Hub hub Thanos",
+							},
+							Expr: intstr.FromString(`(sum by (status_code, type) (rate(` + replace + `forward_write_requests_total{status_code!~"2.*"}[10m]))) > 10`),
+							For:  "10m",
+							Labels: map[string]string{
+								"severity": "critical",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 // createServiceMonitor creates a ServiceMonitor for the metrics collector.
 func createServiceMonitor(params CollectorParams) *promv1.ServiceMonitor {
 	name := metricsCollector
@@ -753,6 +805,23 @@ func updateMetricsCollector(ctx context.Context, c client.Client, params Collect
 		}
 	}
 
+	foundAlert := &monitoringv1.PrometheusRule{}
+	err = c.Get(ctx, types.NamespacedName{Name: "acm-" + resourceName + "-alerting-rules", Namespace: namespace}, foundAlert)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			alertingRules := createAlertingRule(params)
+			err = c.Create(ctx, alertingRules)
+			if err != nil {
+				log.Error(err, "Failed to create alerting rules", "name", "acm-"+resourceName+"-alerting-rules")
+				return false, err
+			}
+			log.Info("Created alerting rules ", "name", "acm-"+resourceName+"-alerting-rules")
+		} else {
+			log.Error(err, "Failed to check the alerting rules", "name", "acm-"+resourceName+"-alerting-rules")
+			return false, err
+		}
+	}
+
 	deployment := createDeployment(params)
 	found := &appsv1.Deployment{}
 	err = c.Get(ctx, types.NamespacedName{Name: name,
@@ -822,6 +891,22 @@ func deleteMetricsCollector(ctx context.Context, c client.Client, name string) e
 		return err
 	}
 	log.Info("metrics collector servicemonitor deleted", "name", strings.TrimSuffix(name, "-deployment"))
+
+	foundAlerts := &monitoringv1.PrometheusRule{}
+	if err := c.Get(ctx, types.NamespacedName{Name: "acm-" + strings.TrimSuffix(name, "-deployment") + "-alerting-rules",
+		Namespace: namespace}, foundAlerts); err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("The metrics collector alerting rules does not exist", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+			return nil
+		}
+		log.Error(err, "Failed to check the metrics collector alerting rules", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+		return err
+	}
+	if err := c.Delete(ctx, foundAlerts); err != nil {
+		log.Error(err, "Failed to delete the metrics collector alerting rules", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+		return err
+	}
+	log.Info("metrics collector alerting rules deleted", "name", strings.TrimSuffix(name, "-deployment"))
 
 	foundService := &corev1.Service{}
 	if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment"),
