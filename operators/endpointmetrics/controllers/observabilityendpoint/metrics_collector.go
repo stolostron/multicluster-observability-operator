@@ -7,14 +7,15 @@ package observabilityendpoint
 import (
 	"context"
 	"fmt"
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
