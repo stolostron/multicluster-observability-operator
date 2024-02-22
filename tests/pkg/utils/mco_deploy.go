@@ -189,18 +189,18 @@ func LogPodsDebugInfo(hubClient kubernetes.Interface, pods []corev1.Pod, force b
 	klog.V(1).Infof("Checking pods %v in namespace %q", podsNames, ns)
 	notRunningPodsCount := 0
 	for _, pod := range pods {
-		if pod.Status.Phase == corev1.PodRunning {
-			// only print not ready pod status
+		if pod.Status.Phase != corev1.PodRunning {
 			notRunningPodsCount++
-			klog.V(1).Infof("Pod %q is not ready with phase %q and status: %s\n",
-				pod.Name,
-				pod.Status.Phase,
-				pod.Status.String())
-
-			if !force {
-				continue
-			}
 		}
+
+		if pod.Status.Phase == corev1.PodRunning && !force {
+			continue
+		}
+
+		klog.V(1).Infof("Pod %q is in phase %q and status: %s\n",
+			pod.Name,
+			pod.Status.Phase,
+			pod.Status.String())
 
 		// print pod events
 		events, err := hubClient.CoreV1().Events(ns).List(context.TODO(), metav1.ListOptions{
@@ -317,7 +317,11 @@ func PrintAllOBAPodsStatus(opt TestOptions) {
 		return
 	}
 
-	LogPodsDebugInfo(getKubeClient(opt, false), podList, false)
+	force := false
+	if len(podList) == 1 { // only the operator is up
+		force = true
+	}
+	LogPodsDebugInfo(getKubeClient(opt, false), podList, force)
 }
 
 func CheckAllPodNodeSelector(opt TestOptions, nodeSelector map[string]interface{}) error {

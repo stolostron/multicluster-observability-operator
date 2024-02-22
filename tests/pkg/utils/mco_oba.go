@@ -37,14 +37,6 @@ func CheckOBAStatus(opt TestOptions, namespace, status string) error {
 	if strings.Contains(obaStatus, status) {
 		return nil
 	} else {
-		// print logs
-		clientKube := getKubeClient(opt, false)
-		podList, err := GetAllOBAPods(opt)
-		if err != nil {
-			klog.Errorf("Failed to get all OBA pods: %v", err)
-			return err
-		}
-		LogPodsDebugInfo(clientKube, podList, true)
 		return fmt.Errorf("observability-addon is not ready for managed cluster %q with status %q: %v", namespace, obaStatus, oba.Object)
 	}
 }
