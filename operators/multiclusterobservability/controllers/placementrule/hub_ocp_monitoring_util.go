@@ -2,7 +2,7 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package ocp_monitoring
+package placementrule
 
 import (
 	"context"
@@ -10,18 +10,16 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/ghodss/yaml"
+	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
 	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/ghodss/yaml"
-	cmomanifests "github.com/openshift/cluster-monitoring-operator/pkg/manifests"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 )
 
 const ( // #nosec G101 -- Not a hardcoded credential.
@@ -38,7 +36,7 @@ const ( // #nosec G101 -- Not a hardcoded credential.
 )
 
 var (
-	log                             = logf.Log.WithName("ocp_monitoring")
+	//log                             = logf.Log.WithName("ocp_monitoring")
 	clusterMonitoringConfigReverted = false
 	persistedRevertStateRead        = false
 )
