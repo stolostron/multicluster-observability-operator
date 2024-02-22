@@ -191,6 +191,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				},
 			},
 		})
+		config.HubMetricsCollectorResources = *config.GetOBAResources(mco.Spec.ObservabilityAddonSpec)
 	}
 
 	if !deleteAll {
