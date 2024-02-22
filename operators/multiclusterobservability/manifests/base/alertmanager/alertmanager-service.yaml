@@ -4,7 +4,6 @@ metadata:
   labels:
     alertmanager: observability
   name: alertmanager
-  namespace: open-cluster-management
   annotations:
     service.beta.openshift.io/serving-cert-secret-name: alertmanager-tls
 spec:

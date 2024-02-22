@@ -36,6 +36,7 @@ func (r *MCORenderer) newAlertManagerRenderer() {
 		"Ingress":               r.renderer.RenderNamespace,
 		"PersistentVolumeClaim": r.renderer.RenderNamespace,
 		"ServiceMonitor":        r.renderer.RenderNamespace,
+		"PrometheusRule":        r.renderer.RenderNamespace,
 	}
 }
 
@@ -115,6 +116,7 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource,
 	if ok, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.DefaultImgRepository+"/"+mcoconfig.KubeRBACProxyImgName, mcoconfig.KubeRBACProxyKey); ok {
 		spec.Containers[3].Image = image
 	}
+	spec.Containers[3].ImagePullPolicy = imagePullPolicy
 
 	//replace the volumeClaimTemplate
 	dep.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = &r.cr.Spec.StorageConfig.StorageClass

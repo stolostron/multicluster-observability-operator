@@ -8,4 +8,3 @@ metadata:
   labels:
     alertmanager: observability
   name: alertmanager-ca-bundle
-  namespace: open-cluster-management
