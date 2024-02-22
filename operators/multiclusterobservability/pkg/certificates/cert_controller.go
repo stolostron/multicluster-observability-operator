@@ -24,9 +24,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"open-cluster-management.io/addon-framework/pkg/addonmanager"
+
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"open-cluster-management.io/addon-framework/pkg/addonmanager"
 )
 
 const (
@@ -121,8 +122,9 @@ func updateDeployLabel(c client.Client, dName string, isUpdate bool) {
 		return
 	}
 	if isUpdate || dep.Status.ReadyReplicas != 0 {
-		dep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
-		err = c.Update(context.TODO(), dep)
+		newDep := dep.DeepCopy()
+		newDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
+		err := c.Patch(context.TODO(), newDep, client.StrategicMergeFrom(dep))
 		if err != nil {
 			log.Error(err, "Failed to update the deployment", "name", dName)
 		} else {

@@ -47,7 +47,8 @@ const (
 	endpointsConfigName = "observability-remotewrite-endpoints"
 	endpointsKey        = "endpoints.yaml"
 
-	obsAPIGateway = "observatorium-api"
+	obsAPIGateway            = "observatorium-api"
+	obsCRConfigHashLabelName = "config-hash"
 
 	readOnlyRoleName  = "read-only-metrics"
 	writeOnlyRoleName = "write-only-metrics"
@@ -55,17 +56,11 @@ const (
 	endpointsRestartLabel = "endpoints/time-restarted"
 )
 
-// Fetch contents of the secrets: observability-server-certs, observability-client-ca-certs,
-// observability-observatorium-api.
+// Fetch contents of the secret: observability-observatorium-api.
 // Fetch contents of the configmap: observability-observatorium-api.
 // Concatenate all of the above and hash their contents.
 // If any of the secrets or configmaps aren't found, an empty struct of the respective type is used for the hash.
 func hashObservatoriumCRConfig(cl client.Client) (string, error) {
-	secretsToQuery := []metav1.ObjectMeta{
-		{Name: mcoconfig.ServerCerts, Namespace: mcoconfig.GetDefaultNamespace()},
-		{Name: mcoconfig.ClientCACerts, Namespace: mcoconfig.GetDefaultNamespace()},
-		{Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: mcoconfig.GetDefaultNamespace()},
-	}
 	configMapToQuery := metav1.ObjectMeta{
 		Name: mcoconfig.GetOperandNamePrefix() + mcoconfig.ObservatoriumAPI, Namespace: mcoconfig.GetDefaultNamespace(),
 	}
@@ -74,22 +69,6 @@ func hashObservatoriumCRConfig(cl client.Client) (string, error) {
 	// changes and thus it's not a security issue.
 	// nolint:gosec
 	hasher := md5.New() // #nosec G401 G501
-	for _, secret := range secretsToQuery {
-		resultSecret := &v1.Secret{}
-		err := cl.Get(context.TODO(), types.NamespacedName{
-			Name:      secret.Name,
-			Namespace: secret.Namespace,
-		}, resultSecret)
-		if err != nil && !k8serrors.IsNotFound(err) {
-			return "", err
-		}
-		secretData, err := yaml.Marshal(resultSecret.Data)
-		if err != nil {
-			return "", err
-		}
-		hasher.Write(secretData)
-	}
-
 	resultConfigMap := &v1.ConfigMap{}
 	err := cl.Get(context.TODO(), types.NamespacedName{
 		Name:      configMapToQuery.Name,
@@ -112,8 +91,14 @@ func GenerateObservatoriumCR(
 	cl client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
 
+	hash, err := hashObservatoriumCRConfig(cl)
+	if err != nil {
+		return &ctrl.Result{}, err
+	}
+
 	labels := map[string]string{
-		"app": mcoconfig.GetOperandName(mcoconfig.Observatorium),
+		"app":                    mcoconfig.GetOperandName(mcoconfig.Observatorium),
+		obsCRConfigHashLabelName: hash,
 	}
 
 	storageClassSelected, err := getStorageClass(mco, cl)
@@ -133,12 +118,6 @@ func GenerateObservatoriumCR(
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
-
-	hash, err := hashObservatoriumCRConfig(cl)
-	if err != nil {
-		return &ctrl.Result{}, err
-	}
-	labels["config-hash"] = hash
 
 	observatoriumCR := &obsv1alpha1.Observatorium{
 		ObjectMeta: metav1.ObjectMeta{
@@ -182,7 +161,8 @@ func GenerateObservatoriumCR(
 	newSpec := observatoriumCR.Spec
 	oldSpecBytes, _ := yaml.Marshal(oldSpec)
 	newSpecBytes, _ := yaml.Marshal(newSpec)
-	if bytes.Equal(newSpecBytes, oldSpecBytes) {
+	if bytes.Equal(newSpecBytes, oldSpecBytes) &&
+		labels[obsCRConfigHashLabelName] == observatoriumCRFound.Labels[obsCRConfigHashLabelName] {
 		return nil, nil
 	}
 
@@ -199,6 +179,7 @@ func GenerateObservatoriumCR(
 
 	newObj := observatoriumCRFound.DeepCopy()
 	newObj.Spec = newSpec
+	newObj.Labels[obsCRConfigHashLabelName] = observatoriumCR.Labels[obsCRConfigHashLabelName]
 	err = cl.Update(context.TODO(), newObj)
 	if err != nil {
 		log.Error(err, "Failed to update observatorium CR %s", "name", observatoriumCR.Name)
