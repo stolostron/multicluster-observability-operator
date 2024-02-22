@@ -14,8 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -178,7 +176,7 @@ func getCommands(params CollectorParams) []string {
 	return commands
 }
 
-func createDeployment(params CollectorParams, c client.Client) *appsv1.Deployment {
+func createDeployment(params CollectorParams) *appsv1.Deployment {
 	volumes := []corev1.Volume{
 		{
 			Name: "mtlscerts",
@@ -331,7 +329,7 @@ func createDeployment(params CollectorParams, c client.Client) *appsv1.Deploymen
 			})
 
 		//Since there is no obsAddOn for hub-metrics-collector, we need to set the resources here
-		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = config.HubMetricsCollectorResources
+		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = operatorconfig.HubMetricsCollectorResources
 	}
 
 	privileged := false
@@ -414,7 +412,7 @@ func updateMetricsCollector(ctx context.Context, c client.Client, params Collect
 		name = uwlMetricsCollectorName
 	}
 	log.Info("updateMetricsCollector", "name", name)
-	deployment := createDeployment(params, c)
+	deployment := createDeployment(params)
 	found := &appsv1.Deployment{}
 	err := c.Get(ctx, types.NamespacedName{Name: name,
 		Namespace: namespace}, found)

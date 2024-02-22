@@ -4,6 +4,8 @@
 
 package config
 
+import corev1 "k8s.io/api/core/v1"
+
 const (
 	ClusterNameKey                  = "cluster-name"
 	HubInfoSecretName               = "hub-info-secret"
@@ -69,4 +71,8 @@ var (
 		MetricsCollectorKey:            MetricsCollectorImgName,
 		PrometheusConfigmapReloaderKey: PrometheusConfigmapReloaderImgName,
 	}
+)
+
+var (
+	HubMetricsCollectorResources = corev1.ResourceRequirements{}
 )

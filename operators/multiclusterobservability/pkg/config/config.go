@@ -311,8 +311,7 @@ var (
 		DefaultImagePullSecret:       ResourceTypeSecret,
 	}
 
-	multicloudConsoleRouteHost   = ""
-	HubMetricsCollectorResources = corev1.ResourceRequirements{}
+	multicloudConsoleRouteHost = ""
 )
 
 func GetReplicas(component string, advanced *observabilityv1beta2.AdvancedConfig) *int32 {
