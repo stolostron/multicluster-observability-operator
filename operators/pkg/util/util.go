@@ -13,10 +13,6 @@ import (
 	"os"
 	"time"
 
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	mco_config "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	corev1 "k8s.io/api/core/v1"
-
 	appv1 "k8s.io/api/apps/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -137,17 +133,4 @@ func UpdateDeployLabel(c client.Client, dName, namespace, label string) error {
 		}
 	}
 	return nil
-}
-
-func GetResourceRequirementsforHubMetricsCollector(c client.Client) *corev1.ResourceRequirements {
-	mco := &mcov1beta2.MultiClusterObservability{}
-	err := c.Get(context.TODO(),
-		types.NamespacedName{
-			Name: mco_config.GetMonitoringCRName(),
-		}, mco)
-	if err != nil {
-		log.Error(err, "Failed to get mco")
-		return nil
-	}
-	return mco_config.GetOBAResources(mco.Spec.ObservabilityAddonSpec)
 }
