@@ -70,10 +70,10 @@ func GetAllManagedClusterLabelNames() map[string]bool {
 
 // InitAllManagedClusterNames initializes all managed cluster names map.
 func InitAllManagedClusterNames() {
-	allManagedClusterNames = map[string]string{
-		// always include local-cluster
-		"local-cluster": "local-cluster",
-	}
+	allManagedClusterNames = map[string]string{}
+	//	// always include local-cluster
+	//	"local-cluster": "local-cluster",
+	//}
 }
 
 // InitAllManagedClusterLabelNames initializes all managed cluster labels map.
@@ -256,13 +256,13 @@ func GetManagedClusterEventHandler() cache.ResourceEventHandlerFuncs {
 
 		DeleteFunc: func(obj interface{}) {
 			clusterName := obj.(*clusterv1.ManagedCluster).Name
-			if clusterName != "local-cluster" {
-				klog.Infof("deleted a managedcluster: %s \n", obj.(*clusterv1.ManagedCluster).Name)
-				delete(allManagedClusterNames, clusterName)
-				CleanExpiredProjectInfo(1)
-			} else {
-				klog.Infof("local-cluster cannot be deleted.")
-			}
+			//if clusterName != "local-cluster" {
+			klog.Infof("deleted a managedcluster: %s \n", obj.(*clusterv1.ManagedCluster).Name)
+			delete(allManagedClusterNames, clusterName)
+			CleanExpiredProjectInfo(1)
+			//} else {
+			//	klog.Infof("local-cluster cannot be deleted.")
+			//}
 		},
 
 		UpdateFunc: func(oldObj, newObj interface{}) {
