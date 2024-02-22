@@ -451,13 +451,12 @@ func createKubeRbacProxySecret(params CollectorParams) *corev1.Secret {
 		Type: corev1.SecretTypeOpaque,
 		StringData: map[string]string{
 			"config.yaml": `authorization:
-  static:
+static:
   - path: /metrics
-	resourceRequest: false
-	user:
-	  name: system:serviceaccount:openshift-monitoring:prometheus-k8s
-	verb: get
-`,
+    resourceRequest: false
+    user:
+      name: system:serviceaccount:openshift-monitoring:prometheus-k8s
+    verb: get`,
 		},
 	}
 	return secret
