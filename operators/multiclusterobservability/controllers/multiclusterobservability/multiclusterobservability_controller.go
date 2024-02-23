@@ -164,10 +164,10 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// Init finalizers
-	isTerminating, err := r.initFinalization(instance)
+	config.IsMCOTerminating, err = r.initFinalization(instance)
 	if err != nil {
 		return ctrl.Result{}, err
-	} else if isTerminating {
+	} else if config.IsMCOTerminating {
 		reqLogger.Info("MCO instance is in Terminating status, skip the reconcile")
 		return ctrl.Result{}, err
 	}
