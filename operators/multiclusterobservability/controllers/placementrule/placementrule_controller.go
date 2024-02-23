@@ -893,8 +893,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(certSecretPred)).
 
 		// secondary watch for alertmanager accessor serviceaccount
-		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred)).
-		Watches(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(hubEndpointOperatorPred))
+		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred))
 
 	// watch for AddonDeploymentConfig
 	if _, err := r.RESTMapper.RESTMapping(schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "AddOnDeploymentConfig"}, addonv1alpha1.GroupVersion.Version); err == nil {
@@ -986,69 +985,33 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// ACM 8509: Special case for hub/local cluster metrics collection
 	// secondary watch for hub endpoint operator deployment
-	/*
-		ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(hubEndpointOperatorPred)).
-			Watches(
-				&source.Kind{Type: &corev1.Secret{}},
-				&handler.EnqueueRequestForObject{},
-				builder.WithPredicates(getPred(operatorconfig.HubInfoSecretName, config.GetDefaultNamespace(), true, true, true)),
-			).
-			Watches(
-				&source.Kind{Type: &corev1.Secret{}},
-				&handler.EnqueueRequestForObject{},
-				builder.WithPredicates(getPred(operatorconfig.MtlsCertName, config.GetDefaultNamespace(), true, true, true)),
-			).
-			Watches(
-				&source.Kind{Type: &corev1.Secret{}},
-				&handler.EnqueueRequestForObject{},
-				builder.WithPredicates(getPred(managedClusterObsCertName, config.GetDefaultNamespace(), true, true, true)),
-			).
-			Watches(
-				&source.Kind{Type: &corev1.Secret{}},
-				&handler.EnqueueRequestForObject{},
-				builder.WithPredicates(getPred(config.AlertmanagerAccessorSecretName, config.GetDefaultNamespace(), true, true, true)),
-			).
-			Watches(
-				&source.Kind{Type: &corev1.ConfigMap{}},
-				&handler.EnqueueRequestForObject{},
-				builder.WithPredicates(getPred(operatorconfig.AllowlistConfigMapName, config.GetDefaultNamespace(), true, true, true)),
-			).
-			Watches(
-				&source.Kind{Type: &corev1.ConfigMap{}},
-				&handler.EnqueueRequestForObject{},
-				builder.WithPredicates(getPred(operatorconfig.AllowlistCustomConfigMapName, "", true, true, true)),
-			).
-			Watches(
-				&source.Kind{Type: &corev1.ConfigMap{}},
-				&handler.EnqueueRequestForObject{},
-				builder.WithPredicates(getPred(operatorconfig.CaConfigmapName, config.GetDefaultNamespace(), false, true, true)),
-			).
-			Watches(
-				&source.Kind{Type: &appsv1.Deployment{}},
-				&handler.EnqueueRequestForObject{},
-				builder.WithPredicates(getPred(hubMetricsCollectorName, config.GetDefaultNamespace(), true, true, true)),
-			).
-			Watches(
-				&source.Kind{Type: &appsv1.Deployment{}},
-				&handler.EnqueueRequestForObject{},
-				builder.WithPredicates(getPred(hubUwlMetricsCollectorName, config.GetDefaultNamespace(), true, true, true)),
-			).
-			Watches(
-				&source.Kind{Type: &rbacv1.ClusterRoleBinding{}},
-				&handler.EnqueueRequestForObject{},
-				builder.WithPredicates(getPred(operatorconfig.ClusterRoleBindingName, "", false, true, true)),
-			).
-			Watches(
-				&source.Kind{Type: &corev1.ConfigMap{}},
-				&handler.EnqueueRequestForObject{},
-				builder.WithPredicates(getPred(operatorconfig.ImageConfigMap, config.GetDefaultNamespace(), true, true, true)),
-			).
-			Watches(
-				&source.Kind{Type: &appsv1.StatefulSet{}},
-				&handler.EnqueueRequestForObject{},
-				builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, hubUwlMetricsCollectorNs, true, false, true)),
-			)
-	*/
+
+	ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(hubEndpointOperatorPred)).
+		Watches(
+			&source.Kind{Type: &corev1.Secret{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(operatorconfig.HubInfoSecretName, config.GetDefaultNamespace(), false, false, true)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.Secret{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(operatorconfig.MtlsCertName, config.GetDefaultNamespace(), false, false, true)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.Secret{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(managedClusterObsCertName, config.GetDefaultNamespace(), false, false, true)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.ConfigMap{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(operatorconfig.ImageConfigMap, config.GetDefaultNamespace(), false, false, true)),
+		).
+		Watches(
+			&source.Kind{Type: &appsv1.StatefulSet{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, hubUwlMetricsCollectorNs, true, false, true)),
+		)
 	// create and return a new controller
 	return ctrBuilder.Complete(r)
 }
