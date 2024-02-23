@@ -120,6 +120,9 @@ func getHubEndpointOperatorPredicates() predicate.Funcs {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
+			if config.IsMCOTerminating {
+				return false
+			}
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() && e.Object.GetName() == hubEndpointOperatorName {
 				return true
 			}
