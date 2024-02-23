@@ -313,9 +313,6 @@ var (
 
 	multicloudConsoleRouteHost = ""
 )
-var (
-	IsMCOTerminating = false
-)
 
 func GetReplicas(component string, advanced *observabilityv1beta2.AdvancedConfig) *int32 {
 	if advanced == nil {

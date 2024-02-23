@@ -75,4 +75,5 @@ var (
 
 var (
 	HubMetricsCollectorResources = corev1.ResourceRequirements{}
+	IsMCOTerminating             = false
 )
