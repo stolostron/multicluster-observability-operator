@@ -529,6 +529,10 @@ func createMtlsCertSecretForHubCollector() (*corev1.Secret, error) {
 
 func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
 	//create csr for hub metrics collection
+	if operatorconfig.IsMCOTerminating {
+		log.Info("Skip creating resources for hub metrics collection as MCO is terminating")
+		return nil
+	}
 	hubMtlsSecret, err := createMtlsCertSecretForHubCollector()
 	if err != nil {
 		log.Error(err, "Failed to create client cert secret for hub metrics collection")
@@ -579,34 +583,34 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 			return err
 		}
 	}
-	for _, name := range []string{hubMetricsCollectorName, hubUwlMetricsCollectorName} {
-		err := c.Delete(context.TODO(), &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: config.GetDefaultNamespace(),
-			},
-		})
-		if err != nil && !k8serrors.IsNotFound(err) {
-			log.Error(err, "Failed to delete hub metrics-collector deployment")
-			return err
-
-		}
-	}
-	err := RevertHubClusterMonitoringConfig(context.TODO(), c)
-	if err != nil {
-		log.Error(err, "Failed to revert cluster monitoring config")
-		return err
-	}
-	err = DeleteHubMonitoringClusterRoleBinding(context.TODO(), c)
-	if err != nil {
-		log.Error(err, "Failed to delete monitoring cluster role binding for hub metrics collection")
-		return err
-	}
-	err = DeleteHubCAConfigmap(context.TODO(), c)
-	if err != nil {
-		log.Error(err, "Failed to delete CA configmap for hub metrics collection")
-		return err
-	}
+	//for _, name := range []string{hubMetricsCollectorName, hubUwlMetricsCollectorName} {
+	//	err := c.Delete(context.TODO(), &appsv1.Deployment{
+	//		ObjectMeta: metav1.ObjectMeta{
+	//			Name:      name,
+	//			Namespace: config.GetDefaultNamespace(),
+	//		},
+	//	})
+	//	if err != nil && !k8serrors.IsNotFound(err) {
+	//		log.Error(err, "Failed to delete hub metrics-collector deployment")
+	//		return err
+	//
+	//	}
+	//}
+	//err := RevertHubClusterMonitoringConfig(context.TODO(), c)
+	//if err != nil {
+	//	log.Error(err, "Failed to revert cluster monitoring config")
+	//	return err
+	//}
+	//err = DeleteHubMonitoringClusterRoleBinding(context.TODO(), c)
+	//if err != nil {
+	//	log.Error(err, "Failed to delete monitoring cluster role binding for hub metrics collection")
+	//	return err
+	//}
+	//err = DeleteHubCAConfigmap(context.TODO(), c)
+	//if err != nil {
+	//	log.Error(err, "Failed to delete CA configmap for hub metrics collection")
+	//	return err
+	//}
 	//isHypershift := true
 	//if os.Getenv("UNIT_TEST") != "true" {
 	//	crdClient, err := util.GetOrCreateCRDClient()

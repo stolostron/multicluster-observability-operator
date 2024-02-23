@@ -6,6 +6,7 @@ package placementrule
 
 import (
 	"fmt"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"reflect"
 	"strings"
 
@@ -120,7 +121,8 @@ func getHubEndpointOperatorPredicates() predicate.Funcs {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if config.IsMCOTerminating {
+			if operatorconfig.IsMCOTerminating {
+				log.Info("MCO is terminating, skip reconcile for hub endpoint operator")
 				return false
 			}
 			if e.Object.GetNamespace() == config.GetDefaultNamespace() && e.Object.GetName() == hubEndpointOperatorName {
@@ -171,6 +173,10 @@ func getPred(name string, namespace string,
 	}
 	if delete {
 		deleteFunc = func(e event.DeleteEvent) bool {
+			if operatorconfig.IsMCOTerminating {
+				log.Info("MCO is terminating, skip reconcile for placementrule controller", "name", name, "namespace", namespace)
+				return false
+			}
 			if e.Object.GetName() == name && (e.Object.GetNamespace() == namespace) {
 				return true
 			}
