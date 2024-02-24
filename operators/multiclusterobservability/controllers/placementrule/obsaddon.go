@@ -6,8 +6,9 @@ package placementrule
 
 import (
 	"context"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"time"
+
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 
 	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/api/errors"
