@@ -573,8 +573,59 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 // Delete resources created for hub metrics collection
 func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 	log.Info("Coleen Deleting resources for hub metrics collection")
+
+	hubMetricCollectorSecrets := []string{operatorconfig.MtlsCertName, managedClusterObsCertName, operatorconfig.HubInfoSecretName, config.AlertmanagerAccessorSecretName}
+	for _, name := range hubMetricCollectorSecrets {
+		err := c.Delete(context.TODO(), &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: config.GetDefaultNamespace(),
+			},
+		})
+		if err != nil && !k8serrors.IsNotFound(err) {
+			log.Error(err, "Failed to delete hub metrics-collector secret")
+			return err
+		}
+	}
+	hubMetricsCollectorConfigMaps := []string{operatorconfig.ImageConfigMap, operatorconfig.CaConfigmapName}
+	for _, name := range hubMetricsCollectorConfigMaps {
+		err := c.Delete(context.TODO(), &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: config.GetDefaultNamespace(),
+			},
+		})
+		if err != nil && !k8serrors.IsNotFound(err) {
+			log.Error(err, "Failed to delete hub metrics-collector configmap")
+			return err
+		}
+
+	}
+	for _, name := range []string{hubMetricsCollectorName, hubUwlMetricsCollectorName} {
+		err := c.Delete(context.TODO(), &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: config.GetDefaultNamespace(),
+			},
+		})
+		if err != nil && !k8serrors.IsNotFound(err) {
+			log.Error(err, "Failed to delete hub metrics-collector deployment")
+			return err
+
+		}
+	}
+	err := DeleteHubMonitoringClusterRoleBinding(context.TODO(), c)
+	if err != nil {
+		log.Error(err, "Failed to delete monitoring cluster role binding for hub metrics collection")
+		return err
+	}
+	err = DeleteHubCAConfigmap(context.TODO(), c)
+	if err != nil {
+		log.Error(err, "Failed to delete CA configmap for hub metrics collection")
+		return err
+	}
 	// Delete hub endpoint operator
-	err := c.Delete(context.TODO(), &appsv1.Deployment{
+	err = c.Delete(context.TODO(), &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      hubEndpointOperatorName,
 			Namespace: config.GetDefaultNamespace(),
@@ -582,6 +633,12 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 	})
 	if err != nil && !k8serrors.IsNotFound(err) {
 		log.Error(err, "Failed to delete hub endpoint operator")
+		return err
+	}
+
+	err = RevertHubClusterMonitoringConfig(context.TODO(), c)
+	if err != nil {
+		log.Error(err, "Failed to revert cluster monitoring config")
 		return err
 	}
 
@@ -595,32 +652,10 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 	//		return err
 	//	}
 	//}
-	//for _, name := range []string{hubMetricsCollectorName, hubUwlMetricsCollectorName} {
-	//	err := c.Delete(context.TODO(), &appsv1.Deployment{
-	//		ObjectMeta: metav1.ObjectMeta{
-	//			Name:      name,
-	//			Namespace: config.GetDefaultNamespace(),
-	//		},
-	//	})
-	//	if err != nil && !k8serrors.IsNotFound(err) {
-	//		log.Error(err, "Failed to delete hub metrics-collector deployment")
-	//		return err
-	//
-	//	}
-	//}
+
 	//err := RevertHubClusterMonitoringConfig(context.TODO(), c)
 	//if err != nil {
 	//	log.Error(err, "Failed to revert cluster monitoring config")
-	//	return err
-	//}
-	//err = DeleteHubMonitoringClusterRoleBinding(context.TODO(), c)
-	//if err != nil {
-	//	log.Error(err, "Failed to delete monitoring cluster role binding for hub metrics collection")
-	//	return err
-	//}
-	//err = DeleteHubCAConfigmap(context.TODO(), c)
-	//if err != nil {
-	//	log.Error(err, "Failed to delete CA configmap for hub metrics collection")
 	//	return err
 	//}
 	//isHypershift := true
