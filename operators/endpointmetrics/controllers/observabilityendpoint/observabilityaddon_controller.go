@@ -271,9 +271,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 func (r *ObservabilityAddonReconciler) initFinalization(
 	ctx context.Context, delete bool, hubObsAddon *oav1beta1.ObservabilityAddon,
 	isHypershift bool) (bool, error) {
-	log.Info("Coleen Init finalization", "hubMetricsCollector", hubMetricsCollector, "delete", delete, "operatorconfig.IsMCOTerminating", operatorconfig.IsMCOTerminating)
 	if delete && slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
-		log.Info("Coleen To clean observability components/configurations in the cluster")
 		err := deleteMetricsCollector(ctx, r.Client, metricsCollectorName)
 		if err != nil {
 			return false, err

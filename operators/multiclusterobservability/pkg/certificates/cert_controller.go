@@ -134,7 +134,7 @@ func updateDeployLabel(c client.Client, dName string, isUpdate bool) {
 }
 
 func needsRenew(s v1.Secret) bool {
-	certSecretNames := []string{serverCACerts, clientCACerts, serverCerts, grafanaCerts}
+	certSecretNames := []string{serverCACerts, clientCACerts, serverCerts, grafanaCerts, hubMetricsCollectorMtlsCert}
 	if !slices.Contains(certSecretNames, s.Name) {
 		return false
 	}
@@ -238,6 +238,10 @@ func onUpdate(c client.Client, ingressCtlCrdExists bool) func(oldObj, newObj int
 					if err == nil {
 						err = createCertSecret(c, nil, nil, true, serverCerts, true, serverCertificateCN, nil, hosts, nil)
 					}
+				case name == hubMetricsCollectorMtlsCert:
+					// ACM 8509: Special case for hub metrics collector
+					//Create a MTLS secret for the hub metrics collector
+					err = createCertSecret(c, nil, nil, false, hubMetricsCollectorMtlsCert, false, clientCACertificateCN, nil, nil, nil)
 				default:
 					return
 				}

@@ -988,7 +988,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&source.Kind{Type: &corev1.Secret{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(operatorconfig.MtlsCertName, config.GetDefaultNamespace(), false, false, true)),
+			builder.WithPredicates(getPred(operatorconfig.HubMetricsCollectorMtlsCert, config.GetDefaultNamespace(), false, false, true)),
 		).
 		Watches(
 			&source.Kind{Type: &corev1.Secret{}},

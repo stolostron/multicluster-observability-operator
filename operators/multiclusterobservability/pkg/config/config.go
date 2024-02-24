@@ -65,13 +65,14 @@ const (
 
 	ComponentVersion = "COMPONENT_VERSION"
 
-	ServerCACerts    = "observability-server-ca-certs"
-	ClientCACerts    = "observability-client-ca-certs"
-	ServerCerts      = "observability-server-certs"
-	ServerCertCN     = "observability-server-certificate"
-	GrafanaCerts     = "observability-grafana-certs"
-	GrafanaCN        = "grafana"
-	ManagedClusterOU = "acm"
+	ServerCACerts        = "observability-server-ca-certs"
+	ClientCACerts        = "observability-client-ca-certs"
+	ServerCerts          = "observability-server-certs"
+	ServerCertCN         = "observability-server-certificate"
+	GrafanaCerts         = "observability-grafana-certs"
+	GrafanaCN            = "grafana"
+	MangedClusterObsCert = "observability-managed-cluster-certs"
+	ManagedClusterOU     = "acm"
 
 	GrafanaRouteName         = "grafana"
 	GrafanaServiceName       = "grafana"

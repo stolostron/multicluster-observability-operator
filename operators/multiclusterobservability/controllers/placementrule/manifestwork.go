@@ -6,20 +6,14 @@ package placementrule
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 
-	certificatesv1 "k8s.io/api/certificates/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 
 	"gopkg.in/yaml.v2"
@@ -36,7 +30,6 @@ import (
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
@@ -469,72 +462,14 @@ func createManifestWorks(
 	return err
 }
 
-func createCSR() ([]byte, []byte) {
-	keys, _ := rsa.GenerateKey(rand.Reader, 2048)
-
-	oidOrganization := []int{2, 5, 4, 11} // Object Identifier (OID) for Organization Unit
-	oidUser := []int{2, 5, 4, 3}          // Object Identifier (OID) for User
-
-	var csrTemplate = x509.CertificateRequest{
-		Subject: pkix.Name{
-			Organization: []string{"Red Hat, Inc."},
-			Country:      []string{"US"},
-			CommonName:   operatorconfig.ClientCACertificateCN,
-			ExtraNames: []pkix.AttributeTypeAndValue{
-				{Type: oidOrganization, Value: "acm"},
-				{Type: oidUser, Value: "managed-cluster-observability"},
-			},
-		},
-		DNSNames:           []string{"observability-controller.addon.open-cluster-management.io"},
-		SignatureAlgorithm: x509.SHA512WithRSA,
-	}
-	csrCertificate, _ := x509.CreateCertificateRequest(rand.Reader, &csrTemplate, keys)
-	csr := pem.EncodeToMemory(&pem.Block{
-		Type: "CERTIFICATE REQUEST", Bytes: csrCertificate,
-	})
-
-	privateKey := pem.EncodeToMemory(&pem.Block{
-		Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(keys),
-	})
-
-	return csr, privateKey
-}
-
-func createMtlsCertSecretForHubCollector() (*corev1.Secret, error) {
-	csrBytes, privateKeyBytes := createCSR()
-	csr := &certificatesv1.CertificateSigningRequest{
-		Spec: certificatesv1.CertificateSigningRequestSpec{
-			Request: csrBytes,
-			Usages:  []certificatesv1.KeyUsage{certificatesv1.UsageDigitalSignature, certificatesv1.UsageClientAuth},
-		},
-	}
-	signedClientCert := certificates.Sign(csr)
-	if signedClientCert == nil {
-		log.Error(nil, "failed to sign CSR")
-		return nil, errors.New("failed to sign CSR")
-	} else {
-		//Create a secret
-		return &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      operatorconfig.MtlsCertName,
-				Namespace: config.GetDefaultNamespace(),
-			},
-			Data: map[string][]byte{
-				"tls.crt": signedClientCert,
-				"tls.key": privateKeyBytes,
-			},
-		}, nil
-	}
-}
-
 func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
 	//create csr for hub metrics collection
-	hubMtlsSecret, err := createMtlsCertSecretForHubCollector()
-	if err != nil {
-		log.Error(err, "Failed to create client cert secret for hub metrics collection")
-		return err
-	}
-	manifests = injectIntoWork(manifests, hubMtlsSecret)
+	//hubMtlsSecret, err := certificates.CreateMtlsCertSecretForHubCollector()
+	//if err != nil {
+	//	log.Error(err, "Failed to create client cert secret for hub metrics collection")
+	//	return err
+	//}
+	//manifests = injectIntoWork(manifests, hubMtlsSecret)
 
 	//Make a deep copy of all the manifests since there are some global resources that can be updated due to this function
 	hubManifestCopy = make([]workv1.Manifest, len(manifests))
@@ -568,9 +503,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 
 // Delete resources created for hub metrics collection
 func DeleteHubMetricsCollectionDeployments(c client.Client) error {
-	log.Info("Coleen Deleting resources for hub metrics collection")
-
-	hubMetricCollectorSecrets := []string{operatorconfig.MtlsCertName, managedClusterObsCertName, operatorconfig.HubInfoSecretName, config.AlertmanagerAccessorSecretName}
+	hubMetricCollectorSecrets := []string{operatorconfig.HubMetricsCollectorMtlsCert, managedClusterObsCertName, operatorconfig.HubInfoSecretName, config.AlertmanagerAccessorSecretName}
 	for _, name := range hubMetricCollectorSecrets {
 		err := c.Delete(context.TODO(), &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
@@ -638,22 +571,6 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 		return err
 	}
 
-	//for _, manifest := range hubManifestCopy {
-	//	obj := manifest.RawExtension.Object.(client.Object)
-	//	log.Info("Coleen Deleting resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName(), "namespace", obj.GetNamespace())
-	//
-	//	err := c.Delete(context.TODO(), obj)
-	//	if err != nil && !k8serrors.IsNotFound(err) {
-	//		log.Error(err, "Failed to delete resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-	//		return err
-	//	}
-	//}
-
-	//err := RevertHubClusterMonitoringConfig(context.TODO(), c)
-	//if err != nil {
-	//	log.Error(err, "Failed to revert cluster monitoring config")
-	//	return err
-	//}
 	//isHypershift := true
 	//if os.Getenv("UNIT_TEST") != "true" {
 	//	crdClient, err := util.GetOrCreateCRDClient()
