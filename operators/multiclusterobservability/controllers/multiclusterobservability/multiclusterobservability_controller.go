@@ -8,11 +8,12 @@ import (
 	"context"
 	cerr "errors"
 	"fmt"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"os"
 	"reflect"
 	"strings"
 	"time"
+
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"

@@ -573,16 +573,28 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 // Delete resources created for hub metrics collection
 func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 	log.Info("Coleen Deleting resources for hub metrics collection")
-	for _, manifest := range hubManifestCopy {
-		obj := manifest.RawExtension.Object.(client.Object)
-		log.Info("Coleen Deleting resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName(), "namespace", obj.GetNamespace())
-
-		err := c.Delete(context.TODO(), obj)
-		if err != nil && !k8serrors.IsNotFound(err) {
-			log.Error(err, "Failed to delete resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-			return err
-		}
+	// Delete hub endpoint operator
+	err := c.Delete(context.TODO(), &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hubEndpointOperatorName,
+			Namespace: config.GetDefaultNamespace(),
+		},
+	})
+	if err != nil && !k8serrors.IsNotFound(err) {
+		log.Error(err, "Failed to delete hub endpoint operator")
+		return err
 	}
+
+	//for _, manifest := range hubManifestCopy {
+	//	obj := manifest.RawExtension.Object.(client.Object)
+	//	log.Info("Coleen Deleting resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName(), "namespace", obj.GetNamespace())
+	//
+	//	err := c.Delete(context.TODO(), obj)
+	//	if err != nil && !k8serrors.IsNotFound(err) {
+	//		log.Error(err, "Failed to delete resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
+	//		return err
+	//	}
+	//}
 	//for _, name := range []string{hubMetricsCollectorName, hubUwlMetricsCollectorName} {
 	//	err := c.Delete(context.TODO(), &appsv1.Deployment{
 	//		ObjectMeta: metav1.ObjectMeta{

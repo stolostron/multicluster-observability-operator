@@ -6,9 +6,10 @@ package placementrule
 
 import (
 	"fmt"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"reflect"
 	"strings"
+
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 
