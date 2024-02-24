@@ -215,14 +215,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		reqLogger.Error(err, "Failed to list observabilityaddon resource")
 		return ctrl.Result{}, err
 	}
-	//if installMetricsWithoutAddon {
-	//	obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
-	//		ObjectMeta: metav1.ObjectMeta{
-	//			Name:      "local-cluster",
-	//			Namespace: "local-cluster",
-	//		},
-	//	})
-	//}
 	workList := &workv1.ManifestWorkList{}
 	err = r.Client.List(context.TODO(), workList, opts)
 	if err != nil {

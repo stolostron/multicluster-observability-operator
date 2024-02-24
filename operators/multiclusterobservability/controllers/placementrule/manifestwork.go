@@ -885,23 +885,6 @@ func getObservabilityAddon(c client.Client, namespace string,
 		return nil, nil
 	}
 
-	//if namespace == config.GetDefaultNamespace() {
-	//	return &mcov1beta1.ObservabilityAddon{
-	//		TypeMeta: metav1.TypeMeta{
-	//			APIVersion: "observability.open-cluster-management.io/v1beta1",
-	//			Kind:       "ObservabilityAddon",
-	//		},
-	//		ObjectMeta: metav1.ObjectMeta{
-	//			Name:      obsAddonName,
-	//			Namespace: config.GetDefaultNamespace(),
-	//		},
-	//		Spec: mcoshared.ObservabilityAddonSpec{
-	//			EnableMetrics: mco.Spec.ObservabilityAddonSpec.EnableMetrics,
-	//			Interval:      mco.Spec.ObservabilityAddonSpec.Interval,
-	//			Resources:     config.GetOBAResources(mco.Spec.ObservabilityAddonSpec),
-	//		},
-	//	}, nil
-	//}
 	return &mcov1beta1.ObservabilityAddon{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "observability.open-cluster-management.io/v1beta1",
