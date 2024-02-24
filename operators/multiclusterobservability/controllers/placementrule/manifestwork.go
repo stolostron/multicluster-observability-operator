@@ -529,10 +529,6 @@ func createMtlsCertSecretForHubCollector() (*corev1.Secret, error) {
 
 func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
 	//create csr for hub metrics collection
-	if operatorconfig.IsMCOTerminating {
-		log.Info("Skip creating resources for hub metrics collection as MCO is terminating")
-		return nil
-	}
 	hubMtlsSecret, err := createMtlsCertSecretForHubCollector()
 	if err != nil {
 		log.Error(err, "Failed to create client cert secret for hub metrics collection")
@@ -869,6 +865,9 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.Con
 
 func getObservabilityAddon(c client.Client, namespace string,
 	mco *mcov1beta2.MultiClusterObservability) (*mcov1beta1.ObservabilityAddon, error) {
+	if namespace == config.GetDefaultNamespace() {
+		return nil, nil
+	}
 	found := &mcov1beta1.ObservabilityAddon{}
 	namespacedName := types.NamespacedName{
 		Name:      obsAddonName,
@@ -886,23 +885,23 @@ func getObservabilityAddon(c client.Client, namespace string,
 		return nil, nil
 	}
 
-	if namespace == config.GetDefaultNamespace() {
-		return &mcov1beta1.ObservabilityAddon{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "observability.open-cluster-management.io/v1beta1",
-				Kind:       "ObservabilityAddon",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      obsAddonName,
-				Namespace: config.GetDefaultNamespace(),
-			},
-			Spec: mcoshared.ObservabilityAddonSpec{
-				EnableMetrics: mco.Spec.ObservabilityAddonSpec.EnableMetrics,
-				Interval:      mco.Spec.ObservabilityAddonSpec.Interval,
-				Resources:     config.GetOBAResources(mco.Spec.ObservabilityAddonSpec),
-			},
-		}, nil
-	}
+	//if namespace == config.GetDefaultNamespace() {
+	//	return &mcov1beta1.ObservabilityAddon{
+	//		TypeMeta: metav1.TypeMeta{
+	//			APIVersion: "observability.open-cluster-management.io/v1beta1",
+	//			Kind:       "ObservabilityAddon",
+	//		},
+	//		ObjectMeta: metav1.ObjectMeta{
+	//			Name:      obsAddonName,
+	//			Namespace: config.GetDefaultNamespace(),
+	//		},
+	//		Spec: mcoshared.ObservabilityAddonSpec{
+	//			EnableMetrics: mco.Spec.ObservabilityAddonSpec.EnableMetrics,
+	//			Interval:      mco.Spec.ObservabilityAddonSpec.Interval,
+	//			Resources:     config.GetOBAResources(mco.Spec.ObservabilityAddonSpec),
+	//		},
+	//	}, nil
+	//}
 	return &mcov1beta1.ObservabilityAddon{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "observability.open-cluster-management.io/v1beta1",

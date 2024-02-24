@@ -6,6 +6,7 @@ package placementrule
 
 import (
 	"context"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"time"
 
 	"golang.org/x/exp/slices"
@@ -57,6 +58,9 @@ func deleteObsAddon(c client.Client, namespace string) error {
 }
 
 func createObsAddon(c client.Client, namespace string) error {
+	if namespace == config.GetDefaultNamespace() {
+		return nil
+	}
 	ec := &obsv1beta1.ObservabilityAddon{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obsAddonName,

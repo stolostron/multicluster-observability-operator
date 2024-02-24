@@ -128,6 +128,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			deleteAll = true
+			delete(managedClusterList, "local-cluster")
 		} else {
 			// Error reading the object - requeue the request.
 			return ctrl.Result{}, err
