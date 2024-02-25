@@ -81,13 +81,6 @@ func CreateObservabilityCerts(
 	if err != nil {
 		return err
 	}
-	// ACM 8509: Special case for hub metrics collector
-	//Create a MTLS secret for the hub metrics collector
-	err = CreateMtlsCertSecretForHubCollector(c)
-	if err != nil {
-		return err
-	}
-	//err = createCertSecret(c, scheme, mco, false, hubMetricsCollectorMtlsCert, false, clientCACertificateCN, nil, nil, nil)
 	return nil
 }
 

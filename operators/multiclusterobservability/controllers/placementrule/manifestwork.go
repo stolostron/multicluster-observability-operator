@@ -30,6 +30,7 @@ import (
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	cert_controller "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
@@ -494,11 +495,36 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			return err
 		}
 	}
+	cert_controller.CreateMtlsCertSecretForHubCollector(c)
 	return nil
 }
 
 // Delete resources created for hub metrics collection
 func DeleteHubMetricsCollectionDeployments(c client.Client) error {
+	// Delete hub endpoint operator
+	err := c.Delete(context.TODO(), &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.HubEndpointOperatorName,
+			Namespace: config.GetDefaultNamespace(),
+		},
+	})
+	if err != nil && !k8serrors.IsNotFound(err) {
+		log.Error(err, "Failed to delete hub endpoint operator")
+		return err
+	}
+	for _, name := range []string{config.HubUwlMetricsCollectorName, config.HubMetricsCollectorName} {
+		err := c.Delete(context.TODO(), &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: config.GetDefaultNamespace(),
+			},
+		})
+		if err != nil && !k8serrors.IsNotFound(err) {
+			log.Error(err, "Failed to delete hub metrics-collector deployment")
+			return err
+
+		}
+	}
 	hubMetricCollectorSecrets := []string{operatorconfig.HubMetricsCollectorMtlsCert, managedClusterObsCertName, operatorconfig.HubInfoSecretName, config.AlertmanagerAccessorSecretName}
 	for _, name := range hubMetricCollectorSecrets {
 		err := c.Delete(context.TODO(), &corev1.Secret{
@@ -526,20 +552,7 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 		}
 
 	}
-	for _, name := range []string{config.HubUwlMetricsCollectorName, config.HubMetricsCollectorName} {
-		err := c.Delete(context.TODO(), &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: config.GetDefaultNamespace(),
-			},
-		})
-		if err != nil && !k8serrors.IsNotFound(err) {
-			log.Error(err, "Failed to delete hub metrics-collector deployment")
-			return err
-
-		}
-	}
-	err := DeleteHubMonitoringClusterRoleBinding(context.TODO(), c)
+	err = DeleteHubMonitoringClusterRoleBinding(context.TODO(), c)
 	if err != nil {
 		log.Error(err, "Failed to delete monitoring cluster role binding for hub metrics collection")
 		return err
@@ -549,18 +562,6 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 		log.Error(err, "Failed to delete CA configmap for hub metrics collection")
 		return err
 	}
-	// Delete hub endpoint operator
-	err = c.Delete(context.TODO(), &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      config.HubEndpointOperatorName,
-			Namespace: config.GetDefaultNamespace(),
-		},
-	})
-	if err != nil && !k8serrors.IsNotFound(err) {
-		log.Error(err, "Failed to delete hub endpoint operator")
-		return err
-	}
-
 	err = RevertHubClusterMonitoringConfig(context.TODO(), c)
 	if err != nil {
 		log.Error(err, "Failed to revert cluster monitoring config")
