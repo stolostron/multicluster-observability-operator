@@ -595,9 +595,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.ObjectNew.GetName() == obsAddonName &&
 				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-				//ACM 8509: Special case for hub/local cluster metrics collection
-				// since there is no observability addon for hub/local cluster
-				e.ObjectNew.GetNamespace() != config.GetDefaultNamespace() &&
 				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Status.Conditions,
 					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Status.Conditions) {
 				return true
@@ -606,10 +603,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if e.Object.GetName() == obsAddonName &&
-				e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-				//ACM 8509: Special case for hub/local cluster metrics collection
-				// since there is no observability addon for hub/local cluster
-				e.Object.GetNamespace() != config.GetDefaultNamespace() {
+				e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				log.Info(
 					"DeleteFunc",
 					"obsAddonNamespace",
@@ -1003,7 +997,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&source.Kind{Type: &appsv1.StatefulSet{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, hubUwlMetricsCollectorNs, true, false, true)),
+			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, config.HubUwlMetricsCollectorNs, true, false, true)),
 		)
 	// create and return a new controller
 	return ctrBuilder.Complete(r)

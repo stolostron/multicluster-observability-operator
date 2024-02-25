@@ -38,13 +38,9 @@ import (
 )
 
 const (
-	workNameSuffix             = "-observability"
-	localClusterName           = "local-cluster"
-	workPostponeDeleteAnnoKey  = "open-cluster-management/postpone-delete"
-	hubEndpointOperatorName    = "endpoint-observability-operator"
-	hubMetricsCollectorName    = "metrics-collector-deployment"
-	hubUwlMetricsCollectorName = "uwl-metrics-collector-deployment"
-	hubUwlMetricsCollectorNs   = "openshift-user-workload-monitoring"
+	workNameSuffix            = "-observability"
+	localClusterName          = "local-cluster"
+	workPostponeDeleteAnnoKey = "open-cluster-management/postpone-delete"
 )
 
 // intermediate resources for the manifest work.
@@ -408,7 +404,7 @@ func createManifestWorks(
 			Value: "true",
 		})
 
-		dep.ObjectMeta.Name = hubEndpointOperatorName
+		dep.ObjectMeta.Name = config.HubEndpointOperatorName
 	}
 
 	dep.Spec.Template.Spec = spec
@@ -530,7 +526,7 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 		}
 
 	}
-	for _, name := range []string{hubMetricsCollectorName, hubUwlMetricsCollectorName} {
+	for _, name := range []string{config.HubUwlMetricsCollectorName, config.HubMetricsCollectorName} {
 		err := c.Delete(context.TODO(), &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
@@ -556,7 +552,7 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 	// Delete hub endpoint operator
 	err = c.Delete(context.TODO(), &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      hubEndpointOperatorName,
+			Name:      config.HubEndpointOperatorName,
 			Namespace: config.GetDefaultNamespace(),
 		},
 	})

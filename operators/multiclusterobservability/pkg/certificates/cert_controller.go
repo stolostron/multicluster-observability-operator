@@ -104,6 +104,9 @@ func restartPods(c client.Client, s v1.Secret, isUpdate bool) {
 	if s.Name == config.ClientCACerts || s.Name == config.ServerCerts {
 		dName = config.GetOperandName(config.ObservatoriumAPI)
 	}
+	if s.Name == hubMetricsCollectorMtlsCert {
+		dName = config.HubMetricsCollectorName
+	}
 	if dName != "" {
 		updateDeployLabel(c, dName, isUpdate)
 	}
