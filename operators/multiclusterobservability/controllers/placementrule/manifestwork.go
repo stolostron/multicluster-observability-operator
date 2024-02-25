@@ -460,16 +460,8 @@ func createManifestWorks(
 }
 
 func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
-	//create csr for hub metrics collection
-	//hubMtlsSecret, err := certificates.CreateMtlsCertSecretForHubCollector()
-	//if err != nil {
-	//	log.Error(err, "Failed to create client cert secret for hub metrics collection")
-	//	return err
-	//}
-	//manifests = injectIntoWork(manifests, hubMtlsSecret)
-
 	//Make a deep copy of all the manifests since there are some global resources that can be updated due to this function
-	log.Info("Coleen is mco terminating", "IsMCOTerminating", operatorconfig.IsMCOTerminating")
+	log.Info("Coleen is mco terminating", "IsMCOTerminating", operatorconfig.IsMCOTerminating)
 	if operatorconfig.IsMCOTerminating {
 		log.Info("MC Operator is terminating, skip creating resources for hub metrics collection")
 		return nil
