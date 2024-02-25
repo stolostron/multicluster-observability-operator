@@ -526,7 +526,7 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 
 		}
 	}
-	hubMetricCollectorSecrets := []string{operatorconfig.HubMetricsCollectorMtlsCert, managedClusterObsCertName, operatorconfig.HubInfoSecretName}
+	hubMetricCollectorSecrets := []string{operatorconfig.HubMetricsCollectorMtlsCert, managedClusterObsCertName, operatorconfig.HubInfoSecretName, config.AlertmanagerAccessorSecretName}
 	for _, name := range hubMetricCollectorSecrets {
 		err := c.Delete(context.TODO(), &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{

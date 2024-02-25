@@ -1001,6 +1001,11 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			&source.Kind{Type: &appsv1.StatefulSet{}},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, config.HubUwlMetricsCollectorNs, true, false, true)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.Secret{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(config.AlertmanagerAccessorSecretName, config.GetDefaultNamespace(), false, false, true)),
 		)
 	// create and return a new controller
 	return ctrBuilder.Complete(r)
