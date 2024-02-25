@@ -244,7 +244,7 @@ func onUpdate(c client.Client, ingressCtlCrdExists bool) func(oldObj, newObj int
 				case name == hubMetricsCollectorMtlsCert:
 					// ACM 8509: Special case for hub metrics collector
 					//Create a MTLS secret for the hub metrics collector
-					err = createCertSecret(c, nil, nil, false, hubMetricsCollectorMtlsCert, false, clientCACertificateCN, nil, nil, nil)
+					err = CreateMtlsCertSecretForHubCollector(c)
 				default:
 					return
 				}
