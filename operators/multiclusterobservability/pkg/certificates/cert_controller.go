@@ -9,6 +9,8 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"reflect"
 	"time"
@@ -243,8 +245,14 @@ func onUpdate(c client.Client, ingressCtlCrdExists bool) func(oldObj, newObj int
 					}
 				case name == hubMetricsCollectorMtlsCert:
 					// ACM 8509: Special case for hub metrics collector
-					//Create a MTLS secret for the hub metrics collector
-					err = CreateMtlsCertSecretForHubCollector(c)
+					//Delete the MTLS secret and the placement controller will reconcile to create a new one
+					HubMtlsSecret := &v1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      operatorconfig.HubMetricsCollectorMtlsCert,
+							Namespace: config.GetDefaultNamespace(),
+						},
+					}
+					err = c.Delete(context.Background(), HubMtlsSecret)
 				default:
 					return
 				}
