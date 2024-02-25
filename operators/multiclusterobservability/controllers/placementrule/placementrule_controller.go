@@ -193,6 +193,9 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		operatorconfig.HubMetricsCollectorResources = *config.GetOBAResources(mco.Spec.ObservabilityAddonSpec)
 	}
 
+	if operatorconfig.IsMCOTerminating {
+		delete(managedClusterList, "local-cluster")
+	}
 	if !deleteAll {
 		if err := createAllRelatedRes(
 			r.Client,
