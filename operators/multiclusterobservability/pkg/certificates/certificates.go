@@ -526,7 +526,7 @@ func CreateMtlsCertSecretForHubCollector(c client.Client) error {
 			},
 		}
 		err := c.Create(context.TODO(), HubMtlsSecret)
-		if err != nil {
+		if err != nil && !errors.IsAlreadyExists(err) {
 			log.Error(err, "Failed to create secret", "name", operatorconfig.HubMetricsCollectorMtlsCert)
 			return err
 		}

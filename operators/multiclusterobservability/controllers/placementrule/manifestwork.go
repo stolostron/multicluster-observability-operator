@@ -469,6 +469,11 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 	//manifests = injectIntoWork(manifests, hubMtlsSecret)
 
 	//Make a deep copy of all the manifests since there are some global resources that can be updated due to this function
+	log.Info("Coleen is mco terminating", "IsMCOTerminating", operatorconfig.IsMCOTerminating")
+	if operatorconfig.IsMCOTerminating {
+		log.Info("MC Operator is terminating, skip creating resources for hub metrics collection")
+		return nil
+	}
 	hubManifestCopy = make([]workv1.Manifest, len(manifests))
 	for i, manifest := range manifests {
 		obj := manifest.RawExtension.Object.DeepCopyObject()
@@ -495,7 +500,11 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			return err
 		}
 	}
-	cert_controller.CreateMtlsCertSecretForHubCollector(c)
+	err := cert_controller.CreateMtlsCertSecretForHubCollector(c)
+	if err != nil {
+		log.Error(err, "Failed to create client cert secret for hub metrics collection")
+		return err
+	}
 	return nil
 }
 
