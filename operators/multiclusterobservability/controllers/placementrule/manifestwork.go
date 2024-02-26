@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -473,87 +472,108 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		hubManifestCopy[i] = workv1.Manifest{RawExtension: runtime.RawExtension{Object: obj}}
 		hubManifestCopy[i] = workv1.Manifest{RawExtension: runtime.RawExtension{Object: obj}}
 	}
-
 	for _, manifest := range hubManifestCopy {
 		obj := manifest.RawExtension.Object.(client.Object)
-		// Define a variable to hold the existing object
-		var currentObj client.Object
-
-		gvk := obj.GetObjectKind().GroupVersionKind()
-		switch gvk.Kind {
-		case "Namespace", "ObservabilityAddon":
+		if obj.GetObjectKind().GroupVersionKind().Kind == "Namespace" || obj.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
 			// We do not want to create ObservabilityAddon and namespace open-cluster-management-add-on observability for hub cluster
 			continue
-		case "ClusterRole", "ClusterRoleBinding", "CustomResourceDefinition":
-		default:
+		}
+		kind := obj.GetObjectKind().GroupVersionKind().Kind
+		if kind != "ClusterRole" && kind != "ClusterRoleBinding" && kind != "CustomResourceDefinition" {
 			obj.SetNamespace(config.GetDefaultNamespace())
 		}
-
-		if gvk.Kind == "ClusterRoleBinding" {
+		if obj.GetObjectKind().GroupVersionKind().Kind == "ClusterRoleBinding" {
 			role := obj.(*rbacv1.ClusterRoleBinding)
-			if len(role.Subjects) > 0 {
-				role.Subjects[0].Namespace = config.GetDefaultNamespace()
-			}
+			role.Subjects[0].Namespace = config.GetDefaultNamespace()
 		}
-
-		switch obj.GetObjectKind().GroupVersionKind().Kind {
-		case "Deployment":
-			currentObj = &appsv1.Deployment{}
-		case "Secret":
-			currentObj = &corev1.Secret{}
-		case "ConfigMap":
-			currentObj = &corev1.ConfigMap{}
-		default:
-			continue
-		}
-
-		err := c.Get(context.TODO(), client.ObjectKey{
-			Namespace: obj.GetNamespace(),
-			Name:      obj.GetName(),
-		}, currentObj)
-
-		if err != nil && !k8serrors.IsNotFound(err) {
-			log.Error(err, "Failed to fetch resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
+		//get the object
+		err := c.Create(context.TODO(), obj)
+		if err != nil && !k8serrors.IsAlreadyExists(err) {
+			log.Error(err, "Failed to create resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
 			return err
 		}
-
-		if k8serrors.IsNotFound(err) {
-			// Object not found, create it
-			err = c.Create(context.TODO(), obj)
-			if err != nil {
-				log.Error(err, "Failed to create resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-				return err
-			}
-		} else {
-			needsUpdate := false
-
-			switch obj := obj.(type) {
-			case *appsv1.Deployment:
-				currentDeployment := currentObj.(*appsv1.Deployment)
-				if !reflect.DeepEqual(obj.Spec, currentDeployment.Spec) {
-					needsUpdate = true
-				}
-			case *corev1.Secret:
-				currentSecret := currentObj.(*corev1.Secret)
-				if !reflect.DeepEqual(obj.Data, currentSecret.Data) {
-					needsUpdate = true
-				}
-			case *corev1.ConfigMap:
-				currentConfigMap := currentObj.(*corev1.ConfigMap)
-				if !reflect.DeepEqual(obj.Data, currentConfigMap.Data) {
-					needsUpdate = true
-				}
-			}
-
-			if needsUpdate {
-				err = c.Update(context.TODO(), obj)
-				if err != nil {
-					log.Error(err, "Failed to update resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-					return err
-				}
-			}
-		}
 	}
+
+	//for _, manifest := range hubManifestCopy {
+	//	obj := manifest.RawExtension.Object.(client.Object)
+	//	// Define a variable to hold the existing object
+	//	var currentObj client.Object
+	//
+	//	gvk := obj.GetObjectKind().GroupVersionKind()
+	//	switch gvk.Kind {
+	//	case "Namespace", "ObservabilityAddon":
+	//		// We do not want to create ObservabilityAddon and namespace open-cluster-management-add-on observability for hub cluster
+	//		continue
+	//	case "ClusterRole", "ClusterRoleBinding", "CustomResourceDefinition":
+	//	default:
+	//		obj.SetNamespace(config.GetDefaultNamespace())
+	//	}
+	//
+	//	if gvk.Kind == "ClusterRoleBinding" {
+	//		role := obj.(*rbacv1.ClusterRoleBinding)
+	//		if len(role.Subjects) > 0 {
+	//			role.Subjects[0].Namespace = config.GetDefaultNamespace()
+	//		}
+	//	}
+	//
+	//	switch obj.GetObjectKind().GroupVersionKind().Kind {
+	//	case "Deployment":
+	//		currentObj = &appsv1.Deployment{}
+	//	case "Secret":
+	//		currentObj = &corev1.Secret{}
+	//	case "ConfigMap":
+	//		currentObj = &corev1.ConfigMap{}
+	//	default:
+	//		continue
+	//	}
+	//
+	//	err := c.Get(context.TODO(), client.ObjectKey{
+	//		Namespace: obj.GetNamespace(),
+	//		Name:      obj.GetName(),
+	//	}, currentObj)
+	//
+	//	if err != nil && !k8serrors.IsNotFound(err) {
+	//		log.Error(err, "Failed to fetch resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
+	//		return err
+	//	}
+	//
+	//	if k8serrors.IsNotFound(err) {
+	//		// Object not found, create it
+	//		err = c.Create(context.TODO(), obj)
+	//		if err != nil {
+	//			log.Error(err, "Failed to create resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
+	//			return err
+	//		}
+	//	} else {
+	//		needsUpdate := false
+	//
+	//		switch obj := obj.(type) {
+	//		case *appsv1.Deployment:
+	//			currentDeployment := currentObj.(*appsv1.Deployment)
+	//			if !reflect.DeepEqual(obj.Spec, currentDeployment.Spec) {
+	//				needsUpdate = true
+	//			}
+	//		case *corev1.Secret:
+	//			currentSecret := currentObj.(*corev1.Secret)
+	//			if !reflect.DeepEqual(obj.Data, currentSecret.Data) {
+	//				needsUpdate = true
+	//			}
+	//		case *corev1.ConfigMap:
+	//			currentConfigMap := currentObj.(*corev1.ConfigMap)
+	//			if !reflect.DeepEqual(obj.Data, currentConfigMap.Data) {
+	//				needsUpdate = true
+	//			}
+	//		}
+	//
+	//		if needsUpdate {
+	//			err = c.Update(context.TODO(), obj)
+	//			if err != nil {
+	//				log.Error(err, "Failed to update resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
+	//				return err
+	//			}
+	//		}
+	//	}
+	//}
 	err := cert_controller.CreateMtlsCertSecretForHubCollector(c)
 	if err != nil {
 		log.Error(err, "Failed to create client cert secret for hub metrics collection")
