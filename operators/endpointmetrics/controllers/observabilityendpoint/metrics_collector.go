@@ -182,6 +182,10 @@ func getCommands(params CollectorParams) []string {
 }
 
 func createDeployment(params CollectorParams) *appsv1.Deployment {
+	mtlsCaSecretName := mtlsCaName
+	if hubMetricsCollector {
+		mtlsCaSecretName = mtlsServerCaName
+	}
 	// falsePtr := false
 	secretName := metricsCollector
 	if params.isUWL {
@@ -200,7 +204,7 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			Name: "mtlsca",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: mtlsCaName,
+					SecretName: mtlsCaSecretName,
 				},
 			},
 		},
