@@ -191,6 +191,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			},
 		})
 		operatorconfig.HubMetricsCollectorResources = *config.GetOBAResources(mco.Spec.ObservabilityAddonSpec)
+		deleteObsAddon(r.Client, localClusterName)
 	}
 	if operatorconfig.IsMCOTerminating {
 		delete(managedClusterList, "local-cluster")
@@ -236,7 +237,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		staleAddons = append(staleAddons, addon.Namespace)
 	}
 	for _, work := range workList.Items {
-		if work.Name != work.Namespace+workNameSuffix || work.Namespace == localClusterName {
+		if work.Name != work.Namespace+workNameSuffix {
 			// ACM 8509: Special case for hub metrics collector
 			// In the upgrade case we want to clean up the obs add on and manifest work that was created
 			// for local-cluster before the upgrade that is why we check for the local-cluster namespace
@@ -246,7 +247,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				return ctrl.Result{}, err
 			}
 		}
-		if !slices.Contains(latestClusters, work.Namespace) || work.Namespace == localClusterName {
+		if !slices.Contains(latestClusters, work.Namespace) {
 			reqLogger.Info("To delete manifestwork", "namespace", work.Namespace)
 			err = deleteManagedClusterRes(r.Client, work.Namespace)
 			if err != nil {
@@ -261,7 +262,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// but the managedclusteraddon for observability will not deleted by the cluster manager, so check against the
 	// managedclusteraddon list to remove the managedcluster resources after the managedcluster is detached.
 	for _, mcaddon := range managedclusteraddonList.Items {
-		if !slices.Contains(latestClusters, mcaddon.Namespace) {
+		if !slices.Contains(latestClusters, mcaddon.Namespace) || mcaddon.Namespace == localClusterName {
 			reqLogger.Info("To delete managedcluster resources", "namespace", mcaddon.Namespace)
 			err = deleteManagedClusterRes(r.Client, mcaddon.Namespace)
 			if err != nil {
