@@ -6,11 +6,11 @@ package placementrule
 
 import (
 	"fmt"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"reflect"
 	"strings"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 
 	appsv1 "k8s.io/api/apps/v1"
 
