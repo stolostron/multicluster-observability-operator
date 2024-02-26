@@ -191,7 +191,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			},
 		})
 		operatorconfig.HubMetricsCollectorResources = *config.GetOBAResources(mco.Spec.ObservabilityAddonSpec)
-
 	}
 
 	if operatorconfig.IsMCOTerminating {
@@ -238,14 +237,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		staleAddons = append(staleAddons, addon.Namespace)
 	}
 	for _, work := range workList.Items {
-		if work.Name != work.Namespace+workNameSuffix {
+		if work.Name != work.Namespace+workNameSuffix || work.Namespace == localClusterName {
 			reqLogger.Info("To delete invalid manifestwork", "name", work.Name, "namespace", work.Namespace)
 			err = deleteManifestWork(r.Client, work.Name, work.Namespace)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 		}
-		if !slices.Contains(latestClusters, work.Namespace) {
+		if !slices.Contains(latestClusters, work.Namespace) || work.Namespace == localClusterName {
 			reqLogger.Info("To delete manifestwork", "namespace", work.Namespace)
 			err = deleteManagedClusterRes(r.Client, work.Namespace)
 			if err != nil {
