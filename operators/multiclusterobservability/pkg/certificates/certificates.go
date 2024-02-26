@@ -470,7 +470,7 @@ func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
 	return hosts, nil
 }
 
-func createCSR() ([]byte, []byte) {
+func CreateCSR() ([]byte, []byte) {
 	keys, _ := rsa.GenerateKey(rand.Reader, 2048)
 
 	oidOrganization := []int{2, 5, 4, 11} // Object Identifier (OID) for Organization Unit
@@ -502,7 +502,7 @@ func createCSR() ([]byte, []byte) {
 }
 
 func CreateMtlsCertSecretForHubCollector(c client.Client) error {
-	csrBytes, privateKeyBytes := createCSR()
+	csrBytes, privateKeyBytes := CreateCSR()
 	csr := &certificatesv1.CertificateSigningRequest{
 		Spec: certificatesv1.CertificateSigningRequestSpec{
 			Request: csrBytes,
