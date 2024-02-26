@@ -440,29 +440,29 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 	return metricsCollectorDep
 }
 
-func createKubeRbacProxySecret(params CollectorParams) *corev1.Secret {
-	name := metricsCollector
-	if params.isUWL {
-		name = uwlMetricsCollector
-	}
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name + "-kube-rbac-proxy-metric",
-			Namespace: namespace,
-		},
-		Type: corev1.SecretTypeOpaque,
-		StringData: map[string]string{
-			"config.yaml": `authorization:
-static:
-  - path: /metrics
-    resourceRequest: false
-    user:
-      name: system:serviceaccount:openshift-monitoring:prometheus-k8s
-    verb: get`,
-		},
-	}
-	return secret
-}
+// func createKubeRbacProxySecret(params CollectorParams) *corev1.Secret {
+// 	name := metricsCollector
+// 	if params.isUWL {
+// 		name = uwlMetricsCollector
+// 	}
+// 	secret := &corev1.Secret{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Name:      name + "-kube-rbac-proxy-metric",
+// 			Namespace: namespace,
+// 		},
+// 		Type: corev1.SecretTypeOpaque,
+// 		StringData: map[string]string{
+// 			"config.yaml": `authorization:
+// static:
+//   - path: /metrics
+//     resourceRequest: false
+//     user:
+//       name: system:serviceaccount:openshift-monitoring:prometheus-k8s
+//     verb: get`,
+// 		},
+// 	}
+// 	return secret
+// }
 
 func createService(params CollectorParams) *corev1.Service {
 	name := metricsCollector
@@ -497,19 +497,19 @@ func createService(params CollectorParams) *corev1.Service {
 	}
 }
 
-func createClientCAConfigMap(params CollectorParams) *corev1.ConfigMap {
-	name := metricsCollector
-	if params.isUWL {
-		name = uwlMetricsCollector
-	}
+// func createClientCAConfigMap(params CollectorParams) *corev1.ConfigMap {
+// 	name := metricsCollector
+// 	if params.isUWL {
+// 		name = uwlMetricsCollector
+// 	}
 
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name + "-clientca-metric",
-			Namespace: namespace,
-		},
-	}
-}
+// 	return &corev1.ConfigMap{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Name:      name + "-clientca-metric",
+// 			Namespace: namespace,
+// 		},
+// 	}
+// }
 
 func createAlertingRule(params CollectorParams) *monitoringv1.PrometheusRule {
 	name := metricsCollector
@@ -679,41 +679,41 @@ func updateMetricsCollectors(ctx context.Context, c client.Client, obsAddonSpec 
 	return result, err
 }
 
-func syncClientCA(ctx context.Context, c client.Client, cfgMap *corev1.ConfigMap) error {
-	// Retrieve the extension-apiserver-authentication ConfigMap from kube-system namespace
-	namespacedName := types.NamespacedName{
-		Name:      "extension-apiserver-authentication",
-		Namespace: "kube-system",
-	}
-	sourceConfigMap := &corev1.ConfigMap{}
-	err := c.Get(ctx, namespacedName, sourceConfigMap)
-	if err != nil {
-		return fmt.Errorf("error fetching source ConfigMap: %w", err)
-	}
+// func syncClientCA(ctx context.Context, c client.Client, cfgMap *corev1.ConfigMap) error {
+// 	// Retrieve the extension-apiserver-authentication ConfigMap from kube-system namespace
+// 	namespacedName := types.NamespacedName{
+// 		Name:      "extension-apiserver-authentication",
+// 		Namespace: "kube-system",
+// 	}
+// 	sourceConfigMap := &corev1.ConfigMap{}
+// 	err := c.Get(ctx, namespacedName, sourceConfigMap)
+// 	if err != nil {
+// 		return fmt.Errorf("error fetching source ConfigMap: %w", err)
+// 	}
 
-	// Extract the CA certificate data
-	caData, exists := sourceConfigMap.Data["client-ca-file"]
-	if !exists {
-		return fmt.Errorf("client-ca-file not found in source ConfigMap")
-	}
+// 	// Extract the CA certificate data
+// 	caData, exists := sourceConfigMap.Data["client-ca-file"]
+// 	if !exists {
+// 		return fmt.Errorf("client-ca-file not found in source ConfigMap")
+// 	}
 
-	if len(caData) == 0 {
-		return fmt.Errorf("client-ca-file is empty in source ConfigMap")
-	}
+// 	if len(caData) == 0 {
+// 		return fmt.Errorf("client-ca-file is empty in source ConfigMap")
+// 	}
 
-	if cfgMap.Data == nil {
-		cfgMap.Data = make(map[string]string)
-	}
+// 	if cfgMap.Data == nil {
+// 		cfgMap.Data = make(map[string]string)
+// 	}
 
-	// Update the ConfigMap with the CA certificate data
-	cfgMap.Data["client-ca-file"] = caData
+// 	// Update the ConfigMap with the CA certificate data
+// 	cfgMap.Data["client-ca-file"] = caData
 
-	if err := c.Update(ctx, cfgMap); err != nil {
-		return fmt.Errorf("error updating client CA ConfigMap: %w", err)
-	}
+// 	if err := c.Update(ctx, cfgMap); err != nil {
+// 		return fmt.Errorf("error updating client CA ConfigMap: %w", err)
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func updateMetricsCollector(ctx context.Context, c client.Client, params CollectorParams,
 	forceRestart bool) (bool, error) {
