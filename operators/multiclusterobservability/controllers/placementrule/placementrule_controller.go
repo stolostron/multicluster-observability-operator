@@ -192,6 +192,10 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		})
 		operatorconfig.HubMetricsCollectorResources = *config.GetOBAResources(mco.Spec.ObservabilityAddonSpec)
 		deleteObsAddon(r.Client, localClusterName)
+		err = deleteManagedClusterRes(r.Client, localClusterName)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 	if operatorconfig.IsMCOTerminating {
 		delete(managedClusterList, "local-cluster")
@@ -262,7 +266,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// but the managedclusteraddon for observability will not deleted by the cluster manager, so check against the
 	// managedclusteraddon list to remove the managedcluster resources after the managedcluster is detached.
 	for _, mcaddon := range managedclusteraddonList.Items {
-		if !slices.Contains(latestClusters, mcaddon.Namespace) || mcaddon.Namespace == localClusterName {
+		if !slices.Contains(latestClusters, mcaddon.Namespace) {
 			reqLogger.Info("To delete managedcluster resources", "namespace", mcaddon.Namespace)
 			err = deleteManagedClusterRes(r.Client, mcaddon.Namespace)
 			if err != nil {
@@ -601,6 +605,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.ObjectNew.GetName() == obsAddonName &&
 				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
+				e.ObjectNew.GetNamespace() != config.GetDefaultNamespace() &&
 				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Status.Conditions,
 					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Status.Conditions) {
 				return true
@@ -609,7 +614,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if e.Object.GetName() == obsAddonName &&
-				e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue {
+				e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue &&
+				e.Object.GetNamespace() != config.GetDefaultNamespace() {
 				log.Info(
 					"DeleteFunc",
 					"obsAddonNamespace",
