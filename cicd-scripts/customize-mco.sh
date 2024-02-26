@@ -19,7 +19,7 @@ fi
 
 # Use snapshot for target release. Use latest one if no branch info detected, or not a release branch
 BRANCH=""
-LATEST_SNAPSHOT=""
+LATEST_SNAPSHOT="2.10.0-SNAPSHOT-2024-02-22-17-32-31"
 if [[ ${PULL_BASE_REF} == "release-"* ]]; then
   BRANCH=${PULL_BASE_REF#"release-"}
   BRANCH=$(curl https://quay.io//api/v1/repository/stolostron/multicluster-observability-operator | jq '.tags|with_entries(select(.key|contains("'${BRANCH}'")))|keys[length-1]' | awk -F '-' '{print $1}')
