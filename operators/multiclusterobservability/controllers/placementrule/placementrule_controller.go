@@ -237,6 +237,9 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 	for _, work := range workList.Items {
 		if work.Name != work.Namespace+workNameSuffix || work.Namespace == localClusterName {
+			// ACM 8509: Special case for hub metrics collector
+			// In the upgrade case we want to clean up the obs add on and manifest work that was created
+			// for local-cluster before the upgrade that is why we check for the local-cluster namespace
 			reqLogger.Info("To delete invalid manifestwork", "name", work.Name, "namespace", work.Namespace)
 			err = deleteManifestWork(r.Client, work.Name, work.Namespace)
 			if err != nil {
