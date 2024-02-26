@@ -362,6 +362,7 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 	if mco.GetDeletionTimestamp() != nil && slices.Contains(mco.GetFinalizers(), resFinalizer) {
 		log.Info("To delete resources across namespaces")
 		// clean up the cluster resources, eg. clusterrole, clusterrolebinding, etc
+		operatorconfig.IsMCOTerminating = true
 		if err := cleanUpClusterScopedResources(r, mco); err != nil {
 			log.Error(err, "Failed to remove cluster scoped resources")
 			return false, err

@@ -502,6 +502,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 // Delete resources created for hub metrics collection
 func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 	// Delete hub endpoint operator
+	log.Info("Deleting resources for hub metrics collection")
 	err := c.Delete(context.TODO(), &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.HubEndpointOperatorName,
@@ -513,6 +514,7 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 		return err
 	}
 	for _, name := range []string{config.HubUwlMetricsCollectorName, config.HubMetricsCollectorName} {
+		log.Info("Coleen deleting deployment", "name", name)
 		err := c.Delete(context.TODO(), &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
@@ -527,6 +529,7 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 	}
 	hubMetricCollectorSecrets := []string{operatorconfig.HubMetricsCollectorMtlsCert, managedClusterObsCertName, operatorconfig.HubInfoSecretName, config.AlertmanagerAccessorSecretName}
 	for _, name := range hubMetricCollectorSecrets {
+		log.Info("Coleen deleting secret", "name", name)
 		err := c.Delete(context.TODO(), &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
@@ -540,6 +543,7 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 	}
 	hubMetricsCollectorConfigMaps := []string{operatorconfig.ImageConfigMap, operatorconfig.CaConfigmapName}
 	for _, name := range hubMetricsCollectorConfigMaps {
+		log.Info("Coleen deleting configmap", "name", name)
 		err := c.Delete(context.TODO(), &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
