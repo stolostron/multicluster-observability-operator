@@ -278,9 +278,6 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 	ctx context.Context, delete bool, hubObsAddon *oav1beta1.ObservabilityAddon,
 	isHypershift bool) (bool, error) {
 	if delete && slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
-		if hubMetricsCollector {
-			log.Info("Hub endpoint operator is terminating")
-		}
 		log.Info("To clean observability components/configurations in the cluster")
 		err := deleteMetricsCollector(ctx, r.Client, metricsCollectorName)
 		if err != nil {

@@ -217,14 +217,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		reqLogger.Error(err, "Failed to list observabilityaddon resource")
 		return ctrl.Result{}, err
 	}
-	//if installMetricsWithoutAddon {
-	//	obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
-	//		ObjectMeta: metav1.ObjectMeta{
-	//			Name:      "local-cluster",
-	//			Namespace: "local-cluster",
-	//		},
-	//	})
-	//}
 	workList := &workv1.ManifestWorkList{}
 	err = r.Client.List(context.TODO(), workList, opts)
 	if err != nil {
@@ -605,9 +597,6 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.ObjectNew.GetName() == obsAddonName &&
 				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-				//ACM 8509: Special case for hub/local cluster metrics collection
-				// since there is no observability addon for hub/local cluster
-				e.ObjectNew.GetNamespace() != config.GetDefaultNamespace() &&
 				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Status.Conditions,
 					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Status.Conditions) {
 				return true
@@ -616,10 +605,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if e.Object.GetName() == obsAddonName &&
-				e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-				//ACM 8509: Special case for hub/local cluster metrics collection
-				// since there is no observability addon for hub/local cluster
-				e.Object.GetNamespace() != config.GetDefaultNamespace() {
+				e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue {
 				log.Info(
 					"DeleteFunc",
 					"obsAddonNamespace",
