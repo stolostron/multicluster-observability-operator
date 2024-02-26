@@ -1,4 +1,4 @@
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   # name must match the spec fields below, and be in the form: <plural>.<group>
@@ -13,11 +13,28 @@ spec:
       served: true
       # One and only one version must be marked as the storage version.
       storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+      additionalPrinterColumns:
+        - name: Host
+          type: string
+          jsonPath: .status.ingress[0].host
+        - name: Admitted
+          type: string
+          jsonPath: .status.ingress[0].conditions[?(@.type=="Admitted")].status
+        - name: Service
+          type: string
+          jsonPath: .spec.to.name
+        - name: TLS
+          type: string
+          jsonPath: .spec.tls.type
+      subresources:
+        # enable spec/status
+        status: {}
   # either Namespaced or Cluster
   scope: Namespaced
-  subresources:
-    # enable spec/status
-    status: {}
   names:
     # plural name to be used in the URL: /apis/<group>/<version>/<plural>
     plural: routes
@@ -25,16 +42,3 @@ spec:
     singular: route
     # kind is normally the CamelCased singular type. Your resource manifests use this.
     kind: Route
-  additionalPrinterColumns:
-  - name: Host
-    type: string
-    JSONPath: .status.ingress[0].host
-  - name: Admitted
-    type: string
-    JSONPath: .status.ingress[0].conditions[?(@.type=="Admitted")].status
-  - name: Service
-    type: string
-    JSONPath: .spec.to.name
-  - name: TLS
-    type: string
-    JSONPath: .spec.tls.type
