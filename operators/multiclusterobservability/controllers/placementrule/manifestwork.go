@@ -6,20 +6,14 @@ package placementrule
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 
-	certificatesv1 "k8s.io/api/certificates/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 
 	"gopkg.in/yaml.v2"
@@ -36,7 +30,7 @@ import (
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
+	cert_controller "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
@@ -45,13 +39,9 @@ import (
 )
 
 const (
-	workNameSuffix             = "-observability"
-	localClusterName           = "local-cluster"
-	workPostponeDeleteAnnoKey  = "open-cluster-management/postpone-delete"
-	hubEndpointOperatorName    = "endpoint-observability-operator"
-	hubMetricsCollectorName    = "metrics-collector-deployment"
-	hubUwlMetricsCollectorName = "uwl-metrics-collector-deployment"
-	hubUwlMetricsCollectorNs   = "openshift-user-workload-monitoring"
+	workNameSuffix            = "-observability"
+	localClusterName          = "local-cluster"
+	workPostponeDeleteAnnoKey = "open-cluster-management/postpone-delete"
 )
 
 // intermediate resources for the manifest work.
@@ -415,7 +405,7 @@ func createManifestWorks(
 			Value: "true",
 		})
 
-		dep.ObjectMeta.Name = hubEndpointOperatorName
+		dep.ObjectMeta.Name = config.HubEndpointOperatorName
 	}
 
 	dep.Spec.Template.Spec = spec
@@ -469,78 +459,12 @@ func createManifestWorks(
 	return err
 }
 
-func createCSR() ([]byte, []byte) {
-	keys, _ := rsa.GenerateKey(rand.Reader, 2048)
-
-	oidOrganization := []int{2, 5, 4, 11} // Object Identifier (OID) for Organization Unit
-	oidUser := []int{2, 5, 4, 3}          // Object Identifier (OID) for User
-
-	var csrTemplate = x509.CertificateRequest{
-		Subject: pkix.Name{
-			Organization: []string{"Red Hat, Inc."},
-			Country:      []string{"US"},
-			CommonName:   operatorconfig.ClientCACertificateCN,
-			ExtraNames: []pkix.AttributeTypeAndValue{
-				{Type: oidOrganization, Value: "acm"},
-				{Type: oidUser, Value: "managed-cluster-observability"},
-			},
-		},
-		DNSNames:           []string{"observability-controller.addon.open-cluster-management.io"},
-		SignatureAlgorithm: x509.SHA512WithRSA,
-	}
-	csrCertificate, _ := x509.CreateCertificateRequest(rand.Reader, &csrTemplate, keys)
-	csr := pem.EncodeToMemory(&pem.Block{
-		Type: "CERTIFICATE REQUEST", Bytes: csrCertificate,
-	})
-
-	privateKey := pem.EncodeToMemory(&pem.Block{
-		Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(keys),
-	})
-
-	return csr, privateKey
-}
-
-func createMtlsCertSecretForHubCollector() (*corev1.Secret, error) {
-	csrBytes, privateKeyBytes := createCSR()
-	csr := &certificatesv1.CertificateSigningRequest{
-		Spec: certificatesv1.CertificateSigningRequestSpec{
-			Request: csrBytes,
-			Usages:  []certificatesv1.KeyUsage{certificatesv1.UsageDigitalSignature, certificatesv1.UsageClientAuth},
-		},
-	}
-	signedClientCert := certificates.Sign(csr)
-	if signedClientCert == nil {
-		log.Error(nil, "failed to sign CSR")
-		return nil, errors.New("failed to sign CSR")
-	} else {
-		//Create a secret
-		return &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      operatorconfig.MtlsCertName,
-				Namespace: config.GetDefaultNamespace(),
-			},
-			Data: map[string][]byte{
-				"tls.crt": signedClientCert,
-				"tls.key": privateKeyBytes,
-			},
-		}, nil
-	}
-}
-
 func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
-	//create csr for hub metrics collection
+	//Make a deep copy of all the manifests since there are some global resources that can be updated due to this function
 	if operatorconfig.IsMCOTerminating {
-		log.Info("Skip creating resources for hub metrics collection as MCO is terminating")
+		log.Info("MCO Operator is terminating, skip creating resources for hub metrics collection")
 		return nil
 	}
-	hubMtlsSecret, err := createMtlsCertSecretForHubCollector()
-	if err != nil {
-		log.Error(err, "Failed to create client cert secret for hub metrics collection")
-		return err
-	}
-	manifests = injectIntoWork(manifests, hubMtlsSecret)
-
-	//Make a deep copy of all the manifests since there are some global resources that can be updated due to this function
 	hubManifestCopy = make([]workv1.Manifest, len(manifests))
 	for i, manifest := range manifests {
 		obj := manifest.RawExtension.Object.DeepCopyObject()
@@ -567,50 +491,83 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			return err
 		}
 	}
+	err := cert_controller.CreateMtlsCertSecretForHubCollector(c)
+	if err != nil {
+		log.Error(err, "Failed to create client cert secret for hub metrics collection")
+		return err
+	}
 	return nil
 }
 
 // Delete resources created for hub metrics collection
 func DeleteHubMetricsCollectionDeployments(c client.Client) error {
-	log.Info("Coleen Deleting resources for hub metrics collection")
-	for _, manifest := range hubManifestCopy {
-		obj := manifest.RawExtension.Object.(client.Object)
-		log.Info("Coleen Deleting resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName(), "namespace", obj.GetNamespace())
-
-		err := c.Delete(context.TODO(), obj)
+	// Delete hub endpoint operator
+	err := c.Delete(context.TODO(), &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.HubEndpointOperatorName,
+			Namespace: config.GetDefaultNamespace(),
+		},
+	})
+	if err != nil && !k8serrors.IsNotFound(err) {
+		log.Error(err, "Failed to delete hub endpoint operator")
+		return err
+	}
+	for _, name := range []string{config.HubUwlMetricsCollectorName, config.HubMetricsCollectorName} {
+		err := c.Delete(context.TODO(), &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: config.GetDefaultNamespace(),
+			},
+		})
 		if err != nil && !k8serrors.IsNotFound(err) {
-			log.Error(err, "Failed to delete resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
+			log.Error(err, "Failed to delete hub metrics-collector deployment")
+			return err
+
+		}
+	}
+	hubMetricCollectorSecrets := []string{operatorconfig.HubMetricsCollectorMtlsCert, managedClusterObsCertName, operatorconfig.HubInfoSecretName, config.AlertmanagerAccessorSecretName}
+	for _, name := range hubMetricCollectorSecrets {
+		err := c.Delete(context.TODO(), &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: config.GetDefaultNamespace(),
+			},
+		})
+		if err != nil && !k8serrors.IsNotFound(err) {
+			log.Error(err, "Failed to delete hub metrics-collector secret")
 			return err
 		}
 	}
-	//for _, name := range []string{hubMetricsCollectorName, hubUwlMetricsCollectorName} {
-	//	err := c.Delete(context.TODO(), &appsv1.Deployment{
-	//		ObjectMeta: metav1.ObjectMeta{
-	//			Name:      name,
-	//			Namespace: config.GetDefaultNamespace(),
-	//		},
-	//	})
-	//	if err != nil && !k8serrors.IsNotFound(err) {
-	//		log.Error(err, "Failed to delete hub metrics-collector deployment")
-	//		return err
-	//
-	//	}
-	//}
-	//err := RevertHubClusterMonitoringConfig(context.TODO(), c)
-	//if err != nil {
-	//	log.Error(err, "Failed to revert cluster monitoring config")
-	//	return err
-	//}
-	//err = DeleteHubMonitoringClusterRoleBinding(context.TODO(), c)
-	//if err != nil {
-	//	log.Error(err, "Failed to delete monitoring cluster role binding for hub metrics collection")
-	//	return err
-	//}
-	//err = DeleteHubCAConfigmap(context.TODO(), c)
-	//if err != nil {
-	//	log.Error(err, "Failed to delete CA configmap for hub metrics collection")
-	//	return err
-	//}
+	hubMetricsCollectorConfigMaps := []string{operatorconfig.ImageConfigMap, operatorconfig.CaConfigmapName}
+	for _, name := range hubMetricsCollectorConfigMaps {
+		err := c.Delete(context.TODO(), &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: config.GetDefaultNamespace(),
+			},
+		})
+		if err != nil && !k8serrors.IsNotFound(err) {
+			log.Error(err, "Failed to delete hub metrics-collector configmap")
+			return err
+		}
+
+	}
+	err = DeleteHubMonitoringClusterRoleBinding(context.TODO(), c)
+	if err != nil {
+		log.Error(err, "Failed to delete monitoring cluster role binding for hub metrics collection")
+		return err
+	}
+	err = DeleteHubCAConfigmap(context.TODO(), c)
+	if err != nil {
+		log.Error(err, "Failed to delete CA configmap for hub metrics collection")
+		return err
+	}
+	err = RevertHubClusterMonitoringConfig(context.TODO(), c)
+	if err != nil {
+		log.Error(err, "Failed to revert cluster monitoring config")
+		return err
+	}
+
 	//isHypershift := true
 	//if os.Getenv("UNIT_TEST") != "true" {
 	//	crdClient, err := util.GetOrCreateCRDClient()
@@ -822,6 +779,9 @@ func generateMetricsListCM(client client.Client) (*corev1.ConfigMap, *corev1.Con
 
 func getObservabilityAddon(c client.Client, namespace string,
 	mco *mcov1beta2.MultiClusterObservability) (*mcov1beta1.ObservabilityAddon, error) {
+	if namespace == config.GetDefaultNamespace() {
+		return nil, nil
+	}
 	found := &mcov1beta1.ObservabilityAddon{}
 	namespacedName := types.NamespacedName{
 		Name:      obsAddonName,

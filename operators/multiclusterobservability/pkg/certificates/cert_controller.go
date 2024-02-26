@@ -9,6 +9,8 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"reflect"
 	"time"
@@ -104,6 +106,9 @@ func restartPods(c client.Client, s v1.Secret, isUpdate bool) {
 	if s.Name == config.ClientCACerts || s.Name == config.ServerCerts {
 		dName = config.GetOperandName(config.ObservatoriumAPI)
 	}
+	if s.Name == hubMetricsCollectorMtlsCert {
+		dName = config.HubMetricsCollectorName
+	}
 	if dName != "" {
 		updateDeployLabel(c, dName, isUpdate)
 	}
@@ -134,7 +139,7 @@ func updateDeployLabel(c client.Client, dName string, isUpdate bool) {
 }
 
 func needsRenew(s v1.Secret) bool {
-	certSecretNames := []string{serverCACerts, clientCACerts, serverCerts, grafanaCerts}
+	certSecretNames := []string{serverCACerts, clientCACerts, serverCerts, grafanaCerts, hubMetricsCollectorMtlsCert}
 	if !slices.Contains(certSecretNames, s.Name) {
 		return false
 	}
@@ -238,6 +243,16 @@ func onUpdate(c client.Client, ingressCtlCrdExists bool) func(oldObj, newObj int
 					if err == nil {
 						err = createCertSecret(c, nil, nil, true, serverCerts, true, serverCertificateCN, nil, hosts, nil)
 					}
+				case name == hubMetricsCollectorMtlsCert:
+					// ACM 8509: Special case for hub metrics collector
+					//Delete the MTLS secret and the placement controller will reconcile to create a new one
+					HubMtlsSecret := &v1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      operatorconfig.HubMetricsCollectorMtlsCert,
+							Namespace: config.GetDefaultNamespace(),
+						},
+					}
+					err = c.Delete(context.Background(), HubMtlsSecret)
 				default:
 					return
 				}

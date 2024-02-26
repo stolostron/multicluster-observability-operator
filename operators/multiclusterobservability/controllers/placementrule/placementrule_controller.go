@@ -128,6 +128,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			deleteAll = true
+			delete(managedClusterList, "local-cluster")
 		} else {
 			// Error reading the object - requeue the request.
 			return ctrl.Result{}, err
@@ -191,7 +192,9 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		})
 		operatorconfig.HubMetricsCollectorResources = *config.GetOBAResources(mco.Spec.ObservabilityAddonSpec)
 	}
-
+	if operatorconfig.IsMCOTerminating {
+		delete(managedClusterList, "local-cluster")
+	}
 	if !deleteAll {
 		if err := createAllRelatedRes(
 			r.Client,
@@ -241,14 +244,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		staleAddons = append(staleAddons, addon.Namespace)
 	}
 	for _, work := range workList.Items {
-		if work.Name != work.Namespace+workNameSuffix {
+		if work.Name != work.Namespace+workNameSuffix || work.Namespace == localClusterName {
 			reqLogger.Info("To delete invalid manifestwork", "name", work.Name, "namespace", work.Namespace)
 			err = deleteManifestWork(r.Client, work.Name, work.Namespace)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 		}
-		if !slices.Contains(latestClusters, work.Namespace) {
+		if !slices.Contains(latestClusters, work.Namespace) || work.Namespace == localClusterName {
 			reqLogger.Info("To delete manifestwork", "namespace", work.Namespace)
 			err = deleteManagedClusterRes(r.Client, work.Namespace)
 			if err != nil {
@@ -995,7 +998,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&source.Kind{Type: &corev1.Secret{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(operatorconfig.MtlsCertName, config.GetDefaultNamespace(), false, false, true)),
+			builder.WithPredicates(getPred(operatorconfig.HubMetricsCollectorMtlsCert, config.GetDefaultNamespace(), false, false, true)),
 		).
 		Watches(
 			&source.Kind{Type: &corev1.Secret{}},
@@ -1010,7 +1013,12 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&source.Kind{Type: &appsv1.StatefulSet{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, hubUwlMetricsCollectorNs, true, false, true)),
+			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, config.HubUwlMetricsCollectorNs, true, false, true)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.Secret{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(config.AlertmanagerAccessorSecretName, config.GetDefaultNamespace(), false, false, true)),
 		)
 	// create and return a new controller
 	return ctrBuilder.Complete(r)

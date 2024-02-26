@@ -8,6 +8,7 @@ import (
 	"context"
 	cerr "errors"
 	"fmt"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"os"
 	"reflect"
 	"strings"
@@ -46,7 +47,6 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering"
 	smctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/servicemonitor"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
@@ -150,15 +150,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, nil
 	}
 
-	// Init finalizers
-	operatorconfig.IsMCOTerminating, err = r.initFinalization(instance)
-	if err != nil {
-		return ctrl.Result{}, err
-	} else if operatorconfig.IsMCOTerminating {
-		reqLogger.Info("MCO instance is in Terminating status, skip the reconcile")
-		return ctrl.Result{}, err
-	}
-
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
 	if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
 		// start placement controller
@@ -171,6 +162,15 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 
 		// start servicemonitor controller
 		smctrl.Start()
+	}
+
+	// Init finalizers
+	operatorconfig.IsMCOTerminating, err = r.initFinalization(instance)
+	if err != nil {
+		return ctrl.Result{}, err
+	} else if operatorconfig.IsMCOTerminating {
+		reqLogger.Info("MCO instance is in Terminating status, skip the reconcile")
+		return ctrl.Result{}, err
 	}
 
 	// check if the MCH CRD exists

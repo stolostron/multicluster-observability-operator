@@ -128,20 +128,19 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		if obsAddon == nil {
 			deleteFlag = true
 		}
-	}
-
-	// Init finalizers
-	deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	if deleted || deleteFlag {
-		return ctrl.Result{}, nil
+		// Init finalizers
+		deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if deleted || deleteFlag {
+			return ctrl.Result{}, nil
+		}
 	}
 
 	// retrieve the hubInfo
 	hubSecret := &corev1.Secret{}
-	err = r.Client.Get(
+	err := r.Client.Get(
 		ctx,
 		types.NamespacedName{Name: operatorconfig.HubInfoSecretName, Namespace: namespace},
 		hubSecret,
@@ -278,7 +277,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 func (r *ObservabilityAddonReconciler) initFinalization(
 	ctx context.Context, delete bool, hubObsAddon *oav1beta1.ObservabilityAddon,
 	isHypershift bool) (bool, error) {
-	if (hubMetricsCollector && operatorconfig.IsMCOTerminating) || delete && slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
+	if delete && slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
 		if hubMetricsCollector {
 			log.Info("Hub endpoint operator is terminating")
 		}
@@ -325,18 +324,16 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 				}
 			}
 		}
-		if !hubMetricsCollector {
-			hubObsAddon.SetFinalizers(remove(hubObsAddon.GetFinalizers(), obsAddonFinalizer))
-			err = r.HubClient.Update(ctx, hubObsAddon)
-			if err != nil {
-				log.Error(err, "Failed to remove finalizer to observabilityaddon", "namespace", hubObsAddon.Namespace)
-				return false, err
-			}
-			log.Info("Finalizer removed from observabilityaddon resource")
-			return true, nil
+		hubObsAddon.SetFinalizers(remove(hubObsAddon.GetFinalizers(), obsAddonFinalizer))
+		err = r.HubClient.Update(ctx, hubObsAddon)
+		if err != nil {
+			log.Error(err, "Failed to remove finalizer to observabilityaddon", "namespace", hubObsAddon.Namespace)
+			return false, err
 		}
+		log.Info("Finalizer removed from observabilityaddon resource")
+		return true, nil
 	}
-	if !hubMetricsCollector && !slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
+	if !slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
 		hubObsAddon.SetFinalizers(append(hubObsAddon.GetFinalizers(), obsAddonFinalizer))
 		err := r.HubClient.Update(ctx, hubObsAddon)
 		if err != nil {

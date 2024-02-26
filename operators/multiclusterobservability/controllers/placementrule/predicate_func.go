@@ -113,7 +113,7 @@ func getHubEndpointOperatorPredicates() predicate.Funcs {
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() && e.ObjectNew.GetName() == hubEndpointOperatorName &&
+			if e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() && e.ObjectNew.GetName() == config.HubEndpointOperatorName &&
 				!reflect.DeepEqual(e.ObjectNew.(*appsv1.Deployment).Spec.Template.Spec,
 					e.ObjectOld.(*appsv1.Deployment).Spec.Template.Spec) {
 				return true
@@ -125,7 +125,7 @@ func getHubEndpointOperatorPredicates() predicate.Funcs {
 				log.Info("MCO is terminating, skip reconcile for hub endpoint operator")
 				return false
 			}
-			if e.Object.GetNamespace() == config.GetDefaultNamespace() && e.Object.GetName() == hubEndpointOperatorName {
+			if e.Object.GetNamespace() == config.GetDefaultNamespace() && e.Object.GetName() == config.HubEndpointOperatorName {
 				return true
 			}
 			return false
