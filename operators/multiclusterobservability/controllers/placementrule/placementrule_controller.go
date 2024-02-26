@@ -605,7 +605,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.ObjectNew.GetName() == obsAddonName &&
 				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-				e.ObjectNew.GetNamespace() != config.GetDefaultNamespace() &&
+				e.ObjectNew.GetNamespace() != localClusterName &&
 				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Status.Conditions,
 					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Status.Conditions) {
 				return true
@@ -615,7 +615,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if e.Object.GetName() == obsAddonName &&
 				e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue &&
-				e.Object.GetNamespace() != config.GetDefaultNamespace() {
+				e.Object.GetNamespace() != localClusterName {
 				log.Info(
 					"DeleteFunc",
 					"obsAddonNamespace",
