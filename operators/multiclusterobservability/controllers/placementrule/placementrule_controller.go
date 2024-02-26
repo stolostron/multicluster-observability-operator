@@ -179,7 +179,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	if installMetricsWithoutAddon {
+	if !deleteAll && installMetricsWithoutAddon {
 		obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      obsAddonName,
