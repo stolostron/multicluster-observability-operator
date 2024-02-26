@@ -502,68 +502,57 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 // Delete resources created for hub metrics collection
 func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 	// Delete hub endpoint operator
-	for _, manifest := range hubManifestCopy {
-		obj := manifest.RawExtension.Object.(client.Object)
-		//Delete the resources created for hub metrics collection
-		if err := c.Delete(context.TODO(), obj); err != nil && !k8serrors.IsNotFound(err) {
-			log.Error(err, "Failed to delete resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-			return err
-		}
+	err := c.Delete(context.TODO(), &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      config.HubEndpointOperatorName,
+			Namespace: config.GetDefaultNamespace(),
+		},
+	})
+	if err != nil && !k8serrors.IsNotFound(err) {
+		log.Error(err, "Failed to delete hub endpoint operator")
+		return err
 	}
-	/*
+	for _, name := range []string{config.HubUwlMetricsCollectorName, config.HubMetricsCollectorName} {
 		err := c.Delete(context.TODO(), &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      config.HubEndpointOperatorName,
+				Name:      name,
 				Namespace: config.GetDefaultNamespace(),
 			},
 		})
 		if err != nil && !k8serrors.IsNotFound(err) {
-			log.Error(err, "Failed to delete hub endpoint operator")
+			log.Error(err, "Failed to delete hub metrics-collector deployment")
+			return err
+
+		}
+	}
+	hubMetricCollectorSecrets := []string{operatorconfig.HubMetricsCollectorMtlsCert, managedClusterObsCertName, operatorconfig.HubInfoSecretName, config.AlertmanagerAccessorSecretName}
+	for _, name := range hubMetricCollectorSecrets {
+		err := c.Delete(context.TODO(), &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: config.GetDefaultNamespace(),
+			},
+		})
+		if err != nil && !k8serrors.IsNotFound(err) {
+			log.Error(err, "Failed to delete hub metrics-collector secret")
 			return err
 		}
-		for _, name := range []string{config.HubUwlMetricsCollectorName, config.HubMetricsCollectorName} {
-			err := c.Delete(context.TODO(), &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: config.GetDefaultNamespace(),
-				},
-			})
-			if err != nil && !k8serrors.IsNotFound(err) {
-				log.Error(err, "Failed to delete hub metrics-collector deployment")
-				return err
-
-			}
+	}
+	hubMetricsCollectorConfigMaps := []string{operatorconfig.ImageConfigMap, operatorconfig.CaConfigmapName}
+	for _, name := range hubMetricsCollectorConfigMaps {
+		err := c.Delete(context.TODO(), &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: config.GetDefaultNamespace(),
+			},
+		})
+		if err != nil && !k8serrors.IsNotFound(err) {
+			log.Error(err, "Failed to delete hub metrics-collector configmap")
+			return err
 		}
-		hubMetricCollectorSecrets := []string{operatorconfig.HubMetricsCollectorMtlsCert, managedClusterObsCertName, operatorconfig.HubInfoSecretName, config.AlertmanagerAccessorSecretName}
-		for _, name := range hubMetricCollectorSecrets {
-			err := c.Delete(context.TODO(), &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: config.GetDefaultNamespace(),
-				},
-			})
-			if err != nil && !k8serrors.IsNotFound(err) {
-				log.Error(err, "Failed to delete hub metrics-collector secret")
-				return err
-			}
-		}
-		hubMetricsCollectorConfigMaps := []string{operatorconfig.ImageConfigMap, operatorconfig.CaConfigmapName}
-		for _, name := range hubMetricsCollectorConfigMaps {
-			err := c.Delete(context.TODO(), &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: config.GetDefaultNamespace(),
-				},
-			})
-			if err != nil && !k8serrors.IsNotFound(err) {
-				log.Error(err, "Failed to delete hub metrics-collector configmap")
-				return err
-			}
 
-		}
-	*/
-
-	err := DeleteHubMonitoringClusterRoleBinding(context.TODO(), c)
+	}
+	err = DeleteHubMonitoringClusterRoleBinding(context.TODO(), c)
 	if err != nil {
 		log.Error(err, "Failed to delete monitoring cluster role binding for hub metrics collection")
 		return err
