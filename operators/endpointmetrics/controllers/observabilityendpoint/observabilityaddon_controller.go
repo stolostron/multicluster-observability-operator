@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -99,7 +100,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	// ACM 8509: Special case for hub/local cluster metrics collection
 	// We do not have an ObservabilityAddon instance in the local cluster so skipping the below block
 	if !hubMetricsCollector {
-		if err := r.ensureOpenShiftNamespaceLabel(ctx); err != nil {
+		if err := r.ensureOpenShiftMonitoringLabelAndRole(ctx); err != nil {
 			return ctrl.Result{}, err
 		}
 
@@ -342,9 +343,42 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 	return false, nil
 }
 
-func (r *ObservabilityAddonReconciler) ensureOpenShiftNamespaceLabel(ctx context.Context) error {
+func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx context.Context) error {
 	existingNs := &corev1.Namespace{}
 	resNS := namespace
+
+	role := rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "prometheus-k8s",
+			Namespace: resNS,
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{""},
+				Resources: []string{"services", "endpoints", "pods"},
+				Verbs:     []string{"get", "list", "watch"},
+			},
+		},
+	}
+
+	roleBinding := rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "prometheus-k8s",
+			Namespace: resNS,
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "Role",
+			Name:     "prometheus-k8s",
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      "prometheus-k8s",
+				Namespace: "openshift-monitoring",
+			},
+		},
+	}
 
 	err := r.Client.Get(ctx, types.NamespacedName{Name: resNS}, existingNs)
 	if err != nil || errors.IsNotFound(err) {
@@ -364,6 +398,38 @@ func (r *ObservabilityAddonReconciler) ensureOpenShiftNamespaceLabel(ctx context
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Failed to update namespace for Endpoint Operator: %s with the label: %s",
 				namespace, openShiftClusterMonitoringlabel))
+			return err
+		}
+	}
+
+	foundRole := &rbacv1.Role{}
+	err = r.Client.Get(ctx, types.NamespacedName{Name: role.Name, Namespace: resNS}, foundRole)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info(fmt.Sprintf("Creating role: %s in namespace: %s", role.Name, resNS))
+			err = r.Client.Create(ctx, &role)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Failed to create role: %s in namespace: %s", role.Name, resNS))
+				return err
+			}
+		} else {
+			log.Error(err, fmt.Sprintf("Failed to get role: %s in namespace: %s", role.Name, resNS))
+			return err
+		}
+	}
+
+	foundRoleBinding := &rbacv1.RoleBinding{}
+	err = r.Client.Get(ctx, types.NamespacedName{Name: roleBinding.Name, Namespace: resNS}, foundRoleBinding)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info(fmt.Sprintf("Creating role binding: %s in namespace: %s", roleBinding.Name, resNS))
+			err = r.Client.Create(ctx, &roleBinding)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Failed to create role binding: %s in namespace: %s", roleBinding.Name, resNS))
+				return err
+			}
+		} else {
+			log.Error(err, fmt.Sprintf("Failed to get role binding: %s in namespace: %s", roleBinding.Name, resNS))
 			return err
 		}
 	}
