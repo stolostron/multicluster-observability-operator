@@ -26,6 +26,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
@@ -43,14 +45,15 @@ var (
 )
 
 const (
-	obAddonName                   = "observability-addon"
-	mcoCRName                     = "observability"
-	ownerLabelKey                 = "owner"
-	ownerLabelValue               = "observabilityaddon"
-	obsAddonFinalizer             = "observability.open-cluster-management.io/addon-cleanup"
-	promSvcName                   = "prometheus-k8s"
-	promNamespace                 = "openshift-monitoring"
-	hubMetricsCollectionNamespace = "open-cluster-management-observability"
+	obAddonName                     = "observability-addon"
+	mcoCRName                       = "observability"
+	ownerLabelKey                   = "owner"
+	ownerLabelValue                 = "observabilityaddon"
+	obsAddonFinalizer               = "observability.open-cluster-management.io/addon-cleanup"
+	promSvcName                     = "prometheus-k8s"
+	promNamespace                   = "openshift-monitoring"
+	openShiftClusterMonitoringlabel = "openshift.io/cluster-monitoring"
+	hubMetricsCollectionNamespace   = "open-cluster-management-observability"
 )
 
 var (
@@ -96,6 +99,10 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	// ACM 8509: Special case for hub/local cluster metrics collection
 	// We do not have an ObservabilityAddon instance in the local cluster so skipping the below block
 	if !hubMetricsCollector {
+		if err := r.ensureOpenShiftNamespaceLabel(ctx); err != nil {
+			return ctrl.Result{}, err
+		}
+
 		// Fetch the ObservabilityAddon instance in hub cluster
 		err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
 		if err != nil {
@@ -108,7 +115,6 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 
 		// Fetch the ObservabilityAddon instance in local cluster
-
 		err = r.Client.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: namespace}, obsAddon)
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -123,6 +129,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			deleteFlag = true
 		}
 	}
+
 	// Init finalizers
 	deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift)
 	if err != nil {
@@ -341,6 +348,35 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 	return false, nil
 }
 
+func (r *ObservabilityAddonReconciler) ensureOpenShiftNamespaceLabel(ctx context.Context) error {
+	existingNs := &corev1.Namespace{}
+	resNS := namespace
+
+	err := r.Client.Get(ctx, types.NamespacedName{Name: resNS}, existingNs)
+	if err != nil || errors.IsNotFound(err) {
+		log.Error(err, fmt.Sprintf("Failed to find namespace for Endpoint Operator: %s", resNS))
+		return err
+	}
+
+	if existingNs.ObjectMeta.Labels == nil || len(existingNs.ObjectMeta.Labels) == 0 {
+		existingNs.ObjectMeta.Labels = make(map[string]string)
+	}
+
+	if _, ok := existingNs.ObjectMeta.Labels[openShiftClusterMonitoringlabel]; !ok {
+		log.Info(fmt.Sprintf("Adding label: %s to namespace: %s", openShiftClusterMonitoringlabel, resNS))
+		existingNs.ObjectMeta.Labels[openShiftClusterMonitoringlabel] = "true"
+
+		err = r.Client.Update(ctx, existingNs)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Failed to update namespace for Endpoint Operator: %s with the label: %s",
+				namespace, openShiftClusterMonitoringlabel))
+			return err
+		}
+	}
+
+	return nil
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if os.Getenv("NAMESPACE") != "" {
@@ -410,6 +446,24 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			&source.Kind{Type: &appsv1.StatefulSet{}},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, uwlNamespace, true, false, true)),
+		).
+		// Watch the kube-system extension-apiserver-authentication ConfigMap for changes
+		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, handler.EnqueueRequestsFromMapFunc(
+			func(a client.Object) []reconcile.Request {
+				if a.GetName() == "extension-apiserver-authentication" && a.GetNamespace() == "kube-system" {
+					return []reconcile.Request{
+						{NamespacedName: types.NamespacedName{
+							Name:      "metrics-collector-clientca-metric",
+							Namespace: namespace,
+						}},
+						{NamespacedName: types.NamespacedName{
+							Name:      "uwl-metrics-collector-clientca-metric",
+							Namespace: namespace,
+						}},
+					}
+				}
+				return nil
+			}), builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
 		).
 		Complete(r)
 }

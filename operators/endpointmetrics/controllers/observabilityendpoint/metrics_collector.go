@@ -14,12 +14,14 @@ import (
 	"strings"
 	"time"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
@@ -31,8 +33,10 @@ import (
 const (
 	metricsCollectorName    = "metrics-collector-deployment"
 	uwlMetricsCollectorName = "uwl-metrics-collector-deployment"
+	metricsCollector        = "metrics-collector"
+	uwlMetricsCollector     = "uwl-metrics-collector"
 	selectorKey             = "component"
-	selectorValue           = "metrics-collector"
+	selectorValue           = metricsCollector
 	caMounthPath            = "/etc/serving-certs-ca-bundle"
 	caVolName               = "serving-certs-ca-bundle"
 	mtlsCertName            = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
@@ -89,6 +93,7 @@ func getCommands(params CollectorParams) []string {
 	}
 	commands := []string{
 		"/usr/bin/metrics-collector",
+		"--listen=:8080",
 		"--from=$(FROM)",
 		"--from-query=$(FROM_QUERY)",
 		"--to-upload=$(TO)",
@@ -177,6 +182,11 @@ func getCommands(params CollectorParams) []string {
 }
 
 func createDeployment(params CollectorParams) *appsv1.Deployment {
+	// falsePtr := false
+	secretName := metricsCollector
+	if params.isUWL {
+		secretName = uwlMetricsCollector
+	}
 	volumes := []corev1.Volume{
 		{
 			Name: "mtlscerts",
@@ -191,6 +201,32 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: mtlsCaName,
+				},
+			},
+		},
+		{
+			Name: "secret-kube-rbac-proxy-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: secretName + "-kube-rbac-tls",
+				},
+			},
+		},
+		{
+			Name: "secret-kube-rbac-proxy-metric",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: secretName + "-kube-rbac-proxy-metric",
+				},
+			},
+		},
+		{
+			Name: "metrics-client-ca",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: secretName + "-clientca-metric",
+					},
 				},
 			},
 		},
@@ -251,7 +287,7 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			Replicas: int32Ptr(params.replicaCount),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					selectorKey: selectorValue,
+					selectorKey: secretName,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
@@ -261,14 +297,14 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 						operatorconfig.WorkloadPartitioningPodAnnotationKey: operatorconfig.WorkloadPodExpectedValueJSON,
 					},
 					Labels: map[string]string{
-						selectorKey: selectorValue,
+						selectorKey: secretName,
 					},
 				},
 				Spec: corev1.PodSpec{
 					ServiceAccountName: serviceAccountName,
 					Containers: []corev1.Container{
 						{
-							Name:    "metrics-collector",
+							Name:    metricsCollector,
 							Image:   rendering.Images[operatorconfig.MetricsCollectorKey],
 							Command: commands,
 							Env: []corev1.EnvVar{
@@ -287,7 +323,65 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 							},
 							VolumeMounts:    mounts,
 							ImagePullPolicy: corev1.PullIfNotPresent,
+							Ports: []corev1.ContainerPort{
+								{
+									ContainerPort: 8080,
+									Name:          "metrics",
+								},
+							},
 						},
+						// TODO(saswatamcode): Enable this alter
+						// {
+						// 	Name:  "kube-rbac-proxy",
+						// 	Image: "quay.io/stolostron/kube-rbac-proxy:2.10.0-SNAPSHOT-2024-02-21-15-26-50",
+						// 	Args: []string{
+						// 		"--secure-listen-address=0.0.0.0:8443",
+						// 		"--upstream=http://127.0.0.1:8080",
+						// 		"--config-file=/etc/kube-rbac-proxy/config.yaml",
+						// 		"--tls-cert-file=/etc/tls/private/tls.crt",
+						// 		"--tls-private-key-file=/etc/tls/private/tls.key",
+						// 		"--client-ca-file=/etc/tls/client/client-ca-file",
+						// 		"--logtostderr=true",
+						// 		"--allow-paths=/metrics",
+						// 		"--tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305",
+						// 	},
+						// 	Ports: []corev1.ContainerPort{
+						// 		{
+						// 			ContainerPort: 8443,
+						// 			Name:          "metrics",
+						// 		},
+						// 	},
+						// 	Resources: corev1.ResourceRequirements{
+						// 		Requests: corev1.ResourceList{
+						// 			corev1.ResourceCPU:    resource.MustParse("1m"),
+						// 			corev1.ResourceMemory: resource.MustParse("15Mi"),
+						// 		},
+						// 	},
+						// 	SecurityContext: &corev1.SecurityContext{
+						// 		AllowPrivilegeEscalation: &falsePtr,
+						// 		Capabilities: &corev1.Capabilities{
+						// 			Drop: []corev1.Capability{"ALL"},
+						// 		},
+						// 	},
+						// 	TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+						// 	VolumeMounts: []corev1.VolumeMount{
+						// 		{
+						// 			Name:      "secret-kube-rbac-proxy-metric",
+						// 			MountPath: "/etc/kube-rbac-proxy",
+						// 			ReadOnly:  true,
+						// 		},
+						// 		{
+						// 			Name:      "secret-kube-rbac-proxy-tls",
+						// 			MountPath: "/etc/tls/private",
+						// 			ReadOnly:  true,
+						// 		},
+						// 		{
+						// 			Name:      "metrics-client-ca",
+						// 			MountPath: "/etc/tls/client",
+						// 			ReadOnly:  true,
+						// 		},
+						// 	},
+						// },
 					},
 					Volumes:      volumes,
 					NodeSelector: params.nodeSelector,
@@ -344,6 +438,186 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *params.obsAddonSpec.Resources
 	}
 	return metricsCollectorDep
+}
+
+// func createKubeRbacProxySecret(params CollectorParams) *corev1.Secret {
+// 	name := metricsCollector
+// 	if params.isUWL {
+// 		name = uwlMetricsCollector
+// 	}
+// 	secret := &corev1.Secret{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Name:      name + "-kube-rbac-proxy-metric",
+// 			Namespace: namespace,
+// 		},
+// 		Type: corev1.SecretTypeOpaque,
+// 		StringData: map[string]string{
+// 			"config.yaml": `authorization:
+// static:
+//   - path: /metrics
+//     resourceRequest: false
+//     user:
+//       name: system:serviceaccount:openshift-monitoring:prometheus-k8s
+//     verb: get`,
+// 		},
+// 	}
+// 	return secret
+// }
+
+func createService(params CollectorParams) *corev1.Service {
+	name := metricsCollector
+	if params.isUWL {
+		name = uwlMetricsCollector
+	}
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				selectorKey: name,
+			},
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+				"service.beta.openshift.io/serving-cert-secret-name": name + "-kube-rbac-tls",
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: map[string]string{
+				selectorKey: name,
+			},
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "metrics",
+					Port:       8080,
+					TargetPort: intstr.FromString("metrics"),
+				},
+			},
+			Type: corev1.ServiceTypeClusterIP,
+		},
+	}
+}
+
+// func createClientCAConfigMap(params CollectorParams) *corev1.ConfigMap {
+// 	name := metricsCollector
+// 	if params.isUWL {
+// 		name = uwlMetricsCollector
+// 	}
+
+// 	return &corev1.ConfigMap{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Name:      name + "-clientca-metric",
+// 			Namespace: namespace,
+// 		},
+// 	}
+// }
+
+func createAlertingRule(params CollectorParams) *monitoringv1.PrometheusRule {
+	name := metricsCollector
+	alert := "MetricsCollector"
+	replace := "acm_metrics_collector_"
+	if params.isUWL {
+		name = uwlMetricsCollector
+		alert = "UWLMetricsCollector"
+		replace = "acm_uwl_metrics_collector_"
+	}
+
+	return &monitoringv1.PrometheusRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "acm-" + name + "-alerting-rules",
+			Namespace: namespace,
+		},
+		Spec: monitoringv1.PrometheusRuleSpec{
+			Groups: []monitoringv1.RuleGroup{
+				{
+					Name: name + "-rules",
+					Rules: []monitoringv1.Rule{
+						{
+							Alert: "ACM" + alert + "FederationError",
+							Annotations: map[string]string{
+								"summary":     "Error federating from in-cluster Prometheus.",
+								"description": "There are errors when federating from platform Prometheus",
+							},
+							Expr: intstr.FromString(`(sum by (status_code, type) (rate(` + replace + `federate_requests_total{status_code!~"2.*"}[10m]))) > 10`),
+							For:  "10m",
+							Labels: map[string]string{
+								"severity": "critical",
+							},
+						},
+						{
+							Alert: "ACM" + alert + "ForwardRemoteWriteError",
+							Annotations: map[string]string{
+								"summary":     "Error forwarding to Hub Thanos.",
+								"description": "There are errors when remote writing to Hub hub Thanos",
+							},
+							Expr: intstr.FromString(`(sum by (status_code, type) (rate(` + replace + `forward_write_requests_total{status_code!~"2.*"}[10m]))) > 10`),
+							For:  "10m",
+							Labels: map[string]string{
+								"severity": "critical",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// createServiceMonitor creates a ServiceMonitor for the metrics collector.
+func createServiceMonitor(params CollectorParams) *monitoringv1.ServiceMonitor {
+	name := metricsCollector
+	replace := "acm_metrics_collector_${1}"
+	if params.isUWL {
+		name = uwlMetricsCollector
+		replace = "acm_uwl_metrics_collector_${1}"
+	}
+
+	return &monitoringv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				selectorKey: name,
+			},
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
+		},
+		Spec: monitoringv1.ServiceMonitorSpec{
+			Selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					selectorKey: name,
+				},
+			},
+			NamespaceSelector: monitoringv1.NamespaceSelector{
+				MatchNames: []string{namespace},
+			},
+			Endpoints: []monitoringv1.Endpoint{
+				{
+					Port:   "metrics",
+					Path:   "/metrics",
+					Scheme: "http",
+					// TODO(saswatamcode): Enable later.
+					// TLSConfig: &monitoringv1.TLSConfig{
+					// 	CAFile:   "/etc/prometheus/configmaps/serving-certs-ca-bundle/service-ca.crt",
+					// 	CertFile: "/etc/prometheus/secrets/metrics-client-certs/tls.crt",
+					// 	KeyFile:  "/etc/prometheus/secrets/metrics-client-certs/tls.key",
+					// 	SafeTLSConfig: monitoringv1.SafeTLSConfig{
+					// 		ServerName: name + "." + namespace + ".svc",
+					// 	},
+					// },
+					MetricRelabelConfigs: []*monitoringv1.RelabelConfig{
+						{
+							Action:       "replace",
+							Regex:        "(.+)",
+							Replacement:  replace,
+							SourceLabels: []string{"__name__"},
+							TargetLabel:  "__name__",
+						},
+					},
+				},
+			},
+		},
+	}
 }
 
 func updateMetricsCollectors(ctx context.Context, c client.Client, obsAddonSpec oashared.ObservabilityAddonSpec,
@@ -405,16 +679,152 @@ func updateMetricsCollectors(ctx context.Context, c client.Client, obsAddonSpec 
 	return result, err
 }
 
+// func syncClientCA(ctx context.Context, c client.Client, cfgMap *corev1.ConfigMap) error {
+// 	// Retrieve the extension-apiserver-authentication ConfigMap from kube-system namespace
+// 	namespacedName := types.NamespacedName{
+// 		Name:      "extension-apiserver-authentication",
+// 		Namespace: "kube-system",
+// 	}
+// 	sourceConfigMap := &corev1.ConfigMap{}
+// 	err := c.Get(ctx, namespacedName, sourceConfigMap)
+// 	if err != nil {
+// 		return fmt.Errorf("error fetching source ConfigMap: %w", err)
+// 	}
+
+// 	// Extract the CA certificate data
+// 	caData, exists := sourceConfigMap.Data["client-ca-file"]
+// 	if !exists {
+// 		return fmt.Errorf("client-ca-file not found in source ConfigMap")
+// 	}
+
+// 	if len(caData) == 0 {
+// 		return fmt.Errorf("client-ca-file is empty in source ConfigMap")
+// 	}
+
+// 	if cfgMap.Data == nil {
+// 		cfgMap.Data = make(map[string]string)
+// 	}
+
+// 	// Update the ConfigMap with the CA certificate data
+// 	cfgMap.Data["client-ca-file"] = caData
+
+// 	if err := c.Update(ctx, cfgMap); err != nil {
+// 		return fmt.Errorf("error updating client CA ConfigMap: %w", err)
+// 	}
+
+// 	return nil
+// }
+
 func updateMetricsCollector(ctx context.Context, c client.Client, params CollectorParams,
 	forceRestart bool) (bool, error) {
 	name := metricsCollectorName
+	resourceName := metricsCollector
 	if params.isUWL {
+		resourceName = uwlMetricsCollector
 		name = uwlMetricsCollectorName
 	}
+
 	log.Info("updateMetricsCollector", "name", name)
+
+	foundService := &corev1.Service{}
+	err := c.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: namespace}, foundService)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			service := createService(params)
+			err = c.Create(ctx, service)
+			if err != nil {
+				log.Error(err, "Failed to create service", "name", resourceName)
+				return false, err
+			}
+			log.Info("Created service ", "name", resourceName)
+		} else {
+			log.Error(err, "Failed to check the service", "name", resourceName)
+			return false, err
+		}
+	}
+
+	// TODO(saswatamcode): Enable later with KRPS.
+	// foundKRPS := &corev1.Secret{}
+	// err = c.Get(ctx, types.NamespacedName{Name: resourceName + "-kube-rbac-proxy-metric", Namespace: namespace}, foundKRPS)
+	// if err != nil {
+	// 	if errors.IsNotFound(err) {
+	// 		kubeRBACProxySecret := createKubeRbacProxySecret(params)
+	// 		err = c.Create(ctx, kubeRBACProxySecret)
+	// 		if err != nil {
+	// 			log.Error(err, "Failed to create kube-rbac-proxy secret", "name", resourceName+"-kube-rbac-proxy-metric")
+	// 			return false, err
+	// 		}
+	// 		log.Info("Created kube-rbac-proxy secret ", "name", resourceName+"-kube-rbac-proxy-metric")
+	// 	} else {
+	// 		log.Error(err, "Failed to check the kube-rbac-proxy secret", "name", resourceName+"-kube-rbac-proxy-metric")
+	// 		return false, err
+	// 	}
+	// }
+
+	// foundClientCAConfigMap := &corev1.ConfigMap{}
+	// err = c.Get(ctx, types.NamespacedName{Name: resourceName + "-clientca-metric", Namespace: namespace}, foundClientCAConfigMap)
+	// if err != nil {
+	// 	if errors.IsNotFound(err) {
+	// 		clientCAConfigMap := createClientCAConfigMap(params)
+	// 		err = c.Create(ctx, clientCAConfigMap)
+	// 		if err != nil {
+	// 			log.Error(err, "Failed to create client CA configmap", "name", resourceName+"-clientca-metric")
+	// 			return false, err
+	// 		}
+	// 		if err := syncClientCA(ctx, c, clientCAConfigMap); err != nil {
+	// 			log.Error(err, "Failed to sync client CA configmap", "name", resourceName+"-clientca-metric")
+	// 			return false, err
+	// 		}
+
+	// 		log.Info("Created client CA configmap ", "name", resourceName+"-clientca-metric")
+	// 	} else {
+	// 		log.Error(err, "Failed to check the client CA configmap", "name", resourceName+"-clientca-metric")
+	// 		return false, err
+	// 	}
+	// } else {
+	// 	if err := syncClientCA(ctx, c, foundClientCAConfigMap); err != nil {
+	// 		log.Error(err, "Failed to sync client CA configmap", "name", resourceName+"-clientca-metric")
+	// 		return false, err
+	// 	}
+	// }
+
+	foundSM := &monitoringv1.ServiceMonitor{}
+	err = c.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: namespace}, foundSM)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			serviceMonitor := createServiceMonitor(params)
+			err = c.Create(ctx, serviceMonitor)
+			if err != nil {
+				log.Error(err, "Failed to create service monitor", "name", resourceName)
+				return false, err
+			}
+			log.Info("Created servicemonitor ", "name", resourceName)
+		} else {
+			log.Error(err, "Failed to check the servicemonitor", "name", resourceName)
+			return false, err
+		}
+	}
+
+	foundAlert := &monitoringv1.PrometheusRule{}
+	err = c.Get(ctx, types.NamespacedName{Name: "acm-" + resourceName + "-alerting-rules", Namespace: namespace}, foundAlert)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			alertingRules := createAlertingRule(params)
+			err = c.Create(ctx, alertingRules)
+			if err != nil {
+				log.Error(err, "Failed to create alerting rules", "name", "acm-"+resourceName+"-alerting-rules")
+				return false, err
+			}
+			log.Info("Created alerting rules ", "name", "acm-"+resourceName+"-alerting-rules")
+		} else {
+			log.Error(err, "Failed to check the alerting rules", "name", "acm-"+resourceName+"-alerting-rules")
+			return false, err
+		}
+	}
+
 	deployment := createDeployment(params)
 	found := &appsv1.Deployment{}
-	err := c.Get(ctx, types.NamespacedName{Name: name,
+	err = c.Get(ctx, types.NamespacedName{Name: name,
 		Namespace: namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -465,6 +875,88 @@ func deleteMetricsCollector(ctx context.Context, c client.Client, name string) e
 		return err
 	}
 	log.Info("metrics collector deployment deleted", "name", name)
+
+	foundSM := &monitoringv1.ServiceMonitor{}
+	if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment"),
+		Namespace: namespace}, foundSM); err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("The metrics collector servicemonitor does not exist", "name", strings.TrimSuffix(name, "-deployment"))
+			return nil
+		}
+		log.Error(err, "Failed to check the metrics collector servicemonitor", "name", strings.TrimSuffix(name, "-deployment"))
+		return err
+	}
+	if err := c.Delete(ctx, foundSM); err != nil {
+		log.Error(err, "Failed to delete the metrics collector servicemonitor", "name", strings.TrimSuffix(name, "-deployment"))
+		return err
+	}
+	log.Info("metrics collector servicemonitor deleted", "name", strings.TrimSuffix(name, "-deployment"))
+
+	foundAlerts := &monitoringv1.PrometheusRule{}
+	if err := c.Get(ctx, types.NamespacedName{Name: "acm-" + strings.TrimSuffix(name, "-deployment") + "-alerting-rules",
+		Namespace: namespace}, foundAlerts); err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("The metrics collector alerting rules does not exist", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+			return nil
+		}
+		log.Error(err, "Failed to check the metrics collector alerting rules", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+		return err
+	}
+	if err := c.Delete(ctx, foundAlerts); err != nil {
+		log.Error(err, "Failed to delete the metrics collector alerting rules", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+		return err
+	}
+	log.Info("metrics collector alerting rules deleted", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+
+	foundService := &corev1.Service{}
+	if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment"),
+		Namespace: namespace}, foundService); err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("The metrics collector service does not exist", "name", strings.TrimSuffix(name, "-deployment"))
+			return nil
+		}
+		log.Error(err, "Failed to check the metrics collector service", "name", strings.TrimSuffix(name, "-deployment"))
+		return err
+	}
+	if err := c.Delete(ctx, foundService); err != nil {
+		log.Error(err, "Failed to delete the metrics collector service", "name", strings.TrimSuffix(name, "-deployment"))
+		return err
+	}
+	log.Info("metrics collector service deleted", "name", strings.TrimSuffix(name, "-deployment"))
+
+	// TODO(saswatamcode): Enable later with KRPS.
+	// foundKRPS := &corev1.Secret{}
+	// if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment") + "-kube-rbac-proxy-metric",
+	// 	Namespace: namespace}, foundKRPS); err != nil {
+	// 	if errors.IsNotFound(err) {
+	// 		log.Info("The metrics collector kube-rbac-proxy secret does not exist", "name", strings.TrimSuffix(name, "-deployment")+"-kube-rbac-proxy-metric")
+	// 		return nil
+	// 	}
+	// 	log.Error(err, "Failed to check the metrics collector kube-rbac-proxy secret", "name", strings.TrimSuffix(name, "-deployment")+"-kube-rbac-proxy-metric")
+	// 	return err
+	// }
+	// if err := c.Delete(ctx, foundKRPS); err != nil {
+	// 	log.Error(err, "Failed to delete the metrics collector kube-rbac-proxy secret", "name", strings.TrimSuffix(name, "-deployment")+"-kube-rbac-proxy-metric")
+	// 	return err
+	// }
+	// log.Info("metrics collector kube-rbac-proxy secret deleted", "name", strings.TrimSuffix(name, "-deployment")+"-kube-rbac-proxy-metric")
+
+	// foundClientCAConfigMap := &corev1.ConfigMap{}
+	// if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment") + "-clientca-metric",
+	// 	Namespace: namespace}, foundClientCAConfigMap); err != nil {
+	// 	if errors.IsNotFound(err) {
+	// 		log.Info("The metrics collector client CA ConfigMap does not exist", "name", strings.TrimSuffix(name, "-deployment")+"-clientca-metric")
+	// 		return nil
+	// 	}
+	// 	log.Error(err, "Failed to check the  metrics collector client CA ConfigMap", "name", strings.TrimSuffix(name, "-deployment")+"-clientca-metric")
+	// 	return err
+	// }
+	// if err := c.Delete(ctx, foundClientCAConfigMap); err != nil {
+	// 	log.Error(err, "Failed to delete the  metrics collector client CA ConfigMap", "name", strings.TrimSuffix(name, "-deployment")+"-clientca-metric")
+	// 	return err
+	// }
+	// log.Info("metrics collector client CA ConfigMap deleted", "name", strings.TrimSuffix(name, "-deployment")+"-clientca-metric")
+
 	return nil
 }
 

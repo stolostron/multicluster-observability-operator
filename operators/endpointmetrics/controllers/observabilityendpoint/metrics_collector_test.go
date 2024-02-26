@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
@@ -164,7 +165,16 @@ func TestMetricsCollector(t *testing.T) {
 	}
 
 	ctx := context.TODO()
-	objs := []runtime.Object{getAllowlistCM(), getCustomAllowlistCM()}
+	objs := []runtime.Object{getAllowlistCM(), getCustomAllowlistCM(), &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "extension-apiserver-authentication",
+			Namespace: "kube-system",
+		},
+		Data: map[string]string{
+			"client-ca-file": "test",
+		},
+	}}
+	promv1.AddToScheme(scheme.Scheme)
 	c := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(objs...).Build()
 
 	list, uwlList, err := getMetricsAllowlist(ctx, c, "")
