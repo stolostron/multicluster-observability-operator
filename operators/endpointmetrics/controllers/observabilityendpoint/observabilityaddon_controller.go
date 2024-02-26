@@ -349,7 +349,7 @@ func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx
 
 	role := rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "prometheus-k8s",
+			Name:      "prometheus-k8s-addon-obs",
 			Namespace: resNS,
 		},
 		Rules: []rbacv1.PolicyRule{
@@ -361,15 +361,15 @@ func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx
 		},
 	}
 
-	roleBinding := rbacv1.ClusterRoleBinding{
+	roleBinding := rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "prometheus-k8s",
+			Name:      "prometheus-k8s-addon-obs",
 			Namespace: resNS,
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
 			Kind:     "Role",
-			Name:     "prometheus-k8s",
+			Name:     "prometheus-k8s-addon-obs",
 		},
 		Subjects: []rbacv1.Subject{
 			{

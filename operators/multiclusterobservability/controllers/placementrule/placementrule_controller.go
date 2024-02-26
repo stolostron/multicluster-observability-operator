@@ -191,7 +191,11 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			},
 		})
 		operatorconfig.HubMetricsCollectorResources = *config.GetOBAResources(mco.Spec.ObservabilityAddonSpec)
-		deleteObsAddon(r.Client, localClusterName)
+		err = deleteObsAddon(r.Client, localClusterName)
+		if err != nil {
+			log.Error(err, "Failed to delete observabilityaddon")
+			return ctrl.Result{}, err
+		}
 		err = deleteManagedClusterRes(r.Client, localClusterName)
 		if err != nil {
 			return ctrl.Result{}, err
