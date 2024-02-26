@@ -743,49 +743,50 @@ func updateMetricsCollector(ctx context.Context, c client.Client, params Collect
 		}
 	}
 
-	foundKRPS := &corev1.Secret{}
-	err = c.Get(ctx, types.NamespacedName{Name: resourceName + "-kube-rbac-proxy-metric", Namespace: namespace}, foundKRPS)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			kubeRBACProxySecret := createKubeRbacProxySecret(params)
-			err = c.Create(ctx, kubeRBACProxySecret)
-			if err != nil {
-				log.Error(err, "Failed to create kube-rbac-proxy secret", "name", resourceName+"-kube-rbac-proxy-metric")
-				return false, err
-			}
-			log.Info("Created kube-rbac-proxy secret ", "name", resourceName+"-kube-rbac-proxy-metric")
-		} else {
-			log.Error(err, "Failed to check the kube-rbac-proxy secret", "name", resourceName+"-kube-rbac-proxy-metric")
-			return false, err
-		}
-	}
+	// TODO(saswatamcode): Enable later with KRPS.
+	// foundKRPS := &corev1.Secret{}
+	// err = c.Get(ctx, types.NamespacedName{Name: resourceName + "-kube-rbac-proxy-metric", Namespace: namespace}, foundKRPS)
+	// if err != nil {
+	// 	if errors.IsNotFound(err) {
+	// 		kubeRBACProxySecret := createKubeRbacProxySecret(params)
+	// 		err = c.Create(ctx, kubeRBACProxySecret)
+	// 		if err != nil {
+	// 			log.Error(err, "Failed to create kube-rbac-proxy secret", "name", resourceName+"-kube-rbac-proxy-metric")
+	// 			return false, err
+	// 		}
+	// 		log.Info("Created kube-rbac-proxy secret ", "name", resourceName+"-kube-rbac-proxy-metric")
+	// 	} else {
+	// 		log.Error(err, "Failed to check the kube-rbac-proxy secret", "name", resourceName+"-kube-rbac-proxy-metric")
+	// 		return false, err
+	// 	}
+	// }
 
-	foundClientCAConfigMap := &corev1.ConfigMap{}
-	err = c.Get(ctx, types.NamespacedName{Name: resourceName + "-clientca-metric", Namespace: namespace}, foundClientCAConfigMap)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			clientCAConfigMap := createClientCAConfigMap(params)
-			err = c.Create(ctx, clientCAConfigMap)
-			if err != nil {
-				log.Error(err, "Failed to create client CA configmap", "name", resourceName+"-clientca-metric")
-				return false, err
-			}
-			if err := syncClientCA(ctx, c, clientCAConfigMap); err != nil {
-				log.Error(err, "Failed to sync client CA configmap", "name", resourceName+"-clientca-metric")
-				return false, err
-			}
+	// foundClientCAConfigMap := &corev1.ConfigMap{}
+	// err = c.Get(ctx, types.NamespacedName{Name: resourceName + "-clientca-metric", Namespace: namespace}, foundClientCAConfigMap)
+	// if err != nil {
+	// 	if errors.IsNotFound(err) {
+	// 		clientCAConfigMap := createClientCAConfigMap(params)
+	// 		err = c.Create(ctx, clientCAConfigMap)
+	// 		if err != nil {
+	// 			log.Error(err, "Failed to create client CA configmap", "name", resourceName+"-clientca-metric")
+	// 			return false, err
+	// 		}
+	// 		if err := syncClientCA(ctx, c, clientCAConfigMap); err != nil {
+	// 			log.Error(err, "Failed to sync client CA configmap", "name", resourceName+"-clientca-metric")
+	// 			return false, err
+	// 		}
 
-			log.Info("Created client CA configmap ", "name", resourceName+"-clientca-metric")
-		} else {
-			log.Error(err, "Failed to check the client CA configmap", "name", resourceName+"-clientca-metric")
-			return false, err
-		}
-	} else {
-		if err := syncClientCA(ctx, c, foundClientCAConfigMap); err != nil {
-			log.Error(err, "Failed to sync client CA configmap", "name", resourceName+"-clientca-metric")
-			return false, err
-		}
-	}
+	// 		log.Info("Created client CA configmap ", "name", resourceName+"-clientca-metric")
+	// 	} else {
+	// 		log.Error(err, "Failed to check the client CA configmap", "name", resourceName+"-clientca-metric")
+	// 		return false, err
+	// 	}
+	// } else {
+	// 	if err := syncClientCA(ctx, c, foundClientCAConfigMap); err != nil {
+	// 		log.Error(err, "Failed to sync client CA configmap", "name", resourceName+"-clientca-metric")
+	// 		return false, err
+	// 	}
+	// }
 
 	foundSM := &monitoringv1.ServiceMonitor{}
 	err = c.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: namespace}, foundSM)
@@ -905,7 +906,7 @@ func deleteMetricsCollector(ctx context.Context, c client.Client, name string) e
 		log.Error(err, "Failed to delete the metrics collector alerting rules", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
 		return err
 	}
-	log.Info("metrics collector alerting rules deleted", "name", strings.TrimSuffix(name, "-deployment"))
+	log.Info("metrics collector alerting rules deleted", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
 
 	foundService := &corev1.Service{}
 	if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment"),
@@ -923,37 +924,38 @@ func deleteMetricsCollector(ctx context.Context, c client.Client, name string) e
 	}
 	log.Info("metrics collector service deleted", "name", strings.TrimSuffix(name, "-deployment"))
 
-	foundKRPS := &corev1.Secret{}
-	if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment") + "-kube-rbac-proxy-metric",
-		Namespace: namespace}, foundKRPS); err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("The metrics collector kube-rbac-proxy secret does not exist", "name", strings.TrimSuffix(name, "-deployment")+"-kube-rbac-proxy-metric")
-			return nil
-		}
-		log.Error(err, "Failed to check the metrics collector kube-rbac-proxy secret", "name", strings.TrimSuffix(name, "-deployment")+"-kube-rbac-proxy-metric")
-		return err
-	}
-	if err := c.Delete(ctx, foundKRPS); err != nil {
-		log.Error(err, "Failed to delete the metrics collector kube-rbac-proxy secret", "name", strings.TrimSuffix(name, "-deployment")+"-kube-rbac-proxy-metric")
-		return err
-	}
-	log.Info("metrics collector kube-rbac-proxy secret deleted", "name", strings.TrimSuffix(name, "-deployment")+"-kube-rbac-proxy-metric")
+	// TODO(saswatamcode): Enable later with KRPS.
+	// foundKRPS := &corev1.Secret{}
+	// if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment") + "-kube-rbac-proxy-metric",
+	// 	Namespace: namespace}, foundKRPS); err != nil {
+	// 	if errors.IsNotFound(err) {
+	// 		log.Info("The metrics collector kube-rbac-proxy secret does not exist", "name", strings.TrimSuffix(name, "-deployment")+"-kube-rbac-proxy-metric")
+	// 		return nil
+	// 	}
+	// 	log.Error(err, "Failed to check the metrics collector kube-rbac-proxy secret", "name", strings.TrimSuffix(name, "-deployment")+"-kube-rbac-proxy-metric")
+	// 	return err
+	// }
+	// if err := c.Delete(ctx, foundKRPS); err != nil {
+	// 	log.Error(err, "Failed to delete the metrics collector kube-rbac-proxy secret", "name", strings.TrimSuffix(name, "-deployment")+"-kube-rbac-proxy-metric")
+	// 	return err
+	// }
+	// log.Info("metrics collector kube-rbac-proxy secret deleted", "name", strings.TrimSuffix(name, "-deployment")+"-kube-rbac-proxy-metric")
 
-	foundClientCAConfigMap := &corev1.ConfigMap{}
-	if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment") + "-clientca-metric",
-		Namespace: namespace}, foundClientCAConfigMap); err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("The metrics collector client CA ConfigMap does not exist", "name", strings.TrimSuffix(name, "-deployment")+"-clientca-metric")
-			return nil
-		}
-		log.Error(err, "Failed to check the  metrics collector client CA ConfigMap", "name", strings.TrimSuffix(name, "-deployment")+"-clientca-metric")
-		return err
-	}
-	if err := c.Delete(ctx, foundClientCAConfigMap); err != nil {
-		log.Error(err, "Failed to delete the  metrics collector client CA ConfigMap", "name", strings.TrimSuffix(name, "-deployment")+"-clientca-metric")
-		return err
-	}
-	log.Info("metrics collector client CA ConfigMap deleted", "name", strings.TrimSuffix(name, "-deployment")+"-clientca-metric")
+	// foundClientCAConfigMap := &corev1.ConfigMap{}
+	// if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment") + "-clientca-metric",
+	// 	Namespace: namespace}, foundClientCAConfigMap); err != nil {
+	// 	if errors.IsNotFound(err) {
+	// 		log.Info("The metrics collector client CA ConfigMap does not exist", "name", strings.TrimSuffix(name, "-deployment")+"-clientca-metric")
+	// 		return nil
+	// 	}
+	// 	log.Error(err, "Failed to check the  metrics collector client CA ConfigMap", "name", strings.TrimSuffix(name, "-deployment")+"-clientca-metric")
+	// 	return err
+	// }
+	// if err := c.Delete(ctx, foundClientCAConfigMap); err != nil {
+	// 	log.Error(err, "Failed to delete the  metrics collector client CA ConfigMap", "name", strings.TrimSuffix(name, "-deployment")+"-clientca-metric")
+	// 	return err
+	// }
+	// log.Info("metrics collector client CA ConfigMap deleted", "name", strings.TrimSuffix(name, "-deployment")+"-clientca-metric")
 
 	return nil
 }
