@@ -182,7 +182,6 @@ func getCommands(params CollectorParams) []string {
 }
 
 func createDeployment(params CollectorParams) *appsv1.Deployment {
-	// falsePtr := false
 	secretName := metricsCollector
 	if params.isUWL {
 		secretName = uwlMetricsCollector
