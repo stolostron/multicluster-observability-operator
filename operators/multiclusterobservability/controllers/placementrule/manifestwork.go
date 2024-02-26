@@ -461,6 +461,7 @@ func createManifestWorks(
 
 func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
 	//Make a deep copy of all the manifests since there are some global resources that can be updated due to this function
+	log.Info("Check Ismcoterminating", "IsMCOTerminating", operatorconfig.IsMCOTerminating)
 	if operatorconfig.IsMCOTerminating {
 		log.Info("MCO Operator is terminating, skip creating resources for hub metrics collection")
 		return nil
@@ -502,7 +503,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 // Delete resources created for hub metrics collection
 func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 	// Delete hub endpoint operator
-	log.Info("Deleting resources for hub metrics collection")
+	log.Info("Deleting resources for hub metrics collection", "IsMCOterminating", operatorconfig.IsMCOTerminating)
 	err := c.Delete(context.TODO(), &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.HubEndpointOperatorName,
