@@ -9,11 +9,12 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"reflect"
 	"time"
+
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"golang.org/x/exp/slices"
 	appv1 "k8s.io/api/apps/v1"

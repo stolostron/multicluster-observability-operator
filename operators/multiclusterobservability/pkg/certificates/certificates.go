@@ -12,11 +12,12 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	certificatesv1 "k8s.io/api/certificates/v1"
 	"math/big"
 	"net"
 	"time"
+
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	certificatesv1 "k8s.io/api/certificates/v1"
 
 	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
