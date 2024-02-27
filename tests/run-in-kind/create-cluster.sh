@@ -9,16 +9,22 @@ ROOTDIR="$(
 WORKDIR=${ROOTDIR}/tests/run-in-kind
 
 export IS_KIND_ENV=true
+KIND_VERSION=v0.22.0
 
 # shellcheck disable=SC1091
 source ${WORKDIR}/env.sh
 
 create_kind_cluster() {
   if ! command -v kind >/dev/null 2>&1; then
-    echo "This script will install kind (https://kind.sigs.k8s.io/) on your machine."
-    curl -Lo "./kind-$(uname -p)64" "https://kind.sigs.k8s.io/dl/v0.10.0/kind-$(uname)-$(uname -p)64"
-    chmod +x "./kind-$(uname -p)64"
-    sudo mv "./kind-$(uname -p)64" /usr/local/bin/kind
+
+    echo "This script will install KinD (https://kind.sigs.k8s.io/docs/user/quick-start/) on your machine"
+    if [[ "$(uname)" == "Linux" ]]; then
+      curl -Lo "./kind" "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+    elif [[ "$(uname)" == "Darwin" ]]; then
+      curl -Lo "./kind" "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-darwin-$(uname -m)"
+    fi
+
+    chmod +x "./kind" &&  mv "./kind" /usr/local/bin/kind
   fi
   echo "Delete the KinD cluster if exists"
   kind delete cluster --name $1 || true
