@@ -466,6 +466,16 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		log.Info("MCO Operator is terminating, skip creating resources for hub metrics collection")
 		return nil
 	}
+	//Create a namespace called hub-observability
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "hub-observability",
+		},
+	}
+	err := c.Create(context.TODO(), ns)
+	if err != nil && !k8serrors.IsAlreadyExists(err) {
+		log.Error(err, "Failed to create namespace", "name", "hub-observability")
+	}
 	hubManifestCopy = make([]workv1.Manifest, len(manifests))
 	for i, manifest := range manifests {
 		obj := manifest.RawExtension.Object.DeepCopyObject()
@@ -493,6 +503,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 	//		return err
 	//	}
 	//}
+
 	for _, manifest := range hubManifestCopy {
 		obj := manifest.RawExtension.Object.(client.Object)
 		// Define a variable to hold the existing object
@@ -507,7 +518,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			// No namespace needed for these kinds
 		default:
 			// Set default namespace for other kinds
-			obj.SetNamespace(config.GetDefaultNamespace())
+			obj.SetNamespace("hub-observability")
 		}
 
 		if gvk.Kind == "ClusterRoleBinding" {
@@ -572,6 +583,10 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 					needsUpdate = true
 				}
 			case *corev1.ConfigMap:
+				if obj.Name == operatorconfig.AllowlistConfigMapName || obj.Name == operatorconfig.AllowlistCustomConfigMapName {
+					// Skip the allowlist configmap as it is being watched by placementrule
+					continue
+				}
 				currentConfigMap := currentObj.(*corev1.ConfigMap)
 				// Compare data here, set needsUpdate = true if they differ
 				if !reflect.DeepEqual(obj.Data, currentConfigMap.Data) {
@@ -591,7 +606,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			}
 		}
 	}
-	err := cert_controller.CreateMtlsCertSecretForHubCollector(c)
+	err = cert_controller.CreateMtlsCertSecretForHubCollector(c)
 	if err != nil {
 		log.Error(err, "Failed to create client cert secret for hub metrics collection")
 		return err
