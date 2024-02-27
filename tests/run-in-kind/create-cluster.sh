@@ -24,7 +24,7 @@ create_kind_cluster() {
       curl -Lo "./kind" "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-darwin-$(uname -m)"
     fi
 
-    chmod +x "./kind" &&  mv "./kind" /usr/local/bin/kind
+    chmod +x "./kind" && mv "./kind" /usr/local/bin/kind
   fi
   echo "Delete the KinD cluster if exists"
   kind delete cluster --name $1 || true
