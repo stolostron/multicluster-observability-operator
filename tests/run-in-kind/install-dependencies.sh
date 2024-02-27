@@ -3,8 +3,8 @@
 set -exo pipefail
 
 ROOTDIR="$(
-cd "$(dirname "$0")/../.."
-pwd -P
+  cd "$(dirname "$0")/../.."
+  pwd -P
 )"
 WORKDIR=${ROOTDIR}/tests/run-in-kind
 
@@ -12,7 +12,6 @@ export IS_KIND_ENV=true
 
 # shellcheck disable=SC1091
 source ${WORKDIR}/env.sh
-
 
 deploy_service_ca_operator() {
   kubectl create ns openshift-config-managed
