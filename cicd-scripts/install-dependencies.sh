@@ -7,11 +7,7 @@ echo "install dependencies"
 _OPERATOR_SDK_VERSION=v1.4.2
 
 if ! [ -x "$(command -v operator-sdk)" ]; then
-  if [[ $OSTYPE == "linux-gnu" ]]; then
-    curl -L https://github.com/operator-framework/operator-sdk/releases/download/${_OPERATOR_SDK_VERSION}/operator-sdk_linux_amd64 -o operator-sdk
-  elif [[ $OSTYPE == "darwin-amd64"* ]]; then
-    curl -L https://github.com/operator-framework/operator-sdk/releases/download/${_OPERATOR_SDK_VERSION}/operator-sdk_darwin_amd64 -o operator-sdk
-  fi
+  curl -L "https://github.com/operator-framework/operator-sdk/releases/download/${_OPERATOR_SDK_VERSION}/operator-sdk_$(uname | tr '[:upper:]' '[:lower:]' )_$(uname -p)64" -o operator-sdk
   chmod +x operator-sdk
   sudo mv operator-sdk /usr/local/bin/operator-sdk
 fi
