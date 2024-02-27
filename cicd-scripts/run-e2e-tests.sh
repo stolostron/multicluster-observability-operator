@@ -51,7 +51,7 @@ else
   clusterServerURL=$(kubectl config view -o jsonpath="{.clusters[0].cluster.server}")
   app_domain=$(kubectl -n openshift-ingress-operator get ingresscontrollers default -ojsonpath='{.status.domain}')
   base_domain="${app_domain#apps.}"
-  kubectl apply -f ${ROOTDIR}/operators/multiclusterobservability/config/crd/bases --server-side=true
+  kubectl apply -f ${ROOTDIR}/operators/multiclusterobservability/config/crd/bases --server-side=true --force-conflicts
 fi
 
 OPTIONSFILE=${ROOTDIR}/tests/resources/options.yaml
