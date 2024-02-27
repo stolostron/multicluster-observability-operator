@@ -143,6 +143,7 @@ func removePostponeDeleteAnnotationForManifestwork(c client.Client, namespace st
 }
 
 func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
+	log.Info("Coleen Creating manifestwork", "namespace", work.ObjectMeta.Namespace, "name", work.ObjectMeta.Name)
 	name := work.ObjectMeta.Name
 	namespace := work.ObjectMeta.Namespace
 	found := &workv1.ManifestWork{}
@@ -277,6 +278,7 @@ func createManifestWorks(
 	addonConfig *addonv1alpha1.AddOnDeploymentConfig,
 	installProm bool,
 ) error {
+	log.Info("Coleen Creating manifestworks", "cluster", clusterName, "namespace", clusterNamespace)
 	work := newManifestwork(clusterNamespace+workNameSuffix, clusterNamespace)
 
 	manifests := work.Spec.Workload.Manifests
@@ -544,6 +546,7 @@ func generateObservabilityServerCACerts(client client.Client) (*corev1.Secret, e
 		return nil, err
 	}
 
+	log.Info("Coleen Creating observability server CA certs for namespace", "namespace", spokeNameSpace)
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: corev1.SchemeGroupVersion.String(),

@@ -49,8 +49,6 @@ import (
 )
 
 const (
-	ownerLabelKey                                  = "owner"
-	ownerLabelValue                                = "multicluster-observability-operator"
 	managedClusterObsCertName                      = "observability-managed-cluster-certs"
 	nonOCP                                         = "N/A"
 	disableAddonAutomaticInstallationAnnotationKey = "addon.open-cluster-management.io/disable-automatic-installation"
@@ -159,6 +157,11 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
+	reqLogger.Info("Coleen To list observabilityaddon", "namespace", req.Namespace)
+	for _, ep := range obsAddonList.Items {
+		reqLogger.Info("Coleen To list observabilityaddon", "namespace", ep.Namespace)
+	}
+
 	if !deleteAll {
 		if err := createAllRelatedRes(
 			r.Client,
@@ -201,14 +204,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 	for _, work := range workList.Items {
 		if work.Name != work.Namespace+workNameSuffix {
-			reqLogger.Info("To delete invalid manifestwork", "name", work.Name, "namespace", work.Namespace)
+			reqLogger.Info("Coleen To delete invalid manifestwork", "name", work.Name, "namespace", work.Namespace)
 			err = deleteManifestWork(r.Client, work.Name, work.Namespace)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 		if !slices.Contains(latestClusters, work.Namespace) {
-			reqLogger.Info("To delete manifestwork", "namespace", work.Namespace)
+			reqLogger.Info("Coleen To delete manifestwork", "namespace", work.Namespace)
 			err = deleteManagedClusterRes(r.Client, work.Namespace)
 			if err != nil {
 				return ctrl.Result{}, err
@@ -230,6 +233,67 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			}
 		} else {
 			staleAddons = commonutil.Remove(staleAddons, mcaddon.Namespace)
+		}
+	}
+
+	clusterType := ""
+	isSNO, err := isSNO(ctx, r.Client)
+	if err == nil && isSNO {
+		clusterType = "SNO"
+	}
+	clusterID := "hub-cluster"
+	_, err = getClusterID(ctx, r.Client)
+	if err != nil {
+		// to differentiate ocp 3.x
+		clusterType = "ocp3"
+	}
+	params := HubCollectorParams{
+		isUWL:        false,
+		clusterID:    clusterID,
+		clusterType:  clusterType,
+		obsAddonSpec: *mco.Spec.ObservabilityAddonSpec,
+		//hubInfo:      hubInfo,
+		//allowlist:    list,
+		replicaCount:        1,
+		nodeSelector:        mco.Spec.NodeSelector,
+		tolerations:         mco.Spec.Tolerations,
+		ingressCtlCrdExists: r.CRDMap[config.IngressControllerCRD],
+	}
+
+	metricsCollectorDeployment, err := GenerateMetricsCollectorForHub(r.Client, ctx, mco, params)
+	if err != nil {
+		log.Error(err, "Failed to generate metrics collector deployment")
+		return ctrl.Result{}, err
+	}
+
+	found := &appsv1.Deployment{}
+	err = r.Client.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
+		Namespace: config.GetDefaultNamespace()}, found)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			err = r.Client.Create(ctx, metricsCollectorDeployment)
+			if err != nil {
+				log.Error(err, "Failed to create deployment", "name", metricsCollectorName)
+				return ctrl.Result{}, err
+			}
+			log.Info("Created deployment ", "name", metricsCollectorName)
+		} else {
+			log.Error(err, "Failed to check the deployment", "name", metricsCollectorName)
+			return ctrl.Result{}, err
+		}
+	} else {
+		if !reflect.DeepEqual(metricsCollectorDeployment.Spec.Template.Spec, found.Spec.Template.Spec) ||
+			!reflect.DeepEqual(metricsCollectorDeployment.Spec.Replicas, found.Spec.Replicas) {
+			metricsCollectorDeployment.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
+			if found.Status.ReadyReplicas != 0 {
+				metricsCollectorDeployment.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
+			}
+			err = r.Client.Update(ctx, metricsCollectorDeployment)
+			if err != nil {
+				log.Error(err, "Failed to update deployment", "name", metricsCollectorName)
+				return ctrl.Result{}, err
+			}
+			log.Info("Updated deployment ", "name", metricsCollectorName)
 		}
 	}
 
@@ -314,6 +378,10 @@ func createAllRelatedRes(
 
 	currentClusters := []string{}
 	for _, ep := range obsAddonList.Items {
+		log.Info("Coleen To update observabilityAddon", "namespace", ep.Namespace)
+		if ep.Namespace == "local-cluster" {
+			continue
+		}
 		currentClusters = append(currentClusters, ep.Namespace)
 	}
 
@@ -339,10 +407,13 @@ func createAllRelatedRes(
 	failedCreateManagedClusterRes := false
 	managedClusterListMutex.RLock()
 	for managedCluster, openshiftVersion := range managedClusterList {
+		if managedCluster == "local-cluster" {
+			continue
+		}
 		currentClusters = commonutil.Remove(currentClusters, managedCluster)
 		if isReconcileRequired(request, managedCluster) {
 			log.Info(
-				"Monitoring operator should be installed in cluster",
+				"Coleen Monitoring operator should be installed in cluster",
 				"cluster_name",
 				managedCluster,
 				"request.name",
@@ -376,7 +447,7 @@ func createAllRelatedRes(
 
 	failedDeleteOba := false
 	for _, cluster := range currentClusters {
-		log.Info("To delete observabilityAddon", "namespace", cluster)
+		log.Info("Coleen To delete observabilityAddon", "namespace", cluster)
 		err = deleteObsAddon(c, cluster)
 		if err != nil {
 			failedDeleteOba = true

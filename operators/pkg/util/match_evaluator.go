@@ -2,9 +2,11 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package observabilityendpoint
+package util
 
 import (
+	"regexp"
+
 	"golang.org/x/exp/slices"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -15,7 +17,7 @@ var evaluateFns = map[string]evaluateFn{
 	"clusterType": evaluateClusterType,
 }
 
-func evluateMatchExpression(expr metav1.LabelSelectorRequirement, params ...interface{}) bool {
+func EvaluateMatchExpression(expr metav1.LabelSelectorRequirement, params ...interface{}) bool {
 	if _, ok := evaluateFns[expr.Key]; !ok {
 		// return false if expr.key not defined
 		return false
@@ -33,4 +35,13 @@ func evaluateClusterType(expr metav1.LabelSelectorRequirement, params ...interfa
 		// return false for unsupported/invalid operator
 		return false
 	}
+}
+
+func GetNameInMatch(match string) string {
+	r := regexp.MustCompile(`__name__="([^,]*)"`)
+	m := r.FindAllStringSubmatch(match, -1)
+	if m != nil {
+		return m[0][1]
+	}
+	return ""
 }
