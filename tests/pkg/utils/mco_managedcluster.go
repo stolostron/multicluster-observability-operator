@@ -7,6 +7,7 @@ package utils
 import (
 	"context"
 	"errors"
+	"k8s.io/klog"
 
 	goversion "github.com/hashicorp/go-version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,6 +53,11 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 		metadata := obj.Object["metadata"].(map[string]interface{})
 		name := metadata["name"].(string)
 		labels := metadata["labels"].(map[string]interface{})
+		if name == "local-cluster" {
+			klog.V(1).Infof("Skip OBA status for managedcluster: %v", cluster)
+			continue
+			// no obs addon on local-cluster
+		}
 		if labels != nil {
 			obsControllerStr := ""
 			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok {
