@@ -15,10 +15,17 @@ source ${WORKDIR}/env.sh
 source ${WORKDIR}/install-dependencies.sh
 source ${WORKDIR}/create-cluster.sh
 
+KUBECTL_VERSION=v1.29.2
+
 setup_kubectl_command() {
   if ! command -v kubectl >/dev/null 2>&1; then
     echo "This script will install kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your machine"
-    curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/$(uname | tr '[:upper:]' '[:lower:]')/$(uname -p)64/kubectl"
+    if [[ "$(uname)" == "Linux" ]]; then
+      curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+    elif [[ "$(uname)" == "Darwin" ]]; then
+      curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/darwin/$(uname -p)/kubectl"
+    fi
+
     chmod +x ./kubectl
     sudo mv ./kubectl /usr/local/bin/kubectl
   fi

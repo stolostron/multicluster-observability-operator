@@ -63,16 +63,23 @@ LATEST_SNAPSHOT="${LATEST_SNAPSHOT%\"}"
 # install kubectl
 if ! command -v kubectl &>/dev/null; then
   echo "This script will install kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your machine"
-  curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/$(uname | tr '[:upper:]' '[:lower:]')/$(uname -p)64/kubectl"
-  chmod +x ./kubectl && mv ./kubectl ${ROOTDIR}/bin/kubectl
+  if [[ "$(uname)" == "Linux" ]]; then
+    curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+  elif [[ "$(uname)" == "Darwin" ]]; then
+    curl -LO curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/darwin/$(uname -m)/kubectl"
+  fi
 fi
 
 # install kustomize
 if ! command -v kustomize &>/dev/null; then
   echo "This script will install kustomize (sigs.k8s.io/kustomize/kustomize) on your machine"
-  curl -o kustomize_${KUSTOMIZE_VERSION}.tar.gz -L "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_$(uname | tr '[:upper:]' '[:lower:]')_$(uname -p)64.tar.gz"
+  if [[ "$(uname)" == "Linux" ]]; then
+    curl -o kustomize_${KUSTOMIZE_VERSION}.tar.gz -L "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
+  elif [[ "$(uname)" == "Darwin" ]]; then
+    curl -o kustomize_${KUSTOMIZE_VERSION}.tar.gz -L "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_darwin_$(uname -m).tar.gz"
+  fi
   tar xzvf kustomize_${KUSTOMIZE_VERSION}.tar.gz
-  chmod +x ./kustomize && mv ./kustomize ${ROOTDIR}/bin/kustomize
+
 fi
 
 # deploy the hub and spoke core via OLM
