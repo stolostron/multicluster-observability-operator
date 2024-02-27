@@ -24,7 +24,7 @@ func getClusterPreds() predicate.Funcs {
 	createFunc := func(e event.CreateEvent) bool {
 		log.Info("CreateFunc", "managedCluster", e.Object.GetName())
 		if e.Object.GetName() == "local-cluster" {
-			return false
+			delete(managedClusterList, "local-cluster")
 		}
 
 		if isAutomaticAddonInstallationDisabled(e.Object) {
@@ -40,9 +40,6 @@ func getClusterPreds() predicate.Funcs {
 
 	updateFunc := func(e event.UpdateEvent) bool {
 		log.Info("UpdateFunc", "managedCluster", e.ObjectNew.GetName())
-		if e.ObjectNew.GetName() == "local-cluster" {
-			return false
-		}
 
 		if e.ObjectNew.GetResourceVersion() == e.ObjectOld.GetResourceVersion() {
 			return false
@@ -69,9 +66,6 @@ func getClusterPreds() predicate.Funcs {
 
 	deleteFunc := func(e event.DeleteEvent) bool {
 		log.Info("DeleteFunc", "managedCluster", e.Object.GetName())
-		if e.Object.GetName() == "local-cluster" {
-			return false
-		}
 
 		if isAutomaticAddonInstallationDisabled(e.Object) {
 			return false
