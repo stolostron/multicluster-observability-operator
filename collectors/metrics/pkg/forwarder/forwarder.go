@@ -204,7 +204,6 @@ func createClients(cfg Config, metrics *metricsclient.ClientMetrics, interval ti
 type workerMetrics struct {
 	gaugeFederateSamples         prometheus.Gauge
 	gaugeFederateFilteredSamples prometheus.Gauge
-	gaugeFederateErrors          prometheus.Gauge
 
 	clientMetrics *metricsclient.ClientMetrics
 }
@@ -219,20 +218,22 @@ func NewWorkerMetrics(reg *prometheus.Registry) *workerMetrics {
 			Name: "federate_filtered_samples",
 			Help: "Tracks the number of samples filtered per federation",
 		}),
-		gaugeFederateErrors: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "federate_errors",
-			Help: "The number of times forwarding federated metrics has failed",
-		}),
 
 		clientMetrics: &metricsclient.ClientMetrics{
-			GaugeRequestRetrieve: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
-				Name: "metricsclient_request_retrieve",
-				Help: "Tracks the number of metrics retrievals",
-			}, []string{"client", "status_code"}),
 			GaugeRequestSend: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
 				Name: "metricsclient_request_send",
 				Help: "Tracks the number of metrics sends",
 			}, []string{"client", "status_code"}),
+
+			FederateRequests: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+				Name: "federate_requests_total",
+				Help: "The number of times federating metrics",
+			}, []string{"type", "status_code"}),
+
+			ForwardRemoteWriteRequests: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+				Name: "forward_write_requests_total",
+				Help: "Counter of forward remote write requests.",
+			}, []string{"status_code"}),
 		},
 	}
 }
@@ -351,7 +352,6 @@ func (w *Worker) Run(ctx context.Context) {
 		w.lock.Unlock()
 
 		if err := w.forward(ctx); err != nil {
-			w.metrics.gaugeFederateErrors.Inc()
 			rlogger.Log(w.logger, rlogger.Error, "msg", "unable to forward results", "err", err)
 			wait = time.Minute
 		}

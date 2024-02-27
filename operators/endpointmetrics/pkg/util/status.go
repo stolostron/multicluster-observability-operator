@@ -34,7 +34,10 @@ var (
 	}
 )
 
-func ReportStatus(ctx context.Context, client client.Client, i *oav1beta1.ObservabilityAddon, t string) {
+func ReportStatus(ctx context.Context, client client.Client, i *oav1beta1.ObservabilityAddon, t string, reportStatus bool) {
+	if !reportStatus {
+		return
+	}
 	i.Status.Conditions = []oav1beta1.StatusCondition{
 		{
 			Type:               conditions[t]["type"],

@@ -35,7 +35,7 @@ func (o *ObservabilityAgent) GetAgentAddonOptions() agent.AgentAddonOptions {
 			PermissionConfig: func(cluster *clusterv1.ManagedCluster, addon *addonapiv1alpha1.ManagedClusterAddOn) error {
 				return nil
 			},
-			CSRSign: sign,
+			CSRSign: Sign,
 		},
 	}
 }

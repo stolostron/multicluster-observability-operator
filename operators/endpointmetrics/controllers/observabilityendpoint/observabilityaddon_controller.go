@@ -10,12 +10,15 @@ import (
 	"os"
 	"strconv"
 
+	operatorutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
+
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -24,6 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
@@ -32,7 +37,6 @@ import (
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
-	operatorutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 var (
@@ -42,18 +46,21 @@ var (
 )
 
 const (
-	obAddonName       = "observability-addon"
-	mcoCRName         = "observability"
-	ownerLabelKey     = "owner"
-	ownerLabelValue   = "observabilityaddon"
-	obsAddonFinalizer = "observability.open-cluster-management.io/addon-cleanup"
-	promSvcName       = "prometheus-k8s"
-	promNamespace     = "openshift-monitoring"
+	obAddonName                     = "observability-addon"
+	mcoCRName                       = "observability"
+	ownerLabelKey                   = "owner"
+	ownerLabelValue                 = "observabilityaddon"
+	obsAddonFinalizer               = "observability.open-cluster-management.io/addon-cleanup"
+	promSvcName                     = "prometheus-k8s"
+	promNamespace                   = "openshift-monitoring"
+	openShiftClusterMonitoringlabel = "openshift.io/cluster-monitoring"
+	hubMetricsCollectionNamespace   = "open-cluster-management-observability"
 )
 
 var (
-	namespace    = os.Getenv("WATCH_NAMESPACE")
-	hubNamespace = os.Getenv("HUB_NAMESPACE")
+	namespace           = os.Getenv("WATCH_NAMESPACE")
+	hubNamespace        = os.Getenv("HUB_NAMESPACE")
+	hubMetricsCollector = os.Getenv("HUB_ENDPOINT_OPERATOR") == "true"
 )
 
 // ObservabilityAddonReconciler reconciles a ObservabilityAddon object.
@@ -75,35 +82,6 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	log := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	log.Info("Reconciling")
 
-	// Fetch the ObservabilityAddon instance in hub cluster
-	hubObsAddon := &oav1beta1.ObservabilityAddon{}
-	err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
-	if err != nil {
-		hubClient, obsAddon, err := util.RenewAndRetry(ctx)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		r.HubClient = hubClient
-		hubObsAddon = obsAddon
-	}
-
-	// Fetch the ObservabilityAddon instance in local cluster
-	obsAddon := &oav1beta1.ObservabilityAddon{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: namespace}, obsAddon)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			obsAddon = nil
-		} else {
-			log.Error(err, "Failed to get observabilityaddon", "namespace", namespace)
-			return ctrl.Result{}, err
-		}
-	}
-
-	// Init finalizers
-	deleteFlag := false
-	if obsAddon == nil {
-		deleteFlag = true
-	}
 	isHypershift := true
 	if os.Getenv("UNIT_TEST") != "true" {
 		crdClient, err := operatorutil.GetOrCreateCRDClient()
@@ -115,17 +93,55 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, err
 		}
 	}
-	deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	if deleted || deleteFlag {
-		return ctrl.Result{}, nil
+	hubObsAddon := &oav1beta1.ObservabilityAddon{}
+	obsAddon := &oav1beta1.ObservabilityAddon{}
+	deleteFlag := false
+
+	// ACM 8509: Special case for hub/local cluster metrics collection
+	// We do not have an ObservabilityAddon instance in the local cluster so skipping the below block
+	if !hubMetricsCollector {
+		if err := r.ensureOpenShiftMonitoringLabelAndRole(ctx); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		// Fetch the ObservabilityAddon instance in hub cluster
+		err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
+		if err != nil {
+			hubClient, obsAddon, err := util.RenewAndRetry(ctx)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			r.HubClient = hubClient
+			hubObsAddon = obsAddon
+		}
+
+		// Fetch the ObservabilityAddon instance in local cluster
+		err = r.Client.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: namespace}, obsAddon)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				obsAddon = nil
+			} else {
+				log.Error(err, "Failed to get observabilityaddon", "namespace", namespace)
+				return ctrl.Result{}, err
+			}
+		}
+
+		if obsAddon == nil {
+			deleteFlag = true
+		}
+		// Init finalizers
+		deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if deleted || deleteFlag {
+			return ctrl.Result{}, nil
+		}
 	}
 
 	// retrieve the hubInfo
 	hubSecret := &corev1.Secret{}
-	err = r.Client.Get(
+	err := r.Client.Get(
 		ctx,
 		types.NamespacedName{Name: operatorconfig.HubInfoSecretName, Namespace: namespace},
 		hubSecret,
@@ -169,7 +185,9 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		if err != nil {
 			if errors.IsNotFound(err) {
 				log.Error(err, "OCP prometheus service does not exist")
-				util.ReportStatus(ctx, r.Client, obsAddon, "NotSupported")
+				// ACM 8509: Special case for hub/local cluster metrics collection
+				// We do not report status for hub endpoint operator
+				util.ReportStatus(ctx, r.Client, obsAddon, "NotSupported", !hubMetricsCollector)
 				return ctrl.Result{}, nil
 			}
 			log.Error(err, "Failed to check prometheus resource")
@@ -222,11 +240,11 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	if obsAddon.Spec.EnableMetrics {
-		forceRestart := false
-		if req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == caConfigmapName {
-			forceRestart = true
-		}
+	forceRestart := false
+	if req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == caConfigmapName {
+		forceRestart = true
+	}
+	if obsAddon.Spec.EnableMetrics || hubMetricsCollector {
 		created, err := updateMetricsCollectors(
 			ctx,
 			r.Client,
@@ -237,11 +255,11 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			forceRestart)
 
 		if err != nil {
-			util.ReportStatus(ctx, r.Client, obsAddon, "Degraded")
+			util.ReportStatus(ctx, r.Client, obsAddon, "Degraded", !hubMetricsCollector)
 			return ctrl.Result{}, err
 		}
 		if created {
-			util.ReportStatus(ctx, r.Client, obsAddon, "Deployed")
+			util.ReportStatus(ctx, r.Client, obsAddon, "Deployed", !hubMetricsCollector)
 		}
 	} else {
 		deleted, err := updateMetricsCollectors(ctx, r.Client, obsAddon.Spec, *hubInfo, clusterID, clusterType, 0, false)
@@ -249,7 +267,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, err
 		}
 		if deleted {
-			util.ReportStatus(ctx, r.Client, obsAddon, "Disabled")
+			util.ReportStatus(ctx, r.Client, obsAddon, "Disabled", !hubMetricsCollector)
 		}
 	}
 
@@ -325,6 +343,100 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 	return false, nil
 }
 
+func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx context.Context) error {
+	existingNs := &corev1.Namespace{}
+	resNS := namespace
+
+	role := rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "prometheus-k8s-addon-obs",
+			Namespace: resNS,
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{""},
+				Resources: []string{"services", "endpoints", "pods"},
+				Verbs:     []string{"get", "list", "watch"},
+			},
+		},
+	}
+
+	roleBinding := rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "prometheus-k8s-addon-obs",
+			Namespace: resNS,
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "Role",
+			Name:     "prometheus-k8s-addon-obs",
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      "prometheus-k8s",
+				Namespace: "openshift-monitoring",
+			},
+		},
+	}
+
+	err := r.Client.Get(ctx, types.NamespacedName{Name: resNS}, existingNs)
+	if err != nil || errors.IsNotFound(err) {
+		log.Error(err, fmt.Sprintf("Failed to find namespace for Endpoint Operator: %s", resNS))
+		return err
+	}
+
+	if existingNs.ObjectMeta.Labels == nil || len(existingNs.ObjectMeta.Labels) == 0 {
+		existingNs.ObjectMeta.Labels = make(map[string]string)
+	}
+
+	if _, ok := existingNs.ObjectMeta.Labels[openShiftClusterMonitoringlabel]; !ok {
+		log.Info(fmt.Sprintf("Adding label: %s to namespace: %s", openShiftClusterMonitoringlabel, resNS))
+		existingNs.ObjectMeta.Labels[openShiftClusterMonitoringlabel] = "true"
+
+		err = r.Client.Update(ctx, existingNs)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Failed to update namespace for Endpoint Operator: %s with the label: %s",
+				namespace, openShiftClusterMonitoringlabel))
+			return err
+		}
+	}
+
+	foundRole := &rbacv1.Role{}
+	err = r.Client.Get(ctx, types.NamespacedName{Name: role.Name, Namespace: resNS}, foundRole)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info(fmt.Sprintf("Creating role: %s in namespace: %s", role.Name, resNS))
+			err = r.Client.Create(ctx, &role)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Failed to create role: %s in namespace: %s", role.Name, resNS))
+				return err
+			}
+		} else {
+			log.Error(err, fmt.Sprintf("Failed to get role: %s in namespace: %s", role.Name, resNS))
+			return err
+		}
+	}
+
+	foundRoleBinding := &rbacv1.RoleBinding{}
+	err = r.Client.Get(ctx, types.NamespacedName{Name: roleBinding.Name, Namespace: resNS}, foundRoleBinding)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info(fmt.Sprintf("Creating role binding: %s in namespace: %s", roleBinding.Name, resNS))
+			err = r.Client.Create(ctx, &roleBinding)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Failed to create role binding: %s in namespace: %s", roleBinding.Name, resNS))
+				return err
+			}
+		} else {
+			log.Error(err, fmt.Sprintf("Failed to get role binding: %s in namespace: %s", roleBinding.Name, resNS))
+			return err
+		}
+	}
+
+	return nil
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if os.Getenv("NAMESPACE") != "" {
@@ -394,6 +506,24 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			&source.Kind{Type: &appsv1.StatefulSet{}},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, uwlNamespace, true, false, true)),
+		).
+		// Watch the kube-system extension-apiserver-authentication ConfigMap for changes
+		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, handler.EnqueueRequestsFromMapFunc(
+			func(a client.Object) []reconcile.Request {
+				if a.GetName() == "extension-apiserver-authentication" && a.GetNamespace() == "kube-system" {
+					return []reconcile.Request{
+						{NamespacedName: types.NamespacedName{
+							Name:      "metrics-collector-clientca-metric",
+							Namespace: namespace,
+						}},
+						{NamespacedName: types.NamespacedName{
+							Name:      "uwl-metrics-collector-clientca-metric",
+							Namespace: namespace,
+						}},
+					}
+				}
+				return nil
+			}), builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
 		).
 		Complete(r)
 }
