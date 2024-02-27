@@ -3,7 +3,20 @@
 [![Build](https://img.shields.io/badge/build-Prow-informational)](https://prow.ci.openshift.org/?repo=stolostron%2F${multicluster-observability-operator})
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=stolostron_multicluster-observability-operator&metric=alert_status&token=3452dcca82a98e4aa297c1b31fd21939288db4c0)](https://sonarcloud.io/dashboard?id=stolostron_multicluster-observability-operator)
 
-This document attempts to explain how the different components in Open Cluster Management Observabilty come together to deliver multicluster fleet observability. We do leverage several open source projects: [Grafana](https://github.com/grafana/grafana), [Alertmanager](https://github.com/prometheus/alertmanager), [Thanos](https://github.com/thanos-io/thanos/), [Observatorium Operator and API Gateway](https://github.com/observatorium), [Prometheus](https://github.com/prometheus/prometheus); We also leverage a few [Open Cluster Mangement projects](https://open-cluster-management.io/) namely - [Cluster Manager or Registration Operator](https://github.com/stolostron/registration-operator), [Klusterlet](https://github.com/stolostron/registration-operator). The multicluster-observability operator is the root operator which pulls in all things needed.
+This document attempts to explain how the different components in Open Cluster Management Observability come together
+to deliver multicluster fleet observability. We leverage several open source projects: 
+1. [Grafana](https://github.com/grafana/grafana)
+2. [Alertmanager](https://github.com/prometheus/alertmanager)
+3. [Thanos](https://github.com/thanos-io/thanos/)
+4. [Observatorium Operator and API Gateway](https://github.com/observatorium)
+5. [Prometheus](https://github.com/prometheus/prometheus) 
+
+We also leverage a few [Open Cluster Management projects](https://open-cluster-management.io/) namely:
+
+1. [Cluster Manager or Registration Operator](https://github.com/stolostron/registration-operator)
+2. [Klusterlet](https://github.com/stolostron/registration-operator).
+
+The multicluster-observability operator is the root operator which pulls in all the required components.
 
 ## Conceptual Diagram
 
@@ -186,4 +199,3 @@ kubectl -n open-cluster-management-observability delete -k examples/minio
 kubectl delete ns open-cluster-management-observability
 ```
 
-Rebuild Image: Wed Jan 25 15:08:26 EST 2023
