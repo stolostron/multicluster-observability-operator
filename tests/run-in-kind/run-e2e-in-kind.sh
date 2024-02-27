@@ -16,11 +16,7 @@ source ${WORKDIR}/env.sh
 setup_kubectl_command() {
   if ! command -v kubectl >/dev/null 2>&1; then
     echo "This script will install kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your machine"
-    if [[ "$(uname)" == "Linux" ]]; then
-      curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.18.0/bin/linux/amd64/kubectl
-    elif [[ "$(uname)" == "Darwin" ]]; then
-      curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.18.0/bin/darwin/amd64/kubectl
-    fi
+    curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/$(uname | tr '[:upper:]' '[:lower:]')/$(uname -p)64/kubectl"
     chmod +x ./kubectl
     sudo mv ./kubectl /usr/local/bin/kubectl
   fi
@@ -29,9 +25,9 @@ setup_kubectl_command() {
 create_kind_cluster() {
   if ! command -v kind >/dev/null 2>&1; then
     echo "This script will install kind (https://kind.sigs.k8s.io/) on your machine."
-    curl -Lo ./kind-amd64 "https://kind.sigs.k8s.io/dl/v0.10.0/kind-$(uname)-amd64"
-    chmod +x ./kind-amd64
-    sudo mv ./kind-amd64 /usr/local/bin/kind
+    curl -Lo "./kind-$(uname -p)64" "https://kind.sigs.k8s.io/dl/v0.10.0/kind-$(uname)-$(uname -p)64"
+    chmod +x "./kind-$(uname -p)64"
+    sudo mv "./kind-$(uname -p)64" /usr/local/bin/kind
   fi
   echo "Delete the KinD cluster if exists"
   kind delete cluster --name $1 || true
