@@ -4,6 +4,8 @@
 
 package config
 
+import corev1 "k8s.io/api/core/v1"
+
 const (
 	ClusterNameKey                  = "cluster-name"
 	HubInfoSecretName               = "hub-info-secret"
@@ -23,6 +25,9 @@ const (
 	UwlMetricsConfigMapKey       = "uwl_metrics_list.yaml"
 	PrometheusUserWorkload       = "prometheus-user-workload"
 	MetricsOcp311ConfigMapKey    = "ocp311_metrics_list.yaml"
+	CaConfigmapName              = "metrics-collector-serving-certs-ca-bundle"
+	HubMetricsCollectorMtlsCert  = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
+	ClientCACertificateCN        = "observability-client-ca-certificate"
 )
 
 const (
@@ -65,4 +70,9 @@ var (
 		MetricsCollectorKey:            MetricsCollectorImgName,
 		PrometheusConfigmapReloaderKey: PrometheusConfigmapReloaderImgName,
 	}
+)
+
+var (
+	HubMetricsCollectorResources = corev1.ResourceRequirements{}
+	IsMCOTerminating             = false
 )

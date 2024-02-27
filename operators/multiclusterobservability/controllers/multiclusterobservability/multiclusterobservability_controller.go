@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
 	"golang.org/x/exp/slices"
@@ -165,10 +167,10 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// Init finalizers
-	isTerminating, err := r.initFinalization(instance)
+	operatorconfig.IsMCOTerminating, err = r.initFinalization(instance)
 	if err != nil {
 		return ctrl.Result{}, err
-	} else if isTerminating {
+	} else if operatorconfig.IsMCOTerminating {
 		reqLogger.Info("MCO instance is in Terminating status, skip the reconcile")
 		return ctrl.Result{}, err
 	}
@@ -361,11 +363,15 @@ func (r *MultiClusterObservabilityReconciler) initFinalization(
 	if mco.GetDeletionTimestamp() != nil && slices.Contains(mco.GetFinalizers(), resFinalizer) {
 		log.Info("To delete resources across namespaces")
 		// clean up the cluster resources, eg. clusterrole, clusterrolebinding, etc
+		operatorconfig.IsMCOTerminating = true
 		if err := cleanUpClusterScopedResources(r, mco); err != nil {
 			log.Error(err, "Failed to remove cluster scoped resources")
 			return false, err
 		}
-
+		if err := placementctrl.DeleteHubMetricsCollectionDeployments(r.Client); err != nil {
+			log.Error(err, "Failed to delete hub metrics collection deployments and resources")
+			return false, err
+		}
 		// clean up operand names
 		config.CleanUpOperandNames()
 

@@ -260,6 +260,13 @@ const (
 	ResourceTypeSecret    = "Secret"
 )
 
+const (
+	HubEndpointOperatorName    = "endpoint-observability-operator"
+	HubMetricsCollectorName    = "metrics-collector-deployment"
+	HubUwlMetricsCollectorName = "uwl-metrics-collector-deployment"
+	HubUwlMetricsCollectorNs   = "openshift-user-workload-monitoring"
+)
+
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation.
 type ObjectStorgeConf struct {
 	Type   string `yaml:"type"`

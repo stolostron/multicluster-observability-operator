@@ -37,7 +37,8 @@ func getPred(name string, namespace string,
 	}
 	if update {
 		updateFunc = func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == name && (namespace == "" || e.ObjectNew.GetNamespace() == namespace) &&
+			if e.ObjectNew.GetName() == name &&
+				(namespace == "" || e.ObjectNew.GetNamespace() == namespace) &&
 				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
 				// also check objectNew string in case Kind is empty
 				if strings.HasPrefix(fmt.Sprint(e.ObjectNew), "&Deployment") ||

@@ -65,6 +65,7 @@ var (
 	isplacementControllerRunnning = false
 	managedClusterList            = map[string]string{}
 	managedClusterListMutex       = &sync.RWMutex{}
+	installMetricsWithoutAddon    = false
 )
 
 // PlacementRuleReconciler reconciles a PlacementRule object
@@ -93,6 +94,25 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling PlacementRule")
 
+	// ACM 8509: Special case for hub/local cluster metrics collection
+	// We want to ensure that the local-cluster is always in the managedClusterList
+	// In the case when hubSelfManagement is enabled, we will delete it from the list and modify the object
+	// to cater to the use case of deploying in open-cluster-management-observability namespace
+	delete(managedClusterList, "local-cluster")
+	if _, ok := managedClusterList["local-cluster"]; !ok {
+		obj := &clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "local-cluster",
+				Namespace: config.GetDefaultNamespace(),
+				Labels: map[string]string{
+					"openshiftVersion": "mimical",
+				},
+			},
+		}
+		installMetricsWithoutAddon = true
+		updateManagedClusterList(obj)
+	}
+
 	if config.GetMonitoringCRName() == "" {
 		reqLogger.Info("multicluster observability resource is not available")
 		return ctrl.Result{}, nil
@@ -108,6 +128,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			deleteAll = true
+			delete(managedClusterList, "local-cluster")
 		} else {
 			// Error reading the object - requeue the request.
 			return ctrl.Result{}, err
@@ -159,6 +180,30 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
+	if !deleteAll && installMetricsWithoutAddon {
+		obsAddonList.Items = append(obsAddonList.Items, mcov1beta1.ObservabilityAddon{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      obsAddonName,
+				Namespace: config.GetDefaultNamespace(),
+				Labels: map[string]string{
+					ownerLabelKey: ownerLabelValue,
+				},
+			},
+		})
+		operatorconfig.HubMetricsCollectorResources = *config.GetOBAResources(mco.Spec.ObservabilityAddonSpec)
+		err = deleteObsAddon(r.Client, localClusterName)
+		if err != nil {
+			log.Error(err, "Failed to delete observabilityaddon")
+			return ctrl.Result{}, err
+		}
+		err = deleteManagedClusterRes(r.Client, localClusterName)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+	if operatorconfig.IsMCOTerminating {
+		delete(managedClusterList, "local-cluster")
+	}
 	if !deleteAll {
 		if err := createAllRelatedRes(
 			r.Client,
@@ -201,6 +246,9 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 	for _, work := range workList.Items {
 		if work.Name != work.Namespace+workNameSuffix {
+			// ACM 8509: Special case for hub metrics collector
+			// In the upgrade case we want to clean up the obs add on and manifest work that was created
+			// for local-cluster before the upgrade that is why we check for the local-cluster namespace
 			reqLogger.Info("To delete invalid manifestwork", "name", work.Name, "namespace", work.Namespace)
 			err = deleteManifestWork(r.Client, work.Name, work.Namespace)
 			if err != nil {
@@ -349,6 +397,8 @@ func createAllRelatedRes(
 				request.Name,
 				"request.namespace",
 				request.Namespace,
+				"openshiftVersion",
+				openshiftVersion,
 			)
 			if openshiftVersion == "3" {
 				err = createManagedClusterRes(c, mco,
@@ -358,6 +408,12 @@ func createAllRelatedRes(
 				err = createManagedClusterRes(c, mco,
 					managedCluster, managedCluster,
 					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, true)
+			} else if openshiftVersion == "mimical" {
+				// Create copy of hub-info-secret for local-cluster since hubInfo is global variable
+				hubInfoSecretCopy := hubInfoSecret.DeepCopy()
+				err = createManagedClusterRes(c, mco,
+					managedCluster, config.GetDefaultNamespace(),
+					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecretCopy, false)
 			} else {
 				err = createManagedClusterRes(c, mco,
 					managedCluster, managedCluster,
@@ -376,11 +432,12 @@ func createAllRelatedRes(
 
 	failedDeleteOba := false
 	for _, cluster := range currentClusters {
-		log.Info("To delete observabilityAddon", "namespace", cluster)
-		err = deleteObsAddon(c, cluster)
-		if err != nil {
-			failedDeleteOba = true
-			log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
+		if cluster != config.GetDefaultNamespace() {
+			err = deleteObsAddon(c, cluster)
+			if err != nil {
+				failedDeleteOba = true
+				log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
+			}
 		}
 	}
 
@@ -542,6 +599,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// Watch changes for AddonDeploymentConfig
 	AddonDeploymentPred := GetAddOnDeploymentPredicates()
 
+	// Watch changes to endpoint-operator deployment
+	hubEndpointOperatorPred := getHubEndpointOperatorPredicates()
+
 	obsAddonPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			return false
@@ -549,6 +609,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.ObjectNew.GetName() == obsAddonName &&
 				e.ObjectNew.GetLabels()[ownerLabelKey] == ownerLabelValue &&
+				e.ObjectNew.GetNamespace() != localClusterName &&
 				!reflect.DeepEqual(e.ObjectNew.(*mcov1beta1.ObservabilityAddon).Status.Conditions,
 					e.ObjectOld.(*mcov1beta1.ObservabilityAddon).Status.Conditions) {
 				return true
@@ -557,7 +618,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			if e.Object.GetName() == obsAddonName &&
-				e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue {
+				e.Object.GetLabels()[ownerLabelKey] == ownerLabelValue &&
+				e.Object.GetNamespace() != localClusterName {
 				log.Info(
 					"DeleteFunc",
 					"obsAddonNamespace",
@@ -635,6 +697,10 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
+			if e.Object.GetName() == config.ServerCACerts &&
+				e.Object.GetNamespace() == config.GetDefaultNamespace() {
+				return true
+			}
 			return false
 		},
 	}
@@ -920,6 +986,40 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}
 	}
 
+	// ACM 8509: Special case for hub/local cluster metrics collection
+	// secondary watch for hub endpoint operator deployment
+
+	ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(hubEndpointOperatorPred)).
+		Watches(
+			&source.Kind{Type: &corev1.Secret{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(operatorconfig.HubInfoSecretName, config.GetDefaultNamespace(), false, false, true)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.Secret{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(operatorconfig.HubMetricsCollectorMtlsCert, config.GetDefaultNamespace(), false, false, true)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.Secret{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(managedClusterObsCertName, config.GetDefaultNamespace(), false, false, true)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.ConfigMap{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(operatorconfig.ImageConfigMap, config.GetDefaultNamespace(), false, false, true)),
+		).
+		Watches(
+			&source.Kind{Type: &appsv1.StatefulSet{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, config.HubUwlMetricsCollectorNs, true, false, true)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.Secret{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(config.AlertmanagerAccessorSecretName, config.GetDefaultNamespace(), false, false, true)),
+		)
 	// create and return a new controller
 	return ctrBuilder.Complete(r)
 }

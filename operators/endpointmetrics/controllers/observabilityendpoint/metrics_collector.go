@@ -14,12 +14,14 @@ import (
 	"strings"
 	"time"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
@@ -31,12 +33,15 @@ import (
 const (
 	metricsCollectorName    = "metrics-collector-deployment"
 	uwlMetricsCollectorName = "uwl-metrics-collector-deployment"
+	metricsCollector        = "metrics-collector"
+	uwlMetricsCollector     = "uwl-metrics-collector"
 	selectorKey             = "component"
-	selectorValue           = "metrics-collector"
+	selectorValue           = metricsCollector
 	caMounthPath            = "/etc/serving-certs-ca-bundle"
 	caVolName               = "serving-certs-ca-bundle"
 	mtlsCertName            = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
 	mtlsCaName              = "observability-managed-cluster-certs"
+	mtlsServerCaName        = "observability-server-ca-certs"
 	limitBytes              = 1073741824
 	defaultInterval         = "30s"
 	uwlNamespace            = "openshift-user-workload-monitoring"
@@ -88,6 +93,7 @@ func getCommands(params CollectorParams) []string {
 	}
 	commands := []string{
 		"/usr/bin/metrics-collector",
+		"--listen=:8080",
 		"--from=$(FROM)",
 		"--from-query=$(FROM_QUERY)",
 		"--to-upload=$(TO)",
@@ -112,7 +118,12 @@ func getCommands(params CollectorParams) []string {
 	for _, group := range params.allowlist.CollectRuleGroupList {
 		if group.Selector.MatchExpression != nil {
 			for _, expr := range group.Selector.MatchExpression {
-				if !evluateMatchExpression(expr, clusterID, params.clusterType, params.obsAddonSpec, params.hubInfo,
+				if hubMetricsCollector {
+					if !evluateMatchExpression(expr, clusterID, params.clusterType, params.hubInfo,
+						params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount) {
+						continue
+					}
+				} else if !evluateMatchExpression(expr, clusterID, params.clusterType, params.obsAddonSpec, params.hubInfo,
 					params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount) {
 					continue
 				}
@@ -171,6 +182,14 @@ func getCommands(params CollectorParams) []string {
 }
 
 func createDeployment(params CollectorParams) *appsv1.Deployment {
+	mtlsCaSecretName := mtlsCaName
+	if hubMetricsCollector {
+		mtlsCaSecretName = mtlsServerCaName
+	}
+	secretName := metricsCollector
+	if params.isUWL {
+		secretName = uwlMetricsCollector
+	}
 	volumes := []corev1.Volume{
 		{
 			Name: "mtlscerts",
@@ -184,7 +203,33 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			Name: "mtlsca",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: mtlsCaName,
+					SecretName: mtlsCaSecretName,
+				},
+			},
+		},
+		{
+			Name: "secret-kube-rbac-proxy-tls",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: secretName + "-kube-rbac-tls",
+				},
+			},
+		},
+		{
+			Name: "secret-kube-rbac-proxy-metric",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: secretName + "-kube-rbac-proxy-metric",
+				},
+			},
+		},
+		{
+			Name: "metrics-client-ca",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: secretName + "-clientca-metric",
+					},
 				},
 			},
 		},
@@ -245,7 +290,7 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			Replicas: int32Ptr(params.replicaCount),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					selectorKey: selectorValue,
+					selectorKey: secretName,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
@@ -255,14 +300,14 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 						operatorconfig.WorkloadPartitioningPodAnnotationKey: operatorconfig.WorkloadPodExpectedValueJSON,
 					},
 					Labels: map[string]string{
-						selectorKey: selectorValue,
+						selectorKey: secretName,
 					},
 				},
 				Spec: corev1.PodSpec{
 					ServiceAccountName: serviceAccountName,
 					Containers: []corev1.Container{
 						{
-							Name:    "metrics-collector",
+							Name:    metricsCollector,
 							Image:   rendering.Images[operatorconfig.MetricsCollectorKey],
 							Command: commands,
 							Env: []corev1.EnvVar{
@@ -281,6 +326,12 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 							},
 							VolumeMounts:    mounts,
 							ImagePullPolicy: corev1.PullIfNotPresent,
+							Ports: []corev1.ContainerPort{
+								{
+									ContainerPort: 8080,
+									Name:          "metrics",
+								},
+							},
 						},
 					},
 					Volumes:      volumes,
@@ -314,6 +365,18 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			})
 	}
 
+	if hubMetricsCollector {
+		//to avoid hub metrics collector from sending status
+		metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
+			corev1.EnvVar{
+				Name:  "STANDALONE",
+				Value: "true",
+			})
+
+		//Since there is no obsAddOn for hub-metrics-collector, we need to set the resources here
+		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = operatorconfig.HubMetricsCollectorResources
+	}
+
 	privileged := false
 	readOnlyRootFilesystem := true
 
@@ -326,6 +389,139 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *params.obsAddonSpec.Resources
 	}
 	return metricsCollectorDep
+}
+
+func createService(params CollectorParams) *corev1.Service {
+	name := metricsCollector
+	if params.isUWL {
+		name = uwlMetricsCollector
+	}
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				selectorKey: name,
+			},
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+				"service.beta.openshift.io/serving-cert-secret-name": name + "-kube-rbac-tls",
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: map[string]string{
+				selectorKey: name,
+			},
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "metrics",
+					Port:       8080,
+					TargetPort: intstr.FromString("metrics"),
+				},
+			},
+			Type: corev1.ServiceTypeClusterIP,
+		},
+	}
+}
+
+func createAlertingRule(params CollectorParams) *monitoringv1.PrometheusRule {
+	name := metricsCollector
+	alert := "MetricsCollector"
+	replace := "acm_metrics_collector_"
+	if params.isUWL {
+		name = uwlMetricsCollector
+		alert = "UWLMetricsCollector"
+		replace = "acm_uwl_metrics_collector_"
+	}
+
+	return &monitoringv1.PrometheusRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "acm-" + name + "-alerting-rules",
+			Namespace: namespace,
+		},
+		Spec: monitoringv1.PrometheusRuleSpec{
+			Groups: []monitoringv1.RuleGroup{
+				{
+					Name: name + "-rules",
+					Rules: []monitoringv1.Rule{
+						{
+							Alert: "ACM" + alert + "FederationError",
+							Annotations: map[string]string{
+								"summary":     "Error federating from in-cluster Prometheus.",
+								"description": "There are errors when federating from platform Prometheus",
+							},
+							Expr: intstr.FromString(`(sum by (status_code, type) (rate(` + replace + `federate_requests_total{status_code!~"2.*"}[10m]))) > 10`),
+							For:  "10m",
+							Labels: map[string]string{
+								"severity": "critical",
+							},
+						},
+						{
+							Alert: "ACM" + alert + "ForwardRemoteWriteError",
+							Annotations: map[string]string{
+								"summary":     "Error forwarding to Hub Thanos.",
+								"description": "There are errors when remote writing to Hub hub Thanos",
+							},
+							Expr: intstr.FromString(`(sum by (status_code, type) (rate(` + replace + `forward_write_requests_total{status_code!~"2.*"}[10m]))) > 10`),
+							For:  "10m",
+							Labels: map[string]string{
+								"severity": "critical",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// createServiceMonitor creates a ServiceMonitor for the metrics collector.
+func createServiceMonitor(params CollectorParams) *monitoringv1.ServiceMonitor {
+	name := metricsCollector
+	replace := "acm_metrics_collector_${1}"
+	if params.isUWL {
+		name = uwlMetricsCollector
+		replace = "acm_uwl_metrics_collector_${1}"
+	}
+
+	return &monitoringv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				selectorKey: name,
+			},
+			Annotations: map[string]string{
+				ownerLabelKey: ownerLabelValue,
+			},
+		},
+		Spec: monitoringv1.ServiceMonitorSpec{
+			Selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					selectorKey: name,
+				},
+			},
+			NamespaceSelector: monitoringv1.NamespaceSelector{
+				MatchNames: []string{namespace},
+			},
+			Endpoints: []monitoringv1.Endpoint{
+				{
+					Port:   "metrics",
+					Path:   "/metrics",
+					Scheme: "http",
+					MetricRelabelConfigs: []*monitoringv1.RelabelConfig{
+						{
+							Action:       "replace",
+							Regex:        "(.+)",
+							Replacement:  replace,
+							SourceLabels: []string{"__name__"},
+							TargetLabel:  "__name__",
+						},
+					},
+				},
+			},
+		},
+	}
 }
 
 func updateMetricsCollectors(ctx context.Context, c client.Client, obsAddonSpec oashared.ObservabilityAddonSpec,
@@ -390,13 +586,68 @@ func updateMetricsCollectors(ctx context.Context, c client.Client, obsAddonSpec 
 func updateMetricsCollector(ctx context.Context, c client.Client, params CollectorParams,
 	forceRestart bool) (bool, error) {
 	name := metricsCollectorName
+	resourceName := metricsCollector
 	if params.isUWL {
+		resourceName = uwlMetricsCollector
 		name = uwlMetricsCollectorName
 	}
+
 	log.Info("updateMetricsCollector", "name", name)
+
+	foundService := &corev1.Service{}
+	err := c.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: namespace}, foundService)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			service := createService(params)
+			err = c.Create(ctx, service)
+			if err != nil {
+				log.Error(err, "Failed to create service", "name", resourceName)
+				return false, err
+			}
+			log.Info("Created service ", "name", resourceName)
+		} else {
+			log.Error(err, "Failed to check the service", "name", resourceName)
+			return false, err
+		}
+	}
+
+	foundSM := &monitoringv1.ServiceMonitor{}
+	err = c.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: namespace}, foundSM)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			serviceMonitor := createServiceMonitor(params)
+			err = c.Create(ctx, serviceMonitor)
+			if err != nil {
+				log.Error(err, "Failed to create service monitor", "name", resourceName)
+				return false, err
+			}
+			log.Info("Created servicemonitor ", "name", resourceName)
+		} else {
+			log.Error(err, "Failed to check the servicemonitor", "name", resourceName)
+			return false, err
+		}
+	}
+
+	foundAlert := &monitoringv1.PrometheusRule{}
+	err = c.Get(ctx, types.NamespacedName{Name: "acm-" + resourceName + "-alerting-rules", Namespace: namespace}, foundAlert)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			alertingRules := createAlertingRule(params)
+			err = c.Create(ctx, alertingRules)
+			if err != nil {
+				log.Error(err, "Failed to create alerting rules", "name", "acm-"+resourceName+"-alerting-rules")
+				return false, err
+			}
+			log.Info("Created alerting rules ", "name", "acm-"+resourceName+"-alerting-rules")
+		} else {
+			log.Error(err, "Failed to check the alerting rules", "name", "acm-"+resourceName+"-alerting-rules")
+			return false, err
+		}
+	}
+
 	deployment := createDeployment(params)
 	found := &appsv1.Deployment{}
-	err := c.Get(ctx, types.NamespacedName{Name: name,
+	err = c.Get(ctx, types.NamespacedName{Name: name,
 		Namespace: namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -447,6 +698,55 @@ func deleteMetricsCollector(ctx context.Context, c client.Client, name string) e
 		return err
 	}
 	log.Info("metrics collector deployment deleted", "name", name)
+
+	foundSM := &monitoringv1.ServiceMonitor{}
+	if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment"),
+		Namespace: namespace}, foundSM); err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("The metrics collector servicemonitor does not exist", "name", strings.TrimSuffix(name, "-deployment"))
+			return nil
+		}
+		log.Error(err, "Failed to check the metrics collector servicemonitor", "name", strings.TrimSuffix(name, "-deployment"))
+		return err
+	}
+	if err := c.Delete(ctx, foundSM); err != nil {
+		log.Error(err, "Failed to delete the metrics collector servicemonitor", "name", strings.TrimSuffix(name, "-deployment"))
+		return err
+	}
+	log.Info("metrics collector servicemonitor deleted", "name", strings.TrimSuffix(name, "-deployment"))
+
+	foundAlerts := &monitoringv1.PrometheusRule{}
+	if err := c.Get(ctx, types.NamespacedName{Name: "acm-" + strings.TrimSuffix(name, "-deployment") + "-alerting-rules",
+		Namespace: namespace}, foundAlerts); err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("The metrics collector alerting rules does not exist", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+			return nil
+		}
+		log.Error(err, "Failed to check the metrics collector alerting rules", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+		return err
+	}
+	if err := c.Delete(ctx, foundAlerts); err != nil {
+		log.Error(err, "Failed to delete the metrics collector alerting rules", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+		return err
+	}
+	log.Info("metrics collector alerting rules deleted", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+
+	foundService := &corev1.Service{}
+	if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment"),
+		Namespace: namespace}, foundService); err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("The metrics collector service does not exist", "name", strings.TrimSuffix(name, "-deployment"))
+			return nil
+		}
+		log.Error(err, "Failed to check the metrics collector service", "name", strings.TrimSuffix(name, "-deployment"))
+		return err
+	}
+	if err := c.Delete(ctx, foundService); err != nil {
+		log.Error(err, "Failed to delete the metrics collector service", "name", strings.TrimSuffix(name, "-deployment"))
+		return err
+	}
+	log.Info("metrics collector service deleted", "name", strings.TrimSuffix(name, "-deployment"))
+
 	return nil
 }
 

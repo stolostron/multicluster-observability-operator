@@ -63,7 +63,7 @@ func TestReportStatus(t *testing.T) {
 	s.AddKnownTypes(oav1beta1.GroupVersion, oa)
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	for i := range statusList {
-		ReportStatus(context.TODO(), c, oa, statusList[i])
+		ReportStatus(context.TODO(), c, oa, statusList[i], true)
 		if oa.Status.Conditions[0].Message != expectedStatus[i].Message || oa.Status.Conditions[0].Reason != expectedStatus[i].Reason || oa.Status.Conditions[0].Status != expectedStatus[i].Status || oa.Status.Conditions[0].Type != expectedStatus[i].Type {
 			t.Errorf("Error: Status not updated. Expected: %s, Actual: %s", expectedStatus[i], fmt.Sprintf("%+v\n", oa.Status.Conditions[0]))
 		}

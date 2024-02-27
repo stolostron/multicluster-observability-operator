@@ -8,6 +8,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+
 	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -57,6 +59,9 @@ func deleteObsAddon(c client.Client, namespace string) error {
 }
 
 func createObsAddon(c client.Client, namespace string) error {
+	if namespace == config.GetDefaultNamespace() {
+		return nil
+	}
 	ec := &obsv1beta1.ObservabilityAddon{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obsAddonName,

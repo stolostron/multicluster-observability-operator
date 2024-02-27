@@ -16,6 +16,9 @@ import (
 	"net"
 	"time"
 
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	certificatesv1 "k8s.io/api/certificates/v1"
+
 	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -32,10 +35,11 @@ import (
 )
 
 const (
-	serverCACertifcateCN = "observability-server-ca-certificate"
-	serverCACerts        = config.ServerCACerts
-	serverCertificateCN  = config.ServerCertCN
-	serverCerts          = config.ServerCerts
+	serverCACertifcateCN        = "observability-server-ca-certificate"
+	serverCACerts               = config.ServerCACerts
+	serverCertificateCN         = config.ServerCertCN
+	serverCerts                 = config.ServerCerts
+	hubMetricsCollectorMtlsCert = operatorconfig.HubMetricsCollectorMtlsCert
 
 	clientCACertificateCN = "observability-client-ca-certificate"
 	clientCACerts         = config.ClientCACerts
@@ -465,4 +469,68 @@ func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
 		}
 	}
 	return hosts, nil
+}
+
+func CreateCSR() ([]byte, []byte) {
+	keys, _ := rsa.GenerateKey(rand.Reader, 2048)
+
+	oidOrganization := []int{2, 5, 4, 11} // Object Identifier (OID) for Organization Unit
+	oidUser := []int{2, 5, 4, 3}          // Object Identifier (OID) for User
+
+	var csrTemplate = x509.CertificateRequest{
+		Subject: pkix.Name{
+			Organization: []string{"Red Hat, Inc."},
+			Country:      []string{"US"},
+			CommonName:   operatorconfig.ClientCACertificateCN,
+			ExtraNames: []pkix.AttributeTypeAndValue{
+				{Type: oidOrganization, Value: "acm"},
+				{Type: oidUser, Value: "managed-cluster-observability"},
+			},
+		},
+		DNSNames:           []string{"observability-controller.addon.open-cluster-management.io"},
+		SignatureAlgorithm: x509.SHA512WithRSA,
+	}
+	csrCertificate, _ := x509.CreateCertificateRequest(rand.Reader, &csrTemplate, keys)
+	csr := pem.EncodeToMemory(&pem.Block{
+		Type: "CERTIFICATE REQUEST", Bytes: csrCertificate,
+	})
+
+	privateKey := pem.EncodeToMemory(&pem.Block{
+		Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(keys),
+	})
+
+	return csr, privateKey
+}
+
+func CreateMtlsCertSecretForHubCollector(c client.Client) error {
+	csrBytes, privateKeyBytes := CreateCSR()
+	csr := &certificatesv1.CertificateSigningRequest{
+		Spec: certificatesv1.CertificateSigningRequestSpec{
+			Request: csrBytes,
+			Usages:  []certificatesv1.KeyUsage{certificatesv1.UsageDigitalSignature, certificatesv1.UsageClientAuth},
+		},
+	}
+	signedClientCert := Sign(csr)
+	if signedClientCert == nil {
+		log.Error(nil, "failed to sign CSR")
+		return errors.NewBadRequest("failed to sign CSR")
+	} else {
+		//Create a secret
+		HubMtlsSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      operatorconfig.HubMetricsCollectorMtlsCert,
+				Namespace: config.GetDefaultNamespace(),
+			},
+			Data: map[string][]byte{
+				"tls.crt": signedClientCert,
+				"tls.key": privateKeyBytes,
+			},
+		}
+		err := c.Create(context.TODO(), HubMtlsSecret)
+		if err != nil && !errors.IsAlreadyExists(err) {
+			log.Error(err, "Failed to create secret", "name", operatorconfig.HubMetricsCollectorMtlsCert)
+			return err
+		}
+	}
+	return nil
 }
