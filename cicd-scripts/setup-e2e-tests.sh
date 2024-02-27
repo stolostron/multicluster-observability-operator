@@ -7,6 +7,9 @@
 
 set -exo pipefail
 
+KUBECTL_VERSION="${KUBECTL_VERSION:=v1.28.2}"
+KUSTOMIZE_VERSION="${KUSTOMIZE_VERSION:=v5.3.0}"
+
 if [[ -z ${KUBECONFIG} ]]; then
   echo "Error: environment variable KUBECONFIG must be specified!"
   exit 1
@@ -60,23 +63,15 @@ LATEST_SNAPSHOT="${LATEST_SNAPSHOT%\"}"
 # install kubectl
 if ! command -v kubectl &>/dev/null; then
   echo "This script will install kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your machine"
-  if [[ "$(uname)" == "Linux" ]]; then
-    curl -LO https://dl.k8s.io/release/v1.28.2/bin/linux/amd64/kubectl
-  elif [[ "$(uname)" == "Darwin" ]]; then
-    curl -LO curl -LO "https://dl.k8s.io/release/v1.28.2/bin/darwin/arm64/kubectl"
-  fi
+  curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/$(uname | tr '[:upper:]' '[:lower:]')/$(uname -p)64/kubectl"
   chmod +x ./kubectl && mv ./kubectl ${ROOTDIR}/bin/kubectl
 fi
 
 # install kustomize
 if ! command -v kustomize &>/dev/null; then
   echo "This script will install kustomize (sigs.k8s.io/kustomize/kustomize) on your machine"
-  if [[ "$(uname)" == "Linux" ]]; then
-    curl -o kustomize_v5.1.1.tar.gz -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.1.1/kustomize_v5.1.1_linux_amd64.tar.gz
-  elif [[ "$(uname)" == "Darwin" ]]; then
-    curl -o kustomize_v5.1.1.tar.gz -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.1.1/kustomize_v5.1.1_darwin_amd64.tar.gz
-  fi
-  tar xzvf kustomize_v5.1.1.tar.gz
+  curl -o kustomize_${KUSTOMIZE_VERSION}.tar.gz -L "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_$(uname | tr '[:upper:]' '[:lower:]')_$(uname -p)64.tar.gz"
+  tar xzvf kustomize_v${KUSTOMIZE_VERSION}.tar.gz
   chmod +x ./kustomize && mv ./kustomize ${ROOTDIR}/bin/kustomize
 fi
 
