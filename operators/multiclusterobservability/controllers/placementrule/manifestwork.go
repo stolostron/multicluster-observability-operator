@@ -10,11 +10,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	rbacv1 "k8s.io/api/rbac/v1"
+
 	"os"
 	"reflect"
+	"os"
 	"strconv"
 	"strings"
+
+	rbacv1 "k8s.io/api/rbac/v1"
 
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -466,43 +469,13 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		log.Info("MCO Operator is terminating, skip creating resources for hub metrics collection")
 		return nil
 	}
-	//Create a namespace called hub-observability
-	//ns := &corev1.Namespace{
-	//	ObjectMeta: metav1.ObjectMeta{
-	//		Name: "hub-observability",
-	//	},
-	//}
-	//err := c.Create(context.TODO(), ns)
-	//if err != nil && !k8serrors.IsAlreadyExists(err) {
-	//	log.Error(err, "Failed to create namespace", "name", "hub-observability")
-	//}
+
 	hubManifestCopy = make([]workv1.Manifest, len(manifests))
 	for i, manifest := range manifests {
 		obj := manifest.RawExtension.Object.DeepCopyObject()
 		hubManifestCopy[i] = workv1.Manifest{RawExtension: runtime.RawExtension{Object: obj}}
 		hubManifestCopy[i] = workv1.Manifest{RawExtension: runtime.RawExtension{Object: obj}}
 	}
-	//for _, manifest := range hubManifestCopy {
-	//	obj := manifest.RawExtension.Object.(client.Object)
-	//	if obj.GetObjectKind().GroupVersionKind().Kind == "Namespace" || obj.GetObjectKind().GroupVersionKind().Kind == "ObservabilityAddon" {
-	//		// We do not want to create ObservabilityAddon and namespace open-cluster-management-add-on observability for hub cluster
-	//		continue
-	//	}
-	//	kind := obj.GetObjectKind().GroupVersionKind().Kind
-	//	if kind != "ClusterRole" && kind != "ClusterRoleBinding" && kind != "CustomResourceDefinition" {
-	//		obj.SetNamespace(config.GetDefaultNamespace())
-	//	}
-	//	if obj.GetObjectKind().GroupVersionKind().Kind == "ClusterRoleBinding" {
-	//		role := obj.(*rbacv1.ClusterRoleBinding)
-	//		role.Subjects[0].Namespace = config.GetDefaultNamespace()
-	//	}
-	//	//get the object
-	//	err := c.Create(context.TODO(), obj)
-	//	if err != nil && !k8serrors.IsAlreadyExists(err) {
-	//		log.Error(err, "Failed to create resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-	//		return err
-	//	}
-	//}
 
 	for _, manifest := range hubManifestCopy {
 		obj := manifest.RawExtension.Object.(client.Object)
@@ -606,6 +579,8 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			}
 		}
 	}
+
+
 	err := cert_controller.CreateMtlsCertSecretForHubCollector(c)
 	if err != nil {
 		log.Error(err, "Failed to create client cert secret for hub metrics collection")
@@ -617,7 +592,6 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 // Delete resources created for hub metrics collection
 func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 	// Delete hub endpoint operator
-	log.Info("Deleting resources for hub metrics collection", "IsMCOterminating", operatorconfig.IsMCOTerminating)
 	err := c.Delete(context.TODO(), &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.HubEndpointOperatorName,
@@ -629,7 +603,6 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 		return err
 	}
 	for _, name := range []string{config.HubUwlMetricsCollectorName, config.HubMetricsCollectorName} {
-		log.Info("Coleen deleting deployment", "name", name)
 		err := c.Delete(context.TODO(), &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
@@ -644,7 +617,6 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 	}
 	hubMetricCollectorSecrets := []string{operatorconfig.HubMetricsCollectorMtlsCert, managedClusterObsCertName, operatorconfig.HubInfoSecretName, config.AlertmanagerAccessorSecretName}
 	for _, name := range hubMetricCollectorSecrets {
-		log.Info("Coleen deleting secret", "name", name)
 		err := c.Delete(context.TODO(), &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
@@ -658,7 +630,6 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 	}
 	hubMetricsCollectorConfigMaps := []string{operatorconfig.ImageConfigMap, operatorconfig.CaConfigmapName}
 	for _, name := range hubMetricsCollectorConfigMaps {
-		log.Info("Coleen deleting configmap", "name", name)
 		err := c.Delete(context.TODO(), &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,

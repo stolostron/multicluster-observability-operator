@@ -186,7 +186,6 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 	if hubMetricsCollector {
 		mtlsCaSecretName = mtlsServerCaName
 	}
-	// falsePtr := false
 	secretName := metricsCollector
 	if params.isUWL {
 		secretName = uwlMetricsCollector
