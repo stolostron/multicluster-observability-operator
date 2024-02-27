@@ -606,7 +606,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			}
 		}
 	}
-	err = cert_controller.CreateMtlsCertSecretForHubCollector(c)
+	err := cert_controller.CreateMtlsCertSecretForHubCollector(c)
 	if err != nil {
 		log.Error(err, "Failed to create client cert secret for hub metrics collection")
 		return err
