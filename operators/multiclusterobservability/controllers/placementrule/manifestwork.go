@@ -467,15 +467,15 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		return nil
 	}
 	//Create a namespace called hub-observability
-	ns := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "hub-observability",
-		},
-	}
-	err := c.Create(context.TODO(), ns)
-	if err != nil && !k8serrors.IsAlreadyExists(err) {
-		log.Error(err, "Failed to create namespace", "name", "hub-observability")
-	}
+	//ns := &corev1.Namespace{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name: "hub-observability",
+	//	},
+	//}
+	//err := c.Create(context.TODO(), ns)
+	//if err != nil && !k8serrors.IsAlreadyExists(err) {
+	//	log.Error(err, "Failed to create namespace", "name", "hub-observability")
+	//}
 	hubManifestCopy = make([]workv1.Manifest, len(manifests))
 	for i, manifest := range manifests {
 		obj := manifest.RawExtension.Object.DeepCopyObject()
@@ -518,7 +518,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			// No namespace needed for these kinds
 		default:
 			// Set default namespace for other kinds
-			obj.SetNamespace("hub-observability")
+			obj.SetNamespace(config.GetDefaultNamespace())
 		}
 
 		if gvk.Kind == "ClusterRoleBinding" {

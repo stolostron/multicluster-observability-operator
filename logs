@@ -1,0 +1,1016 @@
+W0227 09:37:46.631466       1 client_config.go:618] Neither --kubeconfig nor --master was specified.  Using the inClusterConfig.  This might not work.
+2024-02-27T09:37:46.676Z	INFO	controller-runtime.metrics	Metrics server is starting to listen	{"addr": "0.0.0.0:8383"}
+2024-02-27T09:37:46.740Z	INFO	util	unable to get CRD with ApiextensionsV1 Client, not found.	{"CRD": "multiclusterglobalhubs.operator.open-cluster-management.io"}
+2024-02-27T09:37:46.740Z	INFO	controller-runtime.builder	skip registering a mutating webhook, object does not implement admission.Defaulter or WithDefaulter wasn't called	{"GVK": "observability.open-cluster-management.io/v1beta2, Kind=MultiClusterObservability"}
+2024-02-27T09:37:46.740Z	INFO	controller-runtime.builder	Registering a validating webhook	{"GVK": "observability.open-cluster-management.io/v1beta2, Kind=MultiClusterObservability", "path": "/validate-observability-open-cluster-management-io-v1beta2-multiclusterobservability"}
+2024-02-27T09:37:46.740Z	INFO	controller-runtime.webhook	Registering webhook	{"path": "/validate-observability-open-cluster-management-io-v1beta2-multiclusterobservability"}
+2024-02-27T09:37:46.741Z	INFO	controller-runtime.webhook	Registering webhook	{"path": "/convert"}
+2024-02-27T09:37:46.741Z	INFO	controller-runtime.builder	Conversion webhook enabled	{"GVK": "observability.open-cluster-management.io/v1beta2, Kind=MultiClusterObservability"}
+2024-02-27T09:37:46.741Z	INFO	setup	add webhook controller to manager
+2024-02-27T09:37:46.741Z	INFO	setup	starting manager
+2024-02-27T09:37:46.741Z	INFO	controller-runtime.webhook.webhooks	Starting webhook server
+2024-02-27T09:37:46.741Z	INFO	Starting server	{"kind": "health probe", "addr": "[::]:8081"}
+2024-02-27T09:37:46.741Z	INFO	Starting server	{"path": "/metrics", "kind": "metrics", "addr": "[::]:8383"}
+I0227 09:37:46.741604       1 enhanced-filtered-cache.go:521] Start enhanced filtered cache
+2024-02-27T09:37:46.742Z	INFO	controller-runtime.certwatcher	Updated current TLS certificate
+W0227 09:37:46.742482       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+W0227 09:37:46.742509       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+W0227 09:37:46.742659       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+W0227 09:37:46.742682       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+W0227 09:37:46.742691       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+2024-02-27T09:37:46.742Z	INFO	controller-runtime.webhook	Serving webhook server	{"host": "", "port": 9443}
+W0227 09:37:46.742792       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+2024-02-27T09:37:46.742Z	INFO	controller-runtime.certwatcher	Starting certificate watcher
+W0227 09:37:46.742986       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+W0227 09:37:46.743004       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+W0227 09:37:46.743012       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+W0227 09:37:46.743011       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+W0227 09:37:46.743028       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+W0227 09:37:46.743039       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+W0227 09:37:46.743050       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+W0227 09:37:46.743061       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+W0227 09:37:46.743072       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+W0227 09:37:46.743082       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+W0227 09:37:46.743093       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+W0227 09:37:46.743103       1 shared_informer.go:416] The sharedIndexInformer has started, run more than once is not allowed
+I0227 09:37:47.743192       1 leaderelection.go:248] attempting to acquire leader lease ocm/b9d51391.open-cluster-management.io...
+I0227 09:38:10.484478       1 leaderelection.go:258] successfully acquired lease ocm/b9d51391.open-cluster-management.io
+2024-02-27T09:38:10.484Z	DEBUG	events	multicluster-observability-operator-5dc57ffcdf-bm8w8_99227deb-e71b-480a-8308-48cbc61ff47a became leader	{"type": "Normal", "object": {"kind":"Lease","namespace":"ocm","name":"b9d51391.open-cluster-management.io","uid":"d8d6efa9-674a-4252-a78b-1d23adaa321f","apiVersion":"coordination.k8s.io/v1","resourceVersion":"6981465"}, "reason": "LeaderElection"}
+2024-02-27T09:38:10.484Z	DEBUG	webhook-controller	creating or updating the validatingwebhookconfiguration	{"validatingwebhookconfiguration": "multicluster-observability-operator"}
+2024-02-27T09:38:10.484Z	INFO	Starting EventSource	{"controller": "multiclusterobservability", "controllerGroup": "observability.open-cluster-management.io", "controllerKind": "MultiClusterObservability", "source": "kind source: *v1beta2.MultiClusterObservability"}
+2024-02-27T09:38:10.484Z	INFO	Starting EventSource	{"controller": "multiclusterobservability", "controllerGroup": "observability.open-cluster-management.io", "controllerKind": "MultiClusterObservability", "source": "kind source: *v1.Deployment"}
+2024-02-27T09:38:10.484Z	INFO	Starting EventSource	{"controller": "multiclusterobservability", "controllerGroup": "observability.open-cluster-management.io", "controllerKind": "MultiClusterObservability", "source": "kind source: *v1.StatefulSet"}
+2024-02-27T09:38:10.484Z	INFO	Starting EventSource	{"controller": "multiclusterobservability", "controllerGroup": "observability.open-cluster-management.io", "controllerKind": "MultiClusterObservability", "source": "kind source: *v1.ConfigMap"}
+2024-02-27T09:38:10.484Z	INFO	Starting EventSource	{"controller": "multiclusterobservability", "controllerGroup": "observability.open-cluster-management.io", "controllerKind": "MultiClusterObservability", "source": "kind source: *v1.Secret"}
+2024-02-27T09:38:10.484Z	INFO	Starting EventSource	{"controller": "multiclusterobservability", "controllerGroup": "observability.open-cluster-management.io", "controllerKind": "MultiClusterObservability", "source": "kind source: *v1.Service"}
+2024-02-27T09:38:10.484Z	INFO	Starting EventSource	{"controller": "multiclusterobservability", "controllerGroup": "observability.open-cluster-management.io", "controllerKind": "MultiClusterObservability", "source": "kind source: *v1alpha1.Observatorium"}
+2024-02-27T09:38:10.484Z	INFO	Starting EventSource	{"controller": "multiclusterobservability", "controllerGroup": "observability.open-cluster-management.io", "controllerKind": "MultiClusterObservability", "source": "kind source: *v1.ConfigMap"}
+2024-02-27T09:38:10.484Z	INFO	Starting EventSource	{"controller": "multiclusterobservability", "controllerGroup": "observability.open-cluster-management.io", "controllerKind": "MultiClusterObservability", "source": "kind source: *v1.Secret"}
+2024-02-27T09:38:10.484Z	INFO	Starting EventSource	{"controller": "multiclusterobservability", "controllerGroup": "observability.open-cluster-management.io", "controllerKind": "MultiClusterObservability", "source": "kind source: *v1.Namespace"}
+2024-02-27T09:38:10.484Z	INFO	Starting EventSource	{"controller": "multiclusterobservability", "controllerGroup": "observability.open-cluster-management.io", "controllerKind": "MultiClusterObservability", "source": "kind source: *v1.MultiClusterHub"}
+2024-02-27T09:38:10.484Z	INFO	Starting Controller	{"controller": "multiclusterobservability", "controllerGroup": "observability.open-cluster-management.io", "controllerKind": "MultiClusterObservability"}
+2024-02-27T09:38:10.494Z	DEBUG	config	the length of mch-image-manifest configmap	{"imageManifests": 46}
+2024-02-27T09:38:10.591Z	DEBUG	webhook-controller	the validatingwebhookconfiguration is created	{"validatingwebhookconfiguration": "multicluster-observability-operator"}
+2024-02-27T09:38:11.586Z	INFO	Starting workers	{"controller": "multiclusterobservability", "controllerGroup": "observability.open-cluster-management.io", "controllerKind": "MultiClusterObservability", "worker count": 1}
+2024-02-27T09:38:11.586Z	INFO	controller_multiclustermonitoring	Reconciling MultiClusterObservability	{"Request.Namespace": "", "Request.Name": "observability"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1.ManagedCluster"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1beta1.ObservabilityAddon"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1beta2.MultiClusterObservability"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1.ConfigMap"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1.Secret"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1.ServiceAccount"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1alpha1.AddOnDeploymentConfig"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1.ManifestWork"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1alpha1.ClusterManagementAddOn"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1alpha1.ManagedClusterAddOn"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1.IngressController"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1.Secret"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1.Secret"}
+2024-02-27T09:38:11.587Z	INFO	controller_placementrule	CreateFunc	{"managedCluster": "clc-eks"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1.MultiClusterHub"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1.Deployment"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1.Secret"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1.Secret"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1.Secret"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1.ConfigMap"}
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1.StatefulSet"}
+2024-02-27T09:38:11.587Z	INFO	controller_placementrule	CreateFunc	{"managedCluster": "obs-8509-ma"}
+2024-02-27T09:38:11.587Z	INFO	controller_placementrule	generate managedcluster observability certificate for server certificate CREATE
+2024-02-27T09:38:11.587Z	INFO	controller_placementrule	generate metric allow list configmap for allowlist configmap CREATE
+2024-02-27T09:38:11.587Z	INFO	Starting EventSource	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "source": "kind source: *v1.Secret"}
+2024-02-27T09:38:11.587Z	INFO	Starting Controller	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster"}
+2024-02-27T09:38:11.589Z	INFO	controller_placementrule	generate metric allow list configmap for allowlist configmap CREATE
+2024-02-27T09:38:11.595Z	DEBUG	config	the length of mch-image-manifest configmap	{"imageManifests": 46}
+I0227 09:38:11.602049       1 base_controller.go:34] Waiting for caches to sync for CSRApprovingController
+I0227 09:38:11.602091       1 base_controller.go:34] Waiting for caches to sync for addon-deploy-controller
+I0227 09:38:11.602091       1 base_controller.go:34] Waiting for caches to sync for CSRApprovingController
+I0227 09:38:11.602109       1 base_controller.go:34] Waiting for caches to sync for addon-registration-controller
+I0227 09:38:11.602136       1 base_controller.go:34] Waiting for caches to sync for addon-install-controller
+2024-02-27T09:38:11.602Z	INFO	controller_multiclustermonitoring	adding backup label	{"Secret": "thanos-object-storage"}
+I0227 09:38:11.602779       1 base_controller.go:34] Waiting for caches to sync for addon-owner-controller
+2024-02-27T09:38:11.637Z	DEBUG	config	operand is	{"key": "observatorium-api", "name": ""}
+2024-02-27T09:38:11.650Z	INFO	controller_certificates	Update deployment cert/restart label	{"name": "metrics-collector-deployment"}
+2024-02-27T09:38:11.650Z	DEBUG	config	operand is	{"key": "rbac-query-proxy", "name": ""}
+2024-02-27T09:38:11.650Z	DEBUG	config	operand is	{"key": "rbac-query-proxy", "name": ""}
+2024-02-27T09:38:11.650Z	DEBUG	config	operand is	{"key": "observatorium-api", "name": ""}
+I0227 09:38:11.703754       1 base_controller.go:40] Caches are synced for addon-owner-controller 
+I0227 09:38:11.703846       1 base_controller.go:78] Starting #1 worker of addon-owner-controller controller ...
+I0227 09:38:11.704229       1 base_controller.go:40] Caches are synced for addon-install-controller 
+I0227 09:38:11.704313       1 base_controller.go:78] Starting #1 worker of addon-install-controller controller ...
+I0227 09:38:11.704403       1 base_controller.go:40] Caches are synced for CSRApprovingController 
+I0227 09:38:11.704442       1 base_controller.go:78] Starting #1 worker of CSRApprovingController controller ...
+I0227 09:38:11.704484       1 base_controller.go:40] Caches are synced for addon-deploy-controller 
+I0227 09:38:11.704525       1 base_controller.go:78] Starting #1 worker of addon-deploy-controller controller ...
+I0227 09:38:11.704711       1 base_controller.go:40] Caches are synced for addon-registration-controller 
+I0227 09:38:11.704767       1 base_controller.go:78] Starting #1 worker of addon-registration-controller controller ...
+I0227 09:38:11.704905       1 base_controller.go:40] Caches are synced for CSRApprovingController 
+I0227 09:38:11.704943       1 base_controller.go:78] Starting #1 worker of CSRApprovingController controller ...
+2024-02-27T09:38:11.754Z	DEBUG	config	operand is	{"key": "grafana", "name": "observability-grafana"}
+2024-02-27T09:38:11.754Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-grafana-rhel9@sha256:31c945bbc9d697c80a5d5e0b6e4634d00c44a25606b6306cae1e2e8ef0a097cb"}
+2024-02-27T09:38:11.754Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/grafana-dashboard-loader-rhel9@sha256:68ad0500a626dd94db5bc55a142270bd5f01e2b38bc8ff7ffe86ba3238f46cc0"}
+2024-02-27T09:38:11.754Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:12.035Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:12.035Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:12.035Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:12.035Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:12.035Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-alertmanager-rhel9@sha256:4a3f458a47798baf19f0a6955d3a1e4bd0e010159ab042930d4783ea75edfa3e"}
+2024-02-27T09:38:12.035Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-configmap-reloader@sha256:fa5b2e42a27e3ab5f0a0d2a103b5602b81d1b29eb788b54cc60ad547744ad053"}
+2024-02-27T09:38:12.035Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:12.047Z	DEBUG	config	operand is	{"key": "rbac-query-proxy", "name": "observability-rbac-query-proxy"}
+2024-02-27T09:38:12.047Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:12.047Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:12.047Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/rbac-query-proxy-rhel9@sha256:a30fc1fee76c56ce7505c3ff272111aa9ee0a31d5a2bc5bc83ca85286e3e0147"}
+2024-02-27T09:38:12.047Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:12.048Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/observatorium-rhel9-operator@sha256:8740b5c44da1d8eea54a0b8d1ef64d2a5a5c2ec8cfe7ed38090e473e12296c02"}
+2024-02-27T09:38:12.048Z	DEBUG	config	operand is	{"key": "observatorium-operator", "name": "observability-observatorium-operator"}
+2024-02-27T09:38:12.125Z	INFO	deploying	deployerFn not found	{"kind:": "Role"}
+2024-02-27T09:38:12.129Z	INFO	deploying	deployerFn not found	{"kind:": "RoleBinding"}
+2024-02-27T09:38:12.132Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:12.139Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=ConfigMap", "Name:": "observability-managed-cluster-label-allowlist"}
+2024-02-27T09:38:12.143Z	INFO	deploying	Update	{"Kind:": "/v1, Kind=ConfigMap", "Name:": "observability-metrics-allowlist"}
+2024-02-27T09:38:12.162Z	INFO	controller_placementrule	generate metric allow list configmap for allowlist configmap UPDATE
+2024-02-27T09:38:12.172Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:12.176Z	INFO	deploying	Update	{"Kind:": "/v1, Kind=Secret", "Name:": "grafana-config"}
+2024-02-27T09:38:12.403Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:12.406Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "alertmanager-config"}
+2024-02-27T09:38:12.410Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "alertmanager-proxy"}
+2024-02-27T09:38:12.453Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:12.477Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "rbac-proxy-cookie-secret"}
+2024-02-27T09:38:12.492Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:12.612Z	INFO	controller_certificates	CA secrets already existed	{"name": "observability-server-ca-certs"}
+2024-02-27T09:38:12.612Z	INFO	controller_certificates	CA secrets already existed	{"name": "observability-client-ca-certs"}
+2024-02-27T09:38:12.612Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:12.612Z	INFO	controller_certificates	Certificate secrets already existed	{"name": "observability-server-certs"}
+2024-02-27T09:38:12.612Z	INFO	controller_certificates	Certificate secrets already existed	{"name": "observability-grafana-certs"}
+2024-02-27T09:38:12.612Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:12.612Z	INFO	controller_multiclustermonitoring	storageClassSelected	{"storageClassSelected": "gp3-csi"}
+2024-02-27T09:38:12.612Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/observatorium-rhel9@sha256:9a9ce8454811c4e536bd25006c69c2251ad014a1f15c4057040dad51f8265cd4"}
+2024-02-27T09:38:12.612Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-configmap-reloader@sha256:fa5b2e42a27e3ab5f0a0d2a103b5602b81d1b29eb788b54cc60ad547744ad053"}
+2024-02-27T09:38:12.612Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-rhel9@sha256:fae7746f32f3316e946308fe25d5d63066cc793199898f6189824fe40729d9b2"}
+2024-02-27T09:38:12.612Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-exporter-rhel9@sha256:d48006b2d6ba88a0cbd5972861399ed64f8f49a8e22111166f653b001d00d1c9"}
+2024-02-27T09:38:12.612Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/thanos-receive-controller-rhel9@sha256:3f9e3fc3cf1eb94b9bc22a70b8f5ef16ac158a11252646b644238aac070430ea"}
+2024-02-27T09:38:12.612Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-rhel9@sha256:fae7746f32f3316e946308fe25d5d63066cc793199898f6189824fe40729d9b2"}
+2024-02-27T09:38:12.612Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-exporter-rhel9@sha256:d48006b2d6ba88a0cbd5972861399ed64f8f49a8e22111166f653b001d00d1c9"}
+2024-02-27T09:38:12.612Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/thanos-rhel9@sha256:fbefdce1baed8b29601624451c71be21e3daa8f4c465111b3203d38b1170d32f"}
+2024-02-27T09:38:12.612Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:12.617Z	INFO	controller_multiclustermonitoring	Updating observatorium CR	{"observatorium": "observability"}
+2024-02-27T09:38:12.688Z	INFO	Starting workers	{"controller": "managedcluster", "controllerGroup": "cluster.open-cluster-management.io", "controllerKind": "ManagedCluster", "worker count": 1}
+2024-02-27T09:38:12.688Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "", "Request.Name": "clc-eks"}
+2024-02-27T09:38:12.695Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:12.699Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:12.702Z	INFO	controller_placementrule	clusterrole endpoint-observability-mco-role already existed/unchanged
+2024-02-27T09:38:12.708Z	INFO	controller_placementrule	clusterrole endpoint-observability-res-role already existed/unchanged
+2024-02-27T09:38:12.708Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:12.708Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:12.716Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:12.716Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:12.716Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:12.716Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:12.716Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:12.716Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:12.716Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:12.728Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:12.729Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "clc-eks", "request.name": "clc-eks", "request.namespace": "", "openshiftVersion": "N/A"}
+2024-02-27T09:38:12.730Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:12.730Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:12.730Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:12.730Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "clc-eks"}
+2024-02-27T09:38:12.730Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:12.730Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.Tolerations (after): []
+2024-02-27T09:38:12.730Z	INFO	controller_placementrule	Updating manifestwork	{"clc-eks": "clc-eks", "name": "clc-eks-observability"}
+2024-02-27T09:38:12.732Z	INFO	controller_multiclustermonitoring	StorageVersionMigration already existed/unchanged	{"name": "storage-version-migration-observability"}
+2024-02-27T09:38:12.757Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "", "Request.Name": "obs-8509-ma"}
+2024-02-27T09:38:12.763Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:12.768Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:12.772Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:12.772Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:12.772Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:12.772Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:12.772Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:12.772Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:12.772Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:12.772Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:12.772Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:12.773Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:12.773Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "obs-8509-ma", "request.name": "obs-8509-ma", "request.namespace": "", "openshiftVersion": "4.13.33"}
+2024-02-27T09:38:12.773Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:12.773Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:12.773Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:12.773Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "obs-8509-ma"}
+2024-02-27T09:38:12.773Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:12.773Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.Tolerations (after): []
+2024-02-27T09:38:12.773Z	INFO	controller_placementrule	Updating manifestwork	{"obs-8509-ma": "obs-8509-ma", "name": "obs-8509-ma-observability"}
+2024-02-27T09:38:12.799Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "open-cluster-management-observability", "Request.Name": "observability-server-ca-certs"}
+2024-02-27T09:38:12.805Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:12.808Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:12.812Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:12.812Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:12.812Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:12.812Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:12.812Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:12.812Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:12.813Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:12.813Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:12.813Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:12.814Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:12.814Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "clc-eks", "request.name": "observability-server-ca-certs", "request.namespace": "open-cluster-management-observability", "openshiftVersion": "N/A"}
+2024-02-27T09:38:12.814Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:12.814Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:12.814Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:12.814Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "clc-eks"}
+2024-02-27T09:38:12.814Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:12.814Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.Tolerations (after): []
+2024-02-27T09:38:12.815Z	INFO	controller_placementrule	Updating manifestwork	{"clc-eks": "clc-eks", "name": "clc-eks-observability"}
+2024-02-27T09:38:12.843Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "obs-8509-ma", "request.name": "observability-server-ca-certs", "request.namespace": "open-cluster-management-observability", "openshiftVersion": "4.13.33"}
+2024-02-27T09:38:12.843Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:12.843Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:12.843Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:12.843Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "obs-8509-ma"}
+2024-02-27T09:38:12.843Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:12.843Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.Tolerations (after): []
+2024-02-27T09:38:12.843Z	INFO	controller_placementrule	Updating manifestwork	{"obs-8509-ma": "obs-8509-ma", "name": "obs-8509-ma-observability"}
+2024-02-27T09:38:12.870Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "local-cluster", "request.name": "observability-server-ca-certs", "request.namespace": "open-cluster-management-observability", "openshiftVersion": "mimical"}
+2024-02-27T09:38:12.873Z	INFO	controller_placementrule	Creating endpoint-observability-mco-rolebinding clusterrolebinding
+2024-02-27T09:38:12.885Z	INFO	controller_placementrule	Creating endpoint-observability-res-rolebinding rolebinding	{"namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:12.934Z	DEBUG	controller_multiclustermonitoring	status update goroutine is triggered.
+2024-02-27T09:38:12.934Z	DEBUG	controller_multiclustermonitoring	send singal to stop status check ready goroutine because MCO status is ready
+2024-02-27T09:38:12.934Z	DEBUG	controller_multiclustermonitoring	check status ready goroutine is stopped.
+2024-02-27T09:38:12.934Z	INFO	controller_multiclustermonitoring	Reconciling MultiClusterObservability	{"Request.Namespace": "ocm", "Request.Name": "mch-updated-request"}
+2024-02-27T09:38:12.935Z	DEBUG	config	operand is	{"key": "grafana", "name": "observability-grafana"}
+2024-02-27T09:38:12.935Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-grafana-rhel9@sha256:31c945bbc9d697c80a5d5e0b6e4634d00c44a25606b6306cae1e2e8ef0a097cb"}
+2024-02-27T09:38:12.935Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/grafana-dashboard-loader-rhel9@sha256:68ad0500a626dd94db5bc55a142270bd5f01e2b38bc8ff7ffe86ba3238f46cc0"}
+2024-02-27T09:38:12.935Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:12.936Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:12.936Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:12.936Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:12.936Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:12.936Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-alertmanager-rhel9@sha256:4a3f458a47798baf19f0a6955d3a1e4bd0e010159ab042930d4783ea75edfa3e"}
+2024-02-27T09:38:12.936Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-configmap-reloader@sha256:fa5b2e42a27e3ab5f0a0d2a103b5602b81d1b29eb788b54cc60ad547744ad053"}
+2024-02-27T09:38:12.936Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:12.937Z	DEBUG	config	operand is	{"key": "rbac-query-proxy", "name": "observability-rbac-query-proxy"}
+2024-02-27T09:38:12.937Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:12.937Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:12.937Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/rbac-query-proxy-rhel9@sha256:a30fc1fee76c56ce7505c3ff272111aa9ee0a31d5a2bc5bc83ca85286e3e0147"}
+2024-02-27T09:38:12.937Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:12.937Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/observatorium-rhel9-operator@sha256:8740b5c44da1d8eea54a0b8d1ef64d2a5a5c2ec8cfe7ed38090e473e12296c02"}
+2024-02-27T09:38:12.937Z	DEBUG	config	operand is	{"key": "observatorium-operator", "name": "observability-observatorium-operator"}
+2024-02-27T09:38:12.948Z	INFO	deploying	deployerFn not found	{"kind:": "Role"}
+2024-02-27T09:38:12.952Z	INFO	deploying	deployerFn not found	{"kind:": "RoleBinding"}
+2024-02-27T09:38:12.955Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:12.963Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=ConfigMap", "Name:": "observability-managed-cluster-label-allowlist"}
+2024-02-27T09:38:12.983Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:12.987Z	INFO	deploying	Update	{"Kind:": "/v1, Kind=Secret", "Name:": "grafana-config"}
+2024-02-27T09:38:13.588Z	INFO	controller_placementrule	generate amAccessorTokenSecret for alertmanager access serviceaccount CREATE
+2024-02-27T09:38:13.868Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:13.874Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "alertmanager-config"}
+2024-02-27T09:38:13.883Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "alertmanager-proxy"}
+2024-02-27T09:38:13.980Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:14.021Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "rbac-proxy-cookie-secret"}
+2024-02-27T09:38:14.060Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:14.084Z	INFO	controller_certificates	CA secrets already existed	{"name": "observability-server-ca-certs"}
+2024-02-27T09:38:14.084Z	INFO	controller_certificates	CA secrets already existed	{"name": "observability-client-ca-certs"}
+2024-02-27T09:38:14.084Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:14.085Z	INFO	controller_certificates	Certificate secrets already existed	{"name": "observability-server-certs"}
+2024-02-27T09:38:14.085Z	INFO	controller_certificates	Certificate secrets already existed	{"name": "observability-grafana-certs"}
+2024-02-27T09:38:14.085Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:14.085Z	INFO	controller_multiclustermonitoring	storageClassSelected	{"storageClassSelected": "gp3-csi"}
+2024-02-27T09:38:14.085Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/observatorium-rhel9@sha256:9a9ce8454811c4e536bd25006c69c2251ad014a1f15c4057040dad51f8265cd4"}
+2024-02-27T09:38:14.085Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-configmap-reloader@sha256:fa5b2e42a27e3ab5f0a0d2a103b5602b81d1b29eb788b54cc60ad547744ad053"}
+2024-02-27T09:38:14.085Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-rhel9@sha256:fae7746f32f3316e946308fe25d5d63066cc793199898f6189824fe40729d9b2"}
+2024-02-27T09:38:14.085Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-exporter-rhel9@sha256:d48006b2d6ba88a0cbd5972861399ed64f8f49a8e22111166f653b001d00d1c9"}
+2024-02-27T09:38:14.085Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/thanos-receive-controller-rhel9@sha256:3f9e3fc3cf1eb94b9bc22a70b8f5ef16ac158a11252646b644238aac070430ea"}
+2024-02-27T09:38:14.085Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-rhel9@sha256:fae7746f32f3316e946308fe25d5d63066cc793199898f6189824fe40729d9b2"}
+2024-02-27T09:38:14.085Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-exporter-rhel9@sha256:d48006b2d6ba88a0cbd5972861399ed64f8f49a8e22111166f653b001d00d1c9"}
+2024-02-27T09:38:14.085Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/thanos-rhel9@sha256:fbefdce1baed8b29601624451c71be21e3daa8f4c465111b3203d38b1170d32f"}
+2024-02-27T09:38:14.085Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:14.087Z	INFO	controller_multiclustermonitoring	Updating observatorium CR	{"observatorium": "observability"}
+2024-02-27T09:38:14.111Z	INFO	controller_multiclustermonitoring	StorageVersionMigration already existed/unchanged	{"name": "storage-version-migration-observability"}
+2024-02-27T09:38:14.111Z	INFO	controller_multiclustermonitoring	Reconciling MultiClusterObservability	{"Request.Namespace": "", "Request.Name": "open-cluster-management-observability"}
+2024-02-27T09:38:14.112Z	DEBUG	config	operand is	{"key": "grafana", "name": "observability-grafana"}
+2024-02-27T09:38:14.112Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-grafana-rhel9@sha256:31c945bbc9d697c80a5d5e0b6e4634d00c44a25606b6306cae1e2e8ef0a097cb"}
+2024-02-27T09:38:14.112Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/grafana-dashboard-loader-rhel9@sha256:68ad0500a626dd94db5bc55a142270bd5f01e2b38bc8ff7ffe86ba3238f46cc0"}
+2024-02-27T09:38:14.112Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:14.114Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:14.114Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:14.114Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:14.114Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:14.114Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-alertmanager-rhel9@sha256:4a3f458a47798baf19f0a6955d3a1e4bd0e010159ab042930d4783ea75edfa3e"}
+2024-02-27T09:38:14.114Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-configmap-reloader@sha256:fa5b2e42a27e3ab5f0a0d2a103b5602b81d1b29eb788b54cc60ad547744ad053"}
+2024-02-27T09:38:14.114Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:14.116Z	DEBUG	controller_multiclustermonitoring	status update goroutine is triggered.
+2024-02-27T09:38:14.117Z	DEBUG	config	operand is	{"key": "rbac-query-proxy", "name": "observability-rbac-query-proxy"}
+2024-02-27T09:38:14.117Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:14.117Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:14.117Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/rbac-query-proxy-rhel9@sha256:a30fc1fee76c56ce7505c3ff272111aa9ee0a31d5a2bc5bc83ca85286e3e0147"}
+2024-02-27T09:38:14.117Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:14.118Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/observatorium-rhel9-operator@sha256:8740b5c44da1d8eea54a0b8d1ef64d2a5a5c2ec8cfe7ed38090e473e12296c02"}
+2024-02-27T09:38:14.118Z	DEBUG	config	operand is	{"key": "observatorium-operator", "name": "observability-observatorium-operator"}
+2024-02-27T09:38:14.131Z	INFO	deploying	deployerFn not found	{"kind:": "Role"}
+2024-02-27T09:38:14.135Z	INFO	deploying	deployerFn not found	{"kind:": "RoleBinding"}
+2024-02-27T09:38:14.139Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:14.148Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=ConfigMap", "Name:": "observability-managed-cluster-label-allowlist"}
+2024-02-27T09:38:14.169Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:14.173Z	INFO	deploying	Update	{"Kind:": "/v1, Kind=Secret", "Name:": "grafana-config"}
+2024-02-27T09:38:14.920Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:14.920Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.Tolerations (after): []
+2024-02-27T09:38:14.920Z	INFO	controller_placementrule	Creating resource for hub metrics collection	{"cluster": "local-cluster"}
+2024-02-27T09:38:14.920Z	INFO	controller_placementrule	Check Ismcoterminating	{"IsMCOTerminating": false}
+2024-02-27T09:38:14.931Z	INFO	controller_placementrule	Coleen creating resource	{"kind": "Secret", "name": "observability-managed-cluster-certs"}
+2024-02-27T09:38:14.942Z	INFO	controller_placementrule	Coleen creating resource	{"kind": "Secret", "name": "observability-alertmanager-accessor"}
+2024-02-27T09:38:14.950Z	INFO	controller_placementrule	Coleen creating resource	{"kind": "ConfigMap", "name": "observability-metrics-allowlist"}
+2024-02-27T09:38:14.959Z	INFO	controller_placementrule	Coleen creating resource	{"kind": "Deployment", "name": "endpoint-observability-operator"}
+2024-02-27T09:38:15.548Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:15.551Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "alertmanager-config"}
+2024-02-27T09:38:15.555Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "alertmanager-proxy"}
+2024-02-27T09:38:15.658Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:15.708Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "rbac-proxy-cookie-secret"}
+2024-02-27T09:38:15.744Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:15.760Z	INFO	controller_certificates	CA secrets already existed	{"name": "observability-server-ca-certs"}
+2024-02-27T09:38:15.760Z	INFO	controller_certificates	CA secrets already existed	{"name": "observability-client-ca-certs"}
+2024-02-27T09:38:15.760Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:15.760Z	INFO	controller_certificates	Certificate secrets already existed	{"name": "observability-server-certs"}
+2024-02-27T09:38:15.760Z	INFO	controller_certificates	Certificate secrets already existed	{"name": "observability-grafana-certs"}
+2024-02-27T09:38:15.760Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:15.760Z	INFO	controller_multiclustermonitoring	storageClassSelected	{"storageClassSelected": "gp3-csi"}
+2024-02-27T09:38:15.760Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/observatorium-rhel9@sha256:9a9ce8454811c4e536bd25006c69c2251ad014a1f15c4057040dad51f8265cd4"}
+2024-02-27T09:38:15.760Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-configmap-reloader@sha256:fa5b2e42a27e3ab5f0a0d2a103b5602b81d1b29eb788b54cc60ad547744ad053"}
+2024-02-27T09:38:15.760Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-rhel9@sha256:fae7746f32f3316e946308fe25d5d63066cc793199898f6189824fe40729d9b2"}
+2024-02-27T09:38:15.760Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-exporter-rhel9@sha256:d48006b2d6ba88a0cbd5972861399ed64f8f49a8e22111166f653b001d00d1c9"}
+2024-02-27T09:38:15.760Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/thanos-receive-controller-rhel9@sha256:3f9e3fc3cf1eb94b9bc22a70b8f5ef16ac158a11252646b644238aac070430ea"}
+2024-02-27T09:38:15.760Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-rhel9@sha256:fae7746f32f3316e946308fe25d5d63066cc793199898f6189824fe40729d9b2"}
+2024-02-27T09:38:15.760Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-exporter-rhel9@sha256:d48006b2d6ba88a0cbd5972861399ed64f8f49a8e22111166f653b001d00d1c9"}
+2024-02-27T09:38:15.760Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/thanos-rhel9@sha256:fbefdce1baed8b29601624451c71be21e3daa8f4c465111b3203d38b1170d32f"}
+2024-02-27T09:38:15.761Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:15.766Z	INFO	controller_multiclustermonitoring	Updating observatorium CR	{"observatorium": "observability"}
+2024-02-27T09:38:15.790Z	INFO	controller_multiclustermonitoring	StorageVersionMigration already existed/unchanged	{"name": "storage-version-migration-observability"}
+2024-02-27T09:38:15.790Z	INFO	controller_multiclustermonitoring	Reconciling MultiClusterObservability	{"Request.Namespace": "", "Request.Name": "observability"}
+2024-02-27T09:38:15.790Z	DEBUG	controller_multiclustermonitoring	status update goroutine is triggered.
+2024-02-27T09:38:15.791Z	DEBUG	config	operand is	{"key": "grafana", "name": "observability-grafana"}
+2024-02-27T09:38:15.791Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-grafana-rhel9@sha256:31c945bbc9d697c80a5d5e0b6e4634d00c44a25606b6306cae1e2e8ef0a097cb"}
+2024-02-27T09:38:15.791Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/grafana-dashboard-loader-rhel9@sha256:68ad0500a626dd94db5bc55a142270bd5f01e2b38bc8ff7ffe86ba3238f46cc0"}
+2024-02-27T09:38:15.791Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:15.792Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:15.792Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:15.792Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:15.792Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:15.792Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-alertmanager-rhel9@sha256:4a3f458a47798baf19f0a6955d3a1e4bd0e010159ab042930d4783ea75edfa3e"}
+2024-02-27T09:38:15.792Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-configmap-reloader@sha256:fa5b2e42a27e3ab5f0a0d2a103b5602b81d1b29eb788b54cc60ad547744ad053"}
+2024-02-27T09:38:15.792Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:15.793Z	DEBUG	config	operand is	{"key": "rbac-query-proxy", "name": "observability-rbac-query-proxy"}
+2024-02-27T09:38:15.793Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:15.793Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:15.793Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/rbac-query-proxy-rhel9@sha256:a30fc1fee76c56ce7505c3ff272111aa9ee0a31d5a2bc5bc83ca85286e3e0147"}
+2024-02-27T09:38:15.793Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:15.793Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/observatorium-rhel9-operator@sha256:8740b5c44da1d8eea54a0b8d1ef64d2a5a5c2ec8cfe7ed38090e473e12296c02"}
+2024-02-27T09:38:15.793Z	DEBUG	config	operand is	{"key": "observatorium-operator", "name": "observability-observatorium-operator"}
+2024-02-27T09:38:15.804Z	INFO	deploying	deployerFn not found	{"kind:": "Role"}
+2024-02-27T09:38:15.808Z	INFO	deploying	deployerFn not found	{"kind:": "RoleBinding"}
+2024-02-27T09:38:15.811Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:15.819Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=ConfigMap", "Name:": "observability-managed-cluster-label-allowlist"}
+2024-02-27T09:38:15.853Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:15.857Z	INFO	deploying	Update	{"Kind:": "/v1, Kind=Secret", "Name:": "grafana-config"}
+2024-02-27T09:38:15.970Z	INFO	controller_placementrule	Coleen creating resource	{"kind": "Secret", "name": "multiclusterhub-operator-pull-secret"}
+2024-02-27T09:38:15.980Z	INFO	controller_placementrule	Coleen creating resource	{"kind": "ConfigMap", "name": "images-list"}
+2024-02-27T09:38:15.990Z	INFO	controller_placementrule	Coleen creating resource	{"kind": "Secret", "name": "hub-info-secret"}
+W0227 09:38:16.222964       1 client_config.go:618] Neither --kubeconfig nor --master was specified.  Using the inClusterConfig.  This might not work.
+2024/02/27 09:38:16 [INFO] signed certificate with serial number 651880833234170045865811138861065248270728229221
+2024-02-27T09:38:16.252Z	INFO	controller_placementrule	To delete managedcluster resources	{"Request.Namespace": "open-cluster-management-observability", "Request.Name": "observability-server-ca-certs", "namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:16.266Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "open-cluster-management-observability-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:16.273Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:16.277Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "open-cluster-management-observability", "Request.Name": "observability-metrics-custom-allowlist"}
+2024-02-27T09:38:16.288Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:16.292Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:16.296Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:16.296Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:16.296Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:16.296Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:16.296Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:16.296Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:16.296Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:16.296Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:16.296Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:16.297Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:16.297Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "clc-eks", "request.name": "observability-metrics-custom-allowlist", "request.namespace": "open-cluster-management-observability", "openshiftVersion": "N/A"}
+2024-02-27T09:38:16.297Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:16.297Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:16.297Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:16.297Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "clc-eks"}
+2024-02-27T09:38:16.297Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:16.297Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.Tolerations (after): []
+2024-02-27T09:38:16.297Z	INFO	controller_placementrule	Updating manifestwork	{"clc-eks": "clc-eks", "name": "clc-eks-observability"}
+2024-02-27T09:38:16.332Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "obs-8509-ma", "request.name": "observability-metrics-custom-allowlist", "request.namespace": "open-cluster-management-observability", "openshiftVersion": "4.13.33"}
+2024-02-27T09:38:16.332Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:16.332Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:16.332Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:16.332Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "obs-8509-ma"}
+2024-02-27T09:38:16.332Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:16.332Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.Tolerations (after): []
+2024-02-27T09:38:16.332Z	INFO	controller_placementrule	Updating manifestwork	{"obs-8509-ma": "obs-8509-ma", "name": "obs-8509-ma-observability"}
+2024-02-27T09:38:16.361Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "local-cluster", "request.name": "observability-metrics-custom-allowlist", "request.namespace": "open-cluster-management-observability", "openshiftVersion": "mimical"}
+2024-02-27T09:38:16.364Z	INFO	controller_placementrule	Creating endpoint-observability-mco-rolebinding clusterrolebinding
+2024-02-27T09:38:16.372Z	INFO	controller_placementrule	Creating endpoint-observability-res-rolebinding rolebinding	{"namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:17.248Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:17.252Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "alertmanager-config"}
+2024-02-27T09:38:17.255Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "alertmanager-proxy"}
+2024-02-27T09:38:17.357Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:17.408Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "rbac-proxy-cookie-secret"}
+2024-02-27T09:38:17.443Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:17.460Z	INFO	controller_certificates	CA secrets already existed	{"name": "observability-server-ca-certs"}
+2024-02-27T09:38:17.460Z	INFO	controller_certificates	CA secrets already existed	{"name": "observability-client-ca-certs"}
+2024-02-27T09:38:17.460Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:17.460Z	INFO	controller_certificates	Certificate secrets already existed	{"name": "observability-server-certs"}
+2024-02-27T09:38:17.460Z	INFO	controller_certificates	Certificate secrets already existed	{"name": "observability-grafana-certs"}
+2024-02-27T09:38:17.460Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:17.460Z	INFO	controller_multiclustermonitoring	storageClassSelected	{"storageClassSelected": "gp3-csi"}
+2024-02-27T09:38:17.460Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/observatorium-rhel9@sha256:9a9ce8454811c4e536bd25006c69c2251ad014a1f15c4057040dad51f8265cd4"}
+2024-02-27T09:38:17.460Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-configmap-reloader@sha256:fa5b2e42a27e3ab5f0a0d2a103b5602b81d1b29eb788b54cc60ad547744ad053"}
+2024-02-27T09:38:17.460Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-rhel9@sha256:fae7746f32f3316e946308fe25d5d63066cc793199898f6189824fe40729d9b2"}
+2024-02-27T09:38:17.460Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-exporter-rhel9@sha256:d48006b2d6ba88a0cbd5972861399ed64f8f49a8e22111166f653b001d00d1c9"}
+2024-02-27T09:38:17.460Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/thanos-receive-controller-rhel9@sha256:3f9e3fc3cf1eb94b9bc22a70b8f5ef16ac158a11252646b644238aac070430ea"}
+2024-02-27T09:38:17.460Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-rhel9@sha256:fae7746f32f3316e946308fe25d5d63066cc793199898f6189824fe40729d9b2"}
+2024-02-27T09:38:17.460Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-exporter-rhel9@sha256:d48006b2d6ba88a0cbd5972861399ed64f8f49a8e22111166f653b001d00d1c9"}
+2024-02-27T09:38:17.460Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/thanos-rhel9@sha256:fbefdce1baed8b29601624451c71be21e3daa8f4c465111b3203d38b1170d32f"}
+2024-02-27T09:38:17.460Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:17.462Z	INFO	controller_multiclustermonitoring	Updating observatorium CR	{"observatorium": "observability"}
+2024-02-27T09:38:17.475Z	INFO	controller_multiclustermonitoring	StorageVersionMigration already existed/unchanged	{"name": "storage-version-migration-observability"}
+2024-02-27T09:38:17.475Z	DEBUG	controller_multiclustermonitoring	status update goroutine is triggered.
+2024-02-27T09:38:18.400Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:18.400Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.Tolerations (after): []
+2024-02-27T09:38:18.400Z	INFO	controller_placementrule	Creating resource for hub metrics collection	{"cluster": "local-cluster"}
+2024-02-27T09:38:18.400Z	INFO	controller_placementrule	Check Ismcoterminating	{"IsMCOTerminating": false}
+2024-02-27T09:38:18.412Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "observability-managed-cluster-certs"}
+2024-02-27T09:38:18.417Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "observability-alertmanager-accessor"}
+2024-02-27T09:38:18.421Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "ConfigMap", "name": "observability-metrics-allowlist"}
+2024-02-27T09:38:18.425Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Deployment", "name": "endpoint-observability-operator"}
+2024-02-27T09:38:18.425Z	INFO	controller_placementrule	Coleen needs update updating resource	{"kind": "Deployment", "name": "endpoint-observability-operator"}
+2024-02-27T09:38:18.437Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "multiclusterhub-operator-pull-secret"}
+2024-02-27T09:38:18.441Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "ConfigMap", "name": "images-list"}
+2024-02-27T09:38:18.445Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "hub-info-secret"}
+W0227 09:38:18.548919       1 client_config.go:618] Neither --kubeconfig nor --master was specified.  Using the inClusterConfig.  This might not work.
+2024/02/27 09:38:18 [INFO] signed certificate with serial number 510723797895674121559680735557153898806052267632
+2024-02-27T09:38:18.574Z	INFO	controller_placementrule	To delete managedcluster resources	{"Request.Namespace": "open-cluster-management-observability", "Request.Name": "observability-metrics-custom-allowlist", "namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:18.589Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "open-cluster-management-observability-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:18.598Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:18.602Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "open-cluster-management-observability", "Request.Name": "observability-metrics-allowlist"}
+2024-02-27T09:38:18.608Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:18.612Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:18.616Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:18.616Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:18.616Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:18.616Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:18.616Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:18.616Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:18.616Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:18.616Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:18.616Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:18.616Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:18.617Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "clc-eks", "request.name": "observability-metrics-allowlist", "request.namespace": "open-cluster-management-observability", "openshiftVersion": "N/A"}
+2024-02-27T09:38:18.617Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:18.617Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:18.617Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:18.617Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "clc-eks"}
+2024-02-27T09:38:18.617Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:18.617Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.Tolerations (after): []
+2024-02-27T09:38:18.617Z	INFO	controller_placementrule	Updating manifestwork	{"clc-eks": "clc-eks", "name": "clc-eks-observability"}
+2024-02-27T09:38:18.650Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "obs-8509-ma", "request.name": "observability-metrics-allowlist", "request.namespace": "open-cluster-management-observability", "openshiftVersion": "4.13.33"}
+2024-02-27T09:38:18.651Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:18.651Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:18.651Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:18.651Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "obs-8509-ma"}
+2024-02-27T09:38:18.651Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:18.651Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.Tolerations (after): []
+2024-02-27T09:38:18.651Z	INFO	controller_placementrule	Updating manifestwork	{"obs-8509-ma": "obs-8509-ma", "name": "obs-8509-ma-observability"}
+2024-02-27T09:38:18.681Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "local-cluster", "request.name": "observability-metrics-allowlist", "request.namespace": "open-cluster-management-observability", "openshiftVersion": "mimical"}
+2024-02-27T09:38:18.685Z	INFO	controller_placementrule	Creating endpoint-observability-mco-rolebinding clusterrolebinding
+2024-02-27T09:38:18.694Z	INFO	controller_placementrule	Creating endpoint-observability-res-rolebinding rolebinding	{"namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:20.718Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:20.719Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.Tolerations (after): []
+2024-02-27T09:38:20.719Z	INFO	controller_placementrule	Creating resource for hub metrics collection	{"cluster": "local-cluster"}
+2024-02-27T09:38:20.719Z	INFO	controller_placementrule	Check Ismcoterminating	{"IsMCOTerminating": false}
+2024-02-27T09:38:20.730Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "observability-managed-cluster-certs"}
+2024-02-27T09:38:20.733Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "observability-alertmanager-accessor"}
+2024-02-27T09:38:20.737Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "ConfigMap", "name": "observability-metrics-allowlist"}
+2024-02-27T09:38:20.740Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Deployment", "name": "endpoint-observability-operator"}
+2024-02-27T09:38:20.741Z	INFO	controller_placementrule	Coleen needs update updating resource	{"kind": "Deployment", "name": "endpoint-observability-operator"}
+2024-02-27T09:38:20.752Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "multiclusterhub-operator-pull-secret"}
+2024-02-27T09:38:20.758Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "ConfigMap", "name": "images-list"}
+2024-02-27T09:38:20.761Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "hub-info-secret"}
+W0227 09:38:20.848470       1 client_config.go:618] Neither --kubeconfig nor --master was specified.  Using the inClusterConfig.  This might not work.
+2024/02/27 09:38:20 [INFO] signed certificate with serial number 627857638840178374649889850851103737391676634292
+2024-02-27T09:38:20.932Z	INFO	controller_placementrule	To delete managedcluster resources	{"Request.Namespace": "open-cluster-management-observability", "Request.Name": "observability-metrics-allowlist", "namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:20.946Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "open-cluster-management-observability-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:20.954Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:20.958Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "ocm", "Request.Name": "mch-updated-request"}
+2024-02-27T09:38:20.970Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:20.973Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:20.976Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:20.976Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:20.977Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:20.977Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:20.977Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:20.977Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:20.977Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:20.977Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:20.977Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:20.977Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:20.978Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "clc-eks", "request.name": "mch-updated-request", "request.namespace": "ocm", "openshiftVersion": "N/A"}
+2024-02-27T09:38:20.978Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:20.978Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:20.978Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:20.978Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "clc-eks"}
+2024-02-27T09:38:20.978Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:20.978Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.Tolerations (after): []
+2024-02-27T09:38:20.978Z	INFO	controller_placementrule	Updating manifestwork	{"clc-eks": "clc-eks", "name": "clc-eks-observability"}
+2024-02-27T09:38:21.012Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "obs-8509-ma", "request.name": "mch-updated-request", "request.namespace": "ocm", "openshiftVersion": "4.13.33"}
+2024-02-27T09:38:21.012Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:21.012Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:21.012Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:21.012Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "obs-8509-ma"}
+2024-02-27T09:38:21.012Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:21.012Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.Tolerations (after): []
+2024-02-27T09:38:21.012Z	INFO	controller_placementrule	Updating manifestwork	{"obs-8509-ma": "obs-8509-ma", "name": "obs-8509-ma-observability"}
+2024-02-27T09:38:21.042Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "local-cluster", "request.name": "mch-updated-request", "request.namespace": "ocm", "openshiftVersion": "mimical"}
+2024-02-27T09:38:21.046Z	INFO	controller_placementrule	Creating endpoint-observability-mco-rolebinding clusterrolebinding
+2024-02-27T09:38:21.055Z	INFO	controller_placementrule	Creating endpoint-observability-res-rolebinding rolebinding	{"namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:23.082Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:23.082Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.Tolerations (after): []
+2024-02-27T09:38:23.082Z	INFO	controller_placementrule	Creating resource for hub metrics collection	{"cluster": "local-cluster"}
+2024-02-27T09:38:23.082Z	INFO	controller_placementrule	Check Ismcoterminating	{"IsMCOTerminating": false}
+2024-02-27T09:38:23.092Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "observability-managed-cluster-certs"}
+2024-02-27T09:38:23.096Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "observability-alertmanager-accessor"}
+2024-02-27T09:38:23.100Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "ConfigMap", "name": "observability-metrics-allowlist"}
+2024-02-27T09:38:23.103Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Deployment", "name": "endpoint-observability-operator"}
+2024-02-27T09:38:23.103Z	INFO	controller_placementrule	Coleen needs update updating resource	{"kind": "Deployment", "name": "endpoint-observability-operator"}
+2024-02-27T09:38:23.116Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "multiclusterhub-operator-pull-secret"}
+2024-02-27T09:38:23.120Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "ConfigMap", "name": "images-list"}
+2024-02-27T09:38:23.123Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "hub-info-secret"}
+W0227 09:38:23.447278       1 client_config.go:618] Neither --kubeconfig nor --master was specified.  Using the inClusterConfig.  This might not work.
+2024/02/27 09:38:23 [INFO] signed certificate with serial number 154985861677087036630688097726204631391774433004
+2024-02-27T09:38:23.479Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "", "Request.Name": "addondc-updated-request"}
+2024-02-27T09:38:23.486Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:23.490Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:23.493Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:23.493Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:23.493Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:23.493Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:23.493Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:23.493Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:23.493Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:23.493Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:23.493Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:23.494Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:23.494Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "clc-eks", "request.name": "addondc-updated-request", "request.namespace": "", "openshiftVersion": "N/A"}
+2024-02-27T09:38:23.494Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:23.494Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:23.494Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:23.494Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "clc-eks"}
+2024-02-27T09:38:23.494Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:23.494Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.Tolerations (after): []
+2024-02-27T09:38:23.495Z	INFO	controller_placementrule	Updating manifestwork	{"clc-eks": "clc-eks", "name": "clc-eks-observability"}
+2024-02-27T09:38:23.521Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "obs-8509-ma", "request.name": "addondc-updated-request", "request.namespace": "", "openshiftVersion": "4.13.33"}
+2024-02-27T09:38:23.521Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:23.521Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:23.521Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:23.521Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "obs-8509-ma"}
+2024-02-27T09:38:23.521Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:23.521Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.Tolerations (after): []
+2024-02-27T09:38:23.521Z	INFO	controller_placementrule	Updating manifestwork	{"obs-8509-ma": "obs-8509-ma", "name": "obs-8509-ma-observability"}
+2024-02-27T09:38:23.546Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "local-cluster", "request.name": "addondc-updated-request", "request.namespace": "", "openshiftVersion": "mimical"}
+2024-02-27T09:38:23.546Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:23.546Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:23.546Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:23.546Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:23.546Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.Tolerations (after): []
+2024-02-27T09:38:23.546Z	INFO	controller_placementrule	Creating resource for hub metrics collection	{"cluster": "local-cluster"}
+2024-02-27T09:38:23.546Z	INFO	controller_placementrule	Check Ismcoterminating	{"IsMCOTerminating": false}
+2024-02-27T09:38:23.556Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "observability-managed-cluster-certs"}
+2024-02-27T09:38:23.560Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "observability-alertmanager-accessor"}
+2024-02-27T09:38:23.564Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "ConfigMap", "name": "observability-metrics-allowlist"}
+2024-02-27T09:38:23.568Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Deployment", "name": "endpoint-observability-operator"}
+2024-02-27T09:38:23.568Z	INFO	controller_placementrule	Coleen needs update updating resource	{"kind": "Deployment", "name": "endpoint-observability-operator"}
+2024-02-27T09:38:23.580Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "multiclusterhub-operator-pull-secret"}
+2024-02-27T09:38:23.585Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "ConfigMap", "name": "images-list"}
+2024-02-27T09:38:23.589Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "hub-info-secret"}
+W0227 09:38:24.151797       1 client_config.go:618] Neither --kubeconfig nor --master was specified.  Using the inClusterConfig.  This might not work.
+2024/02/27 09:38:24 [INFO] signed certificate with serial number 667923355403929095285601094586176466997880505952
+2024-02-27T09:38:24.177Z	INFO	controller_placementrule	To delete managedcluster resources	{"Request.Namespace": "", "Request.Name": "addondc-updated-request", "namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:24.193Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "open-cluster-management-observability-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:24.200Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:24.204Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "openshift-ingress-operator", "Request.Name": "router-ca"}
+2024-02-27T09:38:24.212Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:24.216Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:24.219Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:24.219Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:24.219Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:24.219Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:24.219Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:24.219Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:24.219Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:24.219Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:24.219Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:24.220Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:24.227Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "openshift-ingress", "Request.Name": "router-certs-default"}
+2024-02-27T09:38:24.234Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:24.238Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:24.242Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:24.242Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:24.242Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:24.243Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:24.243Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:24.243Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:24.243Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:24.243Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:24.243Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:24.244Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:24.254Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "", "Request.Name": "mco-updated-request"}
+2024-02-27T09:38:24.261Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:24.264Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:24.267Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:24.267Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:24.267Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:24.268Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:24.268Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:24.268Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:24.268Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:24.268Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:24.268Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:24.268Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:24.268Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "local-cluster", "request.name": "mco-updated-request", "request.namespace": "", "openshiftVersion": "mimical"}
+2024-02-27T09:38:24.272Z	INFO	controller_placementrule	Creating endpoint-observability-mco-rolebinding clusterrolebinding
+2024-02-27T09:38:24.281Z	INFO	controller_placementrule	Creating endpoint-observability-res-rolebinding rolebinding	{"namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:25.763Z	DEBUG	config	the length of mch-image-manifest configmap	{"imageManifests": 46}
+2024-02-27T09:38:25.764Z	DEBUG	config	the length of mch-image-manifest configmap	{"imageManifests": 46}
+2024-02-27T09:38:25.765Z	INFO	controller_multiclustermonitoring	Reconciling MultiClusterObservability	{"Request.Namespace": "ocm", "Request.Name": "mch-updated-request"}
+2024-02-27T09:38:25.765Z	DEBUG	config	operand is	{"key": "grafana", "name": "observability-grafana"}
+2024-02-27T09:38:25.765Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-grafana-rhel9@sha256:31c945bbc9d697c80a5d5e0b6e4634d00c44a25606b6306cae1e2e8ef0a097cb"}
+2024-02-27T09:38:25.765Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/grafana-dashboard-loader-rhel9@sha256:68ad0500a626dd94db5bc55a142270bd5f01e2b38bc8ff7ffe86ba3238f46cc0"}
+2024-02-27T09:38:25.765Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:25.767Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:25.767Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:25.767Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:25.767Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:25.767Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-alertmanager-rhel9@sha256:4a3f458a47798baf19f0a6955d3a1e4bd0e010159ab042930d4783ea75edfa3e"}
+2024-02-27T09:38:25.767Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-configmap-reloader@sha256:fa5b2e42a27e3ab5f0a0d2a103b5602b81d1b29eb788b54cc60ad547744ad053"}
+2024-02-27T09:38:25.767Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:25.768Z	DEBUG	config	operand is	{"key": "rbac-query-proxy", "name": "observability-rbac-query-proxy"}
+2024-02-27T09:38:25.768Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:25.768Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:25.768Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/rbac-query-proxy-rhel9@sha256:a30fc1fee76c56ce7505c3ff272111aa9ee0a31d5a2bc5bc83ca85286e3e0147"}
+2024-02-27T09:38:25.768Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:25.768Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/observatorium-rhel9-operator@sha256:8740b5c44da1d8eea54a0b8d1ef64d2a5a5c2ec8cfe7ed38090e473e12296c02"}
+2024-02-27T09:38:25.768Z	DEBUG	config	operand is	{"key": "observatorium-operator", "name": "observability-observatorium-operator"}
+2024-02-27T09:38:25.779Z	INFO	deploying	deployerFn not found	{"kind:": "Role"}
+2024-02-27T09:38:25.782Z	INFO	deploying	deployerFn not found	{"kind:": "RoleBinding"}
+2024-02-27T09:38:25.785Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:25.792Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=ConfigMap", "Name:": "observability-managed-cluster-label-allowlist"}
+2024-02-27T09:38:25.806Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:25.809Z	INFO	deploying	Update	{"Kind:": "/v1, Kind=Secret", "Name:": "grafana-config"}
+2024-02-27T09:38:25.988Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:25.991Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "alertmanager-config"}
+2024-02-27T09:38:25.995Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "alertmanager-proxy"}
+2024-02-27T09:38:26.030Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:26.054Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "rbac-proxy-cookie-secret"}
+2024-02-27T09:38:26.068Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:26.085Z	INFO	controller_certificates	CA secrets already existed	{"name": "observability-server-ca-certs"}
+2024-02-27T09:38:26.085Z	INFO	controller_certificates	CA secrets already existed	{"name": "observability-client-ca-certs"}
+2024-02-27T09:38:26.085Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:26.085Z	INFO	controller_certificates	Certificate secrets already existed	{"name": "observability-server-certs"}
+2024-02-27T09:38:26.085Z	INFO	controller_certificates	Certificate secrets already existed	{"name": "observability-grafana-certs"}
+2024-02-27T09:38:26.085Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:26.085Z	INFO	controller_multiclustermonitoring	storageClassSelected	{"storageClassSelected": "gp3-csi"}
+2024-02-27T09:38:26.085Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/observatorium-rhel9@sha256:9a9ce8454811c4e536bd25006c69c2251ad014a1f15c4057040dad51f8265cd4"}
+2024-02-27T09:38:26.085Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-configmap-reloader@sha256:fa5b2e42a27e3ab5f0a0d2a103b5602b81d1b29eb788b54cc60ad547744ad053"}
+2024-02-27T09:38:26.085Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-rhel9@sha256:fae7746f32f3316e946308fe25d5d63066cc793199898f6189824fe40729d9b2"}
+2024-02-27T09:38:26.085Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-exporter-rhel9@sha256:d48006b2d6ba88a0cbd5972861399ed64f8f49a8e22111166f653b001d00d1c9"}
+2024-02-27T09:38:26.085Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/thanos-receive-controller-rhel9@sha256:3f9e3fc3cf1eb94b9bc22a70b8f5ef16ac158a11252646b644238aac070430ea"}
+2024-02-27T09:38:26.085Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-rhel9@sha256:fae7746f32f3316e946308fe25d5d63066cc793199898f6189824fe40729d9b2"}
+2024-02-27T09:38:26.085Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-exporter-rhel9@sha256:d48006b2d6ba88a0cbd5972861399ed64f8f49a8e22111166f653b001d00d1c9"}
+2024-02-27T09:38:26.085Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/thanos-rhel9@sha256:fbefdce1baed8b29601624451c71be21e3daa8f4c465111b3203d38b1170d32f"}
+2024-02-27T09:38:26.085Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:26.086Z	INFO	controller_multiclustermonitoring	Updating observatorium CR	{"observatorium": "observability"}
+2024-02-27T09:38:26.101Z	INFO	controller_multiclustermonitoring	StorageVersionMigration already existed/unchanged	{"name": "storage-version-migration-observability"}
+2024-02-27T09:38:26.101Z	DEBUG	controller_multiclustermonitoring	status update goroutine is triggered.
+2024-02-27T09:38:26.307Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:26.307Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.Tolerations (after): []
+2024-02-27T09:38:26.307Z	INFO	controller_placementrule	Creating resource for hub metrics collection	{"cluster": "local-cluster"}
+2024-02-27T09:38:26.307Z	INFO	controller_placementrule	Check Ismcoterminating	{"IsMCOTerminating": false}
+2024-02-27T09:38:26.317Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "observability-managed-cluster-certs"}
+2024-02-27T09:38:26.321Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "observability-alertmanager-accessor"}
+2024-02-27T09:38:26.325Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "ConfigMap", "name": "observability-metrics-allowlist"}
+2024-02-27T09:38:26.331Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Deployment", "name": "endpoint-observability-operator"}
+2024-02-27T09:38:26.331Z	INFO	controller_placementrule	Coleen needs update updating resource	{"kind": "Deployment", "name": "endpoint-observability-operator"}
+2024-02-27T09:38:26.345Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "multiclusterhub-operator-pull-secret"}
+2024-02-27T09:38:26.349Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "ConfigMap", "name": "images-list"}
+2024-02-27T09:38:26.353Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "hub-info-secret"}
+W0227 09:38:26.639096       1 client_config.go:618] Neither --kubeconfig nor --master was specified.  Using the inClusterConfig.  This might not work.
+2024/02/27 09:38:26 [INFO] signed certificate with serial number 12788775307524077945449750598704610615328229420
+2024-02-27T09:38:26.666Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "clc-eks", "request.name": "mco-updated-request", "request.namespace": "", "openshiftVersion": "N/A"}
+2024-02-27T09:38:26.666Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:26.666Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:26.666Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:26.666Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "clc-eks"}
+2024-02-27T09:38:26.666Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:26.666Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.Tolerations (after): []
+2024-02-27T09:38:26.666Z	INFO	controller_placementrule	Updating manifestwork	{"clc-eks": "clc-eks", "name": "clc-eks-observability"}
+2024-02-27T09:38:26.694Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "obs-8509-ma", "request.name": "mco-updated-request", "request.namespace": "", "openshiftVersion": "4.13.33"}
+2024-02-27T09:38:26.694Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:26.694Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:26.694Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:26.694Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "obs-8509-ma"}
+2024-02-27T09:38:26.694Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:26.694Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.Tolerations (after): []
+2024-02-27T09:38:26.695Z	INFO	controller_placementrule	Updating manifestwork	{"obs-8509-ma": "obs-8509-ma", "name": "obs-8509-ma-observability"}
+2024-02-27T09:38:26.721Z	INFO	controller_placementrule	To delete managedcluster resources	{"Request.Namespace": "", "Request.Name": "mco-updated-request", "namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:26.735Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "open-cluster-management-observability-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:26.743Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:26.747Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "openshift-ingress-operator", "Request.Name": "default"}
+2024-02-27T09:38:26.756Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:26.760Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:26.763Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:26.763Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:26.763Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:26.763Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:26.763Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:26.763Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:26.763Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:26.763Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:26.763Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:26.764Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:26.771Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "open-cluster-management-observability", "Request.Name": "observability-alertmanager-accessor"}
+2024-02-27T09:38:26.777Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:26.781Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:26.784Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:26.784Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:26.784Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:26.784Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:26.784Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:26.784Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:26.784Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:26.784Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:26.784Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:26.785Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:26.785Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "clc-eks", "request.name": "observability-alertmanager-accessor", "request.namespace": "open-cluster-management-observability", "openshiftVersion": "N/A"}
+2024-02-27T09:38:26.785Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:26.785Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:26.785Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:26.785Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "clc-eks"}
+2024-02-27T09:38:26.785Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:26.785Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.Tolerations (after): []
+2024-02-27T09:38:26.785Z	INFO	controller_placementrule	Updating manifestwork	{"clc-eks": "clc-eks", "name": "clc-eks-observability"}
+2024-02-27T09:38:26.822Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "obs-8509-ma", "request.name": "observability-alertmanager-accessor", "request.namespace": "open-cluster-management-observability", "openshiftVersion": "4.13.33"}
+2024-02-27T09:38:26.822Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:26.822Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:26.822Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:26.822Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "obs-8509-ma"}
+2024-02-27T09:38:26.822Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:26.822Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.Tolerations (after): []
+2024-02-27T09:38:26.822Z	INFO	controller_placementrule	Updating manifestwork	{"obs-8509-ma": "obs-8509-ma", "name": "obs-8509-ma-observability"}
+2024-02-27T09:38:26.854Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "local-cluster", "request.name": "observability-alertmanager-accessor", "request.namespace": "open-cluster-management-observability", "openshiftVersion": "mimical"}
+2024-02-27T09:38:26.859Z	INFO	controller_placementrule	Creating endpoint-observability-mco-rolebinding clusterrolebinding
+2024-02-27T09:38:26.867Z	INFO	controller_placementrule	Creating endpoint-observability-res-rolebinding rolebinding	{"namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:28.904Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:28.905Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.Tolerations (after): []
+2024-02-27T09:38:28.905Z	INFO	controller_placementrule	Creating resource for hub metrics collection	{"cluster": "local-cluster"}
+2024-02-27T09:38:28.905Z	INFO	controller_placementrule	Check Ismcoterminating	{"IsMCOTerminating": false}
+2024-02-27T09:38:28.915Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "observability-managed-cluster-certs"}
+2024-02-27T09:38:28.919Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "observability-alertmanager-accessor"}
+2024-02-27T09:38:28.923Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "ConfigMap", "name": "observability-metrics-allowlist"}
+2024-02-27T09:38:28.927Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Deployment", "name": "endpoint-observability-operator"}
+2024-02-27T09:38:28.927Z	INFO	controller_placementrule	Coleen needs update updating resource	{"kind": "Deployment", "name": "endpoint-observability-operator"}
+2024-02-27T09:38:28.940Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "multiclusterhub-operator-pull-secret"}
+2024-02-27T09:38:28.947Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "ConfigMap", "name": "images-list"}
+2024-02-27T09:38:28.951Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "hub-info-secret"}
+W0227 09:38:29.246020       1 client_config.go:618] Neither --kubeconfig nor --master was specified.  Using the inClusterConfig.  This might not work.
+2024/02/27 09:38:29 [INFO] signed certificate with serial number 545944451379393564318598071870323847176304969891
+2024-02-27T09:38:29.271Z	INFO	controller_placementrule	To delete managedcluster resources	{"Request.Namespace": "open-cluster-management-observability", "Request.Name": "observability-alertmanager-accessor", "namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:29.285Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "open-cluster-management-observability-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:29.293Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:29.297Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "ocm", "Request.Name": "mch-updated-request"}
+2024-02-27T09:38:29.321Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:29.326Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:29.330Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:29.330Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:29.330Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:29.330Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:29.330Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:29.330Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:29.330Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:29.330Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:29.330Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:29.331Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:29.331Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "local-cluster", "request.name": "mch-updated-request", "request.namespace": "ocm", "openshiftVersion": "mimical"}
+2024-02-27T09:38:29.334Z	INFO	controller_placementrule	Creating endpoint-observability-mco-rolebinding clusterrolebinding
+2024-02-27T09:38:29.361Z	INFO	controller_placementrule	Creating endpoint-observability-res-rolebinding rolebinding	{"namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:31.386Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:31.386Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.Tolerations (after): []
+2024-02-27T09:38:31.386Z	INFO	controller_placementrule	Creating resource for hub metrics collection	{"cluster": "local-cluster"}
+2024-02-27T09:38:31.387Z	INFO	controller_placementrule	Check Ismcoterminating	{"IsMCOTerminating": false}
+2024-02-27T09:38:31.397Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "observability-managed-cluster-certs"}
+2024-02-27T09:38:31.401Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "observability-alertmanager-accessor"}
+2024-02-27T09:38:31.405Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "ConfigMap", "name": "observability-metrics-allowlist"}
+2024-02-27T09:38:31.408Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Deployment", "name": "endpoint-observability-operator"}
+2024-02-27T09:38:31.408Z	INFO	controller_placementrule	Coleen needs update updating resource	{"kind": "Deployment", "name": "endpoint-observability-operator"}
+2024-02-27T09:38:31.421Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "multiclusterhub-operator-pull-secret"}
+2024-02-27T09:38:31.428Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "ConfigMap", "name": "images-list"}
+2024-02-27T09:38:31.431Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "hub-info-secret"}
+W0227 09:38:31.969079       1 client_config.go:618] Neither --kubeconfig nor --master was specified.  Using the inClusterConfig.  This might not work.
+2024/02/27 09:38:31 [INFO] signed certificate with serial number 109880955808458506382699101506360997547502439293
+2024-02-27T09:38:31.998Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "clc-eks", "request.name": "mch-updated-request", "request.namespace": "ocm", "openshiftVersion": "N/A"}
+2024-02-27T09:38:31.998Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:31.998Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:31.998Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:31.998Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "clc-eks"}
+2024-02-27T09:38:31.998Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:31.998Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.Tolerations (after): []
+2024-02-27T09:38:31.998Z	INFO	controller_placementrule	Updating manifestwork	{"clc-eks": "clc-eks", "name": "clc-eks-observability"}
+2024-02-27T09:38:32.047Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "obs-8509-ma", "request.name": "mch-updated-request", "request.namespace": "ocm", "openshiftVersion": "4.13.33"}
+2024-02-27T09:38:32.047Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:32.047Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:32.047Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:32.047Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "obs-8509-ma"}
+2024-02-27T09:38:32.047Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:32.047Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.Tolerations (after): []
+2024-02-27T09:38:32.047Z	INFO	controller_placementrule	Updating manifestwork	{"obs-8509-ma": "obs-8509-ma", "name": "obs-8509-ma-observability"}
+2024-02-27T09:38:32.094Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "clc-eks", "Request.Name": "clc-eks-observability"}
+2024-02-27T09:38:32.103Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:32.106Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:32.109Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:32.109Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:32.109Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:32.109Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:32.109Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:32.109Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:32.109Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:32.109Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:32.109Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:32.110Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:32.110Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "clc-eks", "request.name": "clc-eks-observability", "request.namespace": "clc-eks", "openshiftVersion": "N/A"}
+2024-02-27T09:38:32.110Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:32.110Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:32.110Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:32.110Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "clc-eks"}
+2024-02-27T09:38:32.110Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:32.110Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.Tolerations (after): []
+2024-02-27T09:38:32.111Z	INFO	controller_placementrule	Updating manifestwork	{"clc-eks": "clc-eks", "name": "clc-eks-observability"}
+2024-02-27T09:38:32.139Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "obs-8509-ma", "Request.Name": "obs-8509-ma-observability"}
+2024-02-27T09:38:32.147Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:32.151Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:32.154Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:32.154Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:32.154Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:32.154Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:32.154Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:32.154Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:32.154Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:32.154Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:32.154Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:32.155Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:32.155Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "obs-8509-ma", "request.name": "obs-8509-ma-observability", "request.namespace": "obs-8509-ma", "openshiftVersion": "4.13.33"}
+2024-02-27T09:38:32.155Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:32.155Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:32.155Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:32.155Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "obs-8509-ma"}
+2024-02-27T09:38:32.155Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:32.155Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.Tolerations (after): []
+2024-02-27T09:38:32.155Z	INFO	controller_placementrule	Updating manifestwork	{"obs-8509-ma": "obs-8509-ma", "name": "obs-8509-ma-observability"}
+2024-02-27T09:38:32.184Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "clc-eks", "Request.Name": "clc-eks-observability"}
+2024-02-27T09:38:32.192Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:32.195Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:32.198Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:32.198Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:32.198Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:32.198Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:32.198Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:32.198Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:32.198Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:32.198Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:32.198Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:32.199Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:32.199Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "clc-eks", "request.name": "clc-eks-observability", "request.namespace": "clc-eks", "openshiftVersion": "N/A"}
+2024-02-27T09:38:32.199Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:32.199Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:32.199Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:32.199Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "clc-eks"}
+2024-02-27T09:38:32.199Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:32.199Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.Tolerations (after): []
+2024-02-27T09:38:32.200Z	INFO	controller_placementrule	Updating manifestwork	{"clc-eks": "clc-eks", "name": "clc-eks-observability"}
+2024-02-27T09:38:32.227Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "obs-8509-ma", "Request.Name": "obs-8509-ma-observability"}
+2024-02-27T09:38:32.233Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:32.236Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:32.239Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:32.239Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:32.239Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:32.239Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:32.239Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:32.239Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:32.239Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:32.239Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:32.239Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:32.240Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:32.240Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "obs-8509-ma", "request.name": "obs-8509-ma-observability", "request.namespace": "obs-8509-ma", "openshiftVersion": "4.13.33"}
+2024-02-27T09:38:32.240Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:32.240Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:32.240Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:32.240Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "obs-8509-ma"}
+2024-02-27T09:38:32.240Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:32.240Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.Tolerations (after): []
+2024-02-27T09:38:32.241Z	INFO	controller_placementrule	Updating manifestwork	{"obs-8509-ma": "obs-8509-ma", "name": "obs-8509-ma-observability"}
+2024-02-27T09:38:46.699Z	DEBUG	config	the length of mch-image-manifest configmap	{"imageManifests": 46}
+2024-02-27T09:38:46.699Z	INFO	controller_multiclustermonitoring	Reconciling MultiClusterObservability	{"Request.Namespace": "ocm", "Request.Name": "mch-updated-request"}
+2024-02-27T09:38:46.700Z	DEBUG	config	operand is	{"key": "grafana", "name": "observability-grafana"}
+2024-02-27T09:38:46.700Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-grafana-rhel9@sha256:31c945bbc9d697c80a5d5e0b6e4634d00c44a25606b6306cae1e2e8ef0a097cb"}
+2024-02-27T09:38:46.700Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/grafana-dashboard-loader-rhel9@sha256:68ad0500a626dd94db5bc55a142270bd5f01e2b38bc8ff7ffe86ba3238f46cc0"}
+2024-02-27T09:38:46.700Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:46.701Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:46.701Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:46.701Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:46.701Z	DEBUG	config	operand is	{"key": "alertmanager", "name": "observability-alertmanager"}
+2024-02-27T09:38:46.701Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-alertmanager-rhel9@sha256:4a3f458a47798baf19f0a6955d3a1e4bd0e010159ab042930d4783ea75edfa3e"}
+2024-02-27T09:38:46.701Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-configmap-reloader@sha256:fa5b2e42a27e3ab5f0a0d2a103b5602b81d1b29eb788b54cc60ad547744ad053"}
+2024-02-27T09:38:46.701Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:46.702Z	DEBUG	config	the length of mch-image-manifest configmap	{"imageManifests": 46}
+2024-02-27T09:38:46.702Z	INFO	controller_placementrule	Reconciling PlacementRule	{"Request.Namespace": "ocm", "Request.Name": "mch-updated-request"}
+2024-02-27T09:38:46.702Z	DEBUG	config	operand is	{"key": "rbac-query-proxy", "name": "observability-rbac-query-proxy"}
+2024-02-27T09:38:46.702Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:46.702Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:46.702Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/rbac-query-proxy-rhel9@sha256:a30fc1fee76c56ce7505c3ff272111aa9ee0a31d5a2bc5bc83ca85286e3e0147"}
+2024-02-27T09:38:46.702Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-oauth-proxy@sha256:41762eda03298362d3f97e1fd0be4af429d22658b520f94023941655e062d1a1"}
+2024-02-27T09:38:46.703Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/observatorium-rhel9-operator@sha256:8740b5c44da1d8eea54a0b8d1ef64d2a5a5c2ec8cfe7ed38090e473e12296c02"}
+2024-02-27T09:38:46.703Z	DEBUG	config	operand is	{"key": "observatorium-operator", "name": "observability-observatorium-operator"}
+2024-02-27T09:38:46.709Z	INFO	controller_placementrule	Clusterrolebinding deleted	{"name": "local-cluster-endpoint-observability-res-rolebinding"}
+2024-02-27T09:38:46.712Z	INFO	controller_placementrule	Rolebinding deleted	{"name": "endpoint-observability-res-rolebinding", "namespace": "local-cluster"}
+2024-02-27T09:38:46.715Z	INFO	deploying	deployerFn not found	{"kind:": "Role"}
+2024-02-27T09:38:46.716Z	INFO	util	observability-controller clustermanagementaddon is present 
+2024-02-27T09:38:46.716Z	INFO	controller_placementrule	load and update templates for managedcluster resources
+2024-02-27T09:38:46.716Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-rhel9@sha256:c2a6f4fb3408c274596d5ddb96d4ca13aa4b1886eb0df4326e00d74c14e574d3"}
+2024-02-27T09:38:46.716Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-state-metrics-rhel9@sha256:0532b516494a1b20118a0f47ea60c2b1b6b865463073d199a1f5f4340ede1904"}
+2024-02-27T09:38:46.716Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/node-exporter-rhel9@sha256:78ad1b5b43227eb5edceb2d1982655e65228ac0b835ea3d5cfd4f64260184401"}
+2024-02-27T09:38:46.716Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/kube-rbac-proxy-rhel9@sha256:dc7a7d01c5987fe39dcddfbd62cc586a5e8602e667ac13755d7e2a39f6162748"}
+2024-02-27T09:38:46.716Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/metrics-collector:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:46.716Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/prometheus-rhel9@sha256:7e68ff4848d5cca10e5f19880e86aa20d8627a1446ada7731c34aa6e003a276b"}
+2024-02-27T09:38:46.716Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/acm-prometheus-config-reloader-rhel9@sha256:a170a454248ee11fc3b561a7bc905c846408bc490d956a6ad01580e08380a5bf"}
+2024-02-27T09:38:46.716Z	DEBUG	config	image replacement: custom image found	{"componentImage": "quay.io/stolostron/endpoint-monitoring-operator:2.8.6-PR1346-086591cf23e30331cc70773512a229495aa2e222"}
+2024-02-27T09:38:46.717Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "clc-eks", "request.name": "mch-updated-request", "request.namespace": "ocm", "openshiftVersion": "N/A"}
+2024-02-27T09:38:46.717Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:46.717Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:46.717Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "clc-eks"}
+2024-02-27T09:38:46.717Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "clc-eks"}
+2024-02-27T09:38:46.717Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:46.717Z	INFO	controller_placementrule	Cluster: clc-eks, Spec.Tolerations (after): []
+2024-02-27T09:38:46.717Z	INFO	controller_placementrule	Updating manifestwork	{"clc-eks": "clc-eks", "name": "clc-eks-observability"}
+2024-02-27T09:38:46.718Z	INFO	deploying	deployerFn not found	{"kind:": "RoleBinding"}
+2024-02-27T09:38:46.721Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:46.729Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=ConfigMap", "Name:": "observability-managed-cluster-label-allowlist"}
+2024-02-27T09:38:46.744Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:46.746Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "obs-8509-ma", "request.name": "mch-updated-request", "request.namespace": "ocm", "openshiftVersion": "4.13.33"}
+2024-02-27T09:38:46.746Z	INFO	controller_placementrule	observabilityaddon already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:46.746Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:46.747Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "obs-8509-ma"}
+2024-02-27T09:38:46.747Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "obs-8509-ma"}
+2024-02-27T09:38:46.747Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:46.747Z	INFO	controller_placementrule	Cluster: obs-8509-ma, Spec.Tolerations (after): []
+2024-02-27T09:38:46.747Z	INFO	controller_placementrule	Updating manifestwork	{"obs-8509-ma": "obs-8509-ma", "name": "obs-8509-ma-observability"}
+2024-02-27T09:38:46.748Z	INFO	deploying	Update	{"Kind:": "/v1, Kind=Secret", "Name:": "grafana-config"}
+2024-02-27T09:38:46.774Z	INFO	controller_placementrule	Monitoring operator should be installed in cluster	{"cluster_name": "local-cluster", "request.name": "mch-updated-request", "request.namespace": "ocm", "openshiftVersion": "mimical"}
+2024-02-27T09:38:46.774Z	INFO	controller_placementrule	clusterrolebinding endpoint-observability-mco-rolebinding already existed/unchanged	{"namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:46.774Z	INFO	controller_placementrule	rolebinding endpoint-observability-res-rolebinding already existed/unchanged	{"namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:46.774Z	INFO	util	ManagedClusterAddOn is created or updated successfully	{"name": "observability-controller", "namespace": "open-cluster-management-observability"}
+2024-02-27T09:38:46.774Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.NodeSelector (after): map[]
+2024-02-27T09:38:46.774Z	INFO	controller_placementrule	Cluster: local-cluster, Spec.Tolerations (after): []
+2024-02-27T09:38:46.774Z	INFO	controller_placementrule	Creating resource for hub metrics collection	{"cluster": "local-cluster"}
+2024-02-27T09:38:46.774Z	INFO	controller_placementrule	Check Ismcoterminating	{"IsMCOTerminating": false}
+2024-02-27T09:38:46.786Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "observability-managed-cluster-certs"}
+2024-02-27T09:38:46.790Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "observability-alertmanager-accessor"}
+2024-02-27T09:38:46.793Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "ConfigMap", "name": "observability-metrics-allowlist"}
+2024-02-27T09:38:46.797Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Deployment", "name": "endpoint-observability-operator"}
+2024-02-27T09:38:46.797Z	INFO	controller_placementrule	Coleen needs update updating resource	{"kind": "Deployment", "name": "endpoint-observability-operator"}
+2024-02-27T09:38:46.809Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "multiclusterhub-operator-pull-secret"}
+2024-02-27T09:38:46.821Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "ConfigMap", "name": "images-list"}
+2024-02-27T09:38:46.825Z	INFO	controller_placementrule	Coleen updating resource	{"kind": "Secret", "name": "hub-info-secret"}
+2024-02-27T09:38:47.065Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:47.068Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "alertmanager-config"}
+2024-02-27T09:38:47.071Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "alertmanager-proxy"}
+2024-02-27T09:38:47.154Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:47.225Z	INFO	deploying	Skip creation	{"Kind:": "/v1, Kind=Secret", "Name:": "rbac-proxy-cookie-secret"}
+2024-02-27T09:38:47.239Z	INFO	deploying	deployerFn not found	{"kind:": "ServiceAccount"}
+2024-02-27T09:38:47.256Z	INFO	controller_certificates	CA secrets already existed	{"name": "observability-server-ca-certs"}
+2024-02-27T09:38:47.256Z	INFO	controller_certificates	CA secrets already existed	{"name": "observability-client-ca-certs"}
+2024-02-27T09:38:47.256Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:47.256Z	INFO	controller_certificates	Certificate secrets already existed	{"name": "observability-server-certs"}
+2024-02-27T09:38:47.256Z	INFO	controller_certificates	Certificate secrets already existed	{"name": "observability-grafana-certs"}
+2024-02-27T09:38:47.256Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:47.256Z	INFO	controller_multiclustermonitoring	storageClassSelected	{"storageClassSelected": "gp3-csi"}
+2024-02-27T09:38:47.256Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/observatorium-rhel9@sha256:9a9ce8454811c4e536bd25006c69c2251ad014a1f15c4057040dad51f8265cd4"}
+2024-02-27T09:38:47.256Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/ose-configmap-reloader@sha256:fa5b2e42a27e3ab5f0a0d2a103b5602b81d1b29eb788b54cc60ad547744ad053"}
+2024-02-27T09:38:47.256Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-rhel9@sha256:fae7746f32f3316e946308fe25d5d63066cc793199898f6189824fe40729d9b2"}
+2024-02-27T09:38:47.256Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-exporter-rhel9@sha256:d48006b2d6ba88a0cbd5972861399ed64f8f49a8e22111166f653b001d00d1c9"}
+2024-02-27T09:38:47.256Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/thanos-receive-controller-rhel9@sha256:3f9e3fc3cf1eb94b9bc22a70b8f5ef16ac158a11252646b644238aac070430ea"}
+2024-02-27T09:38:47.256Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-rhel9@sha256:fae7746f32f3316e946308fe25d5d63066cc793199898f6189824fe40729d9b2"}
+2024-02-27T09:38:47.256Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/memcached-exporter-rhel9@sha256:d48006b2d6ba88a0cbd5972861399ed64f8f49a8e22111166f653b001d00d1c9"}
+2024-02-27T09:38:47.256Z	DEBUG	config	image replacement	{"componentName": "quay.io:443/acm-d/thanos-rhel9@sha256:fbefdce1baed8b29601624451c71be21e3daa8f4c465111b3203d38b1170d32f"}
+2024-02-27T09:38:47.256Z	DEBUG	config	operand is	{"key": "observatorium", "name": "observability"}
+2024-02-27T09:38:47.257Z	INFO	controller_multiclustermonitoring	Updating observatorium CR	{"observatorium": "observability"}
+2024-02-27T09:38:47.323Z	INFO	controller_multiclustermonitoring	StorageVersionMigration already existed/unchanged	{"name": "storage-version-migration-observability"}
+2024-02-27T09:38:47.323Z	DEBUG	controller_multiclustermonitoring	status update goroutine is triggered.
+W0227 09:38:47.763652       1 client_config.go:618] Neither --kubeconfig nor --master was specified.  Using the inClusterConfig.  This might not work.
+2024/02/27 09:38:47 [INFO] signed certificate with serial number 518841646506189902435215631360147367764767884492
