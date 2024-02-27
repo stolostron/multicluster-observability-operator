@@ -50,7 +50,8 @@ local-env: docker-build-local local-kind-cluster
 	@echo "Local environment has been set up"
 	@echo "Installing MCO"
 	@kind get kubeconfig --name hub > /tmp/hub.yaml
-	KUBECONFIG=/tmp/hub.yaml MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF=${LOCAL_IMAGE} KUSTOMIZE_VERSION=${KUSTOMIZE_VERSION} ./cicd-scripts/setup-e2e-tests.sh
+	KUBECONFIG=/tmp/hub.yaml MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF=${LOCAL_IMAGE} \
+		IS_KIND_ENV=true KUSTOMIZE_VERSION=${KUSTOMIZE_VERSION} ./cicd-scripts/setup-e2e-tests.sh
 
 
 # Create a local KinD cluster and sets the kubeconfig context to the cluster
