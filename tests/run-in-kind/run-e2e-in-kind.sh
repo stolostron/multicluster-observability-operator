@@ -77,6 +77,7 @@ run() {
   deploy_openshift_router
   setup_e2e_test_env
   run_e2e_test
+  sleep 60m
 }
 
 run
