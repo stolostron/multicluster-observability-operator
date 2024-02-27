@@ -71,7 +71,7 @@ fi
 if ! command -v kustomize &>/dev/null; then
   echo "This script will install kustomize (sigs.k8s.io/kustomize/kustomize) on your machine"
   curl -o kustomize_${KUSTOMIZE_VERSION}.tar.gz -L "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_$(uname | tr '[:upper:]' '[:lower:]')_$(uname -p)64.tar.gz"
-  tar xzvf kustomize_v${KUSTOMIZE_VERSION}.tar.gz
+  tar xzvf kustomize_${KUSTOMIZE_VERSION}.tar.gz
   chmod +x ./kustomize && mv ./kustomize ${ROOTDIR}/bin/kustomize
 fi
 
