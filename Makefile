@@ -15,6 +15,8 @@ GREP ?= $(shell which ggrep 2>/dev/null || which grep)
 # Image URL to use all building/pushing image targets
 IMG ?= quay.io/stolostron/multicluster-observability-operator:latest
 
+KUSTOMIZE_VERSION ?= v5.3.0
+
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: 
 	cd operators/multiclusterobservability && make deploy
@@ -26,11 +28,44 @@ undeploy:
 # Build the docker image
 docker-build:
 	cd operators/multiclusterobservability && make manager
-	docker build -t ${IMG} . -f operators/multiclusterobservability/Dockerfile	
+	docker build -t ${IMG} . -f operators/multiclusterobservability/Dockerfile
+
+
+LOCAL_IMAGE ?= hack.io/stolostron/mco:local
+IMAGE_BUILD_CMD ?= docker buildx build . -t ${LOCAL_IMAGE} -f operators/multiclusterobservability/Dockerfile.dev --load
+
+# Build the docker image using a public image registry
+# This target currently supports docker desktop by default
+.PHONY: docker-build-local
+docker-build-local:
+	cd operators/multiclusterobservability && make manager
+	$(IMAGE_BUILD_CMD)
+
+# Create a local environment for development in KinD
+.PHONY: local-env
+local-env: docker-build-local local-kind-cluster
+	@kind load docker-image ${LOCAL_IMAGE} --name=hub
+	@echo "Setting up local environment"
+	@./tests/run-in-kind/install-dependencies.sh deploy_all
+	@echo "Local environment has been set up"
+	@echo "Installing MCO"
+	@kind get kubeconfig --name hub > /tmp/hub.yaml
+	KUBECONFIG=/tmp/hub.yaml MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF=${LOCAL_IMAGE} KUSTOMIZE_VERSION=${KUSTOMIZE_VERSION} ./cicd-scripts/setup-e2e-tests.sh
+
+
+# Create a local KinD cluster and sets the kubeconfig context to the cluster
+.PHONY: local-kind-cluster
+local-kind-cluster:
+	@echo "Setting up KinD cluster"
+	@./tests/run-in-kind/create-cluster.sh create_kind_cluster hub
+	@echo "Cluster has been created"
+	kind export kubeconfig --name=hub
+	kubectl label node hub-control-plane node-role.kubernetes.io/master=''
 
 # Push the docker image
 docker-push:
 	docker push ${IMG}
+
 
 .PHONY: unit-tests
 unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors
