@@ -547,6 +547,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		// Determine whether to create or update the object based on if it was found
 		if k8serrors.IsNotFound(err) {
 			// Object not found, create it
+			log.Info("Coleen creating resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 			err = c.Create(context.TODO(), obj)
 			if err != nil {
 				log.Error(err, "Failed to create resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
@@ -556,7 +557,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			// Object found, compare and update if necessary
 			// Implement comparison logic based on type
 			needsUpdate := false
-
+			log.Info("Coleen updating resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 			switch obj := obj.(type) {
 			case *appsv1.Deployment:
 				currentDeployment := currentObj.(*appsv1.Deployment)
@@ -580,6 +581,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			}
 
 			if needsUpdate {
+				log.Info("Coleen needs update updating resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 				// Update the object in the cluster
 				err = c.Update(context.TODO(), obj)
 				if err != nil {
