@@ -94,3 +94,7 @@ tags
 main
 multicluster-observability-operator
 results.xml
+
+# Pulled down locally during e2e test execution
+registration-operator
+go1.*
