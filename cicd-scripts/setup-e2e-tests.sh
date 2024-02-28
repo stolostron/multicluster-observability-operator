@@ -60,27 +60,29 @@ fi
 LATEST_SNAPSHOT="${LATEST_SNAPSHOT#\"}"
 LATEST_SNAPSHOT="${LATEST_SNAPSHOT%\"}"
 
-# install kubectl
-if ! command -v kubectl &>/dev/null; then
-  echo "This script will install kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your machine"
-  if [[ "$(uname)" == "Linux" ]]; then
-    curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
-  elif [[ "$(uname)" == "Darwin" ]]; then
-    curl -LO curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/darwin/$(uname -m)/kubectl"
+install_binaries() {
+  # install kubectl
+  if ! command -v kubectl &>/dev/null; then
+    echo "This script will install kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your machine"
+    if [[ "$(uname)" == "Linux" ]]; then
+      curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+    elif [[ "$(uname)" == "Darwin" ]]; then
+      curl -LO curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/darwin/$(uname -m)/kubectl"
+    fi
   fi
-fi
 
-# install kustomize
-if ! command -v kustomize &>/dev/null; then
-  echo "This script will install kustomize (sigs.k8s.io/kustomize/kustomize) on your machine"
-  if [[ "$(uname)" == "Linux" ]]; then
-    curl -o kustomize_${KUSTOMIZE_VERSION}.tar.gz -L "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
-  elif [[ "$(uname)" == "Darwin" ]]; then
-    curl -o kustomize_${KUSTOMIZE_VERSION}.tar.gz -L "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_darwin_$(uname -m).tar.gz"
+  # install kustomize
+  if ! command -v kustomize &>/dev/null; then
+    echo "This script will install kustomize (sigs.k8s.io/kustomize/kustomize) on your machine"
+    if [[ "$(uname)" == "Linux" ]]; then
+      curl -o kustomize_${KUSTOMIZE_VERSION}.tar.gz -L "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
+    elif [[ "$(uname)" == "Darwin" ]]; then
+      curl -o kustomize_${KUSTOMIZE_VERSION}.tar.gz -L "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_darwin_$(uname -m).tar.gz"
+    fi
+    tar xzvf kustomize_${KUSTOMIZE_VERSION}.tar.gz
+    chmod +x ./kustomize && mv ./kustomize ${ROOTDIR}/bin/kustomize
   fi
-  tar xzvf kustomize_${KUSTOMIZE_VERSION}.tar.gz
-
-fi
+}
 
 # deploy the hub and spoke core via OLM
 deploy_hub_spoke_core() {
@@ -270,6 +272,7 @@ wait_for_deployment_ready() {
 
 # function execute is the main routine to do the actual work
 execute() {
+  install_binaries
   deploy_hub_spoke_core
   approve_csr_joinrequest
   deploy_mco_operator
