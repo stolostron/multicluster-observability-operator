@@ -141,3 +141,7 @@ io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile
 	@echo ">> ensuring Copyright headers"
 	@go run ./scripts/copyright
 	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')
+
+.PHONY: install-build-deps
+install-build-deps:
+	@./scripts/install-binaries.sh install_build_deps
