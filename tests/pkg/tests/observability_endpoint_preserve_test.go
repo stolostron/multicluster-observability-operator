@@ -18,6 +18,12 @@ import (
 )
 
 var _ = Describe("Observability:", func() {
+	BeforeSuite(func() {
+		clusterName := utils.GetManagedClusterName(testOptions)
+		if clusterName == "local-cluster" {
+			namespace = hubMetricsCollectorNamespace
+		}
+	})
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
@@ -28,6 +34,7 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
+
 	})
 
 	Context("[P2][Sev2][observability] Should revert any manual changes on metrics-collector deployment (endpoint_preserve/g0) -", func() {
@@ -42,7 +49,7 @@ var _ = Describe("Observability:", func() {
 					testOptions,
 					false,
 					"metrics-collector-deployment",
-					MCO_ADDON_NAMESPACE,
+					namespace,
 				)
 				return err
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
@@ -52,7 +59,7 @@ var _ = Describe("Observability:", func() {
 					testOptions,
 					false,
 					"metrics-collector-deployment",
-					MCO_ADDON_NAMESPACE,
+					namespace,
 				)
 				return err
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
@@ -62,7 +69,7 @@ var _ = Describe("Observability:", func() {
 					testOptions,
 					false,
 					"metrics-collector-deployment",
-					MCO_ADDON_NAMESPACE,
+					namespace,
 				)
 				if err == nil {
 					if dep.ObjectMeta.ResourceVersion != newDep.ObjectMeta.ResourceVersion {
@@ -79,7 +86,7 @@ var _ = Describe("Observability:", func() {
 					testOptions,
 					false,
 					"metrics-collector-deployment",
-					MCO_ADDON_NAMESPACE,
+					namespace,
 				)
 				if err != nil {
 					return err
@@ -89,7 +96,7 @@ var _ = Describe("Observability:", func() {
 					testOptions,
 					false,
 					"metrics-collector-deployment",
-					MCO_ADDON_NAMESPACE,
+					namespace,
 					newDep,
 				)
 				return err
@@ -100,7 +107,7 @@ var _ = Describe("Observability:", func() {
 					testOptions,
 					false,
 					"metrics-collector-deployment",
-					MCO_ADDON_NAMESPACE,
+					namespace,
 				)
 				if err == nil {
 					if revertDep.ObjectMeta.ResourceVersion != newDep.ObjectMeta.ResourceVersion &&
@@ -166,7 +173,7 @@ var _ = Describe("Observability:", func() {
 				testOptions,
 				false,
 				"metrics-collector-serving-certs-ca-bundle",
-				MCO_ADDON_NAMESPACE,
+				namespace,
 			)
 			return err
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
@@ -175,7 +182,7 @@ var _ = Describe("Observability:", func() {
 				testOptions,
 				false,
 				"metrics-collector-serving-certs-ca-bundle",
-				MCO_ADDON_NAMESPACE,
+				namespace,
 			)
 			return err
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
@@ -185,7 +192,7 @@ var _ = Describe("Observability:", func() {
 				testOptions,
 				false,
 				"metrics-collector-serving-certs-ca-bundle",
-				MCO_ADDON_NAMESPACE,
+				namespace,
 			)
 			if err == nil {
 				if cm.ObjectMeta.ResourceVersion != newCm.ObjectMeta.ResourceVersion {
@@ -207,5 +214,8 @@ var _ = Describe("Observability:", func() {
 			utils.PrintAllOBAPodsStatus(testOptions)
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
+	})
+	AfterSuite(func() {
+		namespace = MCO_ADDON_NAMESPACE
 	})
 })

@@ -66,6 +66,12 @@ const (
 	THANOS_STORE_MEMCACHED_LABEL          = "app.kubernetes.io/component=store-cache,app.kubernetes.io/name=memcached"
 )
 
+var (
+	hubMetricsCollectorNamespace = "open-cluster-management-observability"
+	hubManagedClusterName        = "local-cluster"
+	namespace                    = MCO_ADDON_NAMESPACE
+)
+
 var seededRand *rand.Rand = rand.New(
 	rand.NewSource(time.Now().UnixNano()))
 

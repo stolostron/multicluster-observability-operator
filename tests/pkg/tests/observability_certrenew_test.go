@@ -15,10 +15,13 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
-var (
-	namespace = MCO_ADDON_NAMESPACE
-)
 var _ = Describe("Observability:", func() {
+	BeforeSuite(func() {
+		clusterName := utils.GetManagedClusterName(testOptions)
+		if clusterName == "local-cluster" {
+			namespace = hubMetricsCollectorNamespace
+		}
+	})
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
@@ -29,11 +32,6 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
-		// get the cluster name
-		clusterName := utils.GetManagedClusterName(testOptions)
-		if clusterName == "local-cluster" {
-			namespace = MCO_NAMESPACE
-		}
 	})
 
 	It("[P1][Sev1][observability][Integration] Should have metrics collector pod restart if cert secret re-generated (certrenew/g0)", func() {
@@ -189,6 +187,10 @@ var _ = Describe("Observability:", func() {
 			utils.PrintAllMCOPodsStatus(testOptions)
 			utils.PrintAllOBAPodsStatus(testOptions)
 		}
+		namespace = MCO_ADDON_NAMESPACE
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
+	})
+	AfterSuite(func() {
+		namespace = MCO_ADDON_NAMESPACE
 	})
 })

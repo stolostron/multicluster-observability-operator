@@ -18,7 +18,7 @@ import (
 )
 
 var _ = Describe("Observability:", func() {
-	if utils.GetManagedClusterName(testOptions) == "local-cluster" {
+	if utils.GetManagedClusterName(testOptions) == hubManagedClusterName {
 		// Skip the case for local-cluster since no observability addon
 		return
 	}
