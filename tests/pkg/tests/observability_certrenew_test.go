@@ -16,12 +16,6 @@ import (
 )
 
 var _ = Describe("Observability:", func() {
-	BeforeSuite(func() {
-		clusterName := utils.GetManagedClusterName(testOptions)
-		if clusterName == hubManagedClusterName {
-			namespace = hubMetricsCollectorNamespace
-		}
-	})
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
@@ -32,6 +26,10 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
+		clusterName := utils.GetManagedClusterName(testOptions)
+		if clusterName == hubManagedClusterName {
+			namespace = hubMetricsCollectorNamespace
+		}
 	})
 
 	It("[P1][Sev1][observability][Integration] Should have metrics collector pod restart if cert secret re-generated (certrenew/g0)", func() {
@@ -187,10 +185,8 @@ var _ = Describe("Observability:", func() {
 			utils.PrintAllMCOPodsStatus(testOptions)
 			utils.PrintAllOBAPodsStatus(testOptions)
 		}
-		namespace = MCO_ADDON_NAMESPACE
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
-	})
-	AfterSuite(func() {
 		namespace = MCO_ADDON_NAMESPACE
 	})
+
 })

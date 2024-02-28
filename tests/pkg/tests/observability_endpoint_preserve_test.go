@@ -18,12 +18,6 @@ import (
 )
 
 var _ = Describe("Observability:", func() {
-	BeforeSuite(func() {
-		clusterName := utils.GetManagedClusterName(testOptions)
-		if clusterName == hubManagedClusterName {
-			namespace = hubMetricsCollectorNamespace
-		}
-	})
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
@@ -34,7 +28,10 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
-
+		clusterName := utils.GetManagedClusterName(testOptions)
+		if clusterName == hubManagedClusterName {
+			namespace = hubMetricsCollectorNamespace
+		}
 	})
 
 	Context("[P2][Sev2][observability] Should revert any manual changes on metrics-collector deployment (endpoint_preserve/g0) -", func() {
@@ -214,8 +211,6 @@ var _ = Describe("Observability:", func() {
 			utils.PrintAllOBAPodsStatus(testOptions)
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
-	})
-	AfterSuite(func() {
 		namespace = MCO_ADDON_NAMESPACE
 	})
 })
