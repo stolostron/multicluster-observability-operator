@@ -18,7 +18,7 @@ import (
 var _ = Describe("Observability:", func() {
 	BeforeSuite(func() {
 		clusterName := utils.GetManagedClusterName(testOptions)
-		if clusterName == "local-cluster" {
+		if clusterName == hubManagedClusterName {
 			namespace = hubMetricsCollectorNamespace
 		}
 	})
