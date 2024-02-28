@@ -71,6 +71,8 @@ install_jq() {
 install_build_deps() {
   bin_dir=${1:-${BIN_DIR}}
   install_operator_sdk ${bin_dir}
+  # kustomize is required to build the bundle
+  install_kustomize ${bin_dir}
 }
 
 # This allows functions within this file to be called individually from Makefile(s).
