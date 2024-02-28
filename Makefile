@@ -63,7 +63,7 @@ endif
 
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
-bundle:
+bundle: deps install-build-deps
 	cd operators/multiclusterobservability && make bundle
 
 .PHONY: check-git
