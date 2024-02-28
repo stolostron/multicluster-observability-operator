@@ -306,6 +306,10 @@ func GetAllOBAPods(opt TestOptions) ([]corev1.Pod, error) {
 }
 
 func PrintAllOBAPodsStatus(opt TestOptions) {
+	if GetManagedClusterName(opt) == "local-cluster" {
+		klog.V(1).Infof("Skip printing OBA pods status for local-cluster")
+		return
+	}
 	podList, err := GetAllOBAPods(opt)
 	if err != nil {
 		klog.Errorf("Failed to get all OBA pods: %v", err)

@@ -17,11 +17,11 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
-var (
-	allClusters []string
-)
-
 var _ = Describe("Observability:", func() {
+	if utils.GetManagedClusterName(testOptions) == "local-cluster" {
+		// Skip the case for local-cluster since no observability addon
+		return
+	}
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
 			testOptions.HubCluster.ClusterServerURL,
@@ -39,11 +39,6 @@ var _ = Describe("Observability:", func() {
 			clusters, clusterError = utils.ListManagedClusters(testOptions)
 			if clusterError != nil {
 				return clusterError
-			}
-			for _, cluster := range clusters {
-				if cluster != "local-cluster" {
-					allClusters = append(allClusters, cluster)
-				}
 			}
 			return nil
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(Succeed())
@@ -110,7 +105,7 @@ var _ = Describe("Observability:", func() {
 		// timestamp(node_memory_MemAvailable_bytes{cluster="local-cluster"} offset 1m) > 59
 		It("[Stable] Waiting for check no metric data in grafana console", func() {
 			Eventually(func() error {
-				for _, cluster := range allClusters {
+				for _, cluster := range clusters {
 					err, hasMetric := utils.ContainManagedClusterMetric(
 						testOptions,
 						`timestamp(node_memory_MemAvailable_bytes{cluster="`+cluster+`}) - timestamp(node_memory_MemAvailable_bytes{cluster=`+cluster+`"} offset 1m) > 59`,

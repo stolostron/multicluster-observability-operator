@@ -15,6 +15,9 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
+var (
+	namespace = MCO_ADDON_NAMESPACE
+)
 var _ = Describe("Observability:", func() {
 	BeforeEach(func() {
 		hubClient = utils.NewKubeClient(
@@ -26,6 +29,11 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
+		// get the cluster name
+		clusterName := utils.GetManagedClusterName(testOptions)
+		if clusterName == "local-cluster" {
+			namespace = MCO_NAMESPACE
+		}
 	})
 
 	It("[P1][Sev1][observability][Integration] Should have metrics collector pod restart if cert secret re-generated (certrenew/g0)", func() {
@@ -39,7 +47,7 @@ var _ = Describe("Observability:", func() {
 				_, podList := utils.GetPodList(
 					testOptions,
 					false,
-					MCO_ADDON_NAMESPACE,
+					namespace,
 					"component=metrics-collector",
 				)
 				if podList != nil && len(podList.Items) > 0 {
@@ -142,7 +150,7 @@ var _ = Describe("Observability:", func() {
 			err, podList := utils.GetPodList(
 				testOptions,
 				false,
-				MCO_ADDON_NAMESPACE,
+				namespace,
 				"component=metrics-collector",
 			)
 			if err == nil {
@@ -162,7 +170,7 @@ var _ = Describe("Observability:", func() {
 				testOptions,
 				false,
 				"metrics-collector-deployment",
-				MCO_ADDON_NAMESPACE,
+				namespace,
 			)
 			if err == nil {
 				klog.V(1).Infof("labels: <%v>", deployment.Spec.Template.ObjectMeta.Labels)

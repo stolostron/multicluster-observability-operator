@@ -32,7 +32,9 @@ var _ = Describe("Observability:", func() {
 		manifestWorkName := "endpoint-observability-work"
 		clientDynamic := utils.GetKubeClientDynamic(testOptions, true)
 		clusterName := utils.GetManagedClusterName(testOptions)
-		if clusterName != "" {
+		if clusterName != "" && clusterName != "local-cluster" {
+			// ACM 8509 : Special case for local-cluster
+			// We do not create manifestwork for local-cluster
 			oldManifestWorkResourceVersion := ""
 			oldCollectorPodName := ""
 			_, podList := utils.GetPodList(testOptions, false, MCO_ADDON_NAMESPACE, "component=metrics-collector")
