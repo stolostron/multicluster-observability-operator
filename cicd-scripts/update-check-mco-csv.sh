@@ -3,7 +3,8 @@
 # Copyright Contributors to the Open Cluster Management project
 
 # generate csv
-./cicd-scripts/install-dependencies.sh
+source ./scripts/install-binaries.sh
+install_operator_sdk
 
 operator-sdk generate csv --crd-dir=deploy/crds --deploy-dir=deploy/ --output-dir=deploy/olm-catalog/multicluster-observability-operator --operator-name=multicluster-observability-operator --csv-version=0.1.0
 extra_text="    - name: observatoria.core.observatorium.io
