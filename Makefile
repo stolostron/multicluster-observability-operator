@@ -23,6 +23,12 @@ deploy:
 undeploy:
 	cd operators/multiclusterobservability && make undeploy
 
+
+# Build the operator binary
+.PHONY: build
+build:
+	cd operators/multiclusterobservability && make manager
+
 # Build the docker image
 docker-build:
 	cd operators/multiclusterobservability && make manager
