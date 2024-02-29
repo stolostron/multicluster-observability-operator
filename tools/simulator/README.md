@@ -1,6 +1,7 @@
 # Simulator
 
-We have simulators in different subfolder for different scenarios, each simulator subfolder contains its own README, They're linked below!
+We have simulators in different subfolder for different scenarios. 
+Each simulator subfolder contains its own README linked below:
 
 * [alert forwarder simulator](alert-forward)
 * [managed cluster simulator](managed-cluster)
