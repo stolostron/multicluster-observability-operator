@@ -16,9 +16,6 @@ ROOTDIR="$(
   cd "$(dirname "$0")/.."
   pwd -P
 )"
-# Create bin directory and add it to PATH
-mkdir -p ${ROOTDIR}/bin
-export PATH=${PATH}:${ROOTDIR}/bin
 
 OCM_DEFAULT_NS="open-cluster-management"
 AGENT_NS="open-cluster-management-agent"
