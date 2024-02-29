@@ -22,39 +22,11 @@ if [[ "$(uname)" == "Darwin" ]]; then
 fi
 
 deploy() {
-  #setup_kubectl_command
   create_kind_hub
   deploy_prometheus_operator
   deploy_observatorium
   deploy_thanos
   deploy_metrics_collector $IMAGE_NAME
-}
-
-setup_kubectl_command() {
-  echo "=====Setup kubectl====="
-  # kubectl required for kind
-  echo "Install kubectl from openshift mirror (https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.4.14/openshift-client-mac-4.4.14.tar.gz)"
-  mv README.md README.md.tmp
-  if [[ "$(uname)" == "Darwin" ]]; then # then we are on a Mac
-    curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.4.14/openshift-client-mac-4.4.14.tar.gz
-    tar xzvf openshift-client-mac-4.4.14.tar.gz # xzf to quiet logs
-    rm openshift-client-mac-4.4.14.tar.gz
-  elif [[ "$(uname)" == "Linux" ]]; then # we are in travis, building in rhel
-    curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.4.14/openshift-client-linux-4.4.14.tar.gz
-    tar xzvf openshift-client-linux-4.4.14.tar.gz # xzf to quiet logs
-    rm openshift-client-linux-4.4.14.tar.gz
-  fi
-  # this package has a binary, so:
-
-  echo "Current directory"
-  echo $(pwd)
-  mv README.md.tmp README.md
-  chmod +x ./kubectl
-  if [[ ! -f /usr/local/bin/kubectl ]]; then
-    sudo cp ./kubectl /usr/local/bin/kubectl
-  fi
-  # kubectl are now installed in current dir
-  echo -n "kubectl version" && kubectl version
 }
 
 create_kind_hub() {
