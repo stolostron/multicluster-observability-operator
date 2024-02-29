@@ -42,7 +42,7 @@ var _ = Describe("Observability:", func() {
 			if collectorPodName == "" {
 				_, podList := utils.GetPodList(
 					testOptions,
-					false,
+					true,
 					namespace,
 					"component=metrics-collector",
 				)
@@ -145,7 +145,7 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() bool {
 			err, podList := utils.GetPodList(
 				testOptions,
-				false,
+				true,
 				namespace,
 				"component=metrics-collector",
 			)
@@ -164,7 +164,7 @@ var _ = Describe("Observability:", func() {
 			// debug code to check label "cert/time-restarted"
 			deployment, err := utils.GetDeployment(
 				testOptions,
-				false,
+				true,
 				"metrics-collector-deployment",
 				namespace,
 			)
