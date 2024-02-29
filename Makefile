@@ -63,6 +63,7 @@ e2e-tests: install-e2e-test-deps
 e2e-tests-in-kind: install-e2e-test-deps
 	@echo "Running e2e tests in KinD cluster..."
 ifeq ($(OPENSHIFT_CI),true)
+    # Set up environment specific to OpenShift CI
 	@./cicd-scripts/run-e2e-in-kind-via-prow.sh
 else
 	@./tests/run-in-kind/run-e2e-in-kind.sh

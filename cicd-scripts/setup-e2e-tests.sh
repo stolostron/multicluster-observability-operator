@@ -29,20 +29,8 @@ if [[ "$(uname)" == "Darwin" ]]; then
   SED_COMMAND='sed -i '-e' -e'
 fi
 
-# Use snapshot for target release. Use latest one if no branch info detected, or not a release branch
-BRANCH=""
-LATEST_SNAPSHOT=""
-if [[ ${PULL_BASE_REF} == "release-"* ]]; then
-  BRANCH=${PULL_BASE_REF#"release-"}
-  LATEST_SNAPSHOT=$(curl https://quay.io//api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|test("'${BRANCH}'.*-SNAPSHOT-*")))|keys[length-1]')
-fi
-if [[ ${LATEST_SNAPSHOT} == "null" ]] || [[ ${LATEST_SNAPSHOT} == "" ]]; then
-  LATEST_SNAPSHOT=$(curl https://quay.io/api/v1/repository/stolostron/multicluster-observability-operator | jq '.tags|with_entries(select((.key|contains("SNAPSHOT"))and(.key|contains("9.9.0")|not)))|keys[length-1]')
-fi
-
-# trim the leading and tailing quotes
-LATEST_SNAPSHOT="${LATEST_SNAPSHOT#\"}"
-LATEST_SNAPSHOT="${LATEST_SNAPSHOT%\"}"
+# Set the latest snapshot if it is not set
+LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_latest_snapshot)}
 
 # deploy the hub and spoke core via OLM
 deploy_hub_spoke_core() {
