@@ -23,6 +23,12 @@ deploy:
 undeploy:
 	cd operators/multiclusterobservability && make undeploy
 
+
+# Build the operator binary
+.PHONY: build
+build:
+	cd operators/multiclusterobservability && make manager
+
 # Build the docker image
 docker-build:
 	cd operators/multiclusterobservability && make manager
@@ -63,7 +69,7 @@ endif
 
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
-bundle:
+bundle: deps install-build-deps
 	cd operators/multiclusterobservability && make bundle
 
 .PHONY: check-git
@@ -141,3 +147,7 @@ io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile
 	@echo ">> ensuring Copyright headers"
 	@go run ./scripts/copyright
 	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')
+
+.PHONY: install-build-deps
+install-build-deps:
+	@./scripts/install-binaries.sh install_build_deps
