@@ -7,6 +7,7 @@ include .bingo/Variables.mk
 FILES_TO_FMT ?= $(shell find . -path ./vendor -prune -o -name '*.deepcopy.go' -prune -o -name '*.go' -print)
 TMP_DIR := $(shell pwd)/tmp
 BIN_DIR ?= $(TMP_DIR)/bin
+export PATH := $(BIN_DIR):$(PATH)
 GIT ?= $(shell which git)
 
 XARGS ?= $(shell which gxargs 2>/dev/null || which xargs)
@@ -154,4 +155,5 @@ install-build-deps:
 
 .PHONY: install-e2e-test-deps
 install-e2e-test-deps:
-	@./scripts/install-binaries.sh install_e2e_tests_deps
+	@mkdir -p $(BIN_DIR)
+	@./scripts/install-binaries.sh install_e2e_tests_deps $(BIN_DIR)
