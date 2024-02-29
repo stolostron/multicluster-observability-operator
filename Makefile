@@ -54,12 +54,12 @@ unit-tests-collectors:
 	go test ${VERBOSE} `go list ./collectors/... | $(GREP) -v test`
 
 .PHONY: e2e-tests
-e2e-tests:
+e2e-tests: install-e2e-test-deps
 	@echo "Running e2e tests ..."
 	@./cicd-scripts/run-e2e-tests.sh
 
 .PHONY: e2e-tests-in-kind
-e2e-tests-in-kind:
+e2e-tests-in-kind: install-e2e-test-deps
 	@echo "Running e2e tests in KinD cluster..."
 ifeq ($(OPENSHIFT_CI),true)
 	@./cicd-scripts/run-e2e-in-kind-via-prow.sh
@@ -151,3 +151,7 @@ io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile
 .PHONY: install-build-deps
 install-build-deps:
 	@./scripts/install-binaries.sh install_build_deps
+
+.PHONY: install-e2e-test-deps
+install-e2e-test-deps:
+	@./scripts/install-binaries.sh install_e2e_tests_deps
