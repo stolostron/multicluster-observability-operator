@@ -33,7 +33,7 @@ var _ = Describe("Observability:", func() {
 		if clusterName == hubManagedClusterName {
 			namespace = hubMetricsCollectorNamespace
 		}
-		fmt.Print("Coleen namespace: ", namespace, "clusterName: ", clusterName)
+		fmt.Printf("Coleen deleting metrics-collector deployment for namespace : %s  cluster: %s\n", namespace, clusterName)
 	})
 
 	Context("[P2][Sev2][observability] Should revert any manual changes on metrics-collector deployment (endpoint_preserve/g0) -", func() {
@@ -44,7 +44,7 @@ var _ = Describe("Observability:", func() {
 				dep *appv1.Deployment
 			)
 			clusterName := utils.GetManagedClusterName(testOptions)
-			fmt.Printf("Coleen deleting metrics-collector deployment for cluster: %s\n", namespace, "clusterName: ", clusterName)
+			fmt.Printf("Coleen deleting metrics-collector deployment for namespace : %s  cluster: %s\n", namespace, clusterName)
 			Eventually(func() error {
 				dep, err = utils.GetDeployment(
 					testOptions,
@@ -82,7 +82,7 @@ var _ = Describe("Observability:", func() {
 		})
 		It("[Stable] Updating metrics-collector deployment", func() {
 			clusterName := utils.GetManagedClusterName(testOptions)
-			fmt.Printf("Coleen deleting metrics-collector deployment for cluster: %s\n", namespace, "clusterName: ", clusterName)
+			fmt.Printf("Coleen deleting metrics-collector deployment for namespace : %s  cluster: %s\n", namespace, clusterName)
 			updateSaName := "test-serviceaccount"
 			Eventually(func() error {
 				newDep, err = utils.GetDeployment(
