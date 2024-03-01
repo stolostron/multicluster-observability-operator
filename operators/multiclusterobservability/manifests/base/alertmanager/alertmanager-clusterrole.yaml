@@ -17,3 +17,12 @@ rules:
   - subjectaccessreviews
   verbs:
   - create
+- apiGroups: [""]
+  resources:
+  - configmaps
+  resourceNames:
+  - extension-apiserver-authentication
+  verbs:
+  - get
+  - watch
+

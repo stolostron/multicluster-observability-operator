@@ -5,6 +5,10 @@ resources:
 - alertmanager-statefulset.yaml
 - alertmanager-operated.yaml
 - alertmanager-service.yaml
+- alertmanager-service-metrics.yaml
+- alertmanager-servicemonitor.yaml
+- alertmanager-clientca-metric.yaml
+- alertmanager-kube-rbac-proxy-metric.yaml
 - alert_rules.yaml
 - alertmanager-cabundle.yaml
 - alertmanager-clusterrole.yaml

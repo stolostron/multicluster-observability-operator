@@ -18,11 +18,13 @@ import (
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var log = logf.Log.WithName("renderer")
 
 type MCORenderer struct {
+	kubeClient            client.Client
 	renderer              *rendererutil.Renderer
 	cr                    *obv1beta2.MultiClusterObservability
 	renderGrafanaFns      map[string]rendererutil.RenderFn
@@ -31,10 +33,11 @@ type MCORenderer struct {
 	renderProxyFns        map[string]rendererutil.RenderFn
 }
 
-func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability) *MCORenderer {
+func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability, kubeClient client.Client) *MCORenderer {
 	mcoRenderer := &MCORenderer{
-		renderer: rendererutil.NewRenderer(),
-		cr:       multipleClusterMonitoring,
+		renderer:   rendererutil.NewRenderer(),
+		cr:         multipleClusterMonitoring,
+		kubeClient: kubeClient,
 	}
 	mcoRenderer.newGranfanaRenderer()
 	mcoRenderer.newAlertManagerRenderer()
