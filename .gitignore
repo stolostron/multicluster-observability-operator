@@ -94,3 +94,6 @@ tags
 main
 multicluster-observability-operator
 results.xml
+
+# build/tests artifacts
+registration-operator

@@ -35,9 +35,6 @@ jobs:
       - name: Linting, Formatting & vetting
         run: make lint
 
-      - name: install dependencies
-        run: cicd-scripts/install-dependencies.sh
-
       - name: Make bundle
         run: make bundle
 
