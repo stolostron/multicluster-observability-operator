@@ -154,6 +154,11 @@ io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile
 install-build-deps:
 	@./scripts/install-binaries.sh install_build_deps
 
+.PHONY: install-integration-test-deps
+install-integration-test-deps:
+	@mkdir -p $(BIN_DIR)
+	@./scripts/install-binaries.sh install_integration_tests_deps $(BIN_DIR)
+
 .PHONY: install-e2e-test-deps
 install-e2e-test-deps:
 	@mkdir -p $(BIN_DIR)

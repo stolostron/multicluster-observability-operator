@@ -90,6 +90,12 @@ install_build_deps() {
   install_kustomize ${bin_dir}
 }
 
+install_integration_tests_deps() {
+  bin_dir=${1:-${BIN_DIR}}
+  install_kubectl ${bin_dir}
+  install_kind ${bin_dir}
+}
+
 install_e2e_tests_deps() {
   bin_dir=${1:-${BIN_DIR}}
   install_kubectl ${bin_dir}
