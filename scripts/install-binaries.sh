@@ -12,6 +12,7 @@ OPERATOR_SDK_VERSION="${KUBECTL_VERSION:=v1.4.2}"
 KUBECTL_VERSION="${KUBECTL_VERSION:=v1.28.2}"
 KUSTOMIZE_VERSION="${KUSTOMIZE_VERSION:=v5.3.0}"
 JQ_VERSION="${JQ_VERSION:=1.6}"
+KIND_VERSION="${KIND_VERSION:=v0.22.0}"
 
 BIN_DIR="${BIN_DIR:=/usr/local/bin}"
 
@@ -59,6 +60,7 @@ install_kustomize() {
 install_jq() {
   bin_dir=${1:-${BIN_DIR}}
   if ! command -v jq &>/dev/null; then
+    echo "This script will install jq on your machine"
     if [[ "$(uname)" == "Linux" ]]; then
       curl -o jq -L "https://github.com/stedolan/jq/releases/download/jq-${JQ_VERSION}/jq-linux64"
     elif [[ "$(uname)" == "Darwin" ]]; then
@@ -68,10 +70,31 @@ install_jq() {
   fi
 }
 
+install_kind() {
+  bin_dir=${1:-${BIN_DIR}}
+  if ! command -v kind &>/dev/null; then
+    echo "This script will install KinD on your machine"
+    if [[ "$(uname)" == "Linux" ]]; then
+      curl -o kind -L "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+    elif [[ "$(uname)" == "Darwin" ]]; then
+      curl -o kind -L "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-darwin-$(uname -m)"
+    fi
+    chmod +x ./kind && mv ./kind ${bin_dir}/kind
+  fi
+}
+
 install_build_deps() {
   bin_dir=${1:-${BIN_DIR}}
   install_operator_sdk ${bin_dir}
   # kustomize is required to build the bundle
+  install_kustomize ${bin_dir}
+}
+
+install_e2e_tests_deps() {
+  bin_dir=${1:-${BIN_DIR}}
+  install_kubectl ${bin_dir}
+  install_jq ${bin_dir}
+  install_kind ${bin_dir}
   install_kustomize ${bin_dir}
 }
 
