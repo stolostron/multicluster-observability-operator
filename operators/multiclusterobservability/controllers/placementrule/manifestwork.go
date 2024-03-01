@@ -477,7 +477,6 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 
 	for _, manifest := range hubManifestCopy {
 		obj := manifest.RawExtension.Object.(client.Object)
-		// Define a variable to hold the existing object
 		var currentObj client.Object
 
 		gvk := obj.GetObjectKind().GroupVersionKind()
@@ -493,14 +492,12 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		}
 
 		if gvk.Kind == "ClusterRoleBinding" {
-			// Specifically set the namespace for ClusterRoleBinding subjects
 			role := obj.(*rbacv1.ClusterRoleBinding)
 			if len(role.Subjects) > 0 {
 				role.Subjects[0].Namespace = config.GetDefaultNamespace()
 			}
 		}
 
-		// Determine the type and create a new object of that type
 		switch obj.GetObjectKind().GroupVersionKind().Kind {
 		case "Deployment":
 			currentObj = &appsv1.Deployment{}
@@ -508,27 +505,21 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			currentObj = &corev1.Secret{}
 		case "ConfigMap":
 			currentObj = &corev1.ConfigMap{}
-		// Add cases for other types as needed
 		default:
-			// Handle other types or skip
 			continue
 		}
 
-		// Try to get the current version of the object from the cluster
 		err := c.Get(context.TODO(), client.ObjectKey{
 			Namespace: obj.GetNamespace(),
 			Name:      obj.GetName(),
 		}, currentObj)
 
 		if err != nil && !k8serrors.IsNotFound(err) {
-			// If there's an error fetching the object (other than not found), log it and return
 			log.Error(err, "Failed to fetch resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
 			return err
 		}
 
-		// Determine whether to create or update the object based on if it was found
 		if k8serrors.IsNotFound(err) {
-			// Object not found, create it
 			log.Info("Coleen creating resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 			err = c.Create(context.TODO(), obj)
 			if err != nil {
@@ -536,20 +527,16 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 				return err
 			}
 		} else {
-			// Object found, compare and update if necessary
-			// Implement comparison logic based on type
 			needsUpdate := false
 			log.Info("Coleen updating resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 			switch obj := obj.(type) {
 			case *appsv1.Deployment:
 				currentDeployment := currentObj.(*appsv1.Deployment)
-				// Compare spec here, set needsUpdate = true if they differ
 				if !reflect.DeepEqual(obj.Spec, currentDeployment.Spec) {
 					needsUpdate = true
 				}
 			case *corev1.Secret:
 				currentSecret := currentObj.(*corev1.Secret)
-				// Compare data here, set needsUpdate = true if they differ
 				if !reflect.DeepEqual(obj.Data, currentSecret.Data) {
 					needsUpdate = true
 				}
@@ -559,16 +546,13 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 					continue
 				}
 				currentConfigMap := currentObj.(*corev1.ConfigMap)
-				// Compare data here, set needsUpdate = true if they differ
 				if !reflect.DeepEqual(obj.Data, currentConfigMap.Data) {
 					needsUpdate = true
 				}
-				// Add comparison for other types as needed
 			}
 
 			if needsUpdate {
 				log.Info("Coleen needs update updating resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
-				// Update the object in the cluster
 				err = c.Update(context.TODO(), obj)
 				if err != nil {
 					log.Error(err, "Failed to update resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
