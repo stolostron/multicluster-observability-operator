@@ -16,9 +16,6 @@ ROOTDIR="$(
   cd "$(dirname "$0")/.."
   pwd -P
 )"
-# Create bin directory and add it to PATH
-mkdir -p ${ROOTDIR}/bin
-export PATH=${PATH}:${ROOTDIR}/bin
 
 OCM_DEFAULT_NS="open-cluster-management"
 AGENT_NS="open-cluster-management-agent"
@@ -32,53 +29,8 @@ if [[ "$(uname)" == "Darwin" ]]; then
   SED_COMMAND='sed -i '-e' -e'
 fi
 
-# install jq
-if ! command -v jq &>/dev/null; then
-  if [[ "$(uname)" == "Linux" ]]; then
-    curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
-  elif [[ "$(uname)" == "Darwin" ]]; then
-    curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64
-  fi
-  chmod +x ./jq && mv ./jq ${ROOTDIR}/bin/jq
-fi
-
-# Use snapshot for target release. Use latest one if no branch info detected, or not a release branch
-BRANCH=""
-LATEST_SNAPSHOT=""
-if [[ ${PULL_BASE_REF} == "release-"* ]]; then
-  BRANCH=${PULL_BASE_REF#"release-"}
-  LATEST_SNAPSHOT=$(curl https://quay.io//api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|test("'${BRANCH}'.*-SNAPSHOT-*")))|keys[length-1]')
-fi
-if [[ ${LATEST_SNAPSHOT} == "null" ]] || [[ ${LATEST_SNAPSHOT} == "" ]]; then
-  LATEST_SNAPSHOT=$(curl https://quay.io/api/v1/repository/stolostron/multicluster-observability-operator | jq '.tags|with_entries(select((.key|contains("SNAPSHOT"))and(.key|contains("9.9.0")|not)))|keys[length-1]')
-fi
-
-# trim the leading and tailing quotes
-LATEST_SNAPSHOT="${LATEST_SNAPSHOT#\"}"
-LATEST_SNAPSHOT="${LATEST_SNAPSHOT%\"}"
-
-# install kubectl
-if ! command -v kubectl &>/dev/null; then
-  echo "This script will install kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your machine"
-  if [[ "$(uname)" == "Linux" ]]; then
-    curl -LO https://dl.k8s.io/release/v1.28.2/bin/linux/amd64/kubectl
-  elif [[ "$(uname)" == "Darwin" ]]; then
-    curl -LO curl -LO "https://dl.k8s.io/release/v1.28.2/bin/darwin/arm64/kubectl"
-  fi
-  chmod +x ./kubectl && mv ./kubectl ${ROOTDIR}/bin/kubectl
-fi
-
-# install kustomize
-if ! command -v kustomize &>/dev/null; then
-  echo "This script will install kustomize (sigs.k8s.io/kustomize/kustomize) on your machine"
-  if [[ "$(uname)" == "Linux" ]]; then
-    curl -o kustomize_v5.1.1.tar.gz -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.1.1/kustomize_v5.1.1_linux_amd64.tar.gz
-  elif [[ "$(uname)" == "Darwin" ]]; then
-    curl -o kustomize_v5.1.1.tar.gz -L https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.1.1/kustomize_v5.1.1_darwin_amd64.tar.gz
-  fi
-  tar xzvf kustomize_v5.1.1.tar.gz
-  chmod +x ./kustomize && mv ./kustomize ${ROOTDIR}/bin/kustomize
-fi
+# Set the latest snapshot if it is not set
+LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_latest_snapshot)}
 
 # deploy the hub and spoke core via OLM
 deploy_hub_spoke_core() {

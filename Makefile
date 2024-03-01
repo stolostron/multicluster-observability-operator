@@ -7,6 +7,7 @@ include .bingo/Variables.mk
 FILES_TO_FMT ?= $(shell find . -path ./vendor -prune -o -name '*.deepcopy.go' -prune -o -name '*.go' -print)
 TMP_DIR := $(shell pwd)/tmp
 BIN_DIR ?= $(TMP_DIR)/bin
+export PATH := $(BIN_DIR):$(PATH)
 GIT ?= $(shell which git)
 
 XARGS ?= $(shell which gxargs 2>/dev/null || which xargs)
@@ -54,14 +55,15 @@ unit-tests-collectors:
 	go test ${VERBOSE} `go list ./collectors/... | $(GREP) -v test`
 
 .PHONY: e2e-tests
-e2e-tests:
+e2e-tests: install-e2e-test-deps
 	@echo "Running e2e tests ..."
 	@./cicd-scripts/run-e2e-tests.sh
 
 .PHONY: e2e-tests-in-kind
-e2e-tests-in-kind:
+e2e-tests-in-kind: install-e2e-test-deps
 	@echo "Running e2e tests in KinD cluster..."
 ifeq ($(OPENSHIFT_CI),true)
+    # Set up environment specific to OpenShift CI
 	@./cicd-scripts/run-e2e-in-kind-via-prow.sh
 else
 	@./tests/run-in-kind/run-e2e-in-kind.sh
@@ -151,3 +153,8 @@ io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile
 .PHONY: install-build-deps
 install-build-deps:
 	@./scripts/install-binaries.sh install_build_deps
+
+.PHONY: install-e2e-test-deps
+install-e2e-test-deps:
+	@mkdir -p $(BIN_DIR)
+	@./scripts/install-binaries.sh install_e2e_tests_deps $(BIN_DIR)
