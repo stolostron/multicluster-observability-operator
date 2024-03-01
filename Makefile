@@ -33,7 +33,17 @@ build:
 # Build the docker image
 docker-build:
 	cd operators/multiclusterobservability && make manager
-	docker build -t ${IMG} . -f operators/multiclusterobservability/Dockerfile	
+	docker build -t ${IMG} . -f operators/multiclusterobservability/Dockerfile
+
+
+LOCAL_IMAGE ?= hack.io/stolostron/mco:local
+IMAGE_BUILD_CMD ?= docker buildx build . -t ${LOCAL_IMAGE} -f operators/multiclusterobservability/Dockerfile.dev --load
+
+# Build the docker image using a public image registry
+.PHONY: docker-build-local
+docker-build-local:
+	cd operators/multiclusterobservability && make manager
+	$(IMAGE_BUILD_CMD)
 
 # Push the docker image
 docker-push:
@@ -68,6 +78,15 @@ ifeq ($(OPENSHIFT_CI),true)
 else
 	@./tests/run-in-kind/run-e2e-in-kind.sh
 endif
+
+# Creates a KinD cluster and sets the kubeconfig context to the cluster
+.PHONY: kind-env
+kind-env:
+	@echo "Setting up KinD cluster"
+	@./scripts/bootstrap-kind-env.sh create_kind_cluster hub
+	@echo "Cluster has been created"
+	kind export kubeconfig --name=hub
+	kubectl label node hub-control-plane node-role.kubernetes.io/master=''
 
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
