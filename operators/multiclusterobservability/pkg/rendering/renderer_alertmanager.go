@@ -5,6 +5,8 @@
 package rendering
 
 import (
+	"context"
+	"fmt"
 	"strconv"
 
 	v1 "k8s.io/api/apps/v1"
@@ -12,6 +14,7 @@ import (
 	apiresource "k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/kustomize/api/resource"
 
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -24,7 +27,7 @@ func (r *MCORenderer) newAlertManagerRenderer() {
 		"StatefulSet":           r.renderAlertManagerStatefulSet,
 		"Service":               r.renderer.RenderNamespace,
 		"ServiceAccount":        r.renderer.RenderNamespace,
-		"ConfigMap":             r.renderer.RenderNamespace,
+		"ConfigMap":             r.renderAlertManagerConfigMap,
 		"ClusterRole":           r.renderer.RenderClusterRole,
 		"ClusterRoleBinding":    r.renderer.RenderClusterRoleBinding,
 		"Secret":                r.renderAlertManagerSecret,
@@ -32,6 +35,8 @@ func (r *MCORenderer) newAlertManagerRenderer() {
 		"RoleBinding":           r.renderer.RenderNamespace,
 		"Ingress":               r.renderer.RenderNamespace,
 		"PersistentVolumeClaim": r.renderer.RenderNamespace,
+		"ServiceMonitor":        r.renderer.RenderNamespace,
+		"PrometheusRule":        r.renderer.RenderNamespace,
 	}
 }
 
@@ -103,6 +108,16 @@ func (r *MCORenderer) renderAlertManagerStatefulSet(res *resource.Resource,
 		spec.Containers[2].Image = image
 	}
 	spec.Containers[2].ImagePullPolicy = imagePullPolicy
+
+	// fail if kube-rbac-proxy container is not at the expected index
+	if spec.Containers[3].Name != "kube-rbac-proxy" {
+		return nil, fmt.Errorf("kube-rbac-proxy container not found in statefulset")
+	}
+	if ok, image := mcoconfig.ReplaceImage(r.cr.Annotations, mcoconfig.DefaultImgRepository+"/"+mcoconfig.KubeRBACProxyImgName, mcoconfig.KubeRBACProxyKey); ok {
+		spec.Containers[3].Image = image
+	}
+	spec.Containers[3].ImagePullPolicy = imagePullPolicy
+
 	//replace the volumeClaimTemplate
 	dep.Spec.VolumeClaimTemplates[0].Spec.StorageClassName = &r.cr.Spec.StorageConfig.StorageClass
 	dep.Spec.VolumeClaimTemplates[0].Spec.Resources.Requests[corev1.ResourceStorage] =
@@ -139,6 +154,55 @@ func (r *MCORenderer) renderAlertManagerSecret(res *resource.Resource,
 		if err != nil {
 			return nil, err
 		}
+		return &unstructured.Unstructured{Object: unstructuredObj}, nil
+	}
+
+	return u, nil
+}
+
+func (r *MCORenderer) renderAlertManagerConfigMap(res *resource.Resource,
+	namespace string, labels map[string]string) (*unstructured.Unstructured, error) {
+	u, err := r.renderer.RenderNamespace(res, namespace, labels)
+	if err != nil {
+		return nil, err
+	}
+
+	if u.GetName() == "alertmanager-clientca-metric" {
+		cm := &corev1.ConfigMap{}
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert %q to ConfigMap: %w", u.GetName(), err)
+		}
+
+		// Retrieve the extension-apiserver-authentication ConfigMap from kube-system namespace
+		namespacedName := types.NamespacedName{
+			Name:      "extension-apiserver-authentication",
+			Namespace: "kube-system",
+		}
+		sourceConfigMap := &corev1.ConfigMap{}
+		err = r.kubeClient.Get(context.Background(), namespacedName, sourceConfigMap)
+		if err != nil {
+			return nil, fmt.Errorf("error fetching source ConfigMap: %w", err)
+		}
+
+		// Extract the CA certificate data
+		caData, exists := sourceConfigMap.Data["client-ca-file"]
+		if !exists {
+			return nil, fmt.Errorf("client-ca-file not found in source ConfigMap")
+		}
+
+		if len(caData) == 0 {
+			return nil, fmt.Errorf("client-ca-file is empty in source ConfigMap")
+		}
+
+		// Update the ConfigMap with the CA certificate data
+		cm.Data["client-ca-file"] = caData
+
+		unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+		if err != nil {
+			return nil, err
+		}
+
 		return &unstructured.Unstructured{Object: unstructuredObj}, nil
 	}
 

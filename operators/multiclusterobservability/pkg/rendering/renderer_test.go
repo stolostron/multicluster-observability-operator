@@ -9,12 +9,14 @@ import (
 	"path"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestRender(t *testing.T) {
@@ -47,7 +49,18 @@ func TestRender(t *testing.T) {
 		},
 	}
 
-	renderer := NewMCORenderer(mchcr)
+	clientCa := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "extension-apiserver-authentication",
+			Namespace: "kube-system",
+		},
+		Data: map[string]string{
+			"client-ca-file": "test",
+		},
+	}
+	kubeClient := fake.NewClientBuilder().WithObjects(clientCa).Build()
+
+	renderer := NewMCORenderer(mchcr, kubeClient)
 	objs, err := renderer.Render()
 	if err != nil {
 		t.Fatalf("failed to render MultiClusterObservability: %v", err)
