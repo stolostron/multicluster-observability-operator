@@ -10,6 +10,10 @@ BIN_DIR ?= $(TMP_DIR)/bin
 export PATH := $(BIN_DIR):$(PATH)
 GIT ?= $(shell which git)
 
+# Support gsed on OSX (installed via brew), falling back to sed. On Linux
+# systems gsed won't be installed, so will use sed as expected.
+export SED ?= $(shell which gsed 2>/dev/null || which sed)
+
 XARGS ?= $(shell which gxargs 2>/dev/null || which xargs)
 GREP ?= $(shell which ggrep 2>/dev/null || which grep)
 
