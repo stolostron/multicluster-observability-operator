@@ -7,11 +7,7 @@
 
 set -exo pipefail
 
-ROOTDIR="$(
-  cd "$(dirname "$0")../"
-  pwd -P
-)"
-
+ROOTDIR="$(pwd -P)"
 
 WORKDIR=${ROOTDIR}/tests/run-in-kind
 
