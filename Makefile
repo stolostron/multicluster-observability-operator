@@ -82,19 +82,30 @@ e2e-tests-in-kind: install-e2e-test-deps
 	@echo "Running e2e tests in KinD cluster..."
 ifeq ($(OPENSHIFT_CI),true)
     # Set up environment specific to OpenShift CI
-	@./cicd-scripts/run-e2e-in-kind-via-prow.sh
+	@IS_KIND_ENV=true SED=$(SED) ./cicd-scripts/run-e2e-in-kind-via-prow.sh
 else
-	@./tests/run-in-kind/run-e2e-in-kind.sh
+	@kind get kubeconfig --name hub > /tmp/hub.yaml
+	@IS_KIND_ENV=true KUBECONFIG=/tmp/hub.yaml SED=$(SED) ./cicd-scripts/run-e2e-tests.sh
 endif
 
 # Creates a KinD cluster and sets the kubeconfig context to the cluster
 .PHONY: kind-env
 kind-env:
 	@echo "Setting up KinD cluster"
-	@./scripts/bootstrap-kind-env.sh create_kind_cluster hub
+	@./scripts/bootstrap-kind-env.sh
 	@echo "Cluster has been created"
 	kind export kubeconfig --name=hub
 	kubectl label node hub-control-plane node-role.kubernetes.io/master=''
+
+# Creates a KinD cluster with MCO deployed and sets the kubeconfig context to the cluster
+# This fully prepares the environment for running e2e tests.
+.PHONY: mco-kind-env
+mco-kind-env: kind-env
+	@echo "Local environment has been set up"
+	@echo "Installing MCO"
+	@kind get kubeconfig --name hub > /tmp/hub.yaml
+	KUBECONFIG=/tmp/hub.yaml IS_KIND_ENV=true KUSTOMIZE_VERSION=${KUSTOMIZE_VERSION} ./cicd-scripts/setup-e2e-tests.sh
+
 
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
