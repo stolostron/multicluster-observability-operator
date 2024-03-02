@@ -19,6 +19,10 @@ GREP ?= $(shell which ggrep 2>/dev/null || which grep)
 
 # Image URL to use all building/pushing image targets
 IMG ?= quay.io/stolostron/multicluster-observability-operator:latest
+# KUSTOMIZE_VERSION is set here to allow it to be overridden by the caller
+# as it gets passed to the registration-operator Makefile and will fail on macOS if not set.
+# See https://github.com/stolostron/registration-operator/blob/release-2.4/Makefile#L184-L193
+KUSTOMIZE_VERSION ?= v5.3.0
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: 
