@@ -27,18 +27,19 @@ export MANAGED_CLUSTER="local-cluster" # registration-operator needs this
 SED_COMMAND=${SED}' -i-e -e'
 
 # Set the latest snapshot if it is not set
+source ./scripts/test-utils.sh
 LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_latest_snapshot)}
 
 # deploy the hub and spoke core via OLM
 deploy_hub_spoke_core() {
   cd ${ROOTDIR}
-  if [[ -d "registration-operator" ]]; then
-    rm -rf registration-operator
+  # we are pinned here so no need to re-fetch if we have the project locally.
+  if [[ ! -d "registration-operator" ]]; then
+    git clone --depth 1 -b release-2.4 https://github.com/stolostron/registration-operator.git
   fi
-  git clone --depth 1 -b release-2.4 https://github.com/stolostron/registration-operator.git && cd registration-operator
+  cd registration-operator
   ${SED_COMMAND} "s~clusterName: cluster1$~clusterName: ${MANAGED_CLUSTER}~g" deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
   # deploy hub and spoke via OLM
-  #REGISTRATION_LATEST_SNAPSHOT=$(curl https://quay.io/api/v1/repository/stolostron/registration | jq '.tags|with_entries(select(.key|test("'2.4'.*-SNAPSHOT-*")))|keys[length-1]')
   REGISTRATION_LATEST_SNAPSHOT='2.4.9-SNAPSHOT-2022-11-17-20-19-31'
   make cluster-ip IMAGE_REGISTRY=quay.io/stolostron IMAGE_TAG=${REGISTRATION_LATEST_SNAPSHOT} WORK_TAG=${REGISTRATION_LATEST_SNAPSHOT} REGISTRATION_TAG=${REGISTRATION_LATEST_SNAPSHOT} PLACEMENT_TAG=${REGISTRATION_LATEST_SNAPSHOT}
   make deploy IMAGE_REGISTRY=quay.io/stolostron IMAGE_TAG=${REGISTRATION_LATEST_SNAPSHOT} WORK_TAG=${REGISTRATION_LATEST_SNAPSHOT} REGISTRATION_TAG=${REGISTRATION_LATEST_SNAPSHOT} PLACEMENT_TAG=${REGISTRATION_LATEST_SNAPSHOT}
