@@ -10,7 +10,6 @@ ROOTDIR="$(
   pwd -P
 )"
 
-
 SED_COMMAND=${SED}' -i-e -e'
 
 # Set the latest snapshot if it is not set
