@@ -17,6 +17,7 @@ elif [[ "$(uname)" == "Darwin" ]]; then
   SED_COMMAND='sed -i '-e' -e'
 fi
 
+source ./scripts/test-utils.sh
 # Set the latest snapshot if it is not set
 LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_latest_snapshot)}
 

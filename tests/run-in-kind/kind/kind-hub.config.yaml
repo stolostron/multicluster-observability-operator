@@ -11,7 +11,7 @@ nodes:
     listenAddress: "0.0.0.0"
   - containerPort: 6443
     hostPort: 32806
-    listenAddress: "0.0.0.0"
+    listenAddress: "127.0.0.1"
   - containerPort: 31001
     hostPort: 31001
     listenAddress: "127.0.0.1"

@@ -24,6 +24,8 @@ The tests can be running both locally and in [Openshift CI(based on Prow)](https
 
 The observability e2e testing can be running automatically in KinD cluster or OCP cluster.
 
+> _Note:_ We use ginkgo (1.16.5) for tests so that you need to download that version. You can run `go install github.com/onsi/ginkgo/ginkgo@latest` in `multicluster-observability-operator` folder to download that version.
+
 ### Run locally in KinD cluster
 
 1. clone this repository and enter its root directory:
