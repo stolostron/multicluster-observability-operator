@@ -12,7 +12,7 @@ ROOTDIR="$(
   pwd -P
 )"
 
-SED_COMMAND=${SED}' -i -e'
+SED_COMMAND=${SED}' -i-e -e'
 
 # customize the images for testing
 ${ROOTDIR}/cicd-scripts/customize-mco.sh
