@@ -502,7 +502,7 @@ func CreateCSR() ([]byte, []byte) {
 	return csr, privateKey
 }
 
-func CreateMtlsCertSecretForHubCollector() (*corev1.Secret, error) {
+func CreateMtlsCertSecretForHubCollector(c client.Client) error {
 	csrBytes, privateKeyBytes := CreateCSR()
 	csr := &certificatesv1.CertificateSigningRequest{
 		Spec: certificatesv1.CertificateSigningRequestSpec{
@@ -513,10 +513,10 @@ func CreateMtlsCertSecretForHubCollector() (*corev1.Secret, error) {
 	signedClientCert := Sign(csr)
 	if signedClientCert == nil {
 		log.Error(nil, "failed to sign CSR")
-		return nil, errors.NewBadRequest("failed to sign CSR")
+		return errors.NewBadRequest("failed to sign CSR")
 	} else {
 		//Create a secret
-		return &corev1.Secret{
+		HubMtlsSecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      operatorconfig.HubMetricsCollectorMtlsCert,
 				Namespace: config.GetDefaultNamespace(),
@@ -525,6 +525,12 @@ func CreateMtlsCertSecretForHubCollector() (*corev1.Secret, error) {
 				"tls.crt": signedClientCert,
 				"tls.key": privateKeyBytes,
 			},
-		}, nil
+		}
+		err := c.Create(context.TODO(), HubMtlsSecret)
+		if err != nil && !errors.IsAlreadyExists(err) {
+			log.Error(err, "Failed to create secret", "name", operatorconfig.HubMetricsCollectorMtlsCert)
+			return err
+		}
 	}
+	return nil
 }

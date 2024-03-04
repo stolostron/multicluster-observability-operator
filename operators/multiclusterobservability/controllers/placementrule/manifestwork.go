@@ -468,13 +468,6 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		return nil
 	}
 
-	HubMtlsSecret, err := cert_controller.CreateMtlsCertSecretForHubCollector()
-	if err != nil {
-		log.Error(err, "Failed to create mtls secret for hub metrics collector")
-		return err
-	}
-	manifests = injectIntoWork(manifests, HubMtlsSecret)
-
 	hubManifestCopy = make([]workv1.Manifest, len(manifests))
 	for i, manifest := range manifests {
 		obj := manifest.RawExtension.Object.DeepCopyObject()
@@ -567,6 +560,12 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 				}
 			}
 		}
+	}
+
+	err := cert_controller.CreateMtlsCertSecretForHubCollector(c)
+	if err != nil {
+		log.Error(err, "Failed to create client cert secret for hub metrics collection")
+		return err
 	}
 	return nil
 }
