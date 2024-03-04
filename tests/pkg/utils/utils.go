@@ -22,6 +22,7 @@ import (
 	storagev1 "k8s.io/api/storage/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured/unstructuredscheme"
@@ -181,6 +182,32 @@ func FetchBearerToken(opt TestOptions) (string, error) {
 	}
 
 	clientKube := NewKubeClient(opt.HubCluster.ClusterServerURL, opt.KubeConfig, opt.HubCluster.KubeContext)
+	info, err := clientKube.Discovery().ServerVersion()
+	if err != nil {
+		return "", errors.New("failed to get k8s server info")
+	}
+
+	// handle the case of k8s version >= 1.24 where
+	// the Secret for ServiceAccount is not created automatically
+	if info.Major == "1" && info.Minor >= "24" {
+		_, err := clientKube.CoreV1().Secrets(MCO_NAMESPACE).Create(
+			context.Background(),
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "mco-e2e-testing-sa-token",
+					Annotations: map[string]string{
+						"kubernetes.io/service-account.name": "mco-e2e-testing-sa",
+					},
+				},
+				Type: corev1.SecretType("kubernetes.io/service-account-token"),
+			},
+			metav1.CreateOptions{},
+		)
+		if err != nil && !k8sErrors.IsAlreadyExists(err) {
+			return "", errors.New("failed to create secret for ServiceAccount")
+		}
+	}
+
 	secretList, err := clientKube.CoreV1().
 		Secrets(MCO_NAMESPACE).
 		List(context.TODO(), metav1.ListOptions{FieldSelector: "type=kubernetes.io/service-account-token"})

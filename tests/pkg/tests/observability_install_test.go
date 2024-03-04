@@ -242,9 +242,15 @@ func installMCO() {
 		return nil
 	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
 
-	BearerToken, err = utils.FetchBearerToken(testOptions)
-	if err != nil {
-		klog.Errorf("fetch bearer token error: %v", err)
-	}
-	Expect(BearerToken).NotTo(BeEmpty(), "failed to fetch `BearerToken`")
+	Eventually(func() error {
+		BearerToken, err = utils.FetchBearerToken(testOptions)
+		if err != nil {
+			klog.Errorf("fetch bearer token error: %v", err)
+		}
+		if BearerToken == "" {
+			return fmt.Errorf("failed to get bearer token: %w", err)
+		}
+		return nil
+
+	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*10).Should(Succeed())
 }
