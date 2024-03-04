@@ -48,5 +48,6 @@ ssh "${OPT[@]}" "$HOST" sudo chmod 777 /home/ec2-user/bin
 scp "${OPT[@]}" -r ../multicluster-observability-operator "$HOST:/tmp/multicluster-observability-operator"
 scp "${OPT[@]}" $(which kubectl) "$HOST:/home/ec2-user/bin"
 scp "${OPT[@]}" $(which kustomize) "$HOST:/home/ec2-user/bin"
+scp "${OPT[@]}" $(which jq) "$HOST:/home/ec2-user/bin"
 ssh "${OPT[@]}" "$HOST" "cd /tmp/multicluster-observability-operator && make mco-kind-env"
 ssh "${OPT[@]}" "$HOST" "cd /tmp/multicluster-observability-operator && make e2e-tests-in-kind" > >(tee "$ARTIFACT_DIR/run-e2e-in-kind.log") 2>&1
