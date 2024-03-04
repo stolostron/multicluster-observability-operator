@@ -520,7 +520,6 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		}
 
 		if k8serrors.IsNotFound(err) {
-			log.Info("Coleen creating resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 			err = c.Create(context.TODO(), obj)
 			if err != nil {
 				log.Error(err, "Failed to create resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
@@ -528,7 +527,6 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			}
 		} else {
 			needsUpdate := false
-			log.Info("Coleen updating resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 			switch obj := obj.(type) {
 			case *appsv1.Deployment:
 				currentDeployment := currentObj.(*appsv1.Deployment)
@@ -552,7 +550,6 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			}
 
 			if needsUpdate {
-				log.Info("Coleen needs update updating resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 				err = c.Update(context.TODO(), obj)
 				if err != nil {
 					log.Error(err, "Failed to update resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
