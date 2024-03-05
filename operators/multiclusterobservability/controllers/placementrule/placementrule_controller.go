@@ -294,12 +294,10 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	if deleteAll {
-		if deleteAll {
-			// delete managedclusteraddon for local-cluster
-			err = deleteManagedClusterRes(r.Client, localClusterName)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
+		// delete managedclusteraddon for local-cluster
+		err = deleteManagedClusterRes(r.Client, localClusterName)
+		if err != nil {
+			return ctrl.Result{}, err
 		}
 
 		opts.Namespace = ""
