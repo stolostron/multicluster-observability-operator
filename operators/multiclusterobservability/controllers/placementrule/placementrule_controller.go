@@ -196,10 +196,10 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			log.Error(err, "Failed to delete observabilityaddon")
 			return ctrl.Result{}, err
 		}
-		err = deleteManagedClusterRes(r.Client, localClusterName)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+		//err = deleteManagedClusterRes(r.Client, localClusterName)
+		//if err != nil {
+		//	return ctrl.Result{}, err
+		//}
 	}
 	if operatorconfig.IsMCOTerminating {
 		delete(managedClusterList, "local-cluster")
@@ -246,9 +246,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 	for _, work := range workList.Items {
 		if work.Name != work.Namespace+workNameSuffix {
-			// ACM 8509: Special case for hub metrics collector
-			// In the upgrade case we want to clean up the obs add on and manifest work that was created
-			// for local-cluster before the upgrade that is why we check for the local-cluster namespace
 			reqLogger.Info("To delete invalid manifestwork", "name", work.Name, "namespace", work.Namespace)
 			err = deleteManifestWork(r.Client, work.Name, work.Namespace)
 			if err != nil {
@@ -270,7 +267,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// but the managedclusteraddon for observability will not deleted by the cluster manager, so check against the
 	// managedclusteraddon list to remove the managedcluster resources after the managedcluster is detached.
 	for _, mcaddon := range managedclusteraddonList.Items {
-		if !slices.Contains(latestClusters, mcaddon.Namespace) {
+		if !slices.Contains(latestClusters, mcaddon.Namespace) && mcaddon.Namespace != localClusterName {
 			reqLogger.Info("To delete managedcluster resources", "namespace", mcaddon.Namespace)
 			err = deleteManagedClusterRes(r.Client, mcaddon.Namespace)
 			if err != nil {
@@ -278,6 +275,14 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			}
 		} else {
 			staleAddons = commonutil.Remove(staleAddons, mcaddon.Namespace)
+		}
+	}
+
+	if deleteAll {
+		// delete managedclusteraddon for local-cluster
+		err = deleteManagedClusterRes(r.Client, localClusterName)
+		if err != nil {
+			return ctrl.Result{}, err
 		}
 	}
 
