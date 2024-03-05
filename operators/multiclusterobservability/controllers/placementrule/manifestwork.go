@@ -480,12 +480,14 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		gvk := obj.GetObjectKind().GroupVersionKind()
 		switch gvk.Kind {
 		case "Namespace", "ObservabilityAddon":
-			// Skip these kinds
+			// ACM 8509: Special case for hub/local cluster metrics collection
+			// We don't need to create these resources for hub metrics collection
 			continue
 		case "ClusterRole", "ClusterRoleBinding", "CustomResourceDefinition":
 			// No namespace needed for these kinds
 		default:
-			// Set default namespace for other kinds
+			//ACM 8509: Special case for hub/local cluster metrics collection
+			// Set the default namespace for all the resources to open-cluster-management-observability
 			obj.SetNamespace(config.GetDefaultNamespace())
 		}
 
