@@ -476,7 +476,6 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 
 	for _, manifest := range hubManifestCopy {
 		obj := manifest.RawExtension.Object.(client.Object)
-		var currentObj client.Object
 
 		gvk := obj.GetObjectKind().GroupVersionKind()
 		switch gvk.Kind {
@@ -496,6 +495,11 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 				role.Subjects[0].Namespace = config.GetDefaultNamespace()
 			}
 		}
+	}
+
+	for _, manifest := range hubManifestCopy {
+		var currentObj client.Object
+		obj := manifest.RawExtension.Object.(client.Object)
 
 		switch obj.GetObjectKind().GroupVersionKind().Kind {
 		case "Deployment":
@@ -507,7 +511,6 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		default:
 			continue
 		}
-
 		err := c.Get(context.TODO(), client.ObjectKey{
 			Namespace: obj.GetNamespace(),
 			Name:      obj.GetName(),
