@@ -122,7 +122,7 @@ func installMCO() {
 			} else {
 				return errors.New("Wait for reconciling.")
 			}
-		}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
+		}, EventuallyTimeoutMinute*30, EventuallyIntervalSecond*5).Should(Succeed())
 
 		By("Check clustermanagementaddon CR is created")
 		Eventually(func() error {

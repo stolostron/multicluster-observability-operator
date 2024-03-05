@@ -51,6 +51,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
+	operatorsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 )
@@ -146,7 +147,17 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// start to update mco status
 	StartStatusUpdate(r.Client, instance)
 
-	if r.CRDMap[config.MCGHCrdName] {
+	crdClient, err := operatorsutil.GetOrCreateCRDClient()
+	if err != nil {
+		log.Error(err, "Failed to create the CRD client")
+		return ctrl.Result{}, err
+	}
+	mcghCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.MCGHCrdName)
+	if err != nil {
+		log.Error(err, "Failed to check the MCGH CRD")
+		return ctrl.Result{}, err
+	}
+	if mcghCrdExists {
 		// Do not start the MCO if the MCGH CRD exists
 		reqLogger.Info("MCGH CRD exists, Observability is not supported")
 		return ctrl.Result{}, nil
