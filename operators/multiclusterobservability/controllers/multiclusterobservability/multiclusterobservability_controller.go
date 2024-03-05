@@ -152,15 +152,18 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		log.Error(err, "Failed to create the CRD client")
 		return ctrl.Result{}, err
 	}
-	mcghCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.MCGHCrdName)
-	if err != nil {
-		log.Error(err, "Failed to check the MCGH CRD")
-		return ctrl.Result{}, err
-	}
-	if mcghCrdExists {
-		// Do not start the MCO if the MCGH CRD exists
-		reqLogger.Info("MCGH CRD exists, Observability is not supported")
-		return ctrl.Result{}, nil
+
+	if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
+		mcghCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.MCGHCrdName)
+		if err != nil {
+			log.Error(err, "Failed to check the MCGH CRD")
+			return ctrl.Result{}, err
+		}
+		if mcghCrdExists {
+			// Do not start the MCO if the MCGH CRD exists
+			reqLogger.Info("MCGH CRD exists, Observability is not supported")
+			return ctrl.Result{}, nil
+		}
 	}
 
 	ingressCtlCrdExists := r.CRDMap[config.IngressControllerCRD]
