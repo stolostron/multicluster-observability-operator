@@ -260,17 +260,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	mcghCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.MCGHCrdName)
-	if err != nil {
-		setupLog.Error(err, "")
-		os.Exit(1)
-	}
+	//mcghCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.MCGHCrdName)
+	//if err != nil {
+	//	setupLog.Error(err, "")
+	//	os.Exit(1)
+	//}
 
 	crdMaps := map[string]bool{
 		config.MCHCrdName:                     mchCrdExists,
 		config.StorageVersionMigrationCrdName: svmCrdExists,
 		config.IngressControllerCRD:           ingressCtlCrdExists,
-		config.MCGHCrdName:                    mcghCrdExists,
+		//config.MCGHCrdName:                    mcghCrdExists,
 	}
 
 	if err = (&mcoctrl.MultiClusterObservabilityReconciler{
