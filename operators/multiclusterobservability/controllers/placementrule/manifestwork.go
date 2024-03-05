@@ -472,22 +472,22 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 	for i, manifest := range manifests {
 		obj := manifest.RawExtension.Object.DeepCopyObject()
 		hubManifestCopy[i] = workv1.Manifest{RawExtension: runtime.RawExtension{Object: obj}}
-		hubManifestCopy[i] = workv1.Manifest{RawExtension: runtime.RawExtension{Object: obj}}
 	}
 
 	for _, manifest := range hubManifestCopy {
 		obj := manifest.RawExtension.Object.(client.Object)
-		var currentObj client.Object
 
 		gvk := obj.GetObjectKind().GroupVersionKind()
 		switch gvk.Kind {
 		case "Namespace", "ObservabilityAddon":
-			// Skip these kinds
+			// ACM 8509: Special case for hub/local cluster metrics collection
+			// We don't need to create these resources for hub metrics collection
 			continue
 		case "ClusterRole", "ClusterRoleBinding", "CustomResourceDefinition":
 			// No namespace needed for these kinds
 		default:
-			// Set default namespace for other kinds
+			//ACM 8509: Special case for hub/local cluster metrics collection
+			// Set the default namespace for all the resources to open-cluster-management-observability
 			obj.SetNamespace(config.GetDefaultNamespace())
 		}
 
@@ -497,6 +497,11 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 				role.Subjects[0].Namespace = config.GetDefaultNamespace()
 			}
 		}
+	}
+
+	for _, manifest := range hubManifestCopy {
+		var currentObj client.Object
+		obj := manifest.RawExtension.Object.(client.Object)
 
 		switch obj.GetObjectKind().GroupVersionKind().Kind {
 		case "Deployment":
@@ -508,7 +513,6 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		default:
 			continue
 		}
-
 		err := c.Get(context.TODO(), client.ObjectKey{
 			Namespace: obj.GetNamespace(),
 			Name:      obj.GetName(),
@@ -520,7 +524,6 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		}
 
 		if k8serrors.IsNotFound(err) {
-			log.Info("Coleen creating resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 			err = c.Create(context.TODO(), obj)
 			if err != nil {
 				log.Error(err, "Failed to create resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
@@ -528,7 +531,6 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			}
 		} else {
 			needsUpdate := false
-			log.Info("Coleen updating resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 			switch obj := obj.(type) {
 			case *appsv1.Deployment:
 				currentDeployment := currentObj.(*appsv1.Deployment)
@@ -552,7 +554,6 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			}
 
 			if needsUpdate {
-				log.Info("Coleen needs update updating resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 				err = c.Update(context.TODO(), obj)
 				if err != nil {
 					log.Error(err, "Failed to update resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
