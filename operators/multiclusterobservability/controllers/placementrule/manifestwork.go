@@ -476,14 +476,17 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 
 	for _, manifest := range hubManifestCopy {
 		obj := manifest.RawExtension.Object.(client.Object)
+		var currentObj client.Object
 
 		gvk := obj.GetObjectKind().GroupVersionKind()
-		if gvk.Kind == "Namespace" || gvk.Kind == "ObservabilityAddon" {
-			// ACM 8509: Special case for hub/local cluster metrics collection
-			// Skip creating/updating namespace and observabilityaddon for hub metrics collection
+		switch gvk.Kind {
+		case "Namespace", "ObservabilityAddon":
+			// Skip these kinds
 			continue
-		}
-		if gvk.Kind != "ClusterRole" || gvk.Kind != "ClusterRoleBinding" || gvk.Kind != "CustomResourceDefinition" {
+		case "ClusterRole", "ClusterRoleBinding", "CustomResourceDefinition":
+			// No namespace needed for these kinds
+		default:
+			// Set default namespace for other kinds
 			obj.SetNamespace(config.GetDefaultNamespace())
 		}
 
@@ -493,11 +496,17 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 				role.Subjects[0].Namespace = config.GetDefaultNamespace()
 			}
 		}
-	}
 
-	for _, manifest := range hubManifestCopy {
-		obj := manifest.RawExtension.Object.(client.Object)
-		var currentObj client.Object
+		switch obj.GetObjectKind().GroupVersionKind().Kind {
+		case "Deployment":
+			currentObj = &appsv1.Deployment{}
+		case "Secret":
+			currentObj = &corev1.Secret{}
+		case "ConfigMap":
+			currentObj = &corev1.ConfigMap{}
+		default:
+			continue
+		}
 
 		err := c.Get(context.TODO(), client.ObjectKey{
 			Namespace: obj.GetNamespace(),
@@ -515,38 +524,38 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 				log.Error(err, "Failed to create resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
 				return err
 			}
-		}
-		needsUpdate := false
-		switch obj := obj.(type) {
-		case *appsv1.Deployment:
-			currentDeployment := currentObj.(*appsv1.Deployment)
-			if !reflect.DeepEqual(obj.Spec, currentDeployment.Spec) {
-				needsUpdate = true
+		} else {
+			needsUpdate := false
+			switch obj := obj.(type) {
+			case *appsv1.Deployment:
+				currentDeployment := currentObj.(*appsv1.Deployment)
+				if !reflect.DeepEqual(obj.Spec, currentDeployment.Spec) {
+					needsUpdate = true
+				}
+			case *corev1.Secret:
+				currentSecret := currentObj.(*corev1.Secret)
+				if !reflect.DeepEqual(obj.Data, currentSecret.Data) {
+					needsUpdate = true
+				}
+			case *corev1.ConfigMap:
+				if obj.Name == operatorconfig.AllowlistConfigMapName || obj.Name == operatorconfig.AllowlistCustomConfigMapName {
+					// Skip the allowlist configmap as it is being watched by placementrule
+					continue
+				}
+				currentConfigMap := currentObj.(*corev1.ConfigMap)
+				if !reflect.DeepEqual(obj.Data, currentConfigMap.Data) {
+					needsUpdate = true
+				}
 			}
-		case *corev1.Secret:
-			currentSecret := currentObj.(*corev1.Secret)
-			if !reflect.DeepEqual(obj.Data, currentSecret.Data) {
-				needsUpdate = true
-			}
-		case *corev1.ConfigMap:
-			if obj.Name == operatorconfig.AllowlistConfigMapName || obj.Name == operatorconfig.AllowlistCustomConfigMapName {
-				// Skip the allowlist configmap as it is being watched by placementrule
-				continue
-			}
-			currentConfigMap := currentObj.(*corev1.ConfigMap)
-			if !reflect.DeepEqual(obj.Data, currentConfigMap.Data) {
-				needsUpdate = true
-			}
-		}
 
-		if needsUpdate {
-			err = c.Update(context.TODO(), obj)
-			if err != nil {
-				log.Error(err, "Failed to update resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-				return err
+			if needsUpdate {
+				err = c.Update(context.TODO(), obj)
+				if err != nil {
+					log.Error(err, "Failed to update resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
+					return err
+				}
 			}
 		}
-
 	}
 
 	err := cert_controller.CreateMtlsCertSecretForHubCollector(c)
