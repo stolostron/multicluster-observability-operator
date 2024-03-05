@@ -450,8 +450,8 @@ func generateAmAccessorTokenSecret(cl client.Client) (*corev1.Secret, error) {
 		// Starting with kube 1.24 (ocp 4.11), the k8s won't generate secrets any longer
 		// automatically for ServiceAccounts, for OCP, when a service account is created,
 		// the OCP will create two secrets, one stores dockercfg with name format (<sa name>-dockercfg-<random>)
-		// and the other stores the servcie account token  with name format (<sa name>-token-<random>),
-		// but the service account secrets won't list in the service account any longger.
+		// and the other stores the service account token  with name format (<sa name>-token-<random>),
+		// but the service account secrets won't list in the service account any longer.
 		secretList := &corev1.SecretList{}
 		err = cl.List(context.TODO(), secretList, &client.ListOptions{Namespace: config.GetDefaultNamespace()})
 		if err != nil {
@@ -465,19 +465,37 @@ func generateAmAccessorTokenSecret(cl client.Client) (*corev1.Secret, error) {
 				break
 			}
 		}
-	}
-
-	if tokenSrtName == "" {
-		log.Error(
-			err,
-			"no token secret for Alertmanager accessor serviceaccount",
-			"name",
-			config.AlertmanagerAccessorSAName,
-		)
-		return nil, fmt.Errorf(
-			"no token secret for Alertmanager accessor serviceaccount: %s",
-			config.AlertmanagerAccessorSAName,
-		)
+		// since we do not want to rely on the behavior above from OCP
+		// as the docs hint that it will be removed in the future
+		// if we do not find the token secret, we will create the Secret ourselves
+		// which should be picked up in the next reconcile loop
+		if tokenSrtName == "" {
+			secretName := config.AlertmanagerAccessorSAName + "-token"
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      secretName,
+					Namespace: config.GetDefaultNamespace(),
+					Annotations: map[string]string{
+						"kubernetes.io/service-account.name": amAccessorSA.Name,
+					},
+				},
+				Type: "kubernetes.io/service-account-token",
+			}
+			err := cl.Create(context.TODO(), secret, &client.CreateOptions{})
+			if err != nil && !k8serrors.IsAlreadyExists(err) {
+				log.Error(err, "Failed to create token secret for Alertmanager accessor serviceaccount",
+					"name", config.AlertmanagerAccessorSAName)
+				return nil, err
+			}
+			log.Info(
+				"Created secret for Alertmanager accessor serviceaccount",
+				"name",
+				secretName,
+				"namespace",
+				config.GetDefaultNamespace(),
+			)
+			tokenSrtName = secretName
+		}
 	}
 
 	tokenSrt := &corev1.Secret{}
@@ -485,6 +503,20 @@ func generateAmAccessorTokenSecret(cl client.Client) (*corev1.Secret, error) {
 		Namespace: config.GetDefaultNamespace()}, tokenSrt)
 	if err != nil {
 		log.Error(err, "Failed to get token secret for Alertmanager accessor serviceaccount", "name", tokenSrtName)
+		return nil, err
+	}
+
+	data, ok := tokenSrt.Data["token"]
+	if !ok || len(data) == 0 {
+		err = fmt.Errorf("service account token not populated or empty: %s", config.AlertmanagerAccessorSAName)
+		log.Error(
+			err,
+			"no token present in Secret for Alertmanager accessor serviceaccount",
+			"service account name",
+			config.AlertmanagerAccessorSAName,
+			"secret name",
+			tokenSrtName,
+		)
 		return nil, err
 	}
 
