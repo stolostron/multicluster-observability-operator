@@ -37,7 +37,10 @@ var (
 	testOptionsContainer utils.TestOptionsContainer
 	testUITimeout        time.Duration
 
-	testFailed = false
+	testFailed                   = false
+	hubMetricsCollectorNamespace = "open-cluster-management-observability"
+	hubManagedClusterName        = "local-cluster"
+	namespace                    = MCO_ADDON_NAMESPACE
 )
 
 const (
