@@ -48,7 +48,7 @@ const (
 
 	MCO_CR_NAME         = "observability"
 	MCO_NAMESPACE       = "open-cluster-management-observability"
-	MCO_ADDON_NAMESPACE = "open-cluster-management-addon-observability"
+	MCO_ADDON_NAMESPACE = "open-cluster-management-observability"
 	MCO_LABEL           = "name=multicluster-observability-operator"
 	MCO_LABEL_OWNER     = "owner=multicluster-observability-operator"
 
