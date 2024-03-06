@@ -28,7 +28,7 @@ const (
 	MCO_COMPONENT_LABEL           = "observability.open-cluster-management.io/name=" + MCO_CR_NAME
 	OBSERVATORIUM_COMPONENT_LABEL = "app.kubernetes.io/part-of=observatorium"
 	MCO_NAMESPACE                 = "open-cluster-management-observability"
-	MCO_ADDON_NAMESPACE           = "open-cluster-management-addon-observability"
+	MCO_ADDON_NAMESPACE           = "open-cluster-management-observability"
 	MCO_PULL_SECRET_NAME          = "multiclusterhub-operator-pull-secret"
 	OBJ_SECRET_NAME               = "thanos-object-storage" // #nosec
 	MCO_GROUP                     = "observability.open-cluster-management.io"

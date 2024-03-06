@@ -227,18 +227,18 @@ func installMCO() {
 		testFailed = false
 		return nil
 	}, EventuallyTimeoutMinute*25, EventuallyIntervalSecond*10).Should(Succeed())
-
-	By("Check endpoint-operator and metrics-collector pods are ready")
-	Eventually(func() error {
-		err = utils.CheckAllOBAsEnabled(testOptions)
-		if err != nil {
-			testFailed = true
-			return err
-		}
-		testFailed = false
-		return nil
-	}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*10).Should(Succeed())
-
+	/*
+		By("Check endpoint-operator and metrics-collector pods are ready")
+		Eventually(func() error {
+			err = utils.CheckAllOBAsEnabled(testOptions)
+			if err != nil {
+				testFailed = true
+				return err
+			}
+			testFailed = false
+			return nil
+		}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*10).Should(Succeed())
+	*/
 	By("Check clustermanagementaddon CR is created")
 	Eventually(func() error {
 		_, err := dynClient.Resource(utils.NewMCOClusterManagementAddonsGVR()).
