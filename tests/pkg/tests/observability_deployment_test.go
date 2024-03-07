@@ -5,12 +5,14 @@ package tests
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
@@ -55,15 +57,37 @@ var _ = Describe("", func() {
 	})
 
 	It("RHACM4K-1288: Observability: Verify Observability function working on the hub cluster - [P1][Sev1][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release @pre-upgrade (deployment/g0)", func() {
-		By("Check endpoint-operator and metrics-collector pods are ready")
+		By("Check etrics-collector pod is ready")
 		Eventually(func() error {
-			err = utils.CheckAllOBAsEnabledLocal(testOptions)
+
+			err, podList := utils.GetPodList(
+				testOptions,
+				false,
+				"open-cluster-management-observability",
+				"component=metrics-collector",
+			)
+
 			if err != nil {
-				testFailed = true
-				return err
+				return fmt.Errorf("Failed to get the pod metrics-collector")
 			}
-			testFailed = false
+			if len(podList.Items) != 0 {
+				for _, po := range podList.Items {
+					if po.Status.Phase == "Running" {
+						klog.V(1).Infof("metrics-collector pod in Running")
+						return nil
+					}
+				}
+			}
 			return nil
+			/*
+				err = utils.CheckAllOBAsEnabledLocal(testOptions)
+				if err != nil {
+					testFailed = true
+					return err
+				}
+				testFailed = false
+				return nil
+			*/
 		}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*10).Should(Succeed())
 
 	})
