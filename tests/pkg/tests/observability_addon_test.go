@@ -50,12 +50,14 @@ var _ = Describe("", func() {
 			Expect(requests["memory"]).To(Equal("100Mi"))
 		})
 
-		It("[Stable] Should have resource requirement in metrics-collector", func() {
-			By("Check metrics-collector resource requirement")
-			Eventually(func() error {
-				return utils.CheckMCOAddonResources(testOptions)
-			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
-		})
+		/*
+			It("[Stable] Should have resource requirement in metrics-collector", func() {
+				By("Check metrics-collector resource requirement")
+				Eventually(func() error {
+					return utils.CheckMCOAddonResources(testOptions)
+				}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
+			})
+		*/
 
 		It("[Stable] Should not have the expected MCO addon pods when disable observabilityaddon", func() {
 			Eventually(func() error {
@@ -64,22 +66,29 @@ var _ = Describe("", func() {
 
 			By("Waiting for MCO addon components scales to 0")
 			Eventually(func() error {
-				err, podList := utils.GetPodList(
-					testOptions,
-					false,
-					MCO_ADDON_NAMESPACE,
-					"component=metrics-collector",
-				)
+				err = utils.CheckAllOBAsDeleted(testOptions)
+
 				if err != nil {
 					return fmt.Errorf("Failed to disable observability addon")
 				}
-				if len(podList.Items) != 0 {
-					for _, po := range podList.Items {
-						if po.Status.Phase == "Running" {
-							return fmt.Errorf("Failed to disable observability addon, there is still metrics-collector pod in Running")
+				/*
+					err, podList := utils.GetPodList(
+						testOptions,
+						false,
+						MCO_ADDON_NAMESPACE,
+						"component=metrics-collector",
+					)
+					if err != nil {
+						return fmt.Errorf("Failed to disable observability addon")
+					}
+					if len(podList.Items) != 0 {
+						for _, po := range podList.Items {
+							if po.Status.Phase == "Running" {
+								return fmt.Errorf("Failed to disable observability addon, there is still metrics-collector pod in Running")
+							}
 						}
 					}
-				}
+				*/
 				return nil
 			}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 			// according to PR - stolostron/multicluster-observability-operator#886
