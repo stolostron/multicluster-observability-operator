@@ -502,6 +502,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 	for _, manifest := range hubManifestCopy {
 		var currentObj client.Object
 		obj := manifest.RawExtension.Object.(client.Object)
+		log.Info("Coleen Creating resource for hub metrics collection", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 
 		switch obj.GetObjectKind().GroupVersionKind().Kind {
 		case "Deployment":
@@ -510,6 +511,14 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			currentObj = &corev1.Secret{}
 		case "ConfigMap":
 			currentObj = &corev1.ConfigMap{}
+		case "Service":
+			currentObj = &corev1.Service{}
+		case "ServiceAccount":
+			currentObj = &corev1.ServiceAccount{}
+		case "ClusterRole":
+			currentObj = &rbacv1.ClusterRole{}
+		case "ClusterRoleBinding":
+			currentObj = &rbacv1.ClusterRoleBinding{}
 		default:
 			continue
 		}
@@ -524,12 +533,14 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		}
 
 		if k8serrors.IsNotFound(err) {
+			log.Info("Coleen Not found, Creating resource for hub metrics collection", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 			err = c.Create(context.TODO(), obj)
 			if err != nil {
 				log.Error(err, "Failed to create resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
 				return err
 			}
 		} else {
+			log.Info("Coleen updating for hub metrics collection", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 			needsUpdate := false
 			switch obj := obj.(type) {
 			case *appsv1.Deployment:
@@ -554,6 +565,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			}
 
 			if needsUpdate {
+				log.Info("Coleen needs update for hub metrics collection", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 				err = c.Update(context.TODO(), obj)
 				if err != nil {
 					log.Error(err, "Failed to update resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
