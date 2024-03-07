@@ -75,18 +75,22 @@ func CheckAllOBAsEnabled(opt TestOptions) error {
 	klog.V(1).Infof("Have the following managedclusters: <%v>", clusters)
 
 	for _, cluster := range clusters {
-		klog.V(1).Infof("Check OBA status for cluster <%v>", cluster)
-		err = CheckOBAStatus(opt, cluster, ManagedClusterAddOnEnabledMessage)
-		if err != nil {
-			return err
+		if cluster != `local-cluster` {
+			klog.V(1).Infof("Check OBA status for cluster <%v>", cluster)
+			err = CheckOBAStatus(opt, cluster, ManagedClusterAddOnEnabledMessage)
+			if err != nil {
+				return err
+			}
+
+			klog.V(1).Infof("Check managedcluster addon status for cluster <%v>", cluster)
+			err = CheckManagedClusterAddonsStatus(opt, cluster, ManagedClusterAddonsStatusMessage)
+			if err != nil {
+				return err
+			}
 		}
 
-		klog.V(1).Infof("Check managedcluster addon status for cluster <%v>", cluster)
-		err = CheckManagedClusterAddonsStatus(opt, cluster, ManagedClusterAddonsStatusMessage)
-		if err != nil {
-			return err
-		}
 	}
+
 	return nil
 }
 
@@ -99,12 +103,6 @@ func CheckAllOBAsEnabledLocal(opt TestOptions) error {
 
 	for _, cluster := range clusters {
 		if cluster == `local-cluster` {
-			klog.V(1).Infof("Check OBA status for cluster <%v>", cluster)
-			err = CheckOBAStatus(opt, cluster, ManagedClusterAddOnEnabledMessage)
-			if err != nil {
-				return err
-			}
-
 			klog.V(1).Infof("Check managedcluster addon status for cluster <%v>", cluster)
 			err = CheckManagedClusterAddonsStatus(opt, cluster, ManagedClusterAddonsStatusMessage)
 			if err != nil {
@@ -121,10 +119,6 @@ func CheckAllOBADisabled(opt TestOptions) error {
 		return err
 	}
 	for _, cluster := range clusters {
-		err = CheckOBAStatus(opt, cluster, ManagedClusterAddOnDisabledMessage)
-		if err != nil {
-			return err
-		}
 		err = CheckManagedClusterAddonsStatus(opt, cluster, ManagedClusterAddOnDisabledMessage)
 		if err != nil {
 			return err
