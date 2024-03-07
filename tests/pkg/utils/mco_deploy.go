@@ -134,6 +134,18 @@ func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
 	// ignore non-mco pods
 	mcoPods := []corev1.Pod{}
 	for _, p := range podList.Items {
+		if strings.Contains(p.GetName(), "metrics-collector") {
+			continue
+		}
+
+		if strings.Contains(p.GetName(), "endpoint-observability-operator") {
+			continue
+		}
+
+		if strings.Contains(p.GetName(), "uwl-metrics-collector") {
+			continue
+		}
+
 		if strings.Contains(p.GetName(), "grafana-test") {
 			continue
 		}
