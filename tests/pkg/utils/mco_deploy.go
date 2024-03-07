@@ -353,7 +353,10 @@ func CheckAllPodsAffinity(opt TestOptions) error {
 	}
 
 	for _, pod := range podList {
-
+		if pod.Labels["name"] == "endpoint-observability-operator" {
+			// No affinity set for endpoint-operator
+			continue
+		}
 		if pod.Spec.Affinity == nil {
 			return fmt.Errorf("Failed to check affinity for pod: %v" + pod.GetName())
 		}
