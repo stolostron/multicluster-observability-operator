@@ -510,6 +510,12 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			currentObj = &corev1.Secret{}
 		case "ConfigMap":
 			currentObj = &corev1.ConfigMap{}
+		case "ServiceAccount":
+			currentObj = &corev1.ServiceAccount{}
+		case "ClusterRole":
+			currentObj = &rbacv1.ClusterRole{}
+		case "ClusterRoleBinding":
+			currentObj = &rbacv1.ClusterRoleBinding{}
 		default:
 			continue
 		}
@@ -549,6 +555,21 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 				}
 				currentConfigMap := currentObj.(*corev1.ConfigMap)
 				if !reflect.DeepEqual(obj.Data, currentConfigMap.Data) {
+					needsUpdate = true
+				}
+			case *rbacv1.ClusterRole:
+				currentClusterRole := currentObj.(*rbacv1.ClusterRole)
+				if !reflect.DeepEqual(obj.Rules, currentClusterRole.Rules) {
+					needsUpdate = true
+				}
+			case *rbacv1.ClusterRoleBinding:
+				currentClusterRoleBinding := currentObj.(*rbacv1.ClusterRoleBinding)
+				if !reflect.DeepEqual(obj.Subjects, currentClusterRoleBinding.Subjects) {
+					needsUpdate = true
+				}
+			case *corev1.ServiceAccount:
+				currentServiceAccount := currentObj.(*corev1.ServiceAccount)
+				if !reflect.DeepEqual(obj.ImagePullSecrets, currentServiceAccount.ImagePullSecrets) {
 					needsUpdate = true
 				}
 			}
