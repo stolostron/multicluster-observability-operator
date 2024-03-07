@@ -29,6 +29,7 @@ var _ = Describe("Observability:", func() {
 		clusterName := utils.GetManagedClusterName(testOptions)
 		if clusterName == hubManagedClusterName {
 			namespace = hubMetricsCollectorNamespace
+			isHub = true
 		}
 	})
 
@@ -42,7 +43,7 @@ var _ = Describe("Observability:", func() {
 			if collectorPodName == "" {
 				_, podList := utils.GetPodList(
 					testOptions,
-					true,
+					false,
 					namespace,
 					"component=metrics-collector",
 				)
@@ -55,7 +56,7 @@ var _ = Describe("Observability:", func() {
 			}
 			_, apiPodList := utils.GetPodList(
 				testOptions,
-				true,
+				isHub,
 				MCO_NAMESPACE,
 				"app.kubernetes.io/name=observatorium-api",
 			)
@@ -86,7 +87,7 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() bool {
 			err1, appPodList := utils.GetPodList(
 				testOptions,
-				true,
+				isHub,
 				MCO_NAMESPACE,
 				"app.kubernetes.io/name=observatorium-api",
 			)
@@ -145,7 +146,7 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() bool {
 			err, podList := utils.GetPodList(
 				testOptions,
-				true,
+				isHub,
 				namespace,
 				"component=metrics-collector",
 			)
@@ -164,7 +165,7 @@ var _ = Describe("Observability:", func() {
 			// debug code to check label "cert/time-restarted"
 			deployment, err := utils.GetDeployment(
 				testOptions,
-				true,
+				isHub,
 				"metrics-collector-deployment",
 				namespace,
 			)
@@ -187,5 +188,6 @@ var _ = Describe("Observability:", func() {
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 		namespace = MCO_ADDON_NAMESPACE
+		isHub = false
 	})
 })

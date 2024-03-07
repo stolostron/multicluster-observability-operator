@@ -41,6 +41,7 @@ var (
 	hubMetricsCollectorNamespace = "open-cluster-management-observability"
 	hubManagedClusterName        = "local-cluster"
 	namespace                    = MCO_ADDON_NAMESPACE
+	isHub                        = false
 )
 
 const (
