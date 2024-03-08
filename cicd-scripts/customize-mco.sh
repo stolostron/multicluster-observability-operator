@@ -9,15 +9,11 @@ ROOTDIR="$(
   cd "$(dirname "$0")/.."
   pwd -P
 )"
-export PATH=${PATH}:${ROOTDIR}/bin
 
-if [[ "$(uname)" == "Linux" ]]; then
-  SED_COMMAND='sed -i-e -e'
-elif [[ "$(uname)" == "Darwin" ]]; then
-  SED_COMMAND='sed -i '-e' -e'
-fi
+SED_COMMAND=${SED}' -i-e -e'
 
 # Set the latest snapshot if it is not set
+source ./scripts/test-utils.sh
 LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_latest_snapshot)}
 
 # list all components need to do test.

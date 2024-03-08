@@ -10,11 +10,19 @@ BIN_DIR ?= $(TMP_DIR)/bin
 export PATH := $(BIN_DIR):$(PATH)
 GIT ?= $(shell which git)
 
+# Support gsed on OSX (installed via brew), falling back to sed. On Linux
+# systems gsed won't be installed, so will use sed as expected.
+export SED ?= $(shell which gsed 2>/dev/null || which sed)
+
 XARGS ?= $(shell which gxargs 2>/dev/null || which xargs)
 GREP ?= $(shell which ggrep 2>/dev/null || which grep)
 
 # Image URL to use all building/pushing image targets
 IMG ?= quay.io/stolostron/multicluster-observability-operator:latest
+# KUSTOMIZE_VERSION is set here to allow it to be overridden by the caller
+# as it gets passed to the registration-operator Makefile and will fail on macOS if not set.
+# See https://github.com/stolostron/registration-operator/blob/release-2.4/Makefile#L184-L193
+KUSTOMIZE_VERSION ?= v5.3.0
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: 
@@ -33,7 +41,17 @@ build:
 # Build the docker image
 docker-build:
 	cd operators/multiclusterobservability && make manager
-	docker build -t ${IMG} . -f operators/multiclusterobservability/Dockerfile	
+	docker build -t ${IMG} . -f operators/multiclusterobservability/Dockerfile
+
+
+LOCAL_IMAGE ?= hack.io/stolostron/mco:local
+IMAGE_BUILD_CMD ?= docker buildx build . -t ${LOCAL_IMAGE} -f operators/multiclusterobservability/Dockerfile.dev --load
+
+# Build the docker image using a public image registry
+.PHONY: docker-build-local
+docker-build-local:
+	cd operators/multiclusterobservability && make manager
+	$(IMAGE_BUILD_CMD)
 
 # Push the docker image
 docker-push:
@@ -64,10 +82,30 @@ e2e-tests-in-kind: install-e2e-test-deps
 	@echo "Running e2e tests in KinD cluster..."
 ifeq ($(OPENSHIFT_CI),true)
     # Set up environment specific to OpenShift CI
-	@./cicd-scripts/run-e2e-in-kind-via-prow.sh
+	@IS_KIND_ENV=true SED=$(SED) ./cicd-scripts/run-e2e-in-kind-via-prow.sh
 else
-	@./tests/run-in-kind/run-e2e-in-kind.sh
+	@kind get kubeconfig --name hub > /tmp/hub.yaml
+	@IS_KIND_ENV=true KUBECONFIG=/tmp/hub.yaml SED=$(SED) ./cicd-scripts/run-e2e-tests.sh
 endif
+
+# Creates a KinD cluster and sets the kubeconfig context to the cluster
+.PHONY: kind-env
+kind-env:
+	@echo "Setting up KinD cluster"
+	@./scripts/bootstrap-kind-env.sh
+	@echo "Cluster has been created"
+	kind export kubeconfig --name=hub
+	kubectl label node hub-control-plane node-role.kubernetes.io/master=''
+
+# Creates a KinD cluster with MCO deployed and sets the kubeconfig context to the cluster
+# This fully prepares the environment for running e2e tests.
+.PHONY: mco-kind-env
+mco-kind-env: kind-env
+	@echo "Local environment has been set up"
+	@echo "Installing MCO"
+	@kind get kubeconfig --name hub > /tmp/hub.yaml
+	KUBECONFIG=/tmp/hub.yaml IS_KIND_ENV=true KUSTOMIZE_VERSION=${KUSTOMIZE_VERSION} ./cicd-scripts/setup-e2e-tests.sh
+
 
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle

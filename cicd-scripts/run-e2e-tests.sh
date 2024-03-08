@@ -12,10 +12,7 @@ ROOTDIR="$(
   pwd -P
 )"
 
-SED_COMMAND='sed -i -e'
-if [[ "$(uname)" == "Darwin" ]]; then
-  SED_COMMAND='sed -i '-e' -e'
-fi
+SED_COMMAND=${SED}' -i-e -e'
 
 # customize the images for testing
 ${ROOTDIR}/cicd-scripts/customize-mco.sh
