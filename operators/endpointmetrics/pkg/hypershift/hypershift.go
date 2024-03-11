@@ -65,12 +65,12 @@ func ReconcileHostedClustersServiceMonitors(ctx context.Context, c client.Client
 // DeleteServiceMonitors deletes ACM ServiceMonitors for all hosted clusters
 func DeleteServiceMonitors(ctx context.Context, c client.Client) error {
 	hList := &hyperv1.HostedClusterList{}
-	if err := c.List(context.TODO(), hList, &client.ListOptions{}); err != nil {
+	if err := c.List(ctx, hList, &client.ListOptions{}); err != nil {
 		return fmt.Errorf("failed to list HyperShiftDeployment: %w", err)
 	}
 
 	for _, cluster := range hList.Items {
-		namespace := HostedClusterNamespace(&cluster)
+		namespace := HostedClusterNamespace(&cluster) // nolint:gosec
 		if err := deleteServiceMonitor(ctx, c, AcmEtcdSmName, namespace); err != nil {
 			return fmt.Errorf("failed to delete ServiceMonitor %s/%s: %w", namespace, AcmEtcdSmName, err)
 		}

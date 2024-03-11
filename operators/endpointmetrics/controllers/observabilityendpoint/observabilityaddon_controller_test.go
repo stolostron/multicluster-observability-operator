@@ -12,6 +12,7 @@ import (
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"golang.org/x/exp/slices"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -138,6 +139,7 @@ func init() {
 	oav1beta1.AddToScheme(s)
 	ocinfrav1.AddToScheme(s)
 	hyperv1.AddToScheme(s)
+	promv1.AddToScheme(s)
 
 	namespace = testNamespace
 	hubNamespace = testHubNamspace
