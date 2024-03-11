@@ -84,6 +84,9 @@ var _ = Describe("Observability:", func() {
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 		})
 		It("[Stable] Updating metrics-collector deployment", func() {
+			if os.Getenv("IS_KIND_ENV") == trueStr {
+				Skip("Skip the case due to run in KinD")
+			}
 			clusterName := utils.GetManagedClusterName(testOptions)
 			fmt.Printf("Coleen deleting metrics-collector deployment for namespace : %s  cluster: %s\n", namespace, clusterName)
 			updateSaName := "test-serviceaccount"
