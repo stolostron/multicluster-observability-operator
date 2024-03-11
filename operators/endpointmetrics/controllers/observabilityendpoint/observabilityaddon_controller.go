@@ -187,10 +187,9 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		updatedHCs, err := hypershift.ReconcileHostedClustersServiceMonitors(ctx, r.Client)
 		if err != nil {
 			log.Error(err, "Failed to create ServiceMonitors for hypershift")
-			return ctrl.Result{}, err
+		} else {
+			log.Info("Reconciled hypershift service monitors", "updatedHCs", updatedHCs)
 		}
-
-		log.Info("Reconciled hypershift service monitors", "updatedHCs", updatedHCs)
 	}
 
 	if !installPrometheus {
