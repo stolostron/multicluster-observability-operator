@@ -536,6 +536,10 @@ func processStorageConfig(c client.Client, mco *mcov1beta2.MultiClusterObservabi
 			return fmt.Errorf("failed to unmarshal data in secret %s: %w", storageConfig.Name, err)
 		}
 
+		newEp := &mcoutil.RemoteWriteEndpointWithSecret{
+			Name: storageConfig.Name,
+			URL:  ep.URL,
+		}
 		if ep.HttpClientConfig != nil {
 			newConfig, mountS := mcoutil.Transform(*ep.HttpClientConfig)
 
@@ -548,9 +552,9 @@ func processStorageConfig(c client.Client, mco *mcov1beta2.MultiClusterObservabi
 			}
 
 			mountSecrets = append(mountSecrets, mountS...)
-			ep.HttpClientConfig = newConfig
+			newEp.HttpClientConfig = newConfig
 		}
-		endpoints = append(endpoints, *ep)
+		endpoints = append(endpoints, *newEp)
 	}
 
 	if err := applyEndpointsSecret(c, endpoints); err != nil {

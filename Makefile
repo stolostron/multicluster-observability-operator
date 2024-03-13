@@ -61,13 +61,13 @@ docker-push:
 unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors
 
 unit-tests-operators:
-	go test -v ${VERBOSE} `go list ./operators/... | $(GREP) -v test`
+	go test ${VERBOSE} `go list ./operators/... | $(GREP) -v test`
 
 unit-tests-loaders:
-	go test -v ${VERBOSE} `go list ./loaders/... | $(GREP) -v test`
+	go test ${VERBOSE} `go list ./loaders/... | $(GREP) -v test`
 
 unit-tests-proxy:
-	go test -v ${VERBOSE} `go list ./proxy/... | $(GREP) -v test`
+	go test ${VERBOSE} `go list ./proxy/... | $(GREP) -v test`
 
 unit-tests-collectors:
 	go test ${VERBOSE} `go list ./collectors/... | $(GREP) -v test`
@@ -184,9 +184,6 @@ io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile
 	@go vet -stdmethods=false ./...
 	@echo ">> linting all of the Go files GOGC=${GOGC}"
 	@$(GOLANGCI_LINT) run
-	@echo ">> ensuring Copyright headers"
-	@go run ./scripts/copyright
-	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')
 
 .PHONY: install-build-deps
 install-build-deps:
