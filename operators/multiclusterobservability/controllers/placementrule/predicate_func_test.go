@@ -157,20 +157,20 @@ func TestAddonDeploymentPredicate(t *testing.T) {
 		expectedCreate bool
 		expectedUpdate bool
 		expectedDelete bool
-		createEvent    event.CreateEvent
+		createEvent    *event.CreateEvent
 		updateEvent    func() event.UpdateEvent
-		deleteEvent    event.DeleteEvent
+		deleteEvent    *event.DeleteEvent
 	}{
 		{
 			caseName:       "Create AddonDeploymentConfig",
 			namespace:      testNamespace,
 			expectedCreate: true,
-			createEvent: event.CreateEvent{
+			createEvent: &event.CreateEvent{
 				Object: defaultAddonDeploymentConfig,
 			},
 		},
 		{
-			caseName:       "Update AddonDeploymentConfig ProxyConfig",
+			caseName:       "Update AddonDeploymentConfig with Spec.ProxyConfig changes",
 			namespace:      testNamespace,
 			expectedUpdate: true,
 			updateEvent: func() event.UpdateEvent {
@@ -183,7 +183,7 @@ func TestAddonDeploymentPredicate(t *testing.T) {
 			},
 		},
 		{
-			caseName:       "Update AddonDeploymentConfig NodePlacement",
+			caseName:       "Update AddonDeploymentConfig with Spec.NodePlacement changes",
 			namespace:      testNamespace,
 			expectedUpdate: true,
 			updateEvent: func() event.UpdateEvent {
@@ -198,10 +198,35 @@ func TestAddonDeploymentPredicate(t *testing.T) {
 			},
 		},
 		{
+			caseName:       "Update AddonDeploymentConfig without Spec changes",
+			namespace:      testNamespace,
+			expectedUpdate: true,
+			updateEvent: func() event.UpdateEvent {
+				newDefaultAddonDeploymentConfig := defaultAddonDeploymentConfig.DeepCopy()
+				newDefaultAddonDeploymentConfig.Labels = map[string]string{"foo": "bar"}
+				return event.UpdateEvent{
+					ObjectOld: defaultAddonDeploymentConfig,
+					ObjectNew: newDefaultAddonDeploymentConfig,
+				}
+			},
+		},
+		{
+			caseName:       "Update AddonDeploymentConfig with the same Spec ",
+			namespace:      testNamespace,
+			expectedUpdate: false,
+			updateEvent: func() event.UpdateEvent {
+				newDefaultAddonDeploymentConfig := defaultAddonDeploymentConfig.DeepCopy()
+				return event.UpdateEvent{
+					ObjectOld: defaultAddonDeploymentConfig,
+					ObjectNew: newDefaultAddonDeploymentConfig,
+				}
+			},
+		},
+		{
 			caseName:       "Delete AddonDeploymentConfig",
 			namespace:      testNamespace,
 			expectedDelete: true,
-			deleteEvent: event.DeleteEvent{
+			deleteEvent: &event.DeleteEvent{
 				Object: defaultAddonDeploymentConfig,
 			},
 		},
@@ -224,24 +249,24 @@ func TestAddonDeploymentPredicate(t *testing.T) {
 		t.Run(c.caseName, func(t *testing.T) {
 			pred := GetAddOnDeploymentConfigPredicates()
 
-			if c.expectedCreate {
-				if !pred.CreateFunc(c.createEvent) {
-					t.Fatalf("%s: predicate returned 'false' on applied create event", c.caseName)
+			if c.createEvent != nil {
+				gotCreate := pred.CreateFunc(*c.createEvent)
+				if gotCreate != c.expectedCreate {
+					t.Fatalf("%s: expected predicate to return '%v' on applied create event. Got '%v'", c.caseName, c.expectedCreate, gotCreate)
 				}
 			}
 
-			if c.expectedUpdate {
-				if !pred.UpdateFunc(c.updateEvent()) {
-					t.Fatalf("%s: predicate returned 'false' on applied update event", c.caseName)
+			if c.updateEvent != nil {
+				gotUpdate := pred.UpdateFunc(c.updateEvent())
+				if gotUpdate != c.expectedUpdate {
+					t.Fatalf("%s: expected predicate to return '%v' on applied update event. Got '%v'", c.caseName, c.expectedUpdate, gotUpdate)
 				}
 			}
 
-			if c.expectedDelete {
-				deleteEvent := event.DeleteEvent{
-					Object: defaultAddonDeploymentConfig,
-				}
-				if !pred.DeleteFunc(deleteEvent) {
-					t.Fatalf("%s: predicate returned 'false' on applied delete event", c.caseName)
+			if c.deleteEvent != nil {
+				gotDelete := pred.DeleteFunc(*c.deleteEvent)
+				if gotDelete != c.expectedDelete {
+					t.Fatalf("%s: expected predicate to return '%v' on applied delete event. Got '%v'", c.caseName, c.expectedDelete, gotDelete)
 				}
 			}
 		})
