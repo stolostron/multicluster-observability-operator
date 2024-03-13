@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-    tags:
   pull_request:
 
 jobs:
@@ -15,22 +14,13 @@ jobs:
       GOBIN: /tmp/.bin
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: 1.21.x
-
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/.cache/golangci-lint
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          cache-dependency-path: "**/*.sum"
 
       - name: Linting, Formatting & vetting
         run: make lint
