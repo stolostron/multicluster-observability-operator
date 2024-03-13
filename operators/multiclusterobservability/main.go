@@ -178,6 +178,10 @@ func main() {
 		appsv1.SchemeGroupVersion.WithKind("StatefulSet"): {
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
 		},
+		appsv1.SchemeGroupVersion.WithKind("AddOnDeploymentConfig"): {
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", mcoNamespace)},
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
+		},
 		workv1.SchemeGroupVersion.WithKind("ManifestWork"): {
 			{LabelSelector: "owner==multicluster-observability-operator"},
 		},
