@@ -220,11 +220,6 @@ func NewWorkerMetrics(reg *prometheus.Registry) *workerMetrics {
 		}),
 
 		clientMetrics: &metricsclient.ClientMetrics{
-			GaugeRequestSend: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
-				Name: "metricsclient_request_send",
-				Help: "Tracks the number of metrics sends",
-			}, []string{"client", "status_code"}),
-
 			FederateRequests: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 				Name: "federate_requests_total",
 				Help: "The number of times federating metrics",
