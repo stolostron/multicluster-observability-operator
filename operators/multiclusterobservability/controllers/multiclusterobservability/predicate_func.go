@@ -188,20 +188,3 @@ func GetNamespacePredicateFunc() predicate.Funcs {
 		},
 	}
 }
-
-func GetAddOnDeploymentConfigPredicateFunc() predicate.Funcs {
-	return predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			return e.Object.GetNamespace() == config.GetDefaultNamespace() ||
-				e.Object.GetNamespace() == config.GetMCONamespace()
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			return e.ObjectNew.GetNamespace() == config.GetDefaultNamespace() ||
-				e.ObjectNew.GetNamespace() == config.GetMCONamespace()
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return e.Object.GetNamespace() == config.GetDefaultNamespace() ||
-				e.Object.GetNamespace() == config.GetMCONamespace()
-		},
-	}
-}

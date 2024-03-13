@@ -599,7 +599,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	clusterPred := getClusterPreds()
 
 	// Watch changes for AddonDeploymentConfig
-	AddonDeploymentPred := GetAddOnDeploymentPredicates()
+	addOnDeploymentConfigPred := GetAddOnDeploymentConfigPredicates()
 
 	// Watch changes to endpoint-operator deployment
 	hubEndpointOperatorPred := getHubEndpointOperatorPredicates()
@@ -900,7 +900,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// secondary watch for alertmanager accessor serviceaccount
 		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred))
 
-	// watch for AddonDeploymentConfig
+	// watch for AddOnDeploymentConfig
 	if _, err := r.RESTMapper.RESTMapping(schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "AddOnDeploymentConfig"}, addonv1alpha1.GroupVersion.Version); err == nil {
 		ctrBuilder = ctrBuilder.Watches(
 			&source.Kind{Type: &addonv1alpha1.AddOnDeploymentConfig{}},
@@ -911,7 +911,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					}},
 				}
 			}),
-			builder.WithPredicates(AddonDeploymentPred),
+			builder.WithPredicates(addOnDeploymentConfigPred),
 		)
 	}
 	manifestWorkGroupKind := schema.GroupKind{Group: workv1.GroupVersion.Group, Kind: "ManifestWork"}

@@ -446,7 +446,6 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 	cmPred := GetConfigMapPredicateFunc()
 	secretPred := GetAlertManagerSecretPredicateFunc()
 	namespacePred := GetNamespacePredicateFunc()
-	addOnDeploymentConfigPred := GetAddOnDeploymentConfigPredicateFunc()
 
 	ctrBuilder := ctrl.NewControllerManagedBy(mgr).
 		// Watch for changes to primary resource MultiClusterObservability with predicate
@@ -463,8 +462,6 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		Owns(&corev1.Service{}).
 		// Watch for changes to secondary Observatorium CR and requeue the owner MultiClusterObservability
 		Owns(&observatoriumv1alpha1.Observatorium{}).
-		// Watch for changes in AddOnDeploymentConfig in certain namespaces
-		Watches(&source.Kind{Type: &addonv1alpha1.AddOnDeploymentConfig{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(addOnDeploymentConfigPred)).
 		// Watch the configmap for thanos-ruler-custom-rules update
 		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmPred)).
 		// Watch the secret for deleting event of alertmanager-config

@@ -182,7 +182,7 @@ func TestAddonDeploymentPredicate(t *testing.T) {
 	}
 	for _, c := range caseList {
 		t.Run(c.caseName, func(t *testing.T) {
-			pred := GetAddOnDeploymentPredicates()
+			pred := GetAddOnDeploymentConfigPredicates()
 			createEvent := event.CreateEvent{
 				Object: defaultAddonDeploymentConfig,
 			}
