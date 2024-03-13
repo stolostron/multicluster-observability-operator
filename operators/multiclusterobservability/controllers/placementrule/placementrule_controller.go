@@ -36,16 +36,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	workv1 "open-cluster-management.io/api/work/v1"
+
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
-	clusterv1 "open-cluster-management.io/api/cluster/v1"
-	workv1 "open-cluster-management.io/api/work/v1"
 )
 
 const (
@@ -58,7 +59,7 @@ const (
 
 var (
 	log = logf.Log.WithName("controller_placementrule")
-	//watchNamespace                  = config.GetDefaultNamespace()
+	// watchNamespace                  = config.GetDefaultNamespace()
 	isCRoleCreated                = false
 	clusterAddon                  = &addonv1alpha1.ClusterManagementAddOn{}
 	defaultAddonDeploymentConfig  = &addonv1alpha1.AddOnDeploymentConfig{}
@@ -335,7 +336,7 @@ func createAllRelatedRes(
 		isCRoleCreated = true
 	}
 
-	//Get or create ClusterManagementAddon
+	// Get or create ClusterManagementAddon
 	clusterAddon, err = util.CreateClusterManagementAddon(c)
 	if err != nil {
 		return err
@@ -474,7 +475,7 @@ func deleteGlobalResource(c client.Client) error {
 		return err
 	}
 	isCRoleCreated = false
-	//delete ClusterManagementAddon
+	// delete ClusterManagementAddon
 	err = util.DeleteClusterManagementAddon(c)
 	if err != nil {
 		return err
@@ -901,7 +902,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred))
 
 	// watch for AddOnDeploymentConfig
-	if _, err := r.RESTMapper.RESTMapping(schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "AddOnDeploymentConfig"}, addonv1alpha1.GroupVersion.Version); err == nil {
+	addOnDeploymentConfigGroupKind := schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "AddOnDeploymentConfig"}
+	if _, err := r.RESTMapper.RESTMapping(addOnDeploymentConfigGroupKind, addonv1alpha1.GroupVersion.Version); err == nil {
 		ctrBuilder = ctrBuilder.Watches(
 			&source.Kind{Type: &addonv1alpha1.AddOnDeploymentConfig{}},
 			handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
