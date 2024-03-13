@@ -355,8 +355,9 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 		},
 	}
 
+	containers := metricsCollectorDep.Spec.Template.Spec.Containers
 	if params.httpProxy != "" || params.httpsProxy != "" || params.noProxy != "" {
-		metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
+		containers[0].Env = append(containers[0].Env,
 			corev1.EnvVar{
 				Name:  "HTTP_PROXY",
 				Value: params.httpProxy,
@@ -371,7 +372,7 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			})
 	}
 	if params.httpsProxy != "" && params.CABundle != "" {
-		metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
+		containers[0].Env = append(containers[0].Env,
 			corev1.EnvVar{
 				Name:  "HTTPS_PROXY_CA_BUNDLE",
 				Value: params.CABundle,
@@ -380,26 +381,26 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 
 	if hubMetricsCollector {
 		//to avoid hub metrics collector from sending status
-		metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
+		containers[0].Env = append(containers[0].Env,
 			corev1.EnvVar{
 				Name:  "STANDALONE",
 				Value: "true",
 			})
 
 		//Since there is no obsAddOn for hub-metrics-collector, we need to set the resources here
-		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = operatorconfig.HubMetricsCollectorResources
+		containers[0].Resources = operatorconfig.HubMetricsCollectorResources
 	}
 
 	privileged := false
 	readOnlyRootFilesystem := true
 
-	metricsCollectorDep.Spec.Template.Spec.Containers[0].SecurityContext = &corev1.SecurityContext{
+	containers[0].SecurityContext = &corev1.SecurityContext{
 		Privileged:             &privileged,
 		ReadOnlyRootFilesystem: &readOnlyRootFilesystem,
 	}
 
 	if params.obsAddonSpec.Resources != nil {
-		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *params.obsAddonSpec.Resources
+		containers[0].Resources = *params.obsAddonSpec.Resources
 	}
 	return metricsCollectorDep
 }
@@ -449,7 +450,7 @@ func createAlertingRule(params CollectorParams) *monitoringv1.PrometheusRule {
 
 	return &monitoringv1.PrometheusRule{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "acm-" + name + "-alerting-rules",
+			Name:      makePrometheusRuleName(name),
 			Namespace: namespace,
 		},
 		Spec: monitoringv1.PrometheusRuleSpec{
@@ -642,18 +643,19 @@ func updateMetricsCollector(ctx context.Context, c client.Client, params Collect
 	}
 
 	foundAlert := &monitoringv1.PrometheusRule{}
-	err = c.Get(ctx, types.NamespacedName{Name: "acm-" + resourceName + "-alerting-rules", Namespace: namespace}, foundAlert)
+	promRuleName := makePrometheusRuleName(resourceName)
+	err = c.Get(ctx, types.NamespacedName{Name: promRuleName, Namespace: namespace}, foundAlert)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			alertingRules := createAlertingRule(params)
 			err = c.Create(ctx, alertingRules)
 			if err != nil {
-				log.Error(err, "Failed to create alerting rules", "name", "acm-"+resourceName+"-alerting-rules")
+				log.Error(err, "Failed to create alerting rules", "name", promRuleName)
 				return false, err
 			}
-			log.Info("Created alerting rules ", "name", "acm-"+resourceName+"-alerting-rules")
+			log.Info("Created alerting rules ", "name", promRuleName)
 		} else {
-			log.Error(err, "Failed to check the alerting rules", "name", "acm-"+resourceName+"-alerting-rules")
+			log.Error(err, "Failed to check the alerting rules", "name", promRuleName)
 			return false, err
 		}
 	}
@@ -729,20 +731,21 @@ func deleteMetricsCollector(ctx context.Context, c client.Client, name string) e
 	log.Info("metrics collector servicemonitor deleted", "name", strings.TrimSuffix(name, "-deployment"))
 
 	foundAlerts := &monitoringv1.PrometheusRule{}
-	if err := c.Get(ctx, types.NamespacedName{Name: "acm-" + strings.TrimSuffix(name, "-deployment") + "-alerting-rules",
+	promRuleName := makePrometheusRuleName(strings.TrimSuffix(name, "-deployment"))
+	if err := c.Get(ctx, types.NamespacedName{Name: promRuleName,
 		Namespace: namespace}, foundAlerts); err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("The metrics collector alerting rules does not exist", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+			log.Info("The metrics collector alerting rules does not exist", "name", promRuleName)
 			return nil
 		}
-		log.Error(err, "Failed to check the metrics collector alerting rules", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+		log.Error(err, "Failed to check the metrics collector alerting rules", "name", promRuleName)
 		return err
 	}
 	if err := c.Delete(ctx, foundAlerts); err != nil {
-		log.Error(err, "Failed to delete the metrics collector alerting rules", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+		log.Error(err, "Failed to delete the metrics collector alerting rules", "name", promRuleName)
 		return err
 	}
-	log.Info("metrics collector alerting rules deleted", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+	log.Info("metrics collector alerting rules deleted", "name", promRuleName)
 
 	foundService := &corev1.Service{}
 	if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment"),
@@ -865,4 +868,8 @@ func injectNamespaceLabel(allowlist *operatorconfig.MetricsAllowlist,
 		updatedList.MatchList = append(updatedList.MatchList, fmt.Sprintf("%s,namespace=\"%s\"", match, namespace))
 	}
 	return updatedList
+}
+
+func makePrometheusRuleName(name string) string {
+	return "acm-" + name + "-alerting-rules"
 }
