@@ -715,23 +715,24 @@ func deleteMetricsCollector(ctx context.Context, c client.Client, name string) e
 	log.Info("metrics collector deployment deleted", "name", name)
 
 	foundSM := &monitoringv1.ServiceMonitor{}
-	if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment"),
+	smonName := strings.TrimSuffix(name, "-deployment")
+	if err := c.Get(ctx, types.NamespacedName{Name: smonName,
 		Namespace: namespace}, foundSM); err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("The metrics collector servicemonitor does not exist", "name", strings.TrimSuffix(name, "-deployment"))
+			log.Info("The metrics collector servicemonitor does not exist", "name", smonName)
 			return nil
 		}
-		log.Error(err, "Failed to check the metrics collector servicemonitor", "name", strings.TrimSuffix(name, "-deployment"))
+		log.Error(err, "Failed to check the metrics collector servicemonitor", "name", smonName)
 		return err
 	}
 	if err := c.Delete(ctx, foundSM); err != nil {
-		log.Error(err, "Failed to delete the metrics collector servicemonitor", "name", strings.TrimSuffix(name, "-deployment"))
+		log.Error(err, "Failed to delete the metrics collector servicemonitor", "name", smonName)
 		return err
 	}
-	log.Info("metrics collector servicemonitor deleted", "name", strings.TrimSuffix(name, "-deployment"))
+	log.Info("metrics collector servicemonitor deleted", "name", smonName)
 
 	foundAlerts := &monitoringv1.PrometheusRule{}
-	promRuleName := makePrometheusRuleName(strings.TrimSuffix(name, "-deployment"))
+	promRuleName := makePrometheusRuleName(smonName)
 	if err := c.Get(ctx, types.NamespacedName{Name: promRuleName,
 		Namespace: namespace}, foundAlerts); err != nil {
 		if errors.IsNotFound(err) {
@@ -748,20 +749,21 @@ func deleteMetricsCollector(ctx context.Context, c client.Client, name string) e
 	log.Info("metrics collector alerting rules deleted", "name", promRuleName)
 
 	foundService := &corev1.Service{}
-	if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment"),
+	svcName := strings.TrimSuffix(name, "-deployment")
+	if err := c.Get(ctx, types.NamespacedName{Name: svcName,
 		Namespace: namespace}, foundService); err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("The metrics collector service does not exist", "name", strings.TrimSuffix(name, "-deployment"))
+			log.Info("The metrics collector service does not exist", "name", svcName)
 			return nil
 		}
-		log.Error(err, "Failed to check the metrics collector service", "name", strings.TrimSuffix(name, "-deployment"))
+		log.Error(err, "Failed to check the metrics collector service", "name", svcName)
 		return err
 	}
 	if err := c.Delete(ctx, foundService); err != nil {
-		log.Error(err, "Failed to delete the metrics collector service", "name", strings.TrimSuffix(name, "-deployment"))
+		log.Error(err, "Failed to delete the metrics collector service", "name", svcName)
 		return err
 	}
-	log.Info("metrics collector service deleted", "name", strings.TrimSuffix(name, "-deployment"))
+	log.Info("metrics collector service deleted", "name", svcName)
 
 	return nil
 }

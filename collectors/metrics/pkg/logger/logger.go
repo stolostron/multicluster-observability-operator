@@ -40,26 +40,27 @@ func LogLevelFromString(l string) level.Option {
 // Log is used to handle the error of logger.Log globally.
 func Log(log log.Logger, l LogLevel, keyvals ...interface{}) {
 	//errkey := "failover_err_%d"
+	errFormat := "Error logging: %v\n"
 	switch l {
 	case Debug:
 		err := level.Debug(log).Log(keyvals...)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error logging: %v\n", err)
+			fmt.Fprintf(os.Stderr, errFormat, err)
 		}
 	case Info:
 		err := level.Info(log).Log(keyvals...)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error logging: %v\n", err)
+			fmt.Fprintf(os.Stderr, errFormat, err)
 		}
 	case Warn:
 		err := level.Warn(log).Log(keyvals...)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error logging: %v\n", err)
+			fmt.Fprintf(os.Stderr, errFormat, err)
 		}
 	case Error:
 		err := level.Error(log).Log(keyvals...)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error logging: %v\n", err)
+			fmt.Fprintf(os.Stderr, errFormat, err)
 		}
 	}
 }
