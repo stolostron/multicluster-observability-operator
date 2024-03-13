@@ -149,7 +149,7 @@ func TestClusterPred(t *testing.T) {
 	}
 }
 
-func TestAddonDeploymentPredicate(t *testing.T) {
+func TestAddOnDeploymentConfigPredicate(t *testing.T) {
 	name := "test-obj"
 	caseList := []struct {
 		caseName       string
