@@ -105,8 +105,8 @@ func getCommands(params CollectorParams) []string {
 		"--limit-bytes=" + strconv.Itoa(limitBytes),
 		fmt.Sprintf("--label=\"cluster=%s\"", params.hubInfo.ClusterName),
 		fmt.Sprintf("--label=\"clusterID=%s\"", clusterID),
+		"--from-token-file=/var/run/secrets/kubernetes.io/serviceaccount/token",
 	}
-	commands = append(commands, "--from-token-file=/var/run/secrets/kubernetes.io/serviceaccount/token")
 	if !installPrometheus {
 		commands = append(commands, "--from-ca-file="+caFile)
 	}
@@ -114,38 +114,54 @@ func getCommands(params CollectorParams) []string {
 		commands = append(commands, fmt.Sprintf("--label=\"clusterType=%s\"", params.clusterType))
 	}
 
+	commands = append(commands, generateMetricsAllowListCommands(params)...)
+
+	return commands
+}
+
+func generateMetricsAllowListCommands(params CollectorParams) []string {
+	commands := []string{}
 	dynamicMetricList := map[string]bool{}
+
+	evalParams := []interface{}{
+		params.clusterID, params.clusterType, params.hubInfo,
+		params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount,
+	}
+
+	if !hubMetricsCollector {
+		evalParams = append(evalParams, params.obsAddonSpec)
+	}
+
 	for _, group := range params.allowlist.CollectRuleGroupList {
-		if group.Selector.MatchExpression != nil {
-			for _, expr := range group.Selector.MatchExpression {
-				if hubMetricsCollector {
-					if !evluateMatchExpression(expr, clusterID, params.clusterType, params.hubInfo,
-						params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount) {
-						continue
-					}
-				} else if !evluateMatchExpression(expr, clusterID, params.clusterType, params.obsAddonSpec, params.hubInfo,
-					params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount) {
-					continue
-				}
-				for _, rule := range group.CollectRuleList {
-					matchList := []string{}
-					for _, match := range rule.Metrics.MatchList {
-						matchList = append(matchList, `"`+strings.ReplaceAll(match, `"`, `\"`)+`"`)
-						if name := getNameInMatch(match); name != "" {
-							dynamicMetricList[name] = false
-						}
-					}
-					for _, name := range rule.Metrics.NameList {
+		if group.Selector.MatchExpression == nil {
+			continue
+		}
+
+		for _, expr := range group.Selector.MatchExpression {
+			if !evluateMatchExpression(expr, evalParams...) {
+				continue
+			}
+
+			for _, rule := range group.CollectRuleList {
+				matchList := make([]string, 0, len(rule.Metrics.MatchList))
+				for _, match := range rule.Metrics.MatchList {
+					matchList = append(matchList, `"`+strings.ReplaceAll(match, `"`, `\"`)+`"`)
+					if name := getNameInMatch(match); name != "" {
 						dynamicMetricList[name] = false
 					}
-					matchListStr := "[" + strings.Join(matchList, ",") + "]"
-					nameListStr := `["` + strings.Join(rule.Metrics.NameList, `","`) + `"]`
-					commands = append(
-						commands,
-						fmt.Sprintf("--collectrule={\"name\":\"%s\",\"expr\":\"%s\",\"for\":\"%s\",\"names\":%v,\"matches\":%v}",
-							rule.Collect, rule.Expr, rule.For, nameListStr, matchListStr),
-					)
 				}
+
+				for _, name := range rule.Metrics.NameList {
+					dynamicMetricList[name] = false
+				}
+
+				matchListStr := "[" + strings.Join(matchList, ",") + "]"
+				nameListStr := `["` + strings.Join(rule.Metrics.NameList, `","`) + `"]`
+				commands = append(
+					commands,
+					fmt.Sprintf("--collectrule={\"name\":\"%s\",\"expr\":\"%s\",\"for\":\"%s\",\"names\":%v,\"matches\":%v}",
+						rule.Collect, rule.Expr, rule.For, nameListStr, matchListStr),
+				)
 			}
 		}
 	}
@@ -178,6 +194,7 @@ func getCommands(params CollectorParams) []string {
 			fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr),
 		)
 	}
+
 	return commands
 }
 
