@@ -247,7 +247,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	if err != nil {
 		return *result, err
 	}
-	// instance.Namespace = config.GetDefaultNamespace()
 	instance.Spec.StorageConfig.StorageClass = storageClassSelected
 	// Render the templates with a specified CR
 	renderer := rendering.NewMCORenderer(instance, r.Client)
