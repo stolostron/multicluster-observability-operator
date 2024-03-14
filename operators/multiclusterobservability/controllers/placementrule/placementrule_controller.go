@@ -354,6 +354,11 @@ func createAllRelatedRes(
 					addonConfig,
 				)
 				if err != nil {
+					if k8serrors.IsNotFound(err) {
+						log.Info("AddonDeploymentConfig not found for current addon, cleaning up")
+						defaultAddonDeploymentConfig = &addonv1alpha1.AddOnDeploymentConfig{}
+						break
+					}
 					return err
 				}
 				log.Info("There is default AddonDeploymentConfig for current addon")
@@ -544,7 +549,6 @@ func createManagedClusterRes(
 }
 
 func deleteManagedClusterRes(c client.Client, namespace string) error {
-
 	managedclusteraddon := &addonv1alpha1.ManagedClusterAddOn{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      util.ManagedClusterAddonName,
