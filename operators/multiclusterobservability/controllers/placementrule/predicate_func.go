@@ -108,7 +108,7 @@ func GetAddOnDeploymentConfigPredicates() predicate.Funcs {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			newObj := e.ObjectNew.(*addonv1alpha1.AddOnDeploymentConfig)
 			oldObj := e.ObjectOld.(*addonv1alpha1.AddOnDeploymentConfig)
-			if reflect.DeepEqual(newObj, oldObj) {
+			if reflect.DeepEqual(newObj.Spec, oldObj.Spec) {
 				return false
 			}
 			log.Info("AddonDeploymentConfig is updated", e.ObjectNew.GetName(), "name", e.ObjectNew.GetNamespace(), "namespace")

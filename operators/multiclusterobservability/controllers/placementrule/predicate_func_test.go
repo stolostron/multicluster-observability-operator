@@ -144,7 +144,6 @@ func TestClusterPred(t *testing.T) {
 					t.Fatalf("HubInpre funcfoPred return true on deleteevent in case: (%v)", c.caseName)
 				}
 			}
-
 		})
 	}
 }
@@ -200,7 +199,7 @@ func TestAddOnDeploymentConfigPredicate(t *testing.T) {
 		{
 			caseName:       "Update AddonDeploymentConfig without Spec changes",
 			namespace:      testNamespace,
-			expectedUpdate: true,
+			expectedUpdate: false,
 			updateEvent: func() event.UpdateEvent {
 				newDefaultAddonDeploymentConfig := defaultAddonDeploymentConfig.DeepCopy()
 				newDefaultAddonDeploymentConfig.Labels = map[string]string{"foo": "bar"}
