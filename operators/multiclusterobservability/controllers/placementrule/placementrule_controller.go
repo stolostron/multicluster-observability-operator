@@ -58,8 +58,7 @@ const (
 )
 
 var (
-	log = logf.Log.WithName("controller_placementrule")
-	// watchNamespace                  = config.GetDefaultNamespace()
+	log                           = logf.Log.WithName("controller_placementrule")
 	isCRoleCreated                = false
 	clusterAddon                  = &addonv1alpha1.ClusterManagementAddOn{}
 	defaultAddonDeploymentConfig  = &addonv1alpha1.AddOnDeploymentConfig{}
