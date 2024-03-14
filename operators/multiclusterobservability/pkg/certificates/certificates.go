@@ -502,7 +502,7 @@ func CreateCSR() ([]byte, []byte) {
 	return csr, privateKey
 }
 
-func CreateUpdateMtlsCertSecretForHubCollector(c client.Client, updateMtlsCert bool) error {
+func CreateMtlsCertSecretForHubCollector(c client.Client) error {
 	csrBytes, privateKeyBytes := CreateCSR()
 	csr := &certificatesv1.CertificateSigningRequest{
 		Spec: certificatesv1.CertificateSigningRequestSpec{
@@ -515,39 +515,21 @@ func CreateUpdateMtlsCertSecretForHubCollector(c client.Client, updateMtlsCert b
 		log.Error(nil, "failed to sign CSR")
 		return errors.NewBadRequest("failed to sign CSR")
 	} else {
-		if updateMtlsCert {
-			HubMtlsSecret := &corev1.Secret{}
-			err := c.Get(context.TODO(), types.NamespacedName{
+		//Create a secret
+		HubMtlsSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      operatorconfig.HubMetricsCollectorMtlsCert,
 				Namespace: config.GetDefaultNamespace(),
-			}, HubMtlsSecret)
-			if err != nil {
-				log.Error(err, "Failed to get secret", "name", operatorconfig.HubMetricsCollectorMtlsCert)
-				return err
-			}
-			HubMtlsSecret.Data["tls.crt"] = signedClientCert
-			HubMtlsSecret.Data["tls.key"] = privateKeyBytes
-			err = c.Update(context.TODO(), HubMtlsSecret)
-			if err != nil {
-				log.Error(err, "Failed to update secret", "name", operatorconfig.HubMetricsCollectorMtlsCert)
-				return err
-			}
-		} else {
-			HubMtlsSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      operatorconfig.HubMetricsCollectorMtlsCert,
-					Namespace: config.GetDefaultNamespace(),
-				},
-				Data: map[string][]byte{
-					"tls.crt": signedClientCert,
-					"tls.key": privateKeyBytes,
-				},
-			}
-			err := c.Create(context.TODO(), HubMtlsSecret)
-			if err != nil && !errors.IsAlreadyExists(err) {
-				log.Error(err, "Failed to create secret", "name", operatorconfig.HubMetricsCollectorMtlsCert)
-				return err
-			}
+			},
+			Data: map[string][]byte{
+				"tls.crt": signedClientCert,
+				"tls.key": privateKeyBytes,
+			},
+		}
+		err := c.Create(context.TODO(), HubMtlsSecret)
+		if err != nil && !errors.IsAlreadyExists(err) {
+			log.Error(err, "Failed to create secret", "name", operatorconfig.HubMetricsCollectorMtlsCert)
+			return err
 		}
 	}
 	return nil
