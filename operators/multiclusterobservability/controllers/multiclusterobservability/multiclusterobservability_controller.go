@@ -148,10 +148,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	StartStatusUpdate(r.Client, instance)
 
 	if _, ok := os.LookupEnv("UNIT_TEST"); !ok {
-		crdClient, err := operatorsutil.GetOrCreateCRDClient()
-		if err != nil {
-			return ctrl.Result{}, err
-		}
 		mcghCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.MCGHCrdName)
 		if err != nil {
 			return ctrl.Result{}, err
