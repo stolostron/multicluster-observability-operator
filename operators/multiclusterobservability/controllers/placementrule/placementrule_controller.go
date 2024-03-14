@@ -341,6 +341,16 @@ func createAllRelatedRes(
 	if err != nil {
 		return err
 	}
+
+	// Always start this loop with an empty addon deployment config.
+	// This simplifies the logic for the cases where:
+	// - There is nothing in `Spec.SupportedConfigs`.
+	// - There's something in `Spec.SupportedConfigs`, but none of them are for
+	//   the group and resource that we care about.
+	// - There is something in `Spec.SupportedConfigs`, the group and resource are correct,
+	//   but the default config is not present in the manifest or it is not found
+	//   (i.e. was deleted or there's a typo).
+	defaultAddonDeploymentConfig = &addonv1alpha1.AddOnDeploymentConfig{}
 	for _, config := range clusterAddon.Spec.SupportedConfigs {
 		if config.ConfigGroupResource.Group == util.AddonGroup &&
 			config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
@@ -354,11 +364,6 @@ func createAllRelatedRes(
 					addonConfig,
 				)
 				if err != nil {
-					if k8serrors.IsNotFound(err) {
-						log.Info("AddonDeploymentConfig not found for current addon, cleaning up")
-						defaultAddonDeploymentConfig = &addonv1alpha1.AddOnDeploymentConfig{}
-						break
-					}
 					return err
 				}
 				log.Info("There is default AddonDeploymentConfig for current addon")
