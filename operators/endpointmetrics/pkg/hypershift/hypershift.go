@@ -41,7 +41,7 @@ func ReconcileHostedClustersServiceMonitors(ctx context.Context, c client.Client
 	for _, cluster := range hostedClusters.Items {
 		namespace := fmt.Sprintf("%s-%s", cluster.ObjectMeta.Namespace, cluster.ObjectMeta.Name)
 
-		etcdSMDesired, err := getEtcdServiceMonitor(ctx, c, namespace, cluster.Spec.ClusterID)
+		etcdSMDesired, err := getEtcdServiceMonitor(ctx, c, namespace, cluster.Spec.ClusterID, cluster.ObjectMeta.Name)
 		if err != nil {
 			return reconciledHCsCount, fmt.Errorf("failed to get etcd ServiceMonitor: %w", err)
 		}
@@ -50,7 +50,7 @@ func ReconcileHostedClustersServiceMonitors(ctx context.Context, c client.Client
 			return reconciledHCsCount, fmt.Errorf("failed to create/update etcd ServiceMonitor %s/%s: %w", etcdSMDesired.GetNamespace(), etcdSMDesired.GetName(), err)
 		}
 
-		apiServerSMDesired, err := getKubeServiceMonitor(ctx, c, namespace, cluster.Spec.ClusterID)
+		apiServerSMDesired, err := getKubeServiceMonitor(ctx, c, namespace, cluster.Spec.ClusterID, cluster.ObjectMeta.Name)
 		if err != nil {
 			return reconciledHCsCount, fmt.Errorf("failed to get kube-apiserver ServiceMonitor: %w", err)
 		}
@@ -117,7 +117,7 @@ func createOrUpdateSM(ctx context.Context, c client.Client, smDesired *promv1.Se
 	return nil
 }
 
-func getEtcdServiceMonitor(ctx context.Context, c client.Client, namespace, id string) (*promv1.ServiceMonitor, error) {
+func getEtcdServiceMonitor(ctx context.Context, c client.Client, namespace, clusterID, clusterName string) (*promv1.ServiceMonitor, error) {
 	// Get the hypershift's etcd service monitor to replicate some of its settings
 	hypershiftEtcdSM := &promv1.ServiceMonitor{}
 	if err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "etcd"}, hypershiftEtcdSM); err != nil {
@@ -156,14 +156,24 @@ func getEtcdServiceMonitor(ctx context.Context, c client.Client, namespace, id s
 						{
 							TargetLabel: "_id",
 							Action:      "replace",
-							Replacement: id,
+							Replacement: clusterID,
+						},
+						{
+							TargetLabel: "cluster_id",
+							Action:      "replace",
+							Replacement: clusterID,
+						},
+						{
+							TargetLabel: "cluster",
+							Action:      "replace",
+							Replacement: clusterName,
 						},
 					},
 					RelabelConfigs: []*promv1.RelabelConfig{
 						{
 							TargetLabel: "_id",
 							Action:      "replace",
-							Replacement: id,
+							Replacement: clusterID,
 						},
 						{
 							TargetLabel: "job",
@@ -179,7 +189,7 @@ func getEtcdServiceMonitor(ctx context.Context, c client.Client, namespace, id s
 	}, nil
 }
 
-func getKubeServiceMonitor(ctx context.Context, c client.Client, namespace, id string) (*promv1.ServiceMonitor, error) {
+func getKubeServiceMonitor(ctx context.Context, c client.Client, namespace, clusterID, clusterName string) (*promv1.ServiceMonitor, error) {
 	// Get the hypershift's api-server service monitor and replicate some of its settings
 	hypershiftKubeSM := &promv1.ServiceMonitor{}
 	if err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: ApiServerSmName}, hypershiftKubeSM); err != nil {
@@ -215,14 +225,24 @@ func getKubeServiceMonitor(ctx context.Context, c client.Client, namespace, id s
 						{
 							TargetLabel: "_id",
 							Action:      "replace",
-							Replacement: id,
+							Replacement: clusterID,
+						},
+						{
+							TargetLabel: "cluster_id",
+							Action:      "replace",
+							Replacement: clusterID,
+						},
+						{
+							TargetLabel: "cluster",
+							Action:      "replace",
+							Replacement: clusterName,
 						},
 					},
 					RelabelConfigs: []*promv1.RelabelConfig{
 						{
 							TargetLabel: "_id",
 							Action:      "replace",
-							Replacement: id,
+							Replacement: clusterID,
 						},
 						{
 							TargetLabel: "job",

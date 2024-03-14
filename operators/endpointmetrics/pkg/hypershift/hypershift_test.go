@@ -139,6 +139,23 @@ func TestHypershiftServiceMonitors(t *testing.T) {
 		},
 	}
 
+	checkRelabelConfigs := func(t *testing.T, sm *promv1.ServiceMonitor) {
+		for _, relabelCfg := range sm.Spec.Endpoints[0].MetricRelabelConfigs {
+			switch relabelCfg.TargetLabel {
+			case "_id":
+				assert.Equal(t, "test-hosted-cluster-id", relabelCfg.Replacement)
+			case "cluster_id":
+				assert.Equal(t, "test-hosted-cluster-id", relabelCfg.Replacement)
+			case "cluster":
+				assert.Equal(t, "test-hosted-cluster", relabelCfg.Replacement)
+			case "":
+				continue
+			default:
+				t.Errorf("unexpected relabel config: %v", relabelCfg)
+			}
+		}
+	}
+
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			client := tc.getClient()
@@ -166,6 +183,7 @@ func TestHypershiftServiceMonitors(t *testing.T) {
 			assert.Equal(t, hypershiftEtcdSM.Spec.Endpoints[0].TLSConfig, sm.Spec.Endpoints[0].TLSConfig)
 			assert.Equal(t, hypershiftEtcdSM.Spec.Selector, sm.Spec.Selector)
 			assert.Equal(t, hypershiftEtcdSM.Spec.NamespaceSelector, sm.Spec.NamespaceSelector)
+			checkRelabelConfigs(t, sm)
 
 			err = client.Get(context.Background(), types.NamespacedName{
 				Name:      hypershift.AcmApiServerSmName,
@@ -175,6 +193,7 @@ func TestHypershiftServiceMonitors(t *testing.T) {
 			assert.Equal(t, hypershiftApiServerSM.Spec.Endpoints[0].TLSConfig, sm.Spec.Endpoints[0].TLSConfig)
 			assert.Equal(t, hypershiftApiServerSM.Spec.Selector, sm.Spec.Selector)
 			assert.Equal(t, hypershiftApiServerSM.Spec.NamespaceSelector, sm.Spec.NamespaceSelector)
+			checkRelabelConfigs(t, sm)
 		})
 	}
 }
