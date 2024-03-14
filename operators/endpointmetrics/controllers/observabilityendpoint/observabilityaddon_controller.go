@@ -346,10 +346,10 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx context.Context) error {
 	existingNs := &corev1.Namespace{}
 	resNS := namespace
-
+	roleName := "prometheus-k8s-addon-obs"
 	role := rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "prometheus-k8s-addon-obs",
+			Name:      roleName,
 			Namespace: resNS,
 		},
 		Rules: []rbacv1.PolicyRule{
@@ -363,13 +363,13 @@ func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx
 
 	roleBinding := rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "prometheus-k8s-addon-obs",
+			Name:      roleName,
 			Namespace: resNS,
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
 			Kind:     "Role",
-			Name:     "prometheus-k8s-addon-obs",
+			Name:     roleName,
 		},
 		Subjects: []rbacv1.Subject{
 			{

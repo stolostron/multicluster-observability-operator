@@ -105,8 +105,8 @@ func getCommands(params CollectorParams) []string {
 		"--limit-bytes=" + strconv.Itoa(limitBytes),
 		fmt.Sprintf("--label=\"cluster=%s\"", params.hubInfo.ClusterName),
 		fmt.Sprintf("--label=\"clusterID=%s\"", clusterID),
+		"--from-token-file=/var/run/secrets/kubernetes.io/serviceaccount/token",
 	}
-	commands = append(commands, "--from-token-file=/var/run/secrets/kubernetes.io/serviceaccount/token")
 	if !installPrometheus {
 		commands = append(commands, "--from-ca-file="+caFile)
 	}
@@ -114,38 +114,54 @@ func getCommands(params CollectorParams) []string {
 		commands = append(commands, fmt.Sprintf("--label=\"clusterType=%s\"", params.clusterType))
 	}
 
+	commands = append(commands, generateMetricsAllowListCommands(params)...)
+
+	return commands
+}
+
+func generateMetricsAllowListCommands(params CollectorParams) []string {
+	commands := []string{}
 	dynamicMetricList := map[string]bool{}
+
+	evalParams := []interface{}{
+		params.clusterID, params.clusterType, params.hubInfo,
+		params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount,
+	}
+
+	if !hubMetricsCollector {
+		evalParams = append(evalParams, params.obsAddonSpec)
+	}
+
 	for _, group := range params.allowlist.CollectRuleGroupList {
-		if group.Selector.MatchExpression != nil {
-			for _, expr := range group.Selector.MatchExpression {
-				if hubMetricsCollector {
-					if !evluateMatchExpression(expr, clusterID, params.clusterType, params.hubInfo,
-						params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount) {
-						continue
-					}
-				} else if !evluateMatchExpression(expr, clusterID, params.clusterType, params.obsAddonSpec, params.hubInfo,
-					params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount) {
-					continue
-				}
-				for _, rule := range group.CollectRuleList {
-					matchList := []string{}
-					for _, match := range rule.Metrics.MatchList {
-						matchList = append(matchList, `"`+strings.ReplaceAll(match, `"`, `\"`)+`"`)
-						if name := getNameInMatch(match); name != "" {
-							dynamicMetricList[name] = false
-						}
-					}
-					for _, name := range rule.Metrics.NameList {
+		if group.Selector.MatchExpression == nil {
+			continue
+		}
+
+		for _, expr := range group.Selector.MatchExpression {
+			if !evluateMatchExpression(expr, evalParams...) {
+				continue
+			}
+
+			for _, rule := range group.CollectRuleList {
+				matchList := make([]string, 0, len(rule.Metrics.MatchList))
+				for _, match := range rule.Metrics.MatchList {
+					matchList = append(matchList, `"`+strings.ReplaceAll(match, `"`, `\"`)+`"`)
+					if name := getNameInMatch(match); name != "" {
 						dynamicMetricList[name] = false
 					}
-					matchListStr := "[" + strings.Join(matchList, ",") + "]"
-					nameListStr := `["` + strings.Join(rule.Metrics.NameList, `","`) + `"]`
-					commands = append(
-						commands,
-						fmt.Sprintf("--collectrule={\"name\":\"%s\",\"expr\":\"%s\",\"for\":\"%s\",\"names\":%v,\"matches\":%v}",
-							rule.Collect, rule.Expr, rule.For, nameListStr, matchListStr),
-					)
 				}
+
+				for _, name := range rule.Metrics.NameList {
+					dynamicMetricList[name] = false
+				}
+
+				matchListStr := "[" + strings.Join(matchList, ",") + "]"
+				nameListStr := `["` + strings.Join(rule.Metrics.NameList, `","`) + `"]`
+				commands = append(
+					commands,
+					fmt.Sprintf("--collectrule={\"name\":\"%s\",\"expr\":\"%s\",\"for\":\"%s\",\"names\":%v,\"matches\":%v}",
+						rule.Collect, rule.Expr, rule.For, nameListStr, matchListStr),
+				)
 			}
 		}
 	}
@@ -178,6 +194,7 @@ func getCommands(params CollectorParams) []string {
 			fmt.Sprintf("--recordingrule={\"name\":\"%s\",\"query\":\"%s\"}", rule.Record, rule.Expr),
 		)
 	}
+
 	return commands
 }
 
@@ -338,8 +355,9 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 		},
 	}
 
+	containers := metricsCollectorDep.Spec.Template.Spec.Containers
 	if params.httpProxy != "" || params.httpsProxy != "" || params.noProxy != "" {
-		metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
+		containers[0].Env = append(containers[0].Env,
 			corev1.EnvVar{
 				Name:  "HTTP_PROXY",
 				Value: params.httpProxy,
@@ -354,7 +372,7 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			})
 	}
 	if params.httpsProxy != "" && params.CABundle != "" {
-		metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
+		containers[0].Env = append(containers[0].Env,
 			corev1.EnvVar{
 				Name:  "HTTPS_PROXY_CA_BUNDLE",
 				Value: params.CABundle,
@@ -363,26 +381,26 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 
 	if hubMetricsCollector {
 		//to avoid hub metrics collector from sending status
-		metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
+		containers[0].Env = append(containers[0].Env,
 			corev1.EnvVar{
 				Name:  "STANDALONE",
 				Value: "true",
 			})
 
 		//Since there is no obsAddOn for hub-metrics-collector, we need to set the resources here
-		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = operatorconfig.HubMetricsCollectorResources
+		containers[0].Resources = operatorconfig.HubMetricsCollectorResources
 	}
 
 	privileged := false
 	readOnlyRootFilesystem := true
 
-	metricsCollectorDep.Spec.Template.Spec.Containers[0].SecurityContext = &corev1.SecurityContext{
+	containers[0].SecurityContext = &corev1.SecurityContext{
 		Privileged:             &privileged,
 		ReadOnlyRootFilesystem: &readOnlyRootFilesystem,
 	}
 
 	if params.obsAddonSpec.Resources != nil {
-		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *params.obsAddonSpec.Resources
+		containers[0].Resources = *params.obsAddonSpec.Resources
 	}
 	return metricsCollectorDep
 }
@@ -432,7 +450,7 @@ func createAlertingRule(params CollectorParams) *monitoringv1.PrometheusRule {
 
 	return &monitoringv1.PrometheusRule{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "acm-" + name + "-alerting-rules",
+			Name:      makePrometheusRuleName(name),
 			Namespace: namespace,
 		},
 		Spec: monitoringv1.PrometheusRuleSpec{
@@ -625,18 +643,19 @@ func updateMetricsCollector(ctx context.Context, c client.Client, params Collect
 	}
 
 	foundAlert := &monitoringv1.PrometheusRule{}
-	err = c.Get(ctx, types.NamespacedName{Name: "acm-" + resourceName + "-alerting-rules", Namespace: namespace}, foundAlert)
+	promRuleName := makePrometheusRuleName(resourceName)
+	err = c.Get(ctx, types.NamespacedName{Name: promRuleName, Namespace: namespace}, foundAlert)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			alertingRules := createAlertingRule(params)
 			err = c.Create(ctx, alertingRules)
 			if err != nil {
-				log.Error(err, "Failed to create alerting rules", "name", "acm-"+resourceName+"-alerting-rules")
+				log.Error(err, "Failed to create alerting rules", "name", promRuleName)
 				return false, err
 			}
-			log.Info("Created alerting rules ", "name", "acm-"+resourceName+"-alerting-rules")
+			log.Info("Created alerting rules ", "name", promRuleName)
 		} else {
-			log.Error(err, "Failed to check the alerting rules", "name", "acm-"+resourceName+"-alerting-rules")
+			log.Error(err, "Failed to check the alerting rules", "name", promRuleName)
 			return false, err
 		}
 	}
@@ -696,52 +715,55 @@ func deleteMetricsCollector(ctx context.Context, c client.Client, name string) e
 	log.Info("metrics collector deployment deleted", "name", name)
 
 	foundSM := &monitoringv1.ServiceMonitor{}
-	if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment"),
+	smonName := strings.TrimSuffix(name, "-deployment")
+	if err := c.Get(ctx, types.NamespacedName{Name: smonName,
 		Namespace: namespace}, foundSM); err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("The metrics collector servicemonitor does not exist", "name", strings.TrimSuffix(name, "-deployment"))
+			log.Info("The metrics collector servicemonitor does not exist", "name", smonName)
 			return nil
 		}
-		log.Error(err, "Failed to check the metrics collector servicemonitor", "name", strings.TrimSuffix(name, "-deployment"))
+		log.Error(err, "Failed to check the metrics collector servicemonitor", "name", smonName)
 		return err
 	}
 	if err := c.Delete(ctx, foundSM); err != nil {
-		log.Error(err, "Failed to delete the metrics collector servicemonitor", "name", strings.TrimSuffix(name, "-deployment"))
+		log.Error(err, "Failed to delete the metrics collector servicemonitor", "name", smonName)
 		return err
 	}
-	log.Info("metrics collector servicemonitor deleted", "name", strings.TrimSuffix(name, "-deployment"))
+	log.Info("metrics collector servicemonitor deleted", "name", smonName)
 
 	foundAlerts := &monitoringv1.PrometheusRule{}
-	if err := c.Get(ctx, types.NamespacedName{Name: "acm-" + strings.TrimSuffix(name, "-deployment") + "-alerting-rules",
+	promRuleName := makePrometheusRuleName(smonName)
+	if err := c.Get(ctx, types.NamespacedName{Name: promRuleName,
 		Namespace: namespace}, foundAlerts); err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("The metrics collector alerting rules does not exist", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+			log.Info("The metrics collector alerting rules does not exist", "name", promRuleName)
 			return nil
 		}
-		log.Error(err, "Failed to check the metrics collector alerting rules", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+		log.Error(err, "Failed to check the metrics collector alerting rules", "name", promRuleName)
 		return err
 	}
 	if err := c.Delete(ctx, foundAlerts); err != nil {
-		log.Error(err, "Failed to delete the metrics collector alerting rules", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+		log.Error(err, "Failed to delete the metrics collector alerting rules", "name", promRuleName)
 		return err
 	}
-	log.Info("metrics collector alerting rules deleted", "name", "acm-"+strings.TrimSuffix(name, "-deployment")+"-alerting-rules")
+	log.Info("metrics collector alerting rules deleted", "name", promRuleName)
 
 	foundService := &corev1.Service{}
-	if err := c.Get(ctx, types.NamespacedName{Name: strings.TrimSuffix(name, "-deployment"),
+	svcName := strings.TrimSuffix(name, "-deployment")
+	if err := c.Get(ctx, types.NamespacedName{Name: svcName,
 		Namespace: namespace}, foundService); err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("The metrics collector service does not exist", "name", strings.TrimSuffix(name, "-deployment"))
+			log.Info("The metrics collector service does not exist", "name", svcName)
 			return nil
 		}
-		log.Error(err, "Failed to check the metrics collector service", "name", strings.TrimSuffix(name, "-deployment"))
+		log.Error(err, "Failed to check the metrics collector service", "name", svcName)
 		return err
 	}
 	if err := c.Delete(ctx, foundService); err != nil {
-		log.Error(err, "Failed to delete the metrics collector service", "name", strings.TrimSuffix(name, "-deployment"))
+		log.Error(err, "Failed to delete the metrics collector service", "name", svcName)
 		return err
 	}
-	log.Info("metrics collector service deleted", "name", strings.TrimSuffix(name, "-deployment"))
+	log.Info("metrics collector service deleted", "name", svcName)
 
 	return nil
 }
@@ -848,4 +870,8 @@ func injectNamespaceLabel(allowlist *operatorconfig.MetricsAllowlist,
 		updatedList.MatchList = append(updatedList.MatchList, fmt.Sprintf("%s,namespace=\"%s\"", match, namespace))
 	}
 	return updatedList
+}
+
+func makePrometheusRuleName(name string) string {
+	return "acm-" + name + "-alerting-rules"
 }

@@ -224,31 +224,33 @@ func startWorker() error {
 }
 
 func renderMatches(r CollectRule, ls labels.Labels) []string {
-	matches := []string{}
+	labelRegex := regexp.MustCompile(`\{\{ \$labels\.(.*) \}\}`)
+
+	labelsMap := make(map[string]string, len(ls))
+	for _, l := range ls {
+		labelsMap[l.Name] = l.Value
+	}
+
+	matches := make([]string, 0, len(r.Names)+len(r.Matches))
 	for _, name := range r.Names {
 		matches = append(matches, fmt.Sprintf(`{__name__="%s"}`, name))
 	}
-	labelsMap := map[string]string{}
+
 	for _, match := range r.Matches {
-		r := regexp.MustCompile(`\{\{ \$labels\.(.*) \}\}`)
-		m := r.FindAllStringSubmatch(match, -1)
-		for _, v := range m {
-			if _, ok := labelsMap[v[1]]; !ok {
-				for _, l := range ls {
-					if l.Name == v[1] {
-						labelsMap[l.Name] = l.Value
-						break
-					}
-				}
+		replacedMatch := match
+
+		foundMatches := labelRegex.FindAllStringSubmatch(match, -1)
+		for _, m := range foundMatches {
+			labelKey := m[1]
+			if replace, ok := labelsMap[labelKey]; ok {
+				original := fmt.Sprintf("{{ $labels.%s }}", labelKey)
+				replacedMatch = strings.ReplaceAll(replacedMatch, original, replace)
 			}
-			original := fmt.Sprintf("{{ $labels.%s }}", v[1])
-			replace := labelsMap[v[1]]
-			matches = append(matches, fmt.Sprintf("{%s}", strings.ReplaceAll(match, original, replace)))
 		}
-		if len(m) == 0 {
-			matches = append(matches, fmt.Sprintf("{%s}", match))
-		}
+
+		matches = append(matches, fmt.Sprintf("{%s}", replacedMatch))
 	}
+
 	return matches
 }
 
