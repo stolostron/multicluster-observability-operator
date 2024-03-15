@@ -42,6 +42,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
+	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
+
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	placementctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
 	certctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/certificates"
@@ -52,8 +55,6 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	operatorsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
-	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 )
 
 const (
@@ -240,14 +241,13 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return *result, err
 	}
 
-	//set operand names to cover the upgrade case since we have name changed in new release
+	// set operand names to cover the upgrade case since we have name changed in new release
 	err = config.SetOperandNames(r.Client)
 	if err != nil {
 		return *result, err
 	}
-	//instance.Namespace = config.GetDefaultNamespace()
 	instance.Spec.StorageConfig.StorageClass = storageClassSelected
-	//Render the templates with a specified CR
+	// Render the templates with a specified CR
 	renderer := rendering.NewMCORenderer(instance, r.Client)
 	toDeploy, err := renderer.Render()
 	if err != nil {
@@ -255,7 +255,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, err
 	}
 	deployer := deploying.NewDeployer(r.Client)
-	//Deploy the resources
+	// Deploy the resources
 	ns := &corev1.Namespace{}
 	for _, res := range toDeploy {
 		resNS := res.GetNamespace()
@@ -363,7 +363,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		isLegacyResourceRemoved = true
 	}
 
-	//update status
+	// update status
 	requeueStatusUpdate <- struct{}{}
 
 	return ctrl.Result{}, nil

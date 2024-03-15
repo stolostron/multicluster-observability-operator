@@ -100,18 +100,19 @@ func getClusterPreds() predicate.Funcs {
 	}
 }
 
-func GetAddOnDeploymentPredicates() predicate.Funcs {
+func GetAddOnDeploymentConfigPredicates() predicate.Funcs {
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if !reflect.DeepEqual(e.ObjectNew.(*addonv1alpha1.AddOnDeploymentConfig).Spec.ProxyConfig,
-				e.ObjectOld.(*addonv1alpha1.AddOnDeploymentConfig).Spec.ProxyConfig) {
-				log.Info("AddonDeploymentConfig is updated", e.ObjectNew.GetName(), "name", e.ObjectNew.GetNamespace(), "namespace")
-				return true
+			newObj := e.ObjectNew.(*addonv1alpha1.AddOnDeploymentConfig)
+			oldObj := e.ObjectOld.(*addonv1alpha1.AddOnDeploymentConfig)
+			if reflect.DeepEqual(newObj.Spec, oldObj.Spec) {
+				return false
 			}
-			return false
+			log.Info("AddonDeploymentConfig is updated", e.ObjectNew.GetName(), "name", e.ObjectNew.GetNamespace(), "namespace")
+			return true
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return true
