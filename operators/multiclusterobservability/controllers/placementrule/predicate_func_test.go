@@ -144,12 +144,11 @@ func TestClusterPred(t *testing.T) {
 					t.Fatalf("HubInpre funcfoPred return true on deleteevent in case: (%v)", c.caseName)
 				}
 			}
-
 		})
 	}
 }
 
-func TestAddonDeploymentPredicate(t *testing.T) {
+func TestAddOnDeploymentConfigPredicate(t *testing.T) {
 	name := "test-obj"
 	caseList := []struct {
 		caseName       string
@@ -157,13 +156,78 @@ func TestAddonDeploymentPredicate(t *testing.T) {
 		expectedCreate bool
 		expectedUpdate bool
 		expectedDelete bool
+		createEvent    *event.CreateEvent
+		updateEvent    func() event.UpdateEvent
+		deleteEvent    *event.DeleteEvent
 	}{
 		{
 			caseName:       "Create AddonDeploymentConfig",
 			namespace:      testNamespace,
 			expectedCreate: true,
-			expectedDelete: true,
+			createEvent: &event.CreateEvent{
+				Object: defaultAddonDeploymentConfig,
+			},
+		},
+		{
+			caseName:       "Update AddonDeploymentConfig with Spec.ProxyConfig changes",
+			namespace:      testNamespace,
 			expectedUpdate: true,
+			updateEvent: func() event.UpdateEvent {
+				newDefaultAddonDeploymentConfig := defaultAddonDeploymentConfig.DeepCopy()
+				newDefaultAddonDeploymentConfig.Spec.ProxyConfig.HTTPProxy = "http://bar1.com"
+				return event.UpdateEvent{
+					ObjectOld: defaultAddonDeploymentConfig,
+					ObjectNew: newDefaultAddonDeploymentConfig,
+				}
+			},
+		},
+		{
+			caseName:       "Update AddonDeploymentConfig with Spec.NodePlacement changes",
+			namespace:      testNamespace,
+			expectedUpdate: true,
+			updateEvent: func() event.UpdateEvent {
+				newDefaultAddonDeploymentConfig := defaultAddonDeploymentConfig.DeepCopy()
+				newDefaultAddonDeploymentConfig.Spec.NodePlacement = &addonv1alpha1.NodePlacement{
+					NodeSelector: map[string]string{"foo": "bar"},
+				}
+				return event.UpdateEvent{
+					ObjectOld: defaultAddonDeploymentConfig,
+					ObjectNew: newDefaultAddonDeploymentConfig,
+				}
+			},
+		},
+		{
+			caseName:       "Update AddonDeploymentConfig without Spec changes",
+			namespace:      testNamespace,
+			expectedUpdate: false,
+			updateEvent: func() event.UpdateEvent {
+				newDefaultAddonDeploymentConfig := defaultAddonDeploymentConfig.DeepCopy()
+				newDefaultAddonDeploymentConfig.Labels = map[string]string{"foo": "bar"}
+				return event.UpdateEvent{
+					ObjectOld: defaultAddonDeploymentConfig,
+					ObjectNew: newDefaultAddonDeploymentConfig,
+				}
+			},
+		},
+		{
+			caseName:       "Update AddonDeploymentConfig with the same Spec ",
+			namespace:      testNamespace,
+			expectedUpdate: false,
+			updateEvent: func() event.UpdateEvent {
+				newDefaultAddonDeploymentConfig := defaultAddonDeploymentConfig.DeepCopy()
+				return event.UpdateEvent{
+					ObjectOld: defaultAddonDeploymentConfig,
+					ObjectNew: newDefaultAddonDeploymentConfig,
+				}
+			},
+		},
+		{
+			caseName:       "Delete AddonDeploymentConfig",
+			namespace:      testNamespace,
+			expectedDelete: true,
+			deleteEvent: &event.DeleteEvent{
+				Object: defaultAddonDeploymentConfig,
+			},
 		},
 	}
 
@@ -182,35 +246,26 @@ func TestAddonDeploymentPredicate(t *testing.T) {
 	}
 	for _, c := range caseList {
 		t.Run(c.caseName, func(t *testing.T) {
-			pred := GetAddOnDeploymentPredicates()
-			createEvent := event.CreateEvent{
-				Object: defaultAddonDeploymentConfig,
-			}
+			pred := GetAddOnDeploymentConfigPredicates()
 
-			if c.expectedCreate {
-				if !pred.CreateFunc(createEvent) {
-					t.Fatalf("pre func return false on applied createevent in case: (%v)", c.caseName)
+			if c.createEvent != nil {
+				gotCreate := pred.CreateFunc(*c.createEvent)
+				if gotCreate != c.expectedCreate {
+					t.Fatalf("%s: expected predicate to return '%v' on applied create event. Got '%v'", c.caseName, c.expectedCreate, gotCreate)
 				}
 			}
 
-			newDefaultAddonDeploymentConfig := defaultAddonDeploymentConfig.DeepCopy()
-			newDefaultAddonDeploymentConfig.Spec.ProxyConfig.HTTPProxy = "http://bar1.com"
-			updateEvent := event.UpdateEvent{
-				ObjectOld: defaultAddonDeploymentConfig,
-				ObjectNew: newDefaultAddonDeploymentConfig,
-			}
-			if c.expectedUpdate {
-				if !pred.UpdateFunc(updateEvent) {
-					t.Fatalf("pre func return false on applied update event in case: (%v)", c.caseName)
+			if c.updateEvent != nil {
+				gotUpdate := pred.UpdateFunc(c.updateEvent())
+				if gotUpdate != c.expectedUpdate {
+					t.Fatalf("%s: expected predicate to return '%v' on applied update event. Got '%v'", c.caseName, c.expectedUpdate, gotUpdate)
 				}
 			}
 
-			deleteEvent := event.DeleteEvent{
-				Object: defaultAddonDeploymentConfig,
-			}
-			if c.expectedDelete {
-				if !pred.DeleteFunc(deleteEvent) {
-					t.Fatalf("pre func return false on applied delete event in case: (%v)", c.caseName)
+			if c.deleteEvent != nil {
+				gotDelete := pred.DeleteFunc(*c.deleteEvent)
+				if gotDelete != c.expectedDelete {
+					t.Fatalf("%s: expected predicate to return '%v' on applied delete event. Got '%v'", c.caseName, c.expectedDelete, gotDelete)
 				}
 			}
 		})
