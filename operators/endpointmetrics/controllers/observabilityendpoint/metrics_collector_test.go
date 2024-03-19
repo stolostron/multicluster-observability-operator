@@ -185,7 +185,7 @@ func TestMetricsCollector(t *testing.T) {
 	params := CollectorParams{
 		isUWL:        false,
 		clusterID:    testClusterID,
-		clusterType:  "",
+		clusterType:  defaultClusterType,
 		obsAddonSpec: obsAddon,
 		hubInfo:      *hubInfo,
 		allowlist:    list,
@@ -212,7 +212,7 @@ func TestMetricsCollector(t *testing.T) {
 
 	params.replicaCount = 1
 	params.clusterID = testClusterID + "-update"
-	params.clusterType = "SNO"
+	params.clusterType = snoClusterType
 	_, err = updateMetricsCollector(ctx, c, params, false)
 	if err != nil {
 		t.Fatalf("Failed to create metrics collector deployment: (%v)", err)
