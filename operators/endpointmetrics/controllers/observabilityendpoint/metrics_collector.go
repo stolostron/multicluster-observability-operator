@@ -110,7 +110,7 @@ func getCommands(params CollectorParams) []string {
 	if !installPrometheus {
 		commands = append(commands, "--from-ca-file="+caFile)
 	}
-	if params.clusterType != "" {
+	if params.clusterType != defaultClusterType {
 		commands = append(commands, fmt.Sprintf("--label=\"clusterType=%s\"", params.clusterType))
 	}
 
@@ -203,32 +203,39 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 				},
 			},
 		},
-		{
-			Name: "secret-kube-rbac-proxy-tls",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: secretName + "-kube-rbac-tls",
-				},
-			},
-		},
-		{
-			Name: "secret-kube-rbac-proxy-metric",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: secretName + "-kube-rbac-proxy-metric",
-				},
-			},
-		},
-		{
-			Name: "metrics-client-ca",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: secretName + "-clientca-metric",
+	}
+
+	if params.clusterType != ocpThreeClusterType {
+		serviceCAOperatorGenerated := []corev1.Volume{
+			{
+				Name: "secret-kube-rbac-proxy-tls",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: secretName + "-kube-rbac-tls",
 					},
 				},
 			},
-		},
+			{
+				Name: "secret-kube-rbac-proxy-metric",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: secretName + "-kube-rbac-proxy-metric",
+					},
+				},
+			},
+			{
+				Name: "metrics-client-ca",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secretName + "-clientca-metric",
+						},
+					},
+				},
+			},
+		}
+
+		volumes = append(volumes, serviceCAOperatorGenerated...)
 	}
 	mounts := []corev1.VolumeMount{
 		{
@@ -760,7 +767,7 @@ func getMetricsAllowlist(ctx context.Context, c client.Client,
 	} else {
 		if cm.Data != nil {
 			configmapKey := operatorconfig.MetricsConfigMapKey
-			if clusterType == "ocp3" {
+			if clusterType == ocpThreeClusterType {
 				configmapKey = operatorconfig.MetricsOcp311ConfigMapKey
 			}
 			err = yaml.Unmarshal([]byte(cm.Data[configmapKey]), l)

@@ -57,6 +57,12 @@ const (
 	hubMetricsCollectionNamespace   = "open-cluster-management-observability"
 )
 
+const (
+	defaultClusterType  = ""
+	ocpThreeClusterType = "ocp3"
+	snoClusterType      = "SNO"
+)
+
 var (
 	namespace           = os.Getenv("WATCH_NAMESPACE")
 	hubNamespace        = os.Getenv("HUB_NAMESPACE")
@@ -157,7 +163,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 	hubInfo.ClusterName = string(hubSecret.Data[operatorconfig.ClusterNameKey])
 
-	clusterType := ""
+	clusterType := defaultClusterType
 	clusterID := ""
 
 	//read the image configmap
@@ -199,11 +205,11 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			// OCP 3.11 has no cluster id, set it as empty string
 			clusterID = ""
 			// to differentiate ocp 3.x
-			clusterType = "ocp3"
+			clusterType = ocpThreeClusterType
 		}
 		isSNO, err := isSNO(ctx, r.Client)
 		if err == nil && isSNO {
-			clusterType = "SNO"
+			clusterType = snoClusterType
 		}
 		err = createMonitoringClusterRoleBinding(ctx, r.Client)
 		if err != nil {
