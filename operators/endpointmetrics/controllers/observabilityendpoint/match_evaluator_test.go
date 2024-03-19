@@ -22,7 +22,7 @@ func TestEvluateMatchExpression(t *testing.T) {
 			expr: metav1.LabelSelectorRequirement{
 				Key:      "test_key",
 				Operator: "In",
-				Values:   []string{"SNO"},
+				Values:   []string{snoClusterType},
 			},
 			expectedResult: false,
 		},
@@ -31,7 +31,7 @@ func TestEvluateMatchExpression(t *testing.T) {
 			expr: metav1.LabelSelectorRequirement{
 				Key:      "clusterType",
 				Operator: "test_op",
-				Values:   []string{"SNO"},
+				Values:   []string{snoClusterType},
 			},
 			expectedResult: false,
 		},
@@ -40,9 +40,9 @@ func TestEvluateMatchExpression(t *testing.T) {
 			expr: metav1.LabelSelectorRequirement{
 				Key:      "clusterType",
 				Operator: "NotIn",
-				Values:   []string{"SNO"},
+				Values:   []string{snoClusterType},
 			},
-			clusterType:    "SNO",
+			clusterType:    snoClusterType,
 			expectedResult: false,
 		},
 		{
@@ -50,7 +50,7 @@ func TestEvluateMatchExpression(t *testing.T) {
 			expr: metav1.LabelSelectorRequirement{
 				Key:      "clusterType",
 				Operator: "In",
-				Values:   []string{"SNO"},
+				Values:   []string{snoClusterType},
 			},
 			clusterType:    "",
 			expectedResult: false,
@@ -60,7 +60,7 @@ func TestEvluateMatchExpression(t *testing.T) {
 			expr: metav1.LabelSelectorRequirement{
 				Key:      "clusterType",
 				Operator: "NotIn",
-				Values:   []string{"SNO"},
+				Values:   []string{snoClusterType},
 			},
 			clusterType:    "",
 			expectedResult: true,
@@ -70,9 +70,9 @@ func TestEvluateMatchExpression(t *testing.T) {
 			expr: metav1.LabelSelectorRequirement{
 				Key:      "clusterType",
 				Operator: "In",
-				Values:   []string{"SNO"},
+				Values:   []string{snoClusterType},
 			},
-			clusterType:    "SNO",
+			clusterType:    snoClusterType,
 			expectedResult: true,
 		},
 	}
