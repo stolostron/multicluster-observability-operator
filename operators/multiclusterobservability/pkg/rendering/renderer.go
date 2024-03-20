@@ -12,7 +12,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	obv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
@@ -54,7 +53,7 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 	}
 	namespace := mcoconfig.GetDefaultNamespace()
 	labels := map[string]string{
-		config.GetCrLabelKey(): r.cr.Name,
+		mcoconfig.GetCrLabelKey(): r.cr.Name,
 	}
 	resources, err := r.renderer.RenderTemplates(genericTemplates, namespace, labels)
 	if err != nil {
@@ -112,7 +111,7 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 			if err != nil {
 				return nil, err
 			}
-			crLabelKey := config.GetCrLabelKey()
+			crLabelKey := mcoconfig.GetCrLabelKey()
 			dep := obj.(*v1.Deployment)
 			dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 			dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
@@ -137,7 +136,7 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 				if found {
 					spec.Containers[0].Image = image
 				}
-				dep.Name = mcoconfig.GetOperandName(config.ObservatoriumOperator)
+				dep.Name = mcoconfig.GetOperandName(mcoconfig.ObservatoriumOperator)
 
 			}
 
