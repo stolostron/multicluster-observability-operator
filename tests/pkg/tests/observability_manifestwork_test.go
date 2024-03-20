@@ -26,13 +26,18 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
+		if utils.GetManagedClusterName(testOptions) == hubManagedClusterName {
+			Skip("Skip the case for local-cluster since no observability addon")
+		}
 	})
 
 	Context("[P2][Sev2][observability][Stable] Should be automatically created within 1 minute when delete manifestwork (manifestwork/g0) -", func() {
 		manifestWorkName := "endpoint-observability-work"
 		clientDynamic := utils.GetKubeClientDynamic(testOptions, true)
 		clusterName := utils.GetManagedClusterName(testOptions)
-		if clusterName != "" {
+		if clusterName != "" && clusterName != "local-cluster" {
+			// ACM 8509 : Special case for local-cluster
+			// We do not create manifestwork for local-cluster
 			oldManifestWorkResourceVersion := ""
 			oldCollectorPodName := ""
 			_, podList := utils.GetPodList(testOptions, false, MCO_ADDON_NAMESPACE, "component=metrics-collector")

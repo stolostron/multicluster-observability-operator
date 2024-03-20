@@ -28,6 +28,9 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
+		if utils.GetManagedClusterName(testOptions) == hubManagedClusterName {
+			Skip("Skip the case for local-cluster since no observability addon")
+		}
 	})
 
 	JustBeforeEach(func() {

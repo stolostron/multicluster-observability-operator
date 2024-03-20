@@ -51,6 +51,8 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have metrics which defined in custom metrics allowlist (metrics/g0)", func() {
+		clusterName := utils.GetManagedClusterName(testOptions)
+		fmt.Printf("Coleen deleting metrics-collector deployment for namespace : %s  cluster: %s\n", namespace, clusterName)
 		By("Adding custom metrics allowlist configmap")
 		yamlB, err := kustomize.Render(kustomize.Options{KustomizationPath: "../../../examples/metrics/allowlist"})
 		Expect(err).ToNot(HaveOccurred())
