@@ -4,7 +4,9 @@
 
 package config
 
-import corev1 "k8s.io/api/core/v1"
+import (
+	observabilityshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+)
 
 const (
 	ClusterNameKey                  = "cluster-name"
@@ -61,18 +63,16 @@ const (
 	WorkloadPartitioningNSExpectedValue  = "management"
 )
 
-var (
-	ImageKeyNameMap = map[string]string{
-		PrometheusKey:                  PrometheusKey,
-		KubeStateMetricsKey:            KubeStateMetricsImgName,
-		NodeExporterKey:                NodeExporterImgName,
-		KubeRbacProxyKey:               KubeRbacProxyImgName,
-		MetricsCollectorKey:            MetricsCollectorImgName,
-		PrometheusConfigmapReloaderKey: PrometheusConfigmapReloaderImgName,
-	}
-)
+var ImageKeyNameMap = map[string]string{
+	PrometheusKey:                  PrometheusKey,
+	KubeStateMetricsKey:            KubeStateMetricsImgName,
+	NodeExporterKey:                NodeExporterImgName,
+	KubeRbacProxyKey:               KubeRbacProxyImgName,
+	MetricsCollectorKey:            MetricsCollectorImgName,
+	PrometheusConfigmapReloaderKey: PrometheusConfigmapReloaderImgName,
+}
 
 var (
-	HubMetricsCollectorResources = corev1.ResourceRequirements{}
-	IsMCOTerminating             = false
+	HubObservabilityAddonSpec = &observabilityshared.ObservabilityAddonSpec{}
+	IsMCOTerminating          = false
 )
