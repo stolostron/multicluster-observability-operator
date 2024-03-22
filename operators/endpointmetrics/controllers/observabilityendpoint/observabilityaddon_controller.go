@@ -10,7 +10,6 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	operatorutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 
 	"golang.org/x/exp/slices"
@@ -35,6 +34,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	oav1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
@@ -255,9 +255,16 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == caConfigmapName {
 		forceRestart = true
 	}
+
 	if obsAddon.Spec.EnableMetrics || hubMetricsCollector {
 		if hubMetricsCollector {
-			obsAddon.Spec = *config.HubObservabilityAddonSpec
+			mco := &oav1beta2.MultiClusterObservability{}
+			err := r.HubClient.Get(ctx, types.NamespacedName{Name: mcoCRName, Namespace: hubNamespace}, mco)
+			if err != nil {
+				log.Error(err, "Failed to get multiclusterobservability", "hub_namespace", hubNamespace)
+				return ctrl.Result{}, err
+			}
+			obsAddon.Spec = *mco.Spec.ObservabilityAddonSpec
 		}
 		created, err := updateMetricsCollectors(
 			ctx,
