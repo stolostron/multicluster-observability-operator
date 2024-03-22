@@ -4,10 +4,6 @@
 
 package config
 
-import (
-	observabilityshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
-)
-
 const (
 	ClusterNameKey                  = "cluster-name"
 	HubInfoSecretName               = "hub-info-secret"
@@ -73,6 +69,5 @@ var ImageKeyNameMap = map[string]string{
 }
 
 var (
-	HubObservabilityAddonSpec = &observabilityshared.ObservabilityAddonSpec{}
-	IsMCOTerminating          = false
+	IsMCOTerminating = false
 )
