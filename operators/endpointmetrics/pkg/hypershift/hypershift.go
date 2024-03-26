@@ -197,8 +197,9 @@ func getKubeServiceMonitor(ctx context.Context, c client.Client, namespace, clus
 		return nil, fmt.Errorf("failed to get hypershift's kube-apiserver ServiceMonitor: %w", err)
 	}
 
-	if len(hypershiftKubeSM.Spec.Endpoints) != 1 {
-		return nil, fmt.Errorf("hypershift's kube-apiserver ServiceMonitor has more than one endpoint") // safe check
+	smEndpointsLen := len(hypershiftKubeSM.Spec.Endpoints)
+	if smEndpointsLen != 1 {
+		return nil, fmt.Errorf("expecting one endpoint from hypershift's kube-apiserver ServiceMonitor, has %d", smEndpointsLen) // safe check
 	}
 
 	originalEndpoint := hypershiftKubeSM.Spec.Endpoints[0]
