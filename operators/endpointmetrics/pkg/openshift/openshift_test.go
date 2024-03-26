@@ -2,18 +2,20 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package observabilityendpoint
+package openshift_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
+	"github.com/go-logr/logr"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -31,28 +33,6 @@ var (
 			ClusterID: testClusterID,
 		},
 	}
-	infra = &ocinfrav1.Infrastructure{
-		ObjectMeta: metav1.ObjectMeta{Name: "cluster"},
-		Status: ocinfrav1.InfrastructureStatus{
-			ControlPlaneTopology: ocinfrav1.SingleReplicaTopologyMode,
-		},
-	}
-	hCluster = &hyperv1.HostedCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      hostedClusterName,
-			Namespace: hosteClusterNamespace,
-		},
-		Spec: hyperv1.HostedClusterSpec{
-			ClusterID: "test-hosted-cluster-id",
-		},
-	}
-	sm = &promv1.ServiceMonitor{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      etcdServiceMonitor,
-			Namespace: fmt.Sprintf("%s-%s", hosteClusterNamespace, hostedClusterName),
-		},
-		Spec: promv1.ServiceMonitorSpec{},
-	}
 )
 
 func init() {
@@ -64,15 +44,16 @@ func init() {
 func TestCreateDeleteCAConfigmap(t *testing.T) {
 	ctx := context.TODO()
 	c := fake.NewClientBuilder().Build()
-	err := createCAConfigmap(ctx, c)
+	namespace := "test-ns"
+	err := openshift.CreateCAConfigmap(ctx, c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to create CA configmap: (%v)", err)
 	}
-	err = deleteCAConfigmap(ctx, c)
+	err = openshift.DeleteCAConfigmap(ctx, c, namespace)
 	if err != nil {
 		t.Fatalf("Failed to delete CA configmap: (%v)", err)
 	}
-	err = deleteCAConfigmap(ctx, c)
+	err = openshift.DeleteCAConfigmap(ctx, c, namespace)
 	if err != nil {
 		t.Fatalf("Run into error when try to delete CA configmap twice: (%v)", err)
 	}
@@ -81,15 +62,17 @@ func TestCreateDeleteCAConfigmap(t *testing.T) {
 func TestCreateDeleteMonitoringClusterRoleBinding(t *testing.T) {
 	ctx := context.TODO()
 	c := fake.NewClientBuilder().Build()
-	err := createMonitoringClusterRoleBinding(ctx, c)
+	namespace := "test-ns"
+	saName := "test-sa"
+	err := openshift.CreateMonitoringClusterRoleBinding(ctx, logr.Logger{}, c, namespace, saName)
 	if err != nil {
 		t.Fatalf("Failed to create clusterrolebinding: (%v)", err)
 	}
 	rb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: clusterRoleBindingName,
+			Name: openshift.ClusterRoleBindingName,
 			Annotations: map[string]string{
-				ownerLabelKey: ownerLabelValue,
+				openshift.OwnerLabelKey: openshift.OwnerLabelValue,
 			},
 			ResourceVersion: "1",
 		},
@@ -101,7 +84,7 @@ func TestCreateDeleteMonitoringClusterRoleBinding(t *testing.T) {
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
-				Name:      serviceAccountName,
+				Name:      saName,
 				Namespace: namespace,
 			},
 		},
@@ -110,15 +93,15 @@ func TestCreateDeleteMonitoringClusterRoleBinding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to update clusterrolebinding: (%v)", err)
 	}
-	err = createMonitoringClusterRoleBinding(ctx, c)
+	err = openshift.CreateMonitoringClusterRoleBinding(ctx, logr.Logger{}, c, namespace, saName)
 	if err != nil {
 		t.Fatalf("Failed to revert clusterrolebinding: (%v)", err)
 	}
-	err = deleteMonitoringClusterRoleBinding(ctx, c)
+	err = openshift.DeleteMonitoringClusterRoleBinding(ctx, c)
 	if err != nil {
 		t.Fatalf("Failed to delete clusterrolebinding: (%v)", err)
 	}
-	err = deleteMonitoringClusterRoleBinding(ctx, c)
+	err = openshift.DeleteMonitoringClusterRoleBinding(ctx, c)
 	if err != nil {
 		t.Fatalf("Run into error when try to delete delete clusterrolebinding twice: (%v)", err)
 	}
@@ -126,34 +109,14 @@ func TestCreateDeleteMonitoringClusterRoleBinding(t *testing.T) {
 
 func TestGetClusterID(t *testing.T) {
 	ctx := context.TODO()
-	c := fake.NewClientBuilder().WithRuntimeObjects(cv).Build()
-	found, err := getClusterID(ctx, c)
+	scheme := runtime.NewScheme()
+	ocinfrav1.Install(scheme)
+	c := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(cv).Build()
+	found, err := openshift.GetClusterID(ctx, c)
 	if err != nil {
 		t.Fatalf("Failed to get clusterversion: (%v)", err)
 	}
 	if found != testClusterID {
 		t.Fatalf("Got wrong cluster id" + found)
-	}
-}
-
-func TestServiceMonitors(t *testing.T) {
-	ctx := context.TODO()
-	c := fake.NewClientBuilder().WithRuntimeObjects(hCluster, sm).Build()
-	err := createServiceMonitors(ctx, c)
-	if err != nil {
-		t.Fatalf("Failed to create ServiceMonitors: (%v)", err)
-	}
-	err = deleteServiceMonitors(ctx, c)
-	if err != nil {
-		t.Fatalf("Failed to delete ServiceMonitors: (%v)", err)
-	}
-}
-
-func TestDeleteServiceMonitor(t *testing.T) {
-	ctx := context.TODO()
-	c := fake.NewClientBuilder().Build()
-	err := deleteServiceMonitor(ctx, c, "test", "test")
-	if err != nil {
-		t.Fatalf("Failed to delete ServiceMonitors: (%v)", err)
 	}
 }

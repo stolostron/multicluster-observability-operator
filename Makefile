@@ -72,6 +72,10 @@ unit-tests-proxy:
 unit-tests-collectors:
 	go test ${VERBOSE} `go list ./collectors/... | $(GREP) -v test`
 
+.PHONY: integration-test-operators
+integration-test-operators:
+	go test -tags integration -run=Integration ./operators/...
+
 .PHONY: e2e-tests
 e2e-tests: install-e2e-test-deps
 	@echo "Running e2e tests ..."
