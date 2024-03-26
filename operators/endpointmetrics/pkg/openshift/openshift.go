@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/go-logr/logr"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -16,7 +17,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -27,17 +27,12 @@ const (
 	OwnerLabelValue        = "observabilityaddon"
 )
 
-var (
-	log = ctrl.Log.WithName("controllers").WithName("ObservabilityAddon")
-)
-
 func DeleteMonitoringClusterRoleBinding(ctx context.Context, client client.Client) error {
 	rb := &rbacv1.ClusterRoleBinding{}
 	err := client.Get(ctx, types.NamespacedName{Name: ClusterRoleBindingName,
 		Namespace: ""}, rb)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("clusterrolebinding already deleted")
 			return nil
 		}
 		return fmt.Errorf("failed to check clusterrolebinding: %w", err)
@@ -49,7 +44,7 @@ func DeleteMonitoringClusterRoleBinding(ctx context.Context, client client.Clien
 	return nil
 }
 
-func CreateMonitoringClusterRoleBinding(ctx context.Context, client client.Client, namespace, serviceAccountName string) error {
+func CreateMonitoringClusterRoleBinding(ctx context.Context, log logr.Logger, client client.Client, namespace, serviceAccountName string) error {
 	rb := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ClusterRoleBindingName,
@@ -79,14 +74,12 @@ func CreateMonitoringClusterRoleBinding(ctx context.Context, client client.Clien
 			if err := client.Create(ctx, rb); err != nil {
 				return fmt.Errorf("failed to create clusterrolebinding: %w", err)
 			}
-			log.Info("clusterrolebinding created")
 			return nil
 		}
 		return fmt.Errorf("failed to check clusterrolebinding: %w", err)
 	}
 
 	if reflect.DeepEqual(rb.RoleRef, found.RoleRef) && reflect.DeepEqual(rb.Subjects, found.Subjects) {
-		log.Info("The clusterrolebinding already existed")
 		return nil
 	}
 
@@ -105,7 +98,6 @@ func DeleteCAConfigmap(ctx context.Context, client client.Client, namespace stri
 		Namespace: namespace}, cm)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("configmap already deleted")
 			return nil
 		}
 		return fmt.Errorf("failed to check configmap: %w", err)
@@ -138,12 +130,10 @@ func CreateCAConfigmap(ctx context.Context, client client.Client, namespace stri
 			if err := client.Create(ctx, cm); err != nil {
 				return fmt.Errorf("failed to create configmap: %w", err)
 			}
-			log.Info("Configmap created")
 			return nil
 		}
 		return fmt.Errorf("failed to check configmap: %w", err)
 	}
-	log.Info("The configmap already existed")
 	return nil
 }
 

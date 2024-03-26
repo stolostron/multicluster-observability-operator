@@ -8,6 +8,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/go-logr/logr"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -63,7 +64,7 @@ func TestCreateDeleteMonitoringClusterRoleBinding(t *testing.T) {
 	c := fake.NewClientBuilder().Build()
 	namespace := "test-ns"
 	saName := "test-sa"
-	err := openshift.CreateMonitoringClusterRoleBinding(ctx, c, namespace, saName)
+	err := openshift.CreateMonitoringClusterRoleBinding(ctx, logr.Logger{}, c, namespace, saName)
 	if err != nil {
 		t.Fatalf("Failed to create clusterrolebinding: (%v)", err)
 	}
@@ -92,7 +93,7 @@ func TestCreateDeleteMonitoringClusterRoleBinding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to update clusterrolebinding: (%v)", err)
 	}
-	err = openshift.CreateMonitoringClusterRoleBinding(ctx, c, namespace, saName)
+	err = openshift.CreateMonitoringClusterRoleBinding(ctx, logr.Logger{}, c, namespace, saName)
 	if err != nil {
 		t.Fatalf("Failed to revert clusterrolebinding: (%v)", err)
 	}

@@ -220,7 +220,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			clusterType = snoClusterType
 		}
 
-		err = openshift.CreateMonitoringClusterRoleBinding(ctx, r.Client, namespace, serviceAccountName)
+		err = openshift.CreateMonitoringClusterRoleBinding(ctx, log, r.Client, namespace, serviceAccountName)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to create monitoring cluster role binding: %w", err)
 		}
