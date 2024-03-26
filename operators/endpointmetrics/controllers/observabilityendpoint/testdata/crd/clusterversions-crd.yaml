@@ -1,20 +1,8 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    api-approved.openshift.io: https://github.com/openshift/api/pull/495
-    include.release.openshift.io/self-managed-high-availability: "true"
-    include.release.openshift.io/single-node-developer: "true"
-  creationTimestamp: "2023-04-06T23:14:14Z"
   generation: 2
   name: clusterversions.config.openshift.io
-  ownerReferences:
-  - apiVersion: config.openshift.io/v1
-    controller: true
-    kind: ClusterVersion
-    name: version
-    uid: 8db040c8-8575-45d7-a09f-be9eab4a4562
-  uid: aeaafdd1-615c-4470-aff2-783f655a40a9
 spec:
   conversion:
     strategy: None
