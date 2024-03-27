@@ -369,15 +369,12 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 	}
 
 	if hubMetricsCollector {
-		//to avoid hub metrics collector from sending status
+		// to avoid hub metrics collector from sending status
 		metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
 			corev1.EnvVar{
 				Name:  "STANDALONE",
 				Value: "true",
 			})
-
-		//Since there is no obsAddOn for hub-metrics-collector, we need to set the resources here
-		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = operatorconfig.HubMetricsCollectorResources
 	}
 
 	privileged := false
