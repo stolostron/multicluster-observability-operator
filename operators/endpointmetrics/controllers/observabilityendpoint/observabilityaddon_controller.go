@@ -34,6 +34,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	oav1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
@@ -166,10 +167,12 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	clusterType := defaultClusterType
 	clusterID := ""
 
-	//read the image configmap
+	// read the image configmap
 	imagesCM := &corev1.ConfigMap{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: operatorconfig.ImageConfigMap,
-		Namespace: namespace}, imagesCM)
+	err = r.Client.Get(ctx, types.NamespacedName{
+		Name:      operatorconfig.ImageConfigMap,
+		Namespace: namespace,
+	}, imagesCM)
 	if err != nil {
 		log.Error(err, "Failed to get images configmap")
 		return ctrl.Result{}, err
@@ -186,8 +189,10 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if !installPrometheus {
 		// If no prometheus service found, set status as NotSupported
 		promSvc := &corev1.Service{}
-		err = r.Client.Get(ctx, types.NamespacedName{Name: promSvcName,
-			Namespace: promNamespace}, promSvc)
+		err = r.Client.Get(ctx, types.NamespacedName{
+			Name:      promSvcName,
+			Namespace: promNamespace,
+		}, promSvc)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				log.Error(err, "OCP prometheus service does not exist")
@@ -220,7 +225,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, err
 		}
 	} else {
-		//Render the prometheus templates
+		// Render the prometheus templates
 		renderer := rendererutil.NewRenderer()
 		toDeploy, err := rendering.Render(renderer, r.Client, hubInfo)
 		if err != nil {
@@ -246,11 +251,18 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	forceRestart := false
-	if req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == caConfigmapName {
-		forceRestart = true
-	}
+	forceRestart := req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == caConfigmapName
+
 	if obsAddon.Spec.EnableMetrics || hubMetricsCollector {
+		if hubMetricsCollector {
+			mco := &oav1beta2.MultiClusterObservability{}
+			err := r.HubClient.Get(ctx, types.NamespacedName{Name: mcoCRName, Namespace: hubNamespace}, mco)
+			if err != nil {
+				log.Error(err, "Failed to get multiclusterobservability", "hub_namespace", hubNamespace)
+				return ctrl.Result{}, err
+			}
+			obsAddon.Spec = *mco.Spec.ObservabilityAddonSpec
+		}
 		created, err := updateMetricsCollectors(
 			ctx,
 			r.Client,
@@ -259,7 +271,6 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			clusterType,
 			1,
 			forceRestart)
-
 		if err != nil {
 			util.ReportStatus(ctx, r.Client, obsAddon, "Degraded", !hubMetricsCollector)
 			return ctrl.Result{}, err
@@ -277,13 +288,14 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
-	//TODO: UPDATE
+	// TODO: UPDATE
 	return ctrl.Result{}, nil
 }
 
 func (r *ObservabilityAddonReconciler) initFinalization(
 	ctx context.Context, delete bool, hubObsAddon *oav1beta1.ObservabilityAddon,
-	isHypershift bool) (bool, error) {
+	isHypershift bool,
+) (bool, error) {
 	if delete && slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
 		log.Info("To clean observability components/configurations in the cluster")
 		err := deleteMetricsCollector(ctx, r.Client, metricsCollectorName)
