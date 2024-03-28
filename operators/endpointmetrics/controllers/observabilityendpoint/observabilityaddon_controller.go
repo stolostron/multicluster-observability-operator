@@ -255,11 +255,15 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	if obsAddon.Spec.EnableMetrics || hubMetricsCollector {
 		if hubMetricsCollector {
-			mco := &oav1beta2.MultiClusterObservability{}
-			err := r.HubClient.Get(ctx, types.NamespacedName{Name: mcoCRName, Namespace: hubNamespace}, mco)
+			mcoList := &oav1beta2.MultiClusterObservabilityList{}
+			err := r.HubClient.List(ctx, mcoList, client.InNamespace(corev1.NamespaceAll))
 			if err != nil {
-				log.Error(err, "Failed to get multiclusterobservability", "hub_namespace", hubNamespace)
+				log.Error(err, "Failed to get multiclusterobservability")
 				return ctrl.Result{}, err
+			}
+			if len(mcoList.Items) != 1 {
+				log.Error(nil, fmt.Sprintf("Expected 1 multiclusterobservability, found %d", len(mcoList.Items)))
+				return ctrl.Result{}, nil
 			}
 			obsAddon.Spec = *mco.Spec.ObservabilityAddonSpec
 		}
