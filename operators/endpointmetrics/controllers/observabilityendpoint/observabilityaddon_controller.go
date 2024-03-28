@@ -48,14 +48,12 @@ var (
 
 const (
 	obAddonName                     = "observability-addon"
-	mcoCRName                       = "observability"
 	ownerLabelKey                   = "owner"
 	ownerLabelValue                 = "observabilityaddon"
 	obsAddonFinalizer               = "observability.open-cluster-management.io/addon-cleanup"
 	promSvcName                     = "prometheus-k8s"
 	promNamespace                   = "openshift-monitoring"
 	openShiftClusterMonitoringlabel = "openshift.io/cluster-monitoring"
-	hubMetricsCollectionNamespace   = "open-cluster-management-observability"
 )
 
 const (
