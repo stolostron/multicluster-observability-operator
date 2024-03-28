@@ -34,6 +34,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/version"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	oav1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	operatorsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	// +kubebuilder:scaffold:imports
@@ -96,6 +97,9 @@ func main() {
 		},
 		oav1beta1.GroupVersion.WithKind("ObservabilityAddon"): {
 			{FieldSelector: namespaceSelector},
+		},
+		oav1beta2.GroupVersion.WithKind("MultiClusterObservability"): {
+			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", v1.NamespaceAll)},
 		},
 	}
 
