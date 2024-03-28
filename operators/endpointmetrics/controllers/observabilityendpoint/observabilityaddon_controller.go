@@ -265,7 +265,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 				log.Error(nil, fmt.Sprintf("Expected 1 multiclusterobservability, found %d", len(mcoList.Items)))
 				return ctrl.Result{}, nil
 			}
-			obsAddon.Spec = *mco.Spec.ObservabilityAddonSpec
+			obsAddon.Spec = *mcoList.Items[0].Spec.ObservabilityAddonSpec
 		}
 		created, err := updateMetricsCollectors(
 			ctx,
