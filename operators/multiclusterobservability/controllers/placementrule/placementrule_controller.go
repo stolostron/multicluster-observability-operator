@@ -36,16 +36,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	workv1 "open-cluster-management.io/api/work/v1"
+
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	commonutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
-	clusterv1 "open-cluster-management.io/api/cluster/v1"
-	workv1 "open-cluster-management.io/api/work/v1"
 )
 
 const (
@@ -57,8 +58,7 @@ const (
 )
 
 var (
-	log = logf.Log.WithName("controller_placementrule")
-	//watchNamespace                  = config.GetDefaultNamespace()
+	log                           = logf.Log.WithName("controller_placementrule")
 	isCRoleCreated                = false
 	clusterAddon                  = &addonv1alpha1.ClusterManagementAddOn{}
 	defaultAddonDeploymentConfig  = &addonv1alpha1.AddOnDeploymentConfig{}
@@ -335,11 +335,21 @@ func createAllRelatedRes(
 		isCRoleCreated = true
 	}
 
-	//Get or create ClusterManagementAddon
+	// Get or create ClusterManagementAddon
 	clusterAddon, err = util.CreateClusterManagementAddon(c)
 	if err != nil {
 		return err
 	}
+
+	// Always start this loop with an empty addon deployment config.
+	// This simplifies the logic for the cases where:
+	// - There is nothing in `Spec.SupportedConfigs`.
+	// - There's something in `Spec.SupportedConfigs`, but none of them are for
+	//   the group and resource that we care about.
+	// - There is something in `Spec.SupportedConfigs`, the group and resource are correct,
+	//   but the default config is not present in the manifest or it is not found
+	//   (i.e. was deleted or there's a typo).
+	defaultAddonDeploymentConfig = &addonv1alpha1.AddOnDeploymentConfig{}
 	for _, config := range clusterAddon.Spec.SupportedConfigs {
 		if config.ConfigGroupResource.Group == util.AddonGroup &&
 			config.ConfigGroupResource.Resource == util.AddonDeploymentConfigResource {
@@ -474,7 +484,7 @@ func deleteGlobalResource(c client.Client) error {
 		return err
 	}
 	isCRoleCreated = false
-	//delete ClusterManagementAddon
+	// delete ClusterManagementAddon
 	err = util.DeleteClusterManagementAddon(c)
 	if err != nil {
 		return err
@@ -543,7 +553,6 @@ func createManagedClusterRes(
 }
 
 func deleteManagedClusterRes(c client.Client, namespace string) error {
-
 	managedclusteraddon := &addonv1alpha1.ManagedClusterAddOn{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      util.ManagedClusterAddonName,
@@ -599,7 +608,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	clusterPred := getClusterPreds()
 
 	// Watch changes for AddonDeploymentConfig
-	AddonDeploymentPred := GetAddOnDeploymentPredicates()
+	addOnDeploymentConfigPred := GetAddOnDeploymentConfigPredicates()
 
 	// Watch changes to endpoint-operator deployment
 	hubEndpointOperatorPred := getHubEndpointOperatorPredicates()
@@ -900,8 +909,9 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// secondary watch for alertmanager accessor serviceaccount
 		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred))
 
-	// watch for AddonDeploymentConfig
-	if _, err := r.RESTMapper.RESTMapping(schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "AddOnDeploymentConfig"}, addonv1alpha1.GroupVersion.Version); err == nil {
+	// watch for AddOnDeploymentConfig
+	addOnDeploymentConfigGroupKind := schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "AddOnDeploymentConfig"}
+	if _, err := r.RESTMapper.RESTMapping(addOnDeploymentConfigGroupKind, addonv1alpha1.GroupVersion.Version); err == nil {
 		ctrBuilder = ctrBuilder.Watches(
 			&source.Kind{Type: &addonv1alpha1.AddOnDeploymentConfig{}},
 			handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
@@ -911,7 +921,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					}},
 				}
 			}),
-			builder.WithPredicates(AddonDeploymentPred),
+			builder.WithPredicates(addOnDeploymentConfigPred),
 		)
 	}
 	manifestWorkGroupKind := schema.GroupKind{Group: workv1.GroupVersion.Group, Kind: "ManifestWork"}
