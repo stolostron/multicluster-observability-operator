@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"reflect"
 
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
@@ -31,6 +32,9 @@ const (
 	defaultReplicas int32 = 1
 	restartLabel          = "datasource/time-restarted"
 	datasourceKey         = "datasources.yaml"
+
+	haProxyRouterTimeoutKey     = "haproxy.router.openshift.io/timeout"
+	defaultHaProxyRouterTimeout = "300s"
 )
 
 type GrafanaDatasources struct {
@@ -194,7 +198,7 @@ func GenerateGrafanaRoute(
 			Name:      config.GrafanaRouteName,
 			Namespace: config.GetDefaultNamespace(),
 			Annotations: map[string]string{
-				"haproxy.router.openshift.io/timeout": "300s",
+				haProxyRouterTimeoutKey: defaultHaProxyRouterTimeout,
 			},
 		},
 		Spec: routev1.RouteSpec{
@@ -236,6 +240,34 @@ func GenerateGrafanaRoute(
 			return &ctrl.Result{}, err
 		}
 		return nil, nil
+	}
+
+	// if no annotations are set, set the default timeout
+	if found.Annotations == nil {
+		found.Annotations = map[string]string{}
+		found.Annotations[haProxyRouterTimeoutKey] = defaultHaProxyRouterTimeout
+	}
+
+	// if some annotations are set, but the timeout is not set, set the default timeout
+	// otherwise, use the existing timeout which allows for custom timeouts.
+	// we do not want to overwrite other labels that may be set.
+	if _, ok := found.Annotations[haProxyRouterTimeoutKey]; !ok {
+		found.Annotations[haProxyRouterTimeoutKey] = defaultHaProxyRouterTimeout
+	}
+
+	if !reflect.DeepEqual(found.Spec, grafanaRoute.Spec) {
+		found.Spec = grafanaRoute.Spec
+	}
+
+	err = c.Update(context.TODO(), found)
+	if err != nil {
+		log.Error(
+			err,
+			"failed update for Grafana Route",
+			"grafanaRoute.Name",
+			grafanaRoute.Name,
+		)
+		return &ctrl.Result{}, err
 	}
 	return nil, nil
 }
