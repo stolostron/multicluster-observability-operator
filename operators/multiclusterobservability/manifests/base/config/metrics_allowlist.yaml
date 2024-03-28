@@ -139,6 +139,8 @@ data:
       - cluster:policy_governance_info:propagated_noncompliant_count
       - policy:policy_governance_info:propagated_count
       - policy:policy_governance_info:propagated_noncompliant_count
+      - cnv:vmi_status_running:count
+      - kubevirt_hyperconverged_operator_health_status
     matches:
       - __name__="workqueue_queue_duration_seconds_bucket",job="apiserver"
       - __name__="workqueue_adds_total",job="apiserver"

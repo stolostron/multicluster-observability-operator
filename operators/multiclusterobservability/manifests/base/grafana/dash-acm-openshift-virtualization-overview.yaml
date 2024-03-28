@@ -1,0 +1,1253 @@
+apiVersion: v1
+data:
+  acm-openshift-virtualization-overview.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
+            "type": "dashboard"
+          }
+        ]
+      },
+      "description": "This dashboard shows details related to the OpenShift Virtualization operator and Virtual machines",
+      "editable": true,
+      "gnetId": null,
+      "graphTooltip": 0,
+      "id": 29,
+      "iteration": 1709210609633,
+      "links": [],
+      "panels": [
+        {
+          "collapsed": false,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "id": 29,
+          "panels": [],
+          "title": "OpenShift Virtualization Operator Health",
+          "type": "row"
+        },
+        {
+          "datasource": null,
+          "description": "Total number of clusters that have alerts that are firing with the operator_health_impact level: critical.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "transparent",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 0,
+            "y": 1
+          },
+          "id": 16,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "count(sum by (clusterID)(ALERTS{kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\",cluster=~\"$cluster\",operator_health_impact=\"critical\"})) or vector(0)",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Clusters in Critical Health",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "Total number of clusters that have alerts that are firing with the operator_health_impact level: warning.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "transparent",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 6,
+            "y": 1
+          },
+          "id": 17,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "count(sum by(clusterID)(ALERTS{kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\",cluster=~\"$cluster\",operator_health_impact=\"warning\"})) or vector(0)",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Clusters in Warning Health",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "Total Clusters with OpenShift Virtualization",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "transparent",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 12,
+            "y": 1
+          },
+          "id": 22,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "count (count by (cluster) (csv_succeeded{name=~\".*hyperconverged.*\",cluster=~\"$cluster\"}))",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Total Clusters with OpenShift Virtualization",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "displayMode": "auto"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "% of Total Clusters"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percentunit"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 6,
+            "x": 18,
+            "y": 1
+          },
+          "id": 24,
+          "options": {
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "version"
+              }
+            ]
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "count by (version)(count by (cluster, version) (csv_succeeded{name=~\".*hyperconverged.*\",cluster=~\"$cluster\"}))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "{{version}}",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "count by (version)(count by (cluster, version) (csv_succeeded{name=~\".*hyperconverged.*\",cluster=~\"$cluster\"}))\n/\n(count by (version) (csv_succeeded{name=~\".*hyperconverged.*\"}))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            }
+          ],
+          "title": "Clusters with OpenShift Virtualization by Version",
+          "transformations": [
+            {
+              "id": "seriesToColumns",
+              "options": {
+                "byField": "version"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time 1": true,
+                  "Time 2": true
+                },
+                "indexByName": {},
+                "renameByName": {
+                  "Time 2": "",
+                  "Value #A": "Number of Cluster",
+                  "Value #B": "% of Total Clusters"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": null,
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "displayMode": "color-background"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "transparent",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Cluster"
+                },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "",
+                        "url": "d/OmpD1ZoSk/openshift-virtualization-overview?${__url_time_range}&orgId=1&var-alert=All&var-severity=$${severity:queryparam}&refresh=5m&var-health_impact=$${health_impact:queryparam}&var-cluster=${__data.fields.Cluster}"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #A"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "0": {
+                            "color": "green",
+                            "index": 0,
+                            "text": "Healthy"
+                          },
+                          "1": {
+                            "color": "orange",
+                            "index": 1,
+                            "text": "Warning"
+                          },
+                          "2": {
+                            "color": "red",
+                            "index": 2,
+                            "text": "Critical"
+                          }
+                        },
+                        "type": "value"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 18,
+            "x": 0,
+            "y": 4
+          },
+          "id": 6,
+          "options": {
+            "frameIndex": 0,
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Value"
+              }
+            ]
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "(sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "(sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))*0 + on (cluster) group_left() (sum by (cluster)(ALERTS{kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\",cluster=~\"$cluster\",operator_health_impact=\"critical\"}) or \n (sum by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}*0)))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "(sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))*0 + on (cluster) group_left() (sum by (cluster)(ALERTS{kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\",cluster=~\"$cluster\",operator_health_impact=\"warning\"}) or (sum by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}*0)))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "C"
+            },
+            {
+              "exemplar": true,
+              "expr": "(sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))*0 + on (cluster) group_left() (sum by (cluster)(cnv:vmi_status_running:count{cluster=~\"$cluster\"}))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "D"
+            },
+            {
+              "exemplar": true,
+              "expr": "(sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))*0 + on (cluster) group_left(version) (count by (cluster, version) (csv_succeeded{name=~\".*hyperconverged.*\",cluster=~\"$cluster\"}))",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "E"
+            }
+          ],
+          "title": "OpenShift Virtualization Health by Cluster",
+          "transformations": [
+            {
+              "id": "seriesToColumns",
+              "options": {
+                "byField": "cluster"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Time 1": true,
+                  "Time 2": true,
+                  "Time 3": true,
+                  "Value #E": true
+                },
+                "indexByName": {
+                  "Time": 6,
+                  "Value #A": 5,
+                  "Value #B": 3,
+                  "Value #C": 4,
+                  "Value #D": 2,
+                  "Value #E": 7,
+                  "cluster": 0,
+                  "version": 1
+                },
+                "renameByName": {
+                  "Time 2": "",
+                  "Value": "",
+                  "Value #A": "Operator Health",
+                  "Value #B": "Alerts with Critical Impact",
+                  "Value #C": "Alerts with Warning Impact",
+                  "Value #D": "Number of Running Virtual Machines",
+                  "cluster": "Cluster",
+                  "version": "Version"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": null,
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "displayMode": "auto"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Alert Name"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 272
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Namespace"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Alert Impact on Operator Health"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Cluster"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 219
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Component"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 349
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Alert Severity"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 328
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Number of Alerts"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 296
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 11
+          },
+          "id": 8,
+          "options": {
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Alert Impact on Operator Health"
+              }
+            ]
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum by (cluster,alertname,kubernetes_operator_component, operator_health_impact, severity) (ALERTS{kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\",cluster=~\"$cluster\",operator_health_impact=~\"$health_impact\",operator_health_impact!=\"none\", severity=~\"$severity\"})\n+ on (cluster) group_left()(sum by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health)*0)",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Alerts Impact on OpenShift Virtualization Health",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Value": false,
+                  "__name__": true,
+                  "alertstate": true,
+                  "clusterID": true,
+                  "endpoint": true,
+                  "instance": true,
+                  "job": true,
+                  "kubernetes_operator_part_of": true,
+                  "name": true,
+                  "node": true,
+                  "operator_health_impact": false,
+                  "pod": true,
+                  "receive": true,
+                  "service": true,
+                  "tenant_id": true
+                },
+                "indexByName": {
+                  "Time": 0,
+                  "Value": 10,
+                  "alertname": 2,
+                  "cluster": 1,
+                  "container": 7,
+                  "cron_name": 8,
+                  "kubernetes_operator_component": 5,
+                  "namespace": 6,
+                  "ns": 9,
+                  "operator_health_impact": 3,
+                  "severity": 4
+                },
+                "renameByName": {
+                  "Value": "Number of Alerts",
+                  "alertname": "Alert Name",
+                  "alertstate": "",
+                  "cluster": "Cluster",
+                  "container": "Container",
+                  "endpoint": "",
+                  "kubernetes_operator_component": "Component",
+                  "kubernetes_operator_part_of": "",
+                  "name": "",
+                  "namespace": "Namespace",
+                  "node": "",
+                  "operator_health_impact": "Alert Impact on Operator Health",
+                  "severity": "Alert Severity",
+                  "version": "Version"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "collapsed": false,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 18
+          },
+          "id": 19,
+          "panels": [],
+          "title": "Total Alerts by Severity",
+          "type": "row"
+        },
+        {
+          "datasource": null,
+          "description": "Total number of alerts that are firing with the severity level: critical.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "transparent",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 0,
+            "y": 19
+          },
+          "id": 12,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum (ALERTS{kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\",cluster=~\"$cluster\",severity=\"critical\"}) or vector(0)",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Critical Severity Alerts",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "Total number of alerts that are firing with the severity level: warning.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "transparent",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 6,
+            "y": 19
+          },
+          "id": 14,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum (ALERTS{kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\",cluster=~\"$cluster\",severity=\"warning\"}) or vector(0)",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Warning Severity Alerts",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "Total number of alerts that are firing with the severity level: warning.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "links": [],
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "transparent",
+                    "value": null
+                  },
+                  {
+                    "color": "blue",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 12,
+            "y": 19
+          },
+          "id": 15,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum (ALERTS{kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\",cluster=~\"$cluster\",severity=\"info\"}) or vector(0)",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Info Severity Alerts",
+          "type": "stat"
+        },
+        {
+          "datasource": null,
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "displayMode": "auto"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Alert Name"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 279
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Namespace"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Alert Impact on Operator Health"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 232
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Cluster"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 214
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Alert Severity"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 342
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 22
+          },
+          "id": 26,
+          "options": {
+            "showHeader": true,
+            "sortBy": [
+              {
+                "desc": true,
+                "displayName": "Alert Severity"
+              }
+            ]
+          },
+          "pluginVersion": "8.5.20",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "sum by (cluster,alertname,kubernetes_operator_component, operator_health_impact, severity) (ALERTS{kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\",cluster=~\"$cluster\",operator_health_impact=~\"$health_impact\",severity=~\"$severity\"})\n+ on (cluster) group_left()(sum by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health)*0)",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": " ",
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Value": false,
+                  "__name__": true,
+                  "alertstate": true,
+                  "clusterID": true,
+                  "endpoint": true,
+                  "instance": true,
+                  "job": true,
+                  "kubernetes_operator_part_of": true,
+                  "name": true,
+                  "node": true,
+                  "operator_health_impact": false,
+                  "pod": true,
+                  "receive": true,
+                  "service": true,
+                  "tenant_id": true
+                },
+                "indexByName": {
+                  "Time": 0,
+                  "Value": 10,
+                  "alertname": 2,
+                  "cluster": 1,
+                  "container": 7,
+                  "cron_name": 8,
+                  "kubernetes_operator_component": 5,
+                  "namespace": 6,
+                  "ns": 9,
+                  "operator_health_impact": 3,
+                  "severity": 4
+                },
+                "renameByName": {
+                  "Value": "Number of Alerts",
+                  "alertname": "Alert Name",
+                  "alertstate": "",
+                  "cluster": "Cluster",
+                  "container": "Container",
+                  "endpoint": "",
+                  "kubernetes_operator_component": "Component",
+                  "kubernetes_operator_part_of": "",
+                  "name": "",
+                  "namespace": "Namespace",
+                  "node": "",
+                  "operator_health_impact": "Alert Impact on Operator Health",
+                  "severity": "Alert Severity",
+                  "version": "Version"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ],
+      "refresh": "5m",
+      "schemaVersion": 30,
+      "style": "dark",
+      "tags": [],
+      "templating": {
+        "list": [
+          {
+            "allValue": null,
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "label_values(csv_succeeded{name=~\".*hyperconverged.*\"}, cluster)",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Cluster",
+            "multi": true,
+            "name": "cluster",
+            "options": [],
+            "query": {
+              "query": "label_values(csv_succeeded{name=~\".*hyperconverged.*\"}, cluster)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          },
+          {
+            "allValue": "<3",
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "description": "Fiter the clusters by the health of the OpenShift Virtualization operator",
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Operator Health",
+            "multi": false,
+            "name": "operator_health",
+            "options": [
+              {
+                "selected": true,
+                "text": "All",
+                "value": "$__all"
+              },
+              {
+                "selected": false,
+                "text": "Healthy",
+                "value": "==0"
+              },
+              {
+                "selected": false,
+                "text": "Warning",
+                "value": "==1"
+              },
+              {
+                "selected": false,
+                "text": "Critical",
+                "value": "==2"
+              }
+            ],
+            "query": "Healthy : ==0, Warning : ==1, Critical : ==2",
+            "queryValue": "",
+            "skipUrlSync": false,
+            "type": "custom"
+          },
+          {
+            "allValue": "",
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "label_values(ALERTS{kubernetes_operator_part_of=\"kubevirt\"}, operator_health_impact)",
+            "description": "Filter the alerts by their impact on the operator health",
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Alerts - Impact on Operator Health",
+            "multi": true,
+            "name": "health_impact",
+            "options": [],
+            "query": {
+              "query": "label_values(ALERTS{kubernetes_operator_part_of=\"kubevirt\"}, operator_health_impact)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          },
+          {
+            "allValue": null,
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "label_values(ALERTS{kubernetes_operator_part_of=\"kubevirt\"}, severity)",
+            "description": "Filter the alerts by their severity level",
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": "Alerts - Severity",
+            "multi": true,
+            "name": "severity",
+            "options": [],
+            "query": {
+              "query": "label_values(ALERTS{kubernetes_operator_part_of=\"kubevirt\"}, severity)",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "ACM - OpenShift Virtualization Overview",
+      "version": 1
+    }
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-acm-openShift-virtualization-overview
+  namespace: open-cluster-management-observability
+  labels:
+    general-folder: 'true'
