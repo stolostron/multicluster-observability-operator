@@ -100,7 +100,7 @@ func main() {
 			{FieldSelector: namespaceSelector},
 		},
 		oav1beta2.GroupVersion.WithKind("MultiClusterObservability"): {
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", v1.NamespaceAll)},
+			{FieldSelector: "metadata.name!=\"\""},
 		},
 	}
 
