@@ -48,6 +48,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(oav1beta1.AddToScheme(scheme))
+	utilruntime.Must(oav1beta2.AddToScheme(scheme))
 	utilruntime.Must(ocinfrav1.AddToScheme(scheme))
 	utilruntime.Must(prometheusv1.AddToScheme(scheme))
 	utilruntime.Must(hyperv1.AddToScheme(scheme))
