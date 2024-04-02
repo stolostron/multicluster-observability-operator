@@ -12,6 +12,7 @@ import (
 
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"golang.org/x/exp/slices"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -24,6 +25,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
@@ -36,6 +38,21 @@ const (
 	testNamespace   = "test-ns"
 	testHubNamspace = "test-hub-ns"
 	testBearerToken = "test-bearer-token"
+)
+
+var (
+	cv = &ocinfrav1.ClusterVersion{
+		ObjectMeta: metav1.ObjectMeta{Name: "version"},
+		Spec: ocinfrav1.ClusterVersionSpec{
+			ClusterID: testClusterID,
+		},
+	}
+	infra = &ocinfrav1.Infrastructure{
+		ObjectMeta: metav1.ObjectMeta{Name: "cluster"},
+		Status: ocinfrav1.InfrastructureStatus{
+			ControlPlaneTopology: ocinfrav1.SingleReplicaTopologyMode,
+		},
+	}
 )
 
 func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon {
@@ -60,11 +77,11 @@ func newPromSvc() *corev1.Service {
 	}
 }
 
-func newHubInfoSecret(data []byte) *corev1.Secret {
+func newHubInfoSecret(data []byte, ns string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      operatorconfig.HubInfoSecretName,
-			Namespace: testNamespace,
+			Namespace: ns,
 		},
 		Data: map[string][]byte{
 			operatorconfig.HubInfoSecretKey: data,
@@ -73,11 +90,11 @@ func newHubInfoSecret(data []byte) *corev1.Secret {
 	}
 }
 
-func newAMAccessorSecret() *corev1.Secret {
+func newAMAccessorSecret(ns string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      hubAmAccessorSecretName,
-			Namespace: testNamespace,
+			Namespace: ns,
 		},
 		Data: map[string][]byte{
 			"token": []byte(testBearerToken),
@@ -103,11 +120,11 @@ func newClusterMonitoringConfigCM(configDataStr string, mgr string) *corev1.Conf
 	}
 }
 
-func newImagesCM() *corev1.ConfigMap {
+func newImagesCM(ns string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      operatorconfig.ImageConfigMap,
-			Namespace: testNamespace,
+			Namespace: ns,
 		},
 		Data: map[string]string{
 			operatorconfig.MetricsCollectorKey: "metrics-collector-image",
@@ -122,6 +139,7 @@ func init() {
 	oav1beta1.AddToScheme(s)
 	ocinfrav1.AddToScheme(s)
 	hyperv1.AddToScheme(s)
+	promv1.AddToScheme(s)
 
 	namespace = testNamespace
 	hubNamespace = testHubNamspace
@@ -138,10 +156,10 @@ alertmanager-router-ca: |
 `)
 
 	hubObjs := []runtime.Object{}
-	hubInfo := newHubInfoSecret(hubInfoData)
-	amAccessSrt := newAMAccessorSecret()
+	hubInfo := newHubInfoSecret(hubInfoData, testNamespace)
+	amAccessSrt := newAMAccessorSecret(testNamespace)
 	allowList := getAllowlistCM()
-	images := newImagesCM()
+	images := newImagesCM(testNamespace)
 	objs := []runtime.Object{hubInfo, amAccessSrt, allowList, images, cv, infra,
 		&corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
@@ -219,13 +237,13 @@ alertmanager-router-ca: |
 		t.Fatalf("reconcile: (%v)", err)
 	}
 	rb := &rbacv1.ClusterRoleBinding{}
-	err = c.Get(ctx, types.NamespacedName{Name: clusterRoleBindingName,
+	err = c.Get(ctx, types.NamespacedName{Name: openshift.ClusterRoleBindingName,
 		Namespace: ""}, rb)
 	if err != nil {
 		t.Fatalf("Required clusterrolebinding not created: (%v)", err)
 	}
 	cm := &corev1.ConfigMap{}
-	err = c.Get(ctx, types.NamespacedName{Name: caConfigmapName,
+	err = c.Get(ctx, types.NamespacedName{Name: openshift.CaConfigmapName,
 		Namespace: namespace}, cm)
 	if err != nil {
 		t.Fatalf("Required configmap not created: (%v)", err)
@@ -346,12 +364,12 @@ alertmanager-router-ca: |
 	if err != nil {
 		t.Fatalf("reconcile for delete: (%v)", err)
 	}
-	err = c.Get(ctx, types.NamespacedName{Name: clusterRoleBindingName,
+	err = c.Get(ctx, types.NamespacedName{Name: openshift.ClusterRoleBindingName,
 		Namespace: ""}, rb)
 	if !errors.IsNotFound(err) {
 		t.Fatalf("Required clusterrolebinding not deleted")
 	}
-	err = c.Get(ctx, types.NamespacedName{Name: caConfigmapName,
+	err = c.Get(ctx, types.NamespacedName{Name: openshift.CaConfigmapName,
 		Namespace: namespace}, cm)
 	if !errors.IsNotFound(err) {
 		t.Fatalf("Required configmap not deleted")

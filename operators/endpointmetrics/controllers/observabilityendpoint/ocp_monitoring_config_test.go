@@ -26,7 +26,8 @@ import (
 )
 
 const (
-	hubInfoYAML = `
+	testClusterID = "kind-cluster-id"
+	hubInfoYAML   = `
 cluster-name: "test-cluster"
 endpoint: "http://test-endpoint"
 alertmanager-endpoint: "http://test-alertamanger-endpoint"
@@ -135,8 +136,8 @@ prometheusK8s:
 	if err != nil {
 		t.Fatalf("Failed to unmarshal hubInfo: (%v)", err)
 	}
-	hubInfoObj := newHubInfoSecret([]byte(hubInfoYAML))
-	amAccessSrt := newAMAccessorSecret()
+	hubInfoObj := newHubInfoSecret([]byte(hubInfoYAML), testNamespace)
+	amAccessSrt := newAMAccessorSecret(testNamespace)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -158,8 +159,8 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to unmarshal hubInfo: (%v)", err)
 	}
-	hubInfoObj := newHubInfoSecret([]byte(hubInfoYAMLAlertsDisabled))
-	amAccessSrt := newAMAccessorSecret()
+	hubInfoObj := newHubInfoSecret([]byte(hubInfoYAMLAlertsDisabled), testNamespace)
+	amAccessSrt := newAMAccessorSecret(testNamespace)
 
 	// Scenario 1:
 	//   create cluster-monitoring-config configmap with "manager: endpoint-monitoring-operator"
@@ -291,7 +292,7 @@ func TestClusterMonitoringConfigAlertsDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to unmarshal hubInfo: (%v)", err)
 	}
-	hubInfoObj = newHubInfoSecret([]byte(hubInfoYAML))
+	hubInfoObj = newHubInfoSecret([]byte(hubInfoYAML), testNamespace)
 	err = c.Create(ctx, hubInfoObj)
 	if err != nil {
 		t.Fatalf("could not recreate hubInfoObject to enable alerts again")
