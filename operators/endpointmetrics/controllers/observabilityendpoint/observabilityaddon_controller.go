@@ -36,6 +36,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	oav1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/deploying"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
@@ -49,14 +50,12 @@ var (
 
 const (
 	obAddonName                     = "observability-addon"
-	mcoCRName                       = "observability"
 	ownerLabelKey                   = "owner"
 	ownerLabelValue                 = "observabilityaddon"
 	obsAddonFinalizer               = "observability.open-cluster-management.io/addon-cleanup"
 	promSvcName                     = "prometheus-k8s"
 	promNamespace                   = "openshift-monitoring"
 	openShiftClusterMonitoringlabel = "openshift.io/cluster-monitoring"
-	hubMetricsCollectionNamespace   = "open-cluster-management-observability"
 )
 
 const (
@@ -166,10 +165,12 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	clusterType := defaultClusterType
 	clusterID := ""
 
-	//read the image configmap
+	// read the image configmap
 	imagesCM := &corev1.ConfigMap{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: operatorconfig.ImageConfigMap,
-		Namespace: namespace}, imagesCM)
+	err = r.Client.Get(ctx, types.NamespacedName{
+		Name:      operatorconfig.ImageConfigMap,
+		Namespace: namespace,
+	}, imagesCM)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get images configmap: %w", err)
 	}
@@ -187,8 +188,10 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if !installPrometheus {
 		// If no prometheus service found, set status as NotSupported
 		promSvc := &corev1.Service{}
-		err = r.Client.Get(ctx, types.NamespacedName{Name: promSvcName,
-			Namespace: promNamespace}, promSvc)
+		err = r.Client.Get(ctx, types.NamespacedName{
+			Name:      promSvcName,
+			Namespace: promNamespace,
+		}, promSvc)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				log.Error(err, "OCP prometheus service does not exist")
@@ -229,7 +232,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, fmt.Errorf("failed to create CA configmap: %w", err)
 		}
 	} else {
-		//Render the prometheus templates
+		// Render the prometheus templates
 		renderer := rendererutil.NewRenderer()
 		toDeploy, err := rendering.Render(renderer, r.Client, hubInfo)
 		if err != nil {
@@ -252,11 +255,21 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, fmt.Errorf("failed to create or update cluster monitoring config: %w", err)
 	}
 
-	forceRestart := false
-	if req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == openshift.CaConfigmapName {
-		forceRestart = true
-	}
+	forceRestart := req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == openshift.CaConfigmapName
+
 	if obsAddon.Spec.EnableMetrics || isHubMetricsCollector {
+		if isHubMetricsCollector {
+			mcoList := &oav1beta2.MultiClusterObservabilityList{}
+			err := r.HubClient.List(ctx, mcoList, client.InNamespace(corev1.NamespaceAll))
+			if err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to get multiclusterobservability: %w", err)
+			}
+			if len(mcoList.Items) != 1 {
+				log.Error(nil, fmt.Sprintf("Expected 1 multiclusterobservability, found %d", len(mcoList.Items)))
+				return ctrl.Result{}, nil
+			}
+			obsAddon.Spec = *mcoList.Items[0].Spec.ObservabilityAddonSpec
+		}
 		created, err := updateMetricsCollectors(
 			ctx,
 			r.Client,
@@ -265,7 +278,6 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			clusterType,
 			1,
 			forceRestart)
-
 		if err != nil {
 			util.ReportStatus(ctx, r.Client, obsAddon, "Degraded", !isHubMetricsCollector)
 			return ctrl.Result{}, fmt.Errorf("failed to update metrics collectors: %w", err)
@@ -283,13 +295,14 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
-	//TODO: UPDATE
+	// TODO: UPDATE
 	return ctrl.Result{}, nil
 }
 
 func (r *ObservabilityAddonReconciler) initFinalization(
 	ctx context.Context, delete bool, hubObsAddon *oav1beta1.ObservabilityAddon,
-	isHypershift bool) (bool, error) {
+	isHypershift bool,
+) (bool, error) {
 	if delete && slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
 		log.Info("To clean observability components/configurations in the cluster")
 		err := deleteMetricsCollector(ctx, r.Client, metricsCollectorName)

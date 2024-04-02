@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudflare/cfssl/log"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -376,9 +377,6 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 				Name:  "STANDALONE",
 				Value: "true",
 			})
-
-		//Since there is no obsAddOn for hub-metrics-collector, we need to set the resources here
-		metricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = operatorconfig.HubMetricsCollectorResources
 	}
 
 	privileged := false
