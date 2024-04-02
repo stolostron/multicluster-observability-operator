@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
@@ -118,7 +119,7 @@ func getCommands(params CollectorParams) []string {
 	for _, group := range params.allowlist.CollectRuleGroupList {
 		if group.Selector.MatchExpression != nil {
 			for _, expr := range group.Selector.MatchExpression {
-				if hubMetricsCollector {
+				if isHubMetricsCollector {
 					if !evluateMatchExpression(expr, clusterID, params.clusterType, params.hubInfo,
 						params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount) {
 						continue
@@ -253,7 +254,7 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: caConfigmapName,
+						Name: openshift.CaConfigmapName,
 					},
 				},
 			},
@@ -368,8 +369,8 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			})
 	}
 
-	if hubMetricsCollector {
-		// to avoid hub metrics collector from sending status
+	if isHubMetricsCollector {
+		//to avoid hub metrics collector from sending status
 		metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
 			corev1.EnvVar{
 				Name:  "STANDALONE",

@@ -31,6 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
@@ -63,9 +65,10 @@ const (
 )
 
 var (
-	namespace           = os.Getenv("WATCH_NAMESPACE")
-	hubNamespace        = os.Getenv("HUB_NAMESPACE")
-	hubMetricsCollector = os.Getenv("HUB_ENDPOINT_OPERATOR") == "true"
+	namespace             = os.Getenv("WATCH_NAMESPACE")
+	hubNamespace          = os.Getenv("HUB_NAMESPACE")
+	isHubMetricsCollector = os.Getenv("HUB_ENDPOINT_OPERATOR") == "true"
+	serviceAccountName    = os.Getenv("SERVICE_ACCOUNT")
 )
 
 // ObservabilityAddonReconciler reconciles a ObservabilityAddon object.
@@ -91,11 +94,11 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if os.Getenv("UNIT_TEST") != "true" {
 		crdClient, err := operatorutil.GetOrCreateCRDClient()
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to get/create CRD client: %w", err)
 		}
 		isHypershift, err = operatorutil.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to check if the CRD hostedclusters.hypershift.openshift.io exists: %w", err)
 		}
 	}
 	hubObsAddon := &oav1beta1.ObservabilityAddon{}
@@ -104,9 +107,9 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	// ACM 8509: Special case for hub/local cluster metrics collection
 	// We do not have an ObservabilityAddon instance in the local cluster so skipping the below block
-	if !hubMetricsCollector {
+	if !isHubMetricsCollector {
 		if err := r.ensureOpenShiftMonitoringLabelAndRole(ctx); err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to ensure OpenShift monitoring label and role: %w", err)
 		}
 
 		// Fetch the ObservabilityAddon instance in hub cluster
@@ -114,7 +117,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		if err != nil {
 			hubClient, obsAddon, err := util.RenewAndRetry(ctx)
 			if err != nil {
-				return ctrl.Result{}, err
+				return ctrl.Result{}, fmt.Errorf("failed to get observabilityaddon: %w", err)
 			}
 			r.HubClient = hubClient
 			hubObsAddon = obsAddon
@@ -123,12 +126,10 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		// Fetch the ObservabilityAddon instance in local cluster
 		err = r.Client.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: namespace}, obsAddon)
 		if err != nil {
-			if errors.IsNotFound(err) {
-				obsAddon = nil
-			} else {
-				log.Error(err, "Failed to get observabilityaddon", "namespace", namespace)
-				return ctrl.Result{}, err
+			if !errors.IsNotFound(err) {
+				return ctrl.Result{}, fmt.Errorf("failed to get observabilityaddon: %w", err)
 			}
+			obsAddon = nil
 		}
 
 		if obsAddon == nil {
@@ -137,7 +138,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		// Init finalizers
 		deleted, err := r.initFinalization(ctx, deleteFlag, hubObsAddon, isHypershift)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to init finalization: %w", err)
 		}
 		if deleted || deleteFlag {
 			return ctrl.Result{}, nil
@@ -152,13 +153,12 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		hubSecret,
 	)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to get hub info secret: %w", err)
 	}
 	hubInfo := &operatorconfig.HubInfo{}
 	err = yaml.Unmarshal(hubSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
 	if err != nil {
-		log.Error(err, "Failed to unmarshal hub info")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to unmarshal hub info: %w", err)
 	}
 	hubInfo.ClusterName = string(hubSecret.Data[operatorconfig.ClusterNameKey])
 
@@ -172,15 +172,16 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		Namespace: namespace,
 	}, imagesCM)
 	if err != nil {
-		log.Error(err, "Failed to get images configmap")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to get images configmap: %w", err)
 	}
 	rendering.Images = imagesCM.Data
 
 	if isHypershift {
-		err = createServiceMonitors(ctx, r.Client)
+		updatedHCs, err := hypershift.ReconcileHostedClustersServiceMonitors(ctx, r.Client)
 		if err != nil {
-			return ctrl.Result{}, err
+			log.Error(err, "Failed to create ServiceMonitors for hypershift")
+		} else {
+			log.Info("Reconciled hypershift service monitors", "updatedHCs", updatedHCs)
 		}
 	}
 
@@ -196,39 +197,46 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 				log.Error(err, "OCP prometheus service does not exist")
 				// ACM 8509: Special case for hub/local cluster metrics collection
 				// We do not report status for hub endpoint operator
-				util.ReportStatus(ctx, r.Client, obsAddon, "NotSupported", !hubMetricsCollector)
+				util.ReportStatus(ctx, r.Client, obsAddon, "NotSupported", !isHubMetricsCollector)
 				return ctrl.Result{}, nil
 			}
-			log.Error(err, "Failed to check prometheus resource")
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to check prometheus resource: %w", err)
 		}
 
-		clusterID, err = getClusterID(ctx, r.Client)
+		clusterID, err = openshift.GetClusterID(ctx, r.Client)
 		if err != nil {
+			if !errors.IsNotFound(err) {
+				return ctrl.Result{}, fmt.Errorf("failed to get cluster id: %w", err)
+			}
+			log.Error(err, "Failed to get cluster id")
+
 			// OCP 3.11 has no cluster id, set it as empty string
 			clusterID = ""
 			// to differentiate ocp 3.x
 			clusterType = ocpThreeClusterType
 		}
-		isSNO, err := isSNO(ctx, r.Client)
-		if err == nil && isSNO {
+
+		isSNO, err := openshift.IsSNO(ctx, r.Client)
+		if err != nil {
+			log.Error(err, "Failed to check if the cluster is SNO")
+		} else if isSNO {
 			clusterType = snoClusterType
 		}
-		err = createMonitoringClusterRoleBinding(ctx, r.Client)
+
+		err = openshift.CreateMonitoringClusterRoleBinding(ctx, log, r.Client, namespace, serviceAccountName)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to create monitoring cluster role binding: %w", err)
 		}
-		err = createCAConfigmap(ctx, r.Client)
+		err = openshift.CreateCAConfigmap(ctx, r.Client, namespace)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to create CA configmap: %w", err)
 		}
 	} else {
 		// Render the prometheus templates
 		renderer := rendererutil.NewRenderer()
 		toDeploy, err := rendering.Render(renderer, r.Client, hubInfo)
 		if err != nil {
-			log.Error(err, "Failed to render prometheus templates")
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to render prometheus templates: %w", err)
 		}
 		deployer := deploying.NewDeployer(r.Client)
 		for _, res := range toDeploy {
@@ -237,27 +245,24 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 				globalRes = append(globalRes, res)
 			}
 			if err := deployer.Deploy(res); err != nil {
-				log.Error(err, fmt.Sprintf("Failed to deploy %s %s/%s",
-					res.GetKind(), namespace, res.GetName()))
-				return ctrl.Result{}, err
+				return ctrl.Result{}, fmt.Errorf("failed to deploy %s %s/%s: %w", res.GetKind(), namespace, res.GetName(), err)
 			}
 		}
 	}
 
 	// create or update the cluster-monitoring-config configmap and relevant resources
 	if err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, clusterID, r.Client, installPrometheus); err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to create or update cluster monitoring config: %w", err)
 	}
 
-	forceRestart := req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == caConfigmapName
+	forceRestart := req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == openshift.CaConfigmapName
 
-	if obsAddon.Spec.EnableMetrics || hubMetricsCollector {
-		if hubMetricsCollector {
+	if obsAddon.Spec.EnableMetrics || isHubMetricsCollector {
+		if isHubMetricsCollector {
 			mcoList := &oav1beta2.MultiClusterObservabilityList{}
 			err := r.HubClient.List(ctx, mcoList, client.InNamespace(corev1.NamespaceAll))
 			if err != nil {
-				log.Error(err, "Failed to get multiclusterobservability")
-				return ctrl.Result{}, err
+				return ctrl.Result{}, fmt.Errorf("failed to get multiclusterobservability: %w", err)
 			}
 			if len(mcoList.Items) != 1 {
 				log.Error(nil, fmt.Sprintf("Expected 1 multiclusterobservability, found %d", len(mcoList.Items)))
@@ -274,19 +279,19 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			1,
 			forceRestart)
 		if err != nil {
-			util.ReportStatus(ctx, r.Client, obsAddon, "Degraded", !hubMetricsCollector)
-			return ctrl.Result{}, err
+			util.ReportStatus(ctx, r.Client, obsAddon, "Degraded", !isHubMetricsCollector)
+			return ctrl.Result{}, fmt.Errorf("failed to update metrics collectors: %w", err)
 		}
 		if created {
-			util.ReportStatus(ctx, r.Client, obsAddon, "Deployed", !hubMetricsCollector)
+			util.ReportStatus(ctx, r.Client, obsAddon, "Deployed", !isHubMetricsCollector)
 		}
 	} else {
 		deleted, err := updateMetricsCollectors(ctx, r.Client, obsAddon.Spec, *hubInfo, clusterID, clusterType, 0, false)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to update metrics collectors: %w", err)
 		}
 		if deleted {
-			util.ReportStatus(ctx, r.Client, obsAddon, "Disabled", !hubMetricsCollector)
+			util.ReportStatus(ctx, r.Client, obsAddon, "Disabled", !isHubMetricsCollector)
 		}
 	}
 
@@ -314,8 +319,9 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 			return false, err
 		}
 		if isHypershift {
-			err = deleteServiceMonitors(ctx, r.Client)
+			err = hypershift.DeleteServiceMonitors(ctx, r.Client)
 			if err != nil {
+				log.Error(err, "Failed to delete ServiceMonitors for hypershift")
 				return false, err
 			}
 		}
@@ -325,14 +331,18 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		// metrics collector is not present? Moved this part up as we need to clean
 		// up cm and crb before we remove the finalizer - is that the right way to do it?
 		if !installPrometheus {
-			err = deleteMonitoringClusterRoleBinding(ctx, r.Client)
+			err = openshift.DeleteMonitoringClusterRoleBinding(ctx, r.Client)
 			if err != nil {
+				log.Error(err, "Failed to delete monitoring cluster role binding")
 				return false, err
 			}
-			err = deleteCAConfigmap(ctx, r.Client)
+			log.Info("clusterrolebinding deleted")
+			err = openshift.DeleteCAConfigmap(ctx, r.Client, namespace)
 			if err != nil {
+				log.Error(err, "Failed to delete CA configmap")
 				return false, err
 			}
+			log.Info("configmap deleted")
 		} else {
 			// delete resources which is not namespace scoped or located in other namespaces
 			for _, res := range globalRes {
@@ -500,7 +510,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(caConfigmapName, namespace, false, true, true)),
+			builder.WithPredicates(getPred(openshift.CaConfigmapName, namespace, false, true, true)),
 		).
 		Watches(
 			&source.Kind{Type: &appsv1.Deployment{}},
@@ -515,7 +525,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Watches(
 			&source.Kind{Type: &rbacv1.ClusterRoleBinding{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(clusterRoleBindingName, "", false, true, true)),
+			builder.WithPredicates(getPred(openshift.ClusterRoleBindingName, "", false, true, true)),
 		).
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
