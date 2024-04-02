@@ -262,8 +262,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			mcoList := &oav1beta2.MultiClusterObservabilityList{}
 			err := r.HubClient.List(ctx, mcoList, client.InNamespace(corev1.NamespaceAll))
 			if err != nil {
-				log.Error(err, "Failed to get multiclusterobservability")
-				return ctrl.Result{}, err
+				return ctrl.Result{}, fmt.Errorf("failed to get multiclusterobservability: %w", err)
 			}
 			if len(mcoList.Items) != 1 {
 				log.Error(nil, fmt.Sprintf("Expected 1 multiclusterobservability, found %d", len(mcoList.Items)))
