@@ -147,7 +147,7 @@ var _ = Describe("Observability:", func() {
 			err, podList := utils.GetPodList(
 				testOptions,
 				isHub,
-				namespace,,
+				namespace,
 				"component=metrics-collector",
 			)
 			if err == nil {
