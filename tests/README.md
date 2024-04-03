@@ -1,4 +1,4 @@
-mak# observability-e2e-test
+# observability-e2e-test
 
 [![Build](https://img.shields.io/badge/build-Prow-informational)](https://prow.ci.openshift.org/?repo=stolostron%2F${observability-e2e-test})
 
