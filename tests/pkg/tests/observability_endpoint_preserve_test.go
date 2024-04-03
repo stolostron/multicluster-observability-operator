@@ -33,7 +33,6 @@ var _ = Describe("Observability:", func() {
 		if clusterName == hubManagedClusterName {
 			namespace = hubMetricsCollectorNamespace
 		}
-		fmt.Printf("Coleen deleting metrics-collector deployment for namespace : %s  cluster: %s\n", namespace, clusterName)
 	})
 
 	Context("[P2][Sev2][observability] Should revert any manual changes on metrics-collector deployment (endpoint_preserve/g0) -", func() {
