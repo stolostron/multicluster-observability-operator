@@ -99,8 +99,11 @@ func main() {
 		oav1beta1.GroupVersion.WithKind("ObservabilityAddon"): {
 			{FieldSelector: namespaceSelector},
 		},
+		oav1beta1.GroupVersion.WithKind("MultiClusterObservability"): {
+			{FieldSelector: "metadata.name!=null"},
+		},
 		oav1beta2.GroupVersion.WithKind("MultiClusterObservability"): {
-			{FieldSelector: "metadata.name!="},
+			{FieldSelector: "metadata.name!=null"},
 		},
 	}
 
