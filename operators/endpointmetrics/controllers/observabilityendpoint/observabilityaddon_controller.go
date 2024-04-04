@@ -471,10 +471,6 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 			builder.WithPredicates(getPred(obAddonName, namespace, true, true, true)),
 		).
 		Watches(
-			&source.Kind{Type: &oav1beta1.MultiClusterObservability{}},
-			&handler.EnqueueRequestForObject{},
-		).
-		Watches(
 			&source.Kind{Type: &oav1beta2.MultiClusterObservability{}},
 			&handler.EnqueueRequestForObject{},
 		).
