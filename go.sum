@@ -1787,8 +1787,8 @@ github.com/stoewer/go-strcase v1.2.0/go.mod h1:IBiWB2sKIp3wVVQ3Y035++gc+knqhUQag
 github.com/stolostron/backplane-operator v0.0.0-20220727154840-1f60baf1fb98 h1:fb77iXzaY4kud+wPqNPT6UgvPITK9q+O1D5FeUJ6qP0=
 github.com/stolostron/multiclusterhub-operator v0.0.0-20220902185016-e81ccfbecf55 h1:sNpuRgbyAEvOjayzShyPNt+Eg34jmJPNIUY9cFvUlwU=
 github.com/stolostron/multiclusterhub-operator v0.0.0-20220902185016-e81ccfbecf55/go.mod h1:YCJavcWI4f3PV/LbgMNWsYl/oCbH/Fbn4p+Epd9gro0=
-github.com/stolostron/observatorium-operator v0.0.0-20240109093235-2f0c855209dd h1:6qPIWdEPGt4WcHyZdCN1Nn20Gf2Xnui5UA3v0M91Cik=
-github.com/stolostron/observatorium-operator v0.0.0-20240109093235-2f0c855209dd/go.mod h1:fFyJt9/dkQ1/4NxiW4CjH4lj7brxGlkA4SscxoLfzYY=
+github.com/stolostron/observatorium-operator v0.0.0-20240403132649-1f7129fc3a27 h1:21h43ofoLC2hMPKH0fY+oglbxSH4rphoWOjbjiNTUes=
+github.com/stolostron/observatorium-operator v0.0.0-20240403132649-1f7129fc3a27/go.mod h1:fFyJt9/dkQ1/4NxiW4CjH4lj7brxGlkA4SscxoLfzYY=
 github.com/stolostron/search-v2-operator v0.0.0-20220721051905-143d28ab4f10 h1:USGd9WwtGqAflJ0sY7k41hCO5L5BuYaPElmAsZm/q4M=
 github.com/streadway/amqp v0.0.0-20190404075320-75d898a42a94/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1SddzLXVw=
 github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1SddzLXVw=
