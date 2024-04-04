@@ -32,6 +32,7 @@ var _ = Describe("Observability:", func() {
 		clusterName := utils.GetManagedClusterName(testOptions)
 		if clusterName == hubManagedClusterName {
 			namespace = hubMetricsCollectorNamespace
+			isHub = true
 		}
 	})
 
@@ -50,7 +51,7 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() error {
 				dep, err = utils.GetDeployment(
 					testOptions,
-					false,
+					isHub,
 					"metrics-collector-deployment",
 					namespace,
 				)
@@ -60,7 +61,7 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() error {
 				err = utils.DeleteDeployment(
 					testOptions,
-					false,
+					isHub,
 					"metrics-collector-deployment",
 					namespace,
 				)
@@ -70,7 +71,7 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() bool {
 				newDep, err = utils.GetDeployment(
 					testOptions,
-					false,
+					isHub,
 					"metrics-collector-deployment",
 					namespace,
 				)
@@ -92,7 +93,7 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() error {
 				newDep, err = utils.GetDeployment(
 					testOptions,
-					false,
+					isHub,
 					"metrics-collector-deployment",
 					namespace,
 				)
@@ -102,7 +103,7 @@ var _ = Describe("Observability:", func() {
 				newDep.Spec.Template.Spec.ServiceAccountName = updateSaName
 				newDep, err = utils.UpdateDeployment(
 					testOptions,
-					false,
+					isHub,
 					"metrics-collector-deployment",
 					namespace,
 					newDep,
@@ -113,7 +114,7 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() bool {
 				revertDep, err := utils.GetDeployment(
 					testOptions,
-					false,
+					isHub,
 					"metrics-collector-deployment",
 					namespace,
 				)
@@ -179,7 +180,7 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() error {
 			err, cm = utils.GetConfigMap(
 				testOptions,
-				false,
+				isHub,
 				"metrics-collector-serving-certs-ca-bundle",
 				namespace,
 			)
@@ -188,7 +189,7 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() error {
 			err = utils.DeleteConfigMap(
 				testOptions,
-				false,
+				isHub,
 				"metrics-collector-serving-certs-ca-bundle",
 				namespace,
 			)
@@ -198,7 +199,7 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() bool {
 			err, newCm = utils.GetConfigMap(
 				testOptions,
-				false,
+				isHub,
 				"metrics-collector-serving-certs-ca-bundle",
 				namespace,
 			)
@@ -223,5 +224,6 @@ var _ = Describe("Observability:", func() {
 		}
 		namespace = MCO_ADDON_NAMESPACE
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
+		isHub = true
 	})
 })
