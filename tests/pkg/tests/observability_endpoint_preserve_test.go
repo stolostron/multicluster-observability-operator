@@ -214,5 +214,6 @@ var _ = Describe("Observability:", func() {
 		namespace = MCO_ADDON_NAMESPACE
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 		isHub = false
+
 	})
 })
