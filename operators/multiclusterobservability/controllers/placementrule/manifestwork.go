@@ -329,6 +329,9 @@ func createManifestWorks(
 					container.Env[j].Value = clusterNamespace
 				}
 				if env.Name == operatorconfig.InstallPrometheus {
+					if mco.Annotations["test-env"] == "kind-test" {
+						installProm = true
+					}
 					container.Env[j].Value = strconv.FormatBool(installProm)
 				}
 			}
