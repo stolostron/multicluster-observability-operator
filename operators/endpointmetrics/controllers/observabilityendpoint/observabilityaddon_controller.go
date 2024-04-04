@@ -290,7 +290,6 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
-	// TODO: UPDATE
 	return ctrl.Result{}, nil
 }
 
