@@ -6,7 +6,6 @@ package observabilityendpoint
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -266,8 +265,6 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			}
 			obsAddon.Spec = *mcoList.Items[0].Spec.ObservabilityAddonSpec
 		}
-		addonSpec, _ := json.Marshal(obsAddon.Spec)
-		log.Info("found observabilityaddon", "spec", string(addonSpec))
 		created, err := updateMetricsCollectors(
 			ctx,
 			r.Client,
