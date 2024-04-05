@@ -243,9 +243,12 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			if !isHubMetricsCollector {
 				// For kind tests we need to deploy prometheus in hub but cannot set controller
 				// reference as there is no observabilityaddon
-				if err := controllerutil.SetControllerReference(obsAddon, res, r.Scheme); err != nil {
-					log.Info("Failed to set controller reference", "resource", res.GetName())
-					globalRes = append(globalRes, res)
+				// skip owner label for role and rolebinding
+				if res.GetKind() != "Role" && res.GetKind() != "RoleBinding" {
+					if err := controllerutil.SetControllerReference(obsAddon, res, r.Scheme); err != nil {
+						log.Info("Failed to set controller reference", "resource", res.GetName())
+						globalRes = append(globalRes, res)
+					}
 				}
 			}
 			if err := deployer.Deploy(res); err != nil {
