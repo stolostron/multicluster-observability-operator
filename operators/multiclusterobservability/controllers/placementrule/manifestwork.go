@@ -11,12 +11,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 
 	rbacv1 "k8s.io/api/rbac/v1"
 
+	gocmp "github.com/google/go-cmp/cmp"
+	gocmpopts "github.com/google/go-cmp/cmp/cmpopts"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -536,16 +537,17 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 				return err
 			}
 		} else {
+			cmpOptions := []gocmp.Option{gocmpopts.EquateEmpty()}
 			needsUpdate := false
 			switch obj := obj.(type) {
 			case *appsv1.Deployment:
 				currentDeployment := currentObj.(*appsv1.Deployment)
-				if !reflect.DeepEqual(obj.Spec, currentDeployment.Spec) {
+				if !gocmp.Equal(obj.Spec, currentDeployment.Spec, cmpOptions...) {
 					needsUpdate = true
 				}
 			case *corev1.Secret:
 				currentSecret := currentObj.(*corev1.Secret)
-				if !reflect.DeepEqual(obj.Data, currentSecret.Data) {
+				if !gocmp.Equal(obj.Data, currentSecret.Data, cmpOptions...) {
 					needsUpdate = true
 				}
 			case *corev1.ConfigMap:
@@ -554,22 +556,22 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 					continue
 				}
 				currentConfigMap := currentObj.(*corev1.ConfigMap)
-				if !reflect.DeepEqual(obj.Data, currentConfigMap.Data) {
+				if !gocmp.Equall(obj.Data, currentConfigMap.Data, cmpOptions...) {
 					needsUpdate = true
 				}
 			case *rbacv1.ClusterRole:
 				currentClusterRole := currentObj.(*rbacv1.ClusterRole)
-				if !reflect.DeepEqual(obj.Rules, currentClusterRole.Rules) {
+				if !gocmp.Equal(obj.Rules, currentClusterRole.Rules, cmpOptions...) {
 					needsUpdate = true
 				}
 			case *rbacv1.ClusterRoleBinding:
 				currentClusterRoleBinding := currentObj.(*rbacv1.ClusterRoleBinding)
-				if !reflect.DeepEqual(obj.Subjects, currentClusterRoleBinding.Subjects) {
+				if !gocmp.Equal(obj.Subjects, currentClusterRoleBinding.Subjects, cmpOptions...) {
 					needsUpdate = true
 				}
 			case *corev1.ServiceAccount:
 				currentServiceAccount := currentObj.(*corev1.ServiceAccount)
-				if !reflect.DeepEqual(obj.ImagePullSecrets, currentServiceAccount.ImagePullSecrets) {
+				if !gocmp.Equal(obj.ImagePullSecrets, currentServiceAccount.ImagePullSecrets, cmpOptions...) {
 					needsUpdate = true
 				}
 			}
