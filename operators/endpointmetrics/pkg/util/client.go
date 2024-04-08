@@ -6,6 +6,8 @@ package util
 
 import (
 	"context"
+	oav1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"k8s.io/apimachinery/pkg/runtime"
 	"os"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -33,7 +35,7 @@ var (
 )
 
 // GetOrCreateOCPClient get an existing hub client or create new one if it doesn't exist.
-func GetOrCreateHubClient(renew bool) (client.Client, error) {
+func GetOrCreateHubClient(renew bool, clientScheme *runtime.Scheme) (client.Client, error) {
 	if os.Getenv("UNIT_TEST") == "true" {
 		return hubClient, nil
 	}
@@ -48,13 +50,18 @@ func GetOrCreateHubClient(renew bool) (client.Client, error) {
 		return nil, err
 	}
 
-	s := scheme.Scheme
-	if err := oav1beta1.AddToScheme(s); err != nil {
-		return nil, err
+	if clientScheme == nil {
+		clientScheme := scheme.Scheme
+		if err := oav1beta1.AddToScheme(clientScheme); err != nil {
+			return nil, err
+		}
+		if err := oav1beta2.AddToScheme(clientScheme); err != nil {
+			return nil, err
+		}
 	}
 
 	// generate the client based off of the config
-	hubClient, err := client.New(config, client.Options{Scheme: s})
+	hubClient, err := client.New(config, client.Options{Scheme: clientScheme})
 
 	if err != nil {
 		log.Error(err, "Failed to create hub client")
@@ -90,10 +97,10 @@ func SetHubClient(c client.Client) {
 	hubClient = c
 }
 
-func RenewAndRetry(ctx context.Context) (client.Client, *oav1beta1.ObservabilityAddon, error) {
+func RenewAndRetry(ctx context.Context, scheme *runtime.Scheme) (client.Client, *oav1beta1.ObservabilityAddon, error) {
 	// try to renew the hub client
 	log.Info("renew hub client")
-	hubClient, err := GetOrCreateHubClient(true)
+	hubClient, err := GetOrCreateHubClient(true, scheme)
 	if err != nil {
 		log.Error(err, "Failed to create the hub client")
 		return nil, nil, err
