@@ -32,10 +32,10 @@ spec:
         resources:
           limits:
             cpu: 250m
-            memory: 180Mi
+            memory: 300Mi
           requests:
             cpu: 102m
-            memory: 180Mi
+            memory: 200Mi
         volumeMounts:
         - mountPath: /host/sys
           mountPropagation: HostToContainer
@@ -64,10 +64,10 @@ spec:
         resources:
           limits:
             cpu: 20m
-            memory: 40Mi
+            memory: 400Mi
           requests:
             cpu: 10m
-            memory: 20Mi
+            memory: 200Mi
         securityContext:
           runAsGroup: 65532
           runAsNonRoot: true
