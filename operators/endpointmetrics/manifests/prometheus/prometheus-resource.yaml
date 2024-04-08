@@ -48,7 +48,10 @@ spec:
       resources:
         requests:
           cpu: 1m
-          memory: 50Mi
+          memory: 200Mi
+        limits:
+          cpu: 10m
+          memory: 400Mi
   podMetadata:
     annotations:
       target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
