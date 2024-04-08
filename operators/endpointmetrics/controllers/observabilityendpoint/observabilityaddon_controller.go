@@ -64,12 +64,6 @@ const (
 	snoClusterType      = "SNO"
 )
 
-const (
-	defaultClusterType  = ""
-	ocpThreeClusterType = "ocp3"
-	snoClusterType      = "SNO"
-)
-
 var (
 	namespace             = os.Getenv("WATCH_NAMESPACE")
 	hubNamespace          = os.Getenv("HUB_NAMESPACE")
