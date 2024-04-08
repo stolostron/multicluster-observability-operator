@@ -31,7 +31,7 @@ var _ = Describe("Observability:", func() {
 		clusterName := utils.GetManagedClusterName(testOptions)
 		if clusterName == hubManagedClusterName {
 			namespace = hubMetricsCollectorNamespace
-			isHub = true
+			isHub = false
 		}
 	})
 
