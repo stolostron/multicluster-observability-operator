@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -542,12 +543,12 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			switch obj := obj.(type) {
 			case *appsv1.Deployment:
 				currentDeployment := currentObj.(*appsv1.Deployment)
-				if !gocmp.Equal(obj.Spec, currentDeployment.Spec, cmpOptions...) {
+				if !reflect.DeepEqual(obj.Spec, currentDeployment.Spec) {
 					needsUpdate = true
 				}
 			case *corev1.Secret:
 				currentSecret := currentObj.(*corev1.Secret)
-				if !gocmp.Equal(obj.Data, currentSecret.Data, cmpOptions...) {
+				if !reflect.DeepEqual(obj.Data, currentSecret.Data) {
 					needsUpdate = true
 				}
 			case *corev1.ConfigMap:
@@ -556,17 +557,17 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 					continue
 				}
 				currentConfigMap := currentObj.(*corev1.ConfigMap)
-				if !gocmp.Equall(obj.Data, currentConfigMap.Data, cmpOptions...) {
+				if !reflect.DeepEqual(obj.Data, currentConfigMap.Data) {
 					needsUpdate = true
 				}
 			case *rbacv1.ClusterRole:
 				currentClusterRole := currentObj.(*rbacv1.ClusterRole)
-				if !gocmp.Equal(obj.Rules, currentClusterRole.Rules, cmpOptions...) {
+				if !reflect.DeepEqual(obj.Rules, currentClusterRole.Rules) {
 					needsUpdate = true
 				}
 			case *rbacv1.ClusterRoleBinding:
 				currentClusterRoleBinding := currentObj.(*rbacv1.ClusterRoleBinding)
-				if !gocmp.Equal(obj.Subjects, currentClusterRoleBinding.Subjects, cmpOptions...) {
+				if !reflect.DeepEqual(obj.Subjects, currentClusterRoleBinding.Subjects) {
 					needsUpdate = true
 				}
 			case *corev1.ServiceAccount:
