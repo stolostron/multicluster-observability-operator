@@ -115,7 +115,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		// Fetch the ObservabilityAddon instance in hub cluster
 		err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
 		if err != nil {
-			hubClient, obsAddon, err := util.RenewAndRetry(ctx)
+			hubClient, obsAddon, err := util.RenewAndRetry(ctx, r.Scheme)
 			if err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to get observabilityaddon: %w", err)
 			}
