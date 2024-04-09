@@ -88,7 +88,7 @@ type ObservabilityAddonReconciler struct {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
-	log.Info("Reconciling")
+	log.Info("Reconciling test")
 
 	isHypershift := true
 	if os.Getenv("UNIT_TEST") != "true" {
