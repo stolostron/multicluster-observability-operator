@@ -21,6 +21,15 @@ spec:
   externalLabels:
     managed_cluster: CLUSTER
   listenLocal: true
+  initContainers:
+    - name: init-config-reloader
+      resources:
+        requests:
+          cpu: 1m
+          memory: 200Mi
+        limits:
+          cpu: 10m
+          memory: 300Mi
   containers:
     - args:
       - --logtostderr
