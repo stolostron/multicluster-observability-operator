@@ -9,4 +9,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: kube-state-metrics
-  namespace: open-cluster-management-addon-observability
+  namespace: open-cluster-management-observability
