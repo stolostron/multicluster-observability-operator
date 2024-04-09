@@ -413,7 +413,7 @@ func createManifestWorks(
 	manifests = injectIntoWork(manifests, dep)
 	// replace the pull secret and addon components image
 	if hasCustomRegistry {
-		log.Info("Replace the default pull secret to custom pull secret test", "cluster", clusterName)
+		log.Info("Replace the default pull secret to custom pull secret", "cluster", clusterName)
 		customPullSecret, err := imageRegistryClient.Cluster(clusterName).PullSecret()
 		if err == nil && customPullSecret != nil {
 			customPullSecret.ResourceVersion = ""
