@@ -25,14 +25,14 @@ func init() {
 func TestRenewAndRetry(t *testing.T) {
 	hubClient := fake.NewClientBuilder().Build()
 	SetHubClient(hubClient)
-	_, _, err := RenewAndRetry(context.TODO())
+	_, _, err := RenewAndRetry(context.TODO(), nil)
 	if err == nil {
 		t.Fatal("missing error")
 	}
 
 	hubClient1 := fake.NewClientBuilder().WithRuntimeObjects(newObservabilityAddon(name, testNamespace)).Build()
 	SetHubClient(hubClient1)
-	_, _, err = RenewAndRetry(context.TODO())
+	_, _, err = RenewAndRetry(context.TODO(), nil)
 	if err != nil {
 		t.Fatalf("Error caught: %v", err)
 	}

@@ -32,7 +32,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
 	github.com/stolostron/multiclusterhub-operator v0.0.0-20220902185016-e81ccfbecf55
-	github.com/stolostron/observatorium-operator v0.0.0-20240109093235-2f0c855209dd
+	github.com/stolostron/observatorium-operator v0.0.0-20240403132649-1f7129fc3a27
 	github.com/stretchr/testify v1.8.4
 	github.com/thanos-io/thanos v0.30.0
 	go.uber.org/zap v1.26.0
