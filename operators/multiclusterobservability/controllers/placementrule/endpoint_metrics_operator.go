@@ -104,6 +104,7 @@ func updateRes(r *resource.Resource,
 	}
 	// set the imagepullsecrets for sa
 	if r.GetKind() == "ServiceAccount" && r.GetName() == saName {
+		log.Error("msg", "ServiceAccount", r.GetName())
 		imageSecrets := obj.(*corev1.ServiceAccount).ImagePullSecrets
 		for i, imageSecret := range imageSecrets {
 			if imageSecret.Name == "REPLACE_WITH_IMAGEPULLSECRET" {
