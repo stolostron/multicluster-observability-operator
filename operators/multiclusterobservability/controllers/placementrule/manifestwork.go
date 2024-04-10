@@ -538,7 +538,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 				return err
 			}
 		} else {
-			cmpOptions := []gocmp.Option{gocmpopts.EquateEmpty()}
+			cmpOptions := []gocmp.Option{gocmpopts.EquateEmpty(), gocmpopts.SortSlices(func(a, b string) bool { return a < b })}
 			needsUpdate := false
 			switch obj := obj.(type) {
 			case *appsv1.Deployment:
