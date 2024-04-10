@@ -110,6 +110,7 @@ func updateRes(r *resource.Resource,
 			log.Error(nil, "Test log ServiceAccount", "imageSecret Name", imageSecret.Name)
 			if imageSecret.Name == "REPLACE_WITH_IMAGEPULLSECRET" {
 				imageSecrets[i].Name = mcoconfig.GetImagePullSecret(mco.Spec)
+				log.Error(nil, "Test log ServiceAccount", "i", i, "imageSecret", imageSecrets[i].Name)
 				break
 			}
 		}
