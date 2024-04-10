@@ -569,8 +569,6 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 				}
 			case *corev1.ServiceAccount:
 				currentServiceAccount := currentObj.(*corev1.ServiceAccount)
-				log.Info("Coleen obj.ImagePullSecrets", "image obj", obj.ImagePullSecrets)
-				log.Info("Coleen currentServiceAccount.ImagePullSecrets", "image current", currentServiceAccount.ImagePullSecrets)
 				if !reflect.DeepEqual(obj.ImagePullSecrets, currentServiceAccount.ImagePullSecrets) {
 					obj.SetResourceVersion(currentServiceAccount.ObjectMeta.ResourceVersion)
 					needsUpdate = true
@@ -578,7 +576,6 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			}
 
 			if needsUpdate {
-				log.Info("Coleen updating object and name ", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
 				err = c.Update(context.TODO(), obj)
 				if err != nil {
 					log.Error(err, "Failed to update resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
