@@ -569,8 +569,8 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 				}
 			case *corev1.ServiceAccount:
 				currentServiceAccount := currentObj.(*corev1.ServiceAccount)
-				log.Info("Coleen obj.ImagePullSecrets", obj.ImagePullSecrets)
-				log.Info("Coleen currentServiceAccount.ImagePullSecrets", currentServiceAccount.ImagePullSecrets)
+				log.Info("Coleen obj.ImagePullSecrets", "image obj", obj.ImagePullSecrets)
+				log.Info("Coleen currentServiceAccount.ImagePullSecrets", "image current", currentServiceAccount.ImagePullSecrets)
 				if !reflect.DeepEqual(obj.ImagePullSecrets, currentServiceAccount.ImagePullSecrets) {
 					obj.SetResourceVersion(currentServiceAccount.ObjectMeta.ResourceVersion)
 					needsUpdate = true
