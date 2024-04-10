@@ -572,7 +572,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 				}
 			case *corev1.ServiceAccount:
 				currentServiceAccount := currentObj.(*corev1.ServiceAccount)
-				log.Error("msg", "Test log to see secret", "obj", obj.ImagePullSecrets, "current", currentServiceAccount.ImagePullSecrets)
+				log.Error(nil, "Test log to see secret", "obj", obj.ImagePullSecrets, "current", currentServiceAccount.ImagePullSecrets)
 				if !gocmp.Equal(obj.ImagePullSecrets, currentServiceAccount.ImagePullSecrets, cmpOptions...) {
 					needsUpdate = true
 				}
