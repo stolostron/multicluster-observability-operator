@@ -570,6 +570,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			case *corev1.ServiceAccount:
 				currentServiceAccount := currentObj.(*corev1.ServiceAccount)
 				if !reflect.DeepEqual(obj.ImagePullSecrets, currentServiceAccount.ImagePullSecrets) {
+					obj.SetResourceVersion(currentServiceAccount.ObjectMeta.ResourceVersion)
 					needsUpdate = true
 				}
 			}
@@ -581,7 +582,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 					return err
 				}
 			}
-		}
+		}q
 	}
 
 	err := cert_controller.CreateMtlsCertSecretForHubCollector(c)
