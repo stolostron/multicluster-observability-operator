@@ -538,7 +538,15 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 				return err
 			}
 		} else {
-			cmpOptions := []gocmp.Option{gocmpopts.EquateEmpty(), gocmpopts.SortSlices(func(a, b string) bool { return a < b })}
+			sortObjRef := func(a, b corev1.ObjectReference) bool {
+				return a.Name < b.Name
+			}
+
+			sortLocalObjRef := func(a, b corev1.LocalObjectReference) bool {
+				return a.Name < b.Name
+			}
+
+			cmpOptions := []gocmp.Option{gocmpopts.EquateEmpty(), gocmpopts.SortSlices(func(a, b string) bool { return a < b }), gocmpopts.SortSlices(sortObjRef), gocmpopts.SortSlices(sortLocalObjRef)}
 			needsUpdate := false
 			switch obj := obj.(type) {
 			case *appsv1.Deployment:
