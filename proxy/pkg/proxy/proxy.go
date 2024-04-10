@@ -136,7 +136,7 @@ func preCheckRequest(req *http.Request) error {
 		util.UpdateUserProject(up)
 	}
 
-	if len(projectList) == 0 || len(util.GetAllManagedClusterNames()) == 0 {
+	if len(util.GetAllManagedClusterNames()) == 0 {
 		return errors.New("no project or cluster found")
 	}
 

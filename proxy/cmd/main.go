@@ -59,12 +59,13 @@ func main() {
 	klog.Infof("metrics server is: %s", cfg.metricServer)
 	klog.Infof("kubeconfig is: %s", cfg.kubeconfigLocation)
 
-	clusterClient, err := clusterclientset.NewForConfig(config.GetConfigOrDie())
+	kubeConfig := config.GetConfigOrDie()
+	clusterClient, err := clusterclientset.NewForConfig(kubeConfig)
 	if err != nil {
 		klog.Fatalf("failed to initialize new cluster clientset: %v", err)
 	}
 
-	kubeClient, err := kubernetes.NewForConfig(config.GetConfigOrDie())
+	kubeClient, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
 		klog.Fatalf("failed to initialize new kubernetes client: %v", err)
 	}

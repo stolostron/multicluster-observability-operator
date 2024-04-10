@@ -26,7 +26,6 @@ import (
 	userv1 "github.com/openshift/api/user/v1"
 	proxyconfig "github.com/stolostron/multicluster-observability-operator/proxy/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/proxy/pkg/rewrite"
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,6 +36,10 @@ import (
 	"k8s.io/kubectl/pkg/util/slice"
 	clusterclientset "open-cluster-management.io/api/client/cluster/clientset/versioned"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+
+	"github.com/stolostron/rbac-api-utils/pkg/rbac"
+	"golang.org/x/exp/slices"
+	"k8s.io/client-go/rest"
 )
 
 const (
@@ -50,6 +53,7 @@ var (
 
 	managedLabelList = proxyconfig.GetManagedClusterLabelList()
 	syncLabelList    = proxyconfig.GetSyncLabelList()
+	accessReviewer   *rbac.AccessReviewer
 )
 
 // resources for the gocron scheduler.
@@ -80,6 +84,11 @@ func InitAllManagedClusterLabelNames() {
 
 func InitScheduler() {
 	scheduler = gocron.NewScheduler(time.UTC)
+}
+
+func InitAccessReviewer(kConfig *rest.Config) (err error) {
+	accessReviewer, err = rbac.NewAccessReviewer(kConfig, nil)
+	return
 }
 
 // shouldUpdateManagedClusterLabelNames determine whether the managedcluster label names map should be updated.
@@ -172,6 +181,7 @@ func updateAllManagedClusterLabelNames(managedLabelList *proxyconfig.ManagedClus
 
 // ModifyMetricsQueryParams will modify request url params for query metrics.
 func ModifyMetricsQueryParams(req *http.Request, reqUrl string) {
+
 	userName := req.Header.Get("X-Forwarded-User")
 	klog.V(1).Infof("user is %v", userName)
 	klog.V(1).Infof("URL is: %s", req.URL)
@@ -182,24 +192,19 @@ func ModifyMetricsQueryParams(req *http.Request, reqUrl string) {
 		klog.Errorf("failed to get token from http header")
 	}
 
-	projectList, ok := GetUserProjectList(token)
-	klog.V(1).Infof("projectList from local mem cache = %v, ok = %v", projectList, ok)
-	if !ok {
-		projectList = FetchUserProjectList(token, reqUrl)
-		up := NewUserProject(userName, token, projectList)
-		UpdateUserProject(up)
-		klog.V(1).Infof("projectList from api server = %v", projectList)
-	}
-
-	klog.V(1).Infof("cluster list: %v", allManagedClusterNames)
-	klog.V(1).Infof("user <%s> project list: %v", userName, projectList)
-	if canAccessAllClusters(projectList) {
-		klog.Infof("user <%v> have access to all clusters", userName)
+	userMetricsAccess, err := getUserMetricsACLs(userName, token, reqUrl)
+	if err != nil {
+		klog.Errorf("Failed to determine user's metrics access: %v", err)
 		return
 	}
 
-	clusterList := getUserClusterList(projectList)
-	klog.Infof("user <%v> have access to these clusters: %v", userName, clusterList)
+	klog.Infof("user <%v> have metrics access to : %v", userName, userMetricsAccess)
+
+	allAccess := canAccessAll(userMetricsAccess)
+	if allAccess {
+		klog.Infof("user <%v> have access to all clusters and all namespaces", userName)
+		return
+	}
 
 	var rawQuery string
 	if req.Method == "POST" {
@@ -213,8 +218,8 @@ func ModifyMetricsQueryParams(req *http.Request, reqUrl string) {
 		if len(queryValues) == 0 {
 			return
 		}
-		queryValues = rewriteQuery(queryValues, clusterList, "query")
-		queryValues = rewriteQuery(queryValues, clusterList, "match[]")
+		queryValues = rewriteQuery(queryValues, userMetricsAccess, "query")
+		queryValues = rewriteQuery(queryValues, userMetricsAccess, "match[]")
 		rawQuery = queryValues.Encode()
 		req.Body = io.NopCloser(strings.NewReader(rawQuery))
 		req.Header.Set("Content-Length", fmt.Sprint(len([]rune(rawQuery))))
@@ -224,8 +229,8 @@ func ModifyMetricsQueryParams(req *http.Request, reqUrl string) {
 		if len(queryValues) == 0 {
 			return
 		}
-		queryValues = rewriteQuery(queryValues, clusterList, "query")
-		queryValues = rewriteQuery(queryValues, clusterList, "match[]")
+		queryValues = rewriteQuery(queryValues, userMetricsAccess, "query")
+		queryValues = rewriteQuery(queryValues, userMetricsAccess, "match[]")
 		req.URL.RawQuery = queryValues.Encode()
 		rawQuery = req.URL.RawQuery
 	}
@@ -506,10 +511,224 @@ func getUserClusterList(projectList []string) []string {
 	return clusterList
 }
 
-func rewriteQuery(queryValues url.Values, clusterList []string, key string) url.Values {
+func getUserMetricsACLs(userName string, token string, reqUrl string) (map[string][]string, error) {
+
+	klog.Infof("Getting metrics access for user : %v", userName)
+
+	// get all metricsaccess ACLs for the user
+	// i.e every  metrics/<ns> on managedcluster CR defined for the user
+	// in the returned map -  key is managedcluster name , value is namespaces accesible on that cluster
+	metricsAccess, arerr := accessReviewer.GetMetricsAccess(token)
+	if arerr != nil {
+		klog.Errorf("Failed to get Metrics Access from Access Reviewer: %v", arerr)
+		return nil, arerr
+	}
+
+	klog.Infof("user <%v>  metrics-access: %v", userName, metricsAccess)
+
+	//if metrics access contains a key  "*" then the corresponding
+	// value i.e acls  apply to all managedclusters
+	if allClusterAcls, found := metricsAccess["*"]; found {
+		for mcName := range allManagedClusterNames {
+			if clusterAcls, ok := metricsAccess[mcName]; ok {
+				for _, allClusterAclItem := range allClusterAcls {
+					if !slices.Contains(clusterAcls, allClusterAclItem) {
+						clusterAcls = append(clusterAcls, allClusterAclItem)
+					}
+				}
+				metricsAccess[mcName] = clusterAcls
+			} else {
+				metricsAccess[mcName] = allClusterAcls
+			}
+		}
+		delete(metricsAccess, "*")
+	}
+
+	klog.Infof("user <%v>  metrics-access after processing for AllCluster acls: %v", userName, metricsAccess)
+
+	// for backward compatibility, support the existing access control mechanism
+	// i.e access to managedcluster project\namespace means access to all namespaces on that managedcluster
+
+	//get all managedcluster project/namespace user has access to
+	projectList, ok := GetUserProjectList(token)
+	klog.V(1).Infof("projectList from local mem cache = %v, ok = %v", projectList, ok)
+	if !ok {
+		projectList = FetchUserProjectList(token, reqUrl)
+		up := NewUserProject(userName, token, projectList)
+		UpdateUserProject(up)
+		klog.V(1).Infof("projectList from api server = %v", projectList)
+	}
+	klog.V(1).Infof("cluster list: %v", allManagedClusterNames)
+	klog.V(1).Infof("user <%s> project list: %v", userName, projectList)
+
+	clusterList := getUserClusterList(projectList)
+	klog.Infof("user <%v> have access to these clusters: %v", userName, clusterList)
+
+	// combine the  user project access list to the metrics access list
+	// project access by default give access to all namespaces ( i.e * ) unless
+	// scoped down to specific namespaces through metrics/<ns>  acl definition
+	for _, cluster := range clusterList {
+		if _, found := metricsAccess[cluster]; found {
+			continue
+		}
+
+		// metricAcls not found for this cluster,
+		// so add * for backward compatibility
+		// as user has access to the managedcluster project
+		metricsAccess[cluster] = []string{"*"}
+	}
+	klog.Infof("user <%v>  metrics-access after merging with cluster access list %v", userName, metricsAccess)
+
+	return metricsAccess, nil
+}
+
+// canAccessAllClusters check user have permission to access all clusters
+func canAccessAll(clusterNamespaces map[string][]string) bool {
+	if len(allManagedClusterNames) == 0 && len(clusterNamespaces) == 0 {
+		return false
+	}
+
+	for _, clusterName := range allManagedClusterNames {
+
+		namespaces, contains := clusterNamespaces[clusterName]
+
+		//does not have access to the cluster
+		if !contains {
+			return false
+		}
+
+		//does not have access to all the namespaces on the cluster
+		if len(namespaces) != 0 && !slices.Contains(namespaces, "*") {
+			return false
+		}
+	}
+
+	return true
+}
+
+func getCommonNamespacesAcrossClusters(clusters []string, metricsAccess map[string][]string) []string {
+
+	klog.Infof("common namespaces across clusters: %v  in metrics access map: %v", clusters, metricsAccess)
+
+	//make a smaller map of metricsaccess for just the requested clusters
+	reqClustersMetricsAccess := make(map[string][]string)
+	if len(clusters) == 0 {
+		reqClustersMetricsAccess = metricsAccess
+	} else {
+		for _, cluster := range clusters {
+			reqClustersMetricsAccess[cluster] = metricsAccess[cluster]
+		}
+	}
+	klog.Infof("requested clusters metrics access map: %v", reqClustersMetricsAccess)
+
+	//make a count of how many times each unique namespace occurs across clusters
+	//if the count of a ns == le(clusters), it means it exists across all clusters
+
+	namespaceCounts := make(map[string]int)
+	allAccessCount := 0
+
+	for _, namespaces := range reqClustersMetricsAccess {
+
+		if len(namespaces) == 0 || slices.Contains(namespaces, "*") {
+			allAccessCount++
+		} else {
+			for _, namespace := range namespaces {
+				count, ok := namespaceCounts[namespace]
+				if !ok {
+					namespaceCounts[namespace] = 1
+				} else {
+					namespaceCounts[namespace] = count + 1
+				}
+			}
+		}
+	}
+
+	klog.Infof("allAccessCount  : %v", allAccessCount)
+	klog.Infof("Namespaces Count  : %v", namespaceCounts)
+
+	commonNamespaces := []string{}
+
+	if allAccessCount == len(reqClustersMetricsAccess) {
+		commonNamespaces = append(commonNamespaces, "*")
+	} else {
+		for ns, count := range namespaceCounts {
+			if (count + allAccessCount) == len(reqClustersMetricsAccess) {
+				commonNamespaces = append(commonNamespaces, ns)
+			}
+		}
+	}
+
+	klog.Infof("common namespaces across clusters: %v   : %v", clusters, commonNamespaces)
+	return commonNamespaces
+}
+
+// read clusters in the user's query
+func getClustersInQuery(queryValues url.Values, key string, userMetricsAccess map[string][]string) []string {
+
+	// parse the promql query and return the queries  set of cluster
+	// so that better namespace filtering can be done
+
+	// for query  --  namespace:container_memory_usage_bytes:sum{cluster=~"devcluster1"}
+	// result should be -- "devcluster1"
+
+	// stubbing to return "empty" i.e all clusters
+
+	query := queryValues.Get(key)
+	reg := regexp.MustCompile(`([{|,][ ]*)cluster(=|!=|=~|!~)([ ]*)"([^"]+)"`)
+	matches := reg.FindStringSubmatch(query)
+	if len(matches) == 0 {
+		return []string{}
+	}
+	operator := matches[2]
+	expr := matches[4]
+	clusters := []string{}
+	for cluster := range userMetricsAccess {
+		clusters = append(clusters, cluster)
+	}
+	queryClusters := []string{}
+	switch operator {
+	case "=":
+		return []string{expr}
+	case "!=":
+		for _, cluster := range clusters {
+			if cluster != expr {
+				queryClusters = append(queryClusters, cluster)
+			}
+		}
+		return queryClusters
+	case "=~":
+		reg = regexp.MustCompile(expr)
+		for _, cluster := range clusters {
+			if reg.MatchString(cluster) {
+				queryClusters = append(queryClusters, cluster)
+			}
+		}
+		return queryClusters
+	case "!~":
+		reg = regexp.MustCompile(expr)
+		for _, cluster := range clusters {
+			if !reg.MatchString(cluster) {
+				queryClusters = append(queryClusters, cluster)
+			}
+		}
+		return queryClusters
+	}
+	return []string{}
+}
+
+func rewriteQuery(queryValues url.Values, userMetricsAccess map[string][]string, key string) url.Values {
+
 	originalQuery := queryValues.Get(key)
+
+	klog.Infof("REQRITE QUERY: key is: %v ,  originalQuery is: \n %v", key, originalQuery)
 	if len(originalQuery) == 0 {
 		return queryValues
+	}
+
+	//get clusters list for injecting cluster label
+	clusterList := make([]string, 0, len(userMetricsAccess))
+	for clusterName := range userMetricsAccess {
+		clusterList = append(clusterList, clusterName)
 	}
 
 	modifiedQuery, err := rewrite.InjectLabels(originalQuery, "cluster", clusterList)
@@ -517,8 +736,32 @@ func rewriteQuery(queryValues url.Values, clusterList []string, key string) url.
 		return queryValues
 	}
 
+	klog.Infof("REQRITE QUERY Modified Query after injecting clusters: \n %v", modifiedQuery)
+
+	modifiedQuery2 := modifiedQuery
+
+	//get namespaces list for injecting namespaces label
+
+	queryClusters := getClustersInQuery(queryValues, key, userMetricsAccess)
+
+	commonNsAcrossQueryClusters := getCommonNamespacesAcrossClusters(queryClusters, userMetricsAccess)
+
+	//do not add namespaces filter if access is to all namespaces
+	allNamespaceAccess := len(commonNsAcrossQueryClusters) == 1 && commonNsAcrossQueryClusters[0] == "*"
+
+	klog.Infof("REQRITE QUERY Modified Query hasAccess to All namespaces: \n %v", allNamespaceAccess)
+
+	if !allNamespaceAccess {
+		modifiedQuery2, err = rewrite.InjectLabels(modifiedQuery, "namespace", commonNsAcrossQueryClusters)
+		if err != nil {
+			return queryValues
+		}
+	}
+
+	klog.Infof("REQRITE QUERY Modified Query after injecting namespaces:  \n %v", modifiedQuery2)
+
 	queryValues.Del(key)
-	queryValues.Add(key, modifiedQuery)
+	queryValues.Add(key, modifiedQuery2)
 	return queryValues
 }
 

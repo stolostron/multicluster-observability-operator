@@ -35,6 +35,7 @@ require (
 	github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
 	github.com/stolostron/multiclusterhub-operator v0.0.0-20240507130539-00cf6ee9f650
 	github.com/stolostron/observatorium-operator v0.0.0-20240521155951-b4302d25bd18
+	github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256
 	github.com/stretchr/testify v1.9.0
 	github.com/thanos-io/thanos v0.35.0
 	go.uber.org/zap v1.27.0

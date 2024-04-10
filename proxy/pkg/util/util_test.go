@@ -29,7 +29,7 @@ func newHTTPRequest() *http.Request {
 	return req
 }
 
-func createFakeServerWithInvalidJSON(port string, t *testing.T) {
+func createFakeServerWithInvalidJSON(port string) {
 	server := http.NewServeMux()
 	server.HandleFunc("/",
 		func(w http.ResponseWriter, req *http.Request) {
@@ -42,7 +42,7 @@ func createFakeServerWithInvalidJSON(port string, t *testing.T) {
 	}
 }
 
-func createFakeServer(port string, t *testing.T) {
+func createFakeServer(port string) {
 	server := http.NewServeMux()
 	projectList := `{
 		"kind": "ProjectList",
@@ -138,7 +138,9 @@ func TestGetAllManagedClusterNames(t *testing.T) {
 		{"modify params with all cluster", map[string]string{"c0": "c0", "c1": "c1"}, `query=foo`},
 		{"no cluster", map[string]string{}, "query=foo"},
 	}
-	go createFakeServer("3002", t)
+	go func() {
+		createFakeServer("3002")
+	}()
 	time.Sleep(time.Second)
 
 	InitAllManagedClusterNames()
@@ -224,7 +226,11 @@ func TestRewriteQuery(t *testing.T) {
 	}
 
 	for _, c := range testCaseList {
-		output := rewriteQuery(c.urlValue, c.clusterList, c.key)
+		clusterMap := make(map[string][]string)
+		for _, cluster := range c.clusterList {
+			clusterMap[cluster] = []string{cluster}
+		}
+		output := rewriteQuery(c.urlValue, clusterMap, c.key)
 		if output.Get(c.key) != c.expected {
 			t.Errorf("case (%v) output: (%v) is not the expected: (%v)", c.name, output, c.expected)
 		}
@@ -263,7 +269,9 @@ func TestFetchUserProjectList(t *testing.T) {
 		{"get 2 projects", "", "http://127.0.0.1:4002/", 2},
 		{"invalid url", "", "http://127.0.0.1:300/", 0},
 	}
-	go createFakeServer("4002", t)
+	go func() {
+		createFakeServer("4002")
+	}()
 	time.Sleep(time.Second)
 
 	for _, c := range testCaseList {
@@ -273,7 +281,9 @@ func TestFetchUserProjectList(t *testing.T) {
 		}
 	}
 
-	go createFakeServerWithInvalidJSON("5002", t)
+	go func() {
+		createFakeServerWithInvalidJSON("5002")
+	}()
 	output := FetchUserProjectList("", "http://127.0.0.1:5002/")
 	if len(output) != 0 {
 		t.Errorf("case (invalid json) output: (%v) is not the expected: (0)", len(output))
