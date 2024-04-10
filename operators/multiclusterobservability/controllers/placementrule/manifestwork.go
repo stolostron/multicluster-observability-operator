@@ -585,7 +585,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 					return err
 				}
 			}
-		}q
+		}
 	}
 
 	err := cert_controller.CreateMtlsCertSecretForHubCollector(c)
