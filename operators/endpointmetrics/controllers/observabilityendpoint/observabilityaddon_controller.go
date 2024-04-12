@@ -394,6 +394,12 @@ func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx
 				Resources: []string{"services", "endpoints", "pods"},
 				Verbs:     []string{"get", "list", "watch"},
 			},
+			// add finalizers on observabilityaddon resource
+			{
+				APIGroups: []string{"observability.open-cluster-management.io"},
+				Resources: []string{"observabilityaddons/finalizers"},
+				Verbs:     []string{"*"},
+			},
 		},
 	}
 
