@@ -55,9 +55,11 @@ func Render(
 	c runtimeclient.Client,
 	hubInfo *operatorconfig.HubInfo,
 ) ([]*unstructured.Unstructured, error) {
+	isKindTest := false
 	if strings.Contains(hubInfo.ClusterName, "kind") {
 		//remove -kind from the cluster name
 		hubInfo.ClusterName = strings.Replace(hubInfo.ClusterName, "-kind", "", 1)
+		isKindTest = true
 		namespace = "open-cluster-management-observability"
 	}
 
@@ -206,7 +208,7 @@ func Render(
 			}
 			if disabledMetricsSt != "" {
 				s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(promConfig, "_DISABLED_METRICS_", disabledMetricsSt)
-				if strings.Contains(hubInfo.ClusterName, "kind") {
+				if isKindTest {
 					//replace all occurences of open-cluster-management-addon-observability with open-cluster-management-observability in the scrape-targets.yaml
 					s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(s.StringData["scrape-targets.yaml"], "open-cluster-management-addon-observability", "open-cluster-management-observability")
 				}
