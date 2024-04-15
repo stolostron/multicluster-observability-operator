@@ -9,8 +9,6 @@ import (
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
-
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
