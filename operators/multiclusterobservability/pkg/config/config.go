@@ -122,7 +122,7 @@ const (
 	ObservatoriumOperatorImgName   = "observatorium-operator"
 	ObservatoriumOperatorImgKey    = "observatorium_operator"
 	ThanosReceiveControllerImgName = "thanos-receive-controller"
-	//ThanosReceiveControllerKey is used to get from mch-image-manifest.xxx configmap.
+	// ThanosReceiveControllerKey is used to get from mch-image-manifest.xxx configmap.
 	ThanosReceiveControllerKey    = "thanos_receive_controller"
 	ThanosReceiveControllerImgTag = "master-2022-04-01-b58820f"
 	ThanosImgName                 = "thanos"
@@ -229,9 +229,9 @@ const (
 	MetricsCollector             = "metrics-collector"
 	Observatorium                = "observatorium"
 
-	RetentionResolutionRaw = "30d"
-	RetentionResolution5m  = "180d"
-	RetentionResolution1h  = "0d"
+	RetentionResolutionRaw = "365d"
+	RetentionResolution5m  = "365d"
+	RetentionResolution1h  = "365d"
 	RetentionInLocal       = "24h"
 	DeleteDelay            = "48h"
 	BlockDuration          = "2h"
@@ -776,7 +776,7 @@ func GetImagePullSecret(mco observabilityv1beta2.MultiClusterObservabilitySpec) 
 
 func getDefaultResource(resourceType string, resource corev1.ResourceName,
 	component string) string {
-	//No provide the default limits
+	// No provide the default limits
 	if resourceType == ResourceLimits && component != Grafana {
 		return ""
 	}
@@ -1073,7 +1073,7 @@ func SetOperandNames(c client.Client) error {
 	if len(operandNames) != 0 {
 		return nil
 	}
-	//set the default values.
+	// set the default values.
 	operandNames[Grafana] = GetOperandNamePrefix() + Grafana
 	operandNames[RBACQueryProxy] = GetOperandNamePrefix() + RBACQueryProxy
 	operandNames[Alertmanager] = GetOperandNamePrefix() + Alertmanager
