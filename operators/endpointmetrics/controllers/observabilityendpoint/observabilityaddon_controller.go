@@ -69,6 +69,7 @@ var (
 	hubNamespace          = os.Getenv("HUB_NAMESPACE")
 	isHubMetricsCollector = os.Getenv("HUB_ENDPOINT_OPERATOR") == "true"
 	serviceAccountName    = os.Getenv("SERVICE_ACCOUNT")
+	isKindTest            = false
 )
 
 // ObservabilityAddonReconciler reconciles a ObservabilityAddon object.
@@ -233,6 +234,10 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	} else {
 		// Render the prometheus templates
+		if isHubMetricsCollector && installPrometheus {
+			//This case runs only in kind tests in the hub cluster
+			hubInfo.ClusterName = hubInfo.ClusterName + "-kind"
+		}
 		renderer := rendererutil.NewRenderer()
 		toDeploy, err := rendering.Render(renderer, r.Client, hubInfo)
 		if err != nil {
