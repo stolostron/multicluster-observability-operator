@@ -5,7 +5,6 @@
 package tests
 
 import (
-	"fmt"
 	"os"
 
 	. "github.com/onsi/ginkgo"
@@ -46,8 +45,6 @@ var _ = Describe("Observability:", func() {
 				err error
 				dep *appv1.Deployment
 			)
-			clusterName := utils.GetManagedClusterName(testOptions)
-			fmt.Printf("Coleen deleting metrics-collector deployment for namespace : %s  cluster: %s\n", namespace, clusterName)
 			Eventually(func() error {
 				dep, err = utils.GetDeployment(
 					testOptions,
@@ -87,8 +84,6 @@ var _ = Describe("Observability:", func() {
 			if os.Getenv("IS_KIND_ENV") == trueStr {
 				Skip("Skip the case due to run in KinD")
 			}
-			clusterName := utils.GetManagedClusterName(testOptions)
-			fmt.Printf("Coleen deleting metrics-collector deployment for namespace : %s  cluster: %s\n", namespace, clusterName)
 			updateSaName := "test-serviceaccount"
 			Eventually(func() error {
 				newDep, err = utils.GetDeployment(

@@ -27,8 +27,6 @@ var _ = Describe("Observability:", func() {
 	})
 
 	It("@BVT - [P1][Sev1][observability][Stable] Should have metric data in grafana console (grafana/g0)", func() {
-		clusterName := utils.GetManagedClusterName(testOptions)
-		fmt.Printf("Coleen deleting metrics-collector deployment for namespace : %s  cluster: %s\n", namespace, clusterName)
 		Eventually(func() error {
 			clusters, err := utils.ListManagedClusters(testOptions)
 			if err != nil {
