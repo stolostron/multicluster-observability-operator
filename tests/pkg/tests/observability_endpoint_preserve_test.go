@@ -5,6 +5,7 @@
 package tests
 
 import (
+	"fmt"
 	"os"
 
 	. "github.com/onsi/ginkgo"
@@ -37,11 +38,16 @@ var _ = Describe("Observability:", func() {
 
 	Context("[P2][Sev2][observability] Should revert any manual changes on metrics-collector deployment (endpoint_preserve/g0) -", func() {
 		newDep := &appv1.Deployment{}
-		It("[Stable] Deleting metrics-collector deployment", func() {
+		It("[Stable] Deleting metrics-collector deployment for cluster", func() {
+			if os.Getenv("IS_KIND_ENV") == trueStr {
+				Skip("Skip the case due to run in KinD")
+			}
 			var (
 				err error
 				dep *appv1.Deployment
 			)
+			clusterName := utils.GetManagedClusterName(testOptions)
+			fmt.Printf("Coleen deleting metrics-collector deployment for namespace : %s  cluster: %s\n", namespace, clusterName)
 			Eventually(func() error {
 				dep, err = utils.GetDeployment(
 					testOptions,
@@ -78,6 +84,11 @@ var _ = Describe("Observability:", func() {
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 		})
 		It("[Stable] Updating metrics-collector deployment", func() {
+			if os.Getenv("IS_KIND_ENV") == trueStr {
+				Skip("Skip the case due to run in KinD")
+			}
+			clusterName := utils.GetManagedClusterName(testOptions)
+			fmt.Printf("Coleen deleting metrics-collector deployment for namespace : %s  cluster: %s\n", namespace, clusterName)
 			updateSaName := "test-serviceaccount"
 			Eventually(func() error {
 				newDep, err = utils.GetDeployment(
