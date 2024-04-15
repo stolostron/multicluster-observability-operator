@@ -227,7 +227,7 @@ func Render(
 		}
 	}
 
-	// Ordering resources to ensure they are applied in correct order
+	// Ordering resources to ensure they are applied in the correct order
 	slices.SortFunc(resources, func(a, b *unstructured.Unstructured) bool {
 		return (resourcePriority(a) - resourcePriority(b)) < 0
 	})
