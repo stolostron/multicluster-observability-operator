@@ -358,7 +358,6 @@ func CheckAllPodsAffinity(opt TestOptions) error {
 			// No affinity set for endpoint-operator and metrics-collector in the hub
 			continue
 		}
-
 		if pod.Spec.Affinity == nil {
 			return fmt.Errorf("Failed to check affinity for pod: %v" + pod.GetName())
 		}

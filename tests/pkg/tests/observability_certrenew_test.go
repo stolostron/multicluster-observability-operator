@@ -56,7 +56,7 @@ var _ = Describe("Observability:", func() {
 			}
 			_, apiPodList := utils.GetPodList(
 				testOptions,
-				true,
+				isHub,
 				MCO_NAMESPACE,
 				"app.kubernetes.io/name=observatorium-api",
 			)
@@ -87,7 +87,7 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() bool {
 			err1, appPodList := utils.GetPodList(
 				testOptions,
-				true,
+				isHub,
 				MCO_NAMESPACE,
 				"app.kubernetes.io/name=observatorium-api",
 			)
