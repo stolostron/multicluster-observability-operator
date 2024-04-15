@@ -244,14 +244,12 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			if !isHubMetricsCollector {
 				// For kind tests we need to deploy prometheus in hub but cannot set controller
 				// reference as there is no observabilityaddon
-				// skip owner label for role and rolebinding
-				if res.GetKind() != "Role" && res.GetKind() != "RoleBinding" {
-					if err := controllerutil.SetControllerReference(obsAddon, res, r.Scheme); err != nil {
-						log.Info("Failed to set controller reference", "resource", res.GetName())
-						globalRes = append(globalRes, res)
-					}
+				if err := controllerutil.SetControllerReference(obsAddon, res, r.Scheme); err != nil {
+					log.Info("Failed to set controller reference", "resource", res.GetName(), "kind", res.GetKind(), "error", err)
+					globalRes = append(globalRes, res)
 				}
 			}
+
 			if err := deployer.Deploy(res); err != nil {
 				log.Error(err, fmt.Sprintf("Failed to deploy %s %s/%s",
 					res.GetKind(), namespace, res.GetName()))
@@ -401,12 +399,6 @@ func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx
 				Resources: []string{"services", "endpoints", "pods"},
 				Verbs:     []string{"get", "list", "watch"},
 			},
-			// add finalizers on observabilityaddon resource
-			{
-				APIGroups: []string{"observability.open-cluster-management.io"},
-				Resources: []string{"observabilityaddons/finalizers"},
-				Verbs:     []string{"*"},
-			},
 		},
 	}
 
@@ -491,15 +483,20 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 	if os.Getenv("NAMESPACE") != "" {
 		namespace = os.Getenv("NAMESPACE")
 	}
-	return ctrl.NewControllerManagedBy(mgr).
-		For(
-			&oav1beta1.ObservabilityAddon{},
-			builder.WithPredicates(getPred(obAddonName, namespace, true, true, true)),
-		).
-		Watches(
+
+	ctrlBuilder := ctrl.NewControllerManagedBy(mgr).For(
+		&oav1beta1.ObservabilityAddon{},
+		builder.WithPredicates(getPred(obAddonName, namespace, true, true, true)),
+	)
+
+	if isHubMetricsCollector {
+		ctrlBuilder = ctrlBuilder.Watches(
 			&source.Kind{Type: &oav1beta2.MultiClusterObservability{}},
 			&handler.EnqueueRequestForObject{},
-		).
+		)
+	}
+
+	return ctrlBuilder.
 		Watches(
 			&source.Kind{Type: &corev1.Secret{}},
 			&handler.EnqueueRequestForObject{},
