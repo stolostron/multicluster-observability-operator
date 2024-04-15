@@ -6,8 +6,9 @@ package util
 
 import (
 	"context"
-	"k8s.io/apimachinery/pkg/runtime"
 	"os"
+
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
