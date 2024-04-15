@@ -69,7 +69,6 @@ var (
 	hubNamespace          = os.Getenv("HUB_NAMESPACE")
 	isHubMetricsCollector = os.Getenv("HUB_ENDPOINT_OPERATOR") == "true"
 	serviceAccountName    = os.Getenv("SERVICE_ACCOUNT")
-	isKindTest            = false
 )
 
 // ObservabilityAddonReconciler reconciles a ObservabilityAddon object.
