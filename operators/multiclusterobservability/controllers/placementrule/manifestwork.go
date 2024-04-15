@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/exp/slices"
+
 	rbacv1 "k8s.io/api/rbac/v1"
 
 	"gopkg.in/yaml.v2"
@@ -28,6 +30,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	gocmp "github.com/google/go-cmp/cmp"
+	gocmpopts "github.com/google/go-cmp/cmp/cmpopts"
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -571,9 +575,32 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 					needsUpdate = true
 				}
 			case *corev1.ServiceAccount:
-				currentServiceAccount := currentObj.(*corev1.ServiceAccount)
-				if !reflect.DeepEqual(obj.ImagePullSecrets, currentServiceAccount.ImagePullSecrets) {
-					needsUpdate = true
+				// https://issues.redhat.com/browse/ACM-10967
+				// Some of these ServiceAccounts will be read from static files so they will never contain
+				// the generated Secrets as part of their corev1.ServiceAccount.ImagePullSecrets field.
+				// This checks by way of slice length if this particular ServiceAccount can be one of those.
+				if len(obj.ImagePullSecrets) < len(currentObj.(*corev1.ServiceAccount).ImagePullSecrets) {
+					for _, imagePullSecret := range obj.ImagePullSecrets {
+						if !slices.Contains(currentObj.(*corev1.ServiceAccount).ImagePullSecrets, imagePullSecret) {
+							needsUpdate = true
+							break
+						}
+					}
+				} else {
+					sortObjRef := func(a, b corev1.ObjectReference) bool {
+						return a.Name < b.Name
+					}
+
+					sortLocalObjRef := func(a, b corev1.LocalObjectReference) bool {
+						return a.Name < b.Name
+					}
+
+					cmpOptions := []gocmp.Option{gocmpopts.EquateEmpty(), gocmpopts.SortSlices(sortObjRef), gocmpopts.SortSlices(sortLocalObjRef)}
+
+					currentServiceAccount := currentObj.(*corev1.ServiceAccount)
+					if !gocmp.Equal(obj.ImagePullSecrets, currentServiceAccount.ImagePullSecrets, cmpOptions...) {
+						needsUpdate = true
+					}
 				}
 			}
 
