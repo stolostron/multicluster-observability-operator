@@ -55,7 +55,6 @@ const (
 	managedClusterObsCertName                      = "observability-managed-cluster-certs"
 	nonOCP                                         = "N/A"
 	disableAddonAutomaticInstallationAnnotationKey = "addon.open-cluster-management.io/disable-automatic-installation"
-	hubEndpointSaName                              = "endpoint-observability-operator-sa"
 )
 
 var (
@@ -1039,7 +1038,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&source.Kind{Type: &corev1.ServiceAccount{}},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(hubEndpointSaName, config.GetDefaultNamespace(), false, false, true)),
+			builder.WithPredicates(getPred(config.HubEndpointSaName, config.GetDefaultNamespace(), false, false, true)),
 		)
 	// create and return a new controller
 	return ctrBuilder.Complete(r)
