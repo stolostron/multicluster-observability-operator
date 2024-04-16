@@ -420,11 +420,15 @@ func createAllRelatedRes(
 					managedCluster, managedCluster,
 					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, true)
 			} else if openshiftVersion == "mimical" {
+				installProm := false
+				if mco.Annotations["test-env"] == "kind-test" {
+					installProm = true
+				}
 				// Create copy of hub-info-secret for local-cluster since hubInfo is global variable
 				hubInfoSecretCopy := hubInfoSecret.DeepCopy()
 				err = createManagedClusterRes(c, mco,
 					managedCluster, config.GetDefaultNamespace(),
-					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecretCopy, false)
+					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecretCopy, installProm)
 			} else {
 				err = createManagedClusterRes(c, mco,
 					managedCluster, managedCluster,

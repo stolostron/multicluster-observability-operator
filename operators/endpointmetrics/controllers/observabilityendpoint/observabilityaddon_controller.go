@@ -241,9 +241,13 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 		deployer := deploying.NewDeployer(r.Client)
 		for _, res := range toDeploy {
-			if err := controllerutil.SetControllerReference(obsAddon, res, r.Scheme); err != nil {
-				log.Info("Failed to set controller reference", "resource", res.GetName())
-				globalRes = append(globalRes, res)
+			if !isHubMetricsCollector {
+				// For kind tests we need to deploy prometheus in hub but cannot set controller
+				// reference as there is no observabilityaddon
+				if err := controllerutil.SetControllerReference(obsAddon, res, r.Scheme); err != nil {
+					log.Info("Failed to set controller reference", "resource", res.GetName())
+					globalRes = append(globalRes, res)
+				}
 			}
 			if err := deployer.Deploy(res); err != nil {
 				log.Error(err, fmt.Sprintf("Failed to deploy %s %s/%s",
