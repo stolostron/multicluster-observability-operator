@@ -73,6 +73,7 @@ func Render(
 		return nil, err
 	}
 	for idx := range resources {
+		log.Info("Coleen resource type and name", "resource type", resources[idx].GetName(), "resource kind", resources[idx].GetKind())
 		//if resources kind is clusterrolebinding or rolebinding change the subjects namespace to "open-cluster-management-obserbability"
 		if isKindTest {
 			if resources[idx].GetKind() == "ClusterRoleBinding" || resources[idx].GetKind() == "RoleBinding" {
@@ -209,7 +210,7 @@ func Render(
 				//replace all occurrences of open-cluster-management-addon-observability with open-cluster-management-observability in the scrape-targets.yaml
 				s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(s.StringData["scrape-targets.yaml"], "open-cluster-management-addon-observability", "open-cluster-management-observability")
 				// print scrape-targets.yaml
-				log.Info("scrape-targets.yaml", "scrape-targets.yaml", s.StringData["scrape-targets.yaml"])
+				log.Info("Coleen scrape-targets.yaml", "scrape-targets.yaml", s.StringData["scrape-targets.yaml"])
 			}
 
 			// replace the disabled metrics
