@@ -58,6 +58,7 @@ func Render(
 
 	isKindTest := false
 	if strings.Contains(hubInfo.ClusterName, "kind") {
+		log.Info("Coleen Running in kind test")
 		//remove -kind from the cluster name
 		hubInfo.ClusterName = strings.Replace(hubInfo.ClusterName, "-kind", "", 1)
 		isKindTest = true
@@ -188,6 +189,7 @@ func Render(
 			resources[idx].Object = unstructuredObj
 		}
 		if resources[idx].GetKind() == "Secret" && resources[idx].GetName() == "prometheus-scrape-targets " {
+			log.Info("Coleen scrape Running in kind test 1")
 			obj := util.GetK8sObj(resources[idx].GetKind())
 			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
 			if err != nil {
@@ -203,6 +205,7 @@ func Render(
 				)
 			}
 			if isKindTest {
+				log.Info("Coleen scrape Running in kind test 2")
 				//replace all occurrences of open-cluster-management-addon-observability with open-cluster-management-observability in the scrape-targets.yaml
 				s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(s.StringData["scrape-targets.yaml"], "open-cluster-management-addon-observability", "open-cluster-management-observability")
 				// print scrape-targets.yaml
