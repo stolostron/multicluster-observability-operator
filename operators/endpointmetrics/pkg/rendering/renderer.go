@@ -205,6 +205,8 @@ func Render(
 			if isKindTest {
 				//replace all occurrences of open-cluster-management-addon-observability with open-cluster-management-observability in the scrape-targets.yaml
 				s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(s.StringData["scrape-targets.yaml"], "open-cluster-management-addon-observability", "open-cluster-management-observability")
+				// print scrape-targets.yaml
+				log.Info("scrape-targets.yaml", "scrape-targets.yaml", s.StringData["scrape-targets.yaml"])
 			}
 
 			// replace the disabled metrics
