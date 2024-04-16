@@ -471,7 +471,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		log.Info("MCO Operator is terminating, skip creating resources for hub metrics collection")
 		return nil
 	}
-
+	updateMtlsCert := false
 	hubManifestCopy = make([]workv1.Manifest, len(manifests))
 	for i, manifest := range manifests {
 		obj := manifest.RawExtension.Object.DeepCopyObject()
@@ -534,6 +534,9 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		}
 
 		if k8serrors.IsNotFound(err) {
+			if obj.GetName() == operatorconfig.ClientCACertificateCN {
+				updateMtlsCert = true
+			}
 			err = c.Create(context.TODO(), obj)
 			if err != nil {
 				log.Error(err, "Failed to create resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
@@ -602,6 +605,9 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 			}
 
 			if needsUpdate {
+				if obj.GetName() == operatorconfig.ClientCACertificateCN {
+					updateMtlsCert = true
+				}
 				err = c.Update(context.TODO(), obj)
 				if err != nil {
 					log.Error(err, "Failed to update resource", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
@@ -611,7 +617,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		}
 	}
 
-	err := cert_controller.CreateMtlsCertSecretForHubCollector(c)
+	err := cert_controller.CreateUpdateMtlsCertSecretForHubCollector(c, updateMtlsCert)
 	if err != nil {
 		log.Error(err, "Failed to create client cert secret for hub metrics collection")
 		return err
