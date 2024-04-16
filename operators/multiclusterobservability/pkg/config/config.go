@@ -265,6 +265,7 @@ const (
 	HubMetricsCollectorName    = "metrics-collector-deployment"
 	HubUwlMetricsCollectorName = "uwl-metrics-collector-deployment"
 	HubUwlMetricsCollectorNs   = "openshift-user-workload-monitoring"
+	HubEndpointSaName          = "endpoint-observability-operator-sa"
 )
 
 // ObjectStorgeConf is used to Unmarshal from bytes to do validation.
