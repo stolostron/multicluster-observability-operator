@@ -240,6 +240,10 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 		deployer := deploying.NewDeployer(r.Client)
 		for _, res := range toDeploy {
+			if res.GetNamespace() != namespace {
+				globalRes = append(globalRes, res)
+			}
+
 			if !isHubMetricsCollector {
 				// For kind tests we need to deploy prometheus in hub but cannot set controller
 				// reference as there is no observabilityaddon
@@ -249,8 +253,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 				skipResources := []string{"Role", "RoleBinding", "ClusterRole", "ClusterRoleBinding"}
 				if !slices.Contains(skipResources, res.GetKind()) {
 					if err := controllerutil.SetControllerReference(obsAddon, res, r.Scheme); err != nil {
-						log.Info("Failed to set controller reference", "resource", res.GetName(), "kind", res.GetKind(), "error", err)
-						globalRes = append(globalRes, res)
+						log.Info("Failed to set controller reference", "resource", res.GetName(), "kind", res.GetKind(), "error", err.Error())
 					}
 				}
 			}
