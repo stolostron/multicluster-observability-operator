@@ -306,6 +306,10 @@ func GetAllOBAPods(opt TestOptions) ([]corev1.Pod, error) {
 }
 
 func PrintAllOBAPodsStatus(opt TestOptions) {
+	if GetManagedClusterName(opt) == "local-cluster" {
+		klog.V(1).Infof("Skip printing OBA pods status for local-cluster")
+		return
+	}
 	podList, err := GetAllOBAPods(opt)
 	if err != nil {
 		klog.Errorf("Failed to get all OBA pods: %v", err)
@@ -349,7 +353,11 @@ func CheckAllPodsAffinity(opt TestOptions) error {
 	}
 
 	for _, pod := range podList {
-
+		if pod.Labels["name"] == "endpoint-observability-operator" || pod.Labels["component"] == "metrics-collector" ||
+			pod.Labels["component"] == "uwl-metrics-collector" {
+			// No affinity set for endpoint-operator and metrics-collector in the hub
+			continue
+		}
 		if pod.Spec.Affinity == nil {
 			return fmt.Errorf("Failed to check affinity for pod: %v" + pod.GetName())
 		}
