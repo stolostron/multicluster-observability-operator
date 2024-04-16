@@ -202,6 +202,10 @@ func Render(
 					s.GetName(),
 				)
 			}
+			if isKindTest {
+				//replace all occurrences of open-cluster-management-addon-observability with open-cluster-management-observability in the scrape-targets.yaml
+				s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(s.StringData["scrape-targets.yaml"], "open-cluster-management-addon-observability", "open-cluster-management-observability")
+			}
 
 			// replace the disabled metrics
 			disabledMetricsSt, err := getDisabledMetrics(c)
@@ -210,10 +214,6 @@ func Render(
 			}
 			if disabledMetricsSt != "" {
 				s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(promConfig, "_DISABLED_METRICS_", disabledMetricsSt)
-			}
-			if isKindTest {
-				//replace all occurences of open-cluster-management-addon-observability with open-cluster-management-observability in the scrape-targets.yaml
-				s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(s.StringData["scrape-targets.yaml"], "open-cluster-management-addon-observability", "open-cluster-management-observability")
 			}
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 			if err != nil {
