@@ -56,6 +56,13 @@ func Render(
 	hubInfo *operatorconfig.HubInfo,
 ) ([]*unstructured.Unstructured, error) {
 
+	isKindTest := false
+	if strings.Contains(hubInfo.ClusterName, "kind") {
+		//remove -kind from the cluster name
+		hubInfo.ClusterName = strings.Replace(hubInfo.ClusterName, "-kind", "", 1)
+		isKindTest = true
+		namespace = "open-cluster-management-observability"
+	}
 	genericTemplates, err := templates.GetTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
 		return nil, err
@@ -65,6 +72,19 @@ func Render(
 		return nil, err
 	}
 	for idx := range resources {
+		//if resources kind is clusterrolebinding or rolebinding change the subjects namespace to "open-cluster-management-obserbability"
+		if isKindTest {
+			if resources[idx].GetKind() == "ClusterRoleBinding" || resources[idx].GetKind() == "RoleBinding" {
+				subjects := resources[idx].Object["subjects"].([]interface{})
+				for i := range subjects {
+					subject := subjects[i].(map[string]interface{})
+					if subject["kind"] == "ServiceAccount" {
+						subject["namespace"] = namespace
+					}
+				}
+				resources[idx].Object["subjects"] = subjects
+			}
+		}
 		if resources[idx].GetKind() == "Deployment" && resources[idx].GetName() == "kube-state-metrics" {
 			obj := util.GetK8sObj(resources[idx].GetKind())
 			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
@@ -191,7 +211,10 @@ func Render(
 			if disabledMetricsSt != "" {
 				s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(promConfig, "_DISABLED_METRICS_", disabledMetricsSt)
 			}
-
+			if isKindTest {
+				//replace all occurences of open-cluster-management-addon-observability with open-cluster-management-observability in the scrape-targets.yaml
+				s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(s.StringData["scrape-targets.yaml"], "open-cluster-management-addon-observability", "open-cluster-management-observability")
+			}
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 			if err != nil {
 				return nil, err
