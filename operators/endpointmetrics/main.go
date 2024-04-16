@@ -99,9 +99,13 @@ func main() {
 		oav1beta1.GroupVersion.WithKind("ObservabilityAddon"): {
 			{FieldSelector: namespaceSelector},
 		},
-		oav1beta2.GroupVersion.WithKind("MultiClusterObservability"): {
+	}
+
+	// Only watch MCO CRs in the hub cluster to avoid noisy log messages
+	if os.Getenv("HUB_ENDPOINT_OPERATOR") == "true" {
+		gvkLabelMap[oav1beta2.GroupVersion.WithKind("MultiClusterObservability")] = []filteredcache.Selector{
 			{FieldSelector: "metadata.name!=null"},
-		},
+		}
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
