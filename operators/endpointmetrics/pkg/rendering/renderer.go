@@ -193,7 +193,7 @@ func Render(
 			}
 			resources[idx].Object = unstructuredObj
 		}
-		if resources[idx].GetKind() == "Secret" && resources[idx].GetName() == "prometheus-scrape-targets " {
+		if resources[idx].GetKind() == "Secret" && resources[idx].GetName() == "prometheus-scrape-targets" {
 			log.Info("Coleen resource type and name", "resource type", resources[idx].GetName(), "resource kind", resources[idx].GetKind())
 			log.Info("Coleen scrape Running in kind test 1")
 			obj := util.GetK8sObj(resources[idx].GetKind())
