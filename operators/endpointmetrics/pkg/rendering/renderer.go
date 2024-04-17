@@ -73,6 +73,7 @@ func Render(
 		return nil, err
 	}
 	for idx := range resources {
+		log.Info("Coleen for loop resource type and name", "resource type", resources[idx].GetName(), "resource kind", resources[idx].GetKind())
 		//if resources kind is clusterrolebinding or rolebinding change the subjects namespace to "open-cluster-management-obserbability"
 		if isKindTest {
 			if resources[idx].GetKind() == "ClusterRoleBinding" || resources[idx].GetKind() == "RoleBinding" {
