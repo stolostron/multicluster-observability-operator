@@ -1030,6 +1030,11 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			&source.Kind{Type: &corev1.Secret{}},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(config.AlertmanagerAccessorSecretName, config.GetDefaultNamespace(), false, false, true)),
+		).
+		Watches(
+			&source.Kind{Type: &corev1.ServiceAccount{}},
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(getPred(config.HubEndpointSaName, config.GetDefaultNamespace(), false, false, true)),
 		)
 	// create and return a new controller
 	return ctrBuilder.Complete(r)
