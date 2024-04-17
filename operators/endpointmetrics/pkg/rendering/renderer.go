@@ -73,7 +73,6 @@ func Render(
 		return nil, err
 	}
 	for idx := range resources {
-		log.Info("Coleen resource type and name", "resource type", resources[idx].GetName(), "resource kind", resources[idx].GetKind())
 		//if resources kind is clusterrolebinding or rolebinding change the subjects namespace to "open-cluster-management-obserbability"
 		if isKindTest {
 			if resources[idx].GetKind() == "ClusterRoleBinding" || resources[idx].GetKind() == "RoleBinding" {
@@ -88,6 +87,7 @@ func Render(
 			}
 		}
 		if resources[idx].GetKind() == "Deployment" && resources[idx].GetName() == "kube-state-metrics" {
+			log.Info("Coleen resource type and name", "resource type", resources[idx].GetName(), "resource kind", resources[idx].GetKind())
 			obj := util.GetK8sObj(resources[idx].GetKind())
 			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
 			if err != nil {
@@ -109,6 +109,7 @@ func Render(
 			resources[idx].Object = unstructuredObj
 		}
 		if resources[idx].GetKind() == "Deployment" && resources[idx].GetName() == "prometheus-operator" {
+			log.Info("Coleen resource type and name", "resource type", resources[idx].GetName(), "resource kind", resources[idx].GetKind())
 			obj := util.GetK8sObj(resources[idx].GetKind())
 			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
 			if err != nil {
@@ -134,6 +135,7 @@ func Render(
 			resources[idx].Object = unstructuredObj
 		}
 		if resources[idx].GetKind() == "Prometheus" && resources[idx].GetName() == "k8s" {
+			log.Info("Coleen resource type and name", "resource type", resources[idx].GetName(), "resource kind", resources[idx].GetKind())
 			obj := util.GetK8sObj(resources[idx].GetKind())
 			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
 			if err != nil {
@@ -170,6 +172,7 @@ func Render(
 			resources[idx].Object = unstructuredObj
 		}
 		if resources[idx].GetKind() == "DaemonSet" && resources[idx].GetName() == "node-exporter" {
+			log.Info("Coleen resource type and name", "resource type", resources[idx].GetName(), "resource kind", resources[idx].GetKind())
 			obj := util.GetK8sObj(resources[idx].GetKind())
 			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
 			if err != nil {
@@ -190,6 +193,7 @@ func Render(
 			resources[idx].Object = unstructuredObj
 		}
 		if resources[idx].GetKind() == "Secret" && resources[idx].GetName() == "prometheus-scrape-targets " {
+			log.Info("Coleen resource type and name", "resource type", resources[idx].GetName(), "resource kind", resources[idx].GetKind())
 			log.Info("Coleen scrape Running in kind test 1")
 			obj := util.GetK8sObj(resources[idx].GetKind())
 			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
@@ -228,6 +232,7 @@ func Render(
 			resources[idx].Object = unstructuredObj
 		}
 		if resources[idx].GetKind() == "Secret" && resources[idx].GetName() == "prometheus-alertmanager" {
+			log.Info("Coleen resource type and name", "resource type", resources[idx].GetName(), "resource kind", resources[idx].GetKind())
 			obj := util.GetK8sObj(resources[idx].GetKind())
 			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
 			if err != nil {
