@@ -66,7 +66,7 @@ func (d *Deployer) Deploy(obj *unstructured.Unstructured) error {
 	)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("Create", "Kind:", obj.GroupVersionKind(), "Name:", obj.GetName())
+			log.Info("Create", "Kind", obj.GroupVersionKind(), "Name", obj.GetName())
 			return d.client.Create(context.TODO(), obj)
 		}
 		return err
@@ -78,7 +78,7 @@ func (d *Deployer) Deploy(obj *unstructured.Unstructured) error {
 		annotations, ok := metadata["annotations"].(map[string]interface{})
 		if ok && annotations != nil && annotations[config.AnnotationSkipCreation] != nil {
 			if strings.ToLower(annotations[config.AnnotationSkipCreation].(string)) == "true" {
-				log.Info("Skip creation", "Kind:", obj.GroupVersionKind(), "Name:", obj.GetName())
+				log.Info("Skip creation", "Kind", obj.GroupVersionKind(), "Name", obj.GetName())
 				return nil
 			}
 		}
@@ -88,7 +88,7 @@ func (d *Deployer) Deploy(obj *unstructured.Unstructured) error {
 	if ok {
 		return deployerFn(obj, found)
 	} else {
-		log.Info("deployerFn not found", "kind:", found.GetKind())
+		log.Info("deployerFn not found", "kind", found.GetKind())
 	}
 	return nil
 }
@@ -109,7 +109,7 @@ func (d *Deployer) updateDeployment(desiredObj, runtimeObj *unstructured.Unstruc
 	}
 
 	if !apiequality.Semantic.DeepDerivative(desiredDepoly.Spec, runtimeDepoly.Spec) {
-		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
+		logUpdateInfo(runtimeObj)
 		return d.client.Update(context.TODO(), desiredDepoly)
 	}
 
@@ -133,7 +133,7 @@ func (d *Deployer) updateStatefulSet(desiredObj, runtimeObj *unstructured.Unstru
 
 	if !apiequality.Semantic.DeepDerivative(desiredDepoly.Spec.Template, runtimeDepoly.Spec.Template) ||
 		!apiequality.Semantic.DeepDerivative(desiredDepoly.Spec.Replicas, runtimeDepoly.Spec.Replicas) {
-		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
+		logUpdateInfo(runtimeObj)
 		runtimeDepoly.Spec.Replicas = desiredDepoly.Spec.Replicas
 		runtimeDepoly.Spec.Template = desiredDepoly.Spec.Template
 		return d.client.Update(context.TODO(), runtimeDepoly)
@@ -160,7 +160,7 @@ func (d *Deployer) updateService(desiredObj, runtimeObj *unstructured.Unstructur
 	if !apiequality.Semantic.DeepDerivative(desiredService.Spec, runtimeService.Spec) {
 		desiredService.ObjectMeta.ResourceVersion = runtimeService.ObjectMeta.ResourceVersion
 		desiredService.Spec.ClusterIP = runtimeService.Spec.ClusterIP
-		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
+		logUpdateInfo(runtimeObj)
 		return d.client.Update(context.TODO(), desiredService)
 	}
 
@@ -183,7 +183,7 @@ func (d *Deployer) updateConfigMap(desiredObj, runtimeObj *unstructured.Unstruct
 	}
 
 	if !apiequality.Semantic.DeepDerivative(desiredConfigMap.Data, runtimeConfigMap.Data) {
-		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
+		logUpdateInfo(runtimeObj)
 		return d.client.Update(context.TODO(), desiredConfigMap)
 	}
 
@@ -207,7 +207,7 @@ func (d *Deployer) updateSecret(desiredObj, runtimeObj *unstructured.Unstructure
 
 	if desiredSecret.Data == nil ||
 		!apiequality.Semantic.DeepDerivative(desiredSecret.Data, runtimeSecret.Data) {
-		log.Info("Update", "Kind:", desiredObj.GroupVersionKind(), "Name:", desiredObj.GetName())
+		log.Info("Update", "Kind", desiredObj.GroupVersionKind(), "Name", desiredObj.GetName())
 		return d.client.Update(context.TODO(), desiredSecret)
 	}
 	return nil
@@ -230,7 +230,7 @@ func (d *Deployer) updateClusterRole(desiredObj, runtimeObj *unstructured.Unstru
 
 	if !apiequality.Semantic.DeepDerivative(desiredClusterRole.Rules, runtimeClusterRole.Rules) ||
 		!apiequality.Semantic.DeepDerivative(desiredClusterRole.AggregationRule, runtimeClusterRole.AggregationRule) {
-		log.Info("Update", "Kind:", desiredObj.GroupVersionKind(), "Name:", desiredObj.GetName())
+		log.Info("Update", "Kind", desiredObj.GroupVersionKind(), "Name", desiredObj.GetName())
 		return d.client.Update(context.TODO(), desiredClusterRole)
 	}
 	return nil
@@ -253,7 +253,7 @@ func (d *Deployer) updateClusterRoleBinding(desiredObj, runtimeObj *unstructured
 
 	if !apiequality.Semantic.DeepDerivative(desiredClusterRoleBinding.Subjects, runtimeClusterRoleBinding.Subjects) ||
 		!apiequality.Semantic.DeepDerivative(desiredClusterRoleBinding.RoleRef, runtimeClusterRoleBinding.RoleRef) {
-		log.Info("Update", "Kind:", desiredObj.GroupVersionKind(), "Name:", desiredObj.GetName())
+		log.Info("Update", "Kind", desiredObj.GroupVersionKind(), "Name", desiredObj.GetName())
 		return d.client.Update(context.TODO(), desiredClusterRoleBinding)
 	}
 	return nil
@@ -276,7 +276,7 @@ func (d *Deployer) updateCRD(desiredObj, runtimeObj *unstructured.Unstructured) 
 	desiredCRD.ObjectMeta.ResourceVersion = runtimeCRD.ObjectMeta.ResourceVersion
 
 	if !apiequality.Semantic.DeepDerivative(desiredCRD.Spec, runtimeCRD.Spec) {
-		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
+		logUpdateInfo(runtimeObj)
 		return d.client.Update(context.TODO(), desiredCRD)
 	}
 
@@ -306,8 +306,6 @@ func (d *Deployer) updatePrometheus(desiredObj, runtimeObj *unstructured.Unstruc
 	// 2. delete endpoint operator pod
 
 	// inherit resource version if not specified
-	log.Info("Desired Prometheus", "resourceVersion", desiredPrometheus.ResourceVersion)
-	log.Info("Runtime Prometheus", "resourceVersion", runtimePrometheus.ResourceVersion)
 	if desiredPrometheus.ResourceVersion != runtimePrometheus.ResourceVersion {
 		desiredPrometheus.ResourceVersion = runtimePrometheus.ResourceVersion
 	}
@@ -327,7 +325,7 @@ func (d *Deployer) updatePrometheus(desiredObj, runtimeObj *unstructured.Unstruc
 	}
 
 	if !apiequality.Semantic.DeepDerivative(desiredPrometheus.Spec, runtimePrometheus.Spec) {
-		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
+		logUpdateInfo(runtimeObj)
 		return d.client.Update(context.TODO(), desiredPrometheus)
 	} else {
 		log.Info("Runtime Prometheus and Desired Prometheus are semantically equal!")
@@ -351,7 +349,7 @@ func (d *Deployer) updatePrometheusRule(desiredObj, runtimeObj *unstructured.Uns
 	}
 
 	if !apiequality.Semantic.DeepDerivative(desiredPrometheusRule.Spec, runtimePrometheusRule.Spec) {
-		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
+		logUpdateInfo(runtimeObj)
 		if desiredPrometheusRule.ResourceVersion != runtimePrometheusRule.ResourceVersion {
 			desiredPrometheusRule.ResourceVersion = runtimePrometheusRule.ResourceVersion
 		}
@@ -377,9 +375,13 @@ func (d *Deployer) updateIngress(desiredObj, runtimeObj *unstructured.Unstructur
 	}
 
 	if !apiequality.Semantic.DeepDerivative(desiredIngress.Spec, runtimeIngress.Spec) {
-		log.Info("Update", "Kind:", runtimeObj.GroupVersionKind(), "Name:", runtimeObj.GetName())
+		logUpdateInfo(runtimeObj)
 		return d.client.Update(context.TODO(), desiredIngress)
 	}
 
 	return nil
+}
+
+func logUpdateInfo(obj *unstructured.Unstructured) {
+	log.Info("Update", "kind", obj.GroupVersionKind().Kind, "kindVersion", obj.GroupVersionKind().Version, "name", obj.GetName(), "version", obj.GetResourceVersion())
 }
