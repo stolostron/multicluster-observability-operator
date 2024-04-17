@@ -210,13 +210,6 @@ func Render(
 					s.GetName(),
 				)
 			}
-			if isKindTest {
-				log.Info("Coleen scrape Running in kind test 2")
-				//replace all occurrences of open-cluster-management-addon-observability with open-cluster-management-observability in the scrape-targets.yaml
-				s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(s.StringData["scrape-targets.yaml"], "open-cluster-management-addon-observability", "open-cluster-management-observability")
-				// print scrape-targets.yaml
-				log.Info("Coleen scrape-targets.yaml", "scrape-targets.yaml", s.StringData["scrape-targets.yaml"])
-			}
 
 			// replace the disabled metrics
 			disabledMetricsSt, err := getDisabledMetrics(c)
@@ -225,6 +218,14 @@ func Render(
 			}
 			if disabledMetricsSt != "" {
 				s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(promConfig, "_DISABLED_METRICS_", disabledMetricsSt)
+			}
+
+			if isKindTest {
+				log.Info("Coleen scrape Running in kind test new")
+				//replace all occurrences of open-cluster-management-addon-observability with open-cluster-management-observability in the scrape-targets.yaml
+				s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(promConfig, "open-cluster-management-addon-observability", "open-cluster-management-observability")
+				// print scrape-targets.yaml
+				log.Info("Coleen scrape-targets.yaml", "scrape-targets.yaml", s.StringData["scrape-targets.yaml"])
 			}
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 			if err != nil {
