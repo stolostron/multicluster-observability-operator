@@ -17,6 +17,7 @@ data:
       - cluster:cpu_usage_cores:sum
       - cluster:memory_usage:ratio
       - cluster:memory_usage_bytes:sum
+      - cluster:node_cpu:ratio
       - cluster:usage:resources:sum
       - cluster_infrastructure_provider
       - cluster_version
