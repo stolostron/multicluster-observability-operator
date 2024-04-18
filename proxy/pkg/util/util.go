@@ -88,7 +88,7 @@ func InitScheduler() {
 
 func InitAccessReviewer(kConfig *rest.Config) (err error) {
 	accessReviewer, err = rbac.NewAccessReviewer(kConfig, nil)
-	return
+	return err
 }
 
 // shouldUpdateManagedClusterLabelNames determine whether the managedcluster label names map should be updated.
@@ -582,7 +582,7 @@ func getUserMetricsACLs(userName string, token string, reqUrl string) (map[strin
 	return metricsAccess, nil
 }
 
-// canAccessAllClusters check user have permission to access all clusters
+// canAccessAll check user have permission to access all clusters
 func canAccessAll(clusterNamespaces map[string][]string) bool {
 	if len(allManagedClusterNames) == 0 && len(clusterNamespaces) == 0 {
 		return false
@@ -681,11 +681,11 @@ func getClustersInQuery(queryValues url.Values, key string, userMetricsAccess ma
 	}
 	operator := matches[2]
 	expr := matches[4]
-	clusters := []string{}
+	clusters := make([]string, 0, len(userMetricsAccess))
 	for cluster := range userMetricsAccess {
 		clusters = append(clusters, cluster)
 	}
-	queryClusters := []string{}
+	queryClusters := make([]string, 0, len(clusters))
 	switch operator {
 	case "=":
 		return []string{expr}
@@ -720,7 +720,7 @@ func rewriteQuery(queryValues url.Values, userMetricsAccess map[string][]string,
 
 	originalQuery := queryValues.Get(key)
 
-	klog.Infof("REQRITE QUERY: key is: %v ,  originalQuery is: \n %v", key, originalQuery)
+	klog.Infof("REWRITE QUERY: key is: %v ,  originalQuery is: \n %v", key, originalQuery)
 	if len(originalQuery) == 0 {
 		return queryValues
 	}
@@ -736,7 +736,7 @@ func rewriteQuery(queryValues url.Values, userMetricsAccess map[string][]string,
 		return queryValues
 	}
 
-	klog.Infof("REQRITE QUERY Modified Query after injecting clusters: \n %v", modifiedQuery)
+	klog.Infof("REWRITE QUERY Modified Query after injecting clusters: \n %v", modifiedQuery)
 
 	modifiedQuery2 := modifiedQuery
 
@@ -749,7 +749,7 @@ func rewriteQuery(queryValues url.Values, userMetricsAccess map[string][]string,
 	//do not add namespaces filter if access is to all namespaces
 	allNamespaceAccess := len(commonNsAcrossQueryClusters) == 1 && commonNsAcrossQueryClusters[0] == "*"
 
-	klog.Infof("REQRITE QUERY Modified Query hasAccess to All namespaces: \n %v", allNamespaceAccess)
+	klog.Infof("REWRITE QUERY Modified Query hasAccess to All namespaces: \n %v", allNamespaceAccess)
 
 	if !allNamespaceAccess {
 		modifiedQuery2, err = rewrite.InjectLabels(modifiedQuery, "namespace", commonNsAcrossQueryClusters)
@@ -758,7 +758,7 @@ func rewriteQuery(queryValues url.Values, userMetricsAccess map[string][]string,
 		}
 	}
 
-	klog.Infof("REQRITE QUERY Modified Query after injecting namespaces:  \n %v", modifiedQuery2)
+	klog.Infof("REWRITE QUERY Modified Query after injecting namespaces:  \n %v", modifiedQuery2)
 
 	queryValues.Del(key)
 	queryValues.Add(key, modifiedQuery2)
