@@ -26,6 +26,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -136,10 +137,20 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ObservabilityAddon")
 		os.Exit(1)
 	}
+	hubClientWithReload := &statusctl.ClientWithReload{
+		Generator: func() (client.Client, error) {
+			return util.GetOrCreateHubClient(true, scheme)
+		},
+		Client: hubClient,
+	}
+
 	if err = (&statusctl.StatusReconciler{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		HubClient: hubClient,
+		Client:       mgr.GetClient(),
+		HubClient:    hubClientWithReload,
+		Namespace:    os.Getenv("WATCH_NAMESPACE"),
+		HubNamespace: os.Getenv("HUB_NAMESPACE"),
+		ObsAddonName: "observability-addon",
+		Logger:       ctrl.Log.WithName("controllers").WithName("Status"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Status")
 		os.Exit(1)
