@@ -207,7 +207,7 @@ func (d *Deployer) updateSecret(desiredObj, runtimeObj *unstructured.Unstructure
 
 	if desiredSecret.Data == nil ||
 		!apiequality.Semantic.DeepDerivative(desiredSecret.Data, runtimeSecret.Data) {
-		log.Info("Update", "Kind", desiredObj.GroupVersionKind(), "Name", desiredObj.GetName())
+		logUpdateInfo(desiredObj)
 		return d.client.Update(context.TODO(), desiredSecret)
 	}
 	return nil
@@ -230,7 +230,7 @@ func (d *Deployer) updateClusterRole(desiredObj, runtimeObj *unstructured.Unstru
 
 	if !apiequality.Semantic.DeepDerivative(desiredClusterRole.Rules, runtimeClusterRole.Rules) ||
 		!apiequality.Semantic.DeepDerivative(desiredClusterRole.AggregationRule, runtimeClusterRole.AggregationRule) {
-		log.Info("Update", "Kind", desiredObj.GroupVersionKind(), "Name", desiredObj.GetName())
+		logUpdateInfo(desiredObj)
 		return d.client.Update(context.TODO(), desiredClusterRole)
 	}
 	return nil
@@ -253,7 +253,7 @@ func (d *Deployer) updateClusterRoleBinding(desiredObj, runtimeObj *unstructured
 
 	if !apiequality.Semantic.DeepDerivative(desiredClusterRoleBinding.Subjects, runtimeClusterRoleBinding.Subjects) ||
 		!apiequality.Semantic.DeepDerivative(desiredClusterRoleBinding.RoleRef, runtimeClusterRoleBinding.RoleRef) {
-		log.Info("Update", "Kind", desiredObj.GroupVersionKind(), "Name", desiredObj.GetName())
+		logUpdateInfo(desiredObj)
 		return d.client.Update(context.TODO(), desiredClusterRoleBinding)
 	}
 	return nil
@@ -383,5 +383,5 @@ func (d *Deployer) updateIngress(desiredObj, runtimeObj *unstructured.Unstructur
 }
 
 func logUpdateInfo(obj *unstructured.Unstructured) {
-	log.Info("Update", "kind", obj.GroupVersionKind().Kind, "kindVersion", obj.GroupVersionKind().Version, "name", obj.GetName(), "version", obj.GetResourceVersion())
+	log.Info("Update", "kind", obj.GroupVersionKind().Kind, "kindVersion", obj.GroupVersionKind().Version, "name", obj.GetName())
 }
