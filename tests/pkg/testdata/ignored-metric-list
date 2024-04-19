@@ -94,3 +94,4 @@ mce_hs_addon_worker_node_resource_capacities_gauge
 mce_hs_addon_qps_gauge
 mce_hs_addon_request_based_hcp_capacity_current_gauge
 coredns_forward_responses_total
+cnv:vmi_status_running:count
