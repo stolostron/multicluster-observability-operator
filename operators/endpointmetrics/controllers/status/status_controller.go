@@ -24,8 +24,6 @@ import (
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
 
-const defaultRequeueDelay = 2 * time.Minute
-
 type ClientWithReloader interface {
 	client.Client
 	Reload() error
@@ -46,7 +44,7 @@ type StatusReconciler struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	r.Logger.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
+	r.Logger.WithValues("Request", req.String())
 	r.Logger.Info("Reconciling")
 
 	// Fetch the ObservabilityAddon instance in hub cluster
@@ -54,21 +52,17 @@ func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	err := r.HubClient.Get(ctx, types.NamespacedName{Name: r.ObsAddonName, Namespace: r.HubNamespace}, hubObsAddon)
 	if err != nil {
 		if isAuthOrConnectionErr(err) {
-			r.Logger.Info("Failed to get ObservabilityAddon in hub cluster, reload hub client and retry", "error", err, "RequeueAfterS", defaultRequeueDelay)
+			// Try reloading the kubeconfig for the hub cluster
 			if err := r.HubClient.Reload(); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to reload the hub client: %w", err)
 			}
-			return ctrl.Result{RequeueAfter: defaultRequeueDelay}, nil
-		}
-
-		if delay, ok := errors.SuggestsClientDelay(err); ok {
-			r.Logger.Info("Failed to get ObservabilityAddon in hub cluster, requeue with delay", "error", err, "RequeueAfterS", delay)
-			return ctrl.Result{RequeueAfter: time.Duration(delay) * time.Second}, nil
+			r.Logger.Info("Failed to get ObservabilityAddon in hub cluster, reloaded hub, requeue with delay", "error", err)
+			return ctrl.Result{Requeue: true}, nil
 		}
 
 		if isTransientErr(err) {
-			r.Logger.Info("Failed to get ObservabilityAddon in hub cluster, requeue with delay", "error", err, "RequeueAfterS", defaultRequeueDelay)
-			return ctrl.Result{RequeueAfter: defaultRequeueDelay}, nil
+			r.Logger.Info("Failed to get ObservabilityAddon in hub cluster, requeue with delay", "error", err)
+			return requeueWithOptionalDelay(err), nil
 		}
 
 		return ctrl.Result{}, err
@@ -83,7 +77,7 @@ func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return err
 		}
 
-		// only update the status in hub cluster if needed
+		// Only update the status in hub cluster if needed
 		if reflect.DeepEqual(hubObsAddon.Status, obsAddon.Status) {
 			return nil
 		}
@@ -95,14 +89,9 @@ func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return r.HubClient.Status().Update(ctx, updatedAddon)
 	})
 	if retryErr != nil {
-		if delay, ok := errors.SuggestsClientDelay(retryErr); ok {
-			r.Logger.Info("Failed to update status in hub cluster, requeue with delay", "error", retryErr, "RequeueAfterS", delay)
-			return ctrl.Result{RequeueAfter: time.Duration(delay) * time.Second}, nil
-		}
-
 		if isTransientErr(retryErr) || errors.IsConflict(retryErr) {
-			r.Logger.Info("Retryable error while updating status, request will be retried.", "error", retryErr, "RequeueAfterS", defaultRequeueDelay)
-			return ctrl.Result{RequeueAfter: defaultRequeueDelay}, nil
+			r.Logger.Info("Retryable error while updating status, request will be retried.", "error", retryErr)
+			return requeueWithOptionalDelay(retryErr), nil
 		}
 
 		return ctrl.Result{}, fmt.Errorf("failed to update status in hub cluster: %w", retryErr)
@@ -113,10 +102,6 @@ func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *StatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	// if os.Getenv("NAMESPACE") != "" {
-	// 	namespace = os.Getenv("NAMESPACE")
-	// }
-
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			return false
@@ -168,6 +153,16 @@ func isAuthOrConnectionErr(err error) bool {
 	}
 
 	return false
+}
+
+// requeueWithOptionalDelay requeues the request with a delay if suggested by the error
+// Otherwise, it requeues the request without a delay
+func requeueWithOptionalDelay(err error) ctrl.Result {
+	if delay, ok := errors.SuggestsClientDelay(err); ok {
+		return ctrl.Result{RequeueAfter: time.Duration(delay) * time.Second}
+	}
+
+	return ctrl.Result{Requeue: true}
 }
 
 // ClientGenerator is a function type that generates an instance of client.Client

@@ -144,10 +144,14 @@ func main() {
 		Client: hubClient,
 	}
 
+	namespace := os.Getenv("NAMESPACE")
+	if namespace == "" {
+		namespace = os.Getenv("WATCH_NAMESPACE")
+	}
 	if err = (&statusctl.StatusReconciler{
 		Client:       mgr.GetClient(),
 		HubClient:    hubClientWithReload,
-		Namespace:    os.Getenv("WATCH_NAMESPACE"),
+		Namespace:    namespace,
 		HubNamespace: os.Getenv("HUB_NAMESPACE"),
 		ObsAddonName: "observability-addon",
 		Logger:       ctrl.Log.WithName("controllers").WithName("Status"),

@@ -116,19 +116,19 @@ func TestStatusController_UpdateHubAddonFailures(t *testing.T) {
 	}{
 		"Conflict": {
 			updateErr:      errors.NewConflict(schema.GroupResource{Group: oav1beta1.GroupVersion.Group, Resource: "FakeResource"}, name, fmt.Errorf("fake conflict")),
-			requeueAfter:   true,
+			requeue:        true,
 			updateCallsMin: 1,
 		},
 		"Server unavailable": {
 			updateErr:      errors.NewServiceUnavailable("service unavailable"),
-			requeueAfter:   true,
+			requeue:        true,
 			updateCallsMax: 1,
 		},
 		"internal error": {
 			updateErr: errors.NewInternalError(fmt.Errorf("internal error")),
 			// reconcileErr:   errors.NewInternalError(fmt.Errorf("fake internal error")),
 			updateCallsMax: 1,
-			requeueAfter:   true,
+			requeue:        true,
 		},
 		"Permanent error": {
 			updateErr:      errors.NewBadRequest("bad request"),
@@ -145,7 +145,7 @@ func TestStatusController_UpdateHubAddonFailures(t *testing.T) {
 			updateErr: &net.DNSError{
 				Err: "network error",
 			},
-			requeueAfter:   true,
+			requeue:        true,
 			updateCallsMax: 1,
 		},
 	}
@@ -203,17 +203,17 @@ func TestStatusController_GetHubAddonFailures(t *testing.T) {
 		reloadCount     int
 	}{
 		"Unauthorized": {
-			getErr:       errors.NewUnauthorized("unauthorized"),
-			requeueAfter: true,
-			reloadCount:  1,
+			getErr:      errors.NewUnauthorized("unauthorized"),
+			requeue:     true,
+			reloadCount: 1,
 		},
 		"Permanent error": {
 			getErr:       errors.NewBadRequest("bad request"),
 			reconcileErr: errors.NewBadRequest("bad request"),
 		},
 		"Servers unavailable": {
-			getErr:       errors.NewServiceUnavailable("service unavailable"),
-			requeueAfter: true,
+			getErr:  errors.NewServiceUnavailable("service unavailable"),
+			requeue: true,
 		},
 		"Too many requests": {
 			getErr:          errors.NewTooManyRequests("too many requests", 10),
