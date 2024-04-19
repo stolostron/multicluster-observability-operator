@@ -300,7 +300,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		}
 
 		// expose observatorium api gateway
-		result, err = GenerateAPIGatewayRoute(r.Client, r.Scheme, instance)
+		result, err = GenerateAPIGatewayRoute(ctx, r.Client, r.Scheme, instance)
 		if result != nil {
 			return *result, err
 		}
