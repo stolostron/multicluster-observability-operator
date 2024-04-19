@@ -7,7 +7,7 @@
 get_latest_snapshot() {
   BRANCH=""
   LATEST_SNAPSHOT=""
-  SNAPSHOT_RELEASE=${SNAPSHOT_RELEASE:=2.10}
+  SNAPSHOT_RELEASE=${SNAPSHOT_RELEASE:=2.11}
   MATCH=$SNAPSHOT_RELEASE".*-SNAPSHOT"
   if [[ ${PULL_BASE_REF} == "release-"* ]]; then
     BRANCH=${PULL_BASE_REF#"release-"}
