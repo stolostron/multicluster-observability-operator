@@ -28,7 +28,7 @@ SED_COMMAND=${SED}' -i-e -e'
 
 # Set the latest snapshot if it is not set
 source ./scripts/test-utils.sh
-LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_latest_snapshot)}
+LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_container_image)}
 
 # deploy the hub and spoke core via OLM
 deploy_hub_spoke_core() {
