@@ -18,7 +18,7 @@ LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_container_image)}
 
 # need to add this annotation due to KinD cluster resources are insufficient
 if [[ -n ${IS_KIND_ENV} ]]; then
-  source ../tests/run-in-kind/env.sh
+  source ./tests/run-in-kind/env.sh
 fi
 
 # list all components need to do test.
