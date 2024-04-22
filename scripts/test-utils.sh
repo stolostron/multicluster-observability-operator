@@ -28,12 +28,11 @@ get_container_image() {
 get_latest_snapshot() {
   BRANCH=""
   LATEST_SNAPSHOT=""
-  SNAPSHOT_RELEASE=${SNAPSHOT_RELEASE:=2.11}
+  SNAPSHOT_RELEASE=${SNAPSHOT_RELEASE:=$VERSION}
   MATCH=$SNAPSHOT_RELEASE".*-SNAPSHOT"
   if [[ ${PULL_BASE_REF} == "release-"* ]]; then
     BRANCH=${PULL_BASE_REF#"release-"}
-    LATEST_SNAPSHOT=$(curl https://quay.io//api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|test("'${BRANCH}'.*-SNAPSHOT-*")))|keys[length-1]')
-  fi
+    LATEST_SNAPSHOT=$(curl https://quay.io/api/v1/repository/open-cluster-management/multicluster-observability-operator | jq '.tags|with_entries(select(.key|test("'${BRANCH}'.*-SNAPSHOT-*")))|keys[length-1]') fi
   if [[ ${LATEST_SNAPSHOT} == "null" ]] || [[ ${LATEST_SNAPSHOT} == "" ]]; then
     LATEST_SNAPSHOT=$(curl https://quay.io/api/v1/repository/stolostron/multicluster-observability-operator/tag/ | jq --arg MATCH "$MATCH" '.tags[] | select(.name | match($MATCH; "i")  ).name' | sort -r --version-sort | head -n 1)
   fi

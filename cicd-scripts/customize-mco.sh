@@ -14,7 +14,7 @@ SED_COMMAND=${SED}' -i-e -e'
 
 # Set the latest snapshot if it is not set
 source ./scripts/test-utils.sh
-LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_latest_snapshot)}
+LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_container_image)}
 
 # list all components need to do test.
 CHANGED_COMPONENTS=""
