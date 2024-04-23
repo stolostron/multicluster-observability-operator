@@ -1,0 +1,145 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: multicluster-observability-grafana-test
+  name: grafana-test
+  namespace: open-cluster-management-observability
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: multicluster-observability-grafana-test
+  template:
+    metadata:
+      labels:
+        app: multicluster-observability-grafana-test
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 70
+              podAffinityTerm:
+                topologyKey: topology.kubernetes.io/zone
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - multicluster-observability-grafana
+            - weight: 30
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - multicluster-observability-grafana
+      containers:
+        - args:
+            - -config=/etc/grafana/grafana.ini
+          image: quay.io/stolostron/grafana:2.10.2-SNAPSHOT-2024-04-17-22-36-45
+          imagePullPolicy: IfNotPresent
+          name: grafana-test
+          ports:
+            - containerPort: 3001
+              name: http
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1Gi
+            requests:
+              cpu: 4m
+              memory: 100Mi
+          volumeMounts:
+            - mountPath: /var/lib/grafana
+              name: grafana-storage
+            - mountPath: /etc/grafana/provisioning/datasources
+              name: grafana-datasources
+            - mountPath: /etc/grafana
+              name: grafana-config
+          securityContext:
+            privileged: false
+            readOnlyRootFilesystem: true
+        - name: grafana-dashboard-loader
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          image: quay.io/stolostron/grafana-dashboard-loader:2.10.2-SNAPSHOT-2024-04-17-22-36-45
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 4m
+              memory: 50Mi
+          securityContext:
+            privileged: false
+            readOnlyRootFilesystem: true
+        - readinessProbe:
+            httpGet:
+              path: /oauth/healthz
+              port: 9443
+              scheme: HTTPS
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          name: grafana-proxy
+          ports:
+            - name: public
+              containerPort: 9443
+              protocol: TCP
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: tls-secret
+              mountPath: /etc/tls/private
+            - mountPath: /etc/proxy/secrets
+              name: cookie-secret
+          image: quay.io/stolostron/origin-oauth-proxy:4.5
+          args:
+            - '--provider=openshift'
+            - '--upstream=http://localhost:3001'
+            - '--https-address=:9443'
+            - '--cookie-secret-file=/etc/proxy/secrets/session_secret'
+            - '--cookie-expire=12h0m0s'
+            - '--cookie-refresh=8h0m0s'
+            - '--openshift-delegate-urls={"/": {"resource": "projects", "verb": "list"}}'
+            - '--tls-cert=/etc/tls/private/tls.crt'
+            - '--tls-key=/etc/tls/private/tls.key'
+            - '--openshift-service-account=grafana'
+            - '--pass-user-bearer-token=true'
+            - '--pass-access-token=true'
+            - '--client-id=grafana-proxy-client'
+            - '--client-secret=grafana-proxy-client'
+            - '--scope=user:full'
+            - '--openshift-ca=/etc/pki/tls/cert.pem'
+            - '--openshift-ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
+          securityContext:
+            privileged: false
+            readOnlyRootFilesystem: true
+      serviceAccount: grafana
+      imagePullSecrets:
+        - name: multiclusterhub-operator-pull-secret
+      serviceAccountName: grafana
+      volumes:
+        - emptyDir: {}
+          name: grafana-storage
+        - name: grafana-datasources
+          secret:
+            defaultMode: 420
+            secretName: grafana-datasources-test
+        - name: grafana-config
+          secret:
+            defaultMode: 420
+            secretName: grafana-config-test
+        - name: tls-secret
+          secret:
+            defaultMode: 420
+            secretName: grafana-tls
+        - name: cookie-secret
+          secret:
+            defaultMode: 420
+            secretName: rbac-proxy-cookie-secret
