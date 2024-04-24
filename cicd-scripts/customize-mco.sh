@@ -14,7 +14,7 @@ SED_COMMAND=${SED}' -i-e -e'
 
 # Set the latest snapshot if it is not set
 source ./scripts/test-utils.sh
-LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_container_image)}
+LATEST_SNAPSHOT=${LATEST_SNAPSHOT:-$(get_latest_snapshot)}
 
 # need to add this annotation due to KinD cluster resources are insufficient
 if [[ -n ${IS_KIND_ENV} ]]; then
