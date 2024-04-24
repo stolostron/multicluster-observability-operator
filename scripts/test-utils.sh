@@ -2,6 +2,23 @@
 # Copyright (c) 2024 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project
 
+VERSION="2.11.0"
+
+# Use the PR mirror image for PRs against main branch.
+get_pr_image() {
+  BRANCH=""
+  LATEST_SNAPSHOT=""
+
+  if [[ ${PULL_BASE_REF} == "main" ]]; then
+    LATEST_SNAPSHOT="${VERSION}-PR${PULL_NUMBER}-${PULL_PULL_SHA}"
+  fi
+
+  # trim the leading and tailing quotes
+  LATEST_SNAPSHOT="${LATEST_SNAPSHOT#\"}"
+  LATEST_SNAPSHOT="${LATEST_SNAPSHOT%\"}"
+  echo ${LATEST_SNAPSHOT}
+}
+
 # Use snapshot for target release.
 VERSION="2.11.0"
 
