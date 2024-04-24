@@ -4,17 +4,13 @@
 
 VERSION="2.11.0"
 
-# Determine, based on the branch, which image to use for the test.
-# If the branch is main, then assume that an image for the PR has been built and pushed to quay.io.
-# If the branch is a release branch, then use the latest snapshot image for that release.
-get_container_image() {
+# Use the PR mirror image for PRs against main branch.
+get_pr_image() {
   BRANCH=""
   LATEST_SNAPSHOT=""
 
   if [[ ${PULL_BASE_REF} == "main" ]]; then
     LATEST_SNAPSHOT="${VERSION}-PR${PULL_NUMBER}-${PULL_PULL_SHA}"
-  else
-    LATEST_SNAPSHOT=$(get_latest_snapshot)
   fi
 
   # trim the leading and tailing quotes
