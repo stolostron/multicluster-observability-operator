@@ -424,7 +424,6 @@ func createAllRelatedRes(
 				if mco.Annotations["test-env"] == "kind-test" {
 					installProm = true
 				}
-				log.Info("Coleen installProm", "installProm", installProm)
 				// Create copy of hub-info-secret for local-cluster since hubInfo is global variable
 				hubInfoSecretCopy := hubInfoSecret.DeepCopy()
 				err = createManagedClusterRes(c, mco,
@@ -508,7 +507,6 @@ func createManagedClusterRes(
 	hubInfo *corev1.Secret,
 	installProm bool,
 ) error {
-	log.Info("Coleen inStALL", "installProm", installProm)
 	err := createObsAddon(c, namespace)
 	if err != nil {
 		log.Error(err, "Failed to create observabilityaddon")
