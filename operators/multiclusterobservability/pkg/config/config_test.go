@@ -465,6 +465,8 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 
 func Test_checkIsIBMCloud(t *testing.T) {
 	s := runtime.NewScheme()
+	s.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.Node{})
+	s.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.NodeList{})
 	nodeIBM := &corev1.Node{
 		Spec: corev1.NodeSpec{
 			ProviderID: "ibm",
