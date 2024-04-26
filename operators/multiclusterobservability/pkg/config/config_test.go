@@ -278,6 +278,9 @@ func TestGetObsAPIHost(t *testing.T) {
 
 	customBaseURL := "https://custom.base/url"
 	mco := &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: GetMonitoringCRName(),
+		},
 		Spec: mcov1beta2.MultiClusterObservabilitySpec{
 			AdvancedConfig: &mcov1beta2.AdvancedConfig{
 				CustomObservabilityHubURL: mcoshared.URL(customBaseURL),
@@ -287,7 +290,7 @@ func TestGetObsAPIHost(t *testing.T) {
 	client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route, mco).Build()
 	host, _ = GetObsAPIHost(client, "test")
 	if host != customBaseURL {
-		t.Errorf("Observatorium api (%v) is not the expected (%v)", host, apiServerURL)
+		t.Errorf("Observatorium api (%v) is not the expected (%v)", host, customBaseURL)
 	}
 }
 
