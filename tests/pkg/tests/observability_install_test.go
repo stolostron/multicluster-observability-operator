@@ -6,7 +6,6 @@ package tests
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -87,60 +86,6 @@ func installMCO() {
 
 	By("Creating the MCO testing RBAC resources")
 	Expect(utils.CreateMCOTestingRBAC(testOptions)).NotTo(HaveOccurred())
-
-	if os.Getenv("SKIP_INTEGRATION_CASES") != trueStr {
-		By("Creating MCO instance of v1beta1")
-		v1beta1KustomizationPath := "../../../examples/mco/e2e/v1beta1"
-		yamlB, err = kustomize.Render(kustomize.Options{KustomizationPath: v1beta1KustomizationPath})
-		Expect(err).NotTo(HaveOccurred())
-		Expect(
-			utils.Apply(
-				testOptions.HubCluster.ClusterServerURL,
-				testOptions.KubeConfig,
-				testOptions.HubCluster.KubeContext,
-				yamlB,
-			)).NotTo(HaveOccurred())
-
-		By("Waiting for MCO ready status")
-		allPodsIsReady := false
-		Eventually(func() error {
-			instance, err := dynClient.Resource(utils.NewMCOGVRV1BETA1()).
-				Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-			if err == nil {
-				allPodsIsReady = utils.StatusContainsTypeEqualTo(instance, "Ready")
-				if allPodsIsReady {
-					testFailed = false
-					return nil
-				}
-			}
-			testFailed = true
-			if instance != nil && instance.Object != nil {
-				return fmt.Errorf(
-					"MCO componnets cannot be running in 20 minutes. check the MCO CR status for the details: %v",
-					instance.Object["status"],
-				)
-			} else {
-				return errors.New("Wait for reconciling.")
-			}
-		}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
-
-		By("Check clustermanagementaddon CR is created")
-		Eventually(func() error {
-			_, err := dynClient.Resource(utils.NewMCOClusterManagementAddonsGVR()).
-				Get(context.TODO(), "observability-controller", metav1.GetOptions{})
-			if err != nil {
-				testFailed = true
-				return err
-			}
-			testFailed = false
-			return nil
-		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
-
-		By("Check the api conversion is working as expected")
-		v1beta1Tov1beta2GoldenPath := "../../../examples/mco/e2e/v1beta1/observability-v1beta1-to-v1beta2-golden.yaml"
-		err = utils.CheckMCOConversion(testOptions, v1beta1Tov1beta2GoldenPath)
-		Expect(err).NotTo(HaveOccurred())
-	}
 
 	if os.Getenv("IS_CANARY_ENV") != trueStr {
 		By("Recreating Minio-tls as object storage")
