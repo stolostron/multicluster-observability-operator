@@ -1247,7 +1247,7 @@ data:
     }
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-acm-openShift-virtualization-overview
+  name: grafana-dashboard-acm-openshift-virtualization-overview
   namespace: open-cluster-management-observability
   labels:
     general-folder: 'true'
