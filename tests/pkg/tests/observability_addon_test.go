@@ -4,11 +4,13 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
@@ -155,6 +157,18 @@ var _ = Describe("", func() {
 			}
 			return false
 		}, EventuallyTimeoutMinute*6, EventuallyIntervalSecond*5).Should(BeTrue())
+	})
+
+	It("RHACM4K-6923: Observability: Verify default scrap interval change to 5 minutes - [P2][Sev2][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g2)", func() {
+		By("Check default interval value is 300")
+		Eventually(func() bool {
+			mco, getErr := dynClient.Resource(utils.NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+			if getErr != nil {
+				panic(getErr.Error())
+			}
+			observabilityAddonSpec := mco.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})
+			return observabilityAddonSpec["interval"] == int64(300)
+		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 	})
 
 	It("RHACM4K-1235: Observability: Verify metrics data global setting on the managed cluster - Should not set interval to values beyond scope [P3][Sev3][Observability][Stable]@ocpInterop @post-upgrade @post-restore @e2e @post-release @pre-upgrade (addon/g0)", func() {
