@@ -481,7 +481,6 @@ func GetDefaultTenantName() string {
 }
 
 // GetObsAPIHost is used to get the URL for observartium api gateway.
-// TODO: grab custom Obs API host from somewhere?
 func GetObsAPIHost(client client.Client, namespace string) (string, error) {
 	mco := &observabilityv1beta2.MultiClusterObservability{}
 	err := client.Get(context.TODO(),
