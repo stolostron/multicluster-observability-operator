@@ -232,10 +232,6 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, fmt.Errorf("failed to create CA configmap: %w", err)
 		}
 	} else {
-		if isHubMetricsCollector && installPrometheus {
-			//This case runs only in kind tests in the hub cluster
-			hubInfo.ClusterName = hubInfo.ClusterName + "-kind"
-		}
 		// Render the prometheus templates
 		renderer := rendererutil.NewRenderer()
 		toDeploy, err := rendering.Render(renderer, r.Client, hubInfo)

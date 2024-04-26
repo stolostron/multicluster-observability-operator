@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -46,6 +47,8 @@ var (
 		"rest_client_request_duration_seconds_bucket",
 		"storage_operation_duration_seconds_bucket",
 	}
+	installPrometheus, _  = strconv.ParseBool(os.Getenv(operatorconfig.InstallPrometheus))
+	isHubMetricsCollector = os.Getenv("HUB_ENDPOINT_OPERATOR") == "true"
 )
 
 var Images = map[string]string{}
@@ -57,9 +60,7 @@ func Render(
 ) ([]*unstructured.Unstructured, error) {
 
 	isKindTest := false
-	if strings.Contains(hubInfo.ClusterName, "kind") {
-		//remove -kind from the cluster name
-		hubInfo.ClusterName = strings.Replace(hubInfo.ClusterName, "-kind", "", 1)
+	if installPrometheus && isHubMetricsCollector {
 		isKindTest = true
 		namespace = "open-cluster-management-observability"
 	}
