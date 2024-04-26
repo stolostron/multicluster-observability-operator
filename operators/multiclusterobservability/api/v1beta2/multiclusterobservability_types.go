@@ -42,6 +42,11 @@ type MultiClusterObservabilitySpec struct {
 }
 
 type AdvancedConfig struct {
+	// CustomObservabilityHubURL overrides the endpoint used by the metrics-collector to send
+	// metrics to the hub server.
+	// For the metrics-collector that runs in the hub this setting has no effect.
+	// +optional
+	CustomObservabilityHubURL observabilityshared.URL `json:"customObservabilityHubURL,omitempty"`
 	// The spec of the data retention configurations
 	// +optional
 	RetentionConfig *RetentionConfig `json:"retentionConfig,omitempty"`

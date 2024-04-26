@@ -13,6 +13,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// URL is kubebuilder type that validates the containing string is an URL.
+// +kubebuilder:validation:Pattern=`^https?:\/\/`
+// +kubebuilder:validation:MaxLength=2083
+type URL string
+
 // ObservabilityAddonSpec is the spec of observability addon.
 type ObservabilityAddonSpec struct {
 	// EnableMetrics indicates the observability addon push metrics to hub server.
