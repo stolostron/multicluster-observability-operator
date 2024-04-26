@@ -107,7 +107,7 @@ if ! [[ ${WORKERS} =~ ${re} ]]; then
   exit 1
 fi
 
-OBSERVABILITY_NS="open-cluster-management-addon-observability"
+OBSERVABILITY_NS="open-cluster-management-observability"
 
 # metrics data source image
 DEFAULT_METRICS_IMAGE="quay.io/ocm-observability/metrics-data:2.4.0"
@@ -154,9 +154,19 @@ for i in $(seq 1 ${NUMBERS}); do
   ${KUBECTL} -n ${cluster_name} patch deploy metrics-collector-deployment --type='json' -p='[{"op": "replace", "path": "/metadata/ownerReferences", "value": []}]'
   ${KUBECTL} -n ${cluster_name} patch deploy metrics-collector-deployment --type='json' -p='[{"op": "remove", "path": "/spec/template/spec/containers/0/resources"}]'
 
+  # deploy role
+  cat "role-endpoint-observability-operator-crd-hostedclusters-read.yaml" | ${KUBECTL} -n ${cluster_name} apply -f -
+
   # deploy ClusterRoleBinding for read metrics from OCP prometheus
   rolebinding_yaml_file=${cluster_name}-metrics-collector-view.yaml
   cp -rf metrics-collector-view.yaml "$rolebinding_yaml_file"
+  ${SED_COMMAND} "s~__CLUSTER_NAME__~${cluster_name}~g" "${rolebinding_yaml_file}"
+  cat "${rolebinding_yaml_file}" | ${KUBECTL} -n ${cluster_name} apply -f -
+  rm -f "${rolebinding_yaml_file}"
+
+  # deploy ClusterRoleBinding for reading CRDs and HosterClusters
+  rolebinding_yaml_file=${cluster_name}-rb-endpoint-operator-role-crd-hostedclusters-read.yaml
+  cp -rf rb-endpoint-operator-role-crd-hostedclusters-read.yaml "$rolebinding_yaml_file"
   ${SED_COMMAND} "s~__CLUSTER_NAME__~${cluster_name}~g" "${rolebinding_yaml_file}"
   cat "${rolebinding_yaml_file}" | ${KUBECTL} -n ${cluster_name} apply -f -
   rm -f "${rolebinding_yaml_file}"
