@@ -19,7 +19,6 @@ get_pr_image() {
   echo ${LATEST_SNAPSHOT}
 }
 
-
 get_latest_snapshot() {
   BRANCH=""
   LATEST_SNAPSHOT=""
