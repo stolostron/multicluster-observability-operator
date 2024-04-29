@@ -1,0 +1,6 @@
+resources:
+- cluster_role_binding.yaml
+- cluster_role.yaml
+- manager.yaml
+- service_account.yaml
+- cluster-management-addon.yaml

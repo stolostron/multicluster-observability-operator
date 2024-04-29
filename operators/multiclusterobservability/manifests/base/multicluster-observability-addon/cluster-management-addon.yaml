@@ -1,0 +1,47 @@
+apiVersion: addon.open-cluster-management.io/v1alpha1
+kind: ClusterManagementAddOn
+metadata:
+  name: multicluster-observability-addon
+  labels:
+    app.kubernetes.io/component: multicluster-observability-addon-manager
+    app.kubernetes.io/name: multicluster-observability-addon-manager
+    app.kubernetes.io/part-of: multicluster-observability-addon
+spec:
+  addOnMeta:
+    displayName: Multi Cluster Observability Addon
+    description: "multicluster-observability-addon is the addon to configure spoke clusters to collect and forward logs/traces to a given set of outputs"
+  supportedConfigs:
+    # Describes the general addon configuration applicable for all managed clusters. It includes:
+    # - Default subscription channel name for install the `Red Hat OpenShift Logging` operator on each managed cluster.
+    # - Default subscription channel name for install the `Red Hat OpenShift distributed tracing platform` operator on each managed cluster.
+    - group: addon.open-cluster-management.io
+      resource: addondeploymentconfigs
+      defaultConfig:
+        name: multicluster-observability-addon
+        namespace: open-cluster-management
+
+    # Describe per managed cluster sensitive data per target forwarding location, currently supported:
+    # - TLS client certificates for mTLS communication with a log output / trace exporter.
+    # - Client credentials for password based authentication with a log output / trace exporter.
+    - resource: secrets
+
+    # Describe per managed cluster auxilliary config per log output / trace exporter.
+    - resource: configmaps
+
+    # Describes the default log forwarding outputs for each log type applied to all managed clusters.
+    - group: logging.openshift.io
+      resource: clusterlogforwarders
+      # The default config is the main stanza of a ClusterLogForwarder resource
+      # that describes where logs should be forwarded for all managed cluster.
+      defaultConfig:
+        name: instance
+        namespace: open-cluster-management
+
+    # Describes the default OpenTelemetryCollector type applied to all managed clusters.
+    - group: opentelemetry.io
+      resource: opentelemetrycollectors
+      # The default config is the main stanza of an OpenTelemetryCollector resource
+      # that describes where traces should be forwarded for all managed cluster.
+      defaultConfig:
+        name: spoke-otelcol
+        namespace: open-cluster-management
