@@ -533,9 +533,25 @@ func GetMCONamespace() string {
 
 // GetAlertmanagerEndpoint is used to get the URL for alertmanager.
 func GetAlertmanagerEndpoint(client client.Client, namespace string) (string, error) {
-	found := &routev1.Route{}
+	mco := &observabilityv1beta2.MultiClusterObservability{}
+	err := client.Get(context.TODO(),
+		types.NamespacedName{
+			Name: GetMonitoringCRName(),
+		}, mco)
+	if err != nil && !errors.IsNotFound(err) {
+		return "", err
+	}
+	advancedConfig := mco.Spec.AdvancedConfig
+	if advancedConfig != nil && advancedConfig.CustomAlertmanagerHubURL != "" {
+		err := advancedConfig.CustomAlertmanagerHubURL.Validate()
+		if err != nil {
+			return "", err
+		}
+		return string(advancedConfig.CustomAlertmanagerHubURL), nil
+	}
 
-	err := client.Get(context.TODO(), types.NamespacedName{Name: AlertmanagerRouteName, Namespace: namespace}, found)
+	found := &routev1.Route{}
+	err = client.Get(context.TODO(), types.NamespacedName{Name: AlertmanagerRouteName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		// if the alertmanager router is not created yet, fallback to get host from the domain of ingresscontroller
 		domain, err := getDomainForIngressController(
