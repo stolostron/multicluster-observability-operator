@@ -11,22 +11,26 @@ import (
 	"reflect"
 	"testing"
 
+	routev1 "github.com/openshift/api/route/v1"
+
+	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
+
 	"gopkg.in/yaml.v2"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-
-	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
-
-	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	mcoutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 )
 
 var (
@@ -627,5 +631,96 @@ func TestObservatoriumCustomArgs(t *testing.T) {
 	}
 	if !reflect.DeepEqual(obs.Thanos.QueryFrontend.Containers[0].Args, queryFrontendTestArgs) {
 		t.Errorf("Failed to propagate custom args to QueryFrontend Observatorium spec")
+	}
+}
+
+func TestGenerateAPIGatewayRoute(t *testing.T) {
+	ctx := context.Background()
+	s := scheme.Scheme
+	s.AddKnownTypes(mcov1beta2.GroupVersion)
+	if err := mcov1beta2.AddToScheme(s); err != nil {
+		t.Fatalf("Unable to add scheme: (%v)", err)
+	}
+
+	clientScheme := runtime.NewScheme()
+	if err := routev1.AddToScheme(clientScheme); err != nil {
+		t.Fatalf("Unable to add route scheme: (%v)", err)
+	}
+
+	want := routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      obsAPIGateway,
+			Namespace: mcoconfig.GetDefaultNamespace(),
+		},
+		Spec: routev1.RouteSpec{
+			Port: &routev1.RoutePort{
+				TargetPort: intstr.FromString(obsApiGatewayTargetPort),
+			},
+			To: routev1.RouteTargetReference{
+				Kind: "Service",
+				Name: mcoconfig.GetOperandNamePrefix() + obsAPIGateway,
+			},
+			TLS: &routev1.TLSConfig{
+				Termination:                   routev1.TLSTerminationPassthrough,
+				InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyNone,
+			},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		want     routev1.Route
+		c        client.WithWatch
+		instance *mcov1beta2.MultiClusterObservability
+	}{
+		{
+			name:     "Test create a Route if it does not exist",
+			want:     want,
+			c:        fake.NewClientBuilder().WithScheme(clientScheme).Build(),
+			instance: &mcov1beta2.MultiClusterObservability{},
+		},
+		{
+			name:     "Test update a Route if it has been modified",
+			want:     want,
+			instance: &mcov1beta2.MultiClusterObservability{},
+			c: fake.NewClientBuilder().WithScheme(clientScheme).WithObjects(&routev1.Route{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      obsAPIGateway,
+					Namespace: mcoconfig.GetDefaultNamespace(),
+				},
+				Spec: routev1.RouteSpec{
+					Port: &routev1.RoutePort{
+						TargetPort: intstr.FromString("oauth-proxy"),
+					},
+					To: routev1.RouteTargetReference{
+						Kind: "Service",
+						Name: "modified",
+					},
+					TLS: &routev1.TLSConfig{
+						Termination:                   routev1.TLSTerminationReencrypt,
+						InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+					},
+				},
+			}).Build(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := GenerateAPIGatewayRoute(ctx, tt.c, s, tt.instance)
+			if err != nil {
+				t.Errorf("GenerateAPIGatewayRoute() error = %v", err)
+				return
+			}
+			list := &routev1.RouteList{}
+			if err := tt.c.List(context.Background(), list); err != nil {
+				t.Fatalf("Unable to list routes: (%v)", err)
+			}
+			if len(list.Items) != 1 {
+				t.Fatalf("Expected 1 route, got %d", len(list.Items))
+			}
+			if !reflect.DeepEqual(list.Items[0].Spec, tt.want.Spec) {
+				t.Fatalf("Expected route spec: %v, got %v", tt.want.Spec, list.Items[0].Spec)
+			}
+		})
 	}
 }
