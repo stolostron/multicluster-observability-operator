@@ -1761,6 +1761,14 @@ spec:
                           stored with a service account
                         type: object
                     type: object
+                  customObservabilityHubURL:
+                    description: CustomObservabilityHubURL overrides the endpoint
+                      used by the metrics-collector to send metrics to the hub server.
+                      For the metrics-collector that runs in the hub this setting
+                      has no effect.
+                    maxLength: 2083
+                    pattern: ^https?:\/\/
+                    type: string
                   grafana:
                     description: The spec of grafana
                     properties:
