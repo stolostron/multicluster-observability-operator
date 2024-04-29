@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"golang.org/x/exp/slices"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -250,7 +251,25 @@ func Render(
 		}
 	}
 
+	// Ordering resources to ensure they are applied in the correct order
+	slices.SortFunc(resources, func(a, b *unstructured.Unstructured) bool {
+		return (resourcePriority(a) - resourcePriority(b)) < 0
+	})
+
 	return resources, nil
+}
+
+func resourcePriority(resource *unstructured.Unstructured) int {
+	switch resource.GetKind() {
+	case "Role", "ClusterRole":
+		return 1
+	case "RoleBinding", "ClusterRoleBinding":
+		return 2
+	case "CustomResourceDefinition":
+		return 3
+	default:
+		return 4
+	}
 }
 
 func getDisabledMetrics(c runtimeclient.Client) (string, error) {
