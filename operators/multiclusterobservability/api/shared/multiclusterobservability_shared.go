@@ -9,6 +9,8 @@
 package shared
 
 import (
+	"net/url"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -17,6 +19,11 @@ import (
 // +kubebuilder:validation:Pattern=`^https?:\/\/`
 // +kubebuilder:validation:MaxLength=2083
 type URL string
+
+func (u URL) Validate() error {
+	_, err := url.Parse(string(u))
+	return err
+}
 
 // ObservabilityAddonSpec is the spec of observability addon.
 type ObservabilityAddonSpec struct {
