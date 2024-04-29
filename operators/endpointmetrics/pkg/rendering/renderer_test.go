@@ -58,6 +58,14 @@ func TestRender(t *testing.T) {
 	}
 
 	printObjs(t, objs)
+
+	// ensure that objects are sorted
+	for i := 0; i < len(objs)-1; i++ {
+		if resourcePriority(objs[i]) > resourcePriority(objs[i+1]) {
+			t.Errorf("objects are not sorted")
+		}
+	}
+
 }
 
 func printObjs(t *testing.T, objs []*unstructured.Unstructured) {

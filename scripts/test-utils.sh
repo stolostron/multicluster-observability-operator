@@ -19,8 +19,6 @@ get_pr_image() {
   echo ${LATEST_SNAPSHOT}
 }
 
-# Use snapshot for target release.
-# Use latest if no branch info detected, or not a release branch.
 get_latest_snapshot() {
   BRANCH=""
   LATEST_SNAPSHOT=""

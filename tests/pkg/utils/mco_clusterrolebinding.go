@@ -25,7 +25,7 @@ func GetCRB(opt TestOptions, isHub bool, name string) (error, *rbacv1.ClusterRol
 func DeleteCRB(opt TestOptions, isHub bool, name string) error {
 	clientKube := getKubeClient(opt, isHub)
 	err := clientKube.RbacV1().ClusterRoleBindings().Delete(context.TODO(), name, metav1.DeleteOptions{})
-	if err != nil {
+	if err != nil && !errors.IsNotFound(err) {
 		klog.Errorf("Failed to delete cluster rolebinding %s due to %v", name, err)
 	}
 	return err
