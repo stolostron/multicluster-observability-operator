@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -46,6 +47,8 @@ var (
 		"rest_client_request_duration_seconds_bucket",
 		"storage_operation_duration_seconds_bucket",
 	}
+	installPrometheus, _  = strconv.ParseBool(os.Getenv(operatorconfig.InstallPrometheus))
+	isHubMetricsCollector = os.Getenv("HUB_ENDPOINT_OPERATOR") == "true"
 )
 
 var Images = map[string]string{}
@@ -56,6 +59,11 @@ func Render(
 	hubInfo *operatorconfig.HubInfo,
 ) ([]*unstructured.Unstructured, error) {
 
+	isKindTest := false
+	if installPrometheus && isHubMetricsCollector {
+		isKindTest = true
+		namespace = "open-cluster-management-observability"
+	}
 	genericTemplates, err := templates.GetTemplates(templatesutil.GetTemplateRenderer())
 	if err != nil {
 		return nil, err
@@ -65,6 +73,19 @@ func Render(
 		return nil, err
 	}
 	for idx := range resources {
+		//if resources kind is clusterrolebinding or rolebinding change the subjects namespace to "open-cluster-management-obserbability"
+		if isKindTest {
+			if resources[idx].GetKind() == "ClusterRoleBinding" || resources[idx].GetKind() == "RoleBinding" {
+				subjects := resources[idx].Object["subjects"].([]interface{})
+				for i := range subjects {
+					subject := subjects[i].(map[string]interface{})
+					if subject["kind"] == "ServiceAccount" {
+						subject["namespace"] = namespace
+					}
+				}
+				resources[idx].Object["subjects"] = subjects
+			}
+		}
 		if resources[idx].GetKind() == "Deployment" && resources[idx].GetName() == "kube-state-metrics" {
 			obj := util.GetK8sObj(resources[idx].GetKind())
 			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
@@ -167,7 +188,7 @@ func Render(
 			}
 			resources[idx].Object = unstructuredObj
 		}
-		if resources[idx].GetKind() == "Secret" && resources[idx].GetName() == "prometheus-scrape-targets " {
+		if resources[idx].GetKind() == "Secret" && resources[idx].GetName() == "prometheus-scrape-targets" {
 			obj := util.GetK8sObj(resources[idx].GetKind())
 			err := runtime.DefaultUnstructuredConverter.FromUnstructured(resources[idx].Object, obj)
 			if err != nil {
@@ -192,6 +213,9 @@ func Render(
 				s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(promConfig, "_DISABLED_METRICS_", disabledMetricsSt)
 			}
 
+			if isKindTest {
+				s.StringData["scrape-targets.yaml"] = strings.ReplaceAll(promConfig, "open-cluster-management-addon-observability", "open-cluster-management-observability")
+			}
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 			if err != nil {
 				return nil, err
