@@ -81,6 +81,9 @@ type AdvancedConfig struct {
 	// spec for thanos-store-shard
 	// +optional
 	Store *StoreSpec `json:"store,omitempty"`
+	// spec for MultiClusterObservabilityAddon
+	// +optional
+	MultiClusterObservabilityAddon *CommonSpec `json:"multiClusterObservabilityAddon,omitempty"`
 }
 
 type CommonSpec struct {

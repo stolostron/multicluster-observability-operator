@@ -13,3 +13,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: multicluster-observability-addon-manager
+    namespace: open-cluster-management

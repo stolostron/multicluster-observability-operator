@@ -140,6 +140,29 @@ func (r *Renderer) RenderClusterRole(
 	return u, nil
 }
 
+func (r *Renderer) RenderClusterManagementAddOn(
+	res *resource.Resource,
+	namespace string,
+	labels map[string]string,
+) (*unstructured.Unstructured, error) {
+	m, err := res.Map()
+	if err != nil {
+		return nil, err
+	}
+	u := &unstructured.Unstructured{Object: m}
+
+	cLabels := u.GetLabels()
+	if cLabels == nil {
+		cLabels = make(map[string]string)
+	}
+	for k, v := range labels {
+		cLabels[k] = v
+	}
+	u.SetLabels(cLabels)
+
+	return u, nil
+}
+
 func (r *Renderer) RenderClusterRoleBinding(
 	res *resource.Resource,
 	namespace string,

@@ -13,7 +13,7 @@ import (
 )
 
 // *Templates contains all kustomize resources.
-var genericTemplates, grafanaTemplates, alertManagerTemplates, thanosTemplates, proxyTemplates, endpointObservabilityTemplates, prometheusTemplates []*resource.Resource
+var genericTemplates, grafanaTemplates, alertManagerTemplates, thanosTemplates, proxyTemplates, endpointObservabilityTemplates, prometheusTemplates, mcoaTemplates []*resource.Resource
 
 // GetOrLoadGenericTemplates reads base manifest.
 func GetOrLoadGenericTemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
@@ -96,6 +96,21 @@ func GetOrLoadProxyTemplates(r *templates.TemplateRenderer) ([]*resource.Resourc
 	return proxyTemplates, nil
 }
 
+// GetOrLoadMCOATemplates reads the rbac-query-proxy manifests.
+func GetOrLoadMCOATemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
+	if len(mcoaTemplates) > 0 {
+		return mcoaTemplates, nil
+	}
+
+	basePath := path.Join(r.GetTemplatesPath(), "base")
+
+	// add rbac-query-proxy template
+	if err := r.AddTemplateFromPath(basePath+"/multicluster-observability-addon", &mcoaTemplates); err != nil {
+		return mcoaTemplates, err
+	}
+	return mcoaTemplates, nil
+}
+
 // GetEndpointObservabilityTemplates reads endpoint-observability manifest.
 func GetOrLoadEndpointObservabilityTemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
 	if len(endpointObservabilityTemplates) > 0 {
@@ -136,4 +151,5 @@ func ResetTemplates() {
 	thanosTemplates = nil
 	proxyTemplates = nil
 	endpointObservabilityTemplates = nil
+	mcoaTemplates = nil
 }

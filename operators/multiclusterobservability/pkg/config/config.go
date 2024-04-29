@@ -158,6 +158,9 @@ const (
 	EndpointControllerImgName = "endpoint-monitoring-operator"
 	EndpointControllerKey     = "endpoint_monitoring_operator"
 
+	MCOAImgName = "multicluster-observability-addon"
+	MCOAImgKey  = "multicluster_observability_addon"
+
 	RBACQueryProxyImgName = "rbac-query-proxy"
 	RBACQueryProxyKey     = "rbac_query_proxy"
 
@@ -211,23 +214,27 @@ const (
 	MetricsCollectorCPULimits     = ""
 	MetricsCollectorMemoryLimits  = ""
 
-	ObservatoriumAPI             = "observatorium-api"
-	ThanosCompact                = "thanos-compact"
-	ThanosQuery                  = "thanos-query"
-	ThanosQueryFrontend          = "thanos-query-frontend"
-	ThanosQueryFrontendMemcached = "thanos-query-frontend-memcached"
-	ThanosRule                   = "thanos-rule"
-	ThanosReceive                = "thanos-receive-default"
-	ThanosStoreMemcached         = "thanos-store-memcached"
-	ThanosStoreShard             = "thanos-store-shard"
-	MemcachedExporter            = "memcached-exporter"
-	Grafana                      = "grafana"
-	RBACQueryProxy               = "rbac-query-proxy"
-	Alertmanager                 = "alertmanager"
-	ThanosReceiveController      = "thanos-receive-controller"
-	ObservatoriumOperator        = "observatorium-operator"
-	MetricsCollector             = "metrics-collector"
-	Observatorium                = "observatorium"
+	MCOACPURequests    = "4m"
+	MCOAMemoryRequests = "200Mi"
+
+	ObservatoriumAPI               = "observatorium-api"
+	ThanosCompact                  = "thanos-compact"
+	ThanosQuery                    = "thanos-query"
+	ThanosQueryFrontend            = "thanos-query-frontend"
+	ThanosQueryFrontendMemcached   = "thanos-query-frontend-memcached"
+	ThanosRule                     = "thanos-rule"
+	ThanosReceive                  = "thanos-receive-default"
+	ThanosStoreMemcached           = "thanos-store-memcached"
+	ThanosStoreShard               = "thanos-store-shard"
+	MemcachedExporter              = "memcached-exporter"
+	Grafana                        = "grafana"
+	RBACQueryProxy                 = "rbac-query-proxy"
+	Alertmanager                   = "alertmanager"
+	ThanosReceiveController        = "thanos-receive-controller"
+	ObservatoriumOperator          = "observatorium-operator"
+	MetricsCollector               = "metrics-collector"
+	Observatorium                  = "observatorium"
+	MultiClusterObservabilityAddon = "multicluster-observability-addon"
 
 	RetentionResolutionRaw = "365d"
 	RetentionResolution5m  = "365d"
@@ -373,6 +380,10 @@ func GetReplicas(component string, advanced *observabilityv1beta2.AdvancedConfig
 	case Alertmanager:
 		if advanced.Alertmanager != nil {
 			replicas = advanced.Alertmanager.Replicas
+		}
+	case MultiClusterObservabilityAddon:
+		if advanced.MultiClusterObservabilityAddon != nil {
+			replicas = advanced.MultiClusterObservabilityAddon.Replicas
 		}
 	}
 	if replicas == nil || *replicas == 0 {
@@ -882,6 +893,14 @@ func getDefaultResource(resourceType string, resource corev1.ResourceName,
 				return GrafanaMemoryLimits
 			}
 		}
+	case MultiClusterObservabilityAddon:
+		if resource == corev1.ResourceCPU {
+			return AlertmanagerCPURequets
+		}
+		if resource == corev1.ResourceMemory {
+			return AlertmanagerMemoryRequets
+		}
+
 	}
 	return ""
 }
@@ -1081,6 +1100,7 @@ func SetOperandNames(c client.Client) error {
 	operandNames[ObservatoriumOperator] = GetOperandNamePrefix() + ObservatoriumOperator
 	operandNames[Observatorium] = GetDefaultCRName()
 	operandNames[ObservatoriumAPI] = GetOperandNamePrefix() + ObservatoriumAPI
+	operandNames[MultiClusterObservabilityAddon] = GetOperandNamePrefix() + MultiClusterObservabilityAddon
 
 	// Check if the Observatorium CR already exists
 	opts := &client.ListOptions{
@@ -1104,6 +1124,7 @@ func SetOperandNames(c client.Client) error {
 						operandNames[ObservatoriumOperator] = ObservatoriumOperator
 						operandNames[Observatorium] = observatorium.Name
 						operandNames[ObservatoriumAPI] = observatorium.Name + "-" + ObservatoriumAPI
+						operandNames[MultiClusterObservabilityAddon] = MultiClusterObservabilityAddon
 					}
 					break
 				}
