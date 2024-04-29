@@ -292,6 +292,14 @@ func TestGetObsAPIHost(t *testing.T) {
 	if host != customBaseURL {
 		t.Errorf("Observatorium api (%v) is not the expected (%v)", host, customBaseURL)
 	}
+
+	mco.Spec.AdvancedConfig.CustomObservabilityHubURL = "httpa://foob ar.c"
+	client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route, mco).Build()
+	_, err := GetObsAPIHost(client, "test")
+	if err == nil {
+		t.Errorf("expected error when parsing URL '%v', but got none", mco.Spec.AdvancedConfig.CustomObservabilityHubURL)
+	}
+
 }
 
 func TestIsPaused(t *testing.T) {

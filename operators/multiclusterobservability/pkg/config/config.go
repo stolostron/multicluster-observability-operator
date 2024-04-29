@@ -492,6 +492,10 @@ func GetObsAPIHost(client client.Client, namespace string) (string, error) {
 	}
 	advancedConfig := mco.Spec.AdvancedConfig
 	if advancedConfig != nil && advancedConfig.CustomObservabilityHubURL != "" {
+		err := advancedConfig.CustomObservabilityHubURL.Validate()
+		if err != nil {
+			return "", err
+		}
 		return string(advancedConfig.CustomObservabilityHubURL), nil
 	}
 	return GetRouteHost(client, obsAPIGateway, namespace)
