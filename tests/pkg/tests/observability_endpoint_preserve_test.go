@@ -38,9 +38,6 @@ var _ = Describe("Observability:", func() {
 	Context("[P2][Sev2][observability] Should revert any manual changes on metrics-collector deployment (endpoint_preserve/g0) -", func() {
 		newDep := &appv1.Deployment{}
 		It("[Stable] Deleting metrics-collector deployment for cluster", func() {
-			if os.Getenv("IS_KIND_ENV") == trueStr {
-				Skip("Skip the case due to run in KinD")
-			}
 			var (
 				err error
 				dep *appv1.Deployment
@@ -81,9 +78,6 @@ var _ = Describe("Observability:", func() {
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 		})
 		It("[Stable] Updating metrics-collector deployment", func() {
-			if os.Getenv("IS_KIND_ENV") == trueStr {
-				Skip("Skip the case due to run in KinD")
-			}
 			updateSaName := "test-serviceaccount"
 			Eventually(func() error {
 				newDep, err = utils.GetDeployment(
@@ -128,7 +122,6 @@ var _ = Describe("Observability:", func() {
 		if os.Getenv("IS_KIND_ENV") == trueStr {
 			Skip("Skip the case due to run in KinD")
 		}
-
 		By("Deleting metrics-collector-view clusterolebinding")
 		err, crb := utils.GetCRB(testOptions, false, "metrics-collector-view")
 		Expect(err).ToNot(HaveOccurred())
