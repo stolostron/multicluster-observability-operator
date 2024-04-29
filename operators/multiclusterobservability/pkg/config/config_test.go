@@ -300,7 +300,57 @@ func TestGetObsAPIHost(t *testing.T) {
 	if err == nil {
 		t.Errorf("expected error when parsing URL '%v', but got none", mco.Spec.AdvancedConfig.CustomObservabilityHubURL)
 	}
+}
 
+func TestGetAlertmanagerEndpoint(t *testing.T) {
+	routeURL := "http://route.example.com"
+	route := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      AlertmanagerRouteName,
+			Namespace: "test",
+		},
+		Spec: routev1.RouteSpec{
+			Host: routeURL,
+		},
+	}
+	scheme := runtime.NewScheme()
+	scheme.AddKnownTypes(routev1.GroupVersion, route)
+	scheme.AddKnownTypes(mcov1beta2.GroupVersion, &mcov1beta2.MultiClusterObservability{})
+	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route).Build()
+
+	host, _ := GetAlertmanagerEndpoint(context.TODO(), client, "default")
+	if host == routeURL {
+		t.Errorf("Should not get route host in default namespace")
+	}
+
+	host, _ = GetAlertmanagerEndpoint(context.TODO(), client, "test")
+	if host != routeURL {
+		t.Errorf("Alertmanager URL (%v) is not the expected (%v)", host, routeURL)
+	}
+
+	customBaseURL := "https://custom.base/url"
+	mco := &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: GetMonitoringCRName(),
+		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			AdvancedConfig: &mcov1beta2.AdvancedConfig{
+				CustomAlertmanagerHubURL: mcoshared.URL(customBaseURL),
+			},
+		},
+	}
+	client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route, mco).Build()
+	host, _ = GetAlertmanagerEndpoint(context.TODO(), client, "test")
+	if host != customBaseURL {
+		t.Errorf("Alertmanager URL (%v) is not the expected (%v)", host, customBaseURL)
+	}
+
+	mco.Spec.AdvancedConfig.CustomAlertmanagerHubURL = "httpa://foob ar.c"
+	client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route, mco).Build()
+	_, err := GetAlertmanagerEndpoint(context.TODO(), client, "test")
+	if err == nil {
+		t.Errorf("expected error when parsing URL '%v', but got none", mco.Spec.AdvancedConfig.CustomObservabilityHubURL)
+	}
 }
 
 func TestIsPaused(t *testing.T) {
