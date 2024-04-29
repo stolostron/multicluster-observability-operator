@@ -5,6 +5,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"reflect"
@@ -266,12 +267,12 @@ func TestGetObsAPIHost(t *testing.T) {
 	scheme.AddKnownTypes(mcov1beta2.GroupVersion, &mcov1beta2.MultiClusterObservability{})
 	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route).Build()
 
-	host, _ := GetObsAPIHost(client, "default")
+	host, _ := GetObsAPIHost(context.TODO(), client, "default")
 	if host == apiServerURL {
 		t.Errorf("Should not get route host in default namespace")
 	}
 
-	host, _ = GetObsAPIHost(client, "test")
+	host, _ = GetObsAPIHost(context.TODO(), client, "test")
 	if host != apiServerURL {
 		t.Errorf("Observatorium api (%v) is not the expected (%v)", host, apiServerURL)
 	}
@@ -288,14 +289,14 @@ func TestGetObsAPIHost(t *testing.T) {
 		},
 	}
 	client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route, mco).Build()
-	host, _ = GetObsAPIHost(client, "test")
+	host, _ = GetObsAPIHost(context.TODO(), client, "test")
 	if host != customBaseURL {
 		t.Errorf("Observatorium api (%v) is not the expected (%v)", host, customBaseURL)
 	}
 
 	mco.Spec.AdvancedConfig.CustomObservabilityHubURL = "httpa://foob ar.c"
 	client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route, mco).Build()
-	_, err := GetObsAPIHost(client, "test")
+	_, err := GetObsAPIHost(context.TODO(), client, "test")
 	if err == nil {
 		t.Errorf("expected error when parsing URL '%v', but got none", mco.Spec.AdvancedConfig.CustomObservabilityHubURL)
 	}

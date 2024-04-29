@@ -481,9 +481,9 @@ func GetDefaultTenantName() string {
 }
 
 // GetObsAPIHost is used to get the URL for observartium api gateway.
-func GetObsAPIHost(client client.Client, namespace string) (string, error) {
+func GetObsAPIHost(ctx context.Context, client client.Client, namespace string) (string, error) {
 	mco := &observabilityv1beta2.MultiClusterObservability{}
-	err := client.Get(context.TODO(),
+	err := client.Get(ctx,
 		types.NamespacedName{
 			Name: GetMonitoringCRName(),
 		}, mco)
@@ -532,9 +532,9 @@ func GetMCONamespace() string {
 }
 
 // GetAlertmanagerEndpoint is used to get the URL for alertmanager.
-func GetAlertmanagerEndpoint(client client.Client, namespace string) (string, error) {
+func GetAlertmanagerEndpoint(ctx context.Context, client client.Client, namespace string) (string, error) {
 	mco := &observabilityv1beta2.MultiClusterObservability{}
-	err := client.Get(context.TODO(),
+	err := client.Get(ctx,
 		types.NamespacedName{
 			Name: GetMonitoringCRName(),
 		}, mco)
@@ -551,7 +551,7 @@ func GetAlertmanagerEndpoint(client client.Client, namespace string) (string, er
 	}
 
 	found := &routev1.Route{}
-	err = client.Get(context.TODO(), types.NamespacedName{Name: AlertmanagerRouteName, Namespace: namespace}, found)
+	err = client.Get(ctx, types.NamespacedName{Name: AlertmanagerRouteName, Namespace: namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		// if the alertmanager router is not created yet, fallback to get host from the domain of ingresscontroller
 		domain, err := getDomainForIngressController(
