@@ -13,7 +13,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -24,6 +23,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/status"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
@@ -43,11 +43,7 @@ func TestStatusController_NominalCase(t *testing.T) {
 	hubOba := newObservabilityAddon(name, testHubNamespace)
 	hubOba.Spec.Interval = 12341 // add variation in the spec, not status
 	custumHubClient := newClientWithUpdateError(newClient(hubOba), nil, nil)
-	hubClient := &status.ClientWithReload{
-		Client:    custumHubClient,
-		Generator: func() (client.Client, error) { return nil, nil }, // no reload
-	}
-	r := newStatusReconciler(c, hubClient)
+	r := newStatusReconciler(c, func() (client.Client, error) { return custumHubClient, nil })
 
 	// no status difference triggers no update
 	resp, err := r.Reconcile(context.Background(), newRequest())
@@ -82,7 +78,7 @@ func TestStatusController_NominalCase(t *testing.T) {
 
 	// check status in hub
 	hubObsAddon := &oav1beta1.ObservabilityAddon{}
-	err = hubClient.Get(context.Background(), types.NamespacedName{Name: obAddonName, Namespace: testHubNamespace}, hubObsAddon)
+	err = custumHubClient.Get(context.Background(), types.NamespacedName{Name: obAddonName, Namespace: testHubNamespace}, hubObsAddon)
 	if err != nil {
 		t.Fatalf("Failed to get oba in hub: %v", err)
 	}
@@ -99,11 +95,7 @@ func TestStatusController_UpdateHubAddonFailures(t *testing.T) {
 	hubOba := newObservabilityAddon(name, testHubNamespace)
 	var updateErr error
 	hubClientWithConflict := newClientWithUpdateError(newClient(hubOba), updateErr, nil)
-	hubClient := &status.ClientWithReload{
-		Client:    hubClientWithConflict,
-		Generator: func() (client.Client, error) { return nil, nil }, // no reload
-	}
-	r := newStatusReconciler(c, hubClient)
+	r := newStatusReconciler(c, func() (client.Client, error) { return hubClientWithConflict, nil })
 
 	testCases := map[string]struct {
 		updateErr       error
@@ -185,14 +177,10 @@ func TestStatusController_GetHubAddonFailures(t *testing.T) {
 	hubOba := newObservabilityAddon(name, testHubNamespace)
 	hubClientWithConflict := newClientWithUpdateError(newClient(hubOba), nil, nil)
 	var reloadCount int
-	hubClient := &status.ClientWithReload{
-		Client: hubClientWithConflict,
-		Generator: func() (client.Client, error) {
-			reloadCount++
-			return hubClientWithConflict, nil
-		},
-	}
-	r := newStatusReconciler(c, hubClient)
+	r := newStatusReconciler(c, func() (client.Client, error) {
+		reloadCount++
+		return hubClientWithConflict, nil
+	})
 
 	testCases := map[string]struct {
 		getErr          error
@@ -311,7 +299,7 @@ func (f *TestStatusWriter) Update(ctx context.Context, obj client.Object, opts .
 
 func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon {
 	return &oav1beta1.ObservabilityAddon{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
 		},
@@ -341,10 +329,15 @@ func newRequest() ctrl.Request {
 	}
 }
 
-func newStatusReconciler(c client.Client, hubClient *status.ClientWithReload) *status.StatusReconciler {
+func newStatusReconciler(c client.Client, hubReload func() (client.Client, error)) *status.StatusReconciler {
+	hc, err := util.NewHubClientWithReloadFunc(hubReload)
+	if err != nil {
+		panic(err)
+	}
+
 	return &status.StatusReconciler{
 		Client:       c,
-		HubClient:    hubClient,
+		HubClient:    hc,
 		Namespace:    testNamespace,
 		HubNamespace: testHubNamespace,
 		ObsAddonName: obAddonName,

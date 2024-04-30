@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
@@ -178,12 +179,17 @@ alertmanager-router-ca: |
 	}
 
 	hubClient := fake.NewClientBuilder().WithRuntimeObjects(hubObjs...).Build()
-	util.SetHubClient(hubClient)
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
+	hubClientWithReload, err := util.NewHubClientWithReloadFunc(func() (client.Client, error) {
+		return hubClient, nil
+	})
+	if err != nil {
+		t.Fatalf("Failed to create hub client with reload: %v", err)
+	}
 	r := &ObservabilityAddonReconciler{
 		Client:    c,
-		HubClient: hubClient,
+		HubClient: hubClientWithReload,
 	}
 
 	// test error in reconcile if missing obervabilityaddon
@@ -194,7 +200,7 @@ alertmanager-router-ca: |
 		},
 	}
 	ctx := context.TODO()
-	_, err := r.Reconcile(ctx, req)
+	_, err = r.Reconcile(ctx, req)
 	if err == nil {
 		t.Fatalf("reconcile: miss the error for missing obervabilityaddon")
 	}

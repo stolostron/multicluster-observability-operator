@@ -21,20 +21,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/go-logr/logr"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
-
-type ClientWithReloader interface {
-	client.Client
-	Reload() error
-}
 
 // StatusReconciler reconciles status object.
 type StatusReconciler struct {
 	Client       client.Client
 	HubNamespace string
 	Namespace    string
-	HubClient    ClientWithReloader
+	HubClient    *util.HubClientWithReload
 	ObsAddonName string
 	Logger       logr.Logger
 }
@@ -44,8 +40,7 @@ type StatusReconciler struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	r.Logger.WithValues("Request", req.String())
-	r.Logger.Info("Reconciling")
+	r.Logger.WithValues("Request", req.String()).Info("Reconciling")
 
 	// Fetch the ObservabilityAddon instance in hub cluster
 	hubObsAddon := &oav1beta1.ObservabilityAddon{}
@@ -53,8 +48,9 @@ func (r *StatusReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if err != nil {
 		if isAuthOrConnectionErr(err) {
 			// Try reloading the kubeconfig for the hub cluster
-			if err := r.HubClient.Reload(); err != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to reload the hub client: %w", err)
+			var reloadErr error
+			if r.HubClient, reloadErr = r.HubClient.Reload(); reloadErr != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to reload the hub client: %w", reloadErr)
 			}
 			r.Logger.Info("Failed to get ObservabilityAddon in hub cluster, reloaded hub, requeue with delay", "error", err)
 			return ctrl.Result{Requeue: true}, nil
@@ -163,21 +159,4 @@ func requeueWithOptionalDelay(err error) ctrl.Result {
 	}
 
 	return ctrl.Result{Requeue: true}
-}
-
-// ClientGenerator is a function type that generates an instance of client.Client
-type ClientGenerator func() (client.Client, error)
-
-// ClientWithReload is a struct that implements the HubClientWithReload interface
-// It uses a generator function to provide new instances of client.Client
-type ClientWithReload struct {
-	client.Client                 // Current client instance
-	Generator     ClientGenerator // Function to generate a new client
-}
-
-// Reload creates a new client instance using the generator
-func (c *ClientWithReload) Reload() error {
-	var err error
-	c.Client, err = c.Generator() // Generate and update the current client instance
-	return err
 }
