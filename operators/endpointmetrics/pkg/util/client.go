@@ -5,50 +5,64 @@
 package util
 
 import (
-	"context"
-	"os"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	ocpClientSet "github.com/openshift/client-go/config/clientset/versioned"
 
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	oav1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 )
 
-const (
-	obAddonName = "observability-addon"
-)
+// ReloadableHubClient is a wrapper around the hub client that allows reloading the client.
+// This is useful when the kubeconfig file is updated.
+type ReloadableHubClient struct {
+	client.Client
+	reload func() (client.Client, error)
+}
 
-var (
-	hubClient client.Client
-	ocpClient ocpClientSet.Interface
-)
-
-var (
-	log               = ctrl.Log.WithName("util")
-	hubKubeConfigPath = os.Getenv("HUB_KUBECONFIG")
-)
-
-// GetOrCreateOCPClient get an existing hub client or create new one if it doesn't exist.
-func GetOrCreateHubClient(renew bool, clientScheme *runtime.Scheme) (client.Client, error) {
-	if os.Getenv("UNIT_TEST") == "true" {
-		return hubClient, nil
+// NewReloadableHubClient creates a new hub client with a reload function.
+func NewReloadableHubClient(filePath string, clientScheme *runtime.Scheme) (*ReloadableHubClient, error) {
+	reload := func() (client.Client, error) {
+		return newHubClient(filePath, clientScheme)
 	}
 
-	if !renew && hubClient != nil {
-		return hubClient, nil
-	}
-	// create the config from the path
-	config, err := clientcmd.BuildConfigFromFlags("", hubKubeConfigPath)
+	hubClient, err := reload()
 	if err != nil {
-		log.Error(err, "Failed to create the config")
-		return nil, err
+		return nil, fmt.Errorf("failed to create the hub client: %w", err)
+	}
+	return &ReloadableHubClient{Client: hubClient, reload: reload}, nil
+}
+
+// NewReloadableHubClientWithReloadFunc creates a new hub client with a reload function.
+// The reload function is called when the Reload method is called.
+// This can be handy for testing purposes.
+func NewReloadableHubClientWithReloadFunc(reload func() (client.Client, error)) (*ReloadableHubClient, error) {
+	hubClient, err := reload()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create the hub client: %w", err)
+	}
+	return &ReloadableHubClient{Client: hubClient, reload: reload}, nil
+}
+
+// Reload reloads the hub client and returns a new instance of HubClientWithReload.
+// HubClientWithReload is immutable.
+func (c *ReloadableHubClient) Reload() (*ReloadableHubClient, error) {
+	hubClient, err := c.reload()
+	if err != nil {
+		return nil, fmt.Errorf("failed to reload the hub client: %w", err)
+	}
+
+	return &ReloadableHubClient{Client: hubClient, reload: c.reload}, nil
+}
+
+func newHubClient(filePath string, clientScheme *runtime.Scheme) (client.Client, error) {
+	// create the config from the path
+	config, err := clientcmd.BuildConfigFromFlags("", filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create the config: %w", err)
 	}
 
 	if clientScheme == nil {
@@ -63,57 +77,9 @@ func GetOrCreateHubClient(renew bool, clientScheme *runtime.Scheme) (client.Clie
 
 	// generate the client based off of the config
 	hubClient, err := client.New(config, client.Options{Scheme: clientScheme})
-
 	if err != nil {
-		log.Error(err, "Failed to create hub client")
-		return nil, err
+		return nil, fmt.Errorf("failed to create hub client: %w", err)
 	}
 
-	return hubClient, err
-}
-
-// GetOrCreateOCPClient get an existing ocp client or create new one if it doesn't exist.
-func GetOrCreateOCPClient() (ocpClientSet.Interface, error) {
-	if ocpClient != nil {
-		return ocpClient, nil
-	}
-	// create the config from the path
-	config, err := clientcmd.BuildConfigFromFlags("", "")
-	if err != nil {
-		log.Error(err, "Failed to create the config")
-		return nil, err
-	}
-
-	// generate the client based off of the config
-	ocpClient, err = ocpClientSet.NewForConfig(config)
-	if err != nil {
-		log.Error(err, "Failed to create ocp config client")
-		return nil, err
-	}
-
-	return ocpClient, err
-}
-
-func SetHubClient(c client.Client) {
-	hubClient = c
-}
-
-func RenewAndRetry(ctx context.Context, scheme *runtime.Scheme) (client.Client, *oav1beta1.ObservabilityAddon, error) {
-	// try to renew the hub client
-	log.Info("renew hub client")
-	hubClient, err := GetOrCreateHubClient(true, scheme)
-	if err != nil {
-		log.Error(err, "Failed to create the hub client")
-		return nil, nil, err
-	}
-
-	hubObsAddon := &oav1beta1.ObservabilityAddon{}
-	hubNamespace := os.Getenv("HUB_NAMESPACE")
-	err = hubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
-	if err != nil {
-		log.Error(err, "Failed to get observabilityaddon in hub cluster", "namespace", hubNamespace)
-		return nil, nil, err
-	}
-
-	return hubClient, hubObsAddon, nil
+	return hubClient, nil
 }

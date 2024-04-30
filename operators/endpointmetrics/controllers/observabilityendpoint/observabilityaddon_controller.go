@@ -72,7 +72,7 @@ var (
 type ObservabilityAddonReconciler struct {
 	Client    client.Client
 	Scheme    *runtime.Scheme
-	HubClient client.Client
+	HubClient *util.ReloadableHubClient
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io.open-cluster-management.io,resources=observabilityaddons,verbs=get;list;watch;create;update;patch;delete
@@ -110,18 +110,22 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 
 		// Fetch the ObservabilityAddon instance in hub cluster
-		err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
-		if err != nil {
-			hubClient, obsAddon, err := util.RenewAndRetry(ctx, r.Scheme)
-			if err != nil {
-				return ctrl.Result{}, err
+		fetchAddon := func() error {
+			return r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
+		}
+		if err := fetchAddon(); err != nil {
+			if r.HubClient, err = r.HubClient.Reload(); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to reload the hub client: %w", err)
 			}
-			r.HubClient = hubClient
-			hubObsAddon = obsAddon
+
+			// Retry the operation once with the reloaded client
+			if err := fetchAddon(); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to get ObservabilityAddon in hub cluster: %w", err)
+			}
 		}
 
 		// Fetch the ObservabilityAddon instance in local cluster
-		err = r.Client.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: namespace}, obsAddon)
+		err := r.Client.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: namespace}, obsAddon)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				obsAddon = nil
