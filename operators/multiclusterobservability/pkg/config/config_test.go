@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -264,16 +263,43 @@ func TestGetObsAPIHost(t *testing.T) {
 	}
 	scheme := runtime.NewScheme()
 	scheme.AddKnownTypes(routev1.GroupVersion, route)
+	scheme.AddKnownTypes(mcov1beta2.GroupVersion, &mcov1beta2.MultiClusterObservability{})
 	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route).Build()
 
 	host, _ := GetObsAPIHost(client, "default")
 	if host == apiServerURL {
 		t.Errorf("Should not get route host in default namespace")
 	}
+
 	host, _ = GetObsAPIHost(client, "test")
 	if host != apiServerURL {
 		t.Errorf("Observatorium api (%v) is not the expected (%v)", host, apiServerURL)
 	}
+
+	customBaseURL := "https://custom.base/url"
+	mco := &mcov1beta2.MultiClusterObservability{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: GetMonitoringCRName(),
+		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			AdvancedConfig: &mcov1beta2.AdvancedConfig{
+				CustomObservabilityHubURL: mcoshared.URL(customBaseURL),
+			},
+		},
+	}
+	client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route, mco).Build()
+	host, _ = GetObsAPIHost(client, "test")
+	if host != customBaseURL {
+		t.Errorf("Observatorium api (%v) is not the expected (%v)", host, customBaseURL)
+	}
+
+	mco.Spec.AdvancedConfig.CustomObservabilityHubURL = "httpa://foob ar.c"
+	client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route, mco).Build()
+	_, err := GetObsAPIHost(client, "test")
+	if err == nil {
+		t.Errorf("expected error when parsing URL '%v', but got none", mco.Spec.AdvancedConfig.CustomObservabilityHubURL)
+	}
+
 }
 
 func TestIsPaused(t *testing.T) {
@@ -325,7 +351,7 @@ func TestIsPaused(t *testing.T) {
 
 func NewFakeClient(mco *mcov1beta2.MultiClusterObservability,
 	obs *observatoriumv1alpha1.Observatorium) client.Client {
-	s := scheme.Scheme
+	s := runtime.NewScheme()
 	s.AddKnownTypes(mcov1beta2.GroupVersion, mco)
 	s.AddKnownTypes(observatoriumv1alpha1.GroupVersion, obs)
 	objs := []runtime.Object{mco, obs}
@@ -446,7 +472,9 @@ func TestReadImageManifestConfigMap(t *testing.T) {
 }
 
 func Test_checkIsIBMCloud(t *testing.T) {
-	s := scheme.Scheme
+	s := runtime.NewScheme()
+	s.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.Node{})
+	s.AddKnownTypes(corev1.SchemeGroupVersion, &corev1.NodeList{})
 	nodeIBM := &corev1.Node{
 		Spec: corev1.NodeSpec{
 			ProviderID: "ibm",
@@ -891,7 +919,7 @@ func TestGetOperandName(t *testing.T) {
 			name:          "Have Observatorium CR without ownerreference",
 			componentName: Alertmanager,
 			prepare: func() {
-				//clean the operandNames map
+				// clean the operandNames map
 				CleanUpOperandNames()
 				mco := &mcov1beta2.MultiClusterObservability{
 					TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
@@ -916,7 +944,7 @@ func TestGetOperandName(t *testing.T) {
 				}
 
 				// Register operator types with the runtime scheme.
-				s := scheme.Scheme
+				s := runtime.NewScheme()
 				mcov1beta2.SchemeBuilder.AddToScheme(s)
 				observatoriumv1alpha1.AddToScheme(s)
 				client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, observatorium).Build()
@@ -933,7 +961,7 @@ func TestGetOperandName(t *testing.T) {
 			name:          "Have Observatorium CR (observability-observatorium) with ownerreference",
 			componentName: Alertmanager,
 			prepare: func() {
-				//clean the operandNames map
+				// clean the operandNames map
 				CleanUpOperandNames()
 				mco := &mcov1beta2.MultiClusterObservability{
 					TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
@@ -964,7 +992,7 @@ func TestGetOperandName(t *testing.T) {
 				}
 
 				// Register operator types with the runtime scheme.
-				s := scheme.Scheme
+				s := runtime.NewScheme()
 				mcov1beta2.SchemeBuilder.AddToScheme(s)
 				observatoriumv1alpha1.AddToScheme(s)
 				client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, observatorium).Build()
@@ -982,7 +1010,7 @@ func TestGetOperandName(t *testing.T) {
 			name:          "Have Observatorium CR (observability) with ownerreference",
 			componentName: Alertmanager,
 			prepare: func() {
-				//clean the operandNames map
+				// clean the operandNames map
 				CleanUpOperandNames()
 				mco := &mcov1beta2.MultiClusterObservability{
 					TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
@@ -1013,7 +1041,7 @@ func TestGetOperandName(t *testing.T) {
 				}
 
 				// Register operator types with the runtime scheme.
-				s := scheme.Scheme
+				s := runtime.NewScheme()
 				mcov1beta2.SchemeBuilder.AddToScheme(s)
 				observatoriumv1alpha1.AddToScheme(s)
 				client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(mco, observatorium).Build()

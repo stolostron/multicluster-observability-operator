@@ -47,7 +47,9 @@ const (
 	endpointsConfigName = "observability-remotewrite-endpoints"
 	endpointsKey        = "endpoints.yaml"
 
-	obsAPIGateway            = "observatorium-api"
+	obsAPIGateway           = "observatorium-api"
+	obsApiGatewayTargetPort = "public"
+
 	obsCRConfigHashLabelName = "config-hash"
 
 	readOnlyRoleName  = "read-only-metrics"
@@ -252,6 +254,7 @@ func updateTenantID(
 
 // GenerateAPIGatewayRoute defines aaa
 func GenerateAPIGatewayRoute(
+	ctx context.Context,
 	runclient client.Client, scheme *runtime.Scheme,
 	mco *mcov1beta2.MultiClusterObservability) (*ctrl.Result, error) {
 
@@ -262,11 +265,11 @@ func GenerateAPIGatewayRoute(
 		},
 		Spec: routev1.RouteSpec{
 			Port: &routev1.RoutePort{
-				TargetPort: intstr.FromString("public"),
+				TargetPort: intstr.FromString(obsApiGatewayTargetPort),
 			},
 			To: routev1.RouteTargetReference{
 				Kind: "Service",
-				Name: mcoconfig.GetOperandNamePrefix() + "observatorium-api",
+				Name: mcoconfig.GetOperandNamePrefix() + obsAPIGateway,
 			},
 			TLS: &routev1.TLSConfig{
 				Termination:                   routev1.TLSTerminationPassthrough,
@@ -280,10 +283,8 @@ func GenerateAPIGatewayRoute(
 		return &ctrl.Result{}, err
 	}
 
-	err := runclient.Get(
-		context.TODO(),
-		types.NamespacedName{Name: apiGateway.Name, Namespace: apiGateway.Namespace},
-		&routev1.Route{})
+	found := &routev1.Route{}
+	err := runclient.Get(ctx, types.NamespacedName{Namespace: apiGateway.Namespace, Name: apiGateway.Name}, found)
 	if err != nil && k8serrors.IsNotFound(err) {
 		log.Info("Creating a new route to expose observatorium api",
 			"apiGateway.Namespace", apiGateway.Namespace,
@@ -291,6 +292,43 @@ func GenerateAPIGatewayRoute(
 		)
 		err = runclient.Create(context.TODO(), apiGateway)
 		if err != nil {
+			return &ctrl.Result{}, err
+		}
+		return nil, nil
+	}
+
+	var needsUpdate bool
+	if found.Spec.TLS != nil {
+		if found.Spec.TLS.Termination != routev1.TLSTerminationPassthrough {
+			needsUpdate = true
+			found.Spec.TLS.Termination = routev1.TLSTerminationPassthrough
+		}
+
+		if found.Spec.TLS.InsecureEdgeTerminationPolicy != routev1.InsecureEdgeTerminationPolicyNone {
+			needsUpdate = true
+			found.Spec.TLS.InsecureEdgeTerminationPolicy = routev1.InsecureEdgeTerminationPolicyNone
+		}
+	}
+
+	if found.Spec.Port != nil && found.Spec.Port.TargetPort.String() != obsApiGatewayTargetPort {
+		needsUpdate = true
+		found.Spec.Port.TargetPort = intstr.FromString(obsApiGatewayTargetPort)
+	}
+
+	if found.Spec.To.Name != mcoconfig.GetOperandNamePrefix()+obsAPIGateway {
+		needsUpdate = true
+		found.Spec.To.Name = mcoconfig.GetOperandNamePrefix() + obsAPIGateway
+	}
+
+	if needsUpdate {
+		log.Info("Updating Route for observatorium api",
+			"apiGateway.Namespace", apiGateway.Namespace,
+			"apiGateway.Name", apiGateway.Name,
+		)
+		err = runclient.Update(context.TODO(), found)
+		if err != nil {
+			log.Error(err, "failed update Route for observatorium api gateway",
+				"apiGateway.Name", apiGateway.Name)
 			return &ctrl.Result{}, err
 		}
 	}
