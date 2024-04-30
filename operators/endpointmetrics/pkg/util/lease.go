@@ -11,6 +11,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	"open-cluster-management.io/addon-framework/pkg/lease"
 )
@@ -20,8 +21,10 @@ const (
 )
 
 var (
-	namespace   = os.Getenv("WATCH_NAMESPACE")
-	clusterName = os.Getenv("HUB_NAMESPACE")
+	namespace         = os.Getenv("WATCH_NAMESPACE")
+	clusterName       = os.Getenv("HUB_NAMESPACE")
+	log               = ctrl.Log.WithName("util")
+	hubKubeConfigPath = os.Getenv("HUB_KUBECONFIG")
 )
 
 func StartLease() {

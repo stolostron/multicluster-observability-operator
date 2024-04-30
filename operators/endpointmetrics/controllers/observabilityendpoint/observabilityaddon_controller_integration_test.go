@@ -15,6 +15,7 @@ import (
 	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -67,9 +68,13 @@ func TestIntegrationReconcileHypershift(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
+	hubClientWithReload, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) {
+		return k8sClient, nil
+	})
+	assert.NoError(t, err)
 	reconciler := ObservabilityAddonReconciler{
 		Client:    k8sClient,
-		HubClient: k8sClient,
+		HubClient: hubClientWithReload,
 	}
 
 	err = reconciler.SetupWithManager(mgr)
