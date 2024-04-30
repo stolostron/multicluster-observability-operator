@@ -76,7 +76,7 @@ printf "\n      kubeconfig: ${kubeconfig_hub_path}" >>${OPTIONSFILE}
 printf "\n      kubecontext: ${kubecontext}" >>${OPTIONSFILE}
 
 kubeconfig_managed_path="${SHARED_DIR}/managed-1.kc"
-if [[ -z ${IS_KIND_ENV} && -f "${kubeconfig_managed_path}" ]]; then
+if [[ -z ${IS_KIND_ENV} && -f ${kubeconfig_managed_path} ]]; then
   managed_cluster_name="managed-cluster-1"
   kubecontext_managed=$(kubectl --kubeconfig="${kubeconfig_managed_path}" config current-context)
   app_domain_managed=$(kubectl -n openshift-ingress-operator --kubeconfig="${kubeconfig_managed_path}" get ingresscontrollers default -ojsonpath='{.status.domain}')
