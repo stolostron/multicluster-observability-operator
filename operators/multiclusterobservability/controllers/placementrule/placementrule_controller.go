@@ -371,11 +371,6 @@ func createAllRelatedRes(
 		}
 	}
 
-	currentClusters := []string{}
-	for _, ep := range obsAddonList.Items {
-		currentClusters = append(currentClusters, ep.Namespace)
-	}
-
 	// need to reload the template and update the the corresponding resources
 	// the loadTemplates method is now lightweight operations as we have cache the templates in memory.
 	log.Info("load and update templates for managedcluster resources")
@@ -398,7 +393,6 @@ func createAllRelatedRes(
 	failedCreateManagedClusterRes := false
 	managedClusterListMutex.RLock()
 	for managedCluster, openshiftVersion := range managedClusterList {
-		currentClusters = commonutil.Remove(currentClusters, managedCluster)
 		if isReconcileRequired(request, managedCluster) {
 			log.Info(
 				"Monitoring operator should be installed in cluster",
@@ -443,10 +437,20 @@ func createAllRelatedRes(
 			}
 		}
 	}
+
+	// Look through the obsAddonList items and find clusters
+	// which are no longer to be managed and therefore needs deletion
+	clustersToCleanup := []string{}
+	for _, ep := range obsAddonList.Items {
+		if _, ok := managedClusterList[ep.Namespace]; !ok {
+			clustersToCleanup = append(clustersToCleanup, ep.Namespace)
+		}
+	}
+
 	managedClusterListMutex.RUnlock()
 
 	failedDeleteOba := false
-	for _, cluster := range currentClusters {
+	for _, cluster := range clustersToCleanup {
 		if cluster != config.GetDefaultNamespace() {
 			err = deleteObsAddon(c, cluster)
 			if err != nil {
