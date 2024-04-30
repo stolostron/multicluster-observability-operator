@@ -122,7 +122,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	hubClientWithReload, err := util.NewHubClientWithFileReload(os.Getenv("HUB_KUBECONFIG"), mgr.GetScheme())
+	hubClientWithReload, err := util.NewReloadableHubClient(os.Getenv("HUB_KUBECONFIG"), mgr.GetScheme())
 	if err != nil {
 		setupLog.Error(err, "Failed to create the hub client")
 		os.Exit(1)

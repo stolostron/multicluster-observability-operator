@@ -75,7 +75,7 @@ var (
 type ObservabilityAddonReconciler struct {
 	Client    client.Client
 	Scheme    *runtime.Scheme
-	HubClient *util.HubClientWithReload
+	HubClient *util.ReloadableHubClient
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io.open-cluster-management.io,resources=observabilityaddons,verbs=get;list;watch;create;update;patch;delete

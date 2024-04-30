@@ -17,49 +17,49 @@ import (
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
 
-// HubClientWithReload is a wrapper around the hub client that allows reloading the client.
+// ReloadableHubClient is a wrapper around the hub client that allows reloading the client.
 // This is useful when the kubeconfig file is updated.
-type HubClientWithReload struct {
+type ReloadableHubClient struct {
 	client.Client
 	reload func() (client.Client, error)
 }
 
-// NewHubClientWithFileReload creates a new hub client with a reload function.
-func NewHubClientWithFileReload(filePath string, clientScheme *runtime.Scheme) (*HubClientWithReload, error) {
+// NewReloadableHubClient creates a new hub client with a reload function.
+func NewReloadableHubClient(filePath string, clientScheme *runtime.Scheme) (*ReloadableHubClient, error) {
 	reload := func() (client.Client, error) {
-		return NewHubClient(filePath, clientScheme)
+		return newHubClient(filePath, clientScheme)
 	}
 
 	hubClient, err := reload()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create the hub client: %w", err)
 	}
-	return &HubClientWithReload{Client: hubClient, reload: reload}, nil
+	return &ReloadableHubClient{Client: hubClient, reload: reload}, nil
 }
 
-// NewHubClientWithReloadFunc creates a new hub client with a reload function.
+// NewReloadableHubClientWithReloadFunc creates a new hub client with a reload function.
 // The reload function is called when the Reload method is called.
 // This can be handy for testing purposes.
-func NewHubClientWithReloadFunc(reload func() (client.Client, error)) (*HubClientWithReload, error) {
+func NewReloadableHubClientWithReloadFunc(reload func() (client.Client, error)) (*ReloadableHubClient, error) {
 	hubClient, err := reload()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create the hub client: %w", err)
 	}
-	return &HubClientWithReload{Client: hubClient, reload: reload}, nil
+	return &ReloadableHubClient{Client: hubClient, reload: reload}, nil
 }
 
 // Reload reloads the hub client and returns a new instance of HubClientWithReload.
 // HubClientWithReload is immutable.
-func (c *HubClientWithReload) Reload() (*HubClientWithReload, error) {
+func (c *ReloadableHubClient) Reload() (*ReloadableHubClient, error) {
 	hubClient, err := c.reload()
 	if err != nil {
 		return nil, fmt.Errorf("failed to reload the hub client: %w", err)
 	}
 
-	return &HubClientWithReload{Client: hubClient, reload: c.reload}, nil
+	return &ReloadableHubClient{Client: hubClient, reload: c.reload}, nil
 }
 
-func NewHubClient(filePath string, clientScheme *runtime.Scheme) (client.Client, error) {
+func newHubClient(filePath string, clientScheme *runtime.Scheme) (client.Client, error) {
 	// create the config from the path
 	config, err := clientcmd.BuildConfigFromFlags("", filePath)
 	if err != nil {

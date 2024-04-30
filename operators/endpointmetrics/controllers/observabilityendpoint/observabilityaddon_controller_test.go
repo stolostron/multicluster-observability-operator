@@ -181,7 +181,7 @@ alertmanager-router-ca: |
 	hubClient := fake.NewClientBuilder().WithRuntimeObjects(hubObjs...).Build()
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
-	hubClientWithReload, err := util.NewHubClientWithReloadFunc(func() (client.Client, error) {
+	hubClientWithReload, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) {
 		return hubClient, nil
 	})
 	if err != nil {

@@ -64,7 +64,7 @@ func TestIntegrationReconcileStatus(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	hubClientWithReload, err := util.NewHubClientWithReloadFunc(func() (client.Client, error) {
+	hubClientWithReload, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) {
 		return hubK8sClient, nil
 	})
 	assert.NoError(t, err)

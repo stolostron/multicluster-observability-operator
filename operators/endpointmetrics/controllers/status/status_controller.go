@@ -30,7 +30,7 @@ type StatusReconciler struct {
 	Client       client.Client
 	HubNamespace string
 	Namespace    string
-	HubClient    *util.HubClientWithReload
+	HubClient    *util.ReloadableHubClient
 	ObsAddonName string
 	Logger       logr.Logger
 }
@@ -121,7 +121,7 @@ func (r *StatusReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // isTransientErr checks if the error is a transient error
-// This suggests that a retry (with any change) might be successful
+// This suggests that a retry (without any change) might be successful
 func isTransientErr(err error) bool {
 	if _, ok := err.(net.Error); ok {
 		return true

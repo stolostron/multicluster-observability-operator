@@ -330,7 +330,7 @@ func newRequest() ctrl.Request {
 }
 
 func newStatusReconciler(c client.Client, hubReload func() (client.Client, error)) *status.StatusReconciler {
-	hc, err := util.NewHubClientWithReloadFunc(hubReload)
+	hc, err := util.NewReloadableHubClientWithReloadFunc(hubReload)
 	if err != nil {
 		panic(err)
 	}
