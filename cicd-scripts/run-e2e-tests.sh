@@ -39,7 +39,7 @@ else
 fi
 
 kubecontext=$(kubectl config current-context)
-cluster_name="local-cluster"
+hub_cluster_name="local-cluster"
 
 if [[ -n ${IS_KIND_ENV} ]]; then
   clusterServerURL="https://127.0.0.1:32806"
@@ -67,13 +67,25 @@ if [[ -n ${IS_KIND_ENV} ]]; then
   printf "\n    grafanaHost: grafana-test" >>${OPTIONSFILE}
 fi
 printf "\n  clusters:" >>${OPTIONSFILE}
-printf "\n    - name: ${cluster_name}" >>${OPTIONSFILE}
+printf "\n    - name: ${hub_cluster_name}" >>${OPTIONSFILE}
 if [[ -n ${IS_KIND_ENV} ]]; then
   printf "\n      clusterServerURL: ${clusterServerURL}" >>${OPTIONSFILE}
 fi
 printf "\n      baseDomain: ${base_domain}" >>${OPTIONSFILE}
 printf "\n      kubeconfig: ${kubeconfig_hub_path}" >>${OPTIONSFILE}
 printf "\n      kubecontext: ${kubecontext}" >>${OPTIONSFILE}
+
+kubeconfig_managed_path="${SHARED_DIR}/managed-1.kc"
+if [[ -z ${IS_KIND_ENV} && -f "${kubeconfig_managed_path}" ]]; then
+  managed_cluster_name="managed-cluster-1"
+  kubecontext_managed=$(kubectl --kubeconfig="${kubeconfig_managed_path}" config current-context)
+  app_domain_managed=$(kubectl -n openshift-ingress-operator --kubeconfig="${kubeconfig_managed_path}" get ingresscontrollers default -ojsonpath='{.status.domain}')
+  base_domain_managed="${app_domain_managed#apps.}"
+  printf "\n    - name: ${managed_cluster_name}" >>${OPTIONSFILE}
+  printf "\n      baseDomain: ${base_domain_managed}" >>${OPTIONSFILE}
+  printf "\n      kubeconfig: ${kubeconfig_managed_path}" >>${OPTIONSFILE}
+  printf "\n      kubecontext: ${kubecontext_managed}" >>${OPTIONSFILE}
+fi
 
 if command -v ginkgo &>/dev/null; then
   GINKGO_CMD=ginkgo
