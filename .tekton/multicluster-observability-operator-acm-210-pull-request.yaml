@@ -19,7 +19,7 @@ metadata:
 spec:
   params:
   - name: dockerfile
-    value: operator/multiclusterobservability/Containerfile.operator
+    value: operators/multiclusterobservability/Containerfile.operator
   - name: git-url
     value: '{{source_url}}'
   - name: image-expires-after
