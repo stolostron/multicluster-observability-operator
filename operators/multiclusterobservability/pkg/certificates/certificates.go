@@ -16,8 +16,9 @@ import (
 	"net"
 	"time"
 
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	certificatesv1 "k8s.io/api/certificates/v1"
+
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 
 	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
@@ -460,7 +461,7 @@ func pemEncode(cert []byte, key []byte) (*bytes.Buffer, *bytes.Buffer) {
 func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
 	hosts := []string{config.GetObsAPISvc(config.GetOperandName(config.Observatorium))}
 	if ingressCtlCrdExists {
-		url, err := config.GetObsAPIHost(c, config.GetDefaultNamespace())
+		url, err := config.GetObsAPIHost(context.TODO(), c, config.GetDefaultNamespace())
 		if err != nil {
 			log.Error(err, "Failed to get api route address")
 			return nil, err
@@ -515,7 +516,7 @@ func CreateUpdateMtlsCertSecretForHubCollector(c client.Client, updateMtlsCert b
 		log.Error(nil, "failed to sign CSR")
 		return errors.NewBadRequest("failed to sign CSR")
 	}
-	//Create a secret
+	// Create a secret
 	HubMtlsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      operatorconfig.HubMetricsCollectorMtlsCert,

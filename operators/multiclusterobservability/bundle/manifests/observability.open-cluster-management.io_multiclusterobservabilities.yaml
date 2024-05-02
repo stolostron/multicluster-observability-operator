@@ -1148,6 +1148,11 @@ spec:
                         description: Annotations is an unstructured key value map stored with a service account
                         type: object
                     type: object
+                  customAlertmanagerHubURL:
+                    description: CustomAlertmanagerHubURL overrides the alertmanager URL to send alerts from the spoke to the hub server. For the alertmanager that runs in the hub this setting has no effect.
+                    maxLength: 2083
+                    pattern: ^https?:\/\/
+                    type: string
                   customObservabilityHubURL:
                     description: CustomObservabilityHubURL overrides the endpoint used by the metrics-collector to send metrics to the hub server. For the metrics-collector that runs in the hub this setting has no effect.
                     maxLength: 2083
