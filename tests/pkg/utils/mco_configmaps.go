@@ -38,9 +38,9 @@ func CreateConfigMap(opt TestOptions, isHub bool, cm *corev1.ConfigMap) error {
 	return err
 }
 
-func GetConfigMap(opt TestOptions, isHub bool, name string,
+func GetConfigMap(clusterConfig Cluster, isHub bool, name string,
 	namespace string) (error, *corev1.ConfigMap) {
-	clientKube := getKubeClient(opt, isHub)
+	clientKube := getKubeClientForCluster(clusterConfig, isHub)
 	cm, err := clientKube.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("Failed to get configmap %s in namespace %s due to %v", name, namespace, err)
@@ -48,8 +48,8 @@ func GetConfigMap(opt TestOptions, isHub bool, name string,
 	return err, cm
 }
 
-func DeleteConfigMap(opt TestOptions, isHub bool, name string, namespace string) error {
-	clientKube := getKubeClient(opt, isHub)
+func DeleteConfigMap(clusterConfig Cluster, isHub bool, name string, namespace string) error {
+	clientKube := getKubeClientForCluster(clusterConfig, isHub)
 	err := clientKube.CoreV1().ConfigMaps(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 	if err != nil {
 		klog.Errorf("Failed to delete configmap %s in namespace %s due to %v", name, namespace, err)
