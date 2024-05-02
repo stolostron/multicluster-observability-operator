@@ -10,9 +10,10 @@ WORKDIR="$(
   cd "$(dirname "$0")"
   pwd -P
 )"
+
 # Create bin directory and add it to PATH
-mkdir -p ${ROOTDIR}/bin
-export PATH={ROOTDIR}/bin:${PATH}
+mkdir -p ${WORKDIR}/bin
+export PATH=${PATH}:${WORKDIR}/bin
 
 # tmp output directory for metrics list
 TMP_OUT=$(mktemp -d /tmp/metrics.XXXXXXXXXX)
@@ -40,36 +41,52 @@ if ! command -v kubectl &>/dev/null; then
     if [[ "$(uname)" == "Linux" ]]; then
       curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl
     elif [[ "$(uname)" == "Darwin" ]]; then
-      curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/darwin/amd64/kubectl
+      if [[ "$(uname -m)" == "x64_64" ]]; then
+        curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/darwin/amd64/kubectl
+      else
+        curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/darwin/arm64/kubectl
+      fi
     fi
-    chmod +x ./kubectl && mv ./kubectl ${WORK_DIR}/bin/kubectl
+    chmod +x ./kubectl && mv ./kubectl ${WORKDIR}/bin/kubectl
   fi
 fi
 
 # install jq
 if ! command -v jq &>/dev/null; then
   if [[ "$(uname)" == "Linux" ]]; then
-    curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
+    curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.7.1/jq-linux64
   elif [[ "$(uname)" == "Darwin" ]]; then
-    curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64
+    if [[ "$(uname -m)" == "x64_64" ]]; then
+      curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.7.1/jq-macos-amd64
+    else
+      curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.7.1/jq-macos-arm64
+    fi
   fi
-  chmod +x ./jq
-  chmod +x ./jq && mv ./jq ${WORK_DIR}/bin/jq
+  chmod +x ./jq && mv ./jq ${WORKDIR}/bin/jq
 fi
 
 # install gojsontoyaml
-GOBIN=${WORK_DIR}/bin go install github.com/brancz/gojsontoyaml
-GOJSONTOYAML_BIN=${WORK_DIR}/bin/gojsontoyaml
+if ! command -v gojsontoyaml &>/dev/null; then
+  if [[ "$(uname)" == "Linux" ]]; then
+    curl -L https://github.com/brancz/gojsontoyaml/releases/download/v0.1.0/gojsontoyaml_0.1.0_linux_amd64.tar.gz | tar -xz -C ${WORKDIR}/bin/
+  elif [[ "$(uname)" == "Darwin" ]]; then
+    if [[ "$(uname -m)" == "x64_64" ]]; then
+      curl -L https://github.com/brancz/gojsontoyaml/releases/download/v0.1.0/gojsontoyaml_0.1.0_darwin_amd64.tar.gz | tar -xz -C ${WORKDIR}/bin/
+    else
+      curl -L https://github.com/brancz/gojsontoyaml/releases/download/v0.1.0/gojsontoyaml_0.1.0_darwin_arm64.tar.gz | tar -xz -C ${WORKDIR}/bin/
+    fi
+  fi
+fi
 
 function get_metrics_list() {
   echo "getting metrics list..."
   if [[ -z ${IS_GENERATING_OCP311_METRICS} ]]; then
-    matches=$(curl -L ${METRICS_ALLOW_LIST_URL} | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.data."metrics_list.yaml"' | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.matches' | jq '"{" + .[] + "}"')
-    names=$(curl -L ${METRICS_ALLOW_LIST_URL} | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.data."metrics_list.yaml"' | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.names' | jq '"{__name__=\"" + .[] + "\"}"')
+    matches=$(curl -L ${METRICS_ALLOW_LIST_URL} | gojsontoyaml --yamltojson | jq -r '.data."metrics_list.yaml"' | gojsontoyaml --yamltojson | jq -r '.matches' | jq '"{" + .[] + "}"')
+    names=$(curl -L ${METRICS_ALLOW_LIST_URL} | gojsontoyaml --yamltojson | jq -r '.data."metrics_list.yaml"' | gojsontoyaml --yamltojson | jq -r '.names' | jq '"{__name__=\"" + .[] + "\"}"')
     echo $matches $names | jq -s . >${METRICS_JSON_OUT}
   else
-    matches=$(curl -L ${METRICS_ALLOW_LIST_URL} | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.data."ocp311_metrics_list.yaml"' | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.matches' | jq '"{" + .[] + "}"')
-    names=$(curl -L ${METRICS_ALLOW_LIST_URL} | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.data."ocp311_metrics_list.yaml"' | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.names' | jq '"{__name__=\"" + .[] + "\"}"')
+    matches=$(curl -L ${METRICS_ALLOW_LIST_URL} | gojsontoyaml --yamltojson | jq -r '.data."ocp311_metrics_list.yaml"' | gojsontoyaml --yamltojson | jq -r '.matches' | jq '"{" + .[] + "}"')
+    names=$(curl -L ${METRICS_ALLOW_LIST_URL} | gojsontoyaml --yamltojson | jq -r '.data."ocp311_metrics_list.yaml"' | gojsontoyaml --yamltojson | jq -r '.names' | jq '"{__name__=\"" + .[] + "\"}"')
     echo $matches $names | jq -s . >${METRICS_JSON_OUT}
   fi
 }
@@ -77,10 +94,10 @@ function get_metrics_list() {
 function get_recordingrules_list() {
   echo "getting recordingrules list..."
   if [[ -z ${IS_GENERATING_OCP311_METRICS} ]]; then
-    recordingrules=$(curl -L ${METRICS_ALLOW_LIST_URL} | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.data."metrics_list.yaml"' | ${GOJSONTOYAML_BIN} --yamltojson | jq '.recording_rules[]')
+    recordingrules=$(curl -L ${METRICS_ALLOW_LIST_URL} | gojsontoyaml --yamltojson | jq -r '.data."metrics_list.yaml"' | gojsontoyaml --yamltojson | jq '.recording_rules[]')
     echo "$recordingrules" | jq -s . >${RECORDINGRULES_JSON_OUT}
   else
-    recordingrules=$(curl -L ${METRICS_ALLOW_LIST_URL} | ${GOJSONTOYAML_BIN} --yamltojson | jq -r '.data."ocp311_metrics_list.yaml"' | ${GOJSONTOYAML_BIN} --yamltojson | jq '.recording_rules[]')
+    recordingrules=$(curl -L ${METRICS_ALLOW_LIST_URL} | gojsontoyaml --yamltojson | jq -r '.data."ocp311_metrics_list.yaml"' | gojsontoyaml --yamltojson | jq '.recording_rules[]')
     echo "$recordingrules" | jq -s . >${RECORDINGRULES_JSON_OUT}
   fi
 }
@@ -101,9 +118,8 @@ function generate_recordingrules() {
   cat ${RECORDINGRULES_JSON_OUT} | jq -cr '.[]' | while read item; do
     record=$(jq -r '.record' <<<"$item")
     expr=$(jq -r '.expr' <<<"$item")
-    #expr=${expr//\"/\\\"}
-    expr=$(echo "${expr}" | tr -d " ")
-    querycmd="${query} $(printf -- "--data-urlencode query=%s" ${expr})"
+    urlencode=$(printf %s "${expr}" | jq -s -R -r @uri)
+    querycmd="${query} -d query=${urlencode}"
     echo -e "\n# TYPE ${record} untyped" >>${TIME_SERIES_OUT}
     ${querycmd} | jq -r '.data.result' | jq -cr '.[]' | while read result; do
       vec="${record}"
