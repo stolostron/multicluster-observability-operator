@@ -5,6 +5,7 @@
 package placementrule
 
 import (
+	"context"
 	"net/url"
 
 	"gopkg.in/yaml.v2"
@@ -27,7 +28,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 
 	if ingressCtlCrdExists {
 		var err error
-		obsApiRouteHost, err = config.GetObsAPIHost(client, obsNamespace)
+		obsApiRouteHost, err = config.GetObsAPIHost(context.TODO(), client, obsNamespace)
 		if err != nil {
 			log.Error(err, "Failed to get the host for observatorium API route")
 			return nil, err
@@ -35,7 +36,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 
 		// if alerting is disabled, do not set alertmanagerEndpoint
 		if !config.IsAlertingDisabled() {
-			alertmanagerEndpoint, err = config.GetAlertmanagerEndpoint(client, obsNamespace)
+			alertmanagerEndpoint, err = config.GetAlertmanagerEndpoint(context.TODO(), client, obsNamespace)
 			if err != nil {
 				log.Error(err, "Failed to get alertmanager endpoint")
 				return nil, err

@@ -47,6 +47,11 @@ type AdvancedConfig struct {
 	// For the metrics-collector that runs in the hub this setting has no effect.
 	// +optional
 	CustomObservabilityHubURL observabilityshared.URL `json:"customObservabilityHubURL,omitempty"`
+	// CustomAlertmanagerHubURL overrides the alertmanager URL to send alerts from the spoke
+	// to the hub server.
+	// For the alertmanager that runs in the hub this setting has no effect.
+	// +optional
+	CustomAlertmanagerHubURL observabilityshared.URL `json:"customAlertmanagerHubURL,omitempty"`
 	// The spec of the data retention configurations
 	// +optional
 	RetentionConfig *RetentionConfig `json:"retentionConfig,omitempty"`
