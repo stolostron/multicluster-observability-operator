@@ -213,7 +213,10 @@ func runMetricsCollectorTests(clusterConfig utils.Cluster) {
 
 var _ = Describe("Observability:", func() {
 	for _, clusterConfig := range testOptions.ManagedClusters {
+<<<<<<< HEAD
 		klog.Error("Coleen Running metrics collector tests for cluster: ", clusterConfig.Name)
+=======
+>>>>>>> f4c3e33d (refactor to accomodate managed cluster)
 		runMetricsCollectorTests(clusterConfig)
 	}
 })
