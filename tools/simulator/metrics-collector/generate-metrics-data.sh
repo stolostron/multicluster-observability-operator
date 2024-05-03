@@ -11,6 +11,8 @@ WORKDIR="$(
   pwd -P
 )"
 
+source ${WORKDIR}/../../../scripts/install-binaries.sh
+
 # Create bin directory and add it to PATH
 mkdir -p ${WORKDIR}/bin
 export PATH=${PATH}:${WORKDIR}/bin
@@ -34,49 +36,13 @@ fi
 
 # install kubectl
 KUBECTL="kubectl"
-if ! command -v kubectl &>/dev/null; then
-  if command -v oc &>/dev/null; then
-    KUBECTL="oc"
-  else
-    if [[ "$(uname)" == "Linux" ]]; then
-      curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl
-    elif [[ "$(uname)" == "Darwin" ]]; then
-      if [[ "$(uname -m)" == "x64_64" ]]; then
-        curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/darwin/amd64/kubectl
-      else
-        curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/darwin/arm64/kubectl
-      fi
-    fi
-    chmod +x ./kubectl && mv ./kubectl ${WORKDIR}/bin/kubectl
-  fi
-fi
+install_kubectl ${WORKDIR}/bin
 
 # install jq
-if ! command -v jq &>/dev/null; then
-  if [[ "$(uname)" == "Linux" ]]; then
-    curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.7.1/jq-linux64
-  elif [[ "$(uname)" == "Darwin" ]]; then
-    if [[ "$(uname -m)" == "x64_64" ]]; then
-      curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.7.1/jq-macos-amd64
-    else
-      curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.7.1/jq-macos-arm64
-    fi
-  fi
-  chmod +x ./jq && mv ./jq ${WORKDIR}/bin/jq
-fi
+install_jq ${WORKDIR}/bin
 
 # install gojsontoyaml
-if ! command -v gojsontoyaml &>/dev/null; then
-  if [[ "$(uname)" == "Linux" ]]; then
-    curl -L https://github.com/brancz/gojsontoyaml/releases/download/v0.1.0/gojsontoyaml_0.1.0_linux_amd64.tar.gz | tar -xz -C ${WORKDIR}/bin/
-  elif [[ "$(uname)" == "Darwin" ]]; then
-    if [[ "$(uname -m)" == "x64_64" ]]; then
-      curl -L https://github.com/brancz/gojsontoyaml/releases/download/v0.1.0/gojsontoyaml_0.1.0_darwin_amd64.tar.gz | tar -xz -C ${WORKDIR}/bin/
-    else
-      curl -L https://github.com/brancz/gojsontoyaml/releases/download/v0.1.0/gojsontoyaml_0.1.0_darwin_arm64.tar.gz | tar -xz -C ${WORKDIR}/bin/
-    fi
-  fi
-fi
+install_gojsontoyaml ${WORKDIR}/bin
 
 function get_metrics_list() {
   echo "getting metrics list..."

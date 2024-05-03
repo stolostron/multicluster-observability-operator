@@ -6,34 +6,19 @@ WORK_DIR="$(
   cd "$(dirname "$0")"
   pwd -P
 )"
+
+source ${WORK_DIR}/../../../scripts/install-binaries.sh
+
 # Create bin directory and add it to PATH
 mkdir -p ${WORK_DIR}/bin
 export PATH=${PATH}:${WORK_DIR}/bin
 
-if ! command -v jq &>/dev/null; then
-  if [[ "$(uname)" == "Linux" ]]; then
-    curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
-  elif [[ "$(uname)" == "Darwin" ]]; then
-    curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64
-  fi
-  chmod +x ./jq
-  chmod +x ./jq && mv ./jq ${WORK_DIR}/bin/jq
-fi
+# install jq
+install_jq ${WORK_DIR}/bin
 
+# install kubectl
 KUBECTL="kubectl"
-if ! command -v kubectl &>/dev/null; then
-  if command -v oc &>/dev/null; then
-    KUBECTL="oc"
-  else
-    echo "This script will install kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your machine"
-    if [[ "$(uname)" == "Linux" ]]; then
-      curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl
-    elif [[ "$(uname)" == "Darwin" ]]; then
-      curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/darwin/amd64/kubectl
-    fi
-    chmod +x ./kubectl && mv ./kubectl ${WORK_DIR}/bin/kubectl
-  fi
-fi
+install_kubectl ${WORK_DIR}/bin
 
 SED_COMMAND='sed -i'
 if [[ "$(uname)" == "Darwin" ]]; then

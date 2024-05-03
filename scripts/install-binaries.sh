@@ -83,6 +83,17 @@ install_kind() {
   fi
 }
 
+install_gojsontoyaml() {
+  bin_dir=${1:-${BIN_DIR}}
+  if ! command -v gojsontoyaml &>/dev/null; then
+    if [[ "$(uname)" == "Linux" ]]; then
+      curl -L https://github.com/brancz/gojsontoyaml/releases/download/v0.1.0/gojsontoyaml_0.1.0_linux_amd64.tar.gz | tar -xz -C ${bin_dir} gojsontoyaml
+    elif [[ "$(uname)" == "Darwin" ]]; then
+      curl -L https://github.com/brancz/gojsontoyaml/releases/download/v0.1.0/gojsontoyaml_0.1.0_darwin_$(uname -m).tar.gz | tar -xz -C ${bin_dir} gojsontoyaml
+    fi
+  fi
+}
+
 install_build_deps() {
   bin_dir=${1:-${BIN_DIR}}
   install_operator_sdk ${bin_dir}
