@@ -84,10 +84,8 @@ func Start(c client.Client, ingressCtlCrdExists bool) {
 		&v1.Secret{},
 		time.Minute*60,
 		cache.ResourceEventHandlerFuncs{
-			AddFunc: onAdd(c),
-
+			AddFunc:    onAdd(c),
 			DeleteFunc: onDelete(c),
-
 			UpdateFunc: onUpdate(c, ingressCtlCrdExists),
 		},
 	)
