@@ -11,7 +11,7 @@
 OPERATOR_SDK_VERSION="${KUBECTL_VERSION:=v1.4.2}"
 KUBECTL_VERSION="${KUBECTL_VERSION:=v1.28.2}"
 KUSTOMIZE_VERSION="${KUSTOMIZE_VERSION:=v5.3.0}"
-JQ_VERSION="${JQ_VERSION:=1.6}"
+JQ_VERSION="${JQ_VERSION:=1.7.1}"
 KIND_VERSION="${KIND_VERSION:=v0.22.0}"
 
 BIN_DIR="${BIN_DIR:=/usr/local/bin}"
@@ -64,7 +64,7 @@ install_jq() {
     if [[ "$(uname)" == "Linux" ]]; then
       curl -o jq -L "https://github.com/stedolan/jq/releases/download/jq-${JQ_VERSION}/jq-linux64"
     elif [[ "$(uname)" == "Darwin" ]]; then
-      curl -o jq -L "https://github.com/stedolan/jq/releases/download/jq-${JQ_VERSION}/jq-osx-$(uname -m)"
+      curl -o jq -L "https://github.com/stedolan/jq/releases/download/jq-${JQ_VERSION}/jq-macos-$(uname -m)"
     fi
     chmod +x ./jq && mv ./jq ${bin_dir}/jq
   fi
