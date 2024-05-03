@@ -5,7 +5,11 @@
 package certificates
 
 import (
+	"crypto/sha256"
+	"fmt"
+
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"open-cluster-management.io/addon-framework/pkg/agent"
 	addonapiv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
@@ -17,7 +21,9 @@ const (
 	agentName = "observability"
 )
 
-type ObservabilityAgent struct{}
+type ObservabilityAgent struct {
+	client client.Client
+}
 
 func (o *ObservabilityAgent) Manifests(
 	cluster *clusterv1.ManagedCluster,
@@ -30,7 +36,7 @@ func (o *ObservabilityAgent) GetAgentAddonOptions() agent.AgentAddonOptions {
 	return agent.AgentAddonOptions{
 		AddonName: addonName,
 		Registration: &agent.RegistrationOption{
-			CSRConfigurations: observabilitySignerConfigurations(),
+			CSRConfigurations: observabilitySignerConfigurations(o.client),
 			CSRApproveCheck:   approve,
 			PermissionConfig: func(cluster *clusterv1.ManagedCluster, addon *addonapiv1alpha1.ManagedClusterAddOn) error {
 				return nil
@@ -40,7 +46,7 @@ func (o *ObservabilityAgent) GetAgentAddonOptions() agent.AgentAddonOptions {
 	}
 }
 
-func observabilitySignerConfigurations() func(cluster *clusterv1.ManagedCluster) []addonapiv1alpha1.RegistrationConfig {
+func observabilitySignerConfigurations(client client.Client) func(cluster *clusterv1.ManagedCluster) []addonapiv1alpha1.RegistrationConfig {
 	return func(cluster *clusterv1.ManagedCluster) []addonapiv1alpha1.RegistrationConfig {
 		observabilityConfig := addonapiv1alpha1.RegistrationConfig{
 			SignerName: "open-cluster-management.io/observability-signer",
@@ -49,6 +55,14 @@ func observabilitySignerConfigurations() func(cluster *clusterv1.ManagedCluster)
 				OrganizationUnits: []string{"acm"},
 			},
 		}
-		return append(agent.KubeClientSignerConfigurations(addonName, agentName)(cluster), observabilityConfig)
+		_, _, caCertBytes, err := getCA(client, true)
+		if err == nil {
+			caHashStamp := fmt.Sprintf("ca-hash-%x", sha256.Sum256(caCertBytes))
+			observabilityConfig.Subject.OrganizationUnits = append(observabilityConfig.Subject.OrganizationUnits, caHashStamp)
+		}
+
+		kubeClientSignerConfigurations := agent.KubeClientSignerConfigurations(addonName, agentName)
+		registrationConfig := append(kubeClientSignerConfigurations(cluster), observabilityConfig)
+		return registrationConfig
 	}
 }

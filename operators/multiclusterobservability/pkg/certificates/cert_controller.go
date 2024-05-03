@@ -13,8 +13,10 @@ import (
 	"reflect"
 	"time"
 
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"open-cluster-management.io/addon-framework/pkg/addonmanager"
+
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 
 	"golang.org/x/exp/slices"
 	appv1 "k8s.io/api/apps/v1"
@@ -26,8 +28,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"open-cluster-management.io/addon-framework/pkg/addonmanager"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -55,7 +55,7 @@ func Start(c client.Client, ingressCtlCrdExists bool) {
 		log.Error(err, "Failed to init addon manager")
 		os.Exit(1)
 	}
-	agent := &ObservabilityAgent{}
+	agent := &ObservabilityAgent{client: c}
 	err = addonMgr.AddAgent(agent)
 	if err != nil {
 		log.Error(err, "Failed to add agent for addon manager")
@@ -246,7 +246,7 @@ func onUpdate(c client.Client, ingressCtlCrdExists bool) func(oldObj, newObj int
 					}
 				case name == hubMetricsCollectorMtlsCert:
 					// ACM 8509: Special case for hub metrics collector
-					//Delete the MTLS secret and the placement controller will reconcile to create a new one
+					// Delete the MTLS secret and the placement controller will reconcile to create a new one
 					HubMtlsSecret := &v1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      operatorconfig.HubMetricsCollectorMtlsCert,
