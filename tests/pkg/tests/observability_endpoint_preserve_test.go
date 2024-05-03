@@ -6,6 +6,7 @@ package tests
 
 import (
 	"fmt"
+	"k8s.io/klog/v2"
 	"os"
 
 	. "github.com/onsi/ginkgo"
@@ -213,6 +214,7 @@ func runMetricsCollectorTests(clusterConfig utils.Cluster) {
 
 var _ = Describe("Observability:", func() {
 	for _, clusterConfig := range testOptions.ManagedClusters {
+		klog.Error("Coleen Running metrics collector tests for cluster: ", clusterConfig.Name
 		runMetricsCollectorTests(clusterConfig)
 	}
 })

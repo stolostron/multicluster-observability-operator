@@ -19,18 +19,6 @@ const (
 )
 
 var _ = Describe("Observability:", func() {
-	BeforeEach(func() {
-		hubClient = utils.NewKubeClient(
-			testOptions.HubCluster.ClusterServerURL,
-			testOptions.KubeConfig,
-			testOptions.HubCluster.KubeContext)
-
-		dynClient = utils.NewKubeClientDynamic(
-			testOptions.HubCluster.ClusterServerURL,
-			testOptions.KubeConfig,
-			testOptions.HubCluster.KubeContext)
-	})
-
 	It("[P2][Sev2][observability][Stable] Should have custom dashboard which defined in configmap (dashboard/g0)", func() {
 		By("Creating custom dashboard configmap")
 		yamlB, _ := kustomize.Render(

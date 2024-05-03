@@ -19,15 +19,6 @@ import (
 
 var _ = Describe("Observability:", func() {
 	BeforeEach(func() {
-		hubClient = utils.NewKubeClient(
-			testOptions.HubCluster.ClusterServerURL,
-			testOptions.KubeConfig,
-			testOptions.HubCluster.KubeContext)
-
-		dynClient = utils.NewKubeClientDynamic(
-			testOptions.HubCluster.ClusterServerURL,
-			testOptions.KubeConfig,
-			testOptions.HubCluster.KubeContext)
 		if utils.GetManagedClusterName(testOptions) == hubManagedClusterName {
 			Skip("Skip the case for local-cluster since no observability addon")
 		}
