@@ -2,17 +2,22 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package util
+package util_test
 
 import (
 	"context"
 	"fmt"
 	"testing"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -38,35 +43,93 @@ func TestReportStatus(t *testing.T) {
 		t.Fatalf("Unable to add oav1beta1 scheme: (%v)", err)
 	}
 
-	expectedStatus := []oav1beta1.StatusCondition{
-		{
-			Type:    "NotSupported",
-			Status:  metav1.ConditionTrue,
-			Reason:  "NotSupported",
-			Message: "No Prometheus service found in this cluster",
-		},
-		{
-			Type:    "Progressing",
-			Status:  metav1.ConditionTrue,
-			Reason:  "Deployed",
-			Message: "Metrics collector deployed",
-		},
-		{
-			Type:    "Disabled",
-			Status:  metav1.ConditionTrue,
-			Reason:  "Disabled",
-			Message: "enableMetrics is set to False",
-		},
-	}
-
-	statusList := []string{"NotSupported", "Deployed", "Disabled"}
+	statusList := []util.StatusConditionName{util.NotSupportedStatus, util.DeployedStatus, util.DisabledStatus}
 	s.AddKnownTypes(oav1beta1.GroupVersion, oa)
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	for i := range statusList {
-		ReportStatus(context.TODO(), c, oa, statusList[i], true)
-		if oa.Status.Conditions[0].Message != expectedStatus[i].Message || oa.Status.Conditions[0].Reason != expectedStatus[i].Reason || oa.Status.Conditions[0].Status != expectedStatus[i].Status || oa.Status.Conditions[0].Type != expectedStatus[i].Type {
-			t.Errorf("Error: Status not updated. Expected: %s, Actual: %s", expectedStatus[i], fmt.Sprintf("%+v\n", oa.Status.Conditions[0]))
+		util.ReportStatus(context.Background(), c, statusList[i], oa.Name, oa.Namespace)
+		runtimeAddon := &oav1beta1.ObservabilityAddon{}
+		if err := c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: testNamespace}, runtimeAddon); err != nil {
+			t.Fatalf("Error getting observabilityaddon: (%v)", err)
+		}
+
+		if len(runtimeAddon.Status.Conditions) != i+1 {
+			t.Errorf("Status not updated. Expected: %s, Actual: %s", statusList[i], fmt.Sprintf("%+v\n", runtimeAddon.Status.Conditions))
+		}
+
+		if runtimeAddon.Status.Conditions[i].Reason != string(statusList[i]) {
+			t.Errorf("Status not updated. Expected: %s, Actual: %s", statusList[i], runtimeAddon.Status.Conditions[i].Type)
 		}
 	}
 
+	// Same status should not be appended
+	util.ReportStatus(context.Background(), c, util.DisabledStatus, oa.Name, oa.Namespace)
+	runtimeAddon := &oav1beta1.ObservabilityAddon{}
+	if err := c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: testNamespace}, runtimeAddon); err != nil {
+		t.Fatalf("Error getting observabilityaddon: (%v)", err)
+	}
+
+	if len(runtimeAddon.Status.Conditions) != len(statusList) {
+		t.Errorf("Status should not be appended. Expected: %d, Actual: %d", len(statusList), len(runtimeAddon.Status.Conditions))
+	}
+}
+
+func TestReportStatusConflict(t *testing.T) {
+	// Conflict on update should be retried
+	oa := newObservabilityAddon(name, testNamespace)
+	s := scheme.Scheme
+	oav1beta1.AddToScheme(s)
+	fakeClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(oa).Build()
+	conflictErr := errors.NewConflict(schema.GroupResource{Group: oav1beta1.GroupVersion.Group, Resource: "resource"}, name, fmt.Errorf("conflict"))
+
+	c := newClientWithUpdateError(fakeClient, conflictErr)
+	util.ReportStatus(context.Background(), c, util.DeployedStatus, name, testNamespace)
+	if c.UpdateCallsCount() <= 1 {
+		t.Errorf("Conflict error should be retried, called %d times", c.UpdateCallsCount())
+	}
+}
+
+// TestClient wraps a client.Client to customize operations for testing
+type TestClient struct {
+	client.Client
+	UpdateError      error
+	updateCallsCount int
+	statusWriter     *TestStatusWriter
+}
+
+func newClientWithUpdateError(c client.Client, updateError error) *TestClient {
+	ret := &TestClient{
+		Client:      c,
+		UpdateError: updateError,
+	}
+	ret.statusWriter = &TestStatusWriter{SubResourceWriter: c.Status(), updateError: &ret.UpdateError, callsCount: &ret.updateCallsCount}
+	return ret
+}
+
+func (c *TestClient) Status() client.StatusWriter {
+	return c.statusWriter
+}
+
+func (c *TestClient) UpdateCallsCount() int {
+	return c.updateCallsCount
+}
+
+func (c *TestClient) Reset() {
+	c.updateCallsCount = 0
+}
+
+type TestStatusWriter struct {
+	client.SubResourceWriter
+	updateError *error
+	callsCount  *int
+}
+
+func (f *TestStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+	*f.callsCount++
+
+	if *f.updateError != nil {
+		return *f.updateError
+	}
+
+	return f.SubResourceWriter.Update(ctx, obj, opts...)
 }
