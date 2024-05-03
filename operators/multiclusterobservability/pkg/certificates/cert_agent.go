@@ -55,14 +55,17 @@ func observabilitySignerConfigurations(client client.Client) func(cluster *clust
 				OrganizationUnits: []string{"acm"},
 			},
 		}
+		kubeClientSignerConfigurations := agent.KubeClientSignerConfigurations(addonName, agentName)
+		registrationConfigs := append(kubeClientSignerConfigurations(cluster), observabilityConfig)
+
 		_, _, caCertBytes, err := getCA(client, true)
 		if err == nil {
 			caHashStamp := fmt.Sprintf("ca-hash-%x", sha256.Sum256(caCertBytes))
-			observabilityConfig.Subject.OrganizationUnits = append(observabilityConfig.Subject.OrganizationUnits, caHashStamp)
+			for i := range registrationConfigs {
+				registrationConfigs[i].Subject.OrganizationUnits = append(registrationConfigs[i].Subject.OrganizationUnits, caHashStamp)
+			}
 		}
 
-		kubeClientSignerConfigurations := agent.KubeClientSignerConfigurations(addonName, agentName)
-		registrationConfig := append(kubeClientSignerConfigurations(cluster), observabilityConfig)
-		return registrationConfig
+		return registrationConfigs
 	}
 }

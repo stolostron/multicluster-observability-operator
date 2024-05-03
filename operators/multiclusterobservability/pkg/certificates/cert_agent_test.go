@@ -7,7 +7,6 @@ package certificates
 import (
 	"crypto/sha256"
 	"fmt"
-	"slices"
 	"testing"
 	"time"
 
@@ -58,18 +57,29 @@ func TestCertAgent(t *testing.T) {
 		t.Fatalf("expected %d CSRs, found %d", expectedCSRs, len(configs))
 	}
 
-	assert.True(t, slices.ContainsFunc(configs, func(reg v1alpha1.RegistrationConfig) bool {
-		return reg.SignerName == "kubernetes.io/kube-apiserver-client"
-	}))
+	caHashOrgUnit := fmt.Sprintf("ca-hash-%x", sha256.Sum256(cert))
 
-	expectedOrganizationUnits := []string{"acm", fmt.Sprintf("ca-hash-%x", sha256.Sum256(cert))}
-	expectedRegConfig := v1alpha1.RegistrationConfig{
+	kubeAPISignerExpectedRegConfig := v1alpha1.RegistrationConfig{
+		SignerName: "kubernetes.io/kube-apiserver-client",
+		Subject: v1alpha1.Subject{
+			User: "system:open-cluster-management:cluster:test:addon:observability-controller:agent:observability",
+			Groups: []string{
+				"system:open-cluster-management:cluster:test:addon:observability-controller",
+				"system:open-cluster-management:addon:observability-controller",
+				"system:authenticated",
+			},
+			OrganizationUnits: []string{caHashOrgUnit},
+		},
+	}
+	assert.Contains(t, configs, kubeAPISignerExpectedRegConfig)
+
+	obsSignerExpectedRegConfig := v1alpha1.RegistrationConfig{
 		SignerName: "open-cluster-management.io/observability-signer",
 		Subject: v1alpha1.Subject{
 			User:              "managed-cluster-observability",
 			Groups:            nil,
-			OrganizationUnits: expectedOrganizationUnits,
+			OrganizationUnits: []string{"acm", caHashOrgUnit},
 		},
 	}
-	assert.Contains(t, configs, expectedRegConfig)
+	assert.Contains(t, configs, obsSignerExpectedRegConfig)
 }
