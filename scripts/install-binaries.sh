@@ -115,5 +115,9 @@ install_e2e_tests_deps() {
   install_kustomize ${bin_dir}
 }
 
+# check if script is called directly, or sourced
+(return 0 2>/dev/null) && sourced=1 || sourced=0
 # This allows functions within this file to be called individually from Makefile(s).
-$*
+if [[ $sourced == 0 ]]; then
+  $*
+fi
