@@ -67,20 +67,24 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 	metricResult, err := io.ReadAll(resp.Body)
 	klog.V(5).Infof("metricResult: %s\n", metricResult)
 	if err != nil {
+		klog.V(5).Info("metricResult err: \n")
 		return err, false
 	}
 
 	if !strings.Contains(string(metricResult), `"status":"success"`) {
+		klog.V(5).Info("metric doesn't contain status success\n")
 		return errors.New("failed to find valid status from response"), false
 	}
 
 	if strings.Contains(string(metricResult), `"result":[]`) {
+		klog.V(5).Info("Found empty result")
 		return errors.New("failed to find metric name from response"), false
 	}
 
 	contained := true
 	for _, label := range matchedLabels {
 		if !strings.Contains(string(metricResult), label) {
+			klog.V(5).Infof("Didn't find: %s, in metrics result", label)
 			contained = false
 			break
 		}
