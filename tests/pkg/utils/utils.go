@@ -184,7 +184,7 @@ func FetchBearerToken(opt TestOptions) (string, error) {
 	clientKube := NewKubeClient(opt.HubCluster.ClusterServerURL, opt.KubeConfig, opt.HubCluster.KubeContext)
 	info, err := clientKube.Discovery().ServerVersion()
 	if err != nil {
-		return "", errors.New("failed to get k8s server info")
+		return "", fmt.Errorf("failget to get k8s server info. Err: %w", err)
 	}
 
 	// handle the case of k8s version >= 1.24 where
