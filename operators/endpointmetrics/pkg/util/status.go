@@ -54,7 +54,7 @@ var (
 	}
 )
 
-func ReportStatus(ctx context.Context, client client.Client, condition StatusConditionName, addonName, addonNs string) {
+func ReportStatus(ctx context.Context, client client.Client, condition StatusConditionName, addonName, addonNs string) error {
 	newCondition := conditions[condition].DeepCopy()
 	newCondition.LastTransitionTime = metav1.NewTime(time.Now())
 
@@ -79,8 +79,10 @@ func ReportStatus(ctx context.Context, client client.Client, condition StatusCon
 		return client.Status().Update(ctx, obsAddon)
 	})
 	if retryErr != nil {
-		log.Error(retryErr, "Failed to update status for observabilityaddon")
+		return retryErr
 	}
+
+	return nil
 }
 
 // shouldAppendCondition checks if the new condition should be appended to the status conditions

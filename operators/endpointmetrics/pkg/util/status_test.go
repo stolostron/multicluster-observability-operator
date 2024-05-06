@@ -48,7 +48,9 @@ func TestReportStatus(t *testing.T) {
 	s.AddKnownTypes(oav1beta1.GroupVersion, oa)
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	for i := range statusList {
-		util.ReportStatus(context.Background(), c, statusList[i], oa.Name, oa.Namespace)
+		if err := util.ReportStatus(context.Background(), c, statusList[i], oa.Name, oa.Namespace); err != nil {
+			t.Fatalf("Error reporting status: %v", err)
+		}
 		runtimeAddon := &oav1beta1.ObservabilityAddon{}
 		if err := c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: testNamespace}, runtimeAddon); err != nil {
 			t.Fatalf("Error getting observabilityaddon: (%v)", err)
@@ -64,7 +66,9 @@ func TestReportStatus(t *testing.T) {
 	}
 
 	// Same status than current one should not be appended
-	util.ReportStatus(context.Background(), c, util.DisabledStatus, oa.Name, oa.Namespace)
+	if err := util.ReportStatus(context.Background(), c, util.DisabledStatus, oa.Name, oa.Namespace); err != nil {
+		t.Fatalf("Error reporting status: %v", err)
+	}
 	runtimeAddon := &oav1beta1.ObservabilityAddon{}
 	if err := c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: testNamespace}, runtimeAddon); err != nil {
 		t.Fatalf("Error getting observabilityaddon: (%v)", err)
@@ -78,7 +82,9 @@ func TestReportStatus(t *testing.T) {
 	statusList = []util.StatusConditionName{util.DeployedStatus, util.DisabledStatus, util.DegradedStatus}
 	for i := 0; i < util.MaxStatusConditionsCount+3; i++ {
 		status := statusList[i%len(statusList)]
-		util.ReportStatus(context.Background(), c, status, oa.Name, oa.Namespace)
+		if err := util.ReportStatus(context.Background(), c, status, oa.Name, oa.Namespace); err != nil {
+			t.Fatalf("Error reporting status: %v", err)
+		}
 	}
 
 	runtimeAddon = &oav1beta1.ObservabilityAddon{}
@@ -100,7 +106,9 @@ func TestReportStatus_Conflict(t *testing.T) {
 	conflictErr := errors.NewConflict(schema.GroupResource{Group: oav1beta1.GroupVersion.Group, Resource: "resource"}, name, fmt.Errorf("conflict"))
 
 	c := newClientWithUpdateError(fakeClient, conflictErr)
-	util.ReportStatus(context.Background(), c, util.DeployedStatus, name, testNamespace)
+	if err := util.ReportStatus(context.Background(), c, util.DeployedStatus, name, testNamespace); err == nil {
+		t.Fatalf("Conflict error should be retried and return an error if it fails")
+	}
 	if c.UpdateCallsCount() <= 1 {
 		t.Errorf("Conflict error should be retried, called %d times", c.UpdateCallsCount())
 	}
