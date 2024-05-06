@@ -18,10 +18,11 @@ import (
 type StatusConditionName string
 
 const (
-	DeployedStatus     StatusConditionName = "Deployed"
-	DisabledStatus     StatusConditionName = "Disabled"
-	DegradedStatus     StatusConditionName = "Degraded"
-	NotSupportedStatus StatusConditionName = "NotSupported"
+	DeployedStatus           StatusConditionName = "Deployed"
+	DisabledStatus           StatusConditionName = "Disabled"
+	DegradedStatus           StatusConditionName = "Degraded"
+	NotSupportedStatus       StatusConditionName = "NotSupported"
+	MaxStatusConditionsCount                     = 10
 )
 
 var (
@@ -70,6 +71,11 @@ func ReportStatus(ctx context.Context, client client.Client, condition StatusCon
 		}
 
 		obsAddon.Status.Conditions = append(obsAddon.Status.Conditions, *newCondition)
+
+		if len(obsAddon.Status.Conditions) > MaxStatusConditionsCount {
+			obsAddon.Status.Conditions = obsAddon.Status.Conditions[len(obsAddon.Status.Conditions)-MaxStatusConditionsCount:]
+		}
+
 		return client.Status().Update(ctx, obsAddon)
 	})
 	if retryErr != nil {

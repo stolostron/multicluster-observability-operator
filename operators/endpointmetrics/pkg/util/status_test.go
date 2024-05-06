@@ -43,6 +43,7 @@ func TestReportStatus(t *testing.T) {
 		t.Fatalf("Unable to add oav1beta1 scheme: (%v)", err)
 	}
 
+	// New status should be appended
 	statusList := []util.StatusConditionName{util.NotSupportedStatus, util.DeployedStatus, util.DisabledStatus}
 	s.AddKnownTypes(oav1beta1.GroupVersion, oa)
 	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
@@ -62,7 +63,7 @@ func TestReportStatus(t *testing.T) {
 		}
 	}
 
-	// Same status should not be appended
+	// Same status than current one should not be appended
 	util.ReportStatus(context.Background(), c, util.DisabledStatus, oa.Name, oa.Namespace)
 	runtimeAddon := &oav1beta1.ObservabilityAddon{}
 	if err := c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: testNamespace}, runtimeAddon); err != nil {
@@ -72,9 +73,25 @@ func TestReportStatus(t *testing.T) {
 	if len(runtimeAddon.Status.Conditions) != len(statusList) {
 		t.Errorf("Status should not be appended. Expected: %d, Actual: %d", len(statusList), len(runtimeAddon.Status.Conditions))
 	}
+
+	// Number of conditions should not exceed MaxStatusConditionsCount
+	statusList = []util.StatusConditionName{util.DeployedStatus, util.DisabledStatus, util.DegradedStatus}
+	for i := 0; i < util.MaxStatusConditionsCount+3; i++ {
+		status := statusList[i%len(statusList)]
+		util.ReportStatus(context.Background(), c, status, oa.Name, oa.Namespace)
+	}
+
+	runtimeAddon = &oav1beta1.ObservabilityAddon{}
+	if err := c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: testNamespace}, runtimeAddon); err != nil {
+		t.Fatalf("Error getting observabilityaddon: (%v)", err)
+	}
+
+	if len(runtimeAddon.Status.Conditions) != util.MaxStatusConditionsCount {
+		t.Errorf("Number of conditions should not exceed MaxStatusConditionsCount. Expected: %d, Actual: %d", util.MaxStatusConditionsCount, len(runtimeAddon.Status.Conditions))
+	}
 }
 
-func TestReportStatusConflict(t *testing.T) {
+func TestReportStatus_Conflict(t *testing.T) {
 	// Conflict on update should be retried
 	oa := newObservabilityAddon(name, testNamespace)
 	s := scheme.Scheme
