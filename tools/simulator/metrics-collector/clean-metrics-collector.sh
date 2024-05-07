@@ -62,6 +62,9 @@ for i in $(seq 1 ${NUMBERS}); do
   cluster_name=${MANAGED_CLUSTER_PREFIX}-${i}
   ${KUBECTL} delete deploy -n ${cluster_name} metrics-collector-deployment
   ${KUBECTL} delete clusterrolebinding ${cluster_name}-clusters-metrics-collector-view
+  ${KUBECTL} delete clusterrolebinding ${cluster_name}-endpoint-operator-role-crd-hostedclusters-read
   ${KUBECTL} delete -n ${cluster_name} secret/observability-managed-cluster-certs
   ${KUBECTL} delete ns ${cluster_name}
 done
+
+${KUBECTL} delete clusterrole endpoint-observability-operator-crd-hostedclusters-read
