@@ -21,9 +21,8 @@ const (
 )
 
 var (
-	clusters         []string
-	clusterError     error
-	metricslistError error
+	clusters     []string
+	clusterError error
 )
 
 var _ = Describe("Observability:", func() {
@@ -94,12 +93,13 @@ var _ = Describe("Observability:", func() {
 				if err != nil {
 					return err
 				}
+				// there should be no data for the deleted metric
 				if len(res.Data.Result) != 0 {
-					return fmt.Errorf("no data found for %s", query)
+					return fmt.Errorf("metric %s found in response: %v", query, res)
 				}
 			}
 			return nil
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have no metrics which have been marked for deletion in matches section (metrics/g0)", func() {
@@ -116,11 +116,11 @@ var _ = Describe("Observability:", func() {
 					return err
 				}
 				if len(res.Data.Result) != 0 {
-					return fmt.Errorf("no data found for %s", query)
+					return fmt.Errorf("metric %s found in response: %v", query, res)
 				}
 			}
 			return nil
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have no metrics after custom metrics allowlist deleted (metrics/g0)", func() {
@@ -145,11 +145,11 @@ var _ = Describe("Observability:", func() {
 					return err
 				}
 				if len(res.Data.Result) != 0 {
-					return fmt.Errorf("no data found for %s", query)
+					return fmt.Errorf("metric %s found in response: %v", query, res)
 				}
 			}
 			return nil
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have metrics which used grafana dashboard (ssli/g1)", func() {

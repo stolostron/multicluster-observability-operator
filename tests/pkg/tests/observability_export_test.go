@@ -10,6 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"k8s.io/klog"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
@@ -84,7 +85,7 @@ var _ = Describe("Observability:", func() {
 				return err
 			}
 			if len(res.Data.Result) == 0 {
-				return fmt.Errorf("metric %s not found in response: %v", query, res)
+				return fmt.Errorf("metric %s not found in response", query)
 			}
 
 			// Check if the metric is forwarded to thanos-receiver
@@ -100,20 +101,21 @@ var _ = Describe("Observability:", func() {
 			}
 
 			return nil
-		}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	JustAfterEach(func() {
-		Expect(utils.CleanExportResources(testOptions)).NotTo(HaveOccurred())
-		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
-	})
-
-	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
+			klog.V(1).Infof("Test failed, printing debug info. ManagedClusters: %v", clusters)
 			utils.PrintMCOObject(testOptions)
 			utils.PrintAllMCOPodsStatus(testOptions)
 			utils.PrintAllOBAPodsStatus(testOptions)
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
+	})
+
+	AfterEach(func() {
+		Expect(utils.CleanExportResources(testOptions)).NotTo(HaveOccurred())
+		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 	})
 })

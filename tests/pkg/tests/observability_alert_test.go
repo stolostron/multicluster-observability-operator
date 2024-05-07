@@ -223,6 +223,7 @@ var _ = Describe("Observability:", func() {
 	It("[P2][Sev2][observability][Stable] Should have custom alert updated (alert/g0)", func() {
 		By("Updating custom alert rules")
 
+		// Replace preceding custom alert with new one that cannot fire
 		yamlB, _ := kustomize.Render(
 			kustomize.Options{KustomizationPath: "../../../examples/alerts/custom_rules_invalid"},
 		)
@@ -248,14 +249,15 @@ var _ = Describe("Observability:", func() {
 					return err
 				}
 
-				if len(res.Data.Result) == 0 {
-					return fmt.Errorf("no data found for %s", query)
+				if len(res.Data.Result) != 0 {
+					// No alert should be generated
+					return fmt.Errorf("alert should not be generated, got %v", res)
 				}
 
 				return nil
 			},
 			EventuallyTimeoutMinute*5,
-			EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
+			EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	It("[P2][Sev2][observability][Stable] delete the customized rules (alert/g0)", func() {
