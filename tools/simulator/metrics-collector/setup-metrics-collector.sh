@@ -6,34 +6,19 @@ WORK_DIR="$(
   cd "$(dirname "$0")"
   pwd -P
 )"
+
+source ${WORK_DIR}/../../../scripts/install-binaries.sh
+
 # Create bin directory and add it to PATH
 mkdir -p ${WORK_DIR}/bin
 export PATH=${PATH}:${WORK_DIR}/bin
 
-if ! command -v jq &>/dev/null; then
-  if [[ "$(uname)" == "Linux" ]]; then
-    curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
-  elif [[ "$(uname)" == "Darwin" ]]; then
-    curl -o jq -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64
-  fi
-  chmod +x ./jq
-  chmod +x ./jq && mv ./jq ${WORK_DIR}/bin/jq
-fi
+# install jq
+install_jq ${WORK_DIR}/bin
 
+# install kubectl
 KUBECTL="kubectl"
-if ! command -v kubectl &>/dev/null; then
-  if command -v oc &>/dev/null; then
-    KUBECTL="oc"
-  else
-    echo "This script will install kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your machine"
-    if [[ "$(uname)" == "Linux" ]]; then
-      curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl
-    elif [[ "$(uname)" == "Darwin" ]]; then
-      curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/darwin/amd64/kubectl
-    fi
-    chmod +x ./kubectl && mv ./kubectl ${WORK_DIR}/bin/kubectl
-  fi
-fi
+install_kubectl ${WORK_DIR}/bin
 
 SED_COMMAND='sed -i'
 if [[ "$(uname)" == "Darwin" ]]; then
@@ -107,7 +92,7 @@ if ! [[ ${WORKERS} =~ ${re} ]]; then
   exit 1
 fi
 
-OBSERVABILITY_NS="open-cluster-management-addon-observability"
+OBSERVABILITY_NS="open-cluster-management-observability"
 
 # metrics data source image
 DEFAULT_METRICS_IMAGE="quay.io/ocm-observability/metrics-data:2.4.0"
@@ -154,9 +139,19 @@ for i in $(seq 1 ${NUMBERS}); do
   ${KUBECTL} -n ${cluster_name} patch deploy metrics-collector-deployment --type='json' -p='[{"op": "replace", "path": "/metadata/ownerReferences", "value": []}]'
   ${KUBECTL} -n ${cluster_name} patch deploy metrics-collector-deployment --type='json' -p='[{"op": "remove", "path": "/spec/template/spec/containers/0/resources"}]'
 
+  # deploy role
+  cat "role-endpoint-observability-operator-crd-hostedclusters-read.yaml" | ${KUBECTL} -n ${cluster_name} apply -f -
+
   # deploy ClusterRoleBinding for read metrics from OCP prometheus
   rolebinding_yaml_file=${cluster_name}-metrics-collector-view.yaml
   cp -rf metrics-collector-view.yaml "$rolebinding_yaml_file"
+  ${SED_COMMAND} "s~__CLUSTER_NAME__~${cluster_name}~g" "${rolebinding_yaml_file}"
+  cat "${rolebinding_yaml_file}" | ${KUBECTL} -n ${cluster_name} apply -f -
+  rm -f "${rolebinding_yaml_file}"
+
+  # deploy ClusterRoleBinding for reading CRDs and HosterClusters
+  rolebinding_yaml_file=${cluster_name}-rb-endpoint-operator-role-crd-hostedclusters-read.yaml
+  cp -rf rb-endpoint-operator-role-crd-hostedclusters-read.yaml "$rolebinding_yaml_file"
   ${SED_COMMAND} "s~__CLUSTER_NAME__~${cluster_name}~g" "${rolebinding_yaml_file}"
   cat "${rolebinding_yaml_file}" | ${KUBECTL} -n ${cluster_name} apply -f -
   rm -f "${rolebinding_yaml_file}"
