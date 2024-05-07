@@ -191,9 +191,15 @@ var _ = Describe("Observability:", func() {
 
 		By("Checking alert generated")
 		Eventually(func() error {
-			err, _ := utils.ContainManagedClusterMetric(testOptions, `ALERTS{`+labelName+`="`+labelValue+`"}`,
-				[]string{`"__name__":"ALERTS"`, `"` + labelName + `":"` + labelValue + `"`})
-			return err
+			query := fmt.Sprintf(`ALERTS{%s="%s"}`, labelName, labelValue)
+			res, err := utils.QueryGrafana(testOptions, query)
+			if err != nil {
+				return err
+			}
+			if len(res.Data.Result) == 0 {
+				return fmt.Errorf("no data found for %s", query)
+			}
+			return nil
 		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
@@ -236,9 +242,17 @@ var _ = Describe("Observability:", func() {
 		By("Checking alert generated")
 		Eventually(
 			func() error {
-				err, _ := utils.ContainManagedClusterMetric(testOptions, `ALERTS{`+labelName+`="`+labelValue+`"}`,
-					[]string{`"__name__":"ALERTS"`, `"` + labelName + `":"` + labelValue + `"`})
-				return err
+				query := fmt.Sprintf(`ALERTS{%s="%s"}`, labelName, labelValue)
+				res, err := utils.QueryGrafana(testOptions, query)
+				if err != nil {
+					return err
+				}
+
+				if len(res.Data.Result) == 0 {
+					return fmt.Errorf("no data found for %s", query)
+				}
+
+				return nil
 			},
 			EventuallyTimeoutMinute*5,
 			EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))

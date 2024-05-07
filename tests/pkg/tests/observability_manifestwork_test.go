@@ -7,6 +7,7 @@ package tests
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -106,12 +107,20 @@ var _ = Describe("Observability:", func() {
 
 			It("[Stable] Checking metric to ensure that no data is lost in 1 minute", func() {
 				Eventually(func() error {
-					err, _ = utils.ContainManagedClusterMetric(
+					query := fmt.Sprintf(`timestamp(node_memory_MemAvailable_bytes{cluster="%s"}) - timestamp(node_memory_MemAvailable_bytes{cluster="%s"} offset 1m) > 59`, clusterName, clusterName)
+					res, err := utils.QueryGrafana(
 						testOptions,
-						`timestamp(node_memory_MemAvailable_bytes{cluster="`+clusterName+`}) - timestamp(node_memory_MemAvailable_bytes{cluster=`+clusterName+`"} offset 1m) > 59`,
-						[]string{`"__name__":"node_memory_MemAvailable_bytes"`},
+						query,
 					)
-					return err
+					if err != nil {
+						return err
+					}
+
+					if len(res.Data.Result) == 0 {
+						return fmt.Errorf("no data found for %s", query)
+					}
+
+					return nil
 				}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*3).Should(Succeed())
 			})
 		}

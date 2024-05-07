@@ -11,7 +11,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
@@ -66,13 +65,16 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() error {
 			for _, cluster := range clusters {
 				query := fmt.Sprintf("node_memory_Active_bytes{cluster=\"%s\"} offset 1m", cluster)
-				err, _ := utils.ContainManagedClusterMetric(
+				res, err := utils.QueryGrafana(
 					testOptions,
 					query,
-					[]string{`"__name__":"node_memory_Active_bytes"`},
 				)
 				if err != nil {
 					return err
+				}
+
+				if len(res.Data.Result) == 0 {
+					return fmt.Errorf("no data found for %s", query)
 				}
 			}
 			return nil
@@ -88,12 +90,15 @@ var _ = Describe("Observability:", func() {
 					cluster,
 					cluster,
 				)
-				metricslistError, _ = utils.ContainManagedClusterMetric(testOptions, query, []string{})
-				if metricslistError == nil {
-					return nil
+				res, err := utils.QueryGrafana(testOptions, query)
+				if err != nil {
+					return err
+				}
+				if len(res.Data.Result) != 0 {
+					return fmt.Errorf("no data found for %s", query)
 				}
 			}
-			return metricslistError
+			return nil
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
 	})
 
@@ -106,12 +111,15 @@ var _ = Describe("Observability:", func() {
 					cluster,
 					cluster,
 				)
-				metricslistError, _ = utils.ContainManagedClusterMetric(testOptions, query, []string{})
-				if metricslistError == nil {
-					return nil
+				res, err := utils.QueryGrafana(testOptions, query)
+				if err != nil {
+					return err
+				}
+				if len(res.Data.Result) != 0 {
+					return fmt.Errorf("no data found for %s", query)
 				}
 			}
-			return metricslistError
+			return nil
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
 	})
 
@@ -132,12 +140,15 @@ var _ = Describe("Observability:", func() {
 					cluster,
 					cluster,
 				)
-				metricslistError, _ = utils.ContainManagedClusterMetric(testOptions, query, []string{})
-				if metricslistError == nil {
-					return nil
+				res, err := utils.QueryGrafana(testOptions, query)
+				if err != nil {
+					return err
+				}
+				if len(res.Data.Result) != 0 {
+					return fmt.Errorf("no data found for %s", query)
 				}
 			}
-			return metricslistError
+			return nil
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
 	})
 
@@ -162,11 +173,14 @@ var _ = Describe("Observability:", func() {
 			_, ok := ignoreMetricMap[name]
 			if !ok {
 				Eventually(func() error {
-					err, _ := utils.ContainManagedClusterMetric(testOptions, name, []string{name})
+					res, err := utils.QueryGrafana(testOptions, name)
 					if err != nil {
-						klog.V(1).Infof("failed to get metrics %s", name)
+						return fmt.Errorf("failed to get metrics %s: %v", name, err)
 					}
-					return err
+					if len(res.Data.Result) == 0 {
+						return fmt.Errorf("no data found for %s", name)
+					}
+					return nil
 				}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*3).Should(Succeed())
 			}
 		}
