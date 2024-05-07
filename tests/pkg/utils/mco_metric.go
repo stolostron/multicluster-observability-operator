@@ -23,6 +23,8 @@ import (
 )
 
 func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []string) (error, bool) {
+	klog.V(5).Info("------------------------\n")
+	klog.V(5).Infof("Looking for %s\n", matchedLabels)
 	grafanaConsoleURL := GetGrafanaURL(opt)
 	path := "/api/datasources/proxy/1/api/v1/query?"
 	queryParams := url.PathEscape(fmt.Sprintf("query=%s", query))
@@ -63,7 +65,6 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 		klog.Errorf("err: %+v\n", err)
 		return fmt.Errorf("failed to access managed cluster metrics via grafana console: %s", query), false
 	}
-	klog.V(5).Info("------------------------\n")
 	metricResult, err := io.ReadAll(resp.Body)
 	klog.V(5).Infof("metricResult: %s\n", metricResult)
 	if err != nil {
