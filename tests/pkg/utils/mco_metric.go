@@ -63,7 +63,7 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 		klog.Errorf("err: %+v\n", err)
 		return fmt.Errorf("failed to access managed cluster metrics via grafana console: %s", query), false
 	}
-
+	klog.V(5).Info("------------------------\n")
 	metricResult, err := io.ReadAll(resp.Body)
 	klog.V(5).Infof("metricResult: %s\n", metricResult)
 	if err != nil {
@@ -90,9 +90,10 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 		}
 	}
 	if !contained {
+		klog.V(5).Info("Failed to find metric name from response")
 		return errors.New("failed to find metric name from response"), false
 	}
-
+	klog.V(5).Info("Found metric name\n")
 	return nil, true
 }
 
