@@ -24,7 +24,7 @@ import (
 
 func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []string) (error, bool) {
 	klog.V(5).Info("------------------------\n")
-	klog.V(5).Infof("Looking for %s\n", matchedLabels)
+	klog.V(5).Infof("Looking for %s in result from query: %s \n", matchedLabels, query)
 	grafanaConsoleURL := GetGrafanaURL(opt)
 	path := "/api/datasources/proxy/1/api/v1/query?"
 	queryParams := url.PathEscape(fmt.Sprintf("query=%s", query))
