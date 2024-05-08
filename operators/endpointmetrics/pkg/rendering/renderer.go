@@ -74,7 +74,7 @@ func Render(
 		return nil, err
 	}
 	for idx := range resources {
-		//if resources kind is clusterrolebinding or rolebinding change the subjects namespace to "open-cluster-management-obserbability"
+		// if resources kind is clusterrolebinding or rolebinding change the subjects namespace to "open-cluster-management-obserbability"
 		if isKindTest {
 			if resources[idx].GetKind() == "ClusterRoleBinding" || resources[idx].GetKind() == "RoleBinding" {
 				subjects := resources[idx].Object["subjects"].([]interface{})
@@ -252,8 +252,16 @@ func Render(
 	}
 
 	// Ordering resources to ensure they are applied in the correct order
-	slices.SortFunc(resources, func(a, b *unstructured.Unstructured) bool {
-		return (resourcePriority(a) - resourcePriority(b)) < 0
+	slices.SortFunc(resources, func(a, b *unstructured.Unstructured) int {
+		aPriority := resourcePriority(a)
+		bPriority := resourcePriority(b)
+		if aPriority < bPriority {
+			return -1
+		}
+		if aPriority > bPriority {
+			return 1
+		}
+		return 0
 	})
 
 	return resources, nil
