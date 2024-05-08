@@ -29,7 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
@@ -497,75 +496,75 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 
 	if isHubMetricsCollector {
 		ctrlBuilder = ctrlBuilder.Watches(
-			&source.Kind{Type: &oav1beta2.MultiClusterObservability{}},
+			&oav1beta2.MultiClusterObservability{},
 			&handler.EnqueueRequestForObject{},
 		)
 	}
 
 	return ctrlBuilder.
 		Watches(
-			&source.Kind{Type: &corev1.Secret{}},
+			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.HubInfoSecretName, namespace, true, true, false)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.Secret{}},
+			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(mtlsCertName, namespace, true, true, false)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.Secret{}},
+			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(mtlsCaName, namespace, true, true, false)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.Secret{}},
+			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(hubAmAccessorSecretName, namespace, true, true, false)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.ConfigMap{}},
+			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.AllowlistConfigMapName, namespace, true, true, false)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.ConfigMap{}},
+			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.AllowlistCustomConfigMapName, "", true, true, true)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.ConfigMap{}},
+			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(openshift.CaConfigmapName, namespace, false, true, true)),
 		).
 		Watches(
-			&source.Kind{Type: &appsv1.Deployment{}},
+			&appsv1.Deployment{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(metricsCollectorName, namespace, true, true, true)),
 		).
 		Watches(
-			&source.Kind{Type: &appsv1.Deployment{}},
+			&appsv1.Deployment{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(uwlMetricsCollectorName, namespace, true, true, true)),
 		).
 		Watches(
-			&source.Kind{Type: &rbacv1.ClusterRoleBinding{}},
+			&rbacv1.ClusterRoleBinding{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(openshift.ClusterRoleBindingName, "", false, true, true)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.ConfigMap{}},
+			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.ImageConfigMap, namespace, true, true, false)),
 		).
 		Watches(
-			&source.Kind{Type: &appsv1.StatefulSet{}},
+			&appsv1.StatefulSet{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, uwlNamespace, true, false, true)),
 		).
 		// Watch the kube-system extension-apiserver-authentication ConfigMap for changes
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, handler.EnqueueRequestsFromMapFunc(
-			func(a client.Object) []reconcile.Request {
+		Watches(&corev1.ConfigMap{}, handler.EnqueueRequestsFromMapFunc(
+			func(ctx context.Context, a client.Object) []reconcile.Request {
 				if a.GetName() == "extension-apiserver-authentication" && a.GetNamespace() == "kube-system" {
 					return []reconcile.Request{
 						{NamespacedName: types.NamespacedName{
