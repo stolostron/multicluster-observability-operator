@@ -94,7 +94,7 @@ func main() {
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "7c30ca38.open-cluster-management.io",
 		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
-			namespaceFieldSelector := fields.SelectorFromSet(fields.Set{"metadata.namespace": os.Getenv("WATCH_NAMESPACE")})
+			namespaceFieldSelector := fields.Set{"metadata.namespace": os.Getenv("WATCH_NAMESPACE")}.AsSelector()
 
 			// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behavior, which
 			// means MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
