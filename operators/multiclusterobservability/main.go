@@ -5,6 +5,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"os"
@@ -12,25 +13,29 @@ import (
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 
-	"go.uber.org/zap/zapcore"
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
-
-	"github.com/IBM/controller-filtered-cache/filteredcache"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	ctrlruntimescheme "sigs.k8s.io/controller-runtime/pkg/scheme"
 	ctrlwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
@@ -44,7 +49,7 @@ import (
 	observabilityv1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	observabilityv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/webhook"
 	operatorsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
@@ -128,13 +133,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	ingressCtlCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.IngressControllerCRD)
+	ingressCtlCrdExists, err := operatorsutil.CheckCRDExist(crdClient, mcoconfig.IngressControllerCRD)
 	if err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
 
-	mchCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.MCHCrdName)
+	mchCrdExists, err := operatorsutil.CheckCRDExist(crdClient, mcoconfig.MCHCrdName)
 	if err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
@@ -157,96 +162,89 @@ func main() {
 		os.Exit(1)
 	}
 
-	mcoNamespace := config.GetMCONamespace()
-	gvkLabelsMap := map[schema.GroupVersionKind][]filteredcache.Selector{
-		corev1.SchemeGroupVersion.WithKind("Secret"): {
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.OpenshiftIngressOperatorNamespace)},
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.OpenshiftIngressNamespace)},
-		},
-		corev1.SchemeGroupVersion.WithKind("ConfigMap"): {
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
-		},
-		corev1.SchemeGroupVersion.WithKind("Service"): {
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
-		},
-		corev1.SchemeGroupVersion.WithKind("ServiceAccount"): {
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
-		},
-		appsv1.SchemeGroupVersion.WithKind("Deployment"): {
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
-		},
-		appsv1.SchemeGroupVersion.WithKind("StatefulSet"): {
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
-		},
-		workv1.SchemeGroupVersion.WithKind("ManifestWork"): {
-			{LabelSelector: "owner==multicluster-observability-operator"},
-		},
-		clusterv1.SchemeGroupVersion.WithKind("ManagedCluster"): {
-			{LabelSelector: "vendor!=auto-detect,observability!=disabled"},
-		},
-		addonv1alpha1.SchemeGroupVersion.WithKind("ClusterManagementAddOn"): {
-			{FieldSelector: fmt.Sprintf("metadata.name=%s", util.ObservabilityController)},
-		},
-		addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn"): {
-			{FieldSelector: fmt.Sprintf("metadata.name=%s", util.ManagedClusterAddonName)},
-		},
-	}
-
-	if ingressCtlCrdExists {
-		gvkLabelsMap[operatorv1.SchemeGroupVersion.WithKind("IngressController")] = []filteredcache.Selector{
-			{
-				FieldSelector: fmt.Sprintf(
-					"metadata.namespace==%s,metadata.name==%s",
-					config.OpenshiftIngressOperatorNamespace,
-					config.OpenshiftIngressOperatorCRName,
-				),
-			},
-		}
-	}
-	if mchCrdExists {
-		gvkLabelsMap[mchv1.GroupVersion.WithKind("MultiClusterHub")] = []filteredcache.Selector{
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", mcoNamespace)},
-		}
-	}
-
-	// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behavior, which
-	// means MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
-	// Adding selector will reduce the cache size when the managedcluster scale.
-	gvkLabelsMap[rbacv1.SchemeGroupVersion.WithKind("ClusterRole")] = []filteredcache.Selector{
-		{LabelSelector: "owner==multicluster-observability-operator"},
-	}
-	gvkLabelsMap[rbacv1.SchemeGroupVersion.WithKind("ClusterRoleBinding")] = []filteredcache.Selector{
-		{LabelSelector: "owner==multicluster-observability-operator"},
-	}
-	gvkLabelsMap[rbacv1.SchemeGroupVersion.WithKind("Role")] = []filteredcache.Selector{
-		{LabelSelector: "owner==multicluster-observability-operator"},
-	}
-	gvkLabelsMap[rbacv1.SchemeGroupVersion.WithKind("RoleBinding")] = []filteredcache.Selector{
-		{LabelSelector: "owner==multicluster-observability-operator"},
-	}
-
-	// Add filter for ManagedClusterAddOn to reduce the cache size when the managedclusters scale.
-	gvkLabelsMap[addonv1alpha1.SchemeGroupVersion.WithKind("ManagedClusterAddOn")] = []filteredcache.Selector{
-		{LabelSelector: "owner==multicluster-observability-operator"},
-	}
-
+	mcoNamespace := mcoconfig.GetMCONamespace()
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Port:                   webhookPort,
 		Scheme:                 scheme,
-		MetricsBindAddress:     fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		Metrics:                metricsserver.Options{BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort)},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b9d51391.open-cluster-management.io",
-		NewCache:               filteredcache.NewEnhancedFilteredCacheBuilder(gvkLabelsMap),
-		WebhookServer:          &ctrlwebhook.Server{TLSMinVersion: "1.2"},
+		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
+			byObjectWithOwnerLabel := cache.ByObject{Label: labels.Set{"owner": "multicluster-observability-operator"}.AsSelector()}
+			byObjectWithDefaultNamespace := cache.ByObject{Field: fields.Set{"metadata.namespace": mcoconfig.GetDefaultNamespace()}.AsSelector()}
+
+			managedClusterLabelSelector, err := labels.Parse("vendor!=auto-detect,observability!=disabled")
+			if err != nil {
+				panic(err)
+			}
+			// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behavior, which
+			// means MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
+			// Adding selector will reduce the cache size when the managedcluster scale.
+			cacheOptions := cache.Options{
+				ByObject: map[client.Object]cache.ByObject{
+					&corev1.Secret{}: byObjectWithDefaultNamespace,
+					&corev1.Secret{}: {
+						Field: fields.Set{"metadata.namespace": mcoconfig.OpenshiftIngressOperatorCRName}.AsSelector(),
+					},
+					&corev1.Secret{}: {
+						Field: fields.Set{"metadata.namespace": mcoconfig.OpenshiftIngressOperatorNamespace}.AsSelector(),
+					},
+					&corev1.ConfigMap{}:      byObjectWithDefaultNamespace,
+					&corev1.Service{}:        byObjectWithDefaultNamespace,
+					&corev1.ServiceAccount{}: byObjectWithDefaultNamespace,
+					&appsv1.Deployment{}:     byObjectWithDefaultNamespace,
+					&appsv1.StatefulSet{}:    byObjectWithDefaultNamespace,
+					&workv1.ManifestWork{}: {
+						Label: labels.Set{"owner": "multicluster-observability-operator"}.AsSelector(),
+					},
+					&clusterv1.ManagedCluster{}: {
+						Label: managedClusterLabelSelector,
+					},
+					&addonv1alpha1.ClusterManagementAddOn{}: {
+						Field: fields.Set{"metadata.name": util.ObservabilityController}.AsSelector(),
+					},
+					&addonv1alpha1.ManagedClusterAddOn{}: {
+						Field: fields.Set{"metadata.name": util.ManagedClusterAddonName}.AsSelector(),
+					},
+					&rbacv1.Role{}:                       byObjectWithOwnerLabel,
+					&rbacv1.RoleBinding{}:                byObjectWithOwnerLabel,
+					&rbacv1.ClusterRole{}:                byObjectWithOwnerLabel,
+					&rbacv1.ClusterRoleBinding{}:         byObjectWithOwnerLabel,
+					&addonv1alpha1.ManagedClusterAddOn{}: byObjectWithOwnerLabel,
+				},
+			}
+
+			if mchCrdExists {
+				cacheOptions.ByObject[&mchv1.MultiClusterHub{}] = cache.ByObject{
+					Field: fields.Set{"metadata.namespace": mcoNamespace}.AsSelector(),
+				}
+			}
+
+			if ingressCtlCrdExists {
+				cacheOptions.ByObject[&operatorv1.IngressController{}] = cache.ByObject{
+					Field: fields.Set{
+						"metadata.name":      mcoconfig.OpenshiftIngressOperatorCRName,
+						"metadata.namespace": mcoconfig.OpenshiftIngressOperatorNamespace,
+					}.AsSelector(),
+				}
+			}
+
+			return cache.New(config, cacheOptions)
+		},
+		WebhookServer: ctrlwebhook.NewServer(ctrlwebhook.Options{
+			Port: webhookPort,
+			TLSOpts: []func(*tls.Config){
+				func(t *tls.Config) {
+					t.MinVersion = tls.VersionTLS12
+				},
+			}}),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
-	if err = operatorsutil.UpdateCRDWebhookNS(crdClient, mcoNamespace, config.MCOCrdName); err != nil {
+	if err = operatorsutil.UpdateCRDWebhookNS(crdClient, mcoNamespace, mcoconfig.MCOCrdName); err != nil {
 		setupLog.Error(
 			err,
 			"unable to update webhook service namespace in MCO CRD",
@@ -255,23 +253,23 @@ func main() {
 		)
 	}
 
-	svmCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.StorageVersionMigrationCrdName)
+	svmCrdExists, err := operatorsutil.CheckCRDExist(crdClient, mcoconfig.StorageVersionMigrationCrdName)
 	if err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
 
-	mcghCrdExists, err := operatorsutil.CheckCRDExist(crdClient, config.MCGHCrdName)
+	mcghCrdExists, err := operatorsutil.CheckCRDExist(crdClient, mcoconfig.MCGHCrdName)
 	if err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
 	}
 
 	crdMaps := map[string]bool{
-		config.MCHCrdName:                     mchCrdExists,
-		config.StorageVersionMigrationCrdName: svmCrdExists,
-		config.IngressControllerCRD:           ingressCtlCrdExists,
-		config.MCGHCrdName:                    mcghCrdExists,
+		mcoconfig.MCHCrdName:                     mchCrdExists,
+		mcoconfig.StorageVersionMigrationCrdName: svmCrdExists,
+		mcoconfig.IngressControllerCRD:           ingressCtlCrdExists,
+		mcoconfig.MCGHCrdName:                    mcghCrdExists,
 	}
 
 	if err = (&mcoctrl.MultiClusterObservabilityReconciler{
@@ -296,7 +294,7 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
-	if err := operatorsutil.RegisterDebugEndpoint(mgr.AddMetricsExtraHandler); err != nil {
+	if err := operatorsutil.RegisterDebugEndpoint(mgr.AddMetricsServerExtraHandler); err != nil {
 		setupLog.Error(err, "unable to set up debug handler")
 		os.Exit(1)
 	}
@@ -320,7 +318,7 @@ func main() {
 	}
 
 	setupLog.Info("add webhook controller to manager")
-	if err := mgr.Add(webhook.NewWebhookController(mgr.GetClient(), nil, config.GetValidatingWebhookConfigurationForMCO())); err != nil {
+	if err := mgr.Add(webhook.NewWebhookController(mgr.GetClient(), nil, mcoconfig.GetValidatingWebhookConfigurationForMCO())); err != nil {
 		setupLog.Error(err, "unable to add webhook controller to manager")
 		os.Exit(1)
 	}
