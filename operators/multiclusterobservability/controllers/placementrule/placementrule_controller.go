@@ -38,7 +38,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -895,10 +894,10 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// Watch for changes to primary resource ManagedCluster with predicate
 		For(&clusterv1.ManagedCluster{}, builder.WithPredicates(clusterPred)).
 		// secondary watch for observabilityaddon
-		Watches(&source.Kind{Type: &mcov1beta1.ObservabilityAddon{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(obsAddonPred)).
+		Watches(&mcov1beta1.ObservabilityAddon{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(obsAddonPred)).
 
 		// secondary watch for MCO
-		Watches(&source.Kind{Type: &mcov1beta2.MultiClusterObservability{}}, handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+		Watches(&mcov1beta2.MultiClusterObservability{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 			return []reconcile.Request{
 				{NamespacedName: types.NamespacedName{
 					Name: config.MCOUpdatedRequestName,
@@ -907,20 +906,20 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}), builder.WithPredicates(getMCOPred(c, ingressCtlCrdExists))).
 
 		// secondary watch for custom allowlist configmap
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(allowlistPred)).
+		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(allowlistPred)).
 
 		// secondary watch for certificate secrets
-		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(certSecretPred)).
+		Watches(&corev1.Secret{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(certSecretPred)).
 
 		// secondary watch for alertmanager accessor serviceaccount
-		Watches(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred))
+		Watches(&corev1.ServiceAccount{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amAccessorSAPred))
 
 	// watch for AddOnDeploymentConfig
 	addOnDeploymentConfigGroupKind := schema.GroupKind{Group: addonv1alpha1.GroupVersion.Group, Kind: "AddOnDeploymentConfig"}
 	if _, err := r.RESTMapper.RESTMapping(addOnDeploymentConfigGroupKind, addonv1alpha1.GroupVersion.Version); err == nil {
 		ctrBuilder = ctrBuilder.Watches(
-			&source.Kind{Type: &addonv1alpha1.AddOnDeploymentConfig{}},
-			handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+			&addonv1alpha1.AddOnDeploymentConfig{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 				return []reconcile.Request{
 					{NamespacedName: types.NamespacedName{
 						Name: config.AddonDeploymentConfigUpdateName,
@@ -935,7 +934,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		workPred := getManifestworkPred()
 		// secondary watch for manifestwork
 		ctrBuilder = ctrBuilder.Watches(
-			&source.Kind{Type: &workv1.ManifestWork{}},
+			&workv1.ManifestWork{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(workPred),
 		)
@@ -947,8 +946,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 		// secondary watch for clustermanagementaddon
 		ctrBuilder = ctrBuilder.Watches(
-			&source.Kind{Type: &addonv1alpha1.ClusterManagementAddOn{}},
-			handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+			&addonv1alpha1.ClusterManagementAddOn{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 				return []reconcile.Request{
 					{NamespacedName: types.NamespacedName{
 						Name: config.ClusterManagementAddOnUpdateName,
@@ -965,7 +964,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 		// secondary watch for managedclusteraddon
 		ctrBuilder = ctrBuilder.Watches(
-			&source.Kind{Type: &addonv1alpha1.ManagedClusterAddOn{}},
+			&addonv1alpha1.ManagedClusterAddOn{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(mgClusterGroupKindPred),
 		)
@@ -977,21 +976,21 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 		if ingressCtlCrdExists {
 			// secondary watch for default ingresscontroller
-			ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &operatorv1.IngressController{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(ingressControllerPred)).
+			ctrBuilder = ctrBuilder.Watches(&operatorv1.IngressController{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(ingressControllerPred)).
 
 				// secondary watch for alertmanager route byo cert secrets
-				Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amRouterCertSecretPred)).
+				Watches(&corev1.Secret{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(amRouterCertSecretPred)).
 
 				// secondary watch for openshift route ca secret
-				Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(routeCASecretPred))
+				Watches(&corev1.Secret{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(routeCASecretPred))
 		}
 
 		mchCrdExists := r.CRDMap[config.MCHCrdName]
 		if mchCrdExists {
 			// secondary watch for MCH
 			ctrBuilder = ctrBuilder.Watches(
-				&source.Kind{Type: &mchv1.MultiClusterHub{}},
-				handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+				&mchv1.MultiClusterHub{},
+				handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 					return []reconcile.Request{
 						{NamespacedName: types.NamespacedName{
 							Name:      config.MCHUpdatedRequestName,
@@ -1007,39 +1006,39 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// ACM 8509: Special case for hub/local cluster metrics collection
 	// secondary watch for hub endpoint operator deployment
 
-	ctrBuilder = ctrBuilder.Watches(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(hubEndpointOperatorPred)).
+	ctrBuilder = ctrBuilder.Watches(&appsv1.Deployment{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(hubEndpointOperatorPred)).
 		Watches(
-			&source.Kind{Type: &corev1.Secret{}},
+			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.HubInfoSecretName, config.GetDefaultNamespace(), false, false, true)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.Secret{}},
+			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.HubMetricsCollectorMtlsCert, config.GetDefaultNamespace(), false, false, true)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.Secret{}},
+			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(managedClusterObsCertName, config.GetDefaultNamespace(), false, false, true)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.ConfigMap{}},
+			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.ImageConfigMap, config.GetDefaultNamespace(), false, false, true)),
 		).
 		Watches(
-			&source.Kind{Type: &appsv1.StatefulSet{}},
+			&appsv1.StatefulSet{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(operatorconfig.PrometheusUserWorkload, config.HubUwlMetricsCollectorNs, true, false, true)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.Secret{}},
+			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(config.AlertmanagerAccessorSecretName, config.GetDefaultNamespace(), false, false, true)),
 		).
 		Watches(
-			&source.Kind{Type: &corev1.ServiceAccount{}},
+			&corev1.ServiceAccount{},
 			&handler.EnqueueRequestForObject{},
 			builder.WithPredicates(getPred(config.HubEndpointSaName, config.GetDefaultNamespace(), false, false, true)),
 		)

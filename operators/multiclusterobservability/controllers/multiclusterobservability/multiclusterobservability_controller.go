@@ -17,6 +17,9 @@ import (
 
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
+	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 	"golang.org/x/exp/slices"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -39,11 +42,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
-	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	placementctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/placementrule"
@@ -461,15 +459,15 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		// Watch for changes to secondary Observatorium CR and requeue the owner MultiClusterObservability
 		Owns(&observatoriumv1alpha1.Observatorium{}).
 		// Watch the configmap for thanos-ruler-custom-rules update
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmPred)).
+		Watches(&corev1.ConfigMap{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(cmPred)).
 		// Watch the secret for deleting event of alertmanager-config
-		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(secretPred)).
+		Watches(&corev1.Secret{}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(secretPred)).
 		// Watch the namespace for changes
-		Watches(&source.Kind{Type: &corev1.Namespace{}}, &handler.EnqueueRequestForObject{},
+		Watches(&corev1.Namespace{}, &handler.EnqueueRequestForObject{},
 			builder.WithPredicates(namespacePred)).
 		// Watch the kube-system extension-apiserver-authentication ConfigMap for changes
-		Watches(&source.Kind{Type: &corev1.ConfigMap{}}, handler.EnqueueRequestsFromMapFunc(
-			func(a client.Object) []reconcile.Request {
+		Watches(&corev1.ConfigMap{}, handler.EnqueueRequestsFromMapFunc(
+			func(ctx context.Context, a client.Object) []reconcile.Request {
 				if a.GetName() == "extension-apiserver-authentication" && a.GetNamespace() == "kube-system" {
 					return []reconcile.Request{
 						{NamespacedName: types.NamespacedName{
@@ -488,8 +486,8 @@ func (r *MultiClusterObservabilityReconciler) SetupWithManager(mgr ctrl.Manager)
 		if mchCrdExists {
 			// secondary watch for MCH
 			ctrBuilder = ctrBuilder.Watches(
-				&source.Kind{Type: &mchv1.MultiClusterHub{}},
-				handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+				&mchv1.MultiClusterHub{},
+				handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
 					return []reconcile.Request{
 						{NamespacedName: types.NamespacedName{
 							Name:      config.MCHUpdatedRequestName,
