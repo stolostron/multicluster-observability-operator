@@ -9,13 +9,15 @@ import (
 	"testing"
 	"time"
 
-	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 )
 
 func TestUpdateAddonStatus(t *testing.T) {
@@ -26,8 +28,21 @@ func TestUpdateAddonStatus(t *testing.T) {
 		},
 		Status: addonv1alpha1.ManagedClusterAddOnStatus{},
 	}
+	scheme := runtime.NewScheme()
+	addonv1alpha1.AddToScheme(scheme)
+	mcov1beta1.AddToScheme(scheme)
+	mcov1beta2.AddToScheme(scheme)
+
 	objs := []runtime.Object{maddon}
-	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithRuntimeObjects(objs...).
+		WithStatusSubresource(
+			&addonv1alpha1.ManagedClusterAddOn{},
+			&mcov1beta2.MultiClusterObservability{},
+			&mcov1beta1.ObservabilityAddon{},
+		).
+		Build()
 
 	addonList := &mcov1beta1.ObservabilityAddonList{
 		Items: []mcov1beta1.ObservabilityAddon{
