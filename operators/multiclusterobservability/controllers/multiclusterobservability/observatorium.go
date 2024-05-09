@@ -7,7 +7,6 @@ package multiclusterobservability
 import (
 	"bytes"
 	"context"
-
 	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
 	// changes and thus it's not a security issue.
 	// nolint:gosec
@@ -968,9 +967,9 @@ func newVolumeClaimTemplate(size string, storageClass string) obsv1alpha1.Volume
 	vct.Spec = v1.PersistentVolumeClaimSpec{
 		AccessModes:      []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
 		StorageClassName: &storageClass,
-		Resources: v1.ResourceRequirements{
+		Resources: v1.VolumeResourceRequirements{
 			Requests: v1.ResourceList{
-				v1.ResourceName(v1.ResourceStorage): resource.MustParse(size),
+				v1.ResourceStorage: resource.MustParse(size),
 			},
 		},
 	}
