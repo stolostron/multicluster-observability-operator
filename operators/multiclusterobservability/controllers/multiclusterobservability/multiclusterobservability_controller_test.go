@@ -16,12 +16,13 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 
+	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
+	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
+
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
-	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
-	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 
 	"gopkg.in/yaml.v2"
 
@@ -983,9 +984,9 @@ func createPersistentVolumeClaim(name, namespace, pvcName string) *corev1.Persis
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 			StorageClassName: &storage,
-			Resources: corev1.ResourceRequirements{
+			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
-					corev1.ResourceName(corev1.ResourceStorage): resource.MustParse("1Gi"),
+					corev1.ResourceStorage: resource.MustParse("1Gi"),
 				},
 			},
 		},
