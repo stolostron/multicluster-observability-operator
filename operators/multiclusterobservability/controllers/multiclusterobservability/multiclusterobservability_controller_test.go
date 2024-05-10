@@ -301,6 +301,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	oav1beta1.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
 	routev1.AddToScheme(s)
 	oauthv1.AddToScheme(s)
@@ -333,7 +334,14 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	objs := []runtime.Object{mco, svc, serverCACerts, clientCACerts, proxyRouteBYOCACerts, grafanaCert, serverCert,
 		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, proxyRouteBYOCert, clustermgmtAddon, extensionApiserverAuthenticationCM}
 	// Create a fake client to mock API calls.
-	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	cl := fake.NewClientBuilder().
+		WithRuntimeObjects(objs...).
+		WithStatusSubresource(
+			&addonv1alpha1.ManagedClusterAddOn{},
+			&mcov1beta2.MultiClusterObservability{},
+			&oav1beta1.ObservabilityAddon{},
+		).
+		Build()
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
 	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
