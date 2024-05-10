@@ -1,6 +1,6 @@
 module github.com/stolostron/multicluster-observability-operator
 
-go 1.22.0
+go 1.22
 
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
