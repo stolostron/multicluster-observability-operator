@@ -79,6 +79,9 @@ func initSchema(t *testing.T) {
 	if err := workv1.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add workv1 scheme: (%v)", err)
 	}
+	if err := addonv1alpha1.AddToScheme(s); err != nil {
+		t.Fatalf("Unable to add addonv1alpha1 scheme: (%v)", err)
+	}
 	if err := mchv1.SchemeBuilder.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add mchv1 scheme: (%v)", err)
 	}

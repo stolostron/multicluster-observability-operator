@@ -21,7 +21,14 @@ func TestObsAddonCR(t *testing.T) {
 	initSchema(t)
 
 	objs := []runtime.Object{newTestObsApiRoute()}
-	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	c := fake.NewClientBuilder().
+		WithRuntimeObjects(objs...).
+		WithStatusSubresource(
+			&addonv1alpha1.ManagedClusterAddOn{},
+			&mcov1beta2.MultiClusterObservability{},
+			&mcov1beta1.ObservabilityAddon{},
+		).
+		Build()
 
 	err := createObsAddon(c, namespace)
 	if err != nil {

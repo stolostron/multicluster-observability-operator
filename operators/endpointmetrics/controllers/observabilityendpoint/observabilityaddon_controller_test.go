@@ -329,7 +329,7 @@ alertmanager-router-ca: |
 		t.Fatalf("Metrics collector deployment not found: (%v)", err)
 	}
 	found.Status.ReadyReplicas = 1
-	err = c.Update(ctx, found)
+	err = c.Status().Update(ctx, found)
 	if err != nil {
 		t.Fatalf("Failed to update metrics collector deployment: (%v)", err)
 	}

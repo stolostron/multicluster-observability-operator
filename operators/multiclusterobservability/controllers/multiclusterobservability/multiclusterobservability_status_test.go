@@ -10,15 +10,18 @@ import (
 	"testing"
 	"time"
 
-	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
+	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 )
 
 func TestFillupStatus(t *testing.T) {
@@ -227,9 +230,18 @@ func TestStartStatusUpdate(t *testing.T) {
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	addonv1alpha1.AddToScheme(s)
+	oav1beta1.AddToScheme(s)
 
 	objs := []runtime.Object{mco, createSecret("test", "test", mcoconfig.GetMCONamespace())}
-	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	cl := fake.NewClientBuilder().
+		WithRuntimeObjects(objs...).
+		WithStatusSubresource(
+			&addonv1alpha1.ManagedClusterAddOn{},
+			&mcov1beta2.MultiClusterObservability{},
+			&oav1beta1.ObservabilityAddon{},
+		).
+		Build()
 
 	StartStatusUpdate(cl, mco)
 
