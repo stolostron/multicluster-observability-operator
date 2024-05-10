@@ -31,6 +31,10 @@ const (
 
 func newTestObsApiRoute() *routev1.Route {
 	return &routev1.Route{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Route",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "observatorium-api",
 			Namespace: mcoNamespace,
@@ -43,6 +47,10 @@ func newTestObsApiRoute() *routev1.Route {
 
 func newTestAlertmanagerRoute() *routev1.Route {
 	return &routev1.Route{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Route",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.AlertmanagerRouteName,
 			Namespace: mcoNamespace,
@@ -55,6 +63,10 @@ func newTestAlertmanagerRoute() *routev1.Route {
 
 func newTestIngressController() *operatorv1.IngressController {
 	return &operatorv1.IngressController{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "IngressController",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.OpenshiftIngressOperatorCRName,
 			Namespace: config.OpenshiftIngressOperatorNamespace,
@@ -73,6 +85,10 @@ func newTestRouteCASecret() *corev1.Secret {
 	configYamlMap["tls.crt"] = []byte(routerCA)
 
 	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "custom-certs-default",
 			Namespace: config.OpenshiftIngressNamespace,
@@ -86,6 +102,10 @@ func newTestAmRouteBYOCA() *corev1.Secret {
 	configYamlMap["tls.crt"] = []byte(routerBYOCA)
 
 	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.AlertmanagerRouteBYOCAName,
 			Namespace: mcoNamespace,
@@ -100,6 +120,10 @@ func newTestAmRouteBYOCert() *corev1.Secret {
 	configYamlMap["tls.key"] = []byte(routerBYOCertKey)
 
 	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.AlertmanagerRouteBYOCERTName,
 			Namespace: mcoNamespace,
@@ -112,6 +136,10 @@ func newTestAmDefaultCA() *corev1.ConfigMap {
 	configYamlMap := map[string]string{"service-ca.crt": routerDefaultCA}
 
 	return &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ConfigMap",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.AlertmanagersDefaultCaBundleName,
 			Namespace: mcoNamespace,
