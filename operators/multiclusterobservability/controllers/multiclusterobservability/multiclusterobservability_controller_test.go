@@ -20,6 +20,7 @@ import (
 	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
@@ -662,12 +663,15 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	// Test finalizer
-	mco.ObjectMeta.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 	mco.ObjectMeta.Finalizers = []string{resFinalizer, "test-finalizerr"}
 	mco.ObjectMeta.ResourceVersion = updatedMCO.ObjectMeta.ResourceVersion
 	err = cl.Update(context.TODO(), mco)
 	if err != nil {
 		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
+	}
+	err = cl.Delete(context.TODO(), mco)
+	if err != nil {
+		t.Fatalf("Failed to delete MultiClusterObservability: (%v)", err)
 	}
 	_, err = r.Reconcile(context.TODO(), req)
 	if err != nil {
