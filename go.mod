@@ -2,8 +2,6 @@ module github.com/stolostron/multicluster-observability-operator
 
 go 1.22.0
 
-toolchain go1.22.2
-
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cloudflare/cfssl v1.6.4
