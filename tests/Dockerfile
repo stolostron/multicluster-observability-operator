@@ -1,4 +1,4 @@
-FROM registry.ci.openshift.org/stolostron/builder:go1.20-linux AS builder
+FROM registry.ci.openshift.org/stolostron/builder:go1.21-linux AS builder
 
 WORKDIR /workspace
 # copy go tests into build image
