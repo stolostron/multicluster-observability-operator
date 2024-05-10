@@ -7,6 +7,7 @@ package multiclusterobservability
 import (
 	"bytes"
 	"context"
+
 	// The import of crypto/md5 below is not for cryptographic use. It is used to hash the contents of files to track
 	// changes and thus it's not a security issue.
 	// nolint:gosec
