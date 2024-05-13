@@ -6,6 +6,7 @@ package util
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
@@ -91,6 +92,10 @@ func shouldAppendCondition(conditions []oav1beta1.StatusCondition, newCondition 
 	if len(conditions) == 0 {
 		return true
 	}
+
+	sort.Slice(conditions, func(i, j int) bool {
+		return conditions[i].LastTransitionTime.Before(&conditions[j].LastTransitionTime)
+	})
 
 	lastCondition := conditions[len(conditions)-1]
 

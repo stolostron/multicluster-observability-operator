@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
@@ -63,15 +64,29 @@ func TestReportStatus(t *testing.T) {
 		if runtimeAddon.Status.Conditions[i].Reason != string(statusList[i]) {
 			t.Errorf("Status not updated. Expected: %s, Actual: %s", statusList[i], runtimeAddon.Status.Conditions[i].Type)
 		}
+
+		time.Sleep(1500 * time.Millisecond) // Sleep to ensure LastTransitionTime is different for each condition (1s resolution)
+	}
+
+	// Change ordering of conditions: Get the list, change the order and update
+	runtimeAddon := &oav1beta1.ObservabilityAddon{}
+	if err := c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: testNamespace}, runtimeAddon); err != nil {
+		t.Fatalf("Error getting observabilityaddon: %v", err)
+	}
+	conditions := runtimeAddon.Status.Conditions
+	conditions[0], conditions[len(conditions)-1] = conditions[len(conditions)-1], conditions[0]
+	runtimeAddon.Status.Conditions = conditions
+	if err := c.Status().Update(context.Background(), runtimeAddon); err != nil {
+		t.Fatalf("Error updating observabilityaddon: (%v)", err)
 	}
 
 	// Same status than current one should not be appended
 	if err := util.ReportStatus(context.Background(), c, util.DisabledStatus, oa.Name, oa.Namespace); err != nil {
 		t.Fatalf("Error reporting status: %v", err)
 	}
-	runtimeAddon := &oav1beta1.ObservabilityAddon{}
+	runtimeAddon = &oav1beta1.ObservabilityAddon{}
 	if err := c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: testNamespace}, runtimeAddon); err != nil {
-		t.Fatalf("Error getting observabilityaddon: (%v)", err)
+		t.Fatalf("Error getting observabilityaddon: %v", err)
 	}
 
 	if len(runtimeAddon.Status.Conditions) != len(statusList) {
