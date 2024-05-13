@@ -193,19 +193,19 @@ replace (
 	github.com/prometheus/common => github.com/prometheus/common v0.53.0
 	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.51.1-0.20240325140356-78c0fd2f4d75
 	golang.org/x/net => golang.org/x/net v0.17.0
-	k8s.io/api => k8s.io/api v0.30.0
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.26.4
+	k8s.io/api => k8s.io/api v0.29.0
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.29.0
 	k8s.io/apimachinery => k8s.io/apimachinery v0.29.2
-	k8s.io/apiserver => k8s.io/apiserver v0.26.4
-	k8s.io/client-go => k8s.io/client-go v0.30.0
-	k8s.io/component-base => k8s.io/component-base v0.26.4
+	k8s.io/apiserver => k8s.io/apiserver v0.29.0
+	k8s.io/client-go => k8s.io/client-go v0.29.2
+	k8s.io/component-base => k8s.io/component-base v0.29.2
 	k8s.io/klog/v2 => k8s.io/klog/v2 v2.100.1
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00
 	sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v1.7.1
 	sigs.k8s.io/cluster-api-provider-aws/v2 => sigs.k8s.io/cluster-api-provider-aws/v2 v2.5.0
 	sigs.k8s.io/cluster-api-provider-ibmcloud => sigs.k8s.io/cluster-api-provider-ibmcloud v0.7.0
 	sigs.k8s.io/cluster-api-provider-kubevirt => github.com/openshift/cluster-api-provider-kubevirt v0.0.0-20230126155822-4786167d51b3
-	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.18.2
+	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.17.5
 )
 
 // needed because otherwise installer fetches a library-go version that requires bitbucket.com/ww/goautoneg which is dead
