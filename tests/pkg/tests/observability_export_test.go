@@ -54,36 +54,42 @@ var _ = Describe("Observability:", func() {
 				yamlB,
 			)).NotTo(HaveOccurred())
 
+		// Get name of the hub cluster
+		hubClusterName := "local-cluster"
+		for _, cluster := range testOptions.ManagedClusters {
+			if cluster.BaseDomain == testOptions.HubCluster.BaseDomain {
+				hubClusterName = cluster.Name
+			}
+		}
+
 		By("Waiting for metrics acm_remote_write_requests_total on grafana console")
 		Eventually(func() error {
-			for _, cluster := range clusters {
-				query := fmt.Sprintf("acm_remote_write_requests_total{cluster=\"%s\"} offset 1m", cluster)
-				err, _ := utils.ContainManagedClusterMetric(
-					testOptions,
-					query,
-					[]string{`"__name__":"acm_remote_write_requests_total"`},
-				)
-				if err != nil {
-					return err
-				}
-				err, _ = utils.ContainManagedClusterMetric(
-					testOptions,
-					query,
-					[]string{`"__name__":"acm_remote_write_requests_total"`,
-						`"code":"200`, `"name":"thanos-receiver"`},
-				)
-				if err != nil {
-					return errors.New("metrics not forwarded to thanos-receiver")
-				}
-				err, _ = utils.ContainManagedClusterMetric(
-					testOptions,
-					query,
-					[]string{`"__name__":"acm_remote_write_requests_total"`,
-						`"code":"204`, `"name":"victoriametrics"`},
-				)
-				if err != nil {
-					return errors.New("metrics not forwarded to victoriametrics")
-				}
+			query := fmt.Sprintf("acm_remote_write_requests_total{cluster=\"%s\"} offset 1m", hubClusterName)
+			err, _ := utils.ContainManagedClusterMetric(
+				testOptions,
+				query,
+				[]string{`"__name__":"acm_remote_write_requests_total"`},
+			)
+			if err != nil {
+				return err
+			}
+			err, _ = utils.ContainManagedClusterMetric(
+				testOptions,
+				query,
+				[]string{`"__name__":"acm_remote_write_requests_total"`,
+					`"code":"200`, `"name":"thanos-receiver"`},
+			)
+			if err != nil {
+				return errors.New("metrics not forwarded to thanos-receiver")
+			}
+			err, _ = utils.ContainManagedClusterMetric(
+				testOptions,
+				query,
+				[]string{`"__name__":"acm_remote_write_requests_total"`,
+					`"code":"204`, `"name":"victoriametrics"`},
+			)
+			if err != nil {
+				return errors.New("metrics not forwarded to victoriametrics")
 			}
 			return nil
 		}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
