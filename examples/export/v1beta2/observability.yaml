@@ -7,7 +7,6 @@ spec:
   advanced:
     retentionConfig:
       blockDuration: 3h
-      cleanupInterval: 6m
       deleteDelay: 50h
       retentionInLocal: 5d
       retentionResolution1h: 31d
