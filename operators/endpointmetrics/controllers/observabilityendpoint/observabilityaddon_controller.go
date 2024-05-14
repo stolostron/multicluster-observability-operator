@@ -201,7 +201,12 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 				log.Error(err, "OCP prometheus service does not exist")
 				// ACM 8509: Special case for hub/local cluster metrics collection
 				// We do not report status for hub endpoint operator
-				util.ReportStatus(ctx, r.Client, obsAddon, "NotSupported", !isHubMetricsCollector)
+				if !isHubMetricsCollector {
+					if err := util.ReportStatus(ctx, r.Client, util.NotSupportedStatus, obsAddon.Name, obsAddon.Namespace); err != nil {
+						log.Error(err, "Failed to report status")
+					}
+				}
+
 				return ctrl.Result{}, nil
 			}
 			return ctrl.Result{}, fmt.Errorf("failed to check prometheus resource: %w", err)
@@ -297,19 +302,27 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			1,
 			forceRestart)
 		if err != nil {
-			util.ReportStatus(ctx, r.Client, obsAddon, "Degraded", !isHubMetricsCollector)
+			if !isHubMetricsCollector {
+				if err := util.ReportStatus(ctx, r.Client, util.DegradedStatus, obsAddon.Name, obsAddon.Namespace); err != nil {
+					log.Error(err, "Failed to report status")
+				}
+			}
 			return ctrl.Result{}, fmt.Errorf("failed to update metrics collectors: %w", err)
 		}
-		if created {
-			util.ReportStatus(ctx, r.Client, obsAddon, "Deployed", !isHubMetricsCollector)
+		if created && !isHubMetricsCollector {
+			if err := util.ReportStatus(ctx, r.Client, util.DeployedStatus, obsAddon.Name, obsAddon.Namespace); err != nil {
+				log.Error(err, "Failed to report status")
+			}
 		}
 	} else {
 		deleted, err := updateMetricsCollectors(ctx, r.Client, obsAddon.Spec, *hubInfo, clusterID, clusterType, 0, false)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update metrics collectors: %w", err)
 		}
-		if deleted {
-			util.ReportStatus(ctx, r.Client, obsAddon, "Disabled", !isHubMetricsCollector)
+		if deleted && !isHubMetricsCollector {
+			if err := util.ReportStatus(ctx, r.Client, util.DisabledStatus, obsAddon.Name, obsAddon.Namespace); err != nil {
+				log.Error(err, "Failed to report status")
+			}
 		}
 	}
 
