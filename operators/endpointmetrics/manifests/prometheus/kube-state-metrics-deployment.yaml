@@ -36,7 +36,10 @@ spec:
             cpu: 10m
             memory: 190Mi
         securityContext:
-          runAsUser: 65534
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
       - args:
         - --logtostderr
         - --secure-listen-address=:8443
@@ -55,9 +58,10 @@ spec:
             cpu: 20m
             memory: 20Mi
         securityContext:
-          runAsGroup: 65532
-          runAsNonRoot: true
-          runAsUser: 65532
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
       - args:
         - --logtostderr
         - --secure-listen-address=:9443
@@ -76,9 +80,16 @@ spec:
             cpu: 10m
             memory: 20Mi
         securityContext:
-          runAsGroup: 65532
-          runAsNonRoot: true
-          runAsUser: 65532
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+      securityContext:
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       nodeSelector:
         kubernetes.io/os: linux
       serviceAccountName: kube-state-metrics
