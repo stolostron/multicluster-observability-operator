@@ -1,0 +1,33 @@
+name: integration 
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Integration tests
+    env:
+      GOBIN: /tmp/.bin
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.21.x
+          cache-dependency-path: "**/*.sum"
+
+      - name: Install deps
+        run: make deps
+
+      - name: Run tests
+        run: |
+          source <(BIN_DIR=$GOBIN make install-envtest-deps)
+          make integration-test-operators

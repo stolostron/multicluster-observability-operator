@@ -36,6 +36,7 @@ func TestIntegrationReconcileStatus(t *testing.T) {
 	hubNamespace := "hub-namespace"
 	obsAddonName := "observability-addon"
 
+	// Setup spoke cluster
 	testEnv, k8sClient := setupTestEnv(t)
 	defer testEnv.Stop()
 
@@ -48,6 +49,7 @@ func TestIntegrationReconcileStatus(t *testing.T) {
 		t.Fatalf("Failed to create resources: %v", err)
 	}
 
+	// Setup hub cluster
 	hubTestEnv, hubK8sClient := setupTestEnv(t)
 	defer hubTestEnv.Stop()
 
@@ -59,8 +61,10 @@ func TestIntegrationReconcileStatus(t *testing.T) {
 		t.Fatalf("Failed to create resources: %v", err)
 	}
 
+	// Setup controller manager
 	mgr, err := ctrl.NewManager(testEnv.Config, ctrl.Options{
-		Scheme: k8sClient.Scheme(),
+		Scheme:             k8sClient.Scheme(),
+		MetricsBindAddress: "0", // Avoids port conflict with the default port 8080
 	})
 	assert.NoError(t, err)
 
@@ -85,6 +89,9 @@ func TestIntegrationReconcileStatus(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
+	// Test:
+	// Update on the spoke addon status should trigger an update on the hub addon status.
+
 	go func() {
 		// Update spoke addon status concurrently to trigger the reconcile loop.
 		addCondition(spokeObsAddon, "Deployed", metav1.ConditionTrue)
@@ -102,7 +109,6 @@ func TestIntegrationReconcileStatus(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	// Hub addon status should be updated
 	err = wait.Poll(1*time.Second, 10*time.Second, func() (bool, error) {
 		hubObsAddon := &oav1beta1.ObservabilityAddon{}
 		err := hubK8sClient.Get(context.Background(), types.NamespacedName{Name: obsAddonName, Namespace: hubNamespace}, hubObsAddon)
