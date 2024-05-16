@@ -11,12 +11,16 @@ RUN go install github.com/onsi/ginkgo/ginkgo@v1.14.2 && go mod vendor && ginkgo 
 # create new docker image to hold built artifacts
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
+# pre-create directories and set permissions
+RUN mkdir -p /resources /results && \
+    chown -R 1001:1001 /resources /results
+
 # run as non-root
 USER 1001:1001
 
 # expose env vars for runtime
-ENV KUBECONFIG "/opt/.kube/config"
-ENV IMPORT_KUBECONFIG "/opt/.kube/import-kubeconfig"
+ENV KUBECONFIG "/workspace/.kube/config"
+ENV IMPORT_KUBECONFIG "/workspace/.kube/import-kubeconfig"
 ENV OPTIONS "/resources/options.yaml"
 ENV REPORT_FILE "/results/results.xml"
 ENV GINKGO_DEFAULT_FLAGS "-slowSpecThreshold=120 -timeout 7200s"
