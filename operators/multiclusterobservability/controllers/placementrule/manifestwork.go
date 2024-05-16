@@ -17,6 +17,7 @@ import (
 
 	"golang.org/x/exp/slices"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/client-go/util/retry"
 
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -162,14 +163,12 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 
 		err = c.Create(context.TODO(), work)
 		if err != nil {
-			log.Error(err, "Failed to create manifestwork", "namespace", namespace, "name", name)
 			logSizeErrorDetails(fmt.Sprint(err), work)
-			return err
+			return fmt.Errorf("failed to create manifestwork %s/%s: %w", namespace, name, err)
 		}
 		return nil
 	} else if err != nil {
-		log.Error(err, "Failed to check manifestwork", namespace, "name", name)
-		return err
+		return fmt.Errorf("failed to check manifestwork %s/%s: %w", namespace, name, err)
 	}
 
 	if found.GetDeletionTimestamp() != nil {
@@ -177,33 +176,33 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 		return errors.New("existing manifestwork is terminating, skip and reconcile later")
 	}
 
-	manifests := work.Spec.Workload.Manifests
-	updated := false
-	if len(found.Spec.Workload.Manifests) == len(manifests) {
-		for i, m := range found.Spec.Workload.Manifests {
-			if !util.CompareObject(m.RawExtension, manifests[i].RawExtension) {
-				updated = true
-				break
-			}
-		}
-	} else {
-		updated = true
-	}
-
-	if updated {
-		log.Info("Updating manifestwork", namespace, namespace, "name", name)
-		found.Spec.Workload.Manifests = manifests
-		err = c.Update(context.TODO(), found)
-		if err != nil {
-			log.Error(err, "Failed to update monitoring-endpoint-monitoring-work work")
-			logSizeErrorDetails(fmt.Sprint(err), work)
-			return err
-		}
+	if !shouldUpdateManifestWork(work.Spec.Workload.Manifests, found.Spec.Workload.Manifests) {
+		log.Info("manifestwork already existed/unchanged", "namespace", namespace)
 		return nil
 	}
 
-	log.Info("manifestwork already existed/unchanged", "namespace", namespace)
+	log.Info("Updating manifestwork", "namespace", namespace, "name", name)
+	found.Spec.Workload.Manifests = work.Spec.Workload.Manifests
+	err = c.Update(context.TODO(), found)
+	if err != nil {
+		logSizeErrorDetails(fmt.Sprint(err), work)
+		return fmt.Errorf("failed to update manifestwork %s/%s: %w", namespace, name, err)
+	}
 	return nil
+}
+
+func shouldUpdateManifestWork(desiredManifests []workv1.Manifest, foundManifests []workv1.Manifest) bool {
+	if len(desiredManifests) != len(foundManifests) {
+		return true
+	}
+
+	for i, m := range desiredManifests {
+		if !util.CompareObject(m.RawExtension, foundManifests[i].RawExtension) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // generateGlobalManifestResources generates global resources, eg. manifestwork,
@@ -458,7 +457,12 @@ func createManifestWorks(
 		log.Info("Creating resource for hub metrics collection", "cluster", clusterName)
 		err = createUpdateResourcesForHubMetricsCollection(c, manifests)
 	} else {
-		err = createManifestwork(c, work)
+		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			return createManifestwork(c, work)
+		})
+		if retryErr != nil {
+			return fmt.Errorf("failed to create manifestwork: %w", retryErr)
+		}
 	}
 
 	return err

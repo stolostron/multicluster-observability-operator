@@ -36,6 +36,13 @@ spec:
           requests:
             cpu: 102m
             memory: 200Mi
+        securityContext:
+          runAsUser: 65534
+          runAsGroup: 65534
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
         volumeMounts:
         - mountPath: /host/sys
           mountPropagation: HostToContainer
@@ -59,7 +66,6 @@ spec:
         name: kube-rbac-proxy
         ports:
         - containerPort: 9100
-          hostPort: 9100
           name: https
         resources:
           limits:
@@ -69,16 +75,22 @@ spec:
             cpu: 10m
             memory: 200Mi
         securityContext:
-          runAsGroup: 65532
-          runAsNonRoot: true
-          runAsUser: 65532
+          runAsUser: 65534
+          runAsGroup: 65534
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
       hostNetwork: true
       hostPID: true
       nodeSelector:
         kubernetes.io/os: linux
       securityContext:
+        privileged: false
+        readOnlyRootFilesystem: true
         runAsNonRoot: true
-        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: node-exporter
       tolerations:
       - operator: Exists
