@@ -99,34 +99,32 @@ func main() {
 			// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behavior, which
 			// means MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
 			// Adding selector will reduce the cache size when the managedcluster scale.
-			cacheOptions := cache.Options{
-				ByObject: map[client.Object]cache.ByObject{
-					&v1.Secret{}: {
-						Field: namespaceFieldSelector,
-					},
-					&v1.ConfigMap{}: {
-						Field: namespaceFieldSelector,
-					},
-					&v1.ConfigMap{}: {
-						Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.name==%s,metadata.namespace!=open-cluster-management-observability",
-							operatorconfig.AllowlistCustomConfigMapName)),
-					},
-					&appsv1.Deployment{}: {
-						Field: namespaceFieldSelector,
-					},
-					&oav1beta1.ObservabilityAddon{}: {
-						Field: namespaceFieldSelector,
-					},
+			opts.ByObject = map[client.Object]cache.ByObject{
+				&v1.Secret{}: {
+					Field: namespaceFieldSelector,
+				},
+				&v1.ConfigMap{}: {
+					Field: namespaceFieldSelector,
+				},
+				&v1.ConfigMap{}: {
+					Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.name==%s,metadata.namespace!=open-cluster-management-observability",
+						operatorconfig.AllowlistCustomConfigMapName)),
+				},
+				&appsv1.Deployment{}: {
+					Field: namespaceFieldSelector,
+				},
+				&oav1beta1.ObservabilityAddon{}: {
+					Field: namespaceFieldSelector,
 				},
 			}
 			// Only watch MCO CRs in the hub cluster to avoid noisy log messages
 			if os.Getenv("HUB_ENDPOINT_OPERATOR") == "true" {
-				cacheOptions.ByObject[&oav1beta2.MultiClusterObservability{}] = cache.ByObject{
+				opts.ByObject[&oav1beta2.MultiClusterObservability{}] = cache.ByObject{
 					Field: fields.ParseSelectorOrDie("metadata.name!=null"),
 				}
 			}
 
-			return cache.New(config, cacheOptions)
+			return cache.New(config, opts)
 		},
 		WebhookServer: ctrlwebhook.NewServer(ctrlwebhook.Options{Port: 9443}),
 	})

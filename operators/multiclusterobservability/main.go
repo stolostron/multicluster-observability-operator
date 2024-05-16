@@ -180,48 +180,46 @@ func main() {
 			// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behavior, which
 			// means MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
 			// Adding selector will reduce the cache size when the managedcluster scale.
-			cacheOptions := cache.Options{
-				ByObject: map[client.Object]cache.ByObject{
-					&corev1.Secret{}: byObjectWithDefaultNamespace,
-					&corev1.Secret{}: {
-						Field: fields.Set{"metadata.namespace": mcoconfig.OpenshiftIngressOperatorCRName}.AsSelector(),
-					},
-					&corev1.Secret{}: {
-						Field: fields.Set{"metadata.namespace": mcoconfig.OpenshiftIngressOperatorNamespace}.AsSelector(),
-					},
-					&corev1.ConfigMap{}:      byObjectWithDefaultNamespace,
-					&corev1.Service{}:        byObjectWithDefaultNamespace,
-					&corev1.ServiceAccount{}: byObjectWithDefaultNamespace,
-					&appsv1.Deployment{}:     byObjectWithDefaultNamespace,
-					&appsv1.StatefulSet{}:    byObjectWithDefaultNamespace,
-					&workv1.ManifestWork{}: {
-						Label: labels.Set{"owner": "multicluster-observability-operator"}.AsSelector(),
-					},
-					&clusterv1.ManagedCluster{}: {
-						Label: managedClusterLabelSelector,
-					},
-					&addonv1alpha1.ClusterManagementAddOn{}: {
-						Field: fields.Set{"metadata.name": util.ObservabilityController}.AsSelector(),
-					},
-					&addonv1alpha1.ManagedClusterAddOn{}: {
-						Field: fields.Set{"metadata.name": util.ManagedClusterAddonName}.AsSelector(),
-					},
-					&rbacv1.Role{}:                       byObjectWithOwnerLabel,
-					&rbacv1.RoleBinding{}:                byObjectWithOwnerLabel,
-					&rbacv1.ClusterRole{}:                byObjectWithOwnerLabel,
-					&rbacv1.ClusterRoleBinding{}:         byObjectWithOwnerLabel,
-					&addonv1alpha1.ManagedClusterAddOn{}: byObjectWithOwnerLabel,
+			opts.ByObject = map[client.Object]cache.ByObject{
+				&corev1.Secret{}: byObjectWithDefaultNamespace,
+				&corev1.Secret{}: {
+					Field: fields.Set{"metadata.namespace": mcoconfig.OpenshiftIngressOperatorCRName}.AsSelector(),
 				},
+				&corev1.Secret{}: {
+					Field: fields.Set{"metadata.namespace": mcoconfig.OpenshiftIngressOperatorNamespace}.AsSelector(),
+				},
+				&corev1.ConfigMap{}:      byObjectWithDefaultNamespace,
+				&corev1.Service{}:        byObjectWithDefaultNamespace,
+				&corev1.ServiceAccount{}: byObjectWithDefaultNamespace,
+				&appsv1.Deployment{}:     byObjectWithDefaultNamespace,
+				&appsv1.StatefulSet{}:    byObjectWithDefaultNamespace,
+				&workv1.ManifestWork{}: {
+					Label: labels.Set{"owner": "multicluster-observability-operator"}.AsSelector(),
+				},
+				&clusterv1.ManagedCluster{}: {
+					Label: managedClusterLabelSelector,
+				},
+				&addonv1alpha1.ClusterManagementAddOn{}: {
+					Field: fields.Set{"metadata.name": util.ObservabilityController}.AsSelector(),
+				},
+				&addonv1alpha1.ManagedClusterAddOn{}: {
+					Field: fields.Set{"metadata.name": util.ManagedClusterAddonName}.AsSelector(),
+				},
+				&rbacv1.Role{}:                       byObjectWithOwnerLabel,
+				&rbacv1.RoleBinding{}:                byObjectWithOwnerLabel,
+				&rbacv1.ClusterRole{}:                byObjectWithOwnerLabel,
+				&rbacv1.ClusterRoleBinding{}:         byObjectWithOwnerLabel,
+				&addonv1alpha1.ManagedClusterAddOn{}: byObjectWithOwnerLabel,
 			}
 
 			if mchCrdExists {
-				cacheOptions.ByObject[&mchv1.MultiClusterHub{}] = cache.ByObject{
+				opts.ByObject[&mchv1.MultiClusterHub{}] = cache.ByObject{
 					Field: fields.Set{"metadata.namespace": mcoNamespace}.AsSelector(),
 				}
 			}
 
 			if ingressCtlCrdExists {
-				cacheOptions.ByObject[&operatorv1.IngressController{}] = cache.ByObject{
+				opts.ByObject[&operatorv1.IngressController{}] = cache.ByObject{
 					Field: fields.Set{
 						"metadata.name":      mcoconfig.OpenshiftIngressOperatorCRName,
 						"metadata.namespace": mcoconfig.OpenshiftIngressOperatorNamespace,
@@ -229,7 +227,7 @@ func main() {
 				}
 			}
 
-			return cache.New(config, cacheOptions)
+			return cache.New(config, opts)
 		},
 		WebhookServer: ctrlwebhook.NewServer(ctrlwebhook.Options{
 			Port: webhookPort,
