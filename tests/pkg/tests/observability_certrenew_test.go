@@ -150,18 +150,19 @@ var _ = Describe("Observability:", func() {
 				namespace,
 				"component=metrics-collector",
 			)
-			if err == nil {
-				for _, pod := range podList.Items {
-					if pod.Name != collectorPodName {
-						if pod.Status.Phase != "Running" {
-							klog.V(1).Infof("<%s> not in Running status yet", pod.Name)
-							return false
-						}
-						return true
-					}
-				}
-
+			if err != nil {
+				klog.V(1).Infof("Failed to get pod list: %v", err)
 			}
+			for _, pod := range podList.Items {
+				if pod.Name != collectorPodName {
+					if pod.Status.Phase != "Running" {
+						klog.V(1).Infof("<%s> not in Running status yet", pod.Name)
+						return false
+					}
+					return true
+				}
+			}
+
 			// debug code to check label "cert/time-restarted"
 			deployment, err := utils.GetDeployment(
 				testOptions,

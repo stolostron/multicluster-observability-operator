@@ -118,8 +118,6 @@ func LogMCOOperatorDebugInfo(client kubernetes.Interface) {
 
 	pod := podList.Items[0]
 	klog.V(1).Infof("Logging debug info for MCO operator pod %q in namespace %q", pod.Name, pod.Namespace)
-	LogPodStatus(pod)
-	LogObjectEvents(client, "open-cluster-management", "Pod", pod.Name)
 	LogPodLogs(client, "open-cluster-management", pod)
 }
 
@@ -158,6 +156,17 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 			klog.Errorf("Failed to get logs for pod %q container %q: %s", pod.Name, container.Name, err.Error())
 			continue
 		}
+
+		// Filter error logs and keep all last 150 lines
+		cleanedLines := []string{}
+		lines := strings.Split(string(logs), "\n")
+		for i, line := range lines {
+			if strings.Contains(strings.ToLower(line), "error") || i > len(lines)-150 {
+				cleanedLines = append(cleanedLines, line)
+			}
+		}
+
+		logs = []byte(strings.Join(cleanedLines, "\n"))
 
 		delimitedLogs := fmt.Sprintf(">>>>>>>>>> container logs >>>>>>>>>>\n%s<<<<<<<<<< container logs <<<<<<<<<<", string(logs))
 		klog.V(1).Infof("Pod %q container %q logs: \n%s", pod.Name, container.Name, delimitedLogs)
