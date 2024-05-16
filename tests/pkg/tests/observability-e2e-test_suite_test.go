@@ -132,6 +132,7 @@ func TestObservabilityE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
 	config.DefaultReporterConfig.NoColor = true
 	config.DefaultReporterConfig.Succinct = true
+	config.DefaultReporterConfig.ReportPassed = true
 	junitReporter := reporters.NewJUnitReporter(reportFile)
 	junitReporter.ReporterConfig.NoColor = true
 	RunSpecsWithDefaultAndCustomReporters(t, "Observability E2E Suite", []Reporter{junitReporter})
@@ -145,8 +146,6 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	if !testFailed {
 		uninstallMCO()
-	} else {
-		utils.PrintAllMCOPodsStatus(testOptions)
 	}
 })
 

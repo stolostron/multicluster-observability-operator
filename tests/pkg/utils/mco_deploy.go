@@ -13,8 +13,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-	"text/tabwriter"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -152,151 +150,6 @@ func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
 	return mcoPods, nil
 }
 
-func PrintAllMCOPodsStatus(opt TestOptions) {
-	podList, err := GetAllMCOPods(opt)
-	if err != nil {
-		klog.Errorf("Failed to get all MCO pods")
-	}
-
-	if len(podList) == 0 {
-		klog.V(1).Infof("Failed to get pod in %q namespace", MCO_NAMESPACE)
-	}
-
-	hubClient := NewKubeClient(
-		opt.HubCluster.ClusterServerURL,
-		opt.KubeConfig,
-		opt.HubCluster.KubeContext)
-
-	// Print mch-image-manifest configmap
-	mchImageManifestCM, err := ReadImageManifestConfigMap(hubClient)
-	if err != nil {
-		klog.Errorf("Failed to get mch-image-manifest configmap: %s", err.Error())
-	} else {
-		klog.V(1).Infof("mch-image-manifest configmap: \nmulticluster_observability_operator: %s\n", mchImageManifestCM["multicluster_observability_operator"])
-	}
-
-	klog.V(1).Infof("Pods in namespace %s: \n", MCO_NAMESPACE)
-	printPods(podList)
-
-	LogPodsDebugInfo(hubClient, podList, false)
-}
-
-func printPods(pods []corev1.Pod) {
-	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(writer, "NAME\tSTATUS\tRESTARTS\tAGE")
-	for _, pod := range pods {
-		var restartCount int32
-		if len(pod.Status.ContainerStatuses) > 0 {
-			restartCount = pod.Status.ContainerStatuses[0].RestartCount
-		}
-		age := time.Since(pod.CreationTimestamp.Time).Round(time.Second)
-		fmt.Fprintf(writer, "%s\t%s\t%d\t%s\n",
-			pod.Name,
-			pod.Status.Phase,
-			restartCount,
-			age)
-	}
-	writer.Flush()
-}
-
-func LogPodsDebugInfo(hubClient kubernetes.Interface, pods []corev1.Pod, force bool) {
-	if len(pods) == 0 {
-		return
-	}
-
-	ns := pods[0].Namespace
-	podsNames := make([]string, 0, len(pods))
-	for _, pod := range pods {
-		podsNames = append(podsNames, pod.Name)
-	}
-
-	klog.V(1).Infof("Checking %d pods in namespace %q", len(podsNames), ns)
-	notRunningPodsCount := 0
-	for _, pod := range pods {
-		if pod.Status.Phase != corev1.PodRunning {
-			notRunningPodsCount++
-		}
-
-		if pod.Status.Phase == corev1.PodRunning && !force {
-			continue
-		}
-
-		// print pod spec
-		podSpec, err := json.MarshalIndent(pod.Spec, "", "  ")
-		if err != nil {
-			klog.Errorf("Failed to marshal pod %q spec: %s", pod.Name, err.Error())
-		}
-		klog.V(1).Infof("Pod %q spec: \n%s", pod.Name, string(podSpec))
-
-		LogPodStatus(pod)
-		LogPodEvents(hubClient, ns, pod.Name)
-		LogPodLogs(hubClient, ns, pod)
-	}
-
-	if notRunningPodsCount == 0 {
-		klog.V(1).Infof("All pods are running in namespace %q", ns)
-	} else {
-		klog.Errorf("Found %d pods not running in namespace %q", notRunningPodsCount, ns)
-	}
-}
-
-func LogPodStatus(pod corev1.Pod) {
-	var podStatus strings.Builder
-	podStatus.WriteString(">>>>>>>>>> pod status >>>>>>>>>>\n")
-	podStatus.WriteString("Conditions:\n")
-	for _, condition := range pod.Status.Conditions {
-		podStatus.WriteString(fmt.Sprintf("\t%s: %s %v\n", condition.Type, condition.Status, condition.LastTransitionTime.Time))
-	}
-	podStatus.WriteString("ContainerStatuses:\n")
-	for _, containerStatus := range pod.Status.ContainerStatuses {
-		podStatus.WriteString(fmt.Sprintf("\t%s: %t %d %v\n", containerStatus.Name, containerStatus.Ready, containerStatus.RestartCount, containerStatus.State))
-		if containerStatus.LastTerminationState.Terminated != nil {
-			podStatus.WriteString(fmt.Sprintf("\t\tlastTerminated: %v\n", containerStatus.LastTerminationState.Terminated))
-		}
-	}
-	podStatus.WriteString("<<<<<<<<<< pod status <<<<<<<<<<")
-
-	klog.V(1).Infof("Pod %q is in phase %q and status: \n%s", pod.Name, pod.Status.Phase, podStatus.String())
-}
-
-func LogPodEvents(client kubernetes.Interface, ns string, podName string) {
-	events, err := client.CoreV1().Events(ns).List(context.TODO(), metav1.ListOptions{
-		FieldSelector: "involvedObject.name=" + podName,
-	})
-	if err != nil {
-		klog.Errorf("Failed to get events for pod %s: %s", podName, err.Error())
-	}
-
-	podEvents := make([]string, 0, len(events.Items))
-	for _, event := range events.Items {
-		podEvents = append(podEvents, fmt.Sprintf("%s %s (%d): %s", event.Reason, event.LastTimestamp, event.Count, event.Message))
-	}
-	formattedEvents := ">>>>>>>>>> pod events >>>>>>>>>>\n" + strings.Join(podEvents, "\n") + "\n<<<<<<<<<< pod events <<<<<<<<<<"
-	klog.V(1).Infof("Pod %q events: \n%s", podName, formattedEvents)
-}
-
-func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
-	for _, container := range pod.Spec.Containers {
-		logsRes := client.CoreV1().Pods(ns).GetLogs(pod.Name, &corev1.PodLogOptions{
-			Container: container.Name,
-		}).Do(context.Background())
-
-		if logsRes.Error() != nil {
-			klog.Errorf("Failed to get logs for pod %q: %s", pod.Name, logsRes.Error())
-			continue
-		}
-
-		logs, err := logsRes.Raw()
-		if err != nil {
-			klog.Errorf("Failed to get logs for pod %q container %q: %s", pod.Name, container.Name, err.Error())
-			continue
-		}
-
-		delimitedLogs := fmt.Sprintf(">>>>>>>>>> container logs >>>>>>>>>>\n%s<<<<<<<<<< container logs <<<<<<<<<<", string(logs))
-		klog.V(1).Infof("Pod %q container %q logs: \n%s", pod.Name, container.Name, delimitedLogs)
-	}
-}
-
 // ReadImageManifestConfigMap reads configmap with the label ocm-configmap-type=image-manifest.
 func ReadImageManifestConfigMap(c kubernetes.Interface) (map[string]string, error) {
 	listOpts := metav1.ListOptions{
@@ -356,8 +209,8 @@ func PrintObject(ctx context.Context, client dynamic.Interface, gvr schema.Group
 		return
 	}
 
-	klog.V(1).Infof("Object %s in namespace %s spec: %+v\n", name, ns, string(spec))
-	klog.V(1).Infof("Object %s in namespace %s status: %+v\n", name, ns, string(status))
+	klog.V(1).Infof("Object %s/%s/%s spec: %+v\n", ns, gvr.Resource, name, string(spec))
+	klog.V(1).Infof("Object %s/%s/%s status: %+v\n", ns, gvr.Resource, name, string(status))
 }
 
 func PrintManagedClusterOBAObject(opt TestOptions) {
@@ -383,42 +236,6 @@ func GetAllOBAPods(client kubernetes.Interface) ([]corev1.Pod, error) {
 	}
 
 	return obaPods.Items, nil
-}
-
-func PrintAllOBAPodsStatus(opt TestOptions) {
-	klog.V(1).Infof("Get OBA pods status from managed clusters: %v", opt.ManagedClusters)
-
-	if len(opt.ManagedClusters) == 0 {
-		klog.V(1).Infof("No managedclusters found")
-		return
-	}
-
-	for _, mc := range opt.ManagedClusters {
-		if mc.Name == "local-cluster" {
-			// skip as those pods are already printed in PrintAllMCOPodsStatus
-			continue
-		}
-
-		// get spoke client
-		spokeClient := NewKubeClient(mc.ClusterServerURL, opt.KubeConfig, mc.KubeContext)
-
-		klog.V(1).Infof("Get OBA pods status from managedcluster %s", mc.Name)
-
-		podList, err := GetAllOBAPods(spokeClient)
-		if err != nil {
-			klog.Errorf("Failed to get all OBA pods: %v", err)
-			return
-		}
-
-		klog.V(1).Infof("Pods in namespace %s: \n", MCO_NAMESPACE)
-		printPods(podList)
-
-		force := false
-		if len(podList) == 1 { // only the operator is up
-			force = true
-		}
-		LogPodsDebugInfo(spokeClient, podList, force)
-	}
 }
 
 func CheckAllPodNodeSelector(opt TestOptions, nodeSelector map[string]interface{}) error {
