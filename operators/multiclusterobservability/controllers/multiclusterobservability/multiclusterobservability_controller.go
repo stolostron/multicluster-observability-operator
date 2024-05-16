@@ -273,7 +273,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 				return ctrl.Result{}, err
 			}
 		}
-		if err := deployer.Deploy(res); err != nil {
+		if err := deployer.Deploy(ctx, res); err != nil {
 			reqLogger.Error(err, fmt.Sprintf("Failed to deploy %s %s/%s",
 				res.GetKind(), resNS, res.GetName()))
 			return ctrl.Result{}, err
