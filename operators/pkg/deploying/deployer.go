@@ -28,7 +28,7 @@ import (
 
 var log = logf.Log.WithName("deploying")
 
-type deployerFn func(*unstructured.Unstructured, *unstructured.Unstructured) error
+type deployerFn func(context.Context, *unstructured.Unstructured, *unstructured.Unstructured) error
 
 // Deployer is used create or update the resources.
 type Deployer struct {
@@ -51,23 +51,29 @@ func NewDeployer(client client.Client) *Deployer {
 		"Prometheus":               deployer.updatePrometheus,
 		"PrometheusRule":           deployer.updatePrometheusRule,
 		"Ingress":                  deployer.updateIngress,
+		"Role":                     deployer.updateRole,
+		"RoleBinding":              deployer.updateRoleBinding,
+		"ServiceAccount":           deployer.updateServiceAccount,
+		"DaemonSet":                deployer.updateDaemonSet,
+		"ServiceMonitor":           deployer.updateServiceMonitor,
 	}
 	return deployer
 }
 
 // Deploy is used to create or update the resources.
-func (d *Deployer) Deploy(obj *unstructured.Unstructured) error {
+func (d *Deployer) Deploy(ctx context.Context, obj *unstructured.Unstructured) error {
+	// Create the resource if it doesn't exist
 	found := &unstructured.Unstructured{}
 	found.SetGroupVersionKind(obj.GroupVersionKind())
 	err := d.client.Get(
-		context.TODO(),
+		ctx,
 		types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()},
 		found,
 	)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("Create", "Kind", obj.GroupVersionKind(), "Name", obj.GetName())
-			return d.client.Create(context.TODO(), obj)
+			return d.client.Create(ctx, obj)
 		}
 		return err
 	}
@@ -84,51 +90,34 @@ func (d *Deployer) Deploy(obj *unstructured.Unstructured) error {
 		}
 	}
 
+	// The resource exists, update it
 	deployerFn, ok := d.deployerFns[found.GetKind()]
 	if ok {
-		return deployerFn(obj, found)
+		return deployerFn(ctx, obj, found)
 	} else {
 		log.Info("deployerFn not found", "kind", found.GetKind())
 	}
 	return nil
 }
 
-func (d *Deployer) updateDeployment(desiredObj, runtimeObj *unstructured.Unstructured) error {
-	runtimeJSON, _ := runtimeObj.MarshalJSON()
-	runtimeDepoly := &appsv1.Deployment{}
-	err := json.Unmarshal(runtimeJSON, runtimeDepoly)
+func (d *Deployer) updateDeployment(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredDeploy, runtimeDepoly, err := unstructuredPairToTyped[appsv1.Deployment](desiredObj, runtimeObj)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime Deployment %s", runtimeObj.GetName()))
+		return err
 	}
 
-	desiredJSON, _ := desiredObj.MarshalJSON()
-	desiredDepoly := &appsv1.Deployment{}
-	err = json.Unmarshal(desiredJSON, desiredDepoly)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal Deployment %s", runtimeObj.GetName()))
-	}
-
-	if !apiequality.Semantic.DeepDerivative(desiredDepoly.Spec, runtimeDepoly.Spec) {
+	if !apiequality.Semantic.DeepDerivative(desiredDeploy.Spec, runtimeDepoly.Spec) {
 		logUpdateInfo(runtimeObj)
-		return d.client.Update(context.TODO(), desiredDepoly)
+		return d.client.Update(ctx, desiredDeploy)
 	}
 
 	return nil
 }
 
-func (d *Deployer) updateStatefulSet(desiredObj, runtimeObj *unstructured.Unstructured) error {
-	runtimeJSON, _ := runtimeObj.MarshalJSON()
-	runtimeDepoly := &appsv1.StatefulSet{}
-	err := json.Unmarshal(runtimeJSON, runtimeDepoly)
+func (d *Deployer) updateStatefulSet(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredDepoly, runtimeDepoly, err := unstructuredPairToTyped[appsv1.StatefulSet](desiredObj, runtimeObj)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime StatefulSet %s", runtimeObj.GetName()))
-	}
-
-	desiredJSON, _ := desiredObj.MarshalJSON()
-	desiredDepoly := &appsv1.StatefulSet{}
-	err = json.Unmarshal(desiredJSON, desiredDepoly)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal StatefulSet %s", runtimeObj.GetName()))
+		return err
 	}
 
 	if !apiequality.Semantic.DeepDerivative(desiredDepoly.Spec.Template, runtimeDepoly.Spec.Template) ||
@@ -136,166 +125,104 @@ func (d *Deployer) updateStatefulSet(desiredObj, runtimeObj *unstructured.Unstru
 		logUpdateInfo(runtimeObj)
 		runtimeDepoly.Spec.Replicas = desiredDepoly.Spec.Replicas
 		runtimeDepoly.Spec.Template = desiredDepoly.Spec.Template
-		return d.client.Update(context.TODO(), runtimeDepoly)
+		return d.client.Update(ctx, runtimeDepoly)
 	}
 
 	return nil
 }
 
-func (d *Deployer) updateService(desiredObj, runtimeObj *unstructured.Unstructured) error {
-	runtimeJSON, _ := runtimeObj.MarshalJSON()
-	runtimeService := &corev1.Service{}
-	err := json.Unmarshal(runtimeJSON, runtimeService)
+func (d *Deployer) updateService(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredService, runtimeService, err := unstructuredPairToTyped[corev1.Service](desiredObj, runtimeObj)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime Service %s", runtimeObj.GetName()))
-	}
-
-	desiredJSON, _ := desiredObj.MarshalJSON()
-	desiredService := &corev1.Service{}
-	err = json.Unmarshal(desiredJSON, desiredService)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal Service %s", runtimeObj.GetName()))
+		return err
 	}
 
 	if !apiequality.Semantic.DeepDerivative(desiredService.Spec, runtimeService.Spec) {
 		desiredService.ObjectMeta.ResourceVersion = runtimeService.ObjectMeta.ResourceVersion
 		desiredService.Spec.ClusterIP = runtimeService.Spec.ClusterIP
 		logUpdateInfo(runtimeObj)
-		return d.client.Update(context.TODO(), desiredService)
+		return d.client.Update(ctx, desiredService)
 	}
 
 	return nil
 }
 
-func (d *Deployer) updateConfigMap(desiredObj, runtimeObj *unstructured.Unstructured) error {
-	runtimeJSON, _ := runtimeObj.MarshalJSON()
-	runtimeConfigMap := &corev1.ConfigMap{}
-	err := json.Unmarshal(runtimeJSON, runtimeConfigMap)
+func (d *Deployer) updateConfigMap(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredConfigMap, runtimeConfigMap, err := unstructuredPairToTyped[corev1.ConfigMap](desiredObj, runtimeObj)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime ConfigMap %s", runtimeObj.GetName()))
-	}
-
-	desiredJSON, _ := desiredObj.MarshalJSON()
-	desiredConfigMap := &corev1.ConfigMap{}
-	err = json.Unmarshal(desiredJSON, desiredConfigMap)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal ConfigMap %s", runtimeObj.GetName()))
+		return err
 	}
 
 	if !apiequality.Semantic.DeepDerivative(desiredConfigMap.Data, runtimeConfigMap.Data) {
 		logUpdateInfo(runtimeObj)
-		return d.client.Update(context.TODO(), desiredConfigMap)
+		return d.client.Update(ctx, desiredConfigMap)
 	}
 
 	return nil
 }
 
-func (d *Deployer) updateSecret(desiredObj, runtimeObj *unstructured.Unstructured) error {
-	runtimeJSON, _ := runtimeObj.MarshalJSON()
-	runtimeSecret := &corev1.Secret{}
-	err := json.Unmarshal(runtimeJSON, runtimeSecret)
+func (d *Deployer) updateSecret(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredSecret, runtimeSecret, err := unstructuredPairToTyped[corev1.Secret](desiredObj, runtimeObj)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime Secret %s", runtimeObj.GetName()))
-	}
-
-	desiredJSON, _ := desiredObj.MarshalJSON()
-	desiredSecret := &corev1.Secret{}
-	err = json.Unmarshal(desiredJSON, desiredSecret)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal desired Secret %s", desiredObj.GetName()))
+		return err
 	}
 
 	if desiredSecret.Data == nil ||
 		!apiequality.Semantic.DeepDerivative(desiredSecret.Data, runtimeSecret.Data) {
 		logUpdateInfo(desiredObj)
-		return d.client.Update(context.TODO(), desiredSecret)
+		return d.client.Update(ctx, desiredSecret)
 	}
 	return nil
 }
 
-func (d *Deployer) updateClusterRole(desiredObj, runtimeObj *unstructured.Unstructured) error {
-	runtimeJSON, _ := runtimeObj.MarshalJSON()
-	runtimeClusterRole := &rbacv1.ClusterRole{}
-	err := json.Unmarshal(runtimeJSON, runtimeClusterRole)
+func (d *Deployer) updateClusterRole(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredClusterRole, runtimeClusterRole, err := unstructuredPairToTyped[rbacv1.ClusterRole](desiredObj, runtimeObj)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime ClusterRole %s", runtimeObj.GetName()))
-	}
-
-	desiredJSON, _ := desiredObj.MarshalJSON()
-	desiredClusterRole := &rbacv1.ClusterRole{}
-	err = json.Unmarshal(desiredJSON, desiredClusterRole)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal desired ClusterRole %s", desiredObj.GetName()))
+		return err
 	}
 
 	if !apiequality.Semantic.DeepDerivative(desiredClusterRole.Rules, runtimeClusterRole.Rules) ||
 		!apiequality.Semantic.DeepDerivative(desiredClusterRole.AggregationRule, runtimeClusterRole.AggregationRule) {
 		logUpdateInfo(desiredObj)
-		return d.client.Update(context.TODO(), desiredClusterRole)
+		return d.client.Update(ctx, desiredClusterRole)
 	}
 	return nil
 }
 
-func (d *Deployer) updateClusterRoleBinding(desiredObj, runtimeObj *unstructured.Unstructured) error {
-	runtimeJSON, _ := runtimeObj.MarshalJSON()
-	runtimeClusterRoleBinding := &rbacv1.ClusterRoleBinding{}
-	err := json.Unmarshal(runtimeJSON, runtimeClusterRoleBinding)
+func (d *Deployer) updateClusterRoleBinding(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredClusterRoleBinding, runtimeClusterRoleBinding, err := unstructuredPairToTyped[rbacv1.ClusterRoleBinding](desiredObj, runtimeObj)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime ClusterRoleBinding %s", runtimeObj.GetName()))
-	}
-
-	desiredJSON, _ := desiredObj.MarshalJSON()
-	desiredClusterRoleBinding := &rbacv1.ClusterRoleBinding{}
-	err = json.Unmarshal(desiredJSON, desiredClusterRoleBinding)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal desired ClusterRoleBinding %s", desiredObj.GetName()))
+		return err
 	}
 
 	if !apiequality.Semantic.DeepDerivative(desiredClusterRoleBinding.Subjects, runtimeClusterRoleBinding.Subjects) ||
 		!apiequality.Semantic.DeepDerivative(desiredClusterRoleBinding.RoleRef, runtimeClusterRoleBinding.RoleRef) {
 		logUpdateInfo(desiredObj)
-		return d.client.Update(context.TODO(), desiredClusterRoleBinding)
+		return d.client.Update(ctx, desiredClusterRoleBinding)
 	}
 	return nil
 }
 
-func (d *Deployer) updateCRD(desiredObj, runtimeObj *unstructured.Unstructured) error {
-	runtimeJSON, _ := runtimeObj.MarshalJSON()
-	runtimeCRD := &apiextensionsv1.CustomResourceDefinition{}
-	err := json.Unmarshal(runtimeJSON, runtimeCRD)
+func (d *Deployer) updateCRD(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredCRD, runtimeCRD, err := unstructuredPairToTyped[apiextensionsv1.CustomResourceDefinition](desiredObj, runtimeObj)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime CRD %s", runtimeObj.GetName()))
+		return err
 	}
 
-	desiredJSON, _ := desiredObj.MarshalJSON()
-	desiredCRD := &apiextensionsv1.CustomResourceDefinition{}
-	err = json.Unmarshal(desiredJSON, desiredCRD)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal CRD %s", runtimeObj.GetName()))
-	}
 	desiredCRD.ObjectMeta.ResourceVersion = runtimeCRD.ObjectMeta.ResourceVersion
 
 	if !apiequality.Semantic.DeepDerivative(desiredCRD.Spec, runtimeCRD.Spec) {
 		logUpdateInfo(runtimeObj)
-		return d.client.Update(context.TODO(), desiredCRD)
+		return d.client.Update(ctx, desiredCRD)
 	}
 
 	return nil
 }
 
-func (d *Deployer) updatePrometheus(desiredObj, runtimeObj *unstructured.Unstructured) error {
-	runtimeJSON, _ := runtimeObj.MarshalJSON()
-	runtimePrometheus := &prometheusv1.Prometheus{}
-	err := json.Unmarshal(runtimeJSON, runtimePrometheus)
+func (d *Deployer) updatePrometheus(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredPrometheus, runtimePrometheus, err := unstructuredPairToTyped[prometheusv1.Prometheus](desiredObj, runtimeObj)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime Prometheus %s", runtimeObj.GetName()))
-	}
-
-	desiredJSON, _ := desiredObj.MarshalJSON()
-	desiredPrometheus := &prometheusv1.Prometheus{}
-	err = json.Unmarshal(desiredJSON, desiredPrometheus)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal Prometheus %s", runtimeObj.GetName()))
+		return err
 	}
 
 	// On GKE clusters, it was observed that the runtime object was not in sync with the object attributes
@@ -326,26 +253,17 @@ func (d *Deployer) updatePrometheus(desiredObj, runtimeObj *unstructured.Unstruc
 
 	if !apiequality.Semantic.DeepDerivative(desiredPrometheus.Spec, runtimePrometheus.Spec) {
 		logUpdateInfo(runtimeObj)
-		return d.client.Update(context.TODO(), desiredPrometheus)
+		return d.client.Update(ctx, desiredPrometheus)
 	} else {
 		log.Info("Runtime Prometheus and Desired Prometheus are semantically equal!")
 	}
 	return nil
 }
 
-func (d *Deployer) updatePrometheusRule(desiredObj, runtimeObj *unstructured.Unstructured) error {
-	runtimeJSON, _ := runtimeObj.MarshalJSON()
-	runtimePrometheusRule := &prometheusv1.PrometheusRule{}
-	err := json.Unmarshal(runtimeJSON, runtimePrometheusRule)
+func (d *Deployer) updatePrometheusRule(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredPrometheusRule, runtimePrometheusRule, err := unstructuredPairToTyped[prometheusv1.PrometheusRule](desiredObj, runtimeObj)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime PrometheusRule  %s", runtimeObj.GetName()))
-	}
-
-	desiredJSON, _ := desiredObj.MarshalJSON()
-	desiredPrometheusRule := &prometheusv1.PrometheusRule{}
-	err = json.Unmarshal(desiredJSON, desiredPrometheusRule)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal PrometheusRule  %s", runtimeObj.GetName()))
+		return err
 	}
 
 	if !apiequality.Semantic.DeepDerivative(desiredPrometheusRule.Spec, runtimePrometheusRule.Spec) {
@@ -354,32 +272,121 @@ func (d *Deployer) updatePrometheusRule(desiredObj, runtimeObj *unstructured.Uns
 			desiredPrometheusRule.ResourceVersion = runtimePrometheusRule.ResourceVersion
 		}
 
-		return d.client.Update(context.TODO(), desiredPrometheusRule)
+		return d.client.Update(ctx, desiredPrometheusRule)
 	}
 	return nil
 }
 
-func (d *Deployer) updateIngress(desiredObj, runtimeObj *unstructured.Unstructured) error {
-	runtimeJSON, _ := runtimeObj.MarshalJSON()
-	runtimeIngress := &networkingv1.Ingress{}
-	err := json.Unmarshal(runtimeJSON, runtimeIngress)
+func (d *Deployer) updateIngress(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredIngress, runtimeIngress, err := unstructuredPairToTyped[networkingv1.Ingress](desiredObj, runtimeObj)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal runtime Ingress %s", runtimeObj.GetName()))
-	}
-
-	desiredJSON, _ := desiredObj.MarshalJSON()
-	desiredIngress := &networkingv1.Ingress{}
-	err = json.Unmarshal(desiredJSON, desiredIngress)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Failed to Unmarshal Ingress %s", runtimeObj.GetName()))
+		return err
 	}
 
 	if !apiequality.Semantic.DeepDerivative(desiredIngress.Spec, runtimeIngress.Spec) {
 		logUpdateInfo(runtimeObj)
-		return d.client.Update(context.TODO(), desiredIngress)
+		return d.client.Update(ctx, desiredIngress)
 	}
 
 	return nil
+}
+
+func (d *Deployer) updateRole(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredRole, runtimeRole, err := unstructuredPairToTyped[rbacv1.Role](desiredObj, runtimeObj)
+	if err != nil {
+		return err
+	}
+
+	if !apiequality.Semantic.DeepDerivative(desiredRole.Rules, runtimeRole.Rules) {
+		logUpdateInfo(runtimeObj)
+		return d.client.Update(ctx, desiredRole)
+	}
+
+	return nil
+}
+
+func (d *Deployer) updateRoleBinding(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredRoleBinding, runtimeRoleBinding, err := unstructuredPairToTyped[rbacv1.RoleBinding](desiredObj, runtimeObj)
+	if err != nil {
+		return err
+	}
+
+	if !apiequality.Semantic.DeepDerivative(desiredRoleBinding.Subjects, runtimeRoleBinding.Subjects) ||
+		!apiequality.Semantic.DeepDerivative(desiredRoleBinding.RoleRef, runtimeRoleBinding.RoleRef) {
+		logUpdateInfo(runtimeObj)
+		return d.client.Update(ctx, desiredRoleBinding)
+	}
+
+	return nil
+}
+
+func (d *Deployer) updateServiceAccount(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredServiceAccount, runtimeServiceAccount, err := unstructuredPairToTyped[corev1.ServiceAccount](desiredObj, runtimeObj)
+	if err != nil {
+		return err
+	}
+
+	if !apiequality.Semantic.DeepDerivative(desiredServiceAccount.ImagePullSecrets, runtimeServiceAccount.ImagePullSecrets) ||
+		!apiequality.Semantic.DeepDerivative(desiredServiceAccount.Secrets, runtimeServiceAccount.Secrets) {
+		logUpdateInfo(runtimeObj)
+		return d.client.Update(ctx, desiredServiceAccount)
+	}
+
+	return nil
+}
+
+func (d *Deployer) updateDaemonSet(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredDaemonSet, runtimeDaemonSet, err := unstructuredPairToTyped[appsv1.DaemonSet](desiredObj, runtimeObj)
+	if err != nil {
+		return err
+	}
+
+	if !apiequality.Semantic.DeepDerivative(desiredDaemonSet.Spec, runtimeDaemonSet.Spec) {
+		logUpdateInfo(runtimeObj)
+		return d.client.Update(ctx, desiredDaemonSet)
+	}
+
+	return nil
+}
+
+func (d *Deployer) updateServiceMonitor(ctx context.Context, desiredObj, runtimeObj *unstructured.Unstructured) error {
+	desiredServiceMonitor, runtimeServiceMonitor, err := unstructuredPairToTyped[prometheusv1.ServiceMonitor](desiredObj, runtimeObj)
+	if err != nil {
+		return err
+	}
+
+	if !apiequality.Semantic.DeepDerivative(desiredServiceMonitor.Spec, runtimeServiceMonitor.Spec) {
+		logUpdateInfo(runtimeObj)
+		return d.client.Update(ctx, desiredServiceMonitor)
+	}
+
+	return nil
+}
+
+// unstructuredToType converts an unstructured.Unstructured object to a specified type.
+// It marshals the object to JSON and then unmarshals it into the target type.
+// The target parameter must be a pointer to the type T.
+func unstructuredToType[T any](obj *unstructured.Unstructured, target T) error {
+	jsonData, err := obj.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(jsonData, target)
+}
+
+// unstructuredPairToTyped converts a pair of unstructured.Unstructured objects to a specified type.
+func unstructuredPairToTyped[T any](obja, objb *unstructured.Unstructured) (*T, *T, error) {
+	a := new(T)
+	if err := unstructuredToType(obja, a); err != nil {
+		return nil, nil, fmt.Errorf("failed to convert obja %s/%s/%s: %w", obja.GetKind(), obja.GetNamespace(), obja.GetName(), err)
+	}
+
+	b := new(T)
+	if err := unstructuredToType(objb, b); err != nil {
+		return nil, nil, fmt.Errorf("failed to convert objb %s/%s/%s: %w", obja.GetKind(), obja.GetNamespace(), obja.GetName(), err)
+	}
+
+	return a, b, nil
 }
 
 func logUpdateInfo(obj *unstructured.Unstructured) {

@@ -532,6 +532,256 @@ func TestDeploy(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "create and update a role",
+			createObj: &rbacv1.Role{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "rbac.authorization.k8s.io/v1",
+					Kind:       "Role",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-role",
+					Namespace: "ns1",
+				},
+				Rules: []rbacv1.PolicyRule{
+					{
+						Resources: []string{
+							"pods",
+						},
+						Verbs: []string{
+							"watch",
+						},
+						APIGroups: []string{
+							"",
+						},
+					},
+				},
+			},
+			updateObj: &rbacv1.Role{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "rbac.authorization.k8s.io/v1",
+					Kind:       "Role",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "test-role",
+					Namespace:       "ns1",
+					ResourceVersion: "1",
+				},
+				Rules: []rbacv1.PolicyRule{
+					{
+						Resources: []string{
+							"pods",
+						},
+						Verbs: []string{
+							"watch",
+							"list",
+							"get",
+						},
+						APIGroups: []string{
+							"",
+						},
+					},
+				},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{
+					Name:      "test-role",
+					Namespace: "ns1",
+				}
+				obj := &rbacv1.Role{}
+				client.Get(context.Background(), namespacedName, obj)
+
+				if len(obj.Rules[0].Verbs) != 3 {
+					t.Fatalf("fail to update the role")
+				}
+			},
+		},
+		{
+			name: "create and update a rolebinding",
+			createObj: &rbacv1.RoleBinding{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "rbac.authorization.k8s.io/v1",
+					Kind:       "RoleBinding",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-rolebinding",
+					Namespace: "ns1",
+				},
+				RoleRef: rbacv1.RoleRef{
+					Kind:     "Role",
+					Name:     "test-role",
+					APIGroup: "rbac.authorization.k8s.io",
+				},
+				Subjects: []rbacv1.Subject{
+					{
+						Kind:      "ServiceAccount",
+						Name:      "test-sa",
+						Namespace: "ns1",
+					},
+				},
+			},
+			updateObj: &rbacv1.RoleBinding{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "rbac.authorization.k8s.io/v1",
+					Kind:       "RoleBinding",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "test-rolebinding",
+					Namespace:       "ns1",
+					ResourceVersion: "1",
+				},
+				RoleRef: rbacv1.RoleRef{
+					Kind:     "Role",
+					Name:     "test-role",
+					APIGroup: "rbac.authorization.k8s.io",
+				},
+				Subjects: []rbacv1.Subject{
+					{
+						Kind:      "ServiceAccount",
+						Name:      "test-sa",
+						Namespace: "ns1",
+					},
+					{
+						Kind:      "User",
+						Name:      "test-user",
+						Namespace: "ns1",
+					},
+				},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{
+					Name:      "test-rolebinding",
+					Namespace: "ns1",
+				}
+				obj := &rbacv1.RoleBinding{}
+				client.Get(context.Background(), namespacedName, obj)
+
+				if len(obj.Subjects) != 2 {
+					t.Fatalf("fail to update the rolebinding")
+				}
+			},
+		},
+		{
+			name: "create and update serviceaccount",
+			createObj: &corev1.ServiceAccount{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "ServiceAccount",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-sa",
+					Namespace: "ns1",
+				},
+			},
+			updateObj: &corev1.ServiceAccount{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "ServiceAccount",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "test-sa",
+					Namespace:       "ns1",
+					ResourceVersion: "1",
+				},
+				ImagePullSecrets: []corev1.LocalObjectReference{
+					{
+						Name: "test-secret",
+					},
+				},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{
+					Name:      "test-sa",
+					Namespace: "ns1",
+				}
+				obj := &corev1.ServiceAccount{}
+				client.Get(context.Background(), namespacedName, obj)
+
+				if len(obj.ImagePullSecrets) == 0 {
+					t.Fatalf("fail to update the serviceaccount")
+				}
+			},
+		},
+		{
+			name: "create and update daemonset",
+			createObj: &appsv1.DaemonSet{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apps/v1",
+					Kind:       "DaemonSet",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-daemonset",
+					Namespace: "ns1",
+				},
+				Spec: appsv1.DaemonSetSpec{
+					Selector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app": "myApp",
+						},
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"app": "myApp",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "test-container",
+									Image: "test-image",
+								},
+							},
+						},
+					},
+				},
+			},
+			updateObj: &appsv1.DaemonSet{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apps/v1",
+					Kind:       "DaemonSet",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            "test-daemonset",
+					Namespace:       "ns1",
+					ResourceVersion: "1",
+				},
+				Spec: appsv1.DaemonSetSpec{
+					Selector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app": "myApp",
+						},
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"app": "myApp",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "test-container",
+									Image: "test-image:latest",
+								},
+							},
+						},
+					},
+				},
+			},
+			validateResults: func(client client.Client) {
+				namespacedName := types.NamespacedName{
+					Name:      "test-daemonset",
+					Namespace: "ns1",
+				}
+				obj := &appsv1.DaemonSet{}
+				client.Get(context.Background(), namespacedName, obj)
+
+				if obj.Spec.Template.Spec.Containers[0].Image != "test-image:latest" {
+					t.Fatalf("fail to update the daemonset")
+				}
+			},
+		},
 	}
 
 	scheme := runtime.NewScheme()
@@ -548,13 +798,13 @@ func TestDeploy(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			createObjUns, _ := runtime.DefaultUnstructuredConverter.ToUnstructured(c.createObj)
-			err := deployer.Deploy(&unstructured.Unstructured{Object: createObjUns})
+			err := deployer.Deploy(context.Background(), &unstructured.Unstructured{Object: createObjUns})
 			if err != nil {
 				t.Fatalf("Cannot create the resource %v", err)
 			}
 			if c.updateObj != nil {
 				updateObjUns, _ := runtime.DefaultUnstructuredConverter.ToUnstructured(c.updateObj)
-				err = deployer.Deploy(&unstructured.Unstructured{Object: updateObjUns})
+				err = deployer.Deploy(context.Background(), &unstructured.Unstructured{Object: updateObjUns})
 				if err != nil {
 					t.Fatalf("Cannot update the resource %v", err)
 				}
