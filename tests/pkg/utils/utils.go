@@ -260,13 +260,14 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 			apiVersion = v.(string)
 		}
 
+		klog.V(5).Infof("Applying kind %q with name %q in namespace %q", kind, obj.GetName(), obj.GetNamespace())
+
 		clientKube := NewKubeClient(url, kubeconfig, ctx)
 		clientAPIExtension := NewKubeClientAPIExtension(url, kubeconfig, ctx)
 		// now use switch over the type of the object
 		// and match each type-case
 		switch kind {
 		case "CustomResourceDefinition":
-			klog.V(5).Infof("Install CRD: %s\n", f)
 			obj := &apiextensionsv1.CustomResourceDefinition{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -285,7 +286,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientAPIExtension.ApiextensionsV1().CustomResourceDefinitions().Update(context.TODO(), existingObject, metav1.UpdateOptions{})
 			}
 		case "Namespace":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &corev1.Namespace{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -302,7 +302,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.CoreV1().Namespaces().Update(context.TODO(), existingObject, metav1.UpdateOptions{})
 			}
 		case "ServiceAccount":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &corev1.ServiceAccount{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -321,7 +320,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.CoreV1().ServiceAccounts(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "ClusterRoleBinding":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &rbacv1.ClusterRoleBinding{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -338,7 +336,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.RbacV1().ClusterRoleBindings().Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "Secret":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &corev1.Secret{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -355,7 +352,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.CoreV1().Secrets(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "ConfigMap":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &corev1.ConfigMap{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -374,7 +370,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.CoreV1().ConfigMaps(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "Service":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &corev1.Service{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -394,7 +389,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.CoreV1().Services(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "PersistentVolumeClaim":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &corev1.PersistentVolumeClaim{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -414,7 +408,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.CoreV1().PersistentVolumeClaims(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "Deployment":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &appsv1.Deployment{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -433,7 +426,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.AppsV1().Deployments(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "LimitRange":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &corev1.LimitRange{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -452,7 +444,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.CoreV1().LimitRanges(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "ResourceQuota":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &corev1.ResourceQuota{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -471,7 +462,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.CoreV1().ResourceQuotas(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "StorageClass":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &storagev1.StorageClass{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -495,13 +485,11 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				if apiVersion == "observability.open-cluster-management.io/v1beta1" {
 					gvr = NewMCOGVRV1BETA1()
 				}
-				klog.V(5).Infof("Install MultiClusterObservability: %s\n", f)
 			case "PrometheusRule":
 				gvr = schema.GroupVersionResource{
 					Group:    "monitoring.coreos.com",
 					Version:  "v1",
 					Resource: "prometheusrules"}
-				klog.V(5).Infof("Install PrometheusRule: %s\n", f)
 			default:
 				return fmt.Errorf("resource %s not supported", kind)
 			}

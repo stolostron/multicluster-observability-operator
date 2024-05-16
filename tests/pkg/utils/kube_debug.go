@@ -35,12 +35,17 @@ func LogFailingTestStandardDebugInfo(opt TestOptions) {
 		opt.HubCluster.ClusterServerURL,
 		opt.KubeConfig,
 		opt.HubCluster.KubeContext)
-	LogMCOOperatorDebugInfo(hubClient)
+	CheckPodsInNamespace(hubClient, "open-cluster-management", []string{"multicluster-observability-operator"}, map[string]string{
+		"name": "multicluster-observability-operator",
+	})
 	CheckDeploymentsInNamespace(hubClient, MCO_NAMESPACE)
-	CheckPodsInNamespace(hubClient, MCO_NAMESPACE)
+	CheckStatefulSetsInNamespace(hubClient, MCO_NAMESPACE)
+	CheckDaemonSetsInNamespace(hubClient, MCO_NAMESPACE)
+	CheckPodsInNamespace(hubClient, MCO_NAMESPACE, []string{}, map[string]string{})
 
 	for _, mc := range opt.ManagedClusters {
 		if mc.Name == "local-cluster" {
+			// Skip local-cluster as same namespace as hub, and already checked
 			continue
 		}
 
@@ -49,13 +54,17 @@ func LogFailingTestStandardDebugInfo(opt TestOptions) {
 
 		spokeClient := NewKubeClient(mc.ClusterServerURL, mc.KubeConfig, mc.KubeContext)
 		CheckDeploymentsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
-		CheckPodsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
+		CheckStatefulSetsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
+		CheckDaemonSetsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
+		CheckPodsInNamespace(spokeClient, MCO_ADDON_NAMESPACE, []string{"observability-addon"}, map[string]string{})
 	}
 }
 
 // CheckPodsInNamespace lists pods in a namespace and logs debug info (status, events, logs) for pods not running.
-func CheckPodsInNamespace(client kubernetes.Interface, ns string) {
-	pods, err := client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
+func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesLog []string, podLabels map[string]string) {
+	pods, err := client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{
+		LabelSelector: metav1.FormatLabelSelector(&metav1.LabelSelector{MatchLabels: podLabels}),
+	})
 	if err != nil {
 		klog.Errorf("Failed to get pods in namespace %s: %v", ns, err)
 		return
@@ -74,8 +83,14 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string) {
 			notRunningPodsCount++
 		}
 
-		// Alway log details of the addon pod
-		if pod.Status.Phase == corev1.PodRunning && pod.Name != "observability-addon" {
+		force := false
+		for _, forcePodName := range forcePodNamesLog {
+			if strings.Contains(pod.Name, forcePodName) {
+				force = true
+				break
+			}
+		}
+		if pod.Status.Phase == corev1.PodRunning && !force {
 			continue
 		}
 
@@ -96,29 +111,6 @@ func CheckPodsInNamespace(client kubernetes.Interface, ns string) {
 	} else {
 		klog.Errorf("Found %d pods not running in namespace %q", notRunningPodsCount, ns)
 	}
-}
-
-func LogMCOOperatorDebugInfo(client kubernetes.Interface) {
-	// get podList with label name: multicluster-observability-operator
-	podList, err := client.CoreV1().Pods("open-cluster-management").List(context.TODO(), metav1.ListOptions{
-		LabelSelector: "name=multicluster-observability-operator",
-	})
-	if err != nil {
-		klog.Errorf("Failed to get pod with label name=multicluster-observability-operator in namespace open-cluster-management: %v", err)
-		return
-	}
-
-	if len(podList.Items) == 0 {
-		klog.V(1).Infof("No pods with label name=multicluster-observability-operator in namespace open-cluster-management")
-	}
-
-	if len(podList.Items) > 1 {
-		klog.Errorf("Found more than one pod with label name=multicluster-observability-operator in namespace open-cluster-management")
-	}
-
-	pod := podList.Items[0]
-	klog.V(1).Infof("Logging debug info for MCO operator pod %q in namespace %q", pod.Name, pod.Namespace)
-	LogPodLogs(client, "open-cluster-management", pod)
 }
 
 func LogPodStatus(podList corev1.Pod) {
@@ -158,10 +150,11 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 		}
 
 		// Filter error logs and keep all last 150 lines
+		maxLines := 150
 		cleanedLines := []string{}
 		lines := strings.Split(string(logs), "\n")
 		for i, line := range lines {
-			if strings.Contains(strings.ToLower(line), "error") || i > len(lines)-150 {
+			if strings.Contains(strings.ToLower(line), "error") || i > len(lines)-maxLines {
 				cleanedLines = append(cleanedLines, line)
 			}
 		}
@@ -169,7 +162,7 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 		logs = []byte(strings.Join(cleanedLines, "\n"))
 
 		delimitedLogs := fmt.Sprintf(">>>>>>>>>> container logs >>>>>>>>>>\n%s<<<<<<<<<< container logs <<<<<<<<<<", string(logs))
-		klog.V(1).Infof("Pod %q container %q logs: \n%s", pod.Name, container.Name, delimitedLogs)
+		klog.V(1).Infof("Pod %q container %q logs (errors and last %d lines): \n%s", pod.Name, container.Name, maxLines, delimitedLogs)
 	}
 }
 
@@ -217,6 +210,68 @@ func LogDeploymentStatus(deployment appsv1.Deployment) {
 	deploymentStatus.WriteString("<<<<<<<<<< deployment status <<<<<<<<<<")
 
 	klog.V(1).Infof("Deployment %q status: \n%s", deployment.Name, deploymentStatus.String())
+}
+
+func CheckStatefulSetsInNamespace(client kubernetes.Interface, ns string) {
+	statefulSets, err := client.AppsV1().StatefulSets(ns).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("Failed to get statefulsets in namespace %s: %v", ns, err)
+		return
+	}
+
+	if len(statefulSets.Items) == 0 {
+		klog.V(1).Infof("No statefulsets found in namespace %q", ns)
+		return
+	}
+
+	klog.V(1).Infof("StatefulSets in namespace %s: \n", ns)
+	printStatefulSetsStatuses(client, ns)
+
+	for _, statefulSet := range statefulSets.Items {
+		if statefulSet.Status.UpdatedReplicas == *statefulSet.Spec.Replicas {
+			continue
+		}
+
+		// Print statefulset spec
+		statefulSetSpec, err := json.MarshalIndent(statefulSet.Spec, "", "  ")
+		if err != nil {
+			klog.Errorf("Failed to marshal statefulset %q spec: %s", statefulSet.Name, err.Error())
+		}
+		klog.V(1).Infof("StatefulSet %q spec: \n%s", statefulSet.Name, string(statefulSetSpec))
+
+		LogObjectEvents(client, ns, "StatefulSet", statefulSet.Name)
+	}
+}
+
+func CheckDaemonSetsInNamespace(client kubernetes.Interface, ns string) {
+	daemonSets, err := client.AppsV1().DaemonSets(ns).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("Failed to get daemonsets in namespace %s: %v", ns, err)
+		return
+	}
+
+	if len(daemonSets.Items) == 0 {
+		klog.V(1).Infof("No daemonsets found in namespace %q", ns)
+		return
+	}
+
+	klog.V(1).Infof("DaemonSets in namespace %s: \n", ns)
+	printDaemonSetsStatuses(client, ns)
+
+	for _, daemonSet := range daemonSets.Items {
+		if daemonSet.Status.UpdatedNumberScheduled == daemonSet.Status.DesiredNumberScheduled {
+			continue
+		}
+
+		// Print daemonset spec
+		daemonSetSpec, err := json.MarshalIndent(daemonSet.Spec, "", "  ")
+		if err != nil {
+			klog.Errorf("Failed to marshal daemonset %q spec: %s", daemonSet.Name, err.Error())
+		}
+		klog.V(1).Infof("DaemonSet %q spec: \n%s", daemonSet.Name, string(daemonSetSpec))
+
+		LogObjectEvents(client, ns, "DaemonSet", daemonSet.Name)
+	}
 }
 
 func LogObjectEvents(client kubernetes.Interface, ns string, kind string, name string) {
@@ -277,7 +332,7 @@ func printDeploymentsStatuses(clientset kubernetes.Interface, namespace string) 
 	writer.Flush()
 }
 
-func printStatefulSetsStatuses(clientset *kubernetes.Clientset, namespace string) {
+func printStatefulSetsStatuses(clientset kubernetes.Interface, namespace string) {
 	statefulSetsClient := clientset.AppsV1().StatefulSets(namespace)
 	statefulSets, err := statefulSetsClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
@@ -297,7 +352,7 @@ func printStatefulSetsStatuses(clientset *kubernetes.Clientset, namespace string
 	writer.Flush()
 }
 
-func printDaemonSetsStatuses(clientset *kubernetes.Clientset, namespace string) {
+func printDaemonSetsStatuses(clientset kubernetes.Interface, namespace string) {
 	daemonSetsClient := clientset.AppsV1().DaemonSets(namespace)
 	daemonSets, err := daemonSetsClient.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
