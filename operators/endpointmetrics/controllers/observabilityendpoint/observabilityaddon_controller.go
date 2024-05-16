@@ -267,7 +267,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 				}
 			}
 
-			if err := deployer.Deploy(res); err != nil {
+			if err := deployer.Deploy(ctx, res); err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to deploy %s %s/%s: %w", res.GetKind(), namespace, res.GetName(), err)
 			}
 		}
