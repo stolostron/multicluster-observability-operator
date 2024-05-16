@@ -21,7 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 )
 
@@ -102,26 +101,6 @@ func NewOCMMultiClusterHubGVR() schema.GroupVersionResource {
 		Resource: "multiclusterhubs"}
 }
 
-func ModifyMCOAvailabilityConfig(opt TestOptions, availabilityConfig string) error {
-	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.ClusterServerURL,
-		opt.KubeConfig,
-		opt.HubCluster.KubeContext)
-
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-	if getErr != nil {
-		return getErr
-	}
-
-	spec := mco.Object["spec"].(map[string]interface{})
-	spec["availabilityConfig"] = availabilityConfig
-	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
-	if updateErr != nil {
-		return updateErr
-	}
-	return nil
-}
-
 func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
 	hubClient := NewKubeClient(
 		opt.HubCluster.ClusterServerURL,
@@ -150,41 +129,6 @@ func GetAllMCOPods(opt TestOptions) ([]corev1.Pod, error) {
 	return mcoPods, nil
 }
 
-// ReadImageManifestConfigMap reads configmap with the label ocm-configmap-type=image-manifest.
-func ReadImageManifestConfigMap(c kubernetes.Interface) (map[string]string, error) {
-	listOpts := metav1.ListOptions{
-		LabelSelector: "ocm-configmap-type=image-manifest",
-	}
-
-	imageCMList, err := c.CoreV1().ConfigMaps("open-cluster-management").List(context.TODO(), listOpts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list mch-image-manifest configmaps: %w", err)
-	}
-
-	if len(imageCMList.Items) != 1 {
-		return nil, fmt.Errorf("found %d mch-image-manifest configmaps, expected 1", len(imageCMList.Items))
-	}
-
-	return imageCMList.Items[0].Data, nil
-}
-
-func PrintMCOObject(opt TestOptions) {
-	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.ClusterServerURL,
-		opt.KubeConfig,
-		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-	if getErr != nil {
-		klog.V(1).Infof("Failed to get mco object")
-		return
-	}
-
-	spec, _ := json.MarshalIndent(mco.Object["spec"], "", "  ")
-	status, _ := json.MarshalIndent(mco.Object["status"], "", "  ")
-	klog.V(1).Infof("MCO spec: %+v\n", string(spec))
-	klog.V(1).Infof("MCO status: %+v\n", string(status))
-}
-
 func PrintObject(ctx context.Context, client dynamic.Interface, gvr schema.GroupVersionResource, ns, name string) {
 	if ns == "" || name == "" {
 		klog.V(1).Info("Namespace or name cannot be empty")
@@ -211,31 +155,6 @@ func PrintObject(ctx context.Context, client dynamic.Interface, gvr schema.Group
 
 	klog.V(1).Infof("Object %s/%s/%s spec: %+v\n", ns, gvr.Resource, name, string(spec))
 	klog.V(1).Infof("Object %s/%s/%s status: %+v\n", ns, gvr.Resource, name, string(status))
-}
-
-func PrintManagedClusterOBAObject(opt TestOptions) {
-	clientDynamic := GetKubeClientDynamic(opt, false)
-	oba, getErr := clientDynamic.Resource(NewMCOAddonGVR()).
-		Namespace(MCO_ADDON_NAMESPACE).
-		Get(context.TODO(), "observability-addon", metav1.GetOptions{})
-	if getErr != nil {
-		klog.V(1).Infof("Failed to get oba object from managedcluster")
-		return
-	}
-
-	spec, _ := json.MarshalIndent(oba.Object["spec"], "", "  ")
-	status, _ := json.MarshalIndent(oba.Object["status"], "", "  ")
-	klog.V(1).Infof("OBA spec: %+v\n", string(spec))
-	klog.V(1).Infof("OBA status: %+v\n", string(status))
-}
-
-func GetAllOBAPods(client kubernetes.Interface) ([]corev1.Pod, error) {
-	obaPods, err := client.CoreV1().Pods(MCO_ADDON_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		return []corev1.Pod{}, err
-	}
-
-	return obaPods.Items, nil
 }
 
 func CheckAllPodNodeSelector(opt TestOptions, nodeSelector map[string]interface{}) error {
@@ -527,43 +446,6 @@ func RevertMCOCRModification(opt TestOptions) error {
 	return nil
 }
 
-func CheckMCOAddon(opt TestOptions) error {
-	client := NewKubeClient(
-		opt.HubCluster.ClusterServerURL,
-		opt.KubeConfig,
-		opt.HubCluster.KubeContext)
-	if len(opt.ManagedClusters) > 0 {
-		client = NewKubeClient(
-			opt.ManagedClusters[0].ClusterServerURL,
-			opt.ManagedClusters[0].KubeConfig,
-			"")
-	}
-	expectedPodNames := []string{
-		"endpoint-observability-operator",
-		"metrics-collector-deployment",
-	}
-	podList, err := client.CoreV1().Pods(MCO_ADDON_NAMESPACE).List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-	podsn := make(map[string]corev1.PodPhase)
-	for _, pod := range podList.Items {
-		podsn[pod.Name] = pod.Status.Phase
-	}
-	for _, podName := range expectedPodNames {
-		exist := false
-		for key, value := range podsn {
-			if strings.HasPrefix(key, podName) && value == "Running" {
-				exist = true
-			}
-		}
-		if !exist {
-			return errors.New(podName + " not found")
-		}
-	}
-	return nil
-}
-
 func CheckMCOAddonResources(opt TestOptions) error {
 	client := NewKubeClient(
 		opt.HubCluster.ClusterServerURL,
@@ -604,43 +486,6 @@ func CheckMCOAddonResources(opt TestOptions) error {
 	}
 
 	return nil
-}
-
-func ModifyMCORetentionResolutionRaw(opt TestOptions) error {
-	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.ClusterServerURL,
-		opt.KubeConfig,
-		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-	if getErr != nil {
-		return getErr
-	}
-
-	spec := mco.Object["spec"].(map[string]interface{})
-	advRetentionCon, _ := CheckAdvRetentionConfig(opt)
-	if advRetentionCon {
-		retentionConfig := spec["advanced"].(map[string]interface{})["retentionConfig"].(map[string]interface{})
-		retentionConfig["retentionResolutionRaw"] = "3d"
-	}
-	_, updateErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Update(context.TODO(), mco, metav1.UpdateOptions{})
-	if updateErr != nil {
-		return updateErr
-	}
-	return nil
-}
-
-func GetMCOAddonSpecMetrics(opt TestOptions) (bool, error) {
-	clientDynamic := NewKubeClientDynamic(
-		opt.HubCluster.ClusterServerURL,
-		opt.KubeConfig,
-		opt.HubCluster.KubeContext)
-	mco, getErr := clientDynamic.Resource(NewMCOGVRV1BETA2()).Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
-	if getErr != nil {
-		return false, getErr
-	}
-
-	enable := mco.Object["spec"].(map[string]interface{})["observabilityAddonSpec"].(map[string]interface{})["enableMetrics"].(bool)
-	return enable, nil
 }
 
 func ModifyMCOAddonSpecMetrics(opt TestOptions, enable bool) error {
