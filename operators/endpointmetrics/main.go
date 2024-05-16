@@ -51,6 +51,8 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(oav1beta1.AddToScheme(scheme))
+	utilruntime.Must(oav1beta2.AddToScheme(scheme))
 	utilruntime.Must(ocinfrav1.AddToScheme(scheme))
 	utilruntime.Must(prometheusv1.AddToScheme(scheme))
 	utilruntime.Must(hyperv1.AddToScheme(scheme))
@@ -84,15 +86,6 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-
-	if err := oav1beta1.AddToScheme(scheme); err != nil {
-		setupLog.Error(err, "")
-		os.Exit(1)
-	}
-	if err := oav1beta2.AddToScheme(scheme); err != nil {
-		setupLog.Error(err, "")
-		os.Exit(1)
-	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
