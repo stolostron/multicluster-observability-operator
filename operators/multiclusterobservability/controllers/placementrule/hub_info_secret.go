@@ -7,6 +7,7 @@ package placementrule
 import (
 	"context"
 	"net/url"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -37,6 +38,10 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		// if alerting is disabled, do not set alertmanagerEndpoint
 		if !config.IsAlertingDisabled() {
 			alertmanagerEndpoint, err = config.GetAlertmanagerEndpoint(context.TODO(), client, obsNamespace)
+			if !strings.HasPrefix(alertmanagerEndpoint, "https://") {
+				alertmanagerEndpoint = "https://" + alertmanagerEndpoint
+			}
+
 			if err != nil {
 				log.Error(err, "Failed to get alertmanager endpoint")
 				return nil, err
