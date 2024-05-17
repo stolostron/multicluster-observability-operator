@@ -25,6 +25,14 @@ func (u URL) Validate() error {
 	return err
 }
 
+func (u URL) Host() (string, error) {
+	url, err := url.Parse(string(u))
+	if err != nil {
+		return "", err
+	}
+	return url.Host, nil
+}
+
 // ObservabilityAddonSpec is the spec of observability addon.
 type ObservabilityAddonSpec struct {
 	// EnableMetrics indicates the observability addon push metrics to hub server.
