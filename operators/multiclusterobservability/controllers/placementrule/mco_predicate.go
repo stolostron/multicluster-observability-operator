@@ -36,18 +36,28 @@ func getMCOPred(c client.Client, ingressCtlCrdExists bool) predicate.Funcs {
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			retval := false
-			mco := e.ObjectNew.(*mcov1beta2.MultiClusterObservability)
+			updateHubInfo := false
+			newMCO := e.ObjectNew.(*mcov1beta2.MultiClusterObservability)
+			oldMCO := e.ObjectOld.(*mcov1beta2.MultiClusterObservability)
 			oldAlertingStatus := config.IsAlertingDisabled()
-			newAlertingStatus := config.IsAlertingDisabledInSpec(mco)
+			newAlertingStatus := config.IsAlertingDisabledInSpec(newMCO)
+			amURLChanged := newMCO.Spec.AdvancedConfig.CustomAlertmanagerHubURL != oldMCO.Spec.AdvancedConfig.CustomAlertmanagerHubURL
 			// if value changed, then mustReconcile is true
 			if oldAlertingStatus != newAlertingStatus {
 				config.SetAlertingDisabled(newAlertingStatus)
+				retval = true
+				updateHubInfo = true
+			}
+			if amURLChanged {
+				updateHubInfo = true
+				retval = true
+			}
+			if updateHubInfo {
 				var err error
 				hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists)
 				if err != nil {
 					log.Error(err, "unable to get HubInfoSecret", "controller", "PlacementRule")
 				}
-				retval = true
 			}
 
 			// only reconcile when ObservabilityAddonSpec updated
