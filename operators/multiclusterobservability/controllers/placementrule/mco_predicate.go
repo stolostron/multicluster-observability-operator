@@ -41,17 +41,18 @@ func getMCOPred(c client.Client, ingressCtlCrdExists bool) predicate.Funcs {
 			oldMCO := e.ObjectOld.(*mcov1beta2.MultiClusterObservability)
 			oldAlertingStatus := config.IsAlertingDisabled()
 			newAlertingStatus := config.IsAlertingDisabledInSpec(newMCO)
-			amURLChanged := newMCO.Spec.AdvancedConfig.CustomAlertmanagerHubURL != oldMCO.Spec.AdvancedConfig.CustomAlertmanagerHubURL
+
+			if !reflect.DeepEqual(newMCO.Spec.AdvancedConfig, oldMCO.Spec.AdvancedConfig) {
+				updateHubInfo = true
+				retval = true
+			}
 			// if value changed, then mustReconcile is true
 			if oldAlertingStatus != newAlertingStatus {
 				config.SetAlertingDisabled(newAlertingStatus)
 				retval = true
 				updateHubInfo = true
 			}
-			if amURLChanged {
-				updateHubInfo = true
-				retval = true
-			}
+
 			if updateHubInfo {
 				var err error
 				hubInfoSecret, err = generateHubInfoSecret(c, config.GetDefaultNamespace(), spokeNameSpace, ingressCtlCrdExists)
