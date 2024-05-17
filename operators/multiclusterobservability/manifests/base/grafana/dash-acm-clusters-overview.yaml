@@ -1849,7 +1849,7 @@ data:
             "type": "query"
           },
           {
-            "allValue": null,
+            "allValue": ".+",
             "current": {
               "selected": true,
               "text": [
