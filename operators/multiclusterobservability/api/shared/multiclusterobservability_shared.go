@@ -26,11 +26,11 @@ func (u URL) Validate() error {
 }
 
 func (u URL) Host() (string, error) {
-	url, err := url.Parse(string(u))
+	parsedUrl, err := url.Parse(string(u))
 	if err != nil {
 		return "", err
 	}
-	return url.Host, nil
+	return parsedUrl.Host + parsedUrl.Path, nil
 }
 
 // ObservabilityAddonSpec is the spec of observability addon.
