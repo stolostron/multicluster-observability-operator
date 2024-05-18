@@ -1,6 +1,6 @@
 # Copyright Contributors to the Open Cluster Management project
 
-FROM registry.ci.openshift.org/stolostron/builder:go1.20-linux AS builder
+FROM registry.ci.openshift.org/stolostron/builder:go1.21-linux AS builder
 
 WORKDIR /workspace
 COPY go.sum go.mod ./
@@ -21,4 +21,3 @@ COPY tools/simulator/alert-forward/alerts.json /tmp/
 USER ${USER_UID}
 
 ENTRYPOINT ["/usr/local/bin/alert-forwarder"]
-

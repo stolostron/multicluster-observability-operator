@@ -92,13 +92,13 @@ if command -v ginkgo &>/dev/null; then
 else
   # just for Prow KinD vm
   # uninstall old go version(1.16) and install new version
-  wget -nv https://go.dev/dl/go1.20.4.linux-amd64.tar.gz
+  wget -nv https://go.dev/dl/go1.21.10.linux-amd64.tar.gz
   if command -v sudo >/dev/null 2>&1; then
     sudo rm -fr /usr/local/go
-    sudo tar -C /usr/local -xzf go1.20.4.linux-amd64.tar.gz
+    sudo tar -C /usr/local -xzf go1.21.10.linux-amd64.tar.gz
   # else
   #     rm -fr /usr/local/go
-  #     tar -C /usr/local -xzf go1.20.4.linux-amd64.tar.gz
+  #     tar -C /usr/local -xzf go1.21.10.linux-amd64.tar.gz
   fi
   go install github.com/onsi/ginkgo/ginkgo@latest
   GINKGO_CMD="$(go env GOPATH)/bin/ginkgo"
