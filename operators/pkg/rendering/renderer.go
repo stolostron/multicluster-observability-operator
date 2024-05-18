@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"sigs.k8s.io/kustomize/v3/pkg/resource"
+	"sigs.k8s.io/kustomize/api/resource"
 )
 
 const (
@@ -54,7 +54,11 @@ func (r *Renderer) RenderTemplates(
 	for _, template := range templates {
 		render, ok := r.renderFns[template.GetKind()]
 		if !ok {
-			uobjs = append(uobjs, &unstructured.Unstructured{Object: template.Map()})
+			m, err := template.Map()
+			if err != nil {
+				return []*unstructured.Unstructured{}, err
+			}
+			uobjs = append(uobjs, &unstructured.Unstructured{Object: m})
 			continue
 		}
 		uobj, err := render(template.DeepCopy(), namespace, labels)
@@ -82,7 +86,11 @@ func (r *Renderer) RenderDeployments(
 	   	} */
 
 	res.SetNamespace(namespace)
-	u := &unstructured.Unstructured{Object: res.Map()}
+	m, err := res.Map()
+	if err != nil {
+		return nil, err
+	}
+	u := &unstructured.Unstructured{Object: m}
 	return u, nil
 }
 
@@ -91,8 +99,13 @@ func (r *Renderer) RenderNamespace(
 	namespace string,
 	labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u := &unstructured.Unstructured{Object: res.Map()}
+	m, err := res.Map()
+	if err != nil {
+		return nil, err
+	}
+	u := &unstructured.Unstructured{Object: m}
 	if UpdateNamespace(u) {
+		u.SetNamespace(namespace)
 		res.SetNamespace(namespace)
 	}
 
@@ -104,7 +117,11 @@ func (r *Renderer) RenderClusterRole(
 	namespace string,
 	labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u := &unstructured.Unstructured{Object: res.Map()}
+	m, err := res.Map()
+	if err != nil {
+		return nil, err
+	}
+	u := &unstructured.Unstructured{Object: m}
 
 	cLabels := u.GetLabels()
 	if cLabels == nil {
@@ -123,7 +140,11 @@ func (r *Renderer) RenderClusterRoleBinding(
 	namespace string,
 	labels map[string]string,
 ) (*unstructured.Unstructured, error) {
-	u := &unstructured.Unstructured{Object: res.Map()}
+	m, err := res.Map()
+	if err != nil {
+		return nil, err
+	}
+	u := &unstructured.Unstructured{Object: m}
 
 	cLabels := u.GetLabels()
 	if cLabels == nil {
@@ -146,6 +167,7 @@ func (r *Renderer) RenderClusterRoleBinding(
 
 	if UpdateNamespace(u) {
 		subject["namespace"] = namespace
+		u.SetNamespace(namespace)
 	}
 
 	return u, nil

@@ -7,7 +7,7 @@ import (
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/kustomize/v3/pkg/resource"
+	"sigs.k8s.io/kustomize/api/resource"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
@@ -88,7 +88,11 @@ func (r *MCORenderer) renderGrafanaTemplates(templates []*resource.Resource,
 	for _, template := range templates {
 		render, ok := r.renderGrafanaFns[template.GetKind()]
 		if !ok {
-			uobjs = append(uobjs, &unstructured.Unstructured{Object: template.Map()})
+			m, err := template.Map()
+			if err != nil {
+				return []*unstructured.Unstructured{}, err
+			}
+			uobjs = append(uobjs, &unstructured.Unstructured{Object: m})
 			continue
 		}
 		uobj, err := render(template.DeepCopy(), namespace, labels)

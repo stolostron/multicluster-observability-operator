@@ -20,9 +20,13 @@ func familyWithLabels(name string, labels ...[]*clientmodel.LabelPair) *clientmo
 func copyMetric(family *clientmodel.MetricFamily) *clientmodel.MetricFamily {
 	metric := make([]*clientmodel.Metric, len(family.Metric))
 	copy(metric, family.Metric)
-	f := *family
-	f.Metric = metric
-	return &f
+	return &clientmodel.MetricFamily{
+		Name:   family.Name,
+		Help:   family.Help,
+		Type:   family.Type,
+		Metric: metric,
+		// Copy other fields as needed
+	}
 }
 
 func setNilMetric(family *clientmodel.MetricFamily, positions ...int) *clientmodel.MetricFamily {
@@ -68,14 +72,14 @@ func TestAllowlist(t *testing.T) {
 	}
 
 	a := familyWithLabels("A", []*clientmodel.LabelPair{
-		&clientmodel.LabelPair{
+		{
 			Name:  strPnt("method"),
 			Value: strPnt("POST"),
 		},
 	})
 
 	b := familyWithLabels("B", []*clientmodel.LabelPair{
-		&clientmodel.LabelPair{
+		{
 			Name:  strPnt("method"),
 			Value: strPnt("GET"),
 		},
@@ -83,41 +87,41 @@ func TestAllowlist(t *testing.T) {
 
 	c := familyWithLabels("C",
 		[]*clientmodel.LabelPair{
-			&clientmodel.LabelPair{
+			{
 				Name:  strPnt("method"),
 				Value: strPnt("POST"),
 			},
-			&clientmodel.LabelPair{
+			{
 				Name:  strPnt("status"),
 				Value: strPnt("200"),
 			},
 		},
 		[]*clientmodel.LabelPair{
-			&clientmodel.LabelPair{
+			{
 				Name:  strPnt("method"),
 				Value: strPnt("GET"),
 			},
-			&clientmodel.LabelPair{
+			{
 				Name:  strPnt("status"),
 				Value: strPnt("200"),
 			},
 		},
 		[]*clientmodel.LabelPair{
-			&clientmodel.LabelPair{
+			{
 				Name:  strPnt("method"),
 				Value: strPnt("POST"),
 			},
-			&clientmodel.LabelPair{
+			{
 				Name:  strPnt("status"),
 				Value: strPnt("500"),
 			},
 		},
 		[]*clientmodel.LabelPair{
-			&clientmodel.LabelPair{
+			{
 				Name:  strPnt("method"),
 				Value: strPnt("DELETE"),
 			},
-			&clientmodel.LabelPair{
+			{
 				Name:  strPnt("status"),
 				Value: strPnt("200"),
 			},
