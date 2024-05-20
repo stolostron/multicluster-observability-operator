@@ -5,8 +5,11 @@
 package util
 
 import (
+	"net/url"
 	"path"
 	"testing"
+
+	"github.com/prometheus/common/config"
 )
 
 const (
@@ -83,4 +86,52 @@ func TestTransform(t *testing.T) {
 	if len(names) != 5 {
 		t.Fatalf("Wrong number of mount secrets: expect 5, get %d", len(names))
 	}
+}
+
+func TestValidateRemoteWriteEndpointWithSecret(t *testing.T) {
+	testCases := []struct {
+		name     string
+		endpoint *RemoteWriteEndpointWithSecret
+		wantErr  bool
+	}{
+		{
+			name:     "test missing url",
+			endpoint: &RemoteWriteEndpointWithSecret{Name: "valid-name", URL: mustParseURL(t, "")},
+			wantErr:  true,
+		},
+		{
+			name:     "test invalid url no scheme",
+			endpoint: &RemoteWriteEndpointWithSecret{Name: "valid-name", URL: mustParseURL(t, "invalid-url")},
+			wantErr:  true,
+		},
+		{
+			name:     "test valid url invalid scheme",
+			endpoint: &RemoteWriteEndpointWithSecret{Name: "valid-name", URL: mustParseURL(t, "httttp://some-valid-host.com:8080/prometheus/api/v1/write")},
+			wantErr:  true,
+		},
+		{
+			name:     "test happy path",
+			endpoint: &RemoteWriteEndpointWithSecret{Name: "valid-name", URL: mustParseURL(t, "https://example.com")},
+			wantErr:  false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.endpoint.Validate()
+			if (err != nil) != tc.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tc.wantErr)
+				return
+			}
+		})
+	}
+}
+
+func mustParseURL(t *testing.T, s string) config.URL {
+	u, err := url.Parse(s)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	return config.URL{URL: u}
 }
