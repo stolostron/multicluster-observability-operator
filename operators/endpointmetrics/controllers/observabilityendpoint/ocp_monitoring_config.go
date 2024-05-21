@@ -8,8 +8,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"reflect"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -254,7 +254,7 @@ func getAmAccessorToken(ctx context.Context, client client.Client) (string, erro
 }
 
 func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifests.AdditionalAlertmanagerConfig {
-	return cmomanifests.AdditionalAlertmanagerConfig{
+	config := cmomanifests.AdditionalAlertmanagerConfig{
 		Scheme:     "https",
 		PathPrefix: "/",
 		APIVersion: "v2",
@@ -273,8 +273,16 @@ func newAdditionalAlertmanagerConfig(hubInfo *operatorconfig.HubInfo) cmomanifes
 			},
 			Key: hubAmAccessorSecretKey,
 		},
-		StaticConfigs: []string{strings.TrimPrefix(hubInfo.AlertmanagerEndpoint, "https://")},
+		StaticConfigs: []string{},
 	}
+	amURL, err := url.Parse(hubInfo.AlertmanagerEndpoint)
+	if err != nil {
+		return config
+	}
+
+	config.PathPrefix = amURL.Path
+	config.StaticConfigs = append(config.StaticConfigs, amURL.Host)
+	return config
 }
 
 // createOrUpdateClusterMonitoringConfig creates or updates the configmap
