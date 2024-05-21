@@ -15,8 +15,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// URL is kubebuilder type that validates the containing string is an URL.
-// +kubebuilder:validation:Pattern=`^https?:\/\/`
+// URL is kubebuilder type that validates the containing string is an HTTPS URL.
+// +kubebuilder:validation:Pattern=`^https:\/\/`
 // +kubebuilder:validation:MaxLength=2083
 type URL string
 
