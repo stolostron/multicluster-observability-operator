@@ -5,6 +5,8 @@
 package util
 
 import (
+	"fmt"
+	"net/url"
 	"path"
 
 	"github.com/prometheus/common/config"
@@ -93,6 +95,24 @@ type RemoteWriteEndpointWithSecret struct {
 	Name             string                      `yaml:"name" json:"name"`
 	URL              config.URL                  `yaml:"url" json:"url"`
 	HttpClientConfig *HTTPClientConfigWithSecret `yaml:"http_client_config,omitempty" json:"http_client_config,omitempty"`
+}
+
+// Validate validates the remote write endpoint
+func (res *RemoteWriteEndpointWithSecret) Validate() error {
+	if res.URL.String() == "" {
+		return fmt.Errorf("url is required for remote write endpoint %s", res.Name)
+	}
+
+	u, err := url.ParseRequestURI(res.URL.String())
+	if err != nil {
+		return fmt.Errorf("url %s is invalid for remote write endpoint %s: %s", res.URL.String(), res.Name, err)
+	}
+
+	if u.Scheme == "" || u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("url %s is invalid for remote write endpoint %s: scheme must be http or https", res.URL.String(), res.Name)
+	}
+
+	return nil
 }
 
 func getMountPath(secretName, key string) string {

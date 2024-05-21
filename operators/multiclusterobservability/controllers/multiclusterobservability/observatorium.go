@@ -533,8 +533,8 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 	apiSpec.ImagePullPolicy = mcoconfig.GetImagePullPolicy(mco.Spec)
 	apiSpec.ServiceMonitor = true
 	if mco.Spec.StorageConfig.WriteStorage != nil {
-		eps := []mcoutil.RemoteWriteEndpointWithSecret{}
-		mountSecrets := []string{}
+		var eps []mcoutil.RemoteWriteEndpointWithSecret
+		var mountSecrets []string
 		for _, storageConfig := range mco.Spec.StorageConfig.WriteStorage {
 			storageSecret := &v1.Secret{}
 			err := c.Get(context.TODO(), types.NamespacedName{Name: storageConfig.Name,
@@ -560,6 +560,13 @@ func newAPISpec(c client.Client, mco *mcov1beta2.MultiClusterObservability) (obs
 					log.Error(err, "Failed to unmarshal data in secret", "name", storageConfig.Name)
 					return apiSpec, err
 				}
+
+				err = ep.Validate()
+				if err != nil {
+					log.Error(err, "Failed to validate data in secret", "name", storageConfig.Name)
+					return apiSpec, err
+				}
+
 				newEp := &mcoutil.RemoteWriteEndpointWithSecret{
 					Name: storageConfig.Name,
 					URL:  ep.URL,

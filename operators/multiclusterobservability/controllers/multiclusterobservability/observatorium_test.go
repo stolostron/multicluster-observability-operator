@@ -90,8 +90,7 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 		},
 		Type: "Opaque",
 		Data: map[string][]byte{
-			"write_key": []byte(`url: http://remotewrite/endpoint
-`),
+			"write_key": []byte(`url: http://remotewrite/endpoint`),
 		},
 	}
 
