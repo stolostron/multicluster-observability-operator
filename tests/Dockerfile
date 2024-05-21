@@ -12,8 +12,8 @@ RUN go install github.com/onsi/ginkgo/ginkgo@v1.14.2 && go mod vendor && ginkgo 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
 # pre-create directories and set permissions
-RUN mkdir -p /resources /results && \
-    chown -R 1001:1001 /resources /results
+RUN mkdir -p /resources /results /workspace/.kube && \
+    chown -R 1001:1001 /resources /results /workspace/.kube
 
 # run as non-root
 USER 1001:1001
