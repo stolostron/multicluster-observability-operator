@@ -1151,12 +1151,12 @@ spec:
                   customAlertmanagerHubURL:
                     description: CustomAlertmanagerHubURL overrides the alertmanager URL to send alerts from the spoke to the hub server. For the alertmanager that runs in the hub this setting has no effect.
                     maxLength: 2083
-                    pattern: ^https?:\/\/
+                    pattern: ^https:\/\/
                     type: string
                   customObservabilityHubURL:
                     description: CustomObservabilityHubURL overrides the endpoint used by the metrics-collector to send metrics to the hub server. For the metrics-collector that runs in the hub this setting has no effect.
                     maxLength: 2083
-                    pattern: ^https?:\/\/
+                    pattern: ^https:\/\/
                     type: string
                   grafana:
                     description: The spec of grafana
