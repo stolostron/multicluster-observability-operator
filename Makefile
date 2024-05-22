@@ -208,3 +208,8 @@ install-integration-test-deps:
 install-e2e-test-deps:
 	@mkdir -p $(BIN_DIR)
 	@./scripts/install-binaries.sh install_e2e_tests_deps $(BIN_DIR)
+
+.PHONY: install-envtest-deps
+install-envtest-deps:
+	@mkdir -p $(BIN_DIR)
+	@./scripts/install-binaries.sh install_envtest_deps $(BIN_DIR)
