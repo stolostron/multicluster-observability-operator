@@ -8,7 +8,6 @@ import (
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
@@ -38,7 +37,7 @@ func CreateConfigMap(opt TestOptions, isHub bool, cm *corev1.ConfigMap) error {
 	return err
 }
 
-func GetConfigMap(clusterConfig Cluster, isHub bool, name string,
+func GetConfigMap(opt TestOptions, isHub bool, name string,
 	namespace string) (error, *corev1.ConfigMap) {
 	clientKube := getKubeClientForCluster(clusterConfig, isHub)
 	cm, err := clientKube.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})

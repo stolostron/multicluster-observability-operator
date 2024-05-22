@@ -5,7 +5,6 @@
 package tests
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -65,47 +64,42 @@ var _ = Describe("Observability:", func() {
 		By("Waiting for metrics acm_remote_write_requests_total on grafana console")
 		Eventually(func() error {
 			query := fmt.Sprintf("acm_remote_write_requests_total{cluster=\"%s\"} offset 1m", hubClusterName)
-			err, _ := utils.ContainManagedClusterMetric(
+			res, err := utils.QueryGrafana(
 				testOptions,
 				query,
-				[]string{`"__name__":"acm_remote_write_requests_total"`},
 			)
 			if err != nil {
 				return err
 			}
-			err, _ = utils.ContainManagedClusterMetric(
-				testOptions,
-				query,
-				[]string{`"__name__":"acm_remote_write_requests_total"`,
-					`"code":"200`, `"name":"thanos-receiver"`},
-			)
-			if err != nil {
-				return errors.New("metrics not forwarded to thanos-receiver")
+			if len(res.Data.Result) == 0 {
+				return fmt.Errorf("metric %s not found in response", query)
 			}
-			err, _ = utils.ContainManagedClusterMetric(
-				testOptions,
-				query,
-				[]string{`"__name__":"acm_remote_write_requests_total"`,
-					`"code":"204`, `"name":"victoriametrics"`},
-			)
-			if err != nil {
-				return errors.New("metrics not forwarded to victoriametrics")
+
+			// Check if the metric is forwarded to thanos-receiver
+			labelSet := map[string]string{"code": "200", "name": "thanos-receiver"}
+			if !res.ContainsLabelsSet(labelSet) {
+				return fmt.Errorf("labels %v not found in response: %v", labelSet, res)
 			}
+
+			// Check if the metric is forwarded to victoriametrics
+			labelSet = map[string]string{"code": "204", "name": "victoriametrics"}
+			if !res.ContainsLabelsSet(labelSet) {
+				return fmt.Errorf("labels %v not found in response: %v", labelSet, res)
+			}
+
 			return nil
-		}, EventuallyTimeoutMinute*20, EventuallyIntervalSecond*5).Should(Succeed())
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	JustAfterEach(func() {
-		Expect(utils.CleanExportResources(testOptions)).NotTo(HaveOccurred())
-		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
+		if CurrentGinkgoTestDescription().Failed {
+			utils.LogFailingTestStandardDebugInfo(testOptions)
+		}
+		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 	})
 
 	AfterEach(func() {
-		if CurrentGinkgoTestDescription().Failed {
-			utils.PrintMCOObject(testOptions)
-			utils.PrintAllMCOPodsStatus(testOptions)
-			utils.PrintAllOBAPodsStatus(testOptions)
-		}
-		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
+		Expect(utils.CleanExportResources(testOptions)).NotTo(HaveOccurred())
+		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
 	})
 })

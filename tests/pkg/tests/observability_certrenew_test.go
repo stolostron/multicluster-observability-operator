@@ -140,18 +140,19 @@ func runCertRenewTests(clusterConfig utils.Cluster) {
 				namespace,
 				"component=metrics-collector",
 			)
-			if err == nil {
-				for _, pod := range podList.Items {
-					if pod.Name != collectorPodName {
-						if pod.Status.Phase != "Running" {
-							klog.V(1).Infof("<%s> not in Running status yet", pod.Name)
-							return false
-						}
-						return true
-					}
-				}
-
+			if err != nil {
+				klog.V(1).Infof("Failed to get pod list: %v", err)
 			}
+			for _, pod := range podList.Items {
+				if pod.Name != collectorPodName {
+					if pod.Status.Phase != "Running" {
+						klog.V(1).Infof("<%s> not in Running status yet", pod.Name)
+						return false
+					}
+					return true
+				}
+			}
+
 			// debug code to check label "cert/time-restarted"
 			deployment, err := utils.GetDeployment(
 				clusterConfig,
@@ -172,9 +173,7 @@ func runCertRenewTests(clusterConfig utils.Cluster) {
 
 	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
-			utils.PrintMCOObject(testOptions)
-			utils.PrintAllMCOPodsStatus(testOptions)
-			utils.PrintAllOBAPodsStatus(testOptions)
+			utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 		namespace = MCO_ADDON_NAMESPACE

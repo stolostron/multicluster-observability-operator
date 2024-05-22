@@ -11,7 +11,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
@@ -22,9 +21,8 @@ const (
 )
 
 var (
-	clusters         []string
-	clusterError     error
-	metricslistError error
+	clusters     []string
+	clusterError error
 )
 
 var _ = Describe("Observability:", func() {
@@ -61,13 +59,16 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() error {
 			for _, cluster := range clusters {
 				query := fmt.Sprintf("node_memory_Active_bytes{cluster=\"%s\"} offset 1m", cluster)
-				err, _ := utils.ContainManagedClusterMetric(
+				res, err := utils.QueryGrafana(
 					testOptions,
 					query,
-					[]string{`"__name__":"node_memory_Active_bytes"`},
 				)
 				if err != nil {
 					return err
+				}
+
+				if len(res.Data.Result) == 0 {
+					return fmt.Errorf("no data found for %s", query)
 				}
 			}
 			return nil
@@ -83,13 +84,17 @@ var _ = Describe("Observability:", func() {
 					cluster,
 					cluster,
 				)
-				metricslistError, _ = utils.ContainManagedClusterMetric(testOptions, query, []string{})
-				if metricslistError == nil {
-					return nil
+				res, err := utils.QueryGrafana(testOptions, query)
+				if err != nil {
+					return err
+				}
+				// there should be no data for the deleted metric
+				if len(res.Data.Result) != 0 {
+					return fmt.Errorf("metric %s found in response: %v", query, res)
 				}
 			}
-			return metricslistError
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
+			return nil
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have no metrics which have been marked for deletion in matches section (metrics/g0)", func() {
@@ -101,13 +106,16 @@ var _ = Describe("Observability:", func() {
 					cluster,
 					cluster,
 				)
-				metricslistError, _ = utils.ContainManagedClusterMetric(testOptions, query, []string{})
-				if metricslistError == nil {
-					return nil
+				res, err := utils.QueryGrafana(testOptions, query)
+				if err != nil {
+					return err
+				}
+				if len(res.Data.Result) != 0 {
+					return fmt.Errorf("metric %s found in response: %v", query, res)
 				}
 			}
-			return metricslistError
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
+			return nil
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have no metrics after custom metrics allowlist deleted (metrics/g0)", func() {
@@ -127,13 +135,16 @@ var _ = Describe("Observability:", func() {
 					cluster,
 					cluster,
 				)
-				metricslistError, _ = utils.ContainManagedClusterMetric(testOptions, query, []string{})
-				if metricslistError == nil {
-					return nil
+				res, err := utils.QueryGrafana(testOptions, query)
+				if err != nil {
+					return err
+				}
+				if len(res.Data.Result) != 0 {
+					return fmt.Errorf("metric %s found in response: %v", query, res)
 				}
 			}
-			return metricslistError
-		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(MatchError("failed to find metric name from response"))
+			return nil
+		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
 	It("[P2][Sev2][observability][Integration] Should have metrics which used grafana dashboard (ssli/g1)", func() {
@@ -157,11 +168,14 @@ var _ = Describe("Observability:", func() {
 			_, ok := ignoreMetricMap[name]
 			if !ok {
 				Eventually(func() error {
-					err, _ := utils.ContainManagedClusterMetric(testOptions, name, []string{name})
+					res, err := utils.QueryGrafana(testOptions, name)
 					if err != nil {
-						klog.V(1).Infof("failed to get metrics %s", name)
+						return fmt.Errorf("failed to get metrics %s: %v", name, err)
 					}
-					return err
+					if len(res.Data.Result) == 0 {
+						return fmt.Errorf("no data found for %s", name)
+					}
+					return nil
 				}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*3).Should(Succeed())
 			}
 		}
@@ -173,9 +187,7 @@ var _ = Describe("Observability:", func() {
 
 	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
-			utils.PrintMCOObject(testOptions)
-			utils.PrintAllMCOPodsStatus(testOptions)
-			utils.PrintAllOBAPodsStatus(testOptions)
+			utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 	})

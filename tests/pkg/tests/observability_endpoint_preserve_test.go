@@ -202,9 +202,7 @@ func runMetricsCollectorTests(clusterConfig utils.Cluster) {
 
 	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
-			utils.PrintMCOObject(testOptions)
-			utils.PrintAllMCOPodsStatus(testOptions)
-			utils.PrintAllOBAPodsStatus(testOptions)
+			utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
 		namespace = MCO_ADDON_NAMESPACE
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
