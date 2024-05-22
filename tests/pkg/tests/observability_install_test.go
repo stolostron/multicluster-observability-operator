@@ -190,7 +190,7 @@ func installMCO() {
 		mcoLogs, err := utils.GetPodLogs(testOptions, true, mcoNs, mcoPod, "multicluster-observability-operator", false, 1000)
 		Expect(err).NotTo(HaveOccurred())
 		fmt.Fprintf(GinkgoWriter, "[DEBUG] MCO is installed failed, checking MCO operator logs:\n%s\n", mcoLogs)
-		utils.PrintAllMCOPodsStatus(testOptions)
+		utils.LogFailingTestStandardDebugInfo(testOptions)
 
 	}()
 	By("Waiting for MCO ready status")
@@ -214,7 +214,7 @@ func installMCO() {
 		}
 
 		fmt.Fprintf(GinkgoWriter, "[DEBUG] Addon failed, checking pods:\n")
-		utils.PrintAllOBAPodsStatus(testOptions)
+		utils.LogFailingTestStandardDebugInfo(testOptions)
 	}()
 	By("Check endpoint-operator and metrics-collector pods are ready")
 	Eventually(func() error {

@@ -6,6 +6,8 @@ package tests
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -70,21 +72,25 @@ var _ = Describe("Observability:", func() {
 			}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*1).Should(BeTrue())
 
 			// ensure the thanos compact is restarted
-			Eventually(func() bool {
+			Eventually(func() error {
 				sts, err := utils.GetStatefulSetWithLabel(testOptions, true, THANOS_COMPACT_LABEL, MCO_NAMESPACE)
-				if err == nil {
-					if (*sts).Items[0].ResourceVersion != oldCompactResourceVersion {
-						argList := (*sts).Items[0].Spec.Template.Spec.Containers[0].Args
-						for _, arg := range argList {
-							if arg != "--retention.resolution-raw="+updateRetention {
-								return true
-							}
-						}
-						return false
+				if err != nil {
+					return err
+				}
+				if sts.Items[0].ResourceVersion != oldCompactResourceVersion {
+					return errors.New("The thanos compact pod is not restarted. ResourceVersion has not changed.")
+				}
+
+				argList := sts.Items[0].Spec.Template.Spec.Containers[0].Args
+				for _, arg := range argList {
+					// check if the retention resolution is reverted to the original value
+					if arg == "--retention.resolution-raw="+updateRetention {
+						return fmt.Errorf("The thanos compact pod is not restarted with the new retention resolution. Args: %v", argList)
 					}
 				}
-				return false
-			}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(BeTrue())
+
+				return nil
+			}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 
 			By("Wait for thanos compact pods are ready")
 			sts, err := utils.GetStatefulSetWithLabel(testOptions, true, THANOS_COMPACT_LABEL, MCO_NAMESPACE)
@@ -107,9 +113,7 @@ var _ = Describe("Observability:", func() {
 
 	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
-			utils.PrintMCOObject(testOptions)
-			utils.PrintAllMCOPodsStatus(testOptions)
-			utils.PrintAllOBAPodsStatus(testOptions)
+			utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 	})
