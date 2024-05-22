@@ -26,6 +26,8 @@ jobs:
 
       - name: Install deps
         run: make deps
+      - name: Build
+        run: make build
 
       - name: Run tests
         run: |
