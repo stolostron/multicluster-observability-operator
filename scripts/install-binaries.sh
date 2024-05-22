@@ -115,6 +115,12 @@ install_e2e_tests_deps() {
   install_kustomize ${bin_dir}
 }
 
+install_envtest_deps() {
+  go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+  bin_dir=${1:-${BIN_DIR}}
+  setup-envtest --bin-dir ${bin_dir} -p env use 1.30.x
+}
+
 # check if script is called directly, or sourced
 (return 0 2>/dev/null) && sourced=1 || sourced=0
 # This allows functions within this file to be called individually from Makefile(s).
