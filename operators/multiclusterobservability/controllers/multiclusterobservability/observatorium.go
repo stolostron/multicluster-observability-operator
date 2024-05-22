@@ -884,6 +884,11 @@ func newQuerySpec(mco *mcov1beta2.MultiClusterObservability) obsv1alpha1.QuerySp
 		mco.Spec.AdvancedConfig.Query.Containers != nil {
 		querySpec.Containers = mco.Spec.AdvancedConfig.Query.Containers
 	}
+
+	if mco.Spec.AdvancedConfig != nil && mco.Spec.AdvancedConfig.Query != nil &&
+		mco.Spec.AdvancedConfig.Query.UsePrometheusEngine {
+		querySpec.UsePrometheusEngine = true
+	}
 	return querySpec
 }
 

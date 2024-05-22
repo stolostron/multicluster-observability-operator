@@ -108,6 +108,10 @@ type QuerySpec struct {
 	// +optional
 	ServiceAccountAnnotations map[string]string `json:"serviceAccountAnnotations,omitempty"`
 
+	// Set to true to use the old Prometheus engine for PromQL queries.
+	// +optional
+	UsePrometheusEngine bool `json:"usePrometheusEngine,omitempty"`
+
 	// WARNING: Use only with guidance from Red Hat Support. Using this feature incorrectly can
 	// lead to an unrecoverable state, data loss, or both, which is not covered by Red Hat Support.
 	// +optional
