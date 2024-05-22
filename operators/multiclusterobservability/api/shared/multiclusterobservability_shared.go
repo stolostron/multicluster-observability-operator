@@ -20,12 +20,15 @@ import (
 // +kubebuilder:validation:MaxLength=2083
 type URL string
 
+// Validate validates the underlying URL.
 func (u URL) Validate() error {
 	_, err := url.Parse(string(u))
 	return err
 }
 
-func (u URL) Host() (string, error) {
+// HostPath returns the URL's host together with its path.
+// This also runs a validation of the underlying url.
+func (u URL) HostPath() (string, error) {
 	parsedUrl, err := url.Parse(string(u))
 	if err != nil {
 		return "", err

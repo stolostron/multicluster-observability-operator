@@ -512,11 +512,11 @@ func GetObsAPIExternalHost(ctx context.Context, client client.Client, namespace 
 		if err != nil {
 			return "", err
 		}
-		hubObsHost, err := hubObsUrl.Host()
+		obsHostPath, err := hubObsUrl.HostPath()
 		if err != nil {
 			return "", err
 		}
-		return hubObsHost, nil
+		return obsHostPath, nil
 	}
 	return GetRouteHost(client, obsAPIGateway, namespace)
 }
