@@ -520,7 +520,7 @@ spec:
                 resources:
                   limits:
                     cpu: 600m
-                    memory: 1Gi
+                    memory: 3Gi
                   requests:
                     cpu: 100m
                     memory: 128Mi
