@@ -461,7 +461,7 @@ func pemEncode(cert []byte, key []byte) (*bytes.Buffer, *bytes.Buffer) {
 func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
 	hosts := []string{config.GetObsAPISvc(config.GetOperandName(config.Observatorium))}
 	if ingressCtlCrdExists {
-		url, err := config.GetObsAPIHost(context.TODO(), c, config.GetDefaultNamespace())
+		url, err := config.GetObsAPIRouteHost(context.TODO(), c, config.GetDefaultNamespace())
 		if err != nil {
 			log.Error(err, "Failed to get api route address")
 			return nil, err
