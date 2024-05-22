@@ -23,15 +23,15 @@ import (
 func generateHubInfoSecret(client client.Client, obsNamespace string,
 	namespace string, ingressCtlCrdExists bool) (*corev1.Secret, error) {
 
-	obsApiRouteHost := ""
+	obsAPIHost := ""
 	alertmanagerEndpoint := ""
 	alertmanagerRouterCA := ""
 
 	if ingressCtlCrdExists {
 		var err error
-		obsApiRouteHost, err = config.GetObsAPIHost(context.TODO(), client, obsNamespace)
+		obsAPIHost, err = config.GetObsAPIExternalHost(context.TODO(), client, obsNamespace)
 		if err != nil {
-			log.Error(err, "Failed to get the host for observatorium API route")
+			log.Error(err, "Failed to get the host for Observatorium API host URL")
 			return nil, err
 		}
 
@@ -56,7 +56,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 	} else {
 		// for KinD support, the managedcluster and hub cluster are assumed in the same cluster, the observatorium-api
 		// will be accessed through k8s service FQDN + port
-		obsApiRouteHost = config.GetOperandNamePrefix() + "observatorium-api" + "." + config.GetDefaultNamespace() + ".svc.cluster.local:8080"
+		obsAPIHost = config.GetOperandNamePrefix() + "observatorium-api" + "." + config.GetDefaultNamespace() + ".svc.cluster.local:8080"
 		// if alerting is disabled, do not set alertmanagerEndpoint
 		if !config.IsAlertingDisabled() {
 			alertmanagerEndpoint = config.AlertmanagerServiceName + "." + config.GetDefaultNamespace() + ".svc.cluster.local:9095"
@@ -70,7 +70,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 	}
 
 	obsApiURL := url.URL{
-		Host: obsApiRouteHost,
+		Host: obsAPIHost,
 		Path: operatorconfig.ObservatoriumAPIRemoteWritePath,
 	}
 	if !obsApiURL.IsAbs() {

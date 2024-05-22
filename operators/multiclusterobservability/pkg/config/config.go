@@ -480,8 +480,23 @@ func GetDefaultTenantName() string {
 	return defaultTenantName
 }
 
-// GetObsAPIHost is used to get the URL for observartium api gateway.
-func GetObsAPIHost(ctx context.Context, client client.Client, namespace string) (string, error) {
+// GetObsAPIRouteHost is used to Route's host for Observatorium API. This doesn't take into consideration
+// the `advanced.customObservabilityHubURL` configuration.
+func GetObsAPIRouteHost(ctx context.Context, client client.Client, namespace string) (string, error) {
+	mco := &observabilityv1beta2.MultiClusterObservability{}
+	err := client.Get(ctx,
+		types.NamespacedName{
+			Name: GetMonitoringCRName(),
+		}, mco)
+	if err != nil && !errors.IsNotFound(err) {
+		return "", err
+	}
+	return GetRouteHost(client, obsAPIGateway, namespace)
+}
+
+// GetObsAPIExternalHost is used to get the frontend URL that should be used to reach the Observatorium API instance.
+// This takes into consideration the `advanced.customObservabilityHubURL` configuration.
+func GetObsAPIExternalHost(ctx context.Context, client client.Client, namespace string) (string, error) {
 	mco := &observabilityv1beta2.MultiClusterObservability{}
 	err := client.Get(ctx,
 		types.NamespacedName{
@@ -492,11 +507,16 @@ func GetObsAPIHost(ctx context.Context, client client.Client, namespace string) 
 	}
 	advancedConfig := mco.Spec.AdvancedConfig
 	if advancedConfig != nil && advancedConfig.CustomObservabilityHubURL != "" {
-		err := advancedConfig.CustomObservabilityHubURL.Validate()
+		hubObsUrl := advancedConfig.CustomObservabilityHubURL
+		err := hubObsUrl.Validate()
 		if err != nil {
 			return "", err
 		}
-		return string(advancedConfig.CustomObservabilityHubURL), nil
+		obsHostPath, err := hubObsUrl.HostPath()
+		if err != nil {
+			return "", err
+		}
+		return obsHostPath, nil
 	}
 	return GetRouteHost(client, obsAPIGateway, namespace)
 }
