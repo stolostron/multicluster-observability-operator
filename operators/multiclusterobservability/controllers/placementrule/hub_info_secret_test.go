@@ -163,7 +163,7 @@ func TestNewSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
 	}
-	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://test-host") || hub.AlertmanagerEndpoint != routeHost || hub.AlertmanagerRouterCA != routerCA {
+	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://test-host") || hub.AlertmanagerEndpoint != "https://"+routeHost || hub.AlertmanagerRouterCA != routerCA {
 		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA, clusterName+" "+"https://test-host"+" "+"test-host"+" "+routerCA)
 	}
 }
@@ -183,7 +183,7 @@ func TestNewBYOSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
 	}
-	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://test-host") || hub.AlertmanagerEndpoint != routeHost || hub.AlertmanagerRouterCA != routerBYOCA {
+	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://test-host") || hub.AlertmanagerEndpoint != "https://"+routeHost || hub.AlertmanagerRouterCA != routerBYOCA {
 		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA, clusterName+" "+"https://test-host"+" "+"test-host"+" "+routerBYOCA)
 	}
 }

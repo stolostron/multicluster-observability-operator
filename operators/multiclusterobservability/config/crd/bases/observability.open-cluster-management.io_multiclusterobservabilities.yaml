@@ -1845,7 +1845,7 @@ spec:
                       URL to send alerts from the spoke to the hub server. For the
                       alertmanager that runs in the hub this setting has no effect.
                     maxLength: 2083
-                    pattern: ^https?:\/\/
+                    pattern: ^https:\/\/
                     type: string
                   customObservabilityHubURL:
                     description: CustomObservabilityHubURL overrides the endpoint
@@ -1853,7 +1853,7 @@ spec:
                       For the metrics-collector that runs in the hub this setting
                       has no effect.
                     maxLength: 2083
-                    pattern: ^https?:\/\/
+                    pattern: ^https:\/\/
                     type: string
                   grafana:
                     description: The spec of grafana
