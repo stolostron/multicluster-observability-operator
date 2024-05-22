@@ -6,7 +6,6 @@ package utils
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -25,9 +24,7 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured/unstructuredscheme"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -35,26 +32,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 )
-
-func NewUnversionedRestClient(url, kubeconfig, ctx string) *rest.RESTClient {
-	klog.V(5).Infof("Create unversionedRestClient for url %s using kubeconfig path %s\n", url, kubeconfig)
-	config, err := LoadConfig(url, kubeconfig, ctx)
-	if err != nil {
-		panic(err)
-	}
-
-	oldNegotiatedSerializer := config.NegotiatedSerializer
-	config.NegotiatedSerializer = unstructuredscheme.NewUnstructuredNegotiatedSerializer()
-	kubeRESTClient, err := rest.UnversionedRESTClientFor(config)
-	// restore cfg before leaving
-	defer func(cfg *rest.Config) { cfg.NegotiatedSerializer = oldNegotiatedSerializer }(config)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return kubeRESTClient
-}
 
 func NewKubeClient(url, kubeconfig, ctx string) kubernetes.Interface {
 	config, err := LoadConfig(url, kubeconfig, ctx)
@@ -98,21 +75,6 @@ func NewKubeClientAPIExtension(url, kubeconfig, ctx string) apiextensionsclients
 
 	return clientset
 }
-
-// func NewKubeClientDiscovery(url, kubeconfig, ctx string) *discovery.DiscoveryClient {
-// 	klog.V(5).Infof("Create kubeclient discovery for url %s using kubeconfig path %s\n", url, kubeconfig)
-// 	config, err := LoadConfig(url, kubeconfig, ctx)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	clientset, err := discovery.NewDiscoveryClientForConfig(config)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	return clientset
-// }
 
 func CreateMCOTestingRBAC(opt TestOptions) error {
 	// create new service account and new clusterrolebinding and bind the serviceaccount to cluster-admin clusterrole
@@ -298,13 +260,14 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 			apiVersion = v.(string)
 		}
 
+		klog.V(5).Infof("Applying kind %q with name %q in namespace %q", kind, obj.GetName(), obj.GetNamespace())
+
 		clientKube := NewKubeClient(url, kubeconfig, ctx)
 		clientAPIExtension := NewKubeClientAPIExtension(url, kubeconfig, ctx)
 		// now use switch over the type of the object
 		// and match each type-case
 		switch kind {
 		case "CustomResourceDefinition":
-			klog.V(5).Infof("Install CRD: %s\n", f)
 			obj := &apiextensionsv1.CustomResourceDefinition{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -323,7 +286,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientAPIExtension.ApiextensionsV1().CustomResourceDefinitions().Update(context.TODO(), existingObject, metav1.UpdateOptions{})
 			}
 		case "Namespace":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &corev1.Namespace{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -340,7 +302,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.CoreV1().Namespaces().Update(context.TODO(), existingObject, metav1.UpdateOptions{})
 			}
 		case "ServiceAccount":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &corev1.ServiceAccount{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -359,7 +320,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.CoreV1().ServiceAccounts(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "ClusterRoleBinding":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &rbacv1.ClusterRoleBinding{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -376,7 +336,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.RbacV1().ClusterRoleBindings().Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "Secret":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &corev1.Secret{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -393,7 +352,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.CoreV1().Secrets(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "ConfigMap":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &corev1.ConfigMap{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -412,7 +370,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.CoreV1().ConfigMaps(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "Service":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &corev1.Service{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -432,7 +389,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.CoreV1().Services(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "PersistentVolumeClaim":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &corev1.PersistentVolumeClaim{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -452,7 +408,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.CoreV1().PersistentVolumeClaims(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "Deployment":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &appsv1.Deployment{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -471,7 +426,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.AppsV1().Deployments(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "LimitRange":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &corev1.LimitRange{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -490,7 +444,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.CoreV1().LimitRanges(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "ResourceQuota":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &corev1.ResourceQuota{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -509,7 +462,6 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				_, err = clientKube.CoreV1().ResourceQuotas(obj.Namespace).Update(context.TODO(), obj, metav1.UpdateOptions{})
 			}
 		case "StorageClass":
-			klog.V(5).Infof("Install %s: %s\n", kind, f)
 			obj := &storagev1.StorageClass{}
 			err = yaml.Unmarshal([]byte(f), obj)
 			if err != nil {
@@ -533,13 +485,11 @@ func Apply(url string, kubeconfig string, ctx string, yamlB []byte) error {
 				if apiVersion == "observability.open-cluster-management.io/v1beta1" {
 					gvr = NewMCOGVRV1BETA1()
 				}
-				klog.V(5).Infof("Install MultiClusterObservability: %s\n", f)
 			case "PrometheusRule":
 				gvr = schema.GroupVersionResource{
 					Group:    "monitoring.coreos.com",
 					Version:  "v1",
 					Resource: "prometheusrules"}
-				klog.V(5).Infof("Install PrometheusRule: %s\n", f)
 			default:
 				return fmt.Errorf("resource %s not supported", kind)
 			}
@@ -612,45 +562,6 @@ func StatusContainsTypeEqualTo(u *unstructured.Unstructured, typeString string) 
 	return false
 }
 
-// GetCluster returns the first cluster with a given tag
-func GetCluster(tag string, clusters []Cluster) *Cluster {
-	for _, cluster := range clusters {
-		if tag, ok := cluster.Tags[tag]; ok {
-			if tag {
-				return &cluster
-			}
-		}
-	}
-	return nil
-}
-
-// GetClusters returns all clusters with a given tag
-func GetClusters(tag string, clusters []Cluster) []*Cluster {
-	filteredClusters := make([]*Cluster, 0)
-	for i, cluster := range clusters {
-		if tag, ok := cluster.Tags[tag]; ok {
-			if tag {
-				filteredClusters = append(filteredClusters, &clusters[i])
-			}
-		}
-	}
-	return filteredClusters
-}
-
-func HaveServerResources(c Cluster, kubeconfig string, expectedAPIGroups []string) error {
-	clientAPIExtension := NewKubeClientAPIExtension(c.ClusterServerURL, kubeconfig, c.KubeContext)
-	clientDiscovery := clientAPIExtension.Discovery()
-	for _, apiGroup := range expectedAPIGroups {
-		klog.V(1).Infof("Check if %s exists", apiGroup)
-		_, err := clientDiscovery.ServerResourcesForGroupVersion(apiGroup)
-		if err != nil {
-			klog.V(1).Infof("Error while retrieving server resource %s: %s", apiGroup, err.Error())
-			return err
-		}
-	}
-	return nil
-}
-
 func HaveCRDs(c Cluster, kubeconfig string, expectedCRDs []string) error {
 	clientAPIExtension := NewKubeClientAPIExtension(c.ClusterServerURL, kubeconfig, c.KubeContext)
 	clientAPIExtensionV1 := clientAPIExtension.ApiextensionsV1()
@@ -663,93 +574,6 @@ func HaveCRDs(c Cluster, kubeconfig string, expectedCRDs []string) error {
 		}
 	}
 	return nil
-}
-
-func HaveDeploymentsInNamespace(
-	c Cluster,
-	kubeconfig string,
-	namespace string,
-	expectedDeploymentNames []string,
-) error {
-
-	client := NewKubeClient(c.ClusterServerURL, kubeconfig, c.KubeContext)
-	versionInfo, err := client.Discovery().ServerVersion()
-	if err != nil {
-		return err
-	}
-	klog.V(1).Infof("Server version info: %v", versionInfo)
-
-	deployments := client.AppsV1().Deployments(namespace)
-
-	for _, deploymentName := range expectedDeploymentNames {
-		klog.V(1).Infof("Check if deployment %s exists", deploymentName)
-		deployment, err := deployments.Get(context.TODO(), deploymentName, metav1.GetOptions{})
-		if err != nil {
-			klog.V(1).Infof("Error while retrieving deployment %s: %s", deploymentName, err.Error())
-			return err
-		}
-
-		if deployment.Status.Replicas != deployment.Status.ReadyReplicas {
-			err = fmt.Errorf("%s: Expect %d but got %d Ready replicas",
-				deploymentName,
-				deployment.Status.Replicas,
-				deployment.Status.ReadyReplicas)
-			klog.Errorln(err)
-			return err
-		}
-
-		for _, condition := range deployment.Status.Conditions {
-			if condition.Reason == "MinimumReplicasAvailable" {
-				if condition.Status != corev1.ConditionTrue {
-					err = fmt.Errorf("%s: Expect %s but got %s",
-						deploymentName,
-						condition.Status,
-						corev1.ConditionTrue)
-					klog.Errorln(err)
-					return err
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func GetKubeVersion(client *rest.RESTClient) version.Info {
-	kubeVersion := version.Info{}
-
-	versionBody, err := client.Get().AbsPath("/version").Do(context.TODO()).Raw()
-	if err != nil {
-		klog.Errorf("fail to GET /version with %v", err)
-		return version.Info{}
-	}
-
-	err = json.Unmarshal(versionBody, &kubeVersion)
-	if err != nil {
-		klog.Errorf("fail to Unmarshal, got '%s': %v", string(versionBody), err)
-		return version.Info{}
-	}
-
-	return kubeVersion
-}
-
-func IsOpenshift(client *rest.RESTClient) bool {
-	//check whether the cluster is openshift or not for openshift version 3.11 and before
-	_, err := client.Get().AbsPath("/version/openshift").Do(context.TODO()).Raw()
-	if err == nil {
-		klog.V(5).Info("Found openshift version from /version/openshift")
-		return true
-	}
-
-	//check whether the cluster is openshift or not for openshift version 4.1
-	_, err = client.Get().AbsPath("/apis/config.openshift.io/v1/clusterversions").Do(context.TODO()).Raw()
-	if err == nil {
-		klog.V(5).Info("Found openshift version from /apis/config.openshift.io/v1/clusterversions")
-		return true
-	}
-
-	klog.V(5).Infof("fail to GET openshift version, assuming not OpenShift: %s", err.Error())
-	return false
 }
 
 // IntegrityChecking checks to ensure all required conditions are met when completing the specs
