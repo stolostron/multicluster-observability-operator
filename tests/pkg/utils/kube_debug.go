@@ -46,6 +46,8 @@ func LogFailingTestStandardDebugInfo(opt TestOptions) {
 	CheckStatefulSetsInNamespace(hubClient, MCO_NAMESPACE)
 	CheckDaemonSetsInNamespace(hubClient, MCO_NAMESPACE)
 	CheckPodsInNamespace(hubClient, MCO_NAMESPACE, []string{}, map[string]string{})
+	printConfigMapsInNamespace(hubClient, MCO_NAMESPACE)
+	printSecretsInNamespace(hubClient, MCO_NAMESPACE)
 
 	for _, mc := range opt.ManagedClusters {
 		if mc.Name == "local-cluster" {
@@ -61,14 +63,18 @@ func LogFailingTestStandardDebugInfo(opt TestOptions) {
 		CheckStatefulSetsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		CheckDaemonSetsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 		CheckPodsInNamespace(spokeClient, MCO_ADDON_NAMESPACE, []string{"observability-addon"}, map[string]string{})
+		printConfigMapsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
+		printSecretsInNamespace(spokeClient, MCO_ADDON_NAMESPACE)
 	}
 }
 
 // CheckPodsInNamespace lists pods in a namespace and logs debug info (status, events, logs) for pods not running.
 func CheckPodsInNamespace(client kubernetes.Interface, ns string, forcePodNamesLog []string, podLabels map[string]string) {
-	pods, err := client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: metav1.FormatLabelSelector(&metav1.LabelSelector{MatchLabels: podLabels}),
-	})
+	listOptions := metav1.ListOptions{}
+	if len(podLabels) > 0 {
+		listOptions.LabelSelector = metav1.FormatLabelSelector(&metav1.LabelSelector{MatchLabels: podLabels})
+	}
+	pods, err := client.CoreV1().Pods(ns).List(context.TODO(), listOptions)
 	if err != nil {
 		klog.Errorf("Failed to get pods in namespace %s: %v", ns, err)
 		return
@@ -153,8 +159,8 @@ func LogPodLogs(client kubernetes.Interface, ns string, pod corev1.Pod) {
 			continue
 		}
 
-		// Filter error logs and keep all last 150 lines
-		maxLines := 150
+		// Filter error logs and keep all last 100 lines
+		maxLines := 100
 		cleanedLines := []string{}
 		lines := strings.Split(string(logs), "\n")
 		for i, line := range lines {
@@ -372,6 +378,56 @@ func printDaemonSetsStatuses(clientset kubernetes.Interface, namespace string) {
 			daemonSet.Status.DesiredNumberScheduled,
 			daemonSet.Status.CurrentNumberScheduled,
 			daemonSet.Status.NumberReady,
+			age)
+	}
+	writer.Flush()
+}
+
+func printConfigMapsInNamespace(client kubernetes.Interface, ns string) {
+	configMaps, err := client.CoreV1().ConfigMaps(ns).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("Failed to get configmaps in namespace %q: %v", ns, err)
+		return
+	}
+
+	if len(configMaps.Items) == 0 {
+		klog.V(1).Infof("No configmaps found in namespace %q", ns)
+		return
+	}
+
+	klog.V(1).Infof("ConfigMaps in namespace %s: \n", ns)
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+	fmt.Fprintln(writer, "NAME\tDATA\tAGE")
+	for _, configMap := range configMaps.Items {
+		age := time.Since(configMap.CreationTimestamp.Time).Round(time.Second)
+		fmt.Fprintf(writer, "%s\t%d\t%s\n",
+			configMap.Name,
+			len(configMap.Data),
+			age)
+	}
+	writer.Flush()
+}
+
+func printSecretsInNamespace(client kubernetes.Interface, ns string) {
+	secrets, err := client.CoreV1().Secrets(ns).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.Errorf("Failed to get secrets in namespace %q: %v", ns, err)
+		return
+	}
+
+	if len(secrets.Items) == 0 {
+		klog.V(1).Infof("No secrets found in namespace %q", ns)
+		return
+	}
+
+	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+	fmt.Fprintln(writer, "NAME\tTYPE\tDATA\tAGE")
+	for _, secret := range secrets.Items {
+		age := time.Since(secret.CreationTimestamp.Time).Round(time.Second)
+		fmt.Fprintf(writer, "%s\t%s\t%d\t%s\n",
+			secret.Name,
+			secret.Type,
+			len(secret.Data),
 			age)
 	}
 	writer.Flush()
