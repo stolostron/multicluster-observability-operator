@@ -25,7 +25,7 @@ spec:
           - '--kubelet-service=kube-system/kubelet'
           - '--prometheus-config-reloader={{PROM_CONFIGMAP_RELOADER_IMG}}'
           - '--namespaces={{NAMESPACE}}'
-        image: quay.io/prometheus-operator/prometheus-operator:v0.68.0
+        image: quay.io/prometheus-operator/prometheus-operator:v0.73.2
         imagePullPolicy: IfNotPresent
         name: prometheus-operator
         ports:

@@ -3,7 +3,7 @@ resources:
 - alertmanagerconfig_crd_0_53_1.yaml
 - podmonitor_crd_0_53_1.yaml
 - probe_crd_0_53_1.yaml
-- prometheus_crd_0_68_0.yaml
+- prometheus_crd_0_73_2.yaml
 - prometheusrule_crd_0_53_1.yaml
 - servicemonitor_crd_0_53_1.yaml
 - thanosruler_crd_0_53_1.yaml
