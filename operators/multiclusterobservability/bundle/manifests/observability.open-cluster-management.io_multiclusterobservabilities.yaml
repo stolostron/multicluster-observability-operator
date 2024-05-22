@@ -2172,6 +2172,9 @@ spec:
                           type: string
                         description: Annotations is an unstructured key value map stored with a service account
                         type: object
+                      usePrometheusEngine:
+                        description: Set to true to use the old Prometheus engine for PromQL queries.
+                        type: boolean
                     type: object
                   queryFrontend:
                     description: spec for thanos-query-frontend

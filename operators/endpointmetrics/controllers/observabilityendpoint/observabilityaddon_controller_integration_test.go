@@ -8,6 +8,7 @@ package observabilityendpoint
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -17,11 +18,15 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
@@ -64,7 +69,8 @@ func TestIntegrationReconcileHypershift(t *testing.T) {
 	}
 
 	mgr, err := ctrl.NewManager(testEnv.Config, ctrl.Options{
-		Scheme: k8sClient.Scheme(),
+		Scheme:             k8sClient.Scheme(),
+		MetricsBindAddress: "0", // Avoids port conflict with the default port 8080
 	})
 	assert.NoError(t, err)
 
@@ -100,8 +106,15 @@ func TestIntegrationReconcileHypershift(t *testing.T) {
 
 // setupTestEnv starts the test environment (etcd and kube api-server).
 func setupTestEnv(t *testing.T) (*envtest.Environment, client.Client) {
+	rootPath := filepath.Join("..", "..", "..")
+	crds := readCRDFiles(t,
+		filepath.Join(rootPath, "multiclusterobservability", "config", "crd", "bases", "observability.open-cluster-management.io_multiclusterobservabilities.yaml"),
+		filepath.Join(rootPath, "endpointmetrics", "manifests", "prometheus", "crd", "servicemonitor_crd_0_53_1.yaml"),
+		filepath.Join(rootPath, "endpointmetrics", "manifests", "prometheus", "crd", "prometheusrule_crd_0_53_1.yaml"),
+	)
 	testEnv := &envtest.Environment{
 		CRDDirectoryPaths: []string{filepath.Join("testdata", "crd"), filepath.Join("..", "..", "config", "crd", "bases")},
+		CRDs:              crds,
 	}
 
 	cfg, err := testEnv.Start()
@@ -114,6 +127,7 @@ func setupTestEnv(t *testing.T) (*envtest.Environment, client.Client) {
 	hyperv1.AddToScheme(scheme)
 	promv1.AddToScheme(scheme)
 	oav1beta1.AddToScheme(scheme)
+	mcov1beta2.AddToScheme(scheme)
 
 	k8sClient, err := client.New(cfg, client.Options{Scheme: scheme})
 	if err != nil {
@@ -126,6 +140,28 @@ func setupTestEnv(t *testing.T) (*envtest.Environment, client.Client) {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	return testEnv, k8sClient
+}
+
+func readCRDFiles(t *testing.T, crdPaths ...string) []*apiextensionsv1.CustomResourceDefinition {
+	ret := []*apiextensionsv1.CustomResourceDefinition{}
+
+	for _, crdPath := range crdPaths {
+		crdYamlData, err := os.ReadFile(crdPath)
+		if err != nil {
+			t.Fatalf("Failed to read CRD file: %v", err)
+		}
+
+		dec := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
+		var crd apiextensionsv1.CustomResourceDefinition
+		_, _, err = dec.Decode(crdYamlData, nil, &crd)
+		if err != nil {
+			t.Fatalf("Failed to decode CRD: %v", err)
+		}
+
+		ret = append(ret, &crd)
+	}
+
+	return ret
 }
 
 func makeNamespace(name string) *corev1.Namespace {

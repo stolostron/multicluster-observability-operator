@@ -8,7 +8,6 @@ import (
 	"bufio"
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,17 +21,54 @@ import (
 	"k8s.io/klog"
 )
 
-func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []string) (error, bool) {
+type GrafanaResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		ResultType string `json:"resultType"`
+		Result     []struct {
+			Metric map[string]string `json:"metric"`
+			Value  []interface{}     `json:"value"` // Use interface{} because value can be mixed types
+		} `json:"result"`
+	} `json:"data"`
+}
+
+func (r GrafanaResponse) ContainsLabelsSet(labels map[string]string) bool {
+	ret := false
+loop:
+	for _, result := range r.Data.Result {
+		for key, val := range labels {
+			if result.Metric[key] != val {
+				continue loop
+			}
+		}
+		ret = true
+		break
+	}
+
+	return ret
+}
+
+func (r GrafanaResponse) String() string {
+	var ret strings.Builder
+	ret.WriteString(fmt.Sprintf("Status: %s\n", r.Status))
+	ret.WriteString(fmt.Sprintf("ResultType: %s\n", r.Data.ResultType))
+	ret.WriteString("Result:\n")
+	for _, result := range r.Data.Result {
+		ret.WriteString(fmt.Sprintf("%v %v\n", result.Metric, result.Value))
+	}
+	return ret.String()
+}
+
+func QueryGrafana(opt TestOptions, query string) (*GrafanaResponse, error) {
 	grafanaConsoleURL := GetGrafanaURL(opt)
 	path := "/api/datasources/proxy/1/api/v1/query?"
 	queryParams := url.PathEscape(fmt.Sprintf("query=%s", query))
-	klog.V(5).Infof("request url is: %s\n", grafanaConsoleURL+path+queryParams)
 	req, err := http.NewRequest(
 		"GET",
 		grafanaConsoleURL+path+queryParams,
 		nil)
 	if err != nil {
-		return err, false
+		return nil, err
 	}
 
 	client := &http.Client{}
@@ -45,7 +81,7 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 		client = &http.Client{Transport: tr}
 		token, err := FetchBearerToken(opt)
 		if err != nil {
-			return err, false
+			return nil, err
 		}
 		if token != "" {
 			req.Header.Set("Authorization", "Bearer "+token)
@@ -55,41 +91,29 @@ func ContainManagedClusterMetric(opt TestOptions, query string, matchedLabels []
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return err, false
+		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		klog.Errorf("resp: %+v\n", resp)
-		klog.Errorf("err: %+v\n", err)
-		return fmt.Errorf("failed to access managed cluster metrics via grafana console: %s", query), false
+		return nil, fmt.Errorf("failed to access managed cluster metrics via grafana console, status code: %d", resp.StatusCode)
 	}
 
-	metricResult, err := io.ReadAll(resp.Body)
-	klog.V(5).Infof("metricResult: %s\n", metricResult)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err, false
+		return nil, fmt.Errorf("failed to read response body: %v", err)
 	}
 
-	if !strings.Contains(string(metricResult), `"status":"success"`) {
-		return errors.New("failed to find valid status from response"), false
+	metricResult := GrafanaResponse{}
+	err = yaml.Unmarshal(respBody, &metricResult)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response body: %v", err)
 	}
 
-	if strings.Contains(string(metricResult), `"result":[]`) {
-		return errors.New("failed to find metric name from response"), false
+	if metricResult.Status != "success" {
+		return &metricResult, fmt.Errorf("failed to get metric from response, status: %s", metricResult.Status)
 	}
 
-	contained := true
-	for _, label := range matchedLabels {
-		if !strings.Contains(string(metricResult), label) {
-			contained = false
-			break
-		}
-	}
-	if !contained {
-		return errors.New("failed to find metric name from response"), false
-	}
-
-	return nil, true
+	return &metricResult, nil
 }
 
 type MetricsAllowlist struct {

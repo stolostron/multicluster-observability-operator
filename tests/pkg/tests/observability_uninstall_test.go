@@ -56,7 +56,7 @@ func uninstallMCO() {
 			Namespace(MCO_ADDON_NAMESPACE).
 			Get(context.TODO(), name, metav1.GetOptions{})
 		if instance != nil {
-			utils.PrintManagedClusterOBAObject(testOptions)
+			utils.PrintObject(context.Background(), clientDynamic, utils.NewMCOAddonGVR(), MCO_ADDON_NAMESPACE, "observability-addon")
 			return errors.New("Failed to delete MCO addon instance")
 		}
 		return nil

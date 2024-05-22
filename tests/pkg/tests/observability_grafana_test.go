@@ -34,13 +34,16 @@ var _ = Describe("Observability:", func() {
 			}
 			for _, cluster := range clusters {
 				query := fmt.Sprintf("node_memory_MemAvailable_bytes{cluster=\"%s\"}", cluster)
-				err, _ = utils.ContainManagedClusterMetric(
+				res, err := utils.QueryGrafana(
 					testOptions,
 					query,
-					[]string{`"__name__":"node_memory_MemAvailable_bytes"`},
 				)
 				if err != nil {
 					return err
+				}
+
+				if len(res.Data.Result) == 0 {
+					return fmt.Errorf("no data found for %s", query)
 				}
 			}
 			return nil
@@ -53,9 +56,7 @@ var _ = Describe("Observability:", func() {
 
 	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
-			utils.PrintMCOObject(testOptions)
-			utils.PrintAllMCOPodsStatus(testOptions)
-			utils.PrintAllOBAPodsStatus(testOptions)
+			utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 	})
