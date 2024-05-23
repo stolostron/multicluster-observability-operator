@@ -12,7 +12,7 @@ import (
 	"k8s.io/klog"
 )
 
-func GetConfigMap(opt TestOptions, isHub bool, name string,
+func GetConfigMap(clusterConfig Cluster, isHub bool, name string,
 	namespace string) (error, *corev1.ConfigMap) {
 	clientKube := getKubeClientForCluster(clusterConfig, isHub)
 	cm, err := clientKube.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
