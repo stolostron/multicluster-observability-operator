@@ -14,7 +14,7 @@ export IS_KIND_ENV=true
 source ${WORKDIR}/env.sh
 
 create_kind_cluster() {
-  echo "Delete the KinD cluster if exists"
+  echo "Delete the KinD cluster if exists coleen"
   kind delete cluster --name $1 || true
   rm -rf $HOME/.kube/kind-config-$1
 
@@ -22,6 +22,7 @@ create_kind_cluster() {
   kind create cluster --kubeconfig $HOME/.kube/kind-config-$1 --name $1 --config ${WORKDIR}/kind/kind-$1.config.yaml
   export KUBECONFIG=$HOME/.kube/kind-config-$1
 }
+
 
 deploy_service_ca_operator() {
   kubectl create ns openshift-config-managed
@@ -51,6 +52,7 @@ run_e2e_test() {
 
 run() {
   create_kind_cluster hub
+  create_kind_cluster_managed managed
   deploy_crds
   deploy_templates
   deploy_service_ca_operator
@@ -59,4 +61,3 @@ run() {
   run_e2e_test
 }
 
-run

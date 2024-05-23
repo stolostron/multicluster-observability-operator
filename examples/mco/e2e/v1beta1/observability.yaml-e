@@ -3,7 +3,6 @@ kind: MultiClusterObservability
 metadata:
   name: observability
   annotations:
-    test-env: kind-test
     mco-thanos-without-resources-requests: true
     mco-imageTagSuffix: 2.11.0-SNAPSHOT-2024-05-14-11-47-23
     test-env: kind-test

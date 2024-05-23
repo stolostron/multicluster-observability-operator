@@ -3,7 +3,6 @@ kind: MultiClusterObservability
 metadata:
   name: observability
   annotations:
-    mco-thanos-without-resources-requests: true
     mco-imageTagSuffix: 2.11.0-SNAPSHOT-2024-05-14-11-47-23
     mco-thanos-without-resources-requests: true
     mco-imageTagSuffix: 2.11.0-SNAPSHOT-2024-05-14-04-35-15

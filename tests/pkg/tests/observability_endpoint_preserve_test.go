@@ -6,8 +6,9 @@ package tests
 
 import (
 	"fmt"
-	"k8s.io/klog/v2"
 	"os"
+
+	"k8s.io/klog/v2"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
