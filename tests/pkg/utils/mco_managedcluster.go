@@ -9,6 +9,7 @@ import (
 
 	goversion "github.com/hashicorp/go-version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 )
 
 func UpdateObservabilityFromManagedCluster(opt TestOptions, enableObservability bool) error {
@@ -120,6 +121,41 @@ func ListOCPManagedClusterIDs(opt TestOptions, minVersionStr string) ([]string, 
 		}
 	}
 
+	return clusterIDs, nil
+}
+
+func ListLocalClusterIDs(opt TestOptions) ([]string, error) {
+	clientDynamic := GetKubeClientDynamic(opt, true)
+	objs, err := clientDynamic.Resource(NewOCMManagedClustersGVR()).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	clusterIDs := []string{}
+	for _, obj := range objs.Items {
+		metadata := obj.Object["metadata"].(map[string]interface{})
+		labels := metadata["labels"].(map[string]interface{})
+		if labels != nil {
+			vendorStr := ""
+			if vendor, ok := labels["vendor"]; ok {
+				vendorStr = vendor.(string)
+			}
+
+			localClusterLabelStr := ""
+			if localCluster, ok := labels["local-cluster"]; ok {
+				localClusterLabelStr = localCluster.(string)
+			}
+			if vendorStr == "OpenShift" && localClusterLabelStr == "true" {
+				clusterIDStr := ""
+				if clusterID, ok := labels["clusterID"]; ok {
+					clusterIDStr = clusterID.(string)
+				}
+				if len(clusterIDStr) > 0 {
+					clusterIDs = append(clusterIDs, clusterIDStr)
+				}
+			}
+		}
+	}
+	klog.V(3).Infof("clusterIDs is %s", clusterIDs)
 	return clusterIDs, nil
 }
 
