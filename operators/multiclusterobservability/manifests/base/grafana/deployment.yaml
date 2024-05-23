@@ -2,18 +2,21 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: multicluster-observability-grafana-test
-  name: grafana-test
+    app: multicluster-observability-grafana
+    observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
+  name: grafana
   namespace: open-cluster-management-observability
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
-      app: multicluster-observability-grafana-test
+      app: multicluster-observability-grafana
+      observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
   template:
     metadata:
       labels:
-        app: multicluster-observability-grafana-test
+        app: multicluster-observability-grafana
+        observability.open-cluster-management.io/name: "{{MULTICLUSTEROBSERVABILITY_CR_NAME}}"
     spec:
       affinity:
         podAntiAffinity:
@@ -39,9 +42,9 @@ spec:
       containers:
         - args:
             - -config=/etc/grafana/grafana.ini
-          image: quay.io/stolostron/grafana:2.11.0-SNAPSHOT-2024-05-14-04-35-15
+          image: quay.io/stolostron/grafana:2.4.0-SNAPSHOT-2021-09-23-07-02-14
           imagePullPolicy: IfNotPresent
-          name: grafana-test
+          name: grafana
           ports:
             - containerPort: 3001
               name: http
@@ -69,7 +72,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-          image: quay.io/stolostron/grafana-dashboard-loader:2.11.0-SNAPSHOT-2024-05-14-04-35-15
+          image: quay.io/stolostron/grafana-dashboard-loader:2.3.0-SNAPSHOT-2021-07-26-18-43-26
           imagePullPolicy: IfNotPresent
           resources:
             requests:
@@ -130,11 +133,11 @@ spec:
         - name: grafana-datasources
           secret:
             defaultMode: 420
-            secretName: grafana-datasources-test
+            secretName: grafana-datasources
         - name: grafana-config
           secret:
             defaultMode: 420
-            secretName: grafana-config-test
+            secretName: grafana-config
         - name: tls-secret
           secret:
             defaultMode: 420

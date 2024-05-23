@@ -6,6 +6,6 @@ kind: Kustomization
 images:
 - name: quay.io/stolostron/multicluster-observability-operator
   newName: quay.io/stolostron/multicluster-observability-operator
-  newTag: 2.11.0-SNAPSHOT-2024-05-14-04-35-15
+  newTag: latest
 patches:
 - path: manager_webhook_patch.yaml
