@@ -23,6 +23,13 @@ func getKubeClient(opt TestOptions, isHub bool) kubernetes.Interface {
 	return clientKube
 }
 
+func getKubeClientForCluster(clusterConfig Cluster, isHub bool) kubernetes.Interface {
+	return NewKubeClient(
+		clusterConfig.ClusterServerURL,
+		clusterConfig.KubeConfig,
+		clusterConfig.KubeContext)
+}
+
 func GetKubeClientDynamic(opt TestOptions, isHub bool) dynamic.Interface {
 	url := opt.HubCluster.ClusterServerURL
 	kubeConfig := opt.KubeConfig
