@@ -6,14 +6,16 @@ package utils
 
 import (
 	"context"
+	"errors"
+
 	appv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 )
 
-func GetDeployment(clusterConfig Cluster, isHub bool, name string,
+func GetDeployment(opt TestOptions, isHub bool, name string,
 	namespace string) (*appv1.Deployment, error) {
-	clientKube := getKubeClientForCluster(clusterConfig, isHub)
+	clientKube := getKubeClient(opt, isHub)
 	klog.V(1).Infof("Get deployment <%v> in namespace <%v>, isHub: <%v>", name, namespace, isHub)
 	dep, err := clientKube.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
@@ -49,15 +51,46 @@ func DeleteDeployment(opt TestOptions, isHub bool, name string, namespace string
 }
 
 func UpdateDeployment(
-	clusterConfig Cluster,
+	opt TestOptions,
 	isHub bool,
 	name string,
 	namespace string,
 	dep *appv1.Deployment) (*appv1.Deployment, error) {
-	clientKube := getKubeClientForCluster(clusterConfig, isHub)
+	clientKube := getKubeClient(opt, isHub)
 	updateDep, err := clientKube.AppsV1().Deployments(namespace).Update(context.TODO(), dep, metav1.UpdateOptions{})
 	if err != nil {
 		klog.Errorf("Failed to update deployment %s in namespace %s due to %v", name, namespace, err)
 	}
 	return updateDep, err
+}
+
+func UpdateDeploymentReplicas(
+	opt TestOptions,
+	deployName, crProperty string,
+	desiredReplicas, expectedReplicas int32,
+) error {
+	clientDynamic := GetKubeClientDynamic(opt, true)
+	deploy, err := GetDeployment(opt, true, deployName, MCO_NAMESPACE)
+	if err != nil {
+		return err
+	}
+	deploy.Spec.Replicas = &desiredReplicas
+	_, err = UpdateDeployment(opt, true, deployName, MCO_NAMESPACE, deploy)
+	if err != nil {
+		return err
+	}
+
+	obs, err := clientDynamic.Resource(NewMCOMObservatoriumGVR()).
+		Namespace(MCO_NAMESPACE).
+		Get(context.TODO(), MCO_CR_NAME, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	thanos := obs.Object["spec"].(map[string]interface{})["thanos"]
+	currentReplicas := thanos.(map[string]interface{})[crProperty].(map[string]interface{})["replicas"].(int64)
+	if int(currentReplicas) != int(expectedReplicas) {
+		klog.Errorf("Failed to update deployment %s replicas to %v", deployName, expectedReplicas)
+		return errors.New("the replicas was not updated successfully")
+	}
+	return nil
 }

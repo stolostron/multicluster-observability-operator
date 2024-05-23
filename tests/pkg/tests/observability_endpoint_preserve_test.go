@@ -5,7 +5,6 @@
 package tests
 
 import (
-	"fmt"
 	"os"
 
 	. "github.com/onsi/ginkgo"
@@ -18,9 +17,19 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
-func runMetricsCollectorTests(clusterConfig utils.Cluster) {
+var _ = Describe("Observability:", func() {
 	BeforeEach(func() {
-		if clusterConfig.Name == hubManagedClusterName {
+		hubClient = utils.NewKubeClient(
+			testOptions.HubCluster.ClusterServerURL,
+			testOptions.KubeConfig,
+			testOptions.HubCluster.KubeContext)
+
+		dynClient = utils.NewKubeClientDynamic(
+			testOptions.HubCluster.ClusterServerURL,
+			testOptions.KubeConfig,
+			testOptions.HubCluster.KubeContext)
+		clusterName := utils.GetManagedClusterName(testOptions)
+		if clusterName == hubManagedClusterName {
 			namespace = hubMetricsCollectorNamespace
 			isHub = false
 		}
@@ -33,49 +42,46 @@ func runMetricsCollectorTests(clusterConfig utils.Cluster) {
 				err error
 				dep *appv1.Deployment
 			)
-			By(fmt.Sprintf("Handling cluster: %s", clusterConfig.Name), func() {
-				Eventually(func() error {
-					dep, err = utils.GetDeployment(
-						clusterConfig,
-						isHub,
-						"metrics-collector-deployment",
-						namespace,
-					)
-					return err
-				}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
+			Eventually(func() error {
+				dep, err = utils.GetDeployment(
+					testOptions,
+					isHub,
+					"metrics-collector-deployment",
+					namespace,
+				)
+				return err
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 
-				Eventually(func() error {
-					err = utils.DeleteDeployment(
-						testOptions,
-						isHub,
-						"metrics-collector-deployment",
-						namespace,
-					)
-					return err
-				}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
+			Eventually(func() error {
+				err = utils.DeleteDeployment(
+					testOptions,
+					isHub,
+					"metrics-collector-deployment",
+					namespace,
+				)
+				return err
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 
-				Eventually(func() bool {
-					newDep, err = utils.GetDeployment(
-						clusterConfig,
-						isHub,
-						"metrics-collector-deployment",
-						namespace,
-					)
-					if err == nil {
-						if dep.ObjectMeta.ResourceVersion != newDep.ObjectMeta.ResourceVersion {
-							return true
-						}
+			Eventually(func() bool {
+				newDep, err = utils.GetDeployment(
+					testOptions,
+					isHub,
+					"metrics-collector-deployment",
+					namespace,
+				)
+				if err == nil {
+					if dep.ObjectMeta.ResourceVersion != newDep.ObjectMeta.ResourceVersion {
+						return true
 					}
-					return false
-				}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
-
-			})
+				}
+				return false
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 		})
 		It("[Stable] Updating metrics-collector deployment", func() {
 			updateSaName := "test-serviceaccount"
 			Eventually(func() error {
 				newDep, err = utils.GetDeployment(
-					clusterConfig,
+					testOptions,
 					isHub,
 					"metrics-collector-deployment",
 					namespace,
@@ -85,7 +91,7 @@ func runMetricsCollectorTests(clusterConfig utils.Cluster) {
 				}
 				newDep.Spec.Template.Spec.ServiceAccountName = updateSaName
 				newDep, err = utils.UpdateDeployment(
-					clusterConfig,
+					testOptions,
 					isHub,
 					"metrics-collector-deployment",
 					namespace,
@@ -96,7 +102,7 @@ func runMetricsCollectorTests(clusterConfig utils.Cluster) {
 
 			Eventually(func() bool {
 				revertDep, err := utils.GetDeployment(
-					clusterConfig,
+					testOptions,
 					isHub,
 					"metrics-collector-deployment",
 					namespace,
@@ -161,7 +167,7 @@ func runMetricsCollectorTests(clusterConfig utils.Cluster) {
 		)
 		Eventually(func() error {
 			err, cm = utils.GetConfigMap(
-				clusterConfig,
+				testOptions,
 				isHub,
 				"metrics-collector-serving-certs-ca-bundle",
 				namespace,
@@ -170,7 +176,7 @@ func runMetricsCollectorTests(clusterConfig utils.Cluster) {
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 		Eventually(func() error {
 			err = utils.DeleteConfigMap(
-				clusterConfig,
+				testOptions,
 				isHub,
 				"metrics-collector-serving-certs-ca-bundle",
 				namespace,
@@ -180,7 +186,7 @@ func runMetricsCollectorTests(clusterConfig utils.Cluster) {
 		newCm := &v1.ConfigMap{}
 		Eventually(func() bool {
 			err, newCm = utils.GetConfigMap(
-				clusterConfig,
+				testOptions,
 				isHub,
 				"metrics-collector-serving-certs-ca-bundle",
 				namespace,
@@ -207,10 +213,4 @@ func runMetricsCollectorTests(clusterConfig utils.Cluster) {
 		isHub = false
 
 	})
-}
-
-var _ = Describe("Observability:", func() {
-	for _, clusterConfig := range testOptions.ManagedClusters {
-		runMetricsCollectorTests(clusterConfig)
-	}
 })

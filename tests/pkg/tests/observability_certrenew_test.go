@@ -15,9 +15,19 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
 )
 
-func runCertRenewTests(clusterConfig utils.Cluster) {
+var _ = Describe("Observability:", func() {
 	BeforeEach(func() {
-		if clusterConfig.Name == hubManagedClusterName {
+		hubClient = utils.NewKubeClient(
+			testOptions.HubCluster.ClusterServerURL,
+			testOptions.KubeConfig,
+			testOptions.HubCluster.KubeContext)
+
+		dynClient = utils.NewKubeClientDynamic(
+			testOptions.HubCluster.ClusterServerURL,
+			testOptions.KubeConfig,
+			testOptions.HubCluster.KubeContext)
+		clusterName := utils.GetManagedClusterName(testOptions)
+		if clusterName == hubManagedClusterName {
 			namespace = hubMetricsCollectorNamespace
 			isHub = false
 		}
@@ -155,7 +165,7 @@ func runCertRenewTests(clusterConfig utils.Cluster) {
 
 			// debug code to check label "cert/time-restarted"
 			deployment, err := utils.GetDeployment(
-				clusterConfig,
+				testOptions,
 				isHub,
 				"metrics-collector-deployment",
 				namespace,
@@ -179,10 +189,4 @@ func runCertRenewTests(clusterConfig utils.Cluster) {
 		namespace = MCO_ADDON_NAMESPACE
 		isHub = false
 	})
-}
-
-var _ = Describe("Observability:", func() {
-	for _, clusterConfig := range testOptions.ManagedClusters {
-		runCertRenewTests(clusterConfig)
-	}
 })
