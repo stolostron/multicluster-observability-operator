@@ -333,6 +333,8 @@ var _ = Describe("", func() {
 		}
 
 		expectedOCPClusterIDs, err := utils.ListOCPManagedClusterIDs(testOptions, "4.8.0")
+		expectedLocalClusterIDs, err := utils.ListLocalClusterIDs(testOptions)
+		expectedOCPClusterIDs = append(expectedOCPClusterIDs, expectedLocalClusterIDs...)
 		klog.V(3).Infof("expectedOCPClusterIDs is %s", expectedOCPClusterIDs)
 		Expect(err).NotTo(HaveOccurred())
 		expectedKSClusterNames, err := utils.ListKSManagedClusterNames(testOptions)
@@ -402,8 +404,8 @@ var _ = Describe("", func() {
 			klog.V(3).Infof("no sort.Strings.expectedOCPClusterIDs is %s", expectedOCPClusterIDs)
 			sort.Strings(expectedOCPClusterIDs)
 			klog.V(3).Infof("sort.Strings.expectedOCPClusterIDs is %s", expectedOCPClusterIDs)
-			if !reflect.DeepEqual(clusterIDsInAlerts, expectClusterIdentifiers) && !reflect.DeepEqual(clusterIDsInAlerts, expectedOCPClusterIDs) {
-				//if !reflect.DeepEqual(clusterIDsInAlerts, expectedOCPClusterIDs) {
+			// if !reflect.DeepEqual(clusterIDsInAlerts, expectClusterIdentifiers) && !reflect.DeepEqual(clusterIDsInAlerts, expectedOCPClusterIDs) {
+			if !reflect.DeepEqual(clusterIDsInAlerts, expectedOCPClusterIDs) {
 				return fmt.Errorf("Not all openshift managedclusters >=4.8.0 forward Watchdog alert to hub cluster")
 			}
 
