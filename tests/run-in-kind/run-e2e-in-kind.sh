@@ -23,7 +23,6 @@ create_kind_cluster() {
   export KUBECONFIG=$HOME/.kube/kind-config-$1
 }
 
-
 deploy_service_ca_operator() {
   kubectl create ns openshift-config-managed
   kubectl apply -f ${WORKDIR}/service-ca/
@@ -62,4 +61,3 @@ run() {
 }
 
 run
-
