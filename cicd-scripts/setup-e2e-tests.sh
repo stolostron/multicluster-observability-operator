@@ -22,7 +22,7 @@ AGENT_NS="open-cluster-management-agent"
 HUB_NS="open-cluster-management-hub"
 OBSERVABILITY_NS="open-cluster-management-observability"
 IMAGE_REPO="quay.io/stolostron"
-export MANAGED_CLUSTER="local-cluster" # registration-operator needs this
+#export MANAGED_CLUSTER="local-cluster" # registration-operator needs this
 
 SED_COMMAND=${SED}' -i-e -e'
 
@@ -43,32 +43,40 @@ deploy_hub_spoke_core() {
   REGISTRATION_LATEST_SNAPSHOT='2.4.9-SNAPSHOT-2022-11-17-20-19-31'
   make cluster-ip IMAGE_REGISTRY=quay.io/stolostron IMAGE_TAG=${REGISTRATION_LATEST_SNAPSHOT} WORK_TAG=${REGISTRATION_LATEST_SNAPSHOT} REGISTRATION_TAG=${REGISTRATION_LATEST_SNAPSHOT} PLACEMENT_TAG=${REGISTRATION_LATEST_SNAPSHOT}
   make deploy IMAGE_REGISTRY=quay.io/stolostron IMAGE_TAG=${REGISTRATION_LATEST_SNAPSHOT} WORK_TAG=${REGISTRATION_LATEST_SNAPSHOT} REGISTRATION_TAG=${REGISTRATION_LATEST_SNAPSHOT} PLACEMENT_TAG=${REGISTRATION_LATEST_SNAPSHOT}
-
   # wait until hub and spoke are ready
   wait_for_deployment_ready 10 60s ${HUB_NS} cluster-manager-registration-controller cluster-manager-registration-webhook cluster-manager-work-webhook
   wait_for_deployment_ready 10 60s ${AGENT_NS} klusterlet-registration-agent klusterlet-work-agent
+
 }
 
 # approve the CSR for cluster join request
 approve_csr_joinrequest() {
   echo "wait for CSR for cluster join reqest is created..."
-  for i in {1..60}; do
-    # TODO(morvencao): remove the hard-coded cluster label
-    csrs=$(kubectl get csr -lopen-cluster-management.io/cluster-name=${MANAGED_CLUSTER})
-    if [[ -n ${csrs} ]]; then
-      csrnames=$(kubectl get csr -lopen-cluster-management.io/cluster-name=${MANAGED_CLUSTER} -o jsonpath={.items..metadata.name})
-      for csrname in ${csrnames}; do
-        echo "approve CSR: ${csrname}"
-        kubectl certificate approve ${csrname}
-      done
-      break
-    fi
-    if [[ ${i} -eq 60 ]]; then
-      echo "timeout wait for CSR is created."
-      exit 1
-    fi
-    echo "retrying in 10s..."
-    sleep 10
+  managed_clusters=("local-cluster" "managed-cluster-1")
+
+  KUBECONFIG=/tmp/hub.yaml IS_KIND_ENV=true
+  #kubectl config use-context kind-hub
+  for MANAGED_CLUSTER in "${managed_clusters[@]}"; do
+    echo "Processing CSRs for ${MANAGED_CLUSTER}..."
+    for i in {1..60}; do
+      # TODO(morvencao): remove the hard-coded cluster label
+      # for loop for the case that multiple clusters are created
+      csrs=$(kubectl get csr -lopen-cluster-management.io/cluster-name=${MANAGED_CLUSTER})
+      if [[ -n ${csrs} ]]; then
+        csrnames=$(kubectl get csr -lopen-cluster-management.io/cluster-name=${MANAGED_CLUSTER} -o jsonpath={.items..metadata.name})
+        for csrname in ${csrnames}; do
+          echo "approve CSR: ${csrname}"
+          kubectl certificate approve ${csrname}
+        done
+        break
+      fi
+      if [[ ${i} -eq 60 ]]; then
+        echo "timeout wait for CSR is created."
+        exit 1
+      fi
+      echo "retrying in 10s..."
+      sleep 10
+    done
   done
 
   for i in {1..20}; do
@@ -130,6 +138,7 @@ EOF
 
 # deploy the MCO operator via the kustomize resources
 deploy_mco_operator() {
+  kubectl config use-context kind-hub
   if [[ -n ${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF} ]]; then
     cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/stolostron/multicluster-observability-operator=${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF}
   else
@@ -216,10 +225,59 @@ wait_for_deployment_ready() {
   done
 }
 
+deploy_managed_cluster() {
+  echo "Setting Kubernetes context to the managed cluster..."
+
+  KUBECONFIG=/tmp/managed.yaml IS_KIND_ENV=true
+  kubectl config use-context kind-managed
+  export MANAGED_CLUSTER="managed-cluster-1"
+
+  cd ${ROOTDIR}
+  # we are pinned here so no need to re-fetch if we have the project locally.
+  if [[ ! -d "registration-operator" ]]; then
+    git clone --depth 1 -b release-2.4 https://github.com/stolostron/registration-operator.git
+  fi
+  cd registration-operator
+  REGISTRATION_LATEST_SNAPSHOT='2.4.9-SNAPSHOT-2022-11-17-20-19-31'
+  ${SED_COMMAND} "s~clusterName: cluster1$~clusterName: ${MANAGED_CLUSTER}~g" deploy/klusterlet/config/samples/operator_open-cluster-management_klusterlets.cr.yaml
+  make deploy-spoke IMAGE_REGISTRY=quay.io/stolostron IMAGE_TAG=${REGISTRATION_LATEST_SNAPSHOT} WORK_TAG=${REGISTRATION_LATEST_SNAPSHOT} REGISTRATION_TAG=${REGISTRATION_LATEST_SNAPSHOT} PLACEMENT_TAG=${REGISTRATION_LATEST_SNAPSHOT}
+  wait_for_deployment_ready 10 60s ${AGENT_NS} klusterlet-registration-agent klusterlet-work-agent
+}
+
+deploy_hub_and_managed_cluster() {
+  cd $(dirname ${BASH_SOURCE})
+
+  set -e
+
+  hub=${CLUSTER1:-hub}
+  hub_name="local-cluster"
+  c1=${CLUSTER1:-managed}
+
+  hubctx="kind-${hub}"
+  c1ctx="kind-${c1}"
+
+  echo "Initialize the ocm hub cluster\n" # ./.hub-kubeconfig is default value of HUB_KUBECONFIG
+  clusteradm init --wait --context ${hubctx}
+  joincmd=$(clusteradm get token --context ${hubctx} | grep clusteradm)
+
+  echo "Join hub to hub\n"
+  $(echo ${joincmd} --force-internal-endpoint-lookup --wait --context ${hubctx} | sed "s/<cluster_name>/$hub_name/g")
+  KUBECONFIG=/tmp/managed.yaml IS_KIND_ENV=true
+  echo "Join cluster1 to hub\n"
+  $(echo ${joincmd} --force-internal-endpoint-lookup --wait --context ${c1ctx} | sed "s/<cluster_name>/$c1/g")
+
+  echo "Accept join of hub,cluster1"
+  KUBECONFIG=/tmp/hub.yaml IS_KIND_ENV=true
+  clusteradm accept --context ${hubctx} --clusters ${c1},${hub_name} --skip-approve-check
+
+  kubectl get managedclusters --all-namespaces --context ${hubctx}
+}
 # function execute is the main routine to do the actual work
 execute() {
-  deploy_hub_spoke_core
-  approve_csr_joinrequest
+  #  deploy_hub_spoke_core
+  #  approve_csr_joinrequest
+  #  deploy_managed_cluster
+  deploy_hub_and_managed_cluster
   deploy_mco_operator
   deploy_grafana_test
   echo "OCM and MCO are installed successfully..."

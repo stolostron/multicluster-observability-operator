@@ -98,6 +98,7 @@ kind-env:
 	@echo "Setting up KinD cluster"
 	@./scripts/bootstrap-kind-env.sh
 	@echo "Cluster has been created"
+	kind export kubeconfig --name=managed
 	kind export kubeconfig --name=hub
 	kubectl label node hub-control-plane node-role.kubernetes.io/master=''
 
@@ -108,6 +109,8 @@ mco-kind-env: kind-env
 	@echo "Local environment has been set up"
 	@echo "Installing MCO"
 	@kind get kubeconfig --name hub > /tmp/hub.yaml
+	@kind get kubeconfig --name managed  > /tmp/managed.yaml
+	@kind get kubeconfig --name hub --internal > ./.hub-kubeconfig
 	KUBECONFIG=/tmp/hub.yaml IS_KIND_ENV=true KUSTOMIZE_VERSION=${KUSTOMIZE_VERSION} ./cicd-scripts/setup-e2e-tests.sh
 
 

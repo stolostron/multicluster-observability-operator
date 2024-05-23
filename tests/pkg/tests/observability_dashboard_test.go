@@ -19,18 +19,6 @@ const (
 )
 
 var _ = Describe("Observability:", func() {
-	BeforeEach(func() {
-		hubClient = utils.NewKubeClient(
-			testOptions.HubCluster.ClusterServerURL,
-			testOptions.KubeConfig,
-			testOptions.HubCluster.KubeContext)
-
-		dynClient = utils.NewKubeClientDynamic(
-			testOptions.HubCluster.ClusterServerURL,
-			testOptions.KubeConfig,
-			testOptions.HubCluster.KubeContext)
-	})
-
 	It("[P2][Sev2][observability][Stable] Should have custom dashboard which defined in configmap (dashboard/g0)", func() {
 		By("Creating custom dashboard configmap")
 		yamlB, _ := kustomize.Render(
@@ -71,7 +59,7 @@ var _ = Describe("Observability:", func() {
 
 	It("[P2][Sev2][observability][Stable] Should have no custom dashboard in grafana after related configmap removed (dashboard/g0)", func() {
 		By("Deleting custom dashboard configmap")
-		err = utils.DeleteConfigMap(testOptions, true, dashboardName, MCO_NAMESPACE)
+		err = utils.DeleteConfigMap(testOptions.ManagedClusters[0], true, dashboardName, MCO_NAMESPACE)
 		Expect(err).ToNot(HaveOccurred())
 		Eventually(func() bool {
 			_, result := utils.ContainDashboard(testOptions, updateDashboardTitle)

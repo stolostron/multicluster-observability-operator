@@ -31,11 +31,6 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
-
-		dynClient = utils.NewKubeClientDynamic(
-			testOptions.HubCluster.ClusterServerURL,
-			testOptions.KubeConfig,
-			testOptions.HubCluster.KubeContext)
 	})
 
 	JustBeforeEach(func() {

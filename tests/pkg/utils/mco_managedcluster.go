@@ -51,8 +51,10 @@ func ListManagedClusters(opt TestOptions) ([]string, error) {
 	for _, obj := range objs.Items {
 		metadata := obj.Object["metadata"].(map[string]interface{})
 		name := metadata["name"].(string)
-		labels := metadata["labels"].(map[string]interface{})
-		if labels != nil {
+		if name == "local-cluster" {
+			continue
+		}
+		if labels, ok := metadata["labels"].(map[string]interface{}); ok {
 			obsControllerStr := ""
 			if obsController, ok := labels["feature.open-cluster-management.io/addon-observability-controller"]; ok {
 				obsControllerStr = obsController.(string)
