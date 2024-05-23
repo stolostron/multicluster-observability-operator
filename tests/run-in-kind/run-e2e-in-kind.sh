@@ -61,3 +61,5 @@ run() {
   run_e2e_test
 }
 
+run
+
