@@ -10,6 +10,7 @@ resources:
 - dash-acm-cluster-by-alerts.yaml
 - dash-acm-optimization-overview.yaml
 - dash-acm-clusters-overview.yaml
+- dash-acm-clusters-overview-optimized.yaml
 - dash-acm-hcp-overview.yaml
 - dash-acm-resources-hcp.yaml
 - dash-k8s-etcd.yaml
