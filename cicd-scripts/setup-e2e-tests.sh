@@ -143,9 +143,6 @@ deploy_mco_operator() {
   cd ${ROOTDIR}
   kustomize build ${ROOTDIR}/operators/multiclusterobservability/config/default | kubectl apply -n ${OCM_DEFAULT_NS} --server-side=true -f -
 
-  cat ${ROOTDIR}/operators/multiclusterobservability/config/manager/manager.yaml
-  cat ${ROOTDIR}/operators/multiclusterobservability/config/manager/kustomization.yaml
-
   # wait until mco is ready
   wait_for_deployment_ready 10 60s ${OCM_DEFAULT_NS} multicluster-observability-operator
   echo "mco operator is deployed successfully."
