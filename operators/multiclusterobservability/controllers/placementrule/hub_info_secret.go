@@ -69,9 +69,13 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		}
 	}
 
-	obsApiURL := url.URL{
-		Host: obsAPIHost,
-		Path: operatorconfig.ObservatoriumAPIRemoteWritePath,
+	if !strings.HasSuffix(obsAPIHost, operatorconfig.ObservatoriumAPIRemoteWritePath) {
+		obsAPIHost += operatorconfig.ObservatoriumAPIRemoteWritePath
+	}
+
+	obsApiURL, err := url.Parse(obsAPIHost)
+	if err != nil {
+		return nil, err
 	}
 	if !obsApiURL.IsAbs() {
 		obsApiURL.Scheme = "https"
