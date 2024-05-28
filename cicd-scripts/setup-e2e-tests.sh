@@ -130,6 +130,11 @@ EOF
 
 # deploy the MCO operator via the kustomize resources
 deploy_mco_operator() {
+  # makes sure we get the MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF
+  if [[ -n ${IS_KIND_ENV} ]]; then
+    source ${ROOTDIR}/tests/run-in-kind/env.sh
+  fi
+
   if [[ -n ${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF} ]]; then
     cd ${ROOTDIR}/operators/multiclusterobservability/config/manager && kustomize edit set image quay.io/stolostron/multicluster-observability-operator=${MULTICLUSTER_OBSERVABILITY_OPERATOR_IMAGE_REF}
   else
@@ -137,6 +142,9 @@ deploy_mco_operator() {
   fi
   cd ${ROOTDIR}
   kustomize build ${ROOTDIR}/operators/multiclusterobservability/config/default | kubectl apply -n ${OCM_DEFAULT_NS} --server-side=true -f -
+
+  cat ${ROOTDIR}/operators/multiclusterobservability/config/manager/manager.yaml
+  cat ${ROOTDIR}/operators/multiclusterobservability/config/manager/kustomization.yaml
 
   # wait until mco is ready
   wait_for_deployment_ready 10 60s ${OCM_DEFAULT_NS} multicluster-observability-operator
