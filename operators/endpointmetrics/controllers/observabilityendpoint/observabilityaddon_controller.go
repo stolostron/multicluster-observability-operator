@@ -63,9 +63,9 @@ const (
 )
 
 var (
-	namespace           = os.Getenv("WATCH_NAMESPACE")
-	hubNamespace        = os.Getenv("HUB_NAMESPACE")
-	hubMetricsCollector = os.Getenv("HUB_ENDPOINT_OPERATOR") == "true"
+	namespace             = os.Getenv("WATCH_NAMESPACE")
+	hubNamespace          = os.Getenv("HUB_NAMESPACE")
+	isHubMetricsCollector = os.Getenv("HUB_ENDPOINT_OPERATOR") == "true"
 )
 
 // ObservabilityAddonReconciler reconciles a ObservabilityAddon object.
@@ -104,7 +104,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	// ACM 8509: Special case for hub/local cluster metrics collection
 	// We do not have an ObservabilityAddon instance in the local cluster so skipping the below block
-	if !hubMetricsCollector {
+	if !isHubMetricsCollector {
 		if err := r.ensureOpenShiftMonitoringLabelAndRole(ctx); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -260,8 +260,8 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	forceRestart := req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == caConfigmapName
 
-	if obsAddon.Spec.EnableMetrics || hubMetricsCollector {
-		if hubMetricsCollector {
+	if obsAddon.Spec.EnableMetrics || isHubMetricsCollector {
+		if isHubMetricsCollector {
 			mcoList := &oav1beta2.MultiClusterObservabilityList{}
 			err := r.HubClient.List(ctx, mcoList, client.InNamespace(corev1.NamespaceAll))
 			if err != nil {
