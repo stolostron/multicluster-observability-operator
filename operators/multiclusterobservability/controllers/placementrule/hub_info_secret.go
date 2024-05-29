@@ -69,6 +69,11 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		}
 	}
 
+	// Due to ambiguities in URL parsing when the scheme is not present, we preprend it here.
+	if !strings.HasPrefix(obsAPIHost, "https://") {
+		obsAPIHost = "https://" + obsAPIHost
+	}
+
 	obsApiURL, err := url.Parse(obsAPIHost)
 	if err != nil {
 		return nil, err
@@ -79,10 +84,6 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 	// or load balancers).
 	if !strings.HasSuffix(obsApiURL.Path, operatorconfig.ObservatoriumAPIRemoteWritePath) {
 		obsApiURL = obsApiURL.JoinPath(obsAPIHost, operatorconfig.ObservatoriumAPIRemoteWritePath)
-	}
-
-	if !obsApiURL.IsAbs() {
-		obsApiURL.Scheme = "https"
 	}
 
 	hubInfo := &operatorconfig.HubInfo{
