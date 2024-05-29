@@ -13,9 +13,11 @@ import (
 )
 
 const (
-	dashboardName        = "sample-dashboard"
-	dashboardTitle       = "Sample Dashboard for E2E"
-	updateDashboardTitle = "Update Sample Dashboard for E2E"
+	dashboardName                 = "sample-dashboard"
+	dashboardTitle                = "Sample Dashboard for E2E"
+	updateDashboardTitle          = "Update Sample Dashboard for E2E"
+	clusterOverviewTitle          = "ACM - Clusters Overview"
+	clusterOverviewOptimizedTitle = "ACM - Clusters Overview (Optimized)"
 )
 
 var _ = Describe("Observability:", func() {
@@ -77,6 +79,31 @@ var _ = Describe("Observability:", func() {
 			_, result := utils.ContainDashboard(testOptions, updateDashboardTitle)
 			return result
 		}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(BeFalse())
+	})
+
+	JustAfterEach(func() {
+		Expect(utils.IntegrityChecking(testOptions)).NotTo(HaveOccurred())
+	})
+
+	AfterEach(func() {
+		if CurrentGinkgoTestDescription().Failed {
+			utils.LogFailingTestStandardDebugInfo(testOptions)
+		}
+		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
+	})
+
+	It("[P2][Sev2][observability][Stable] Should have default overview dashboards (dashboard/g0)", func() {
+		// Check Original dash exists
+		Eventually(func() bool {
+			_, result := utils.ContainDashboard(testOptions, clusterOverviewTitle)
+			return result
+		}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(BeTrue())
+		// Check optimized dash
+		Eventually(func() bool {
+			_, result := utils.ContainDashboard(testOptions, clusterOverviewOptimizedTitle)
+			return result
+		}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(BeTrue())
+
 	})
 
 	JustAfterEach(func() {
