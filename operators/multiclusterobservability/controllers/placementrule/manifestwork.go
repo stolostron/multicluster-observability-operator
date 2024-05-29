@@ -409,6 +409,8 @@ func createManifestWorks(
 			Name:  "HUB_ENDPOINT_OPERATOR",
 			Value: "true",
 		})
+
+		dep.ObjectMeta.Name = config.HubEndpointOperatorName
 	}
 	endpointMetricsOperatorDeployCopy.Spec.Template.Spec = spec
 	manifests = injectIntoWork(manifests, endpointMetricsOperatorDeployCopy)
