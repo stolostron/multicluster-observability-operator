@@ -69,14 +69,18 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		}
 	}
 
-	if !strings.HasSuffix(obsAPIHost, operatorconfig.ObservatoriumAPIRemoteWritePath) {
-		obsAPIHost += operatorconfig.ObservatoriumAPIRemoteWritePath
-	}
-
 	obsApiURL, err := url.Parse(obsAPIHost)
 	if err != nil {
 		return nil, err
 	}
+
+	// We have to *append* the Remote Write path, and not hardcode it, because it could include
+	// a custom sub-path required by intermediate components running between spokes and the hub (i.e. reverse proxies
+	// or load balancers).
+	if !strings.HasSuffix(obsApiURL.Path, operatorconfig.ObservatoriumAPIRemoteWritePath) {
+		obsApiURL = obsApiURL.JoinPath(obsAPIHost, operatorconfig.ObservatoriumAPIRemoteWritePath)
+	}
+
 	if !obsApiURL.IsAbs() {
 		obsApiURL.Scheme = "https"
 	}
