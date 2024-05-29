@@ -29,6 +29,7 @@ import (
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/collector"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/microshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/status"
@@ -68,6 +69,7 @@ type ObservabilityAddonReconciler struct {
 	HubNamespace          string
 	ServiceAccountName    string
 	InstallPrometheus     bool
+	HostIP                string
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io.open-cluster-management.io,resources=observabilityaddons,verbs=get;list;watch;create;update;patch;delete
@@ -234,6 +236,21 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		toDeploy, err := rendering.Render(ctx, renderer, r.Client, hubInfo, r.Namespace)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to render prometheus templates: %w", err)
+		}
+
+		if !r.IsHubMetricsCollector {
+			microshiftVersion, err := microshift.IsMicroshiftCluster(ctx, r.Client)
+			if err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to check if the cluster is microshift: %w", err)
+			}
+
+			if len(microshiftVersion) > 0 {
+				mcs := microshift.NewMicroshift(r.Client, r.Namespace, r.HostIP)
+				toDeploy, err = mcs.Render(ctx, toDeploy)
+				if err != nil {
+					return ctrl.Result{}, fmt.Errorf("failed to render microshift templates: %w", err)
+				}
+			}
 		}
 
 		deployer := deploying.NewDeployer(r.Client)
