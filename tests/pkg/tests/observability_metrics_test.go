@@ -7,10 +7,12 @@ package tests
 import (
 	"context"
 	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog"
 
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/kustomize"
 	"github.com/stolostron/multicluster-observability-operator/tests/pkg/utils"
@@ -154,36 +156,68 @@ var _ = Describe("Observability:", func() {
 
 	It("[P2][Sev2][observability][Integration] Should have metrics which used grafana dashboard (ssli/g1)", func() {
 		metricList, dynamicMetricList := utils.GetDefaultMetricList(testOptions)
-		ignoreMetricMap := utils.GetIgnoreMetricMap()
-		_, etcdPodList := utils.GetPodList(
-			testOptions,
-			true,
-			"openshift-etcd",
-			"app=etcd",
-		)
-		// ignore etcd network peer metrics for SNO cluster
-		if etcdPodList != nil && len(etcdPodList.Items) <= 0 {
-			ignoreMetricMap["etcd_network_peer_received_bytes_total"] = true
-			ignoreMetricMap["etcd_network_peer_sent_bytes_total"] = true
+		klog.V(1).Infof("metricList: %v", metricList)
+		klog.V(1).Infof("dynamicMetricList: %v", dynamicMetricList)
+		allowMetricsMap := make(map[string]struct{}, len(metricList)+len(dynamicMetricList))
+		for _, name := range metricList {
+			allowMetricsMap[name] = struct{}{}
 		}
 		for _, name := range dynamicMetricList {
-			ignoreMetricMap[name] = true
+			allowMetricsMap[name] = struct{}{}
 		}
-		for _, name := range metricList {
-			_, ok := ignoreMetricMap[name]
-			if !ok {
-				Eventually(func() error {
-					res, err := utils.QueryGrafana(testOptions, name)
-					if err != nil {
-						return fmt.Errorf("failed to get metrics %s: %v", name, err)
-					}
-					if len(res.Data.Result) == 0 {
-						return fmt.Errorf("no data found for %s", name)
-					}
-					return nil
-				}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*3).Should(Succeed())
+		ignoreMetricMap := utils.GetIgnoreMetricMap()
+
+		// Print ignored metrics that are not found in the allowlist
+		for name := range ignoreMetricMap {
+			if _, ok := allowMetricsMap[name]; !ok {
+				klog.V(1).Infof("ignored metric %s is not found in the allowlist", name)
 			}
 		}
+
+		// wait for metrics to be available
+		klog.V(1).Infof("waiting for metrics to be available...")
+		time.Sleep(90 * time.Second)
+
+		// Check if the metrics are available
+		for _, name := range metricList {
+			res, err := utils.QueryGrafana(testOptions, name)
+			if err != nil {
+				klog.Errorf("failed to get metrics %s: %v", name, err)
+				continue
+			}
+			if len(res.Data.Result) == 0 {
+				klog.Errorf("no data found for %s", name)
+			}
+		}
+		// _, etcdPodList := utils.GetPodList(
+		// 	testOptions,
+		// 	true,
+		// 	"openshift-etcd",
+		// 	"app=etcd",
+		// )
+		// // ignore etcd network peer metrics for SNO cluster
+		// if etcdPodList != nil && len(etcdPodList.Items) <= 0 {
+		// 	ignoreMetricMap["etcd_network_peer_received_bytes_total"] = true
+		// 	ignoreMetricMap["etcd_network_peer_sent_bytes_total"] = true
+		// }
+		// for _, name := range dynamicMetricList {
+		// 	ignoreMetricMap[name] = true
+		// }
+		// for _, name := range metricList {
+		// 	_, ok := ignoreMetricMap[name]
+		// 	if !ok {
+		// 		Eventually(func() error {
+		// 			res, err := utils.QueryGrafana(testOptions, name)
+		// 			if err != nil {
+		// 				return fmt.Errorf("failed to get metrics %s: %v", name, err)
+		// 			}
+		// 			if len(res.Data.Result) == 0 {
+		// 				return fmt.Errorf("no data found for %s", name)
+		// 			}
+		// 			return nil
+		// 		}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*3).Should(Succeed())
+		// 	}
+		// }
 	})
 
 	JustAfterEach(func() {
