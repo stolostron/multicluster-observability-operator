@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/microshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
@@ -75,6 +76,7 @@ type ObservabilityAddonReconciler struct {
 	Client    client.Client
 	Scheme    *runtime.Scheme
 	HubClient *util.ReloadableHubClient
+	HostIP    string
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io.open-cluster-management.io,resources=observabilityaddons,verbs=get;list;watch;create;update;patch;delete
@@ -156,7 +158,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		hubSecret,
 	)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get hub info secret: %w", err)
+		return ctrl.Result{}, fmt.Errorf("failed to get hub info secret %s/%s: %w", namespace, operatorconfig.HubInfoSecretName, err)
 	}
 	hubInfo := &operatorconfig.HubInfo{}
 	err = yaml.Unmarshal(hubSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
@@ -179,7 +181,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 	rendering.Images = imagesCM.Data
 
-	if isHypershift {
+	if isHubMetricsCollector && isHypershift {
 		updatedHCs, err := hypershift.ReconcileHostedClustersServiceMonitors(ctx, r.Client)
 		if err != nil {
 			log.Error(err, "Failed to create ServiceMonitors for hypershift")
@@ -246,7 +248,29 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to render prometheus templates: %w", err)
 		}
+
+		if !isHubMetricsCollector {
+			microshiftVersion, err := microshift.IsMicroshiftCluster(ctx, r.Client)
+			if err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to check if the cluster is microshift: %w", err)
+			}
+
+			if len(microshiftVersion) > 0 {
+				mcs := microshift.NewMicroshift(namespace, r.HostIP)
+				toDeploy, err = mcs.Render(ctx, toDeploy)
+				if err != nil {
+					return ctrl.Result{}, fmt.Errorf("failed to render microshift templates: %w", err)
+				}
+			}
+		}
+
 		deployer := deploying.NewDeployer(r.Client)
+
+		// Ordering resources to ensure they are applied in the correct order
+		slices.SortFunc(toDeploy, func(a, b *unstructured.Unstructured) bool {
+			return (resourcePriority(a) - resourcePriority(b)) < 0
+		})
+
 		for _, res := range toDeploy {
 			if res.GetNamespace() != namespace {
 				globalRes = append(globalRes, res)
@@ -604,4 +628,19 @@ func remove(list []string, s string) []string {
 		}
 	}
 	return result
+}
+
+// resourcePriority returns the priority of the resource.
+// This is used to order the resources to be created in the correct order.
+func resourcePriority(resource *unstructured.Unstructured) int {
+	switch resource.GetKind() {
+	case "Role", "ClusterRole":
+		return 1
+	case "RoleBinding", "ClusterRoleBinding":
+		return 2
+	case "CustomResourceDefinition":
+		return 3
+	default:
+		return 4
+	}
 }

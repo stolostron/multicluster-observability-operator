@@ -2,7 +2,7 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package observabilityendpoint
+package collector
 
 import (
 	"testing"
@@ -22,7 +22,7 @@ func TestEvluateMatchExpression(t *testing.T) {
 			expr: metav1.LabelSelectorRequirement{
 				Key:      "test_key",
 				Operator: "In",
-				Values:   []string{snoClusterType},
+				Values:   []string{"test_value"},
 			},
 			expectedResult: false,
 		},
@@ -31,7 +31,7 @@ func TestEvluateMatchExpression(t *testing.T) {
 			expr: metav1.LabelSelectorRequirement{
 				Key:      "clusterType",
 				Operator: "test_op",
-				Values:   []string{snoClusterType},
+				Values:   []string{"test_value"},
 			},
 			expectedResult: false,
 		},
@@ -40,9 +40,9 @@ func TestEvluateMatchExpression(t *testing.T) {
 			expr: metav1.LabelSelectorRequirement{
 				Key:      "clusterType",
 				Operator: "NotIn",
-				Values:   []string{snoClusterType},
+				Values:   []string{"SNO"},
 			},
-			clusterType:    snoClusterType,
+			clusterType:    "SNO",
 			expectedResult: false,
 		},
 		{
@@ -50,7 +50,7 @@ func TestEvluateMatchExpression(t *testing.T) {
 			expr: metav1.LabelSelectorRequirement{
 				Key:      "clusterType",
 				Operator: "In",
-				Values:   []string{snoClusterType},
+				Values:   []string{"SNO"},
 			},
 			clusterType:    "",
 			expectedResult: false,
@@ -60,7 +60,7 @@ func TestEvluateMatchExpression(t *testing.T) {
 			expr: metav1.LabelSelectorRequirement{
 				Key:      "clusterType",
 				Operator: "NotIn",
-				Values:   []string{snoClusterType},
+				Values:   []string{"SNO"},
 			},
 			clusterType:    "",
 			expectedResult: true,
@@ -70,17 +70,17 @@ func TestEvluateMatchExpression(t *testing.T) {
 			expr: metav1.LabelSelectorRequirement{
 				Key:      "clusterType",
 				Operator: "In",
-				Values:   []string{snoClusterType},
+				Values:   []string{"SNO"},
 			},
-			clusterType:    snoClusterType,
+			clusterType:    "SNO",
 			expectedResult: true,
 		},
 	}
 
 	for _, c := range caseList {
 		t.Run(c.name, func(t *testing.T) {
-			params := append([]interface{}{"id"}, c.clusterType)
-			r := evluateMatchExpression(c.expr, params...)
+			// params := append([]interface{}{"id"}, c.clusterType)
+			r := evaluateMatchExpression(c.expr, "clusterType", c.clusterType)
 			if r != c.expectedResult {
 				t.Fatalf("Wrong result for test %s, expected %v, got %v", c.name, c.expectedResult, r)
 			}
