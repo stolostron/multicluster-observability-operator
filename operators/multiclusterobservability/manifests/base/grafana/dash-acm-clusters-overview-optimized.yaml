@@ -1,6 +1,6 @@
 apiVersion: v1
 data:
-  acm-clusters-overview.json: |-
+  acm-clusters-overview-optimized.json: |-
     {
       "annotations": {
         "list": [
@@ -707,7 +707,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "topk(50, cluster:cpu_requested:ratio - ignoring(usage) (1 - avg(rate(node_cpu_seconds_total{cluster=~\"$cluster\",mode=\"idle\"}[$__rate_interval])) by (cluster)))\n* on(cluster) group_left(cpu_requested) count_values without() (\"cpu_requested\", cluster:cpu_requested:ratio)\n* on(cluster) group_left(cpu_utilized) count_values without() (\"cpu_utilized\", (1 - avg(rate(node_cpu_seconds_total{cluster=~\"$cluster\",mode=\"idle\"}[$__rate_interval])) by (cluster)))",
+              "expr": "topk(50, sum by (cluster) (cluster:cpu_requested:ratio)- sum by (cluster) (cluster:node_cpu:ratio{cluster=~\"$cluster\",clusterType!=\"ocp3\"}))\n* on(cluster) group_left(cpu_requested) count_values without() (\"cpu_requested\", cluster:cpu_requested:ratio)\n* on(cluster) group_left(cpu_utilized) count_values without() (\"cpu_utilized\", cluster:node_cpu:ratio{cluster=~\"$cluster\",clusterType!=\"ocp3\"})",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -1142,7 +1142,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "topk(50, (1 - avg(rate(node_cpu_seconds_total{cluster=~\"$cluster\",mode=\"idle\"}[$__rate_interval])) by (cluster)))\n* on(cluster) group_left(machine_cpu_cores_sum) count_values without() (\"machine_cpu_cores_sum\", cluster:cpu_cores:sum)\n* on(cluster) group_left(node_allocatable_cpu_cores_sum) count_values without() (\"node_allocatable_cpu_cores_sum\", cluster:cpu_allocatable:sum)\n* on(cluster) group_left(cpu_requested) count_values without() (\"cpu_requested\", cluster:cpu_requested:ratio)",
+              "expr": "topk(50, cluster:node_cpu:ratio{cluster=~\"$cluster\"})\n* on(cluster) group_left(machine_cpu_cores_sum) count_values without() (\"machine_cpu_cores_sum\", cluster:cpu_cores:sum)\n* on(cluster) group_left(node_allocatable_cpu_cores_sum) count_values without() (\"node_allocatable_cpu_cores_sum\", cluster:cpu_allocatable:sum)\n* on(cluster) group_left(cpu_requested) count_values without() (\"cpu_requested\", cluster:cpu_requested:ratio)",
               "instant": true,
               "interval": "",
               "legendFormat": "",
@@ -1225,7 +1225,7 @@ data:
           "steppedLine": false,
           "targets": [
             {
-              "expr": "topk(5, (1 - avg(rate(node_cpu_seconds_total{cluster=~\"$cluster\",mode=\"idle\",clusterType!=\"ocp3\"}[$__rate_interval])) by (cluster)))",
+              "expr": "topk(5, cluster:node_cpu:ratio{cluster=~\"$cluster\",clusterType!=\"ocp3\"})",
               "hide": false,
               "interval": "",
               "intervalFactor": 1,
@@ -1898,13 +1898,13 @@ data:
         ]
       },
       "timezone": "browser",
-      "title": "ACM - Clusters Overview",
-      "uid": "2b679d600f3b9e7676a7c5ac3643d448",
+      "title": "ACM - Clusters Overview (Optimized)",
+      "uid": "b4733fbea8104bae951b04961f47bd20",
       "version": 1
     }
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-acm-clusters-overview
+  name: grafana-dashboard-acm-clusters-overview-optimized
   namespace: open-cluster-management-observability
   labels:
     general-folder: 'true'
