@@ -18,6 +18,7 @@ import (
 	operatorv1 "github.com/openshift/api/operator/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,7 +30,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -50,7 +50,6 @@ import (
 	observabilityv1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoctrl "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/webhook"
 	operatorsutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	// +kubebuilder:scaffold:imports
@@ -162,74 +161,74 @@ func main() {
 		os.Exit(1)
 	}
 
+	var cacheOpts cache.Options
+	byObjectWithOwnerLabel := cache.ByObject{Label: labels.Set{"owner": "multicluster-observability-operator"}.AsSelector()}
+	byObjectWithDefaultNamespace := cache.ByObject{Field: fields.Set{"metadata.namespace": mcoconfig.GetDefaultNamespace()}.AsSelector()}
+
+	managedClusterLabelSelector, err := labels.Parse("vendor!=auto-detect,observability!=disabled")
+	if err != nil {
+		panic(err)
+	}
+	// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behavior, which
+	// means MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
+	// Adding selector will reduce the cache size when the managedcluster scale.
+
 	mcoNamespace := mcoconfig.GetMCONamespace()
+
+	cacheOpts.ByObject = map[client.Object]cache.ByObject{
+		&corev1.Secret{}: byObjectWithDefaultNamespace,
+		&corev1.Secret{}: {
+			Field: fields.Set{"metadata.namespace": mcoconfig.OpenshiftIngressOperatorNamespace}.AsSelector(),
+		},
+		&corev1.Secret{}: {
+			Field: fields.Set{"metadata.namespace": mcoconfig.OpenshiftIngressNamespace}.AsSelector(),
+		},
+		&corev1.ConfigMap{}:      byObjectWithDefaultNamespace,
+		&corev1.Service{}:        byObjectWithDefaultNamespace,
+		&corev1.ServiceAccount{}: byObjectWithDefaultNamespace,
+		&appsv1.Deployment{}:     byObjectWithDefaultNamespace,
+		&appsv1.StatefulSet{}:    byObjectWithDefaultNamespace,
+		&workv1.ManifestWork{}: {
+			Label: labels.Set{"owner": "multicluster-observability-operator"}.AsSelector(),
+		},
+		&clusterv1.ManagedCluster{}: {
+			Label: managedClusterLabelSelector,
+		},
+		&addonv1alpha1.ClusterManagementAddOn{}: {
+			Field: fields.Set{"metadata.name": util.ObservabilityController}.AsSelector(),
+		},
+		&addonv1alpha1.ManagedClusterAddOn{}: {
+			Field: fields.Set{"metadata.name": util.ManagedClusterAddonName}.AsSelector(),
+		},
+		&rbacv1.Role{}:                       byObjectWithOwnerLabel,
+		&rbacv1.RoleBinding{}:                byObjectWithOwnerLabel,
+		&rbacv1.ClusterRole{}:                byObjectWithOwnerLabel,
+		&rbacv1.ClusterRoleBinding{}:         byObjectWithOwnerLabel,
+		&addonv1alpha1.ManagedClusterAddOn{}: byObjectWithOwnerLabel,
+	}
+
+	if mchCrdExists {
+		cacheOpts.ByObject[&mchv1.MultiClusterHub{}] = cache.ByObject{
+			Field: fields.Set{"metadata.namespace": mcoNamespace}.AsSelector(),
+		}
+	}
+
+	if ingressCtlCrdExists {
+		cacheOpts.ByObject[&operatorv1.IngressController{}] = cache.ByObject{
+			Field: fields.Set{
+				"metadata.name":      mcoconfig.OpenshiftIngressOperatorCRName,
+				"metadata.namespace": mcoconfig.OpenshiftIngressOperatorNamespace,
+			}.AsSelector(),
+		}
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsserver.Options{BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort)},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b9d51391.open-cluster-management.io",
-		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
-			byObjectWithOwnerLabel := cache.ByObject{Label: labels.Set{"owner": "multicluster-observability-operator"}.AsSelector()}
-			byObjectWithDefaultNamespace := cache.ByObject{Field: fields.Set{"metadata.namespace": mcoconfig.GetDefaultNamespace()}.AsSelector()}
-
-			managedClusterLabelSelector, err := labels.Parse("vendor!=auto-detect,observability!=disabled")
-			if err != nil {
-				panic(err)
-			}
-			// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behavior, which
-			// means MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
-			// Adding selector will reduce the cache size when the managedcluster scale.
-
-			opts.ByObject = map[client.Object]cache.ByObject{
-				&corev1.Secret{}: byObjectWithDefaultNamespace,
-				&corev1.Secret{}: {
-					Field: fields.Set{"metadata.namespace": mcoconfig.OpenshiftIngressOperatorNamespace}.AsSelector(),
-				},
-				&corev1.Secret{}: {
-					Field: fields.Set{"metadata.namespace": mcoconfig.OpenshiftIngressNamespace}.AsSelector(),
-				},
-				&corev1.ConfigMap{}:      byObjectWithDefaultNamespace,
-				&corev1.Service{}:        byObjectWithDefaultNamespace,
-				&corev1.ServiceAccount{}: byObjectWithDefaultNamespace,
-				&appsv1.Deployment{}:     byObjectWithDefaultNamespace,
-				&appsv1.StatefulSet{}:    byObjectWithDefaultNamespace,
-				&workv1.ManifestWork{}: {
-					Label: labels.Set{"owner": "multicluster-observability-operator"}.AsSelector(),
-				},
-				&clusterv1.ManagedCluster{}: {
-					Label: managedClusterLabelSelector,
-				},
-				&addonv1alpha1.ClusterManagementAddOn{}: {
-					Field: fields.Set{"metadata.name": util.ObservabilityController}.AsSelector(),
-				},
-				&addonv1alpha1.ManagedClusterAddOn{}: {
-					Field: fields.Set{"metadata.name": util.ManagedClusterAddonName}.AsSelector(),
-				},
-				&rbacv1.Role{}:                       byObjectWithOwnerLabel,
-				&rbacv1.RoleBinding{}:                byObjectWithOwnerLabel,
-				&rbacv1.ClusterRole{}:                byObjectWithOwnerLabel,
-				&rbacv1.ClusterRoleBinding{}:         byObjectWithOwnerLabel,
-				&addonv1alpha1.ManagedClusterAddOn{}: byObjectWithOwnerLabel,
-			}
-
-			if mchCrdExists {
-				opts.ByObject[&mchv1.MultiClusterHub{}] = cache.ByObject{
-					Field: fields.Set{"metadata.namespace": mcoNamespace}.AsSelector(),
-				}
-			}
-
-			if ingressCtlCrdExists {
-				opts.ByObject[&operatorv1.IngressController{}] = cache.ByObject{
-					Field: fields.Set{
-						"metadata.name":      mcoconfig.OpenshiftIngressOperatorCRName,
-						"metadata.namespace": mcoconfig.OpenshiftIngressOperatorNamespace,
-					}.AsSelector(),
-				}
-			}
-
-			return cache.New(config, opts)
-		},
+		Cache:                  cacheOpts,
 		WebhookServer: ctrlwebhook.NewServer(ctrlwebhook.Options{
 			Port: webhookPort,
 			TLSOpts: []func(*tls.Config){

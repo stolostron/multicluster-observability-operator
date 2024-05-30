@@ -24,7 +24,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -87,51 +86,50 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	var cacheOptions cache.Options
+	watchNS := os.Getenv("WATCH_NAMESPACE")
+
+	// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behavior, which
+	// means MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
+	// Adding selector will reduce the cache size when the managedcluster scale.
+	cacheOptions.ByObject = map[client.Object]cache.ByObject{
+		&v1.Secret{}: {
+			Namespaces: map[string]cache.Config{
+				watchNS: {},
+			},
+		},
+		&v1.ConfigMap{}: {
+			Namespaces: map[string]cache.Config{
+				cache.AllNamespaces: {FieldSelector: fields.ParseSelectorOrDie("metadata.namespace=" + operatorconfig.AllowlistConfigMapName)},
+				watchNS:             {},
+			},
+		},
+		&appsv1.Deployment{}: {
+			Namespaces: map[string]cache.Config{
+				watchNS: {},
+			},
+		},
+		&oav1beta1.ObservabilityAddon{}: {
+			Namespaces: map[string]cache.Config{
+				watchNS: {},
+			},
+		},
+	}
+	// Only watch MCO CRs in the hub cluster to avoid noisy log messages
+	if os.Getenv("HUB_ENDPOINT_OPERATOR") == "true" {
+		cacheOptions.ByObject[&oav1beta2.MultiClusterObservability{}] = cache.ByObject{
+			Field: fields.ParseSelectorOrDie("metadata.name!=null"),
+		}
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsserver.Options{BindAddress: metricsAddr},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "7c30ca38.open-cluster-management.io",
-		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
-			watchNS := os.Getenv("WATCH_NAMESPACE")
-
-			// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behavior, which
-			// means MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
-			// Adding selector will reduce the cache size when the managedcluster scale.
-			opts.ByObject = map[client.Object]cache.ByObject{
-				&v1.Secret{}: {
-					Namespaces: map[string]cache.Config{
-						watchNS: {},
-					},
-				},
-				&v1.ConfigMap{}: {
-					Namespaces: map[string]cache.Config{
-						cache.AllNamespaces: {FieldSelector: fields.ParseSelectorOrDie("metadata.namespace=" + operatorconfig.AllowlistConfigMapName)},
-						watchNS:             {},
-					},
-				},
-				&appsv1.Deployment{}: {
-					Namespaces: map[string]cache.Config{
-						watchNS: {},
-					},
-				},
-				&oav1beta1.ObservabilityAddon{}: {
-					Namespaces: map[string]cache.Config{
-						watchNS: {},
-					},
-				},
-			}
-			// Only watch MCO CRs in the hub cluster to avoid noisy log messages
-			if os.Getenv("HUB_ENDPOINT_OPERATOR") == "true" {
-				opts.ByObject[&oav1beta2.MultiClusterObservability{}] = cache.ByObject{
-					Field: fields.ParseSelectorOrDie("metadata.name!=null"),
-				}
-			}
-
-			return cache.New(config, opts)
-		},
-		WebhookServer: ctrlwebhook.NewServer(ctrlwebhook.Options{Port: 9443}),
+		Cache:                  cacheOptions,
+		WebhookServer:          ctrlwebhook.NewServer(ctrlwebhook.Options{Port: 9443}),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
