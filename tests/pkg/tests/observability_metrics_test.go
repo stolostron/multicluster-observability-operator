@@ -7,7 +7,6 @@ package tests
 import (
 	"context"
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -154,10 +153,10 @@ var _ = Describe("Observability:", func() {
 		}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
 	})
 
-	It("[P2][Sev2][observability][Integration] Should have metrics which used grafana dashboard (ssli/g1)", func() {
+	// Ensures that the allowList is current by checking that the metrics are being collected
+	It("[P2][Sev2][observability][Integration] Should collect expected metrics from spokes (metrics/g0)", func() {
+		// Get the metrics from the deployed allowList configMap
 		metricList, dynamicMetricList := utils.GetDefaultMetricList(testOptions)
-		klog.V(1).Infof("metricList: %v", metricList)
-		klog.V(1).Infof("dynamicMetricList: %v", dynamicMetricList)
 		allowMetricsMap := make(map[string]struct{}, len(metricList)+len(dynamicMetricList))
 		for _, name := range metricList {
 			allowMetricsMap[name] = struct{}{}
@@ -165,57 +164,71 @@ var _ = Describe("Observability:", func() {
 		for _, name := range dynamicMetricList {
 			allowMetricsMap[name] = struct{}{}
 		}
-		ignoreMetricMap := utils.GetIgnoreMetricMap()
 
-		// Print ignored metrics that are not found in the allowlist
-		for name := range ignoreMetricMap {
+		// Log ignored metrics that are not found in the allowlist to verify that both lists are in sync
+		for name := range ignoredMetrics {
 			if _, ok := allowMetricsMap[name]; !ok {
 				klog.V(1).Infof("ignored metric %s is not found in the allowlist", name)
 			}
 		}
 
-		// wait for metrics to be available
-		klog.V(1).Infof("waiting for metrics to be available...")
-		time.Sleep(90 * time.Second)
+		// Ensure that expected metrics are being collected
+		Eventually(func() error {
+			for _, cluster := range clusters {
+				for _, name := range metricList {
+					if _, ok := ignoredMetrics[name]; ok {
+						continue
+					}
 
-		// Check if the metrics are available
-		for _, name := range metricList {
-			res, err := utils.QueryGrafana(testOptions, name)
-			if err != nil {
-				klog.Errorf("failed to get metrics %s: %v", name, err)
-				continue
+					query := fmt.Sprintf("%s{cluster=\"%s\"}", name, cluster)
+					res, err := utils.QueryGrafana(testOptions, query)
+					if err != nil {
+						return fmt.Errorf("failed to get metrics %s in cluster %s: %v", name, cluster, err)
+					}
+
+					if len(res.Data.Result) == 0 {
+						return fmt.Errorf("no data found for %s in cluster %s", name, cluster)
+					}
+
+					return nil
+				}
 			}
-			if len(res.Data.Result) == 0 {
-				klog.Errorf("no data found for %s", name)
+			return nil
+		}, EventuallyTimeoutMinute*3, EventuallyIntervalSecond*5).Should(Succeed())
+
+		// Ensure that ignored metrics are not being collected
+		// This is to ensure that the ignoredMetrics list is in sync with the actual metrics being collected
+		Eventually(func() error {
+			for _, cluster := range clusters {
+				for name := range ignoredMetrics {
+					query := fmt.Sprintf("%s{cluster=\"%s\"}", name, cluster)
+					res, err := utils.QueryGrafana(testOptions, query)
+					if err != nil {
+						return fmt.Errorf("failed to get metrics %s in cluster %s: %v", name, cluster, err)
+					}
+
+					if len(res.Data.Result) != 0 {
+						return fmt.Errorf("found data for %s in cluster %s", name, cluster)
+					}
+				}
 			}
-		}
-		// _, etcdPodList := utils.GetPodList(
-		// 	testOptions,
-		// 	true,
-		// 	"openshift-etcd",
-		// 	"app=etcd",
-		// )
-		// // ignore etcd network peer metrics for SNO cluster
-		// if etcdPodList != nil && len(etcdPodList.Items) <= 0 {
-		// 	ignoreMetricMap["etcd_network_peer_received_bytes_total"] = true
-		// 	ignoreMetricMap["etcd_network_peer_sent_bytes_total"] = true
-		// }
-		// for _, name := range dynamicMetricList {
-		// 	ignoreMetricMap[name] = true
-		// }
+
+			return nil
+		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
+
+		// // wait for metrics to be available
+		// klog.V(1).Infof("waiting for metrics to be available...")
+		// time.Sleep(90 * time.Second)
+
+		// // Check if the metrics are available
 		// for _, name := range metricList {
-		// 	_, ok := ignoreMetricMap[name]
-		// 	if !ok {
-		// 		Eventually(func() error {
-		// 			res, err := utils.QueryGrafana(testOptions, name)
-		// 			if err != nil {
-		// 				return fmt.Errorf("failed to get metrics %s: %v", name, err)
-		// 			}
-		// 			if len(res.Data.Result) == 0 {
-		// 				return fmt.Errorf("no data found for %s", name)
-		// 			}
-		// 			return nil
-		// 		}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*3).Should(Succeed())
+		// 	res, err := utils.QueryGrafana(testOptions, name)
+		// 	if err != nil {
+		// 		klog.Errorf("failed to get metrics %s: %v", name, err)
+		// 		continue
+		// 	}
+		// 	if len(res.Data.Result) == 0 {
+		// 		klog.Errorf("no data found for %s", name)
 		// 	}
 		// }
 	})
@@ -231,3 +244,48 @@ var _ = Describe("Observability:", func() {
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 	})
 })
+
+// List of metrics that are not collected in the e2e environment
+// It might be because they are deprecated or not relevant for our test environment
+// These metrics are ignored in the test
+var ignoredMetrics = map[string]struct{}{
+	"cluster:policy_governance_info:propagated_count":                          {},
+	"cluster:policy_governance_info:propagated_noncompliant_count":             {},
+	"cnv:vmi_status_running:count":                                             {},
+	"container_cpu_cfs_periods_total":                                          {},
+	"container_cpu_cfs_throttled_periods_total":                                {},
+	"container_memory_cache":                                                   {},
+	"container_memory_rss":                                                     {},
+	"container_memory_swap":                                                    {},
+	"container_memory_working_set_bytes":                                       {},
+	"coredns_forward_responses_total":                                          {},
+	"csv_abnormal":                                                             {},
+	"etcd_mvcc_db_total_size_in_bytes":                                         {},
+	"etcd_network_peer_received_bytes_total":                                   {},
+	"etcd_network_peer_sent_bytes_total":                                       {},
+	"etcd_object_counts":                                                       {},
+	"instance:node_filesystem_usage:sum":                                       {},
+	"kube_node_status_allocatable_cpu_cores":                                   {},
+	"kube_node_status_allocatable_memory_bytes":                                {},
+	"kube_node_status_capacity_cpu_cores":                                      {},
+	"kube_node_status_capacity_pods":                                           {},
+	"kube_pod_container_resource_limits":                                       {},
+	"kube_pod_container_resource_limits_cpu_cores":                             {},
+	"kube_pod_container_resource_limits_memory_bytes":                          {},
+	"kube_pod_container_resource_requests":                                     {},
+	"kube_pod_container_resource_requests_cpu_cores":                           {},
+	"kube_pod_container_resource_requests_memory_bytes":                        {},
+	"kubelet_running_container_count":                                          {},
+	"kubelet_runtime_operations":                                               {},
+	"kubevirt_hyperconverged_operator_health_status":                           {},
+	"mce_hs_addon_hosted_control_planes_status_gauge":                          {},
+	"mce_hs_addon_request_based_hcp_capacity_current_gauge":                    {},
+	"mixin_pod_workload":                                                       {},
+	"namespace:kube_pod_container_resource_requests_cpu_cores:sum":             {},
+	"namespace_workload_pod:kube_pod_owner:relabel":                            {},
+	"node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate": {},
+	"node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate":  {},
+	"policy:policy_governance_info:propagated_count":                           {},
+	"policy:policy_governance_info:propagated_noncompliant_count":              {},
+	"policyreport_info":                                                        {},
+}
