@@ -165,6 +165,9 @@ func main() {
 	cacheOpts.DefaultNamespaces = map[string]cache.Config{
 		cache.AllNamespaces: {},
 	}
+	cacheOpts.DefaultLabelSelector = labels.Everything()
+	cacheOpts.DefaultFieldSelector = fields.Everything()
+
 	byObjectWithOwnerLabel := cache.ByObject{Label: labels.Set{"owner": "multicluster-observability-operator"}.AsSelector()}
 
 	managedClusterLabelSelector, err := labels.Parse("vendor!=auto-detect,observability!=disabled")
@@ -176,39 +179,40 @@ func main() {
 	// Adding selector will reduce the cache size when the managedcluster scale.
 
 	mcoNamespace := mcoconfig.GetMCONamespace()
+	defaultNamespace := mcoconfig.GetDefaultNamespace()
 
 	cacheOpts.ByObject = map[client.Object]cache.ByObject{
 		&corev1.Secret{}: {
 			Namespaces: map[string]cache.Config{
-				mcoconfig.GetDefaultNamespace():             {},
+				defaultNamespace: {},
 				mcoconfig.OpenshiftIngressOperatorNamespace: {},
 				mcoconfig.OpenshiftIngressNamespace:         {},
 			},
 		},
 		&corev1.ConfigMap{}: {
 			Namespaces: map[string]cache.Config{
-				mcoconfig.GetDefaultNamespace(): {},
-				"kube-system":                   {},
+				defaultNamespace: {},
+				"kube-system":    {},
 			},
 		},
 		&corev1.Service{}: {
 			Namespaces: map[string]cache.Config{
-				mcoconfig.GetDefaultNamespace(): {},
+				defaultNamespace: {},
 			},
 		},
 		&corev1.ServiceAccount{}: {
 			Namespaces: map[string]cache.Config{
-				mcoconfig.GetDefaultNamespace(): {},
+				defaultNamespace: {},
 			},
 		},
 		&appsv1.Deployment{}: {
 			Namespaces: map[string]cache.Config{
-				mcoconfig.GetDefaultNamespace(): {},
+				defaultNamespace: {},
 			},
 		},
 		&appsv1.StatefulSet{}: {
 			Namespaces: map[string]cache.Config{
-				mcoconfig.GetDefaultNamespace(): {},
+				defaultNamespace: {},
 			},
 		},
 		&workv1.ManifestWork{}: {
