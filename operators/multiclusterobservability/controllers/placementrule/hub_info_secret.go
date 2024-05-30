@@ -69,7 +69,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		}
 	}
 
-	// Due to ambiguities in URL parsing when the scheme is not present, we preprend it here.
+	// Due to ambiguities in URL parsing when the scheme is not present, we prepend it here.
 	if !strings.HasPrefix(obsAPIHost, "https://") {
 		obsAPIHost = "https://" + obsAPIHost
 	}
@@ -83,7 +83,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 	// a custom sub-path required by intermediate components running between spokes and the hub (i.e. reverse proxies
 	// or load balancers).
 	if !strings.HasSuffix(obsApiURL.Path, operatorconfig.ObservatoriumAPIRemoteWritePath) {
-		obsApiURL = obsApiURL.JoinPath(obsAPIHost, operatorconfig.ObservatoriumAPIRemoteWritePath)
+		obsApiURL = obsApiURL.JoinPath(operatorconfig.ObservatoriumAPIRemoteWritePath)
 	}
 
 	hubInfo := &operatorconfig.HubInfo{
