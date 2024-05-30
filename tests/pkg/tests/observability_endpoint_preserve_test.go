@@ -28,11 +28,19 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
+		clusterName := utils.GetManagedClusterName(testOptions)
+		if clusterName == hubManagedClusterName {
+			namespace = hubMetricsCollectorNamespace
+			isHub = false
+		}
 	})
 
 	Context("[P2][Sev2][observability] Should revert any manual changes on metrics-collector deployment (endpoint_preserve/g0) -", func() {
 		newDep := &appv1.Deployment{}
-		It("[Stable] Deleting metrics-collector deployment", func() {
+		It("[Stable] Deleting metrics-collector deployment for cluster", func() {
+			if os.Getenv("IS_KIND_ENV") == trueStr {
+				Skip("Skip the case due to run in KinD")
+			}
 			var (
 				err error
 				dep *appv1.Deployment
@@ -40,9 +48,9 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() error {
 				dep, err = utils.GetDeployment(
 					testOptions,
-					false,
+					isHub,
 					"metrics-collector-deployment",
-					MCO_ADDON_NAMESPACE,
+					namespace,
 				)
 				return err
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
@@ -50,9 +58,9 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() error {
 				err = utils.DeleteDeployment(
 					testOptions,
-					false,
+					isHub,
 					"metrics-collector-deployment",
-					MCO_ADDON_NAMESPACE,
+					namespace,
 				)
 				return err
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
@@ -60,9 +68,9 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() bool {
 				newDep, err = utils.GetDeployment(
 					testOptions,
-					false,
+					isHub,
 					"metrics-collector-deployment",
-					MCO_ADDON_NAMESPACE,
+					namespace,
 				)
 				if err == nil {
 					if dep.ObjectMeta.ResourceVersion != newDep.ObjectMeta.ResourceVersion {
@@ -73,13 +81,16 @@ var _ = Describe("Observability:", func() {
 			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(BeTrue())
 		})
 		It("[Stable] Updating metrics-collector deployment", func() {
+			if os.Getenv("IS_KIND_ENV") == trueStr {
+				Skip("Skip the case due to run in KinD")
+			}
 			updateSaName := "test-serviceaccount"
 			Eventually(func() error {
 				newDep, err = utils.GetDeployment(
 					testOptions,
-					false,
+					isHub,
 					"metrics-collector-deployment",
-					MCO_ADDON_NAMESPACE,
+					namespace,
 				)
 				if err != nil {
 					return err
@@ -87,9 +98,9 @@ var _ = Describe("Observability:", func() {
 				newDep.Spec.Template.Spec.ServiceAccountName = updateSaName
 				newDep, err = utils.UpdateDeployment(
 					testOptions,
-					false,
+					isHub,
 					"metrics-collector-deployment",
-					MCO_ADDON_NAMESPACE,
+					namespace,
 					newDep,
 				)
 				return err
@@ -98,9 +109,9 @@ var _ = Describe("Observability:", func() {
 			Eventually(func() bool {
 				revertDep, err := utils.GetDeployment(
 					testOptions,
-					false,
+					isHub,
 					"metrics-collector-deployment",
-					MCO_ADDON_NAMESPACE,
+					namespace,
 				)
 				if err == nil {
 					if revertDep.ObjectMeta.ResourceVersion != newDep.ObjectMeta.ResourceVersion &&
@@ -164,18 +175,18 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() error {
 			err, cm = utils.GetConfigMap(
 				testOptions,
-				false,
+				isHub,
 				"metrics-collector-serving-certs-ca-bundle",
-				MCO_ADDON_NAMESPACE,
+				namespace,
 			)
 			return err
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
 		Eventually(func() error {
 			err = utils.DeleteConfigMap(
 				testOptions,
-				false,
+				isHub,
 				"metrics-collector-serving-certs-ca-bundle",
-				MCO_ADDON_NAMESPACE,
+				namespace,
 			)
 			return err
 		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*1).Should(Succeed())
@@ -183,9 +194,9 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() bool {
 			err, newCm = utils.GetConfigMap(
 				testOptions,
-				false,
+				isHub,
 				"metrics-collector-serving-certs-ca-bundle",
-				MCO_ADDON_NAMESPACE,
+				namespace,
 			)
 			if err == nil {
 				if cm.ObjectMeta.ResourceVersion != newCm.ObjectMeta.ResourceVersion {
@@ -202,10 +213,11 @@ var _ = Describe("Observability:", func() {
 
 	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
-			utils.PrintMCOObject(testOptions)
-			utils.PrintAllMCOPodsStatus(testOptions)
-			utils.PrintAllOBAPodsStatus(testOptions)
+			utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
+		namespace = MCO_ADDON_NAMESPACE
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
+		isHub = false
+
 	})
 })

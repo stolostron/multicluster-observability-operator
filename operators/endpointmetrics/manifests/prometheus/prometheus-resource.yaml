@@ -21,6 +21,15 @@ spec:
   externalLabels:
     managed_cluster: CLUSTER
   listenLocal: true
+  initContainers:
+    - name: init-config-reloader
+      resources:
+        requests:
+          cpu: 1m
+          memory: 200Mi
+        limits:
+          cpu: 10m
+          memory: 300Mi
   containers:
     - args:
       - --logtostderr
@@ -40,15 +49,18 @@ spec:
       resources:
         limits:
           cpu: 20m
-          memory: 40Mi
+          memory: 400Mi
         requests:
           cpu: 10m
-          memory: 20Mi
+          memory: 200Mi
     - name: config-reloader
       resources:
         requests:
           cpu: 1m
-          memory: 10Mi
+          memory: 200Mi
+        limits:
+          cpu: 10m
+          memory: 400Mi
   podMetadata:
     annotations:
       target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'

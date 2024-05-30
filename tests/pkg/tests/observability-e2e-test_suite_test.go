@@ -13,6 +13,7 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/config"
 	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 	"gopkg.in/yaml.v2"
@@ -37,7 +38,11 @@ var (
 	testOptionsContainer utils.TestOptionsContainer
 	testUITimeout        time.Duration
 
-	testFailed = false
+	testFailed                   = false
+	hubMetricsCollectorNamespace = "open-cluster-management-observability"
+	hubManagedClusterName        = "local-cluster"
+	namespace                    = MCO_ADDON_NAMESPACE
+	isHub                        = false
 )
 
 const (
@@ -125,7 +130,10 @@ func init() {
 
 func TestObservabilityE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
+	config.DefaultReporterConfig.NoColor = true
+	config.DefaultReporterConfig.Succinct = true
 	junitReporter := reporters.NewJUnitReporter(reportFile)
+	junitReporter.ReporterConfig.NoColor = true
 	RunSpecsWithDefaultAndCustomReporters(t, "Observability E2E Suite", []Reporter{junitReporter})
 }
 
@@ -137,8 +145,6 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	if !testFailed {
 		uninstallMCO()
-	} else {
-		utils.PrintAllMCOPodsStatus(testOptions)
 	}
 })
 

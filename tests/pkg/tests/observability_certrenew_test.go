@@ -26,6 +26,11 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
+		clusterName := utils.GetManagedClusterName(testOptions)
+		if clusterName == hubManagedClusterName {
+			namespace = hubMetricsCollectorNamespace
+			isHub = false
+		}
 	})
 
 	It("[P1][Sev1][observability][Integration] Should have metrics collector pod restart if cert secret re-generated (certrenew/g0)", func() {
@@ -38,8 +43,8 @@ var _ = Describe("Observability:", func() {
 			if collectorPodName == "" {
 				_, podList := utils.GetPodList(
 					testOptions,
-					false,
-					MCO_ADDON_NAMESPACE,
+					isHub,
+					namespace,
 					"component=metrics-collector",
 				)
 				if podList != nil && len(podList.Items) > 0 {
@@ -51,7 +56,7 @@ var _ = Describe("Observability:", func() {
 			}
 			_, apiPodList := utils.GetPodList(
 				testOptions,
-				true,
+				isHub,
 				MCO_NAMESPACE,
 				"app.kubernetes.io/name=observatorium-api",
 			)
@@ -82,7 +87,7 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() bool {
 			err1, appPodList := utils.GetPodList(
 				testOptions,
-				true,
+				isHub,
 				MCO_NAMESPACE,
 				"app.kubernetes.io/name=observatorium-api",
 			)
@@ -141,28 +146,29 @@ var _ = Describe("Observability:", func() {
 		Eventually(func() bool {
 			err, podList := utils.GetPodList(
 				testOptions,
-				false,
-				MCO_ADDON_NAMESPACE,
+				isHub,
+				namespace,
 				"component=metrics-collector",
 			)
-			if err == nil {
-				for _, pod := range podList.Items {
-					if pod.Name != collectorPodName {
-						if pod.Status.Phase != "Running" {
-							klog.V(1).Infof("<%s> not in Running status yet", pod.Name)
-							return false
-						}
-						return true
-					}
-				}
-
+			if err != nil {
+				klog.V(1).Infof("Failed to get pod list: %v", err)
 			}
+			for _, pod := range podList.Items {
+				if pod.Name != collectorPodName {
+					if pod.Status.Phase != "Running" {
+						klog.V(1).Infof("<%s> not in Running status yet", pod.Name)
+						return false
+					}
+					return true
+				}
+			}
+
 			// debug code to check label "cert/time-restarted"
 			deployment, err := utils.GetDeployment(
 				testOptions,
-				false,
+				isHub,
 				"metrics-collector-deployment",
-				MCO_ADDON_NAMESPACE,
+				namespace,
 			)
 			if err == nil {
 				klog.V(1).Infof("labels: <%v>", deployment.Spec.Template.ObjectMeta.Labels)
@@ -177,10 +183,10 @@ var _ = Describe("Observability:", func() {
 
 	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
-			utils.PrintMCOObject(testOptions)
-			utils.PrintAllMCOPodsStatus(testOptions)
-			utils.PrintAllOBAPodsStatus(testOptions)
+			utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
+		namespace = MCO_ADDON_NAMESPACE
+		isHub = false
 	})
 })

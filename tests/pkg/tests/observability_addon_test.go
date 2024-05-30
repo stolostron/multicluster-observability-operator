@@ -28,6 +28,9 @@ var _ = Describe("Observability:", func() {
 			testOptions.HubCluster.ClusterServerURL,
 			testOptions.KubeConfig,
 			testOptions.HubCluster.KubeContext)
+		if utils.GetManagedClusterName(testOptions) == hubManagedClusterName {
+			Skip("Skip the case for local-cluster since no observability addon")
+		}
 	})
 
 	JustBeforeEach(func() {
@@ -102,17 +105,18 @@ var _ = Describe("Observability:", func() {
 		It("[Stable] Waiting for check no metric data in grafana console", func() {
 			Eventually(func() error {
 				for _, cluster := range clusters {
-					err, hasMetric := utils.ContainManagedClusterMetric(
+					res, err := utils.QueryGrafana(
 						testOptions,
 						`timestamp(node_memory_MemAvailable_bytes{cluster="`+cluster+`}) - timestamp(node_memory_MemAvailable_bytes{cluster=`+cluster+`"} offset 1m) > 59`,
-						[]string{`"__name__":"node_memory_MemAvailable_bytes"`},
 					)
-					if err != nil && !hasMetric &&
-						strings.Contains(err.Error(), "failed to find metric name from response") {
-						return nil
+					if err != nil {
+						return err
+					}
+					if len(res.Data.Result) != 0 {
+						return fmt.Errorf("Grafa console still has metric data: %v", res.Data.Result)
 					}
 				}
-				return fmt.Errorf("Check no metric data in grafana console error: %w", err)
+				return nil
 			}, EventuallyTimeoutMinute*2, EventuallyIntervalSecond*5).Should(Succeed())
 		})
 
@@ -216,10 +220,7 @@ var _ = Describe("Observability:", func() {
 
 	AfterEach(func() {
 		if CurrentGinkgoTestDescription().Failed {
-			utils.PrintMCOObject(testOptions)
-			utils.PrintAllMCOPodsStatus(testOptions)
-			utils.PrintAllOBAPodsStatus(testOptions)
-			utils.PrintManagedClusterOBAObject(testOptions)
+			utils.LogFailingTestStandardDebugInfo(testOptions)
 		}
 		testFailed = testFailed || CurrentGinkgoTestDescription().Failed
 	})
