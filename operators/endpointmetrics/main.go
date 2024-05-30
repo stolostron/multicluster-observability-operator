@@ -94,27 +94,32 @@ func main() {
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "7c30ca38.open-cluster-management.io",
 		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
-			namespaceFieldSelector := fields.Set{"metadata.namespace": os.Getenv("WATCH_NAMESPACE")}.AsSelector()
+			watchNS := os.Getenv("WATCH_NAMESPACE")
 
 			// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behavior, which
 			// means MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
 			// Adding selector will reduce the cache size when the managedcluster scale.
 			opts.ByObject = map[client.Object]cache.ByObject{
 				&v1.Secret{}: {
-					Field: namespaceFieldSelector,
+					Namespaces: map[string]cache.Config{
+						watchNS: {},
+					},
 				},
 				&v1.ConfigMap{}: {
-					Field: namespaceFieldSelector,
-				},
-				&v1.ConfigMap{}: {
-					Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.name==%s,metadata.namespace!=open-cluster-management-observability",
-						operatorconfig.AllowlistCustomConfigMapName)),
+					Namespaces: map[string]cache.Config{
+						cache.AllNamespaces: {FieldSelector: fields.ParseSelectorOrDie("metadata.namespace=" + operatorconfig.AllowlistConfigMapName)},
+						watchNS:             {},
+					},
 				},
 				&appsv1.Deployment{}: {
-					Field: namespaceFieldSelector,
+					Namespaces: map[string]cache.Config{
+						watchNS: {},
+					},
 				},
 				&oav1beta1.ObservabilityAddon{}: {
-					Field: namespaceFieldSelector,
+					Namespaces: map[string]cache.Config{
+						watchNS: {},
+					},
 				},
 			}
 			// Only watch MCO CRs in the hub cluster to avoid noisy log messages
