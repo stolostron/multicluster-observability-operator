@@ -180,13 +180,14 @@ func main() {
 			// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behavior, which
 			// means MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
 			// Adding selector will reduce the cache size when the managedcluster scale.
+
 			opts.ByObject = map[client.Object]cache.ByObject{
 				&corev1.Secret{}: byObjectWithDefaultNamespace,
 				&corev1.Secret{}: {
-					Field: fields.Set{"metadata.namespace": mcoconfig.OpenshiftIngressOperatorCRName}.AsSelector(),
+					Field: fields.Set{"metadata.namespace": mcoconfig.OpenshiftIngressOperatorNamespace}.AsSelector(),
 				},
 				&corev1.Secret{}: {
-					Field: fields.Set{"metadata.namespace": mcoconfig.OpenshiftIngressOperatorNamespace}.AsSelector(),
+					Field: fields.Set{"metadata.namespace": mcoconfig.OpenshiftIngressNamespace}.AsSelector(),
 				},
 				&corev1.ConfigMap{}:      byObjectWithDefaultNamespace,
 				&corev1.Service{}:        byObjectWithDefaultNamespace,
