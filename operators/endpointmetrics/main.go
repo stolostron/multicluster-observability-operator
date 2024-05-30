@@ -90,6 +90,8 @@ func main() {
 	cacheOptions.DefaultNamespaces = map[string]cache.Config{
 		cache.AllNamespaces: {},
 	}
+	cacheOptions.DefaultLabelSelector = labels.Everything()
+	cacheOptions.DefaultFieldSelector = fields.Everything()
 	watchNS := os.Getenv("WATCH_NAMESPACE")
 
 	// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behavior, which
