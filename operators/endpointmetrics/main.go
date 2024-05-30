@@ -20,7 +20,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -88,7 +87,6 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	watchNamespace := os.Getenv("WATCH_NAMESPACE")
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsserver.Options{BindAddress: metricsAddr},
@@ -96,7 +94,7 @@ func main() {
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "7c30ca38.open-cluster-management.io",
 		NewCache: func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
-			namespaceFieldSelector := fields.Set{"metadata.namespace": watchNamespace}.AsSelector()
+			namespaceFieldSelector := fields.Set{"metadata.namespace": os.Getenv("WATCH_NAMESPACE")}.AsSelector()
 
 			// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behavior, which
 			// means MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
@@ -106,10 +104,11 @@ func main() {
 					Field: namespaceFieldSelector,
 				},
 				&v1.ConfigMap{}: {
-					Namespaces: map[string]cache.Config{
-						watchNamespace:      {LabelSelector: labels.Everything()},
-						cache.AllNamespaces: {FieldSelector: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.name==%s", operatorconfig.AllowlistCustomConfigMapName))},
-					},
+					Field: namespaceFieldSelector,
+				},
+				&v1.ConfigMap{}: {
+					Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.name==%s,metadata.namespace!=open-cluster-management-observability",
+						operatorconfig.AllowlistCustomConfigMapName)),
 				},
 				&appsv1.Deployment{}: {
 					Field: namespaceFieldSelector,
@@ -151,7 +150,7 @@ func main() {
 
 	namespace := os.Getenv("NAMESPACE")
 	if namespace == "" {
-		namespace = watchNamespace
+		namespace = os.Getenv("WATCH_NAMESPACE")
 	}
 	if err = (&statusctl.StatusReconciler{
 		Client:       mgr.GetClient(),
