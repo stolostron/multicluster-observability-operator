@@ -118,7 +118,7 @@ func getCommands(params CollectorParams) []string {
 	for _, group := range params.allowlist.CollectRuleGroupList {
 		if group.Selector.MatchExpression != nil {
 			for _, expr := range group.Selector.MatchExpression {
-				if hubMetricsCollector {
+				if isHubMetricsCollector {
 					if !evluateMatchExpression(expr, clusterID, params.clusterType, params.hubInfo,
 						params.allowlist, params.nodeSelector, params.tolerations, params.replicaCount) {
 						continue
@@ -368,7 +368,7 @@ func createDeployment(params CollectorParams) *appsv1.Deployment {
 			})
 	}
 
-	if hubMetricsCollector {
+	if isHubMetricsCollector {
 		// to avoid hub metrics collector from sending status
 		metricsCollectorDep.Spec.Template.Spec.Containers[0].Env = append(metricsCollectorDep.Spec.Template.Spec.Containers[0].Env,
 			corev1.EnvVar{

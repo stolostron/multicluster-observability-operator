@@ -118,7 +118,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	hubClient, err := util.GetOrCreateHubClient(false, scheme)
+	hubClientWithReload, err := util.NewReloadableHubClient(os.Getenv("HUB_KUBECONFIG"), mgr.GetScheme())
 	if err != nil {
 		setupLog.Error(err, "Failed to create the hub client")
 		os.Exit(1)
@@ -127,15 +127,23 @@ func main() {
 	if err = (&obsepctl.ObservabilityAddonReconciler{
 		Client:    mgr.GetClient(),
 		Scheme:    mgr.GetScheme(),
-		HubClient: hubClient,
+		HubClient: hubClientWithReload,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ObservabilityAddon")
 		os.Exit(1)
 	}
+
+	namespace := os.Getenv("NAMESPACE")
+	if namespace == "" {
+		namespace = os.Getenv("WATCH_NAMESPACE")
+	}
 	if err = (&statusctl.StatusReconciler{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		HubClient: hubClient,
+		Client:       mgr.GetClient(),
+		HubClient:    hubClientWithReload,
+		Namespace:    namespace,
+		HubNamespace: os.Getenv("HUB_NAMESPACE"),
+		ObsAddonName: "observability-addon",
+		Logger:       ctrl.Log.WithName("controllers").WithName("Status"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Status")
 		os.Exit(1)

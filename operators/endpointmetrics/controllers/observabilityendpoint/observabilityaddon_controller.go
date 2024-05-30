@@ -63,16 +63,16 @@ const (
 )
 
 var (
-	namespace           = os.Getenv("WATCH_NAMESPACE")
-	hubNamespace        = os.Getenv("HUB_NAMESPACE")
-	hubMetricsCollector = os.Getenv("HUB_ENDPOINT_OPERATOR") == "true"
+	namespace             = os.Getenv("WATCH_NAMESPACE")
+	hubNamespace          = os.Getenv("HUB_NAMESPACE")
+	isHubMetricsCollector = os.Getenv("HUB_ENDPOINT_OPERATOR") == "true"
 )
 
 // ObservabilityAddonReconciler reconciles a ObservabilityAddon object.
 type ObservabilityAddonReconciler struct {
 	Client    client.Client
 	Scheme    *runtime.Scheme
-	HubClient client.Client
+	HubClient *util.ReloadableHubClient
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io.open-cluster-management.io,resources=observabilityaddons,verbs=get;list;watch;create;update;patch;delete
@@ -104,24 +104,28 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	// ACM 8509: Special case for hub/local cluster metrics collection
 	// We do not have an ObservabilityAddon instance in the local cluster so skipping the below block
-	if !hubMetricsCollector {
+	if !isHubMetricsCollector {
 		if err := r.ensureOpenShiftMonitoringLabelAndRole(ctx); err != nil {
 			return ctrl.Result{}, err
 		}
 
 		// Fetch the ObservabilityAddon instance in hub cluster
-		err := r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
-		if err != nil {
-			hubClient, obsAddon, err := util.RenewAndRetry(ctx, r.Scheme)
-			if err != nil {
-				return ctrl.Result{}, err
+		fetchAddon := func() error {
+			return r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
+		}
+		if err := fetchAddon(); err != nil {
+			if r.HubClient, err = r.HubClient.Reload(); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to reload the hub client: %w", err)
 			}
-			r.HubClient = hubClient
-			hubObsAddon = obsAddon
+
+			// Retry the operation once with the reloaded client
+			if err := fetchAddon(); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to get ObservabilityAddon in hub cluster: %w", err)
+			}
 		}
 
 		// Fetch the ObservabilityAddon instance in local cluster
-		err = r.Client.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: namespace}, obsAddon)
+		err := r.Client.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: namespace}, obsAddon)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				obsAddon = nil
@@ -196,7 +200,12 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 				log.Error(err, "OCP prometheus service does not exist")
 				// ACM 8509: Special case for hub/local cluster metrics collection
 				// We do not report status for hub endpoint operator
-				util.ReportStatus(ctx, r.Client, obsAddon, "NotSupported", !hubMetricsCollector)
+				if !isHubMetricsCollector {
+					if err := util.ReportStatus(ctx, r.Client, util.NotSupportedStatus, obsAddon.Name, obsAddon.Namespace); err != nil {
+						log.Error(err, "Failed to report status")
+					}
+				}
+
 				return ctrl.Result{}, nil
 			}
 			log.Error(err, "Failed to check prometheus resource")
@@ -251,8 +260,8 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	forceRestart := req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == caConfigmapName
 
-	if obsAddon.Spec.EnableMetrics || hubMetricsCollector {
-		if hubMetricsCollector {
+	if obsAddon.Spec.EnableMetrics || isHubMetricsCollector {
+		if isHubMetricsCollector {
 			mcoList := &oav1beta2.MultiClusterObservabilityList{}
 			err := r.HubClient.List(ctx, mcoList, client.InNamespace(corev1.NamespaceAll))
 			if err != nil {
@@ -274,19 +283,27 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			1,
 			forceRestart)
 		if err != nil {
-			util.ReportStatus(ctx, r.Client, obsAddon, "Degraded", !hubMetricsCollector)
-			return ctrl.Result{}, err
+			if !isHubMetricsCollector {
+				if err := util.ReportStatus(ctx, r.Client, util.DegradedStatus, obsAddon.Name, obsAddon.Namespace); err != nil {
+					log.Error(err, "Failed to report status")
+				}
+			}
+			return ctrl.Result{}, fmt.Errorf("failed to update metrics collectors: %w", err)
 		}
-		if created {
-			util.ReportStatus(ctx, r.Client, obsAddon, "Deployed", !hubMetricsCollector)
+		if created && !isHubMetricsCollector {
+			if err := util.ReportStatus(ctx, r.Client, util.DeployedStatus, obsAddon.Name, obsAddon.Namespace); err != nil {
+				log.Error(err, "Failed to report status")
+			}
 		}
 	} else {
 		deleted, err := updateMetricsCollectors(ctx, r.Client, obsAddon.Spec, *hubInfo, clusterID, clusterType, 0, false)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		if deleted {
-			util.ReportStatus(ctx, r.Client, obsAddon, "Disabled", !hubMetricsCollector)
+		if deleted && !isHubMetricsCollector {
+			if err := util.ReportStatus(ctx, r.Client, util.DisabledStatus, obsAddon.Name, obsAddon.Namespace); err != nil {
+				log.Error(err, "Failed to report status")
+			}
 		}
 	}
 
