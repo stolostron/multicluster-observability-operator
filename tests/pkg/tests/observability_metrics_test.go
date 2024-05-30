@@ -7,6 +7,7 @@ package tests
 import (
 	"context"
 	"fmt"
+	"os"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -198,39 +199,26 @@ var _ = Describe("Observability:", func() {
 
 		// Ensure that ignored metrics are not being collected
 		// This is to ensure that the ignoredMetrics list is in sync with the actual metrics being collected
-		Eventually(func() error {
-			for _, cluster := range clusters {
-				for name := range ignoredMetrics {
-					query := fmt.Sprintf("%s{cluster=\"%s\"}", name, cluster)
-					res, err := utils.QueryGrafana(testOptions, query)
-					if err != nil {
-						return fmt.Errorf("failed to get metrics %s in cluster %s: %v", name, cluster, err)
-					}
+		// Do not run if kind environment because metrics differ
+		if os.Getenv("IS_KIND_ENV") != trueStr {
+			Eventually(func() error {
+				for _, cluster := range clusters {
+					for name := range ignoredMetrics {
+						query := fmt.Sprintf("%s{cluster=\"%s\"}", name, cluster)
+						res, err := utils.QueryGrafana(testOptions, query)
+						if err != nil {
+							return fmt.Errorf("failed to get metrics %s in cluster %s: %v", name, cluster, err)
+						}
 
-					if len(res.Data.Result) != 0 {
-						return fmt.Errorf("found data for %s in cluster %s", name, cluster)
+						if len(res.Data.Result) != 0 {
+							return fmt.Errorf("found data for %s in cluster %s", name, cluster)
+						}
 					}
 				}
-			}
 
-			return nil
-		}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
-
-		// // wait for metrics to be available
-		// klog.V(1).Infof("waiting for metrics to be available...")
-		// time.Sleep(90 * time.Second)
-
-		// // Check if the metrics are available
-		// for _, name := range metricList {
-		// 	res, err := utils.QueryGrafana(testOptions, name)
-		// 	if err != nil {
-		// 		klog.Errorf("failed to get metrics %s: %v", name, err)
-		// 		continue
-		// 	}
-		// 	if len(res.Data.Result) == 0 {
-		// 		klog.Errorf("no data found for %s", name)
-		// 	}
-		// }
+				return nil
+			}, EventuallyTimeoutMinute*1, EventuallyIntervalSecond*5).Should(Succeed())
+		}
 	})
 
 	JustAfterEach(func() {
