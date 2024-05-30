@@ -162,8 +162,10 @@ func main() {
 	}
 
 	var cacheOpts cache.Options
+	cacheOpts.DefaultNamespaces = map[string]cache.Config{
+		cache.AllNamespaces: {},
+	}
 	byObjectWithOwnerLabel := cache.ByObject{Label: labels.Set{"owner": "multicluster-observability-operator"}.AsSelector()}
-	byObjectWithDefaultNamespace := cache.ByObject{Field: fields.Set{"metadata.namespace": mcoconfig.GetDefaultNamespace()}.AsSelector()}
 
 	managedClusterLabelSelector, err := labels.Parse("vendor!=auto-detect,observability!=disabled")
 	if err != nil {
@@ -176,18 +178,39 @@ func main() {
 	mcoNamespace := mcoconfig.GetMCONamespace()
 
 	cacheOpts.ByObject = map[client.Object]cache.ByObject{
-		&corev1.Secret{}: byObjectWithDefaultNamespace,
 		&corev1.Secret{}: {
-			Field: fields.Set{"metadata.namespace": mcoconfig.OpenshiftIngressOperatorNamespace}.AsSelector(),
+			Namespaces: map[string]cache.Config{
+				mcoconfig.GetDefaultNamespace():             {},
+				mcoconfig.OpenshiftIngressOperatorNamespace: {},
+				mcoconfig.OpenshiftIngressNamespace:         {},
+			},
 		},
-		&corev1.Secret{}: {
-			Field: fields.Set{"metadata.namespace": mcoconfig.OpenshiftIngressNamespace}.AsSelector(),
+		&corev1.ConfigMap{}: {
+			Namespaces: map[string]cache.Config{
+				mcoconfig.GetDefaultNamespace(): {},
+				"kube-system":                   {},
+			},
 		},
-		&corev1.ConfigMap{}:      byObjectWithDefaultNamespace,
-		&corev1.Service{}:        byObjectWithDefaultNamespace,
-		&corev1.ServiceAccount{}: byObjectWithDefaultNamespace,
-		&appsv1.Deployment{}:     byObjectWithDefaultNamespace,
-		&appsv1.StatefulSet{}:    byObjectWithDefaultNamespace,
+		&corev1.Service{}: {
+			Namespaces: map[string]cache.Config{
+				mcoconfig.GetDefaultNamespace(): {},
+			},
+		},
+		&corev1.ServiceAccount{}: {
+			Namespaces: map[string]cache.Config{
+				mcoconfig.GetDefaultNamespace(): {},
+			},
+		},
+		&appsv1.Deployment{}: {
+			Namespaces: map[string]cache.Config{
+				mcoconfig.GetDefaultNamespace(): {},
+			},
+		},
+		&appsv1.StatefulSet{}: {
+			Namespaces: map[string]cache.Config{
+				mcoconfig.GetDefaultNamespace(): {},
+			},
+		},
 		&workv1.ManifestWork{}: {
 			Label: labels.Set{"owner": "multicluster-observability-operator"}.AsSelector(),
 		},
@@ -209,16 +232,19 @@ func main() {
 
 	if mchCrdExists {
 		cacheOpts.ByObject[&mchv1.MultiClusterHub{}] = cache.ByObject{
-			Field: fields.Set{"metadata.namespace": mcoNamespace}.AsSelector(),
+			Namespaces: map[string]cache.Config{
+				mcoNamespace: {},
+			},
 		}
 	}
 
 	if ingressCtlCrdExists {
 		cacheOpts.ByObject[&operatorv1.IngressController{}] = cache.ByObject{
-			Field: fields.Set{
-				"metadata.name":      mcoconfig.OpenshiftIngressOperatorCRName,
-				"metadata.namespace": mcoconfig.OpenshiftIngressOperatorNamespace,
-			}.AsSelector(),
+			Namespaces: map[string]cache.Config{
+				mcoconfig.OpenshiftIngressNamespace: {
+					FieldSelector: fields.ParseSelectorOrDie("metadata.name==" + mcoconfig.OpenshiftIngressOperatorCRName),
+				},
+			},
 		}
 	}
 
