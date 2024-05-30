@@ -259,6 +259,7 @@ func main() {
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b9d51391.open-cluster-management.io",
 		Cache:                  cacheOpts,
+		Client:                 client.Options{Cache: &client.CacheOptions{Unstructured: true}},
 		WebhookServer: ctrlwebhook.NewServer(ctrlwebhook.Options{
 			Port: webhookPort,
 			TLSOpts: []func(*tls.Config){
