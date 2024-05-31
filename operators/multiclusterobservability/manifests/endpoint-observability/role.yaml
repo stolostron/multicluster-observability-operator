@@ -2,6 +2,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: open-cluster-management:endpoint-observability-operator
+  labels:
+    owner: "multicluster-observability-operator"
 rules:
 - apiGroups:
   - apiextensions.k8s.io
@@ -217,4 +219,3 @@ rules:
   - get
   - list
   - watch
-  
