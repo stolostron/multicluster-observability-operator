@@ -5,7 +5,6 @@
 package utils
 
 import (
-	"bufio"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -209,21 +208,6 @@ func GetDefaultMetricList(opt TestOptions) ([]string, []string) {
 	}
 
 	return allDefaultMetricName, dynamicMetricsName
-}
-
-func GetIgnoreMetricMap() map[string]bool {
-	txtlines := map[string]bool{}
-	file, err := os.Open("../testdata/ignored-metric-list")
-	if err != nil {
-		klog.Errorf("failed to open the ignored-metric-list file: %+v\n", err)
-	}
-
-	scanner := bufio.NewScanner(file)
-	scanner.Split(bufio.ScanLines)
-	for scanner.Scan() {
-		txtlines[scanner.Text()] = true
-	}
-	return txtlines
 }
 
 func getNameInMatch(match string) string {
