@@ -6,22 +6,6 @@ metadata:
       [
         {
           "apiVersion": "observability.open-cluster-management.io/v1beta1",
-          "kind": "MultiClusterObservability",
-          "metadata": {
-            "name": "observability"
-          },
-          "spec": {
-            "observabilityAddonSpec": {},
-            "storageConfigObject": {
-              "metricObjectStorage": {
-                "key": "thanos.yaml",
-                "name": "thanos-object-storage"
-              }
-            }
-          }
-        },
-        {
-          "apiVersion": "observability.open-cluster-management.io/v1beta1",
           "kind": "ObservabilityAddon",
           "metadata": {
             "name": "observability-addon"
@@ -57,11 +41,6 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: MultiClusterObservability defines the configuration for the Observability installation on Hub and Managed Clusters all through this one custom resource.
-      displayName: MultiClusterObservability
-      kind: MultiClusterObservability
-      name: multiclusterobservabilities.observability.open-cluster-management.io
-      version: v1beta1
     - description: MultiClusterObservability defines the configuration for the Observability installation on Hub and Managed Clusters all through this one custom resource.
       displayName: MultiClusterObservability
       kind: MultiClusterObservability

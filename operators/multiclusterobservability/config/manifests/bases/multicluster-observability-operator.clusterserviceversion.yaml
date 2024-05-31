@@ -14,11 +14,6 @@ spec:
       displayName: MultiClusterObservability
       kind: MultiClusterObservability
       name: multiclusterobservabilities.observability.open-cluster-management.io
-      version: v1beta1
-    - description: MultiClusterObservability defines the configuration for the Observability installation on Hub and Managed Clusters all through this one custom resource.
-      displayName: MultiClusterObservability
-      kind: MultiClusterObservability
-      name: multiclusterobservabilities.observability.open-cluster-management.io
       version: v1beta2
     - description: ObservabilityAddon is the Schema for the observabilityaddon API
       displayName: ObservabilityAddon
