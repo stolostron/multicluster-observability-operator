@@ -191,8 +191,9 @@ func main() {
 		},
 		&corev1.ConfigMap{}: {
 			Namespaces: map[string]cache.Config{
-				defaultNamespace: {},
-				"kube-system":    {},
+				defaultNamespace:       {},
+				"openshift-monitoring": {},
+				"kube-system":          {},
 			},
 		},
 		&corev1.Service{}: {
