@@ -64,7 +64,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 		var err error
 		alertmanagerRouterCA, err = config.GetAlertmanagerCA(client)
 		if err != nil {
-			log.Error(err, "Failed to CA of the Alertmanager")
+			log.Error(err, "Failed to get CA of Alertmanager")
 			return nil, err
 		}
 	}

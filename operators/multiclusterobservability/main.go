@@ -227,8 +227,16 @@ func main() {
 		&addonv1alpha1.ManagedClusterAddOn{}: {
 			Field: fields.Set{"metadata.name": util.ManagedClusterAddonName}.AsSelector(),
 		},
-		&rbacv1.Role{}:                       byObjectWithOwnerLabel,
-		&rbacv1.RoleBinding{}:                byObjectWithOwnerLabel,
+		&rbacv1.Role{}: {
+			Namespaces: map[string]cache.Config{
+				defaultNamespace: {},
+			},
+		},
+		&rbacv1.RoleBinding{}: {
+			Namespaces: map[string]cache.Config{
+				defaultNamespace: {},
+			},
+		},
 		&rbacv1.ClusterRole{}:                byObjectWithOwnerLabel,
 		&rbacv1.ClusterRoleBinding{}:         byObjectWithOwnerLabel,
 		&addonv1alpha1.ManagedClusterAddOn{}: byObjectWithOwnerLabel,

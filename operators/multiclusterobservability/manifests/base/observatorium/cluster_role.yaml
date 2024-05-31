@@ -5,6 +5,7 @@ metadata:
     app.kubernetes.io/component: controller
     app.kubernetes.io/name: observatorium-operator
     app.kubernetes.io/version: v0.1
+    owner: multicluster-observability-operator
   name: open-cluster-management:observatorium-operator
 rules:
 - apiGroups:
