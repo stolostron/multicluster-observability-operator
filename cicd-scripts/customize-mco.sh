@@ -124,69 +124,11 @@ get_changed_components() {
 
 # function get_ginkgo_focus is to get the required cases
 get_ginkgo_focus() {
-  if [ "${OPENSHIFT_CI}" == "true" ]; then
-    changed_files=$(
-      cd $ROOTDIR
-      git diff --name-only HEAD~1
-    )
-    for file in ${changed_files}; do
-      if [[ ${file} =~ ^proxy ]]; then
-        GINKGO_FOCUS+=" --focus grafana/g0 --focus metrics/g0"
-        continue
-      fi
-      if [[ ${file} =~ ^collectors/metrics ]]; then
-        GINKGO_FOCUS+=" --focus grafana/g0 --focus metrics/g0 --focus addon/g0"
-        continue
-      fi
-      if [[ ${file} =~ ^operators/endpointmetrics ]]; then
-        GINKGO_FOCUS+=" --focus grafana/g0 --focus metrics/g0 --focus addon/g0 --focus endpoint_preserve/g0"
-        continue
-      fi
-      if [[ ${file} =~ ^loaders/dashboards ]]; then
-        GINKGO_FOCUS+=" --focus grafana/g0 --focus metrics/g0 --focus addon/g0"
-        continue
-      fi
-      if [[ $file =~ ^operators/multiclusterobservability ]]; then
-        GINKGO_FOCUS+=" --focus addon/g0 --focus config/g0 --focus alert/g0 --focus alertforward/g0 --focus certrenew/g0 --focus grafana/g0 --focus grafana_dev/g0 --focus dashboard/g0 --focus manifestwork/g0 --focus metrics/g0 --focus observatorium_preserve/g0 --focus reconcile/g0 --focus retention/g0 --focus export/g0"
-        continue
-      fi
-      if [[ $file =~ ^operators/pkg ]]; then
-        GINKGO_FOCUS+=" --focus addon/g0 --focus config/g0 --focus alert/g0 --focus alertforward/g0  --focus certrenew/g0 --focus grafana/g0 --focus grafana_dev/g0 --focus dashboard/g0 --focus manifestwork/g0 --focus metrics/g0 --focus observatorium_preserve/g0 --focus reconcile/g0 --focus retention/g0 --focus endpoint_preserve/g0 --focus export/g0"
-        continue
-      fi
-      if [[ ${file} =~ ^pkg ]]; then
-        # test all cases
-        GINKGO_FOCUS=""
-        break
-      fi
-      if [[ $file =~ ^examples/alerts ]]; then
-        GINKGO_FOCUS+=" --focus alert/g0 --focus alertforward/g0"
-        continue
-      fi
-      if [[ ${file} =~ ^examples/dashboards ]]; then
-        GINKGO_FOCUS+=" --focus dashboard/g0"
-        continue
-      fi
-      if [[ ${file} =~ ^examples/metrics ]]; then
-        GINKGO_FOCUS+=" --focus metrics/g0"
-        continue
-      fi
-      if [[ ${file} =~ ^tests ]]; then
-        GINKGO_FOCUS+=" --focus $(echo ${file} | cut -d '/' -f4 | sed -En 's/observability_(.*)_test.go/\1/p')/g0"
-        continue
-      fi
-      if [[ ${file} =~ ^tools ]]; then
-        GINKGO_FOCUS+=" --focus grafana_dev/g0"
-        continue
-      fi
-    done
-  fi
-
   if [[ -n ${IS_KIND_ENV} ]]; then
     # For KinD cluster, do not need to run all test cases
     GINKGO_FOCUS=" --focus manifestwork/g0 --focus endpoint_preserve/g0 --focus grafana/g0 --focus metrics/g0 --focus addon/g0 --focus alert/g0 --focus dashboard/g0"
   else
-    GINKGO_FOCUS=$(echo "${GINKGO_FOCUS}" | xargs -n2 | sort -u | xargs)
+    GINKGO_FOCUS=""
   fi
   echo "Test focuses are ${GINKGO_FOCUS}"
 }
