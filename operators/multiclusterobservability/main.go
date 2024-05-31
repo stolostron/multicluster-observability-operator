@@ -185,6 +185,7 @@ func main() {
 		&corev1.Secret{}: {
 			Namespaces: map[string]cache.Config{
 				defaultNamespace: {},
+				mcoNamespace:     {},
 				mcoconfig.OpenshiftIngressOperatorNamespace: {},
 				mcoconfig.OpenshiftIngressNamespace:         {},
 			},
