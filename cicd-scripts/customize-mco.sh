@@ -29,33 +29,26 @@ update_mco_cr() {
   if [ "${OPENSHIFT_CI}" == "true" ]; then
     # discard unstaged changes
     cd ${ROOTDIR} && git checkout -- .
-    for component_name in ${CHANGED_COMPONENTS}; do
-      component_anno_name=$(echo ${component_name} | sed 's/-/_/g')
-      get_image ${component_name}
-      ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-${component_anno_name}-image: ${IMAGE}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
-      ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-${component_anno_name}-image: ${IMAGE}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
-    done
-  else
-    if [[ -n ${RBAC_QUERY_PROXY_IMAGE_REF} ]]; then
-      ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-rbac_query_proxy-image: ${RBAC_QUERY_PROXY_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
-      ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-rbac_query_proxy-image: ${RBAC_QUERY_PROXY_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
-    fi
-    if [[ -n ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF} ]]; then
-      ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-endpoint_monitoring_operator-image: ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
-      ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-endpoint_monitoring_operator-image: ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
-    fi
-    if [[ -n ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF} ]]; then
-      ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-grafana_dashboard_loader-image: ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
-      ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-grafana_dashboard_loader-image: ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
-    fi
-    if [[ -n ${METRICS_COLLECTOR_IMAGE_REF} ]]; then
-      ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${METRICS_COLLECTOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
-      ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${METRICS_COLLECTOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
-    fi
-    if [[ -n ${OBSERVATORIUM_OPERATOR_IMAGE_REF} ]]; then
-      ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-observatorium_operator-image: ${OBSERVATORIUM_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
-      ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${OBSERVATORIUM_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
-    fi
+  fi
+  if [[ -n ${RBAC_QUERY_PROXY_IMAGE_REF} ]]; then
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-rbac_query_proxy-image: ${RBAC_QUERY_PROXY_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-rbac_query_proxy-image: ${RBAC_QUERY_PROXY_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+  fi
+  if [[ -n ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF} ]]; then
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-endpoint_monitoring_operator-image: ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-endpoint_monitoring_operator-image: ${ENDPOINT_MONITORING_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+  fi
+  if [[ -n ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF} ]]; then
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-grafana_dashboard_loader-image: ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-grafana_dashboard_loader-image: ${GRAFANA_DASHBOARD_LOADER_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+  fi
+  if [[ -n ${METRICS_COLLECTOR_IMAGE_REF} ]]; then
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${METRICS_COLLECTOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${METRICS_COLLECTOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
+  fi
+  if [[ -n ${OBSERVATORIUM_OPERATOR_IMAGE_REF} ]]; then
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-observatorium_operator-image: ${OBSERVATORIUM_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta1/observability.yaml
+    ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-metrics_collector-image: ${OBSERVATORIUM_OPERATOR_IMAGE_REF}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
   fi
 
   # Add mco-imageTagSuffix annotation
