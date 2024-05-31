@@ -95,9 +95,6 @@ func main() {
 	cacheOptions.DefaultFieldSelector = fields.Everything()
 	watchNS := os.Getenv("WATCH_NAMESPACE")
 
-	// The following RBAC resources will not be watched by MCO, the selector will not impact the mco behavior, which
-	// means MCO will fetch kube-apiserver for the correspoding resource if the resource can't be found in the cache.
-	// Adding selector will reduce the cache size when the managedcluster scale.
 	cacheOptions.ByObject = map[client.Object]cache.ByObject{
 		&v1.Secret{}: {
 			Namespaces: map[string]cache.Config{
