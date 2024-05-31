@@ -197,6 +197,11 @@ func main() {
 				"kube-system":          {},
 			},
 		},
+		&prometheusv1.ServiceMonitor{}: {
+			Namespaces: map[string]cache.Config{
+				"openshift-monitoring": {},
+			},
+		},
 		&corev1.Service{}: {
 			Namespaces: map[string]cache.Config{
 				defaultNamespace: {},
