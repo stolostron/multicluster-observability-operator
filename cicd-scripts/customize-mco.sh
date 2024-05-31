@@ -118,7 +118,7 @@ get_ginkgo_focus() {
       cd $ROOTDIR
       git diff --name-only HEAD~1
     )
-    GINKGO_FOCUS+=" --focus ssli/g1"
+    GINKGO_FOCUS+=" --focus metrics/g0"
     # for file in ${changed_files}; do
     #   if [[ ${file} =~ ^proxy ]]; then
     #     GINKGO_FOCUS+=" --focus grafana/g0 --focus metrics/g0"
