@@ -234,15 +234,15 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// handle storagesize changes
-	err = r.HandleStorageSizeChange(instance)
-	if err != nil {
-		return reconcile.Result{}, err
+	result, err := r.HandleStorageSizeChange(instance)
+	if result != nil {
+		return *result, err
 	}
 
 	// set operand names to cover the upgrade case since we have name changed in new release
 	err = config.SetOperandNames(r.Client)
 	if err != nil {
-		return reconcile.Result{}, err
+		return *result, err
 	}
 	instance.Spec.StorageConfig.StorageClass = storageClassSelected
 	// Render the templates with a specified CR
@@ -292,7 +292,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// in testing env, the local-cluster is the only allowed managedcluster
 	if ingressCtlCrdExists {
 		// expose alertmanager through route
-		result, err := GenerateAlertmanagerRoute(r.Client, r.Scheme, instance)
+		result, err = GenerateAlertmanagerRoute(r.Client, r.Scheme, instance)
 		if result != nil {
 			return *result, err
 		}
@@ -327,7 +327,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// create an Observatorium CR
-	result, err := GenerateObservatoriumCR(r.Client, r.Scheme, instance)
+	result, err = GenerateObservatoriumCR(r.Client, r.Scheme, instance)
 	if result != nil {
 		return *result, err
 	}
@@ -528,7 +528,7 @@ func checkStorageChanged(mcoOldConfig, mcoNewConfig *mcov1beta2.StorageConfig) {
 // 2. Removed StatefulSet and
 // wait for operator to re-create the StatefulSet with the correct size on the claim
 func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
-	mco *mcov1beta2.MultiClusterObservability) error {
+	mco *mcov1beta2.MultiClusterObservability) (*reconcile.Result, error) {
 
 	if isAlertmanagerStorageSizeChanged {
 		isAlertmanagerStorageSizeChanged = false
@@ -538,7 +538,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 				"alertmanager": "observability",
 			}, mco.Spec.StorageConfig.AlertmanagerStorageSize)
 		if err != nil {
-			return err
+			return &reconcile.Result{}, err
 		}
 	}
 
@@ -550,7 +550,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 				"app.kubernetes.io/name":     "thanos-receive",
 			}, mco.Spec.StorageConfig.ReceiveStorageSize)
 		if err != nil {
-			return err
+			return &reconcile.Result{}, err
 		}
 	}
 
@@ -562,7 +562,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 				"app.kubernetes.io/name":     "thanos-compact",
 			}, mco.Spec.StorageConfig.CompactStorageSize)
 		if err != nil {
-			return err
+			return &reconcile.Result{}, err
 		}
 	}
 
@@ -574,7 +574,7 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 				"app.kubernetes.io/name":     "thanos-rule",
 			}, mco.Spec.StorageConfig.RuleStorageSize)
 		if err != nil {
-			return err
+			return &reconcile.Result{}, err
 		}
 	}
 
@@ -586,10 +586,10 @@ func (r *MultiClusterObservabilityReconciler) HandleStorageSizeChange(
 				"app.kubernetes.io/name":     "thanos-store",
 			}, mco.Spec.StorageConfig.StoreStorageSize)
 		if err != nil {
-			return err
+			return &reconcile.Result{}, err
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func updateStorageSizeChange(c client.Client, matchLabels map[string]string, storageSize string) error {
