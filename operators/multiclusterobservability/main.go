@@ -200,6 +200,8 @@ func main() {
 		&prometheusv1.ServiceMonitor{}: {
 			Namespaces: map[string]cache.Config{
 				"openshift-monitoring": {},
+				mcoNamespace:           {},
+				defaultNamespace:       {},
 			},
 		},
 		&corev1.Service{}: {
@@ -207,6 +209,7 @@ func main() {
 				defaultNamespace: {},
 			},
 		},
+		&corev1.Namespace{}: {},
 		&corev1.ServiceAccount{}: {
 			Namespaces: map[string]cache.Config{
 				defaultNamespace: {},
@@ -315,7 +318,6 @@ func main() {
 		mcoconfig.IngressControllerCRD:           ingressCtlCrdExists,
 		mcoconfig.MCGHCrdName:                    mcghCrdExists,
 	}
-
 	if err = (&mcoctrl.MultiClusterObservabilityReconciler{
 		Manager:    mgr,
 		Client:     mgr.GetClient(),
