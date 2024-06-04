@@ -12,7 +12,6 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
-	"github.com/IBM/controller-filtered-cache/filteredcache"
 	ocinfrav1 "github.com/openshift/api/config/v1"
 	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -20,14 +19,19 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	ctrlwebhook "sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	obsepctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/observabilityendpoint"
 	statusctl "github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/status"
@@ -83,39 +87,53 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	namespaceSelector := fmt.Sprintf("metadata.namespace==%s", os.Getenv("WATCH_NAMESPACE"))
-	gvkLabelMap := map[schema.GroupVersionKind][]filteredcache.Selector{
-		v1.SchemeGroupVersion.WithKind("Secret"): {
-			{FieldSelector: namespaceSelector},
+	var cacheOptions cache.Options
+	cacheOptions.DefaultNamespaces = map[string]cache.Config{
+		cache.AllNamespaces: {},
+	}
+	cacheOptions.DefaultLabelSelector = labels.Everything()
+	cacheOptions.DefaultFieldSelector = fields.Everything()
+	watchNS := os.Getenv("WATCH_NAMESPACE")
+
+	cacheOptions.ByObject = map[client.Object]cache.ByObject{
+		&v1.Secret{}: {
+			Namespaces: map[string]cache.Config{
+				watchNS: {},
+			},
 		},
-		v1.SchemeGroupVersion.WithKind("ConfigMap"): {
-			{FieldSelector: namespaceSelector},
-			{FieldSelector: fmt.Sprintf("metadata.name==%s,metadata.namespace!=%s",
-				operatorconfig.AllowlistCustomConfigMapName, "open-cluster-management-observability")},
+		&v1.ConfigMap{}: {
+			Namespaces: map[string]cache.Config{
+				cache.AllNamespaces: {FieldSelector: fields.ParseSelectorOrDie("metadata.namespace=" + operatorconfig.AllowlistConfigMapName)},
+				watchNS:             {},
+			},
 		},
-		appsv1.SchemeGroupVersion.WithKind("Deployment"): {
-			{FieldSelector: namespaceSelector},
+		&appsv1.Deployment{}: {
+			Namespaces: map[string]cache.Config{
+				watchNS: {},
+			},
 		},
-		oav1beta1.GroupVersion.WithKind("ObservabilityAddon"): {
-			{FieldSelector: namespaceSelector},
+		&oav1beta1.ObservabilityAddon{}: {
+			Namespaces: map[string]cache.Config{
+				watchNS: {},
+			},
 		},
 	}
-
 	// Only watch MCO CRs in the hub cluster to avoid noisy log messages
 	if os.Getenv("HUB_ENDPOINT_OPERATOR") == "true" {
-		gvkLabelMap[oav1beta2.GroupVersion.WithKind("MultiClusterObservability")] = []filteredcache.Selector{
-			{FieldSelector: "metadata.name!=null"},
+		cacheOptions.ByObject[&oav1beta2.MultiClusterObservability{}] = cache.ByObject{
+			Field: fields.ParseSelectorOrDie("metadata.name!=null"),
 		}
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
+		Metrics:                metricsserver.Options{BindAddress: metricsAddr},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "7c30ca38.open-cluster-management.io",
-		NewCache:               filteredcache.NewEnhancedFilteredCacheBuilder(gvkLabelMap),
+		Cache:                  cacheOptions,
+		Client:                 client.Options{Cache: &client.CacheOptions{Unstructured: true}},
+		WebhookServer:          ctrlwebhook.NewServer(ctrlwebhook.Options{Port: 9443}),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -158,7 +176,7 @@ func main() {
 		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)
 	}
-	if err := operatorsutil.RegisterDebugEndpoint(mgr.AddMetricsExtraHandler); err != nil {
+	if err := operatorsutil.RegisterDebugEndpoint(mgr.AddMetricsServerExtraHandler); err != nil {
 		setupLog.Error(err, "unable to set up debug handler")
 		os.Exit(1)
 	}
