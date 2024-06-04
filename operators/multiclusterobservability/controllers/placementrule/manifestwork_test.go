@@ -20,14 +20,15 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	workv1 "open-cluster-management.io/api/work/v1"
+
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
-	clusterv1 "open-cluster-management.io/api/cluster/v1"
-	workv1 "open-cluster-management.io/api/work/v1"
 )
 
 const (
@@ -72,6 +73,10 @@ func newTestMCOWithAlertDisableAnnotation() *mcov1beta2.MultiClusterObservabilit
 
 func newTestPullSecret() *corev1.Secret {
 	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pullSecretName,
 			Namespace: mcoNamespace,
@@ -84,6 +89,10 @@ func newTestPullSecret() *corev1.Secret {
 
 func newCASecret() *corev1.Secret {
 	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.ServerCACerts,
 			Namespace: mcoNamespace,
@@ -100,6 +109,10 @@ func newCertSecret(namespaces ...string) *corev1.Secret {
 		ns = namespaces[0]
 	}
 	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      managedClusterObsCertName,
 			Namespace: ns,
@@ -113,6 +126,10 @@ func newCertSecret(namespaces ...string) *corev1.Secret {
 
 func NewMetricsAllowListCM() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ConfigMap",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      operatorconfig.AllowlistConfigMapName,
 			Namespace: mcoNamespace,
@@ -184,6 +201,10 @@ func NewMetricsAllowListCM() *corev1.ConfigMap {
 
 func NewMetricsCustomAllowListCM() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ConfigMap",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.AllowlistCustomConfigMapName,
 			Namespace: mcoNamespace,
@@ -225,6 +246,10 @@ func NewCorruptMetricsCustomAllowListCM() *corev1.ConfigMap {
 
 func NewAmAccessorSA() *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ServiceAccount",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.AlertmanagerAccessorSAName,
 			Namespace: mcoNamespace,
@@ -238,6 +263,10 @@ func NewAmAccessorSA() *corev1.ServiceAccount {
 
 func NewAmAccessorTokenSecret() *corev1.Secret {
 	return &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.AlertmanagerAccessorSecretName + "-token-xxx",
 			Namespace: mcoNamespace,
@@ -251,6 +280,10 @@ func NewAmAccessorTokenSecret() *corev1.Secret {
 
 func newCluster(name string, annotation map[string]string) *clusterv1.ManagedCluster {
 	return &clusterv1.ManagedCluster{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ManagedCluster",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Annotations: annotation,
@@ -308,7 +341,9 @@ func TestManifestWork(t *testing.T) {
 				fmt.Sprintf("%s.%s", namespace, "custorm_pull_secret"))}),
 		newPullSecret("custorm_pull_secret", namespace, []byte("custorm")),
 	}
-	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	c := fake.NewClientBuilder().
+		WithRuntimeObjects(objs...).
+		Build()
 
 	defer setupTest(t)()
 
@@ -322,6 +357,10 @@ func TestManifestWork(t *testing.T) {
 	}
 
 	addonConfig := &addonv1alpha1.AddOnDeploymentConfig{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "AddOnDeploymentConfig",
+			APIVersion: "v1alpha1",
+		},
 		Spec: addonv1alpha1.AddOnDeploymentConfigSpec{
 			NodePlacement: &addonv1alpha1.NodePlacement{
 				NodeSelector: map[string]string{
@@ -344,7 +383,19 @@ func TestManifestWork(t *testing.T) {
 		},
 	}
 
-	err = createManifestWorks(c, namespace, clusterName, newTestMCO(), works, metricsAllowlistConfigMap, crdWork, endpointMetricsOperatorDeploy, hubInfoSecret, addonConfig, false)
+	err = createManifestWorks(
+		c,
+		namespace,
+		clusterName,
+		newTestMCO(),
+		works,
+		metricsAllowlistConfigMap,
+		crdWork,
+		endpointMetricsOperatorDeploy,
+		hubInfoSecret,
+		addonConfig,
+		false,
+	)
 	if err != nil {
 		t.Fatalf("Failed to create manifestworks: (%v)", err)
 	}

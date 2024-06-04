@@ -20,6 +20,7 @@ import (
 
 	clientmodel "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+
 	rlogger "github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 )
 
@@ -61,9 +62,9 @@ func SimulateMetrics(logger log.Logger) []*clientmodel.MetricFamily {
 		sb.WriteString(fmt.Sprintf("%f %d", randFloat64(), timestamp))
 		sb.WriteString("\n")
 	}
-	//rlogger.Log(logger, rlogger.Error, "data", sb.String())
+	// rlogger.Log(logger, rlogger.Error, "data", sb.String())
 	r := io.NopCloser(bytes.NewReader([]byte(sb.String())))
-	decoder := expfmt.NewDecoder(r, expfmt.FmtText)
+	decoder := expfmt.NewDecoder(r, expfmt.NewFormat(expfmt.TypeProtoText))
 	for {
 		family := &clientmodel.MetricFamily{}
 		families = append(families, family)

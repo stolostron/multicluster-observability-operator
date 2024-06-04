@@ -69,9 +69,9 @@ func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValu
 		}
 
 		// wait 10s for the created managedclusteraddon ready
-		if errPoll := wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
+		if errPoll := wait.PollUntilContextTimeout(context.Background(), 2*time.Second, 10*time.Second, true, func(ctx context.Context) (bool, error) {
 			if err := c.Get(
-				context.TODO(),
+				ctx,
 				types.NamespacedName{
 					Name:      ManagedClusterAddonName,
 					Namespace: namespace,

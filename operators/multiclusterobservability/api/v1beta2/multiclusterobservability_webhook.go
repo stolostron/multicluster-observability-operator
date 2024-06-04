@@ -16,6 +16,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // +kubebuilder:docs-gen:collapse=Go imports
@@ -36,23 +37,23 @@ func (mco *MultiClusterObservability) SetupWebhookWithManager(mgr ctrl.Manager) 
 var _ webhook.Validator = &MultiClusterObservability{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (mco *MultiClusterObservability) ValidateCreate() error {
+func (mco *MultiClusterObservability) ValidateCreate() (admission.Warnings, error) {
 	multiclusterobservabilitylog.Info("validate create", "name", mco.Name)
-	return mco.validateMultiClusterObservability(nil)
+	return nil, mco.validateMultiClusterObservability(nil)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (mco *MultiClusterObservability) ValidateUpdate(old runtime.Object) error {
+func (mco *MultiClusterObservability) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	multiclusterobservabilitylog.Info("validate update", "name", mco.Name)
-	return mco.validateMultiClusterObservability(old)
+	return nil, mco.validateMultiClusterObservability(old)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (mco *MultiClusterObservability) ValidateDelete() error {
+func (mco *MultiClusterObservability) ValidateDelete() (admission.Warnings, error) {
 	multiclusterobservabilitylog.Info("validate delete", "name", mco.Name)
 
 	// no validation logic upon object delete.
-	return nil
+	return nil, nil
 }
 
 // validateMultiClusterObservability validates  the name and the spec of the MultiClusterObservability CR.
