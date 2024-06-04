@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: multicluster-observability-addon-manager
+    app.kubernetes.io/name: multicluster-observability-addon-manager
+    app.kubernetes.io/part-of: multicluster-observability-addon
+  name: multicluster-observability-addon-manager
+  namespace: open-cluster-management-observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: multicluster-observability-addon-manager
+  template:
+    metadata:
+      labels:
+        app: multicluster-observability-addon-manager
+    spec:
+      serviceAccountName: multicluster-observability-addon-manager
+      containers:
+        - name: manager
+          image: quay.io/rhobs/multicluster-observability-addon:v0.0.1
+          imagePullPolicy: IfNotPresent
+          args:
+            - "controller"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            runAsNonRoot: true

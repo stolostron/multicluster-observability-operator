@@ -1,0 +1,42 @@
+apiVersion: addon.open-cluster-management.io/v1alpha1
+kind: ClusterManagementAddOn
+metadata:
+  annotations:
+    addon.open-cluster-management.io/lifecycle: addon-manager
+  labels:
+    app.kubernetes.io/component: multicluster-observability-addon-manager
+    app.kubernetes.io/name: multicluster-observability-addon-manager
+    app.kubernetes.io/part-of: multicluster-observability-addon
+  name: multicluster-observability-addon
+spec:
+  addOnMeta:
+    displayName: Multicluster Observability Addon
+    description: "multicluster-observability-addon is the addon to configure spoke clusters to collect and forward logs/traces to a given set of outputs"
+  supportedConfigs:
+    # Describes the general addon configuration applicable for all managed clusters. It includes:
+    # - Default subscription channel name for install the `Red Hat OpenShift Logging` operator on each managed cluster.
+    - group: addon.open-cluster-management.io
+      resource: addondeploymentconfigs
+      defaultConfig:
+        name: multicluster-observability-addon
+        namespace: open-cluster-management-observability
+    # Describes the default log forwarding outputs for each log type applied to all managed clusters.
+    - group: logging.openshift.io
+      resource: clusterlogforwarders
+    # Describes the default OpenTelemetryCollector type applied to all managed clusters.
+    - group: opentelemetry.io
+      resource: opentelemetrycollectors
+  installStrategy:
+    type: Placements
+    placements:
+      - name: global
+        namespace: open-cluster-management-global-set
+        configs:
+          - group: logging.openshift.io
+            resource: clusterlogforwarders
+            name: instance
+            namespace: open-cluster-management-observability
+          - group: opentelemetry.io
+            resource: opentelemetrycollectors
+            name: instance
+            namespace: open-cluster-management-observability
