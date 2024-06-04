@@ -270,7 +270,8 @@ func main() {
 		}
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	clientConfig := ctrl.GetConfigOrDie()
+	mgr, err := ctrl.NewManager(clientConfig, ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsserver.Options{BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort)},
 		HealthProbeBindAddress: probeAddr,
@@ -318,9 +319,16 @@ func main() {
 		mcoconfig.IngressControllerCRD:           ingressCtlCrdExists,
 		mcoconfig.MCGHCrdName:                    mcghCrdExists,
 	}
+
+	kubeClient, err := client.New(clientConfig, client.Options{Scheme: mgr.GetScheme(), Mapper: mgr.GetRESTMapper()})
+	if err != nil {
+		setupLog.Error(err, "Failed to create the kubernetes client")
+		os.Exit(1)
+	}
+
 	if err = (&mcoctrl.MultiClusterObservabilityReconciler{
 		Manager:    mgr,
-		Client:     mgr.GetClient(),
+		Client:     kubeClient,
 		Log:        ctrl.Log.WithName("controllers").WithName("MultiClusterObservability"),
 		Scheme:     mgr.GetScheme(),
 		CRDMap:     crdMaps,

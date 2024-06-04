@@ -125,7 +125,8 @@ func main() {
 		}
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	clientConfig := ctrl.GetConfigOrDie()
+	mgr, err := ctrl.NewManager(clientConfig, ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsserver.Options{BindAddress: metricsAddr},
 		HealthProbeBindAddress: probeAddr,
@@ -146,8 +147,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	kubeClient, err := client.New(clientConfig, client.Options{Scheme: mgr.GetScheme(), Mapper: mgr.GetRESTMapper()})
+	if err != nil {
+		setupLog.Error(err, "Failed to create the kubernetes client")
+		os.Exit(1)
+	}
+
 	if err = (&obsepctl.ObservabilityAddonReconciler{
-		Client:    mgr.GetClient(),
+		Client:    kubeClient,
 		Scheme:    mgr.GetScheme(),
 		HubClient: hubClientWithReload,
 	}).SetupWithManager(mgr); err != nil {
@@ -160,7 +167,7 @@ func main() {
 		namespace = os.Getenv("WATCH_NAMESPACE")
 	}
 	if err = (&statusctl.StatusReconciler{
-		Client:       mgr.GetClient(),
+		Client:       kubeClient,
 		HubClient:    hubClientWithReload,
 		Namespace:    namespace,
 		HubNamespace: os.Getenv("HUB_NAMESPACE"),

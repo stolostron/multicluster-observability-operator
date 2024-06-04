@@ -1046,14 +1046,14 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrBuilder.Complete(r)
 }
 
-func StartPlacementController(mgr manager.Manager, crdMap map[string]bool) error {
+func StartPlacementController(mgr manager.Manager, kubeClient client.Client, crdMap map[string]bool) error {
 	if isplacementControllerRunnning {
 		return nil
 	}
 	isplacementControllerRunnning = true
 
 	if err := (&PlacementRuleReconciler{
-		Client:     mgr.GetClient(),
+		Client:     kubeClient,
 		Log:        ctrl.Log.WithName("controllers").WithName("PlacementRule"),
 		Scheme:     mgr.GetScheme(),
 		CRDMap:     crdMap,
