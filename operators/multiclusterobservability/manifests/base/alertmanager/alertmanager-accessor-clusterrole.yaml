@@ -4,6 +4,7 @@ metadata:
   name: open-cluster-management:alertmanager-accessor
   labels:
     alertmanager: observability
+    owner: multicluster-observability-operator
 rules:
 - apiGroups:
   - ""

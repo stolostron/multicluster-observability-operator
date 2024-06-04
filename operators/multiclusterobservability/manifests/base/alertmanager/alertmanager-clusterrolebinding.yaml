@@ -4,6 +4,7 @@ metadata:
   name: open-cluster-management:alertmanager
   labels:
     alertmanager: observability
+    owner: multicluster-observability-operator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

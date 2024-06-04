@@ -2,6 +2,8 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: open-cluster-management:endpoint-observability-operator-rb
+  labels:
+    owner: multicluster-observability-operator
 subjects:
 - kind: ServiceAccount
   name: endpoint-observability-operator-sa

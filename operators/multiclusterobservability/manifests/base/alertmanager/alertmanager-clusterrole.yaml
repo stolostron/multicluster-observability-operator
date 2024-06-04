@@ -4,6 +4,7 @@ metadata:
   name: open-cluster-management:alertmanager
   labels:
     alertmanager: observability
+    owner: multicluster-observability-operator
 rules:
 - apiGroups:
   - authentication.k8s.io
@@ -25,4 +26,3 @@ rules:
   verbs:
   - get
   - watch
-
