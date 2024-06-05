@@ -7,21 +7,29 @@ package placementrule
 import (
 	"context"
 	"testing"
-	"time"
 
-	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 )
 
 func TestObsAddonCR(t *testing.T) {
 	initSchema(t)
 
 	objs := []runtime.Object{newTestObsApiRoute()}
-	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	c := fake.NewClientBuilder().
+		WithRuntimeObjects(objs...).
+		WithStatusSubresource(
+			&addonv1alpha1.ManagedClusterAddOn{},
+			&mcov1beta2.MultiClusterObservability{},
+			&mcov1beta1.ObservabilityAddon{},
+		).
+		Build()
 
 	err := createObsAddon(c, namespace)
 	if err != nil {
@@ -90,7 +98,6 @@ func TestStaleObsAddonCR(t *testing.T) {
 		t.Fatalf("Failed to get observabilityaddon: (%v)", err)
 	}
 
-	found.ObjectMeta.DeletionTimestamp = &v1.Time{Time: time.Now()}
 	found.SetFinalizers([]string{obsAddonFinalizer})
 	err = c.Update(context.TODO(), found)
 	if err != nil {

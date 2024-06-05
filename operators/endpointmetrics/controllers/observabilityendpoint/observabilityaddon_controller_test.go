@@ -22,16 +22,19 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
 
 const (
@@ -178,8 +181,32 @@ alertmanager-router-ca: |
 		},
 	}
 
-	hubClient := fake.NewClientBuilder().WithRuntimeObjects(hubObjs...).Build()
-	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	scheme := scheme.Scheme
+	addonv1alpha1.AddToScheme(scheme)
+	mcov1beta2.AddToScheme(scheme)
+	oav1beta1.AddToScheme(scheme)
+	corev1.AddToScheme(scheme)
+	clusterv1.AddToScheme(scheme)
+	ocinfrav1.AddToScheme(scheme)
+
+	hubClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithRuntimeObjects(hubObjs...).
+		WithStatusSubresource(
+			&addonv1alpha1.ManagedClusterAddOn{},
+			&mcov1beta2.MultiClusterObservability{},
+			&oav1beta1.ObservabilityAddon{},
+		).
+		Build()
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithRuntimeObjects(objs...).
+		WithStatusSubresource(
+			&addonv1alpha1.ManagedClusterAddOn{},
+			&mcov1beta2.MultiClusterObservability{},
+			&oav1beta1.ObservabilityAddon{},
+		).
+		Build()
 
 	hubClientWithReload, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) {
 		return hubClient, nil
@@ -302,7 +329,7 @@ alertmanager-router-ca: |
 		t.Fatalf("Metrics collector deployment not found: (%v)", err)
 	}
 	found.Status.ReadyReplicas = 1
-	err = c.Update(ctx, found)
+	err = c.Status().Update(ctx, found)
 	if err != nil {
 		t.Fatalf("Failed to update metrics collector deployment: (%v)", err)
 	}

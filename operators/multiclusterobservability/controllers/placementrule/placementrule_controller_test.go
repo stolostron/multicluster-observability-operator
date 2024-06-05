@@ -32,13 +32,14 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
 
-	operatorutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
-	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	workv1 "open-cluster-management.io/api/work/v1"
+
+	operatorutil "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/util"
+	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
 
 const (
@@ -77,6 +78,9 @@ func initSchema(t *testing.T) {
 	}
 	if err := workv1.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add workv1 scheme: (%v)", err)
+	}
+	if err := addonv1alpha1.AddToScheme(s); err != nil {
+		t.Fatalf("Unable to add addonv1alpha1 scheme: (%v)", err)
 	}
 	if err := mchv1.SchemeBuilder.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add mchv1 scheme: (%v)", err)
@@ -139,7 +143,7 @@ func setupTest(t *testing.T) func() {
 	manifestsPath := path.Join(wd, "../../manifests")
 	os.Setenv("TEMPLATES_PATH", testManifestsPath)
 	templates.ResetTemplates()
-	//clean up the manifest path if left over from previous test
+	// clean up the manifest path if left over from previous test
 	if fi, err := os.Lstat(testManifestsPath); err == nil && fi.Mode()&os.ModeSymlink != 0 {
 		if err = os.Remove(testManifestsPath); err != nil {
 			t.Logf("Failed to delete symlink(%s) for the test manifests: (%v)", testManifestsPath, err)
@@ -181,7 +185,15 @@ func TestObservabilityAddonController(t *testing.T) {
 	objs := []runtime.Object{mco, pull, newConsoleRoute(), newTestObsApiRoute(), newTestAlertmanagerRoute(), newTestIngressController(), newTestRouteCASecret(), newCASecret(), newCertSecret(mcoNamespace), NewMetricsAllowListCM(),
 		NewAmAccessorSA(), NewAmAccessorTokenSecret(), deprecatedRole, newClusterMgmtAddon(),
 		newAddonDeploymentConfig(defaultAddonConfigName, namespace), newAddonDeploymentConfig(addonConfigName, namespace)}
-	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	c := fake.
+		NewClientBuilder().
+		WithStatusSubresource(
+			&addonv1alpha1.ManagedClusterAddOn{},
+			&mcov1beta2.MultiClusterObservability{},
+			&mcov1beta1.ObservabilityAddon{},
+		).
+		WithRuntimeObjects(objs...).
+		Build()
 	r := &PlacementRuleReconciler{Client: c, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
 
 	defer setupTest(t)()
@@ -241,7 +253,7 @@ func TestObservabilityAddonController(t *testing.T) {
 		t.Fatalf("Failed to get addondeploymentconfig %s: (%v)", name, err)
 	}
 
-	//Change proxyconfig in addondeploymentconfig
+	// Change proxyconfig in addondeploymentconfig
 	foundAddonDeploymentConfig.Spec.ProxyConfig = addonv1alpha1.ProxyConfig{
 		HTTPProxy:  "http://test1.com",
 		HTTPSProxy: "https://test1.com",
@@ -272,7 +284,7 @@ func TestObservabilityAddonController(t *testing.T) {
 	for _, manifest := range foundManifestwork.Spec.Workload.Manifests {
 		obj, _ := util.GetObject(manifest.RawExtension)
 		if obj.GetObjectKind().GroupVersionKind().Kind == "Deployment" {
-			//Check the proxy env variables
+			// Check the proxy env variables
 			deployment := obj.(*appsv1.Deployment)
 			spec := deployment.Spec.Template.Spec
 			for _, c := range spec.Containers {

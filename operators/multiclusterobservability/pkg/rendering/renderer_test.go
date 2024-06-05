@@ -11,12 +11,11 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestRender(t *testing.T) {
@@ -61,16 +60,8 @@ func TestRender(t *testing.T) {
 	kubeClient := fake.NewClientBuilder().WithObjects(clientCa).Build()
 
 	renderer := NewMCORenderer(mchcr, kubeClient)
-	objs, err := renderer.Render()
+	_, err = renderer.Render()
 	if err != nil {
 		t.Fatalf("failed to render MultiClusterObservability: %v", err)
-	}
-
-	printObjs(t, objs)
-}
-
-func printObjs(t *testing.T, objs []*unstructured.Unstructured) {
-	for _, obj := range objs {
-		t.Log(obj)
 	}
 }

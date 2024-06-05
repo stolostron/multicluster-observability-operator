@@ -860,7 +860,7 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if e.Object.GetName() == config.AlertmanagerAccessorSAName &&
 				e.Object.GetNamespace() == config.GetDefaultNamespace() {
 				// wait 10s for access_token of alertmanager and generate the secret that contains the access_token
-				if err := wait.Poll(2*time.Second, 10*time.Second, func() (bool, error) {
+				if err := wait.PollUntilContextTimeout(context.Background(), 2*time.Second, 10*time.Second, true, func(ctx context.Context) (bool, error) {
 					var err error
 					log.Info("generate amAccessorTokenSecret for alertmanager access serviceaccount CREATE")
 					if amAccessorTokenSecret, err = generateAmAccessorTokenSecret(c); err == nil {
