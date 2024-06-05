@@ -13,6 +13,9 @@ import (
 
 // MultiClusterObservabilitySpec defines the desired state of MultiClusterObservability.
 type MultiClusterObservabilitySpec struct {
+	// Platform and UserWorkload Observability Capabilities
+	// +optional
+	Capabilities *CapabilitiesSpec `json:"capabilities,omitempty"`
 	// Advanced configurations for observability
 	// +optional
 	AdvancedConfig *AdvancedConfig `json:"advanced,omitempty"`
@@ -47,6 +50,59 @@ type MultiClusterObservabilitySpec struct {
 // T Shirt size class for a particular o11y resource.
 // +kubebuilder:validation:Enum:={"default","minimal","small","medium","large","xlarge","2xlarge","4xlarge"}
 type TShirtSize string
+
+type LogsCollectionSpec struct {
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+}
+
+type PlatformLogsSpec struct {
+	// +optional
+	Collection *LogsCollectionSpec `json:"collection,omitempty"`
+}
+
+type PlatformCapabilitiesSpec struct {
+	// +optional
+	Logs LogsCollectionSpec `json:"logs,omitempty"`
+}
+
+type ClusterLogForwarderSpec struct {
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+}
+
+type UserWorkloadLogsSpec struct {
+	ClusterLogForwarder ClusterLogForwarderSpec `json:"clusterLogForwarder,omitempty"`
+}
+
+type OpenTelemetryCollectorSpec struct {
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+}
+
+type InstrumentationSpec struct {
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+}
+
+type UserWorkloadTracesSpec struct {
+	// +optional
+	OpenTelemetryCollector OpenTelemetryCollectorSpec `json:"openTelemetryCollector,omitempty"`
+	// +optional
+	Instrumentation InstrumentationSpec `json:"instrumentation,omitempty"`
+}
+
+type UserWorkloadCapabilitiesSpec struct {
+	Logs   UserWorkloadLogsSpec   `json:"logs,omitempty"`
+	Traces UserWorkloadTracesSpec `json:"traces,omitempty"`
+}
+
+type CapabilitiesSpec struct {
+	// +optional
+	Platform *PlatformCapabilitiesSpec `json:"platform,omitempty"`
+	// +optional
+	UserWorkloads *UserWorkloadCapabilitiesSpec `json:"userWorkloads,omitempty"`
+}
 
 type AdvancedConfig struct {
 	// CustomObservabilityHubURL overrides the endpoint used by the metrics-collector to send
@@ -98,6 +154,8 @@ type AdvancedConfig struct {
 	// spec for thanos-store-shard
 	// +optional
 	Store *StoreSpec `json:"store,omitempty"`
+	// spec for multicluster-obervability-addon
+	MultiClusterObservabilityAddon *CommonSpec `json:"multiClusterObservabilityAddon,omitempty"`
 }
 
 type CommonSpec struct {
