@@ -5,6 +5,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"os"
@@ -14,6 +15,7 @@ import (
 
 	"go.uber.org/zap/zapcore"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	"github.com/IBM/controller-filtered-cache/filteredcache"
 	ocinfrav1 "github.com/openshift/api/config/v1"
@@ -232,14 +234,19 @@ func main() {
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Port:                   webhookPort,
 		Scheme:                 scheme,
-		MetricsBindAddress:     fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		Metrics: server.Options{BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort)},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "b9d51391.open-cluster-management.io",
 		NewCache:               filteredcache.NewEnhancedFilteredCacheBuilder(gvkLabelsMap),
-		WebhookServer:          &ctrlwebhook.Server{TLSMinVersion: "1.2"},
+		WebhookServer: ctrlwebhook.NewServer(ctrlwebhook.Options{
+			Port: webhookPort,
+			TLSOpts: []func(*tls.Config){
+				func(t *tls.Config) {
+					t.MinVersion = tls.VersionTLS12
+				},
+			}}),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -296,7 +303,7 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
-	if err := operatorsutil.RegisterDebugEndpoint(mgr.AddMetricsExtraHandler); err != nil {
+	if err := operatorsutil.RegisterDebugEndpoint(mgr.AddMetricsServerExtraHandler); err != nil {
 		setupLog.Error(err, "unable to set up debug handler")
 		os.Exit(1)
 	}
