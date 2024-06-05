@@ -4,6 +4,7 @@ metadata:
   name: aggregate-observabilityaddons-edit
   labels:
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    owner: multicluster-observability-operator
 rules:
   - verbs:
       - get

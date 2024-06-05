@@ -24,7 +24,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/common/expfmt"
-	"github.com/prometheus/common/version"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
@@ -211,7 +210,7 @@ func main() {
 		opt.Identifier,
 		"The unique identifier for metrics sent with this client.")
 
-	//simulation test
+	// simulation test
 	cmd.Flags().StringVar(
 		&opt.SimulatedTimeseriesFile,
 		"simulated-timeseries-file",
@@ -292,7 +291,7 @@ func (o *Options) Run() error {
 
 	metricsReg := prometheus.NewRegistry()
 	metricsReg.MustRegister(
-		version.NewCollector("metrics_collector"),
+		collectors.NewBuildInfoCollector(),
 		collectors.NewGoCollector(
 			collectors.WithGoCollectorRuntimeMetrics(collectors.GoRuntimeMetricsRule{Matcher: regexp.MustCompile("/.*")}),
 		),
@@ -606,8 +605,9 @@ func serveLastMetrics(l log.Logger, worker *forwarder.Worker) http.Handler {
 			return
 		}
 		families := worker.LastMetrics()
-		w.Header().Set("Content-Type", string(expfmt.FmtText))
-		encoder := expfmt.NewEncoder(w, expfmt.FmtText)
+		protoTextFormat := expfmt.NewFormat(expfmt.TypeProtoText)
+		w.Header().Set("Content-Type", string(protoTextFormat))
+		encoder := expfmt.NewEncoder(w, protoTextFormat)
 		for _, family := range families {
 			if family == nil {
 				continue

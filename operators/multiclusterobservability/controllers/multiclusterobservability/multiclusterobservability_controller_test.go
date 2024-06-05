@@ -16,12 +16,14 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 
+	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
+	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
+
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/rendering/templates"
-	mchv1 "github.com/stolostron/multiclusterhub-operator/api/v1"
-	observatoriumv1alpha1 "github.com/stolostron/observatorium-operator/api/v1alpha1"
 
 	"gopkg.in/yaml.v2"
 
@@ -300,6 +302,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	oav1beta1.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
 	routev1.AddToScheme(s)
 	oauthv1.AddToScheme(s)
@@ -332,7 +335,14 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	objs := []runtime.Object{mco, svc, serverCACerts, clientCACerts, proxyRouteBYOCACerts, grafanaCert, serverCert,
 		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, proxyRouteBYOCert, clustermgmtAddon, extensionApiserverAuthenticationCM}
 	// Create a fake client to mock API calls.
-	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	cl := fake.NewClientBuilder().
+		WithRuntimeObjects(objs...).
+		WithStatusSubresource(
+			&addonv1alpha1.ManagedClusterAddOn{},
+			&mcov1beta2.MultiClusterObservability{},
+			&oav1beta1.ObservabilityAddon{},
+		).
+		Build()
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
 	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.IngressControllerCRD: true}}
@@ -653,12 +663,15 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	}
 
 	// Test finalizer
-	mco.ObjectMeta.DeletionTimestamp = &metav1.Time{Time: time.Now()}
 	mco.ObjectMeta.Finalizers = []string{resFinalizer, "test-finalizerr"}
 	mco.ObjectMeta.ResourceVersion = updatedMCO.ObjectMeta.ResourceVersion
 	err = cl.Update(context.TODO(), mco)
 	if err != nil {
 		t.Fatalf("Failed to update MultiClusterObservability: (%v)", err)
+	}
+	err = cl.Delete(context.TODO(), mco)
+	if err != nil {
+		t.Fatalf("Failed to delete MultiClusterObservability: (%v)", err)
 	}
 	_, err = r.Reconcile(context.TODO(), req)
 	if err != nil {
@@ -983,9 +996,9 @@ func createPersistentVolumeClaim(name, namespace, pvcName string) *corev1.Persis
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 			StorageClassName: &storage,
-			Resources: corev1.ResourceRequirements{
+			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
-					corev1.ResourceName(corev1.ResourceStorage): resource.MustParse("1Gi"),
+					corev1.ResourceStorage: resource.MustParse("1Gi"),
 				},
 			},
 		},
