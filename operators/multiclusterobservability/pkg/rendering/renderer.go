@@ -31,6 +31,7 @@ type MCORenderer struct {
 	renderAlertManagerFns map[string]rendererutil.RenderFn
 	renderThanosFns       map[string]rendererutil.RenderFn
 	renderProxyFns        map[string]rendererutil.RenderFn
+	renderMCOAFns         map[string]rendererutil.RenderFn
 }
 
 func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservability, kubeClient client.Client) *MCORenderer {
@@ -43,6 +44,7 @@ func NewMCORenderer(multipleClusterMonitoring *obv1beta2.MultiClusterObservabili
 	mcoRenderer.newAlertManagerRenderer()
 	mcoRenderer.newThanosRenderer()
 	mcoRenderer.newProxyRenderer()
+	mcoRenderer.newMCOARenderer()
 	return mcoRenderer
 }
 
@@ -104,6 +106,17 @@ func (r *MCORenderer) Render() ([]*unstructured.Unstructured, error) {
 		return nil, err
 	}
 	resources = append(resources, proxyResources...)
+
+	// load and render multicluster-observability-addon templates
+	mcoaTemplates, err := templates.GetOrLoadMCOATemplates(templatesutil.GetTemplateRenderer())
+	if err != nil {
+		return nil, err
+	}
+	mcoaResources, err := r.renderMCOATemplates(mcoaTemplates, namespace, labels)
+	if err != nil {
+		return nil, err
+	}
+	resources = append(resources, mcoaResources...)
 
 	for idx := range resources {
 		if resources[idx].GetKind() == "Deployment" {
