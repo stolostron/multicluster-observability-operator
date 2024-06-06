@@ -96,7 +96,7 @@ func GetOrLoadProxyTemplates(r *templates.TemplateRenderer) ([]*resource.Resourc
 	return proxyTemplates, nil
 }
 
-// GetOrLoadMCOATemplates reads the rbac-query-proxy manifests.
+// GetOrLoadMCOATemplates reads the multicluster-observability-addon manifests.
 func GetOrLoadMCOATemplates(r *templates.TemplateRenderer) ([]*resource.Resource, error) {
 	if len(mcoaTemplates) > 0 {
 		return mcoaTemplates, nil

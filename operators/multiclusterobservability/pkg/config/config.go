@@ -959,8 +959,11 @@ func getDefaultResource(resourceType string, resource corev1.ResourceName,
 	return ""
 }
 
-func getResource(resourceType string, resource corev1.ResourceName,
-	component string, advanced *observabilityv1beta2.AdvancedConfig,
+func getResource(
+	resourceType string,
+	resource corev1.ResourceName,
+	component string,
+	advanced *observabilityv1beta2.AdvancedConfig,
 ) string {
 	if advanced == nil {
 		return getDefaultResource(resourceType, resource, component)
