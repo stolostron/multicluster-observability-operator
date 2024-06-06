@@ -22,11 +22,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/go-logr/logr"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/controllers/status"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
 
 const (
@@ -59,7 +60,8 @@ func TestStatusController_NominalCase(t *testing.T) {
 
 	// update status in spoke
 	addCondition(spokeOba, "Deployed", metav1.ConditionTrue)
-	err = c.Update(context.Background(), spokeOba)
+	err = c.Status().Update(context.Background(), spokeOba)
+
 	if err != nil {
 		t.Fatalf("Failed to update status in spoke: %v", err)
 	}
@@ -240,7 +242,15 @@ func newClient(objs ...runtime.Object) client.Client {
 	addonv1alpha1.AddToScheme(s)
 	oav1beta1.AddToScheme(s)
 
-	return fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+	return fake.NewClientBuilder().
+		WithScheme(s).
+		WithRuntimeObjects(objs...).
+		WithStatusSubresource(
+			&addonv1alpha1.ManagedClusterAddOn{},
+			&oav1beta1.MultiClusterObservability{},
+			&oav1beta1.ObservabilityAddon{},
+		).
+		Build()
 }
 
 // TestClient wraps a client.Client to customize operations for testing

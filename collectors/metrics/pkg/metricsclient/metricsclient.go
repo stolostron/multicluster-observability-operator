@@ -128,7 +128,7 @@ func (c *Client) RetrievRecordingMetrics(
 			var v float64
 			t = int64(r.Value[0].(float64) * 1000)
 			v, _ = strconv.ParseFloat(r.Value[1].(string), 64)
-			ls := []labels.Label{}
+			var ls []labels.Label
 			for k, v := range r.Metric {
 				l := &labels.Label{
 					Name:  k,
@@ -138,7 +138,8 @@ func (c *Client) RetrievRecordingMetrics(
 			}
 			vec = append(vec, promql.Sample{
 				Metric: ls,
-				Point:  promql.Point{T: t, V: v},
+				T:      t,
+				F:      v,
 			})
 		}
 
@@ -163,7 +164,7 @@ func (c *Client) RetrievRecordingMetrics(
 			}
 
 			protMetric.TimestampMs = proto.Int64(s.T)
-			protMetric.Untyped.Value = proto.Float64(s.V)
+			protMetric.Untyped.Value = proto.Float64(s.F)
 
 			protMetricFam.Metric = append(protMetricFam.Metric, protMetric)
 			families = append(families, protMetricFam)
@@ -182,7 +183,9 @@ func (c *Client) Retrieve(ctx context.Context, req *http.Request) ([]*clientmode
 	if req.Header == nil {
 		req.Header = make(http.Header)
 	}
-	req.Header.Set("Accept", strings.Join([]string{string(expfmt.FmtProtoDelim), string(expfmt.FmtText)}, " , "))
+	protoDelimFormat := expfmt.NewFormat(expfmt.TypeProtoDelim)
+	protoTextFormat := expfmt.NewFormat(expfmt.TypeProtoText)
+	req.Header.Set("Accept", strings.Join([]string{string(protoDelimFormat), string(protoTextFormat)}, " , "))
 
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	req = req.WithContext(ctx)
@@ -234,7 +237,7 @@ func (c *Client) Retrieve(ctx context.Context, req *http.Request) ([]*clientmode
 // // TODO(saswatamcode): This is no longer used, remove it in the future.
 func Read(r io.Reader) ([]*clientmodel.MetricFamily, error) {
 	decompress := snappy.NewReader(r)
-	decoder := expfmt.NewDecoder(decompress, expfmt.FmtProtoDelim)
+	decoder := expfmt.NewDecoder(decompress, expfmt.NewFormat(expfmt.TypeProtoDelim))
 	families := make([]*clientmodel.MetricFamily, 0, 100)
 	for {
 		family := &clientmodel.MetricFamily{}
@@ -253,7 +256,7 @@ func Read(r io.Reader) ([]*clientmodel.MetricFamily, error) {
 func Write(w io.Writer, families []*clientmodel.MetricFamily) error {
 	// output the filtered set
 	compress := snappy.NewBufferedWriter(w)
-	encoder := expfmt.NewEncoder(compress, expfmt.FmtProtoDelim)
+	encoder := expfmt.NewEncoder(compress, expfmt.NewFormat(expfmt.TypeProtoDelim))
 	for _, family := range families {
 		if family == nil {
 			continue
@@ -468,7 +471,7 @@ func (c *Client) RemoteWrite(ctx context.Context, req *http.Request,
 	}
 	logger.Log(c.logger, logger.Debug, "timeseries number", len(timeseries))
 
-	//uncomment here to generate timeseries
+	// uncomment here to generate timeseries
 	/*
 		for i := 0; i < len(families); i++ {
 			var buff bytes.Buffer
@@ -530,7 +533,7 @@ func (c *Client) sendRequest(serverURL string, body []byte) error {
 		return errors.New(msg)
 	}
 
-	//req.Header.Add("THANOS-TENANT", tenantID)
+	// req.Header.Add("THANOS-TENANT", tenantID)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

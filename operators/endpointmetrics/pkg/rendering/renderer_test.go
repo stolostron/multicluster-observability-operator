@@ -11,7 +11,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -57,8 +56,6 @@ func TestRender(t *testing.T) {
 		t.Fatalf("failed to render endpoint templates: %v", err)
 	}
 
-	printObjs(t, objs)
-
 	// ensure that objects are sorted
 	for i := 0; i < len(objs)-1; i++ {
 		if resourcePriority(objs[i]) > resourcePriority(objs[i+1]) {
@@ -66,10 +63,4 @@ func TestRender(t *testing.T) {
 		}
 	}
 
-}
-
-func printObjs(t *testing.T, objs []*unstructured.Unstructured) {
-	for _, obj := range objs {
-		t.Log(obj)
-	}
 }

@@ -63,6 +63,10 @@ func createObsAddon(c client.Client, namespace string) error {
 		return nil
 	}
 	ec := &obsv1beta1.ObservabilityAddon{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ObservabilityAddon",
+			APIVersion: "v1beta1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      obsAddonName,
 			Namespace: namespace,

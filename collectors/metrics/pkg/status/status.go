@@ -40,7 +40,14 @@ func New(logger log.Logger) (*StatusReport, error) {
 	standaloneMode := os.Getenv("STANDALONE") == "true"
 	var kubeClient client.Client
 	if testMode {
-		kubeClient = fake.NewClientBuilder().Build()
+		s := scheme.Scheme
+		if err := oav1beta1.AddToScheme(s); err != nil {
+			return nil, errors.New("failed to add observabilityaddon into scheme")
+		}
+		kubeClient = fake.NewClientBuilder().
+			WithScheme(s).
+			WithStatusSubresource(&oav1beta1.ObservabilityAddon{}).
+			Build()
 	} else if standaloneMode {
 		kubeClient = nil
 	} else {

@@ -16,7 +16,6 @@ import (
 	"strings"
 
 	"golang.org/x/exp/slices"
-
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/client-go/util/retry"
 
@@ -33,6 +32,9 @@ import (
 
 	gocmp "github.com/google/go-cmp/cmp"
 	gocmpopts "github.com/google/go-cmp/cmp/cmpopts"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
+	workv1 "open-cluster-management.io/api/work/v1"
+
 	mcoshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -40,8 +42,6 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
-	workv1 "open-cluster-management.io/api/work/v1"
 )
 
 const (
@@ -350,7 +350,7 @@ func createManifestWorks(
 							Name:  "HTTPS_PROXY",
 							Value: addonConfig.Spec.ProxyConfig.HTTPSProxy,
 						})
-						//CA is allowed only when HTTPS proxy is set
+						// CA is allowed only when HTTPS proxy is set
 						if addonConfig.Spec.ProxyConfig.CABundle != nil {
 							CustomCABundle = true
 							container.Env = append(container.Env, corev1.EnvVar{
@@ -403,7 +403,7 @@ func createManifestWorks(
 				break
 			}
 		}
-		//Set HUB_ENDPOINT_OPERATOR when the endpoint operator is installed in hub cluster
+		// Set HUB_ENDPOINT_OPERATOR when the endpoint operator is installed in hub cluster
 		spec.Containers[0].Env = append(spec.Containers[0].Env, corev1.EnvVar{
 			Name:  "HUB_ENDPOINT_OPERATOR",
 			Value: "true",
@@ -469,7 +469,7 @@ func createManifestWorks(
 }
 
 func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []workv1.Manifest) error {
-	//Make a deep copy of all the manifests since there are some global resources that can be updated due to this function
+	// Make a deep copy of all the manifests since there are some global resources that can be updated due to this function
 	log.Info("Check Ismcoterminating", "IsMCOTerminating", operatorconfig.IsMCOTerminating)
 	if operatorconfig.IsMCOTerminating {
 		log.Info("MCO Operator is terminating, skip creating resources for hub metrics collection")
@@ -494,7 +494,7 @@ func createUpdateResourcesForHubMetricsCollection(c client.Client, manifests []w
 		case "ClusterRole", "ClusterRoleBinding", "CustomResourceDefinition":
 			// No namespace needed for these kinds
 		default:
-			//ACM 8509: Special case for hub/local cluster metrics collection
+			// ACM 8509: Special case for hub/local cluster metrics collection
 			// Set the default namespace for all the resources to open-cluster-management-observability
 			obj.SetNamespace(config.GetDefaultNamespace())
 		}
@@ -699,8 +699,8 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 		return err
 	}
 
-	//isHypershift := true
-	//if os.Getenv("UNIT_TEST") != "true" {
+	// isHypershift := true
+	// if os.Getenv("UNIT_TEST") != "true" {
 	//	crdClient, err := util.GetOrCreateCRDClient()
 	//	if err != nil {
 	//		log.Error(err, "Failed to create CRD client")
@@ -711,14 +711,14 @@ func DeleteHubMetricsCollectionDeployments(c client.Client) error {
 	//		log.Error(err, "Failed to check if the CRD hostedclusters.hypershift.openshift.io exists")
 	//		return err
 	//	}
-	//}
-	//if isHypershift {
+	// }
+	// if isHypershift {
 	//	err = DeleteServiceMonitors(context.TODO(), c)
 	//	if err != nil {
 	//		log.Error(err, "Failed to delete service monitors for hub metrics collection")
 	//		return err
 	//	}
-	//}
+	// }
 	return nil
 }
 

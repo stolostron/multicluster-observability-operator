@@ -12,12 +12,14 @@ import (
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -43,11 +45,24 @@ func TestReportStatus(t *testing.T) {
 	if err := oav1beta1.AddToScheme(s); err != nil {
 		t.Fatalf("Unable to add oav1beta1 scheme: (%v)", err)
 	}
+	if err := addonv1alpha1.AddToScheme(s); err != nil {
+		t.Fatalf("Unable to add addonv1alpha1 scheme: (%v)", err)
+	}
+	if err := mcov1beta2.AddToScheme(s); err != nil {
+		t.Fatalf("Unable to add mcov1beta2 scheme: (%v)", err)
+	}
 
 	// New status should be appended
 	statusList := []util.StatusConditionName{util.NotSupportedStatus, util.DeployedStatus, util.DisabledStatus}
 	s.AddKnownTypes(oav1beta1.GroupVersion, oa)
-	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+	c := fake.NewClientBuilder().
+		WithRuntimeObjects(objs...).
+		WithStatusSubresource(
+			&addonv1alpha1.ManagedClusterAddOn{},
+			&mcov1beta2.MultiClusterObservability{},
+			&oav1beta1.ObservabilityAddon{},
+		).
+		Build()
 	for i := range statusList {
 		if err := util.ReportStatus(context.Background(), c, statusList[i], oa.Name, oa.Namespace); err != nil {
 			t.Fatalf("Error reporting status: %v", err)

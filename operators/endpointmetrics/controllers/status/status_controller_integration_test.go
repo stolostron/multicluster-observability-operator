@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 func TestIntegrationReconcileStatus(t *testing.T) {
@@ -63,8 +64,8 @@ func TestIntegrationReconcileStatus(t *testing.T) {
 
 	// Setup controller manager
 	mgr, err := ctrl.NewManager(testEnv.Config, ctrl.Options{
-		Scheme:             k8sClient.Scheme(),
-		MetricsBindAddress: "0", // Avoids port conflict with the default port 8080
+		Scheme:  k8sClient.Scheme(),
+		Metrics: metricsserver.Options{BindAddress: "0"},
 	})
 	assert.NoError(t, err)
 
