@@ -56,11 +56,6 @@ type LogsCollectionSpec struct {
 	Enabled bool `json:"enabled,omitempty"`
 }
 
-type PlatformLogsSpec struct {
-	// +optional
-	Collection *LogsCollectionSpec `json:"collection,omitempty"`
-}
-
 type PlatformCapabilitiesSpec struct {
 	// +optional
 	Logs LogsCollectionSpec `json:"logs,omitempty"`
