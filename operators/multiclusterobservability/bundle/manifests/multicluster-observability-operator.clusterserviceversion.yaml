@@ -450,6 +450,9 @@ spec:
           - get
           - list
           - watch
+          - create
+          - patch
+          - delete
         serviceAccountName: multicluster-observability-operator
       deployments:
       - name: multicluster-observability-operator
