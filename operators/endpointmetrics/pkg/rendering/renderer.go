@@ -21,6 +21,7 @@ import (
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/microshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering/templates"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
@@ -55,6 +56,7 @@ var (
 var Images = map[string]string{}
 
 func Render(
+	ctx context.Context,
 	r *rendererutil.Renderer,
 	c runtimeclient.Client,
 	hubInfo *operatorconfig.HubInfo,
@@ -100,6 +102,23 @@ func Render(
 			spec.Containers[2].Image = Images[operatorconfig.KubeRbacProxyKey]
 			spec.ImagePullSecrets = []corev1.LocalObjectReference{
 				{Name: os.Getenv(operatorconfig.PullSecret)},
+			}
+
+			// Add user number to ensure non root user
+			// Do nothing on microshift as it is restricted by the restricted SCC
+			microshiftVersion, err := microshift.IsMicroshiftCluster(ctx, c)
+			if err != nil {
+				return nil, err
+			}
+			userNumber := int64(65534)
+			if microshiftVersion == "" {
+				for _, container := range spec.Containers {
+					if container.SecurityContext == nil {
+						container.SecurityContext = &corev1.SecurityContext{}
+					}
+					container.SecurityContext.RunAsUser = &userNumber
+					container.SecurityContext.RunAsGroup = &userNumber
+				}
 			}
 
 			unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
@@ -206,7 +225,7 @@ func Render(
 			}
 
 			// replace the disabled metrics
-			disabledMetricsSt, err := getDisabledMetrics(c)
+			disabledMetricsSt, err := getDisabledMetrics(ctx, c)
 			if err != nil {
 				return nil, err
 			}
@@ -280,9 +299,9 @@ func resourcePriority(resource *unstructured.Unstructured) int {
 	}
 }
 
-func getDisabledMetrics(c runtimeclient.Client) (string, error) {
+func getDisabledMetrics(ctx context.Context, c runtimeclient.Client) (string, error) {
 	cm := &corev1.ConfigMap{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: operatorconfig.AllowlistConfigMapName,
+	err := c.Get(ctx, types.NamespacedName{Name: operatorconfig.AllowlistConfigMapName,
 		Namespace: namespace}, cm)
 	if err != nil {
 		return "", err

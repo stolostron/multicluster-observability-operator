@@ -5,6 +5,7 @@
 package rendering
 
 import (
+	"context"
 	"os"
 	"path"
 	"testing"
@@ -51,7 +52,7 @@ func TestRender(t *testing.T) {
 	}
 	c := fake.NewClientBuilder().WithRuntimeObjects([]runtime.Object{getAllowlistCM()}...).Build()
 
-	objs, err := Render(renderer, c, hubInfo)
+	objs, err := Render(context.Background(), renderer, c, hubInfo)
 	if err != nil {
 		t.Fatalf("failed to render endpoint templates: %v", err)
 	}
