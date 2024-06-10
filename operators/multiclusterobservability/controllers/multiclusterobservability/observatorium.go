@@ -245,8 +245,6 @@ func updateTenantID(
 		return
 	}
 
-	log.Info("Coleen Updating tenant ID", "oldTenant", oldTenant, "newTenant", newTenant)
-
 	newSpec.API.Tenants[idx].ID = oldTenant.ID
 	for j, hashring := range newSpec.Hashrings {
 		if slices.Contains(hashring.Tenants, newTenant.ID) {
