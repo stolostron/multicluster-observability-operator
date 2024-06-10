@@ -134,7 +134,11 @@ func newImagesCM(ns string) *corev1.ConfigMap {
 			Namespace: ns,
 		},
 		Data: map[string]string{
-			operatorconfig.MetricsCollectorKey: "metrics-collector-image",
+			operatorconfig.MetricsCollectorKey:   "metrics-collector-image",
+			operatorconfig.NodeExporterKey:       "node-exporter-image",
+			operatorconfig.KubeStateMetricsKey:   "kube-state-metrics-image",
+			operatorconfig.KubeRbacProxyKey:      "kube-rbac-proxy-image",
+			operatorconfig.PrometheusOperatorKey: "prometheus-operator-image",
 		},
 	}
 }

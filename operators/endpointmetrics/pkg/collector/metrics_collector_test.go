@@ -6,6 +6,8 @@ package collector_test
 
 import (
 	"context"
+	"maps"
+	"slices"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -18,14 +20,13 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/kustomize/kyaml/yaml"
 
 	"github.com/go-logr/logr"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/collector"
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
-	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
 
 const (
@@ -36,46 +37,6 @@ const (
 	uwlSts                  = "prometheus-user-workload"
 )
 
-func getAllowlistCM() *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      operatorconfig.AllowlistConfigMapName,
-			Namespace: namespace,
-		},
-		Data: map[string]string{
-			operatorconfig.MetricsConfigMapKey: `
-names:
-  - a
-  - b
-matches:
-  - __name__="c"
-recording_rules:
-  - record: f
-    expr: g
-collect_rules:
-  - name: h
-    selector:
-      matchExpressions:
-        - key: clusterType
-          operator: NotIn
-          values: ["SNO"]
-    rules:
-      - collect: j
-        expr: k
-        for: 1m
-        names:
-          - c
-        matches:
-          - __name__="a"
-`,
-			operatorconfig.UwlMetricsConfigMapKey: `
-names:
-  - uwl_a
-  - uwl_b
-`},
-	}
-}
-
 func newUwlPrometheus() *appsv1.StatefulSet {
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -85,115 +46,268 @@ func newUwlPrometheus() *appsv1.StatefulSet {
 	}
 }
 
-func getCustomAllowlistCM() *corev1.ConfigMap {
+func newAllowListCm(name, namespace string, data map[string]operatorconfig.MetricsAllowlist) *corev1.ConfigMap {
+	cmData := make(map[string]string, len(data))
+	for k, v := range data {
+		strData, err := yaml.Marshal(v)
+		if err != nil {
+			panic(err)
+		}
+		cmData[k] = string(strData)
+	}
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      operatorconfig.AllowlistCustomConfigMapName,
-			Namespace: "default",
+			Name:      name,
+			Namespace: namespace,
 		},
-		Data: map[string]string{
-			operatorconfig.UwlMetricsConfigMapKey: `
-names:
-  - custom_c
-matches:
-  - __name__=test
-`},
+		Data: cmData,
 	}
 }
 
-func init() {
-	s := scheme.Scheme
-	addonv1alpha1.AddToScheme(s)
-	oav1beta1.AddToScheme(s)
-
-	// namespace = testNamespace
-	// hubNamespace = testHubNamspace
-}
-
-func checkAnnotationsAndProxySettings(ctx context.Context, c client.Client, deploymentName string, t *testing.T) {
-	deployment := &appsv1.Deployment{}
-	err := c.Get(ctx, types.NamespacedName{Name: deploymentName,
-		Namespace: namespace}, deployment)
-	if err != nil {
-		t.Fatalf("Failed to query deployment: %v, err: (%v)", deploymentName, err)
+func TestMetricsCollectorBis(t *testing.T) {
+	baseMetricsCollector := func() *collector.MetricsCollector {
+		return &collector.MetricsCollector{
+			// Client is set in each test case
+			ClusterInfo: collector.ClusterInfo{
+				ClusterID: "test-cluster",
+			},
+			HubInfo: &operatorconfig.HubInfo{
+				ClusterName:              "test-cluster",
+				ObservatoriumAPIEndpoint: "http://test-endpoint",
+			},
+			Log:       logr.Logger{},
+			Namespace: namespace,
+			ObsAddonSpec: &oashared.ObservabilityAddonSpec{
+				EnableMetrics: true,
+				Interval:      60,
+			},
+			ServiceAccountName: "test-sa",
+		}
 	}
 
-	v, ok := deployment.Spec.Template.Annotations[operatorconfig.WorkloadPartitioningPodAnnotationKey]
-	if !ok || v != operatorconfig.WorkloadPodExpectedValueJSON {
-		t.Fatalf("Failed to find annotation %v: %v on the pod spec of deployment: %v",
-			operatorconfig.WorkloadPartitioningPodAnnotationKey,
-			operatorconfig.WorkloadPodExpectedValueJSON,
-			deploymentName,
-		)
+	testCases := map[string]struct {
+		newMetricsCollector func() *collector.MetricsCollector
+		clientObjects       func() []runtime.Object
+		request             ctrl.Request
+		expects             func(*testing.T, *appsv1.Deployment, *appsv1.Deployment)
+	}{
+		"Should replicate endpoint operator settings": {
+			newMetricsCollector: func() *collector.MetricsCollector {
+				return baseMetricsCollector()
+			},
+			clientObjects: func() []runtime.Object { return []runtime.Object{getEndpointOperatorDeployment()} },
+			expects: func(t *testing.T, deployment, uwlDeployment *appsv1.Deployment) {
+				// Check env vars
+				operatorEnv := getEndpointOperatorDeployment().Spec.Template.Spec.Containers[0].Env
+				collectorEnv := deployment.Spec.Template.Spec.Containers[0].Env
+				toCompare := map[string]string{"HTTP_PROXY": "", "HTTPS_PROXY": "", "NO_PROXY": "", "HTTPS_PROXY_CA_BUNDLE": ""}
+				operatorProxyEnvs := make(map[string]string, len(toCompare))
+				for _, e := range operatorEnv {
+					if _, ok := toCompare[e.Name]; ok {
+						if len(e.Value) == 0 {
+							t.Fatalf("Env var %v is empty", e.Name)
+						}
+						operatorProxyEnvs[e.Name] = e.Value
+					}
+				}
+				collectorProxyEnvs := make(map[string]string, len(toCompare))
+				for _, e := range collectorEnv {
+					if _, ok := toCompare[e.Name]; ok {
+						collectorProxyEnvs[e.Name] = e.Value
+					}
+				}
+				if !maps.Equal(operatorProxyEnvs, collectorProxyEnvs) || len(operatorProxyEnvs) != len(toCompare) {
+					t.Fatalf("Env vars are not set correctly: expected %v, got %v", operatorProxyEnvs, collectorProxyEnvs)
+				}
+
+				// Check toleration and node selector
+				if !slices.Equal(deployment.Spec.Template.Spec.Tolerations, getEndpointOperatorDeployment().Spec.Template.Spec.Tolerations) {
+					t.Fatalf("Tolerations are not set correctly: expected %v, got %v",
+						getEndpointOperatorDeployment().Spec.Template.Spec.Tolerations, deployment.Spec.Template.Spec.Tolerations)
+				}
+				if !maps.Equal(deployment.Spec.Template.Spec.NodeSelector, getEndpointOperatorDeployment().Spec.Template.Spec.NodeSelector) {
+					t.Fatalf("NodeSelector is not set correctly: expected %v, got %v",
+						getEndpointOperatorDeployment().Spec.Template.Spec.NodeSelector, deployment.Spec.Template.Spec.NodeSelector)
+				}
+
+				// Check annotations
+				v, ok := deployment.Spec.Template.Annotations[operatorconfig.WorkloadPartitioningPodAnnotationKey]
+				if !ok || v != operatorconfig.WorkloadPodExpectedValueJSON {
+					t.Fatalf("Failed to find annotation %v: %v on the pod spec of deployment: %v",
+						operatorconfig.WorkloadPartitioningPodAnnotationKey,
+						operatorconfig.WorkloadPodExpectedValueJSON,
+						metricsCollectorName,
+					)
+				}
+			},
+		},
+		"Should have 0 replicas when metrics is disabled and is not hub collector": {
+			newMetricsCollector: func() *collector.MetricsCollector {
+				ret := baseMetricsCollector()
+				ret.ObsAddonSpec.EnableMetrics = false
+				ret.ClusterInfo.IsHubMetricsCollector = false
+				return ret
+			},
+			clientObjects: func() []runtime.Object { return []runtime.Object{getEndpointOperatorDeployment()} },
+			expects: func(t *testing.T, deployment *appsv1.Deployment, uwlDeployment *appsv1.Deployment) {
+				if *deployment.Spec.Replicas != 0 {
+					t.Fatalf("Replicas should be 0 when metrics is disabled and is not hub collector")
+				}
+			},
+		},
+		"Hub metrics collector should have 1 replica even if metrics is disabled": {
+			newMetricsCollector: func() *collector.MetricsCollector {
+				ret := baseMetricsCollector()
+				ret.ObsAddonSpec.EnableMetrics = false
+				ret.ClusterInfo.IsHubMetricsCollector = true
+				return ret
+			},
+			clientObjects: func() []runtime.Object { return []runtime.Object{getEndpointOperatorDeployment()} },
+			expects: func(t *testing.T, deployment *appsv1.Deployment, uwlDeployment *appsv1.Deployment) {
+				if *deployment.Spec.Replicas != 1 {
+					t.Fatalf("Hub metrics collector should have 1 replica even if metrics is disabled")
+				}
+			},
+		},
+		"Should force reload if certs are updated": {
+			newMetricsCollector: func() *collector.MetricsCollector {
+				return baseMetricsCollector()
+			},
+			clientObjects: func() []runtime.Object {
+				ret := []runtime.Object{getEndpointOperatorDeployment()}
+				metricsCollector := &appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      metricsCollectorName,
+						Namespace: namespace,
+					},
+					Spec: appsv1.DeploymentSpec{},
+				}
+				metricsCollector.Status.ReadyReplicas = 1
+				ret = append(ret, metricsCollector)
+				return ret
+			},
+			request: ctrl.Request{NamespacedName: types.NamespacedName{Name: "observability-managed-cluster-certs"}},
+			expects: func(t *testing.T, deployment *appsv1.Deployment, uwlDeployment *appsv1.Deployment) {
+				if _, ok := deployment.Spec.Template.ObjectMeta.Labels["cert/time-restarted"]; !ok {
+					t.Fatalf("Should force reload if certs are updated. Label not found: %v", deployment.Spec.Template.ObjectMeta.Labels)
+				}
+			},
+		},
+		"Should create a uwl metrics collector if a custom uwl allowlist is present and uwl prometheus is present": {
+			newMetricsCollector: func() *collector.MetricsCollector {
+				return baseMetricsCollector()
+			},
+			clientObjects: func() []runtime.Object {
+				data := map[string]operatorconfig.MetricsAllowlist{
+					operatorconfig.UwlMetricsConfigMapKey: {
+						NameList: []string{"custom_c"},
+					},
+				}
+				uwlAllowlistCM := newAllowListCm(operatorconfig.AllowlistCustomConfigMapName, "default", data)
+				ret := []runtime.Object{getEndpointOperatorDeployment(), newUwlPrometheus(), uwlAllowlistCM}
+				return ret
+			},
+			expects: func(t *testing.T, deployment *appsv1.Deployment, uwlDeployment *appsv1.Deployment) {
+				if uwlDeployment == nil {
+					t.Fatalf("Should create a uwl metrics collector if a custom allowlist is present and uwl prometheus is present")
+				}
+
+				command := uwlDeployment.Spec.Template.Spec.Containers[0].Command
+				if !slices.Contains(command, `--match={__name__="custom_c",namespace="default"}`) {
+					t.Fatalf("Custom allowlist not found in args: %v", command)
+				}
+			},
+		},
+		"Should not create a uwl metrics collector if no custom allowlist is present": {
+			newMetricsCollector: func() *collector.MetricsCollector {
+				return baseMetricsCollector()
+			},
+			clientObjects: func() []runtime.Object {
+				ret := []runtime.Object{getEndpointOperatorDeployment(), newUwlPrometheus()}
+				return ret
+			},
+			expects: func(t *testing.T, deployment *appsv1.Deployment, uwlDeployment *appsv1.Deployment) {
+				if uwlDeployment != nil {
+					t.Fatalf("Should not create a uwl metrics collector if no custom allowlist is present")
+				}
+			},
+		},
+		"Should delete uwl metrics collector if uwl prometheus is removed": {
+			newMetricsCollector: func() *collector.MetricsCollector {
+				return baseMetricsCollector()
+			},
+			clientObjects: func() []runtime.Object {
+				uwlDeploy := &appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      uwlMetricsCollectorName,
+						Namespace: namespace,
+					},
+				}
+				data := map[string]operatorconfig.MetricsAllowlist{
+					operatorconfig.UwlMetricsConfigMapKey: {
+						NameList: []string{"custom_c"},
+					},
+				}
+				uwlAllowlistCM := newAllowListCm(operatorconfig.AllowlistCustomConfigMapName, "default", data)
+				ret := []runtime.Object{getEndpointOperatorDeployment(), uwlAllowlistCM, uwlDeploy}
+				return ret
+			},
+			expects: func(t *testing.T, deployment *appsv1.Deployment, uwlDeployment *appsv1.Deployment) {
+				if uwlDeployment != nil {
+					t.Fatalf("Should delete uwl metrics collector if uwl prometheus is removed")
+				}
+			},
+		},
 	}
 
-	env := deployment.Spec.Template.Spec.Containers[0].Env
-	envChecks := map[string]string{
-		"HTTP_PROXY":            "http://foo.com",
-		"HTTPS_PROXY":           "https://foo.com",
-		"NO_PROXY":              "bar.com",
-		"HTTPS_PROXY_CA_BUNDLE": "custom-ca.crt",
-	}
-	foundEnv := map[string]bool{}
-	for _, e := range env {
-		if v, ok := envChecks[e.Name]; ok {
-			if e.Value != v {
-				t.Fatalf("Env var %v is not set correctly: expected %v, got %v", e.Name, v, e.Value)
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			s := scheme.Scheme
+			promv1.AddToScheme(s)
+			c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(tc.clientObjects()...).Build()
+
+			metricsCollector := tc.newMetricsCollector()
+			metricsCollector.Client = c
+			if err := metricsCollector.Update(context.Background(), tc.request); err != nil {
+				t.Fatalf("Failed to update metrics collector: %v", err)
 			}
-			foundEnv[e.Name] = true
-		}
+
+			deployment := getMetricsCollectorDeployment(t, context.Background(), c, metricsCollectorName)
+			uwlDeployment := getMetricsCollectorDeployment(t, context.Background(), c, uwlMetricsCollectorName)
+			tc.expects(t, deployment, uwlDeployment)
+		})
 	}
-	for k := range envChecks {
-		if !foundEnv[k] {
-			t.Fatalf("Env var %v is not present in env", k)
-		}
-	}
+
 }
 
-func TestMetricsCollector(t *testing.T) {
-	hubInfo := &operatorconfig.HubInfo{
-		ClusterName:              "test-cluster",
-		ObservatoriumAPIEndpoint: "http://test-endpoint",
-	}
-
-	objs := []runtime.Object{getAllowlistCM(),
-		&corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "extension-apiserver-authentication",
-				Namespace: "kube-system",
-			},
-			Data: map[string]string{
-				"client-ca-file": "test",
-			},
+func getEndpointOperatorDeployment() *appsv1.Deployment {
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "endpoint-observability-operator",
+			Namespace: namespace,
 		},
-		&appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "endpoint-observability-operator",
-				Namespace: namespace,
-			},
-			Spec: appsv1.DeploymentSpec{
-				Template: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						Containers: []corev1.Container{
-							{
-								Name: "endpoint-observability-operator",
-								Env: []corev1.EnvVar{
-									{
-										Name:  "HTTP_PROXY",
-										Value: "http://foo.com",
-									},
-									{
-										Name:  "HTTPS_PROXY",
-										Value: "https://foo.com",
-									},
-									{
-										Name:  "NO_PROXY",
-										Value: "bar.com",
-									},
-									{
-										Name:  "HTTPS_PROXY_CA_BUNDLE",
-										Value: "custom-ca.crt",
-									},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: "endpoint-observability-operator",
+							Env: []corev1.EnvVar{
+								{
+									Name:  "HTTP_PROXY",
+									Value: "http://foo.com",
+								},
+								{
+									Name:  "HTTPS_PROXY",
+									Value: "https://foo.com",
+								},
+								{
+									Name:  "NO_PROXY",
+									Value: "bar.com",
+								},
+								{
+									Name:  "HTTPS_PROXY_CA_BUNDLE",
+									Value: "custom-ca.crt",
 								},
 							},
 						},
@@ -202,155 +316,16 @@ func TestMetricsCollector(t *testing.T) {
 			},
 		},
 	}
-	promv1.AddToScheme(scheme.Scheme)
-	c := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(objs...).Build()
-
-	baseMetricsCollector := &collector.MetricsCollector{
-		Client: c,
-		ClusterInfo: collector.ClusterInfo{
-			ClusterID: "test-cluster",
-		},
-		HubInfo:   hubInfo,
-		Log:       logr.Logger{},
-		Namespace: namespace,
-		ObsAddonSpec: &oashared.ObservabilityAddonSpec{
-			EnableMetrics: true,
-			Interval:      60,
-		},
-		ServiceAccountName: "test-sa",
-	}
-
-	metricsCollector := cloneMetricsCollector(baseMetricsCollector)
-	if err := metricsCollector.Update(context.Background(), ctrl.Request{}); err != nil {
-		t.Fatalf("Failed to update metrics collector: %v", err)
-	}
-
-	checkAnnotationsAndProxySettings(context.Background(), c, metricsCollectorName, t)
-
-	// Replicas should be 0 when metrics is disabled and is not hub collector
-	metricsCollector = cloneMetricsCollector(baseMetricsCollector)
-	metricsCollector.ObsAddonSpec.EnableMetrics = false
-	metricsCollector.ClusterInfo.IsHubMetricsCollector = false
-	if err := metricsCollector.Update(context.Background(), ctrl.Request{}); err != nil {
-		t.Fatalf("Failed to update metrics collector: %v", err)
-	}
-
-	deployment := getMetricsCollectorDeployment(t, context.Background(), c, metricsCollectorName)
-	if *deployment.Spec.Replicas != 0 {
-		t.Fatalf("Replicas should be 0 when metrics is disabled and is not hub collector")
-	}
-
-	// Hub metrics collector should have 1 replica even if metrics is disabled
-	metricsCollector = cloneMetricsCollector(baseMetricsCollector)
-	metricsCollector.ObsAddonSpec.EnableMetrics = false
-	metricsCollector.ClusterInfo.IsHubMetricsCollector = true
-	if err := metricsCollector.Update(context.Background(), ctrl.Request{}); err != nil {
-		t.Fatalf("Failed to update metrics collector: %v", err)
-	}
-
-	deployment = getMetricsCollectorDeployment(t, context.Background(), c, metricsCollectorName)
-	if *deployment.Spec.Replicas != 1 {
-		t.Fatalf("Hub metrics collector should have 1 replica even if metrics is disabled")
-	}
-
-	// Should force reload if certs are updated
-	certs := []string{
-		"observability-controller-open-cluster-management.io-observability-signer-client-cert",
-		"observability-managed-cluster-certs",
-		"observability-server-ca-certs",
-	}
-	metricsCollector = cloneMetricsCollector(baseMetricsCollector)
-	for _, cert := range certs {
-		// Set running replicas to 1
-		deployment = getMetricsCollectorDeployment(t, context.Background(), c, metricsCollectorName)
-		deployment.Status.ReadyReplicas = 1
-		if err := c.Update(context.Background(), deployment); err != nil {
-			t.Fatalf("Failed to update deployment: %v", err)
-		}
-
-		// Update with cert request
-		if err := metricsCollector.Update(context.Background(), ctrl.Request{types.NamespacedName{Name: cert}}); err != nil {
-			t.Fatalf("Failed to update metrics collector: %v", err)
-		}
-		deployment = getMetricsCollectorDeployment(t, context.Background(), c, metricsCollectorName)
-		if _, ok := deployment.Spec.Template.ObjectMeta.Labels["cert/time-restarted"]; !ok {
-			t.Fatalf("Should force reload if certs are updated. Label not found: %v", deployment.Spec.Template.ObjectMeta.Labels)
-		}
-
-		// Reset the label
-		deployment.Spec.Template.ObjectMeta.Labels["cert/time-restarted"] = ""
-		if err := c.Update(context.Background(), deployment); err != nil {
-			t.Fatalf("Failed to update deployment: %v", err)
-		}
-	}
-
-	// Should not create a uwl metrics collector if no custom allowlist is present
-	metricsCollector = cloneMetricsCollector(baseMetricsCollector)
-	metricsCollector.ObsAddonSpec.EnableMetrics = true
-	if err := metricsCollector.Update(context.Background(), ctrl.Request{}); err != nil {
-		t.Fatalf("Failed to update metrics collector: %v", err)
-	}
-
-	deployment = &appsv1.Deployment{}
-	if err := c.Get(context.Background(), types.NamespacedName{Name: uwlMetricsCollectorName, Namespace: namespace}, deployment); err != nil {
-		if !errors.IsNotFound(err) {
-			t.Fatalf("Failed to get deployment %s/%s: %v", namespace, uwlMetricsCollectorName, err)
-		}
-	} else {
-		t.Fatalf("Should not create a uwl metrics collector if no custom allowlist is present")
-	}
-
-	// It should deploy uwl metrics collector if a custom allowlist is present and uwl prometheus is present
-	// c = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(append(objs, getCustomAllowlistCM(), newUwlPrometheus())...).Build()
-	c = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(append(objs, newUwlPrometheus())...).Build()
-	baseMetricsCollector.Client = c
-
-	metricsCollector = cloneMetricsCollector(baseMetricsCollector)
-	metricsCollector.ObsAddonSpec.EnableMetrics = true
-	if err := metricsCollector.Update(context.Background(), ctrl.Request{}); err != nil {
-		t.Fatalf("Failed to update metrics collector: %v", err)
-	}
-
-	_ = getMetricsCollectorDeployment(t, context.Background(), c, uwlMetricsCollectorName)
-	// fmt.Println(deployment.Spec.Template.Spec.Containers[0].Args)
-
-	// Should delete uwl metrics collector if uwl prometheus is removed
-	if err := c.Delete(context.Background(), newUwlPrometheus()); err != nil {
-		t.Fatalf("Failed to delete custom allowlist configmap: %v", err)
-	}
-	if err := metricsCollector.Update(context.Background(), ctrl.Request{}); err != nil {
-		t.Fatalf("Failed to update metrics collector: %v", err)
-	}
-
-	deployment = &appsv1.Deployment{}
-	if err := c.Get(context.Background(), types.NamespacedName{Name: uwlMetricsCollectorName, Namespace: namespace}, deployment); err != nil {
-		if !errors.IsNotFound(err) {
-			t.Fatalf("Failed to get deployment %s/%s: %v", namespace, uwlMetricsCollectorName, err)
-		}
-	} else {
-		t.Fatalf("Should not create a uwl metrics collector if no custom allowlist is present")
-	}
-
-	// err = deleteMetricsCollector(ctx, c, uwlMetricsCollectorName)
-	// if err != nil {
-	// 	t.Fatalf("Failed to delete uwl metrics collector deployment: (%v)", err)
-	// }
 }
 
 func getMetricsCollectorDeployment(t *testing.T, ctx context.Context, c client.Client, name string) *appsv1.Deployment {
 	deployment := &appsv1.Deployment{}
 	err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, deployment)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
 		t.Fatalf("Failed to get deployment %s/%s: %v", namespace, name, err)
 	}
 	return deployment
-}
-
-func cloneMetricsCollector(original *collector.MetricsCollector) *collector.MetricsCollector {
-	ret := *original
-	hubInfo := *original.HubInfo
-	ret.HubInfo = &hubInfo
-	addon := *original.ObsAddonSpec
-	ret.ObsAddonSpec = &addon
-	return &ret
 }
