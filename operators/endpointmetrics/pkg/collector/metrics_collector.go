@@ -112,7 +112,8 @@ func (m *MetricsCollector) Update(ctx context.Context, req ctrl.Request) error {
 		return err
 	}
 
-	if isUwl && len(deployParams.uwlList.NameList) != 0 {
+	uwlMetricsLen := len(deployParams.uwlList.NameList) + len(deployParams.uwlList.MatchList)
+	if isUwl && uwlMetricsLen != 0 {
 		if err := m.updateMetricsCollector(ctx, true, deployParams); err != nil {
 			return err
 		}
@@ -173,54 +174,36 @@ func (m *MetricsCollector) deleteMetricsCollector(ctx context.Context, isUWL boo
 		name = uwlMetricsCollector
 	}
 
-	foundDeploy := &appsv1.Deployment{}
-	err := m.Client.Get(ctx, types.NamespacedName{Name: deployName, Namespace: m.Namespace}, foundDeploy)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return fmt.Errorf("failed to get deployment %s/%s: %w", m.Namespace, deployName, err)
-		}
-	} else {
-		m.Log.Info("Deleting metrics collector deployment", "name", deployName, "namespace", m.Namespace)
-		err = m.Client.Delete(ctx, foundDeploy)
-		if err != nil {
-			return fmt.Errorf("failed to delete deployment %s/%s: %w", m.Namespace, deployName, err)
-		}
+	objects := []client.Object{
+		&appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      deployName,
+				Namespace: m.Namespace,
+			},
+		},
+		&monitoringv1.ServiceMonitor{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: m.Namespace,
+			},
+		},
+		&monitoringv1.PrometheusRule{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "acm-" + name + "-alerting-rules",
+				Namespace: m.Namespace,
+			},
+		},
+		&corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: m.Namespace,
+			},
+		},
 	}
 
-	foundSM := &monitoringv1.ServiceMonitor{}
-	if err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundSM); err != nil {
-		if !errors.IsNotFound(err) {
-			return fmt.Errorf("failed to get servicemonitor %s/%s: %w", m.Namespace, name, err)
-		}
-	} else {
-		m.Log.Info("Deleting metrics collector servicemonitor", "name", name, "namespace", m.Namespace)
-		if err := m.Client.Delete(ctx, foundSM); err != nil {
-			return fmt.Errorf("failed to delete servicemonitor %s/%s: %w", m.Namespace, name, err)
-		}
-	}
-
-	foundAlerts := &monitoringv1.PrometheusRule{}
-	promRulesName := "acm-" + name + "-alerting-rules"
-	if err := m.Client.Get(ctx, types.NamespacedName{Name: promRulesName, Namespace: m.Namespace}, foundAlerts); err != nil {
-		if !errors.IsNotFound(err) {
-			return fmt.Errorf("failed to get alerting rules %s/%s: %w", m.Namespace, promRulesName, err)
-		}
-	} else {
-		m.Log.Info("Deleting metrics collector alerting rules", "name", promRulesName, "namespace", m.Namespace)
-		if err := m.Client.Delete(ctx, foundAlerts); err != nil {
-			return fmt.Errorf("failed to delete alerting rules %s/%s: %w", m.Namespace, promRulesName, err)
-		}
-	}
-
-	foundService := &corev1.Service{}
-	if err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundService); err != nil {
-		if !errors.IsNotFound(err) {
-			return fmt.Errorf("failed to get service %s/%s: %w", m.Namespace, name, err)
-		}
-	} else {
-		m.Log.Info("Deleting metrics collector service", "name", name, "namespace", m.Namespace)
-		if err := m.Client.Delete(ctx, foundService); err != nil {
-			return fmt.Errorf("failed to delete service %s/%s: %w", m.Namespace, name, err)
+	for _, obj := range objects {
+		if err := m.deleteResourceIfExists(ctx, obj); err != nil {
+			return err
 		}
 	}
 
@@ -887,15 +870,6 @@ func (m *MetricsCollector) getEndpointDeployment(ctx context.Context) (*appsv1.D
 	return ret, nil
 }
 
-func getNameInMatch(match string) string {
-	r := regexp.MustCompile(`__name__="([^,]*)"`)
-	m := r.FindAllStringSubmatch(match, -1)
-	if m != nil {
-		return m[0][1]
-	}
-	return ""
-}
-
 func (m *MetricsCollector) isUWLMonitoringEnabled(ctx context.Context) (bool, error) {
 	sts := &appsv1.StatefulSet{}
 	err := m.Client.Get(ctx, types.NamespacedName{Namespace: uwlNamespace, Name: uwlSts}, sts)
@@ -908,6 +882,28 @@ func (m *MetricsCollector) isUWLMonitoringEnabled(ctx context.Context) (bool, er
 	}
 
 	return true, nil
+}
+
+func (m *MetricsCollector) deleteResourceIfExists(ctx context.Context, obj client.Object) error {
+	err := m.Client.Delete(ctx, obj)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("failed to delete object %s %s/%s: %w", obj.GetObjectKind().GroupVersionKind().Kind, obj.GetNamespace(), obj.GetName(), err)
+		}
+	} else {
+		m.Log.Info("Deleted object", "kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName(), "namespace", obj.GetNamespace())
+	}
+
+	return nil
+}
+
+func getNameInMatch(match string) string {
+	r := regexp.MustCompile(`__name__="([^,]*)"`)
+	m := r.FindAllStringSubmatch(match, -1)
+	if m != nil {
+		return m[0][1]
+	}
+	return ""
 }
 
 // for custom uwl allowlist:

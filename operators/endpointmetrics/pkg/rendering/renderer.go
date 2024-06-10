@@ -33,7 +33,7 @@ const (
 )
 
 var (
-	namespace       = os.Getenv("WATCH_NAMESPACE")
+	namespace       = "open-cluster-management-addon-observability"
 	log             = logf.Log.WithName("renderer")
 	disabledMetrics = []string{
 		"apiserver_admission_controller_admission_duration_seconds_bucket",

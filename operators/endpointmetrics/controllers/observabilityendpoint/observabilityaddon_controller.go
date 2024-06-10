@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/collector"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/microshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
@@ -50,33 +51,27 @@ var (
 
 const (
 	obAddonName                     = "observability-addon"
-	ownerLabelKey                   = "owner"
-	ownerLabelValue                 = "observabilityaddon"
 	obsAddonFinalizer               = "observability.open-cluster-management.io/addon-cleanup"
 	promSvcName                     = "prometheus-k8s"
 	promNamespace                   = "openshift-monitoring"
 	openShiftClusterMonitoringlabel = "openshift.io/cluster-monitoring"
 )
 
-const (
-	defaultClusterType  = ""
-	ocpThreeClusterType = "ocp3"
-	snoClusterType      = "SNO"
-)
-
 var (
-	namespace             = os.Getenv("WATCH_NAMESPACE")
-	hubNamespace          = os.Getenv("HUB_NAMESPACE")
-	isHubMetricsCollector = os.Getenv("HUB_ENDPOINT_OPERATOR") == "true"
-	serviceAccountName    = os.Getenv("SERVICE_ACCOUNT")
+	// namespace             = os.Getenv("WATCH_NAMESPACE")
+	namespace    = "open-cluster-management-addon-observability"
+	hubNamespace = os.Getenv("HUB_NAMESPACE")
+	// r.IsHubMetricsCollector = os.Getenv("HUB_ENDPOINT_OPERATOR") == "true"
+	serviceAccountName = os.Getenv("SERVICE_ACCOUNT")
 )
 
 // ObservabilityAddonReconciler reconciles a ObservabilityAddon object.
 type ObservabilityAddonReconciler struct {
-	Client    client.Client
-	Scheme    *runtime.Scheme
-	HubClient *util.ReloadableHubClient
-	HostIP    string
+	Client                client.Client
+	Scheme                *runtime.Scheme
+	HubClient             *util.ReloadableHubClient
+	HostIP                string
+	IsHubMetricsCollector bool
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io.open-cluster-management.io,resources=observabilityaddons,verbs=get;list;watch;create;update;patch;delete
@@ -108,7 +103,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	// ACM 8509: Special case for hub/local cluster metrics collection
 	// We do not have an ObservabilityAddon instance in the local cluster so skipping the below block
-	if !isHubMetricsCollector {
+	if !r.IsHubMetricsCollector {
 		if err := r.ensureOpenShiftMonitoringLabelAndRole(ctx); err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to ensure OpenShift monitoring label and role: %w", err)
 		}
@@ -167,7 +162,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 	hubInfo.ClusterName = string(hubSecret.Data[operatorconfig.ClusterNameKey])
 
-	clusterType := defaultClusterType
+	clusterType := operatorconfig.DefaultClusterType
 	clusterID := ""
 
 	// read the image configmap
@@ -181,7 +176,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 	rendering.Images = imagesCM.Data
 
-	if isHubMetricsCollector && isHypershift {
+	if r.IsHubMetricsCollector && isHypershift {
 		updatedHCs, err := hypershift.ReconcileHostedClustersServiceMonitors(ctx, r.Client)
 		if err != nil {
 			log.Error(err, "Failed to create ServiceMonitors for hypershift")
@@ -223,14 +218,14 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			// OCP 3.11 has no cluster id, set it as empty string
 			clusterID = ""
 			// to differentiate ocp 3.x
-			clusterType = ocpThreeClusterType
+			clusterType = operatorconfig.OcpThreeClusterType
 		}
 
 		isSNO, err := openshift.IsSNO(ctx, r.Client)
 		if err != nil {
 			log.Error(err, "Failed to check if the cluster is SNO")
 		} else if isSNO {
-			clusterType = snoClusterType
+			clusterType = operatorconfig.SnoClusterType
 		}
 
 		err = openshift.CreateMonitoringClusterRoleBinding(ctx, log, r.Client, namespace, serviceAccountName)
@@ -249,7 +244,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, fmt.Errorf("failed to render prometheus templates: %w", err)
 		}
 
-		if !isHubMetricsCollector {
+		if !r.IsHubMetricsCollector {
 			microshiftVersion, err := microshift.IsMicroshiftCluster(ctx, r.Client)
 			if err != nil {
 				return ctrl.Result{}, fmt.Errorf("failed to check if the cluster is microshift: %w", err)
@@ -276,7 +271,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 				globalRes = append(globalRes, res)
 			}
 
-			if !isHubMetricsCollector {
+			if !r.IsHubMetricsCollector {
 				// For kind tests we need to deploy prometheus in hub but cannot set controller
 				// reference as there is no observabilityaddon
 
@@ -301,7 +296,33 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, fmt.Errorf("failed to create or update cluster monitoring config: %w", err)
 	}
 
-	forceRestart := req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == openshift.CaConfigmapName
+	// forceRestart := req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == openshift.CaConfigmapName
+
+	metricsCollector := collector.MetricsCollector{
+		Client: r.Client,
+		ClusterInfo: collector.ClusterInfo{
+			ClusterID:             clusterID,
+			ClusterType:           clusterType,
+			InstallPrometheus:     installPrometheus,
+			IsHubMetricsCollector: r.IsHubMetricsCollector,
+		},
+		HubInfo:            hubInfo,
+		Log:                log.WithName("metrics-collector"),
+		Namespace:          namespace,
+		ObsAddonSpec:       &obsAddon.Spec,
+		ServiceAccountName: serviceAccountName,
+	}
+
+	collectorResult, err := metricsCollector.Update(ctx, req)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to update metrics collector: %w", err)
+	}
+
+	/*
+		if result == created {
+			if err := util.ReportStatus(ctx, r.Client, util.DeployedStatus, obsAddon.Name, obsAddon.Namespace); err != nil {
+		}
+	*/
 
 	if obsAddon.Spec.EnableMetrics || isHubMetricsCollector {
 		if isHubMetricsCollector {
@@ -531,7 +552,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		builder.WithPredicates(getPred(obAddonName, namespace, true, true, true)),
 	)
 
-	if isHubMetricsCollector {
+	if r.IsHubMetricsCollector {
 		ctrlBuilder = ctrlBuilder.Watches(
 			&oav1beta2.MultiClusterObservability{},
 			&handler.EnqueueRequestForObject{},
