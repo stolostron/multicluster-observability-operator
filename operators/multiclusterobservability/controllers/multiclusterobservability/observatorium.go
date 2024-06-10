@@ -161,6 +161,15 @@ func GenerateObservatoriumCR(
 
 	oldSpec := observatoriumCRFound.Spec
 	newSpec := observatoriumCR.Spec
+
+	// keep the tenant id unchanged and ensure the new spec has the same tenant ID as the old spec to prevent Observatorium
+	// from updating
+	for i, newTenant := range newSpec.API.Tenants {
+		for _, oldTenant := range oldSpec.API.Tenants {
+			updateTenantID(&newSpec, newTenant, oldTenant, i)
+		}
+	}
+
 	oldSpecBytes, _ := yaml.Marshal(oldSpec)
 	newSpecBytes, _ := yaml.Marshal(newSpec)
 	if bytes.Equal(newSpecBytes, oldSpecBytes) &&
@@ -171,13 +180,6 @@ func GenerateObservatoriumCR(
 	log.Info("Coleen oldSpec", "oldSpec", string(oldSpecBytes))
 	log.Info("Coleen newSpec", "newSpec", string(newSpecBytes))
 	log.Info("Coleen oldSpecHash", "oldSpecHash", observatoriumCRFound.Labels[obsCRConfigHashLabelName], "newSpecHash", labels[obsCRConfigHashLabelName])
-
-	// keep the tenant id unchanged
-	for i, newTenant := range newSpec.API.Tenants {
-		for _, oldTenant := range oldSpec.API.Tenants {
-			updateTenantID(&newSpec, newTenant, oldTenant, i)
-		}
-	}
 
 	log.Info("Updating observatorium CR",
 		"observatorium", observatoriumCR.Name,
