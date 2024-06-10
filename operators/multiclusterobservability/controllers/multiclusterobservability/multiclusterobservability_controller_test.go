@@ -57,7 +57,7 @@ func setupTest(t *testing.T) func() {
 		t.Fatalf("Failed to get work dir: (%v)", err)
 	}
 	t.Log("begin setupTest")
-	os.MkdirAll(path.Join(wd, "../../tests"), 0755)
+	os.MkdirAll(path.Join(wd, "../../tests"), 0o755)
 	testManifestsPath := path.Join(wd, "../../tests/manifests")
 	manifestsPath := path.Join(wd, "../../manifests")
 	os.Setenv("TEMPLATES_PATH", testManifestsPath)
@@ -100,18 +100,19 @@ func newTestCert(name string, namespace string) *corev1.Secret {
 }
 
 var testImagemanifestsMap = map[string]string{
-	"endpoint_monitoring_operator": "test.io/endpoint-monitoring:test",
-	"grafana":                      "test.io/origin-grafana:test",
-	"grafana_dashboard_loader":     "test.io/grafana-dashboard-loader:test",
-	"management_ingress":           "test.io/management-ingress:test",
-	"observatorium":                "test.io/observatorium:test",
-	"observatorium_operator":       "test.io/observatorium-operator:test",
-	"prometheus_alertmanager":      "test.io/prometheus-alertmanager:test",
-	"configmap_reloader":           "test.io/configmap-reloader:test",
-	"rbac_query_proxy":             "test.io/rbac-query-proxy:test",
-	"thanos":                       "test.io/thanos:test",
-	"thanos_receive_controller":    "test.io/thanos_receive_controller:test",
-	"kube_rbac_proxy":              "test.io/kube-rbac-proxy:test",
+	"endpoint_monitoring_operator":     "test.io/endpoint-monitoring:test",
+	"grafana":                          "test.io/origin-grafana:test",
+	"grafana_dashboard_loader":         "test.io/grafana-dashboard-loader:test",
+	"management_ingress":               "test.io/management-ingress:test",
+	"observatorium":                    "test.io/observatorium:test",
+	"observatorium_operator":           "test.io/observatorium-operator:test",
+	"prometheus_alertmanager":          "test.io/prometheus-alertmanager:test",
+	"configmap_reloader":               "test.io/configmap-reloader:test",
+	"rbac_query_proxy":                 "test.io/rbac-query-proxy:test",
+	"thanos":                           "test.io/thanos:test",
+	"thanos_receive_controller":        "test.io/thanos_receive_controller:test",
+	"kube_rbac_proxy":                  "test.io/kube-rbac-proxy:test",
+	"multicluster_observability_addon": "test.io/multicluster-observability-addon:test",
 }
 
 func newTestImageManifestsConfigMap(namespace, version string) *corev1.ConfigMap {
@@ -332,8 +333,10 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 		},
 	}
 
-	objs := []runtime.Object{mco, svc, serverCACerts, clientCACerts, proxyRouteBYOCACerts, grafanaCert, serverCert,
-		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, proxyRouteBYOCert, clustermgmtAddon, extensionApiserverAuthenticationCM}
+	objs := []runtime.Object{
+		mco, svc, serverCACerts, clientCACerts, proxyRouteBYOCACerts, grafanaCert, serverCert,
+		testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, proxyRouteBYOCert, clustermgmtAddon, extensionApiserverAuthenticationCM,
+	}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().
 		WithRuntimeObjects(objs...).
@@ -746,8 +749,10 @@ func TestImageReplaceForMCO(t *testing.T) {
 		},
 	}
 
-	objs := []runtime.Object{mco, observatoriumAPIsvc, serverCACerts, clientCACerts, grafanaCert, serverCert,
-		testMCHInstance, imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon, extensionApiserverAuthenticationCM}
+	objs := []runtime.Object{
+		mco, observatoriumAPIsvc, serverCACerts, clientCACerts, grafanaCert, serverCert,
+		testMCHInstance, imageManifestsCM, testAmRouteBYOCaSecret, testAmRouteBYOCertSecret, clustermgmtAddon, extensionApiserverAuthenticationCM,
+	}
 	// Create a fake client to mock API calls.
 	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
@@ -850,7 +855,6 @@ func TestImageReplaceForMCO(t *testing.T) {
 }
 
 func createSecret(key, name, namespace string) *corev1.Secret {
-
 	s3Conf := &config.ObjectStorgeConf{
 		Type: "s3",
 		Config: config.Config{
@@ -962,7 +966,6 @@ func TestHandleStorageSizeChange(t *testing.T) {
 	} else {
 		t.Errorf("update pvc failed: %v", err)
 	}
-
 }
 
 func createStatefulSet(name, namespace, statefulSetName string) *appsv1.StatefulSet {
