@@ -372,8 +372,11 @@ func (d *Deployer) updateAddOnDeploymentConfig(ctx context.Context, desiredObj, 
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredAODC, runtimeAODC) {
+	if !apiequality.Semantic.DeepDerivative(desiredAODC.Spec, runtimeAODC.Spec) {
 		logUpdateInfo(runtimeObj)
+		if desiredAODC.ResourceVersion != runtimeAODC.ResourceVersion {
+			desiredAODC.ResourceVersion = runtimeAODC.ResourceVersion
+		}
 		return d.client.Update(ctx, desiredAODC)
 	}
 
@@ -386,8 +389,11 @@ func (d *Deployer) updateClusterManagementAddOn(ctx context.Context, desiredObj,
 		return err
 	}
 
-	if !apiequality.Semantic.DeepDerivative(desiredCMAO, runtimeCMAO) {
+	if !apiequality.Semantic.DeepDerivative(desiredCMAO.Spec, runtimeCMAO.Spec) {
 		logUpdateInfo(runtimeObj)
+		if desiredCMAO.ResourceVersion != runtimeCMAO.ResourceVersion {
+			desiredCMAO.ResourceVersion = runtimeCMAO.ResourceVersion
+		}
 		return d.client.Update(ctx, desiredCMAO)
 	}
 
