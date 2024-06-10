@@ -177,8 +177,6 @@ func GenerateObservatoriumCR(
 		return nil, nil
 	}
 
-	log.Info("Coleen oldSpec", "oldSpec", string(oldSpecBytes))
-	log.Info("Coleen newSpec", "newSpec", string(newSpecBytes))
 	log.Info("Coleen oldSpecHash", "oldSpecHash", observatoriumCRFound.Labels[obsCRConfigHashLabelName], "newSpecHash", labels[obsCRConfigHashLabelName])
 
 	log.Info("Updating observatorium CR",
