@@ -177,8 +177,6 @@ func GenerateObservatoriumCR(
 		return nil, nil
 	}
 
-	log.Info("Coleen oldSpecHash", "oldSpecHash", observatoriumCRFound.Labels[obsCRConfigHashLabelName], "newSpecHash", labels[obsCRConfigHashLabelName])
-
 	log.Info("Updating observatorium CR",
 		"observatorium", observatoriumCR.Name,
 	)
@@ -246,8 +244,6 @@ func updateTenantID(
 	if oldTenant.Name == newTenant.Name && newTenant.ID == oldTenant.ID {
 		return
 	}
-
-	log.Info("Coleen Updating tenant ID", "oldTenant", oldTenant, "newTenant", newTenant)
 
 	newSpec.API.Tenants[idx].ID = oldTenant.ID
 	for j, hashring := range newSpec.Hashrings {
