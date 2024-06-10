@@ -167,6 +167,8 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			return nil, err
 		}
 
+		log.V(1).Info("Adding capabilities to AddonDeploymentConfig", "key", aodc.GetName())
+
 		appendCustomVar := func(aodc *addonapiv1alpha1.AddOnDeploymentConfig, name, value string) {
 			aodc.Spec.CustomizedVariables = append(
 				aodc.Spec.CustomizedVariables,
@@ -192,10 +194,14 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			}
 		}
 
+		log.V(1).Info("New capabilities", "capabilities", fmt.Sprintf("%#v", aodc.Spec.CustomizedVariables))
+
 		u.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(aodc)
 		if err != nil {
 			return nil, err
 		}
+
+		log.V(1).Info("Unstructured capabilities", "capabilities", fmt.Sprintf("%#v", u.Object))
 	}
 
 	cLabels := u.GetLabels()
