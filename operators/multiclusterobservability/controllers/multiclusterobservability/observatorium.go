@@ -168,6 +168,10 @@ func GenerateObservatoriumCR(
 		return nil, nil
 	}
 
+	log.Info("Coleen oldSpec", "oldSpec", string(oldSpecBytes))
+	log.Info("Coleen newSpec", "newSpec", string(newSpecBytes))
+	log.Info("Coleen oldSpecHash", "oldSpecHash", observatoriumCRFound.Labels[obsCRConfigHashLabelName], "newSpecHash", labels[obsCRConfigHashLabelName])
+
 	// keep the tenant id unchanged
 	for i, newTenant := range newSpec.API.Tenants {
 		for _, oldTenant := range oldSpec.API.Tenants {
@@ -242,6 +246,8 @@ func updateTenantID(
 	if oldTenant.Name == newTenant.Name && newTenant.ID == oldTenant.ID {
 		return
 	}
+
+	log.Info("Coleen Updating tenant ID", "oldTenant", oldTenant, "newTenant", newTenant)
 
 	newSpec.API.Tenants[idx].ID = oldTenant.ID
 	for j, hashring := range newSpec.Hashrings {
