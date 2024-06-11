@@ -469,7 +469,9 @@ func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
 		if err != nil {
 			log.Error(err, "Failed to get api route address")
 			return nil, err
-		} else {
+		}
+		// Sometimes these two are the same, so we avoid the duplication.
+		if url != externalHost {
 			hosts = append(hosts, url)
 		}
 	}
