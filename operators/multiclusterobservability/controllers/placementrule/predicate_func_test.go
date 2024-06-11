@@ -71,6 +71,7 @@ func TestClusterPred(t *testing.T) {
 						Name:        name,
 						Namespace:   c.namespace,
 						Annotations: c.annotations,
+						Labels:      map[string]string{"vendor": "OpenShift", "openshiftVersion": "4.6.0"},
 					},
 					Spec: appsv1.DeploymentSpec{
 						Replicas: int32Ptr(2),

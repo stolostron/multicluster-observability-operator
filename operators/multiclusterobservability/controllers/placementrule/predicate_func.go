@@ -34,6 +34,7 @@ func getClusterPreds() predicate.Funcs {
 		if isAutomaticAddonInstallationDisabled(e.Object) {
 			return false
 		}
+
 		label := "vendor"
 		if err := waitForLabel(e.Object, label); err != nil {
 			log.Error(err, "Failed to wait for label", "label", label)
