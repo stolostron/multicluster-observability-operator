@@ -242,7 +242,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	} else {
 		// Render the prometheus templates
 		renderer := rendererutil.NewRenderer()
-		toDeploy, err := rendering.Render(renderer, r.Client, hubInfo)
+		toDeploy, err := rendering.Render(ctx, renderer, r.Client, hubInfo)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to render prometheus templates: %w", err)
 		}
