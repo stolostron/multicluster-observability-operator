@@ -460,6 +460,10 @@ func pemEncode(cert []byte, key []byte) (*bytes.Buffer, *bytes.Buffer) {
 
 func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
 	hosts := []string{config.GetObsAPISvc(config.GetOperandName(config.Observatorium))}
+	externalHost, err := config.GetObsAPIExternalHost(context.TODO(), c, config.GetDefaultNamespace())
+	if err == nil && externalHost != "" {
+		hosts = append(hosts, externalHost)
+	}
 	if ingressCtlCrdExists {
 		url, err := config.GetObsAPIRouteHost(context.TODO(), c, config.GetDefaultNamespace())
 		if err != nil {
