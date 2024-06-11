@@ -14,6 +14,7 @@ import (
 	"encoding/pem"
 	"math/big"
 	"net"
+	"net/url"
 	"time"
 
 	certificatesv1 "k8s.io/api/certificates/v1"
@@ -460,10 +461,17 @@ func pemEncode(cert []byte, key []byte) (*bytes.Buffer, *bytes.Buffer) {
 
 func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
 	hosts := []string{config.GetObsAPISvc(config.GetOperandName(config.Observatorium))}
-	externalHost, err := config.GetObsAPIExternalHost(context.TODO(), c, config.GetDefaultNamespace())
-	if err == nil && externalHost != "" {
-		hosts = append(hosts, externalHost)
+
+	customHostPath, err := config.GetObsAPIExternalHost(context.TODO(), c, config.GetDefaultNamespace())
+	if err != nil {
+		return nil, err
 	}
+	// The config.GetObsAPIExternalHost call is already doing URL parsing under the hood to ensure it's valid,
+	// so we don't need to check the error of url.Parse again.
+	url, _ := url.Parse(customHostPath)
+	customHost := url.Hostname()
+	hosts = append(hosts, customHost)
+
 	if ingressCtlCrdExists {
 		url, err := config.GetObsAPIRouteHost(context.TODO(), c, config.GetDefaultNamespace())
 		if err != nil {
@@ -471,7 +479,7 @@ func getHosts(c client.Client, ingressCtlCrdExists bool) ([]string, error) {
 			return nil, err
 		}
 		// Sometimes these two are the same, so we avoid the duplication.
-		if url != externalHost {
+		if url != customHost {
 			hosts = append(hosts, url)
 		}
 	}
