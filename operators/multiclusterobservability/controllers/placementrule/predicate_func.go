@@ -37,14 +37,14 @@ func getClusterPreds() predicate.Funcs {
 		label := "vendor"
 		if err := waitForLabel(e.Object, label); err != nil {
 			log.Error(err, "Failed to wait for label", "label", label)
-			return true
+			return false
 		}
 		if vendor, ok := e.Object.GetLabels()["vendor"]; ok && vendor == "OpenShift" {
 			label = "openshiftVersion"
 			err := waitForLabel(e.Object, label)
 			if err != nil {
 				log.Error(err, "Failed to wait for label", "label", label)
-				return true
+				return false
 			}
 		}
 
