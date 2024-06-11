@@ -42,17 +42,18 @@ install_kubectl ${WORKDIR}/bin
 install_jq ${WORKDIR}/bin
 
 # install gojsontoyaml
-install_gojsontoyaml ${WORKDIR}/bin
+make -C ${WORKDIR}/../../../ GOJSONTOYAML=
+source ${WORKDIR}/../../../.bingo/variables.env
 
 function get_metrics_list() {
   echo "getting metrics list..."
   if [[ -z ${IS_GENERATING_OCP311_METRICS} ]]; then
-    matches=$(curl -L ${METRICS_ALLOW_LIST_URL} | gojsontoyaml --yamltojson | jq -r '.data."metrics_list.yaml"' | gojsontoyaml --yamltojson | jq -r '.matches' | jq '"{" + .[] + "}"')
-    names=$(curl -L ${METRICS_ALLOW_LIST_URL} | gojsontoyaml --yamltojson | jq -r '.data."metrics_list.yaml"' | gojsontoyaml --yamltojson | jq -r '.names' | jq '"{__name__=\"" + .[] + "\"}"')
+    matches=$(curl -L ${METRICS_ALLOW_LIST_URL} | $GOJSONTOYAML --yamltojson | jq -r '.data."metrics_list.yaml"' | $GOJSONTOYAML --yamltojson | jq -r '.matches' | jq '"{" + .[] + "}"')
+    names=$(curl -L ${METRICS_ALLOW_LIST_URL} | $GOJSONTOYAML --yamltojson | jq -r '.data."metrics_list.yaml"' | $GOJSONTOYAML --yamltojson | jq -r '.names' | jq '"{__name__=\"" + .[] + "\"}"')
     echo $matches $names | jq -s . >${METRICS_JSON_OUT}
   else
-    matches=$(curl -L ${METRICS_ALLOW_LIST_URL} | gojsontoyaml --yamltojson | jq -r '.data."ocp311_metrics_list.yaml"' | gojsontoyaml --yamltojson | jq -r '.matches' | jq '"{" + .[] + "}"')
-    names=$(curl -L ${METRICS_ALLOW_LIST_URL} | gojsontoyaml --yamltojson | jq -r '.data."ocp311_metrics_list.yaml"' | gojsontoyaml --yamltojson | jq -r '.names' | jq '"{__name__=\"" + .[] + "\"}"')
+    matches=$(curl -L ${METRICS_ALLOW_LIST_URL} | $GOJSONTOYAML --yamltojson | jq -r '.data."ocp311_metrics_list.yaml"' | $GOJSONTOYAML --yamltojson | jq -r '.matches' | jq '"{" + .[] + "}"')
+    names=$(curl -L ${METRICS_ALLOW_LIST_URL} | $GOJSONTOYAML --yamltojson | jq -r '.data."ocp311_metrics_list.yaml"' | $GOJSONTOYAML --yamltojson | jq -r '.names' | jq '"{__name__=\"" + .[] + "\"}"')
     echo $matches $names | jq -s . >${METRICS_JSON_OUT}
   fi
 }
@@ -60,10 +61,10 @@ function get_metrics_list() {
 function get_recordingrules_list() {
   echo "getting recordingrules list..."
   if [[ -z ${IS_GENERATING_OCP311_METRICS} ]]; then
-    recordingrules=$(curl -L ${METRICS_ALLOW_LIST_URL} | gojsontoyaml --yamltojson | jq -r '.data."metrics_list.yaml"' | gojsontoyaml --yamltojson | jq '.recording_rules[]')
+    recordingrules=$(curl -L ${METRICS_ALLOW_LIST_URL} | $GOJSONTOYAML --yamltojson | jq -r '.data."metrics_list.yaml"' | $GOJSONTOYAML --yamltojson | jq '.recording_rules[]')
     echo "$recordingrules" | jq -s . >${RECORDINGRULES_JSON_OUT}
   else
-    recordingrules=$(curl -L ${METRICS_ALLOW_LIST_URL} | gojsontoyaml --yamltojson | jq -r '.data."ocp311_metrics_list.yaml"' | gojsontoyaml --yamltojson | jq '.recording_rules[]')
+    recordingrules=$(curl -L ${METRICS_ALLOW_LIST_URL} | $GOJSONTOYAML --yamltojson | jq -r '.data."ocp311_metrics_list.yaml"' | $GOJSONTOYAML --yamltojson | jq '.recording_rules[]')
     echo "$recordingrules" | jq -s . >${RECORDINGRULES_JSON_OUT}
   fi
 }

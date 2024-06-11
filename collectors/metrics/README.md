@@ -30,7 +30,7 @@ Prerequisites:
 Commands [kind](https://kind.sigs.k8s.io/) and [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl) are required to set up an integration environment. To install them, run:
 
 ```bash
-make install-integration-test-deps
+make tools
 ```
 
 If the image is pushed to a private repo which requires authentication,

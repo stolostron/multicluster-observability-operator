@@ -3,6 +3,8 @@
 
 -include /opt/build-harness/Makefile.prow
 
+include ../../.bingo/Variables.mk
+
 # MAKEFILE_DIR is the directory that contains the current makefile
 # used to locate some common building files
 MAKEFILE_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
@@ -95,7 +97,7 @@ undeploy:
 	$(KUSTOMIZE) build config/default | kubectl delete -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
-manifests: controller-gen
+manifests: $(CONTROLLER_GEN)
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	# TODO(morvencao): replace the sed command with kubebuilder marker
 	$(SED) -i 's/storage: false/&\n    deprecated: true/g' config/crd/bases/observability.open-cluster-management.io_multiclusterobservabilities.yaml
@@ -110,50 +112,40 @@ vet:
 	go vet ./...
 
 # Generate code
-generate: controller-gen
+generate: $(CONTROLLER_GEN)
 	$(CONTROLLER_GEN) object:headerFile="$(ROOT_DIR)/hack/boilerplate.go.txt" paths="./..."
-
-# Download controller-gen locally if necessary
-CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
-controller-gen:
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
-
-# Download kustomize locally if necessary
-KUSTOMIZE = $(shell pwd)/bin/kustomize
-kustomize:
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v5@v5.3.0)
-
-# go-get-tool will 'go get' any package $2 and install it to $1.
-# TODO(saswatamcode): Not all tools are "go install"-able, if they have replace directives in their go.mod. Replace with something else.
-PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
-define go-get-tool
-@[ -f $(1) ] || { \
-set -e ;\
-TMP_DIR=$$(mktemp -d) ;\
-cd $$TMP_DIR ;\
-go mod init tmp ;\
-echo "Downloading $(2)" ;\
-GOBIN=$(PROJECT_DIR)/bin go install $(2) ;\
-rm -rf $$TMP_DIR ;\
-}
-endef
 
 .PHONY: build
 build: manager
 
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
-bundle: manifests kustomize
-	operator-sdk generate kustomize manifests -q
+bundle: manifests $(KUSTOMIZE) $(OPERATOR_SDK)
+	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image quay.io/stolostron/multicluster-observability-operator=$(IMG)
-	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
-	#TODO(morvencao): filter the rbac resource with operator-sdk bundle command
+	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+	#TODO(morvencao): filter the rbac resource with $(OPERATOR_SDK) bundle command
 	rm -f ./bundle/manifests/multicluster-observability-operator-manager-role_rbac.authorization.k8s.io_v1_clusterrole.yaml
 	rm -f ./bundle/manifests/multicluster-observability-operator-manager-rolebinding_rbac.authorization.k8s.io_v1_clusterrolebinding.yaml
 	rm -f ./bundle/manifests/multicluster-observability-operator_v1_serviceaccount.yaml
-	operator-sdk bundle validate ./bundle
+	$(OPERATOR_SDK) bundle validate ./bundle
 
 # Build the bundle image.
 .PHONY: bundle-build
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+
+# Build the docker image
+.PHONY: docker-build
+docker-build:
+	docker build -t ${IMG} -f Dockerfile ../../
+
+# Build the docker image using a public image registry
+.PHONY: docker-build-local
+docker-build-local:
+	docker buildx build -t ${IMG} -f Dockerfile.dev --load  ../../
+
+# Push the docker image
+.PHONY: docker-push
+docker-push:
+	docker push ${IMG}
