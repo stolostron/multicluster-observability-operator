@@ -195,7 +195,6 @@ func shouldUpdateManifestWork(desiredManifests []workv1.Manifest, foundManifests
 	if len(desiredManifests) != len(foundManifests) {
 		return true
 	}
-	log.Info("Coleen len desiredManifests", "len", len(desiredManifests), "len", len(foundManifests))
 
 	for i, m := range foundManifests {
 		if !util.CompareObject(m.RawExtension, desiredManifests[i].RawExtension) {
