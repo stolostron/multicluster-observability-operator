@@ -81,10 +81,13 @@ func CompareObject(re1 runtime.RawExtension, re2 runtime.RawExtension) bool {
 	if err != nil {
 		return false
 	}
+	log.Info("Coleen - obj1", obj1, "obj2", obj2)
 	kind1 := obj1.GetObjectKind().GroupVersionKind().Kind
 	kind2 := obj2.GetObjectKind().GroupVersionKind().Kind
 	version1 := obj1.GetObjectKind().GroupVersionKind().Version
 	version2 := obj2.GetObjectKind().GroupVersionKind().Version
+	//log all variables above
+	log.Info("Coleen - kind1", kind1, "kind2", kind2, "version1", version1, "version2", version2)
 	if kind1 != kind2 || version1 != version2 {
 		log.Info("obj1 and obj2 have different Kind or Version",
 			"kind1", kind2, "kind2", kind2, "version1", version1, "version2", version2)
