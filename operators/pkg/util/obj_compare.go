@@ -71,7 +71,7 @@ func GetK8sObjWithVersion(kind, version string) runtime.Object {
 // CompareObject is used to compare two k8s objs are same or not
 func CompareObject(re1 runtime.RawExtension, re2 runtime.RawExtension) bool {
 	if re2.Object == nil {
-		log.Info("Coleen - deep equal", reflect.DeepEqual(re1.Raw, re2.Raw))
+		log.Info("Coleen - deep equal", "compare", reflect.DeepEqual(re1.Raw, re2.Raw))
 		log.Info("Coleen - deep equal", "re1", re1.Raw)
 		log.Info("Coleen - deep equal", "re2", re2.Raw)
 		return reflect.DeepEqual(re1.Raw, re2.Raw)
