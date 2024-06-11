@@ -98,7 +98,7 @@ kind-env: $(KIND)
 # Creates a KinD cluster with MCO deployed and sets the kubeconfig context to the cluster
 # This fully prepares the environment for running e2e tests.
 .PHONY: mco-kind-env
-mco-kind-env: kind-env
+mco-kind-env: kind-env $(KIND)
 	@echo "Local environment has been set up"
 	@echo "Installing MCO"
 	@$(KIND) get kubeconfig --name hub > /tmp/hub.yaml
