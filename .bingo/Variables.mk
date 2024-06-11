@@ -65,11 +65,11 @@ $(MISSPELL): $(BINGO_DIR)/misspell.mod
 	@echo "(re)installing $(GOBIN)/misspell-v0.3.4"
 	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=misspell.mod -o=$(GOBIN)/misspell-v0.3.4 "github.com/client9/misspell/cmd/misspell"
 
-OPERATOR_SDK := $(GOBIN)/operator-sdk-v1.4.2
+OPERATOR_SDK := $(GOBIN)/operator-sdk-v1.34.2
 $(OPERATOR_SDK): $(BINGO_DIR)/operator-sdk.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/operator-sdk-v1.4.2"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -ldflags "-s -w -X 'github.com/operator-framework/operator-sdk/internal/version.Version=v1.4.2'" -mod=mod -modfile=operator-sdk.mod -o=$(GOBIN)/operator-sdk-v1.4.2 "github.com/operator-framework/operator-sdk/cmd/operator-sdk"
+	@echo "(re)installing $(GOBIN)/operator-sdk-v1.34.2"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=operator-sdk.mod -o=$(GOBIN)/operator-sdk-v1.34.2 "github.com/operator-framework/operator-sdk/cmd/operator-sdk"
 
 SETUP_ENVTEST := $(GOBIN)/setup-envtest-v0.0.0-20240531134648-6636df17d67b
 $(SETUP_ENVTEST): $(BINGO_DIR)/setup-envtest.mod
