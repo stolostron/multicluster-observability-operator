@@ -7,6 +7,7 @@ package placementrule
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"sync"
@@ -581,6 +582,23 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 		return err
 	}
 	return nil
+}
+
+func waitForLabel(obj client.Object, label string) error {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	timeout := time.After(5 * time.Second)
+
+	for {
+		select {
+		case <-timeout:
+			return fmt.Errorf("timed out waiting for label %v on object %v", label, obj.GetName())
+		case <-ticker.C:
+			if _, ok := obj.GetLabels()[label]; ok {
+				return nil
+			}
+		}
+	}
 }
 
 func updateManagedClusterList(obj client.Object) {

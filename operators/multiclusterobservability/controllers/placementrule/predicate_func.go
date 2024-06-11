@@ -34,9 +34,21 @@ func getClusterPreds() predicate.Funcs {
 		if isAutomaticAddonInstallationDisabled(e.Object) {
 			return false
 		}
-		if e.Object.GetName() != "local-cluster" {
-			updateManagedClusterList(e.Object)
+		label := "vendor"
+		if err := waitForLabel(e.Object, label); err != nil {
+			log.Error(err, "Failed to wait for label", "label", label)
+			return true
 		}
+		if vendor, ok := e.Object.GetLabels()["vendor"]; ok && vendor == "OpenShift" {
+			label = "openshiftVersion"
+			err := waitForLabel(e.Object, label)
+			if err != nil {
+				log.Error(err, "Failed to wait for label", "label", label)
+				return true
+			}
+		}
+
+		updateManagedClusterList(e.Object)
 		updateManagedClusterImageRegistry(e.Object)
 
 		return true
