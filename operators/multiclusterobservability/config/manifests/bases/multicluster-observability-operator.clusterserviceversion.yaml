@@ -10,12 +10,14 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: MultiClusterObservability defines the configuration for the Observability installation on Hub and Managed Clusters all through this one custom resource.
+    - description: MultiClusterObservability defines the configuration for the Observability
+        installation on Hub and Managed Clusters all through this one custom resource.
       displayName: MultiClusterObservability
       kind: MultiClusterObservability
       name: multiclusterobservabilities.observability.open-cluster-management.io
       version: v1beta1
-    - description: MultiClusterObservability defines the configuration for the Observability installation on Hub and Managed Clusters all through this one custom resource.
+    - description: MultiClusterObservability defines the configuration for the Observability
+        installation on Hub and Managed Clusters all through this one custom resource.
       displayName: MultiClusterObservability
       kind: MultiClusterObservability
       name: multiclusterobservabilities.observability.open-cluster-management.io
@@ -25,7 +27,8 @@ spec:
       kind: ObservabilityAddon
       name: observabilityaddons.observability.open-cluster-management.io
       version: v1beta1
-  description: The multicluster-observability-operator is a component of ACM observability feature. It is designed to install into Hub Cluster.
+  description: The multicluster-observability-operator is a component of ACM observability
+    feature. It is designed to install into Hub Cluster.
   displayName: Multicluster Observability Operator
   icon:
   - base64data: ""
