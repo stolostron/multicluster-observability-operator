@@ -10199,15 +10199,18 @@ spec:
                         type: object
                       traces:
                         properties:
-                          instrumentation:
+                          opentelemetry:
                             properties:
-                              enabled:
-                                type: boolean
-                            type: object
-                          openTelemetryCollector:
-                            properties:
-                              enabled:
-                                type: boolean
+                              collector:
+                                properties:
+                                  enabled:
+                                    type: boolean
+                                type: object
+                              instrumentation:
+                                properties:
+                                  enabled:
+                                    type: boolean
+                                type: object
                             type: object
                         type: object
                     type: object

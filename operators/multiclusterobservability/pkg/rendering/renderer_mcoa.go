@@ -184,10 +184,10 @@ func (r *MCORenderer) renderAddonDeploymentConfig(
 			if cs.UserWorkloads.Logs.ClusterLogForwarder.Enabled {
 				appendCustomVar(aodc, nameUserWorkloadLogsCollection, clfV1)
 			}
-			if cs.UserWorkloads.Traces.OpenTelemetryCollector.Enabled {
+			if cs.UserWorkloads.Traces.OpenTelemetry.Collector.Enabled {
 				appendCustomVar(aodc, nameUserWorkloadTracesCollection, otelV1beta1)
 			}
-			if cs.UserWorkloads.Traces.Instrumentation.Enabled {
+			if cs.UserWorkloads.Traces.OpenTelemetry.Instrumentation.Enabled {
 				appendCustomVar(aodc, nameUserWorkloadInstrumentation, instrV1alpha1)
 			}
 		}

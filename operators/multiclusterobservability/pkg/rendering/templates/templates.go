@@ -105,7 +105,7 @@ func GetOrLoadMCOATemplates(r *templates.TemplateRenderer) ([]*resource.Resource
 	basePath := path.Join(r.GetTemplatesPath(), "base")
 
 	// add mcoa templates
-	if err := r.AddTemplateFromPath(basePath+"/multicluster-observability-addon", &mcoaTemplates); err != nil {
+	if err := r.AddTemplateFromPath(path.Join(basePath, "multicluster-observability-addon"), &mcoaTemplates); err != nil {
 		return mcoaTemplates, err
 	}
 	return mcoaTemplates, nil
