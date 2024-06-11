@@ -134,11 +134,13 @@ func TestRenderAddonDeploymentConfig(t *testing.T) {
 						},
 					},
 					Traces: mcov1beta2.UserWorkloadTracesSpec{
-						Instrumentation: mcov1beta2.InstrumentationSpec{
-							Enabled: true,
-						},
-						OpenTelemetryCollector: mcov1beta2.OpenTelemetryCollectorSpec{
-							Enabled: true,
+						OpenTelemetry: mcov1beta2.OpenTelemetrySpec{
+							Collector: mcov1beta2.OpenTelemetryCollectorSpec{
+								Enabled: true,
+							},
+							Instrumentation: mcov1beta2.InstrumentationSpec{
+								Enabled: true,
+							},
 						},
 					},
 				},

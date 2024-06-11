@@ -63,6 +63,13 @@ type UserWorkloadLogsSpec struct {
 	ClusterLogForwarder ClusterLogForwarderSpec `json:"clusterLogForwarder,omitempty"`
 }
 
+type OpenTelemetrySpec struct {
+	// +optional
+	Collector OpenTelemetryCollectorSpec `json:"collector,omitempty"`
+	// +optional
+	Instrumentation InstrumentationSpec `json:"instrumentation,omitempty"`
+}
+
 type OpenTelemetryCollectorSpec struct {
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
@@ -75,13 +82,13 @@ type InstrumentationSpec struct {
 
 type UserWorkloadTracesSpec struct {
 	// +optional
-	OpenTelemetryCollector OpenTelemetryCollectorSpec `json:"openTelemetryCollector,omitempty"`
-	// +optional
-	Instrumentation InstrumentationSpec `json:"instrumentation,omitempty"`
+	OpenTelemetry OpenTelemetrySpec `json:"opentelemetry,omitempty"`
 }
 
 type UserWorkloadCapabilitiesSpec struct {
-	Logs   UserWorkloadLogsSpec   `json:"logs,omitempty"`
+	// +optional
+	Logs UserWorkloadLogsSpec `json:"logs,omitempty"`
+	// +optional
 	Traces UserWorkloadTracesSpec `json:"traces,omitempty"`
 }
 
