@@ -32,7 +32,7 @@ func (mco *MultiClusterObservability) SetupWebhookWithManager(mgr ctrl.Manager) 
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-observability-open-cluster-management-io-v1beta2-multiclusterobservability,mutating=false,failurePolicy=fail,sideEffects=None,groups=observability.open-cluster-management.io,resources=multiclusterobservabilities,verbs=create;update,versions=v1beta2,name=vmulticlusterobservability.observability.open-cluster-management.io,admissionReviewVersions={v1,v1beta1}
+// +kubebuilder:webhook:path=/validate-observability-open-cluster-management-io-v1beta2-multiclusterobservability,mutating=false,failurePolicy=fail,sideEffects=None,groups=observability.open-cluster-management.io,resources=multiclusterobservabilities,verbs=create;update,versions=v1beta2,name=vmulticlusterobservability.observability.open-cluster-management.io,admissionReviewVersions={v1}
 
 var _ webhook.Validator = &MultiClusterObservability{}
 

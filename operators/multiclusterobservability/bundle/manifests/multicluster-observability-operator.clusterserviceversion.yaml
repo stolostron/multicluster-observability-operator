@@ -49,7 +49,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2024-06-12T07:26:10Z"
+    createdAt: "2024-06-12T07:27:10Z"
     operators.operatorframework.io/builder: operator-sdk-unknown
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: multicluster-observability-operator.v0.1.0
@@ -582,7 +582,6 @@ spec:
     webhookPath: /convert
   - admissionReviewVersions:
     - v1
-    - v1beta1
     containerPort: 443
     deploymentName: multicluster-observability-operator
     failurePolicy: Fail
