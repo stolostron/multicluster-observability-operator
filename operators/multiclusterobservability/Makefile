@@ -99,7 +99,7 @@ test: generate fmt vet manifests $(SETUP_ENVTEST)
 
 # Build manager binary
 .PHONY: manager
-manager: generate fmt vet
+manager: manifests generate fmt vet ## Build manager binary.
 	go build -o bin/manager main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
