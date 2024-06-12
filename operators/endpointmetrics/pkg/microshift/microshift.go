@@ -110,11 +110,11 @@ func (m *Microshift) renderCronJobExposingMicroshiftSecrets() ([]*unstructured.U
 							Containers: []corev1.Container{
 								{
 									Name:    "microshift-certs-updater",
-									Image:   "registry.access.redhat.com/ubi9/ubi-minimal@sha256:ef6fb6b3b38ef6c85daebeabebc7ff3151b9dd1500056e6abc9c3295e4b78a51",
+									Image:   "registry.redhat.io/openshift4/ose-cli@sha256:a57eba642e65874fa48738ff5c361e608d4a9b00a47adcf73562925ac52e2204",
 									Command: []string{"/bin/sh", "-c"},
 									Args: []string{fmt.Sprintf(
 										`
-                                        kubectl create secret generic %s --from-file=key=/tmp/etcd-certs/ca.key --from-file=cert=/tmp/etcd-certs/ca.crt --dry-run=client -o yaml | kubectl apply -f -
+                                        oc create secret generic %s --from-file=key=/tmp/etcd-certs/ca.key --from-file=cert=/tmp/etcd-certs/ca.crt --dry-run=client -o yaml | oc apply -f -
                                         `, etcdClientCertSecretName),
 									},
 									VolumeMounts: []corev1.VolumeMount{
@@ -133,7 +133,7 @@ func (m *Microshift) renderCronJobExposingMicroshiftSecrets() ([]*unstructured.U
 									},
 								},
 							},
-							RestartPolicy:      corev1.RestartPolicyOnFailure,
+							RestartPolicy:      corev1.RestartPolicyNever,
 							ServiceAccountName: jobName,
 							Volumes: []corev1.Volume{
 								{
@@ -191,7 +191,7 @@ func (m *Microshift) renderCronJobExposingMicroshiftSecrets() ([]*unstructured.U
 			{
 				APIGroups: []string{""},
 				Resources: []string{"secrets"},
-				Verbs:     []string{"create", "update"},
+				Verbs:     []string{"create", "update", "get", "list", "patch"},
 			},
 		},
 	}

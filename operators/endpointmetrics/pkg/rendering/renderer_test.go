@@ -18,6 +18,7 @@ import (
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	templatesutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
+	"github.com/stretchr/testify/assert"
 )
 
 func getAllowlistCM() *corev1.ConfigMap {
@@ -57,5 +58,5 @@ func TestRender(t *testing.T) {
 		t.Fatalf("failed to render endpoint templates: %v", err)
 	}
 
-	printObjs(t, objs)
+	assert.Greater(t, len(objs), 2)
 }

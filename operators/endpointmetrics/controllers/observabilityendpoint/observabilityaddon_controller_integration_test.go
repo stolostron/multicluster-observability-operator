@@ -50,10 +50,9 @@ var (
 
 // TestIntegrationReconcileHypershift tests the reconcile function for hypershift CRDs.
 func TestIntegrationReconcileHypershift(t *testing.T) {
-	testNamespace := "open-cluster-management-addon-observability"
+	testNamespace := "open-cluster-management-observability"
 	namespace = testNamespace
 	hubNamespace = "local-cluster"
-	isHubMetricsCollector = true
 	installPrometheus = false
 	serviceAccountName = "endpoint-monitoring-operator"
 
@@ -65,8 +64,8 @@ func TestIntegrationReconcileHypershift(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	setupCommonHubResources(t, k8sClient)
-	defer tearDownCommonHubResources(t, k8sClient)
+	setupCommonHubResources(t, k8sClient, testNamespace)
+	defer tearDownCommonHubResources(t, k8sClient, testNamespace)
 
 	hostedClusterNs := "hosted-cluster-ns"
 	hostedClusterName := "myhostedcluster"
@@ -84,9 +83,9 @@ func TestIntegrationReconcileHypershift(t *testing.T) {
 		t.Fatalf("Failed to create resources: %v", err)
 	}
 
-	mgr, err := ctrl.NewManager(testEnv.Config, ctrl.Options{
+	mgr, err := ctrl.NewManager(testEnvHub.Config, ctrl.Options{
 		Scheme:  k8sClient.Scheme(),
-		Metrics: metricsserver.Options{BindAddress: "0"},
+		Metrics: metricsserver.Options{BindAddress: "0"}, // Avoids port conflict with the default port 8080
 	})
 	assert.NoError(t, err)
 
@@ -95,19 +94,23 @@ func TestIntegrationReconcileHypershift(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	reconciler := ObservabilityAddonReconciler{
-		Client:    k8sClient,
-		HubClient: hubClientWithReload,
+		Client:                k8sClient,
+		HubClient:             hubClientWithReload,
+		IsHubMetricsCollector: true,
+		Scheme:                scheme,
 	}
 
 	err = reconciler.SetupWithManager(mgr)
 	assert.NoError(t, err)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	go func() {
-		err = mgr.Start(ctrl.SetupSignalHandler())
+		err = mgr.Start(ctx)
 		assert.NoError(t, err)
 	}()
 
-	// setupManager(t, k8sClient)
 	// Hypershift service monitors must be created
 	err = wait.Poll(1*time.Second, 5*time.Second, func() (bool, error) {
 		hypershiftEtcdSm := &promv1.ServiceMonitor{}
@@ -126,7 +129,6 @@ func TestIntegrationReconcileMicroshift(t *testing.T) {
 	testNamespace := "open-cluster-management-addon-observability"
 	namespace = testNamespace
 	hubNamespace = "microshift-cluster-a"
-	isHubMetricsCollector = false
 	installPrometheus = true
 	serviceAccountName = "endpoint-monitoring-operator"
 
@@ -160,32 +162,21 @@ func TestIntegrationReconcileMicroshift(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	setupCommonHubResources(t, k8sHubClient)
-	defer tearDownCommonHubResources(t, k8sHubClient)
-
-	// observabilityAddon := &oav1beta1.ObservabilityAddon{
-	// 	ObjectMeta: metav1.ObjectMeta{
-	// 		Name:      "observability-addon",
-	// 		Namespace: testNamespace,
-	// 	},
-	// 	Spec: observabilityshared.ObservabilityAddonSpec{
-	// 		EnableMetrics: true,
-	// 	},
-	// }
+	setupCommonHubResources(t, k8sHubClient, testNamespace)
+	defer tearDownCommonHubResources(t, k8sHubClient, testNamespace)
 
 	// Create resources required for the microshift case on the hub
 	resourcesDeps = []client.Object{
 		makeNamespace(hubNamespace),
 		newObservabilityAddonBis("observability-addon", hubNamespace),
-		// makeNamespace("kube-public"),
 	}
 	if err := createResources(k8sHubClient, resourcesDeps...); err != nil {
 		t.Fatalf("Failed to create resources on hub: %v", err)
 	}
 
 	mgr, err := ctrl.NewManager(testEnvSpoke.Config, ctrl.Options{
-		Scheme:             k8sClientSpoke.Scheme(),
-		MetricsBindAddress: "0", // Avoids port conflict with the default port 8080
+		Scheme:  k8sClientSpoke.Scheme(),
+		Metrics: metricsserver.Options{BindAddress: "0"}, // Avoids port conflict with the default port 8080
 	})
 	assert.NoError(t, err)
 
@@ -194,23 +185,23 @@ func TestIntegrationReconcileMicroshift(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	reconciler := ObservabilityAddonReconciler{
-		Client:    k8sClientSpoke,
-		HubClient: hubClientWithReload,
-		HostIP:    "192.168.10.10",
-		Scheme:    scheme,
+		Client:                k8sClientSpoke,
+		HubClient:             hubClientWithReload,
+		HostIP:                "192.168.10.10",
+		Scheme:                scheme,
+		IsHubMetricsCollector: false,
 	}
 
 	err = reconciler.SetupWithManager(mgr)
 	assert.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(ctrl.SetupSignalHandler())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	go func() {
 		err = mgr.Start(ctx)
 		assert.NoError(t, err)
 	}()
-	// setupManager(t, k8sClient)
 
 	// Microshift resources must be created
 	// Checking the etcd service monitor that is specific to microshift
@@ -284,45 +275,6 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-// // setupTestEnv starts the test environment (etcd and kube api-server).
-// func setupTestEnv(t *testing.T) (*envtest.Environment, client.Client) {
-// 	rootPath := filepath.Join("..", "..", "..")
-// 	crds := readCRDFiles(t,
-// 		filepath.Join(rootPath, "multiclusterobservability", "config", "crd", "bases", "observability.open-cluster-management.io_multiclusterobservabilities.yaml"),
-// 		filepath.Join(rootPath, "endpointmetrics", "manifests", "prometheus", "crd", "servicemonitor_crd_0_53_1.yaml"),
-// 		filepath.Join(rootPath, "endpointmetrics", "manifests", "prometheus", "crd", "prometheusrule_crd_0_53_1.yaml"),
-// 	)
-// 	testEnv := &envtest.Environment{
-// 		CRDDirectoryPaths: []string{filepath.Join("testdata", "crd"), filepath.Join("..", "..", "config", "crd", "bases")},
-// 		CRDs:              crds,
-// 		Scheme:            createBaseScheme(),
-// 	}
-
-// 	cfg, err := testEnv.Start()
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-
-// 	// scheme := runtime.NewScheme()
-// 	// kubescheme.AddToScheme(scheme)
-// 	// hyperv1.AddToScheme(scheme)
-// 	// promv1.AddToScheme(scheme)
-// 	// oav1beta1.AddToScheme(scheme)
-// 	// mcov1beta2.AddToScheme(scheme)
-
-// 	k8sClient, err := client.New(cfg, client.Options{Scheme: scheme})
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-
-// 	opts := zap.Options{
-// 		Development: true,
-// 	}
-// 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-
-// 	return testEnv, k8sClient
-// }
-
 func createBaseScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
 	kubescheme.AddToScheme(scheme)
@@ -333,47 +285,22 @@ func createBaseScheme() *runtime.Scheme {
 	return scheme
 }
 
-func setupManager(t *testing.T, k8sClient client.Client) {
-	mgr, err := ctrl.NewManager(testEnvSpoke.Config, ctrl.Options{
-		Scheme:             k8sClient.Scheme(),
-		MetricsBindAddress: "0", // Avoids port conflict with the default port 8080
-	})
-	assert.NoError(t, err)
-
-	hubClientWithReload, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) {
-		return k8sClient, nil
-	})
-	assert.NoError(t, err)
-	reconciler := ObservabilityAddonReconciler{
-		Client:    k8sClient,
-		HubClient: hubClientWithReload,
-	}
-
-	err = reconciler.SetupWithManager(mgr)
-	assert.NoError(t, err)
-
-	go func() {
-		err = mgr.Start(ctrl.SetupSignalHandler())
-		assert.NoError(t, err)
-	}()
-}
-
-func setupCommonHubResources(t *testing.T, k8sClient client.Client) {
+func setupCommonHubResources(t *testing.T, k8sClient client.Client, ns string) {
 	// Create resources required for the observability addon controller
 	resourcesDeps := []client.Object{
-		makeNamespace("open-cluster-management-observability"),
-		newHubInfoSecret([]byte{}, "open-cluster-management-observability"),
-		newImagesCM("open-cluster-management-observability"),
+		makeNamespace(ns),
+		newHubInfoSecret([]byte{}, ns),
+		newImagesCM(ns),
 	}
 	if err := createResources(k8sClient, resourcesDeps...); err != nil {
 		t.Fatalf("Failed to create resources: %v", err)
 	}
 }
 
-func tearDownCommonHubResources(t *testing.T, k8sClient client.Client) {
+func tearDownCommonHubResources(t *testing.T, k8sClient client.Client, ns string) {
 	// Delete resources required for the observability addon controller
 	resourcesDeps := []client.Object{
-		makeNamespace("open-cluster-management-observability"),
+		makeNamespace(ns),
 	}
 	for _, resource := range resourcesDeps {
 		if err := k8sClient.Delete(context.Background(), resource); err != nil {

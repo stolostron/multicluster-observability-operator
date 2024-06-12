@@ -23,21 +23,18 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
-	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	kubescheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
-	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
-
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
-	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
 
 const (
@@ -45,6 +42,7 @@ const (
 	testNamespace   = "test-ns"
 	testHubNamspace = "test-hub-ns"
 	testBearerToken = "test-bearer-token"
+	restartLabel    = "cert/time-restarted"
 )
 
 var (
@@ -145,12 +143,6 @@ func newImagesCM(ns string) *corev1.ConfigMap {
 
 func init() {
 	os.Setenv("UNIT_TEST", "true")
-	s := scheme.Scheme
-	addonv1alpha1.AddToScheme(s)
-	oav1beta1.AddToScheme(s)
-	ocinfrav1.AddToScheme(s)
-	hyperv1.AddToScheme(s)
-	promv1.AddToScheme(s)
 
 	namespace = testNamespace
 	hubNamespace = testHubNamspace
@@ -186,34 +178,24 @@ alertmanager-router-ca: |
 				Name: "test-ns",
 			},
 		},
+		&appv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "endpoint-observability-operator",
+				Namespace: "test-ns",
+			},
+		},
 	}
 
-	scheme := scheme.Scheme
-	addonv1alpha1.AddToScheme(scheme)
-	mcov1beta2.AddToScheme(scheme)
-	oav1beta1.AddToScheme(scheme)
-	corev1.AddToScheme(scheme)
-	clusterv1.AddToScheme(scheme)
-	ocinfrav1.AddToScheme(scheme)
+	s := runtime.NewScheme()
+	kubescheme.AddToScheme(s)
+	addonv1alpha1.AddToScheme(s)
+	oav1beta1.AddToScheme(s)
+	ocinfrav1.AddToScheme(s)
+	hyperv1.AddToScheme(s)
+	promv1.AddToScheme(s)
 
-	hubClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithRuntimeObjects(hubObjs...).
-		WithStatusSubresource(
-			&addonv1alpha1.ManagedClusterAddOn{},
-			&mcov1beta2.MultiClusterObservability{},
-			&oav1beta1.ObservabilityAddon{},
-		).
-		Build()
-	c := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithRuntimeObjects(objs...).
-		WithStatusSubresource(
-			&addonv1alpha1.ManagedClusterAddOn{},
-			&mcov1beta2.MultiClusterObservability{},
-			&oav1beta1.ObservabilityAddon{},
-		).
-		Build()
+	hubClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(hubObjs...).Build()
+	c := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
 	hubClientWithReload, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) {
 		return hubClient, nil
@@ -222,8 +204,10 @@ alertmanager-router-ca: |
 		t.Fatalf("Failed to create hub client with reload: %v", err)
 	}
 	r := &ObservabilityAddonReconciler{
-		Client:    c,
-		HubClient: hubClientWithReload,
+		Client:                c,
+		HubClient:             hubClientWithReload,
+		Scheme:                s,
+		IsHubMetricsCollector: false,
 	}
 
 	// test error in reconcile if missing obervabilityaddon
@@ -533,4 +517,42 @@ alertmanager-router-ca: |
 		t.Fatalf("reconcile: (%v)", err)
 	}
 	checkMetricsCollector()
+func getAllowlistCM() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      operatorconfig.AllowlistConfigMapName,
+			Namespace: namespace,
+		},
+		Data: map[string]string{
+			operatorconfig.MetricsConfigMapKey: `
+names:
+  - a
+  - b
+matches:
+  - __name__="c"
+recording_rules:
+  - record: f
+    expr: g
+collect_rules:
+  - name: h
+    selector:
+      matchExpressions:
+        - key: clusterType
+          operator: NotIn
+          values: ["SNO"]
+    rules:
+      - collect: j
+        expr: k
+        for: 1m
+        names:
+          - c
+        matches:
+          - __name__="a"
+`,
+			operatorconfig.UwlMetricsConfigMapKey: `
+names:
+  - uwl_a
+  - uwl_b
+`},
+	}
 }
