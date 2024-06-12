@@ -17,11 +17,11 @@ GO     ?= $(shell which go)
 #	@echo "Running controller-gen"
 #	@$(CONTROLLER_GEN) <flags/args..>
 #
-CONTROLLER_GEN := $(GOBIN)/controller-gen-v0.9.2
+CONTROLLER_GEN := $(GOBIN)/controller-gen-v0.10.0
 $(CONTROLLER_GEN): $(BINGO_DIR)/controller-gen.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/controller-gen-v0.9.2"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=controller-gen.mod -o=$(GOBIN)/controller-gen-v0.9.2 "sigs.k8s.io/controller-tools/cmd/controller-gen"
+	@echo "(re)installing $(GOBIN)/controller-gen-v0.10.0"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=controller-gen.mod -o=$(GOBIN)/controller-gen-v0.10.0 "sigs.k8s.io/controller-tools/cmd/controller-gen"
 
 FAILLINT := $(GOBIN)/faillint-v1.11.0
 $(FAILLINT): $(BINGO_DIR)/faillint.mod
