@@ -71,20 +71,24 @@ func GetK8sObjWithVersion(kind, version string) runtime.Object {
 // CompareObject is used to compare two k8s objs are same or not
 func CompareObject(re1 runtime.RawExtension, re2 runtime.RawExtension) bool {
 	if re2.Object == nil {
+		log.Info("Coleen - re2.Object is nil")
 		return reflect.DeepEqual(re1.Raw, re2.Raw)
 	}
 	obj1, err := GetObject(re1)
 	if err != nil {
+		log.Info("Coleen - GetObject failed obj1", "err", err)
 		return false
 	}
 	obj2, err := GetObject(re2)
 	if err != nil {
+		log.Info("Coleen - GetObject failed obj1", "err", err)
 		return false
 	}
 	kind1 := obj1.GetObjectKind().GroupVersionKind().Kind
 	kind2 := obj2.GetObjectKind().GroupVersionKind().Kind
 	version1 := obj1.GetObjectKind().GroupVersionKind().Version
 	version2 := obj2.GetObjectKind().GroupVersionKind().Version
+	log.Info("Coleen - kind1", "kind1", kind1, "kind2", kind2, "version1", version1, "version2", version2)
 	if kind1 != kind2 || version1 != version2 {
 		log.Info("obj1 and obj2 have different Kind or Version",
 			"kind1", kind2, "kind2", kind2, "version1", version1, "version2", version2)
@@ -93,6 +97,7 @@ func CompareObject(re1 runtime.RawExtension, re2 runtime.RawExtension) bool {
 	if kind1 == "CustomResourceDefinition" {
 		kind1 = kind1 + version1
 	}
+	log.Info("Coleen compareObjects")
 	return compFns[kind1](obj1, obj2)
 }
 
@@ -132,6 +137,7 @@ func compareDeployments(obj1 runtime.Object, obj2 runtime.Object) bool {
 		return false
 	}
 	if !reflect.DeepEqual(dep1.Spec, dep2.Spec) {
+		log.Info("Coleen print spec", "spec1", dep1.Spec, "spec2", dep2.Spec)
 		log.Info("Find updated deployment", "deployment", dep1.Name)
 		return false
 	}
