@@ -5,6 +5,7 @@
 package util
 
 import (
+	"k8s.io/apimachinery/pkg/api/equality"
 	"reflect"
 	"strings"
 
@@ -136,7 +137,7 @@ func compareDeployments(obj1 runtime.Object, obj2 runtime.Object) bool {
 		log.Info("Find updated name/namespace for deployment", "deployment", dep1.Name)
 		return false
 	}
-	if !reflect.DeepEqual(dep1.Spec, dep2.Spec) {
+	if !equality.Semantic.DeepEqual(dep1.Spec, dep2.Spec) {
 		log.Info("Coleen print spec", "spec1", dep1.Spec, "spec2", dep2.Spec)
 		log.Info("Find updated deployment", "deployment", dep1.Name)
 		return false
