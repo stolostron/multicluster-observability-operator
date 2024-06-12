@@ -196,8 +196,8 @@ func shouldUpdateManifestWork(desiredManifests []workv1.Manifest, foundManifests
 		return true
 	}
 
-	for i, m := range desiredManifests {
-		if !util.CompareObject(m.RawExtension, foundManifests[i].RawExtension) {
+	for i, m := range foundManifests {
+		if !util.CompareObject(m.RawExtension, desiredManifests[i].RawExtension) {
 			return true
 		}
 	}
