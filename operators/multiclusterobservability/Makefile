@@ -47,8 +47,6 @@ BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:$(VERSION)
 
 # Image URL to use all building/pushing image targets
 IMG ?= $(IMAGE_TAG_BASE):latest
-# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -106,7 +104,7 @@ undeploy:
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: $(CONTROLLER_GEN)
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	# TODO(morvencao): replace the sed command with kubebuilder marker
 	$(SED) -i 's/storage: false/&\n    deprecated: true/g' config/crd/bases/observability.open-cluster-management.io_multiclusterobservabilities.yaml
 	$(SED) -i 's/storage: false/&\n    deprecationWarning: observability.open-cluster-management.io\/v1beta1 MultiClusterObservability is deprecated in v2.3+, unavailable in v2.6+; use observability.open-cluster-management.io\/v1beta2 MultiClusterObservability/g' config/crd/bases/observability.open-cluster-management.io_multiclusterobservabilities.yaml
