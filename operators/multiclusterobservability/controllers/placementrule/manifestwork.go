@@ -394,7 +394,7 @@ func createManifestWorks(
 	log.Info(fmt.Sprintf("Cluster: %+v, Spec.NodeSelector (after): %+v", clusterName, spec.NodeSelector))
 	log.Info(fmt.Sprintf("Cluster: %+v, Spec.Tolerations (after): %+v", clusterName, spec.Tolerations))
 
-	if clusterName != clusterNamespace {
+	if clusterName == localClusterName {
 		spec.Volumes = []corev1.Volume{}
 		spec.Containers[0].VolumeMounts = []corev1.VolumeMount{}
 		for i, env := range spec.Containers[0].Env {
