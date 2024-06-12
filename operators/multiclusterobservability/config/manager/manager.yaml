@@ -19,6 +19,8 @@ spec:
       name: multicluster-observability-operator
   template:
     metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: multicluster-observability-operator
       labels:
         name: multicluster-observability-operator
     spec:
