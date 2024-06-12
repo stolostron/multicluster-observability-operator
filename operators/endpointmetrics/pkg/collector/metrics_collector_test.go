@@ -6,6 +6,7 @@ package collector_test
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"slices"
 	"testing"
@@ -37,34 +38,7 @@ const (
 	uwlSts                  = "prometheus-user-workload"
 )
 
-func newUwlPrometheus() *appsv1.StatefulSet {
-	return &appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      uwlSts,
-			Namespace: uwlNamespace,
-		},
-	}
-}
-
-func newAllowListCm(name, namespace string, data map[string]operatorconfig.MetricsAllowlist) *corev1.ConfigMap {
-	cmData := make(map[string]string, len(data))
-	for k, v := range data {
-		strData, err := yaml.Marshal(v)
-		if err != nil {
-			panic(err)
-		}
-		cmData[k] = string(strData)
-	}
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Data: cmData,
-	}
-}
-
-func TestMetricsCollectorBis(t *testing.T) {
+func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 	baseMetricsCollector := func() *collector.MetricsCollector {
 		return &collector.MetricsCollector{
 			// Client is set in each test case
@@ -100,24 +74,8 @@ func TestMetricsCollectorBis(t *testing.T) {
 				// Check env vars
 				operatorEnv := getEndpointOperatorDeployment().Spec.Template.Spec.Containers[0].Env
 				collectorEnv := deployment.Spec.Template.Spec.Containers[0].Env
-				toCompare := map[string]string{"HTTP_PROXY": "", "HTTPS_PROXY": "", "NO_PROXY": "", "HTTPS_PROXY_CA_BUNDLE": ""}
-				operatorProxyEnvs := make(map[string]string, len(toCompare))
-				for _, e := range operatorEnv {
-					if _, ok := toCompare[e.Name]; ok {
-						if len(e.Value) == 0 {
-							t.Fatalf("Env var %v is empty", e.Name)
-						}
-						operatorProxyEnvs[e.Name] = e.Value
-					}
-				}
-				collectorProxyEnvs := make(map[string]string, len(toCompare))
-				for _, e := range collectorEnv {
-					if _, ok := toCompare[e.Name]; ok {
-						collectorProxyEnvs[e.Name] = e.Value
-					}
-				}
-				if !maps.Equal(operatorProxyEnvs, collectorProxyEnvs) || len(operatorProxyEnvs) != len(toCompare) {
-					t.Fatalf("Env vars are not set correctly: expected %v, got %v", operatorProxyEnvs, collectorProxyEnvs)
+				if err := checkProxyEnvVars(operatorEnv, collectorEnv); err != nil {
+					t.Fatalf("Failed to ensure proxy env vars: %v", err)
 				}
 
 				// Check toleration and node selector
@@ -328,4 +286,64 @@ func getMetricsCollectorDeployment(t *testing.T, ctx context.Context, c client.C
 		t.Fatalf("Failed to get deployment %s/%s: %v", namespace, name, err)
 	}
 	return deployment
+}
+
+func newUwlPrometheus() *appsv1.StatefulSet {
+	return &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      uwlSts,
+			Namespace: uwlNamespace,
+		},
+	}
+}
+
+func newAllowListCm(name, namespace string, data map[string]operatorconfig.MetricsAllowlist) *corev1.ConfigMap {
+	cmData := make(map[string]string, len(data))
+	for k, v := range data {
+		strData, err := yaml.Marshal(v)
+		if err != nil {
+			panic(err)
+		}
+		cmData[k] = string(strData)
+	}
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Data: cmData,
+	}
+}
+
+func checkProxyEnvVars(expect, has []corev1.EnvVar) error {
+	toCompare := map[string]string{"HTTP_PROXY": "", "HTTPS_PROXY": "", "NO_PROXY": "", "HTTPS_PROXY_CA_BUNDLE": ""}
+	expectMap := make(map[string]string, len(toCompare))
+	for _, e := range expect {
+		if _, ok := toCompare[e.Name]; ok {
+			if len(e.Value) == 0 {
+				return fmt.Errorf("Env var %s is empty in the expected list", e.Name)
+			}
+			expectMap[e.Name] = e.Value
+		}
+	}
+
+	if len(expect) != len(toCompare) {
+		return fmt.Errorf("Some env vars are missing in the expected list: expected %v, got %v", toCompare, expect)
+	}
+
+	hasMap := make(map[string]string, len(toCompare))
+	for _, e := range has {
+		if v, ok := expectMap[e.Name]; ok {
+			if v != e.Value {
+				return fmt.Errorf("Env var %s is not set correctly: expected %s, got %s", e.Name, v, e.Value)
+			}
+			hasMap[e.Name] = e.Value
+		}
+	}
+
+	if len(hasMap) != len(toCompare) {
+		return fmt.Errorf("Some env vars are missing in the actual list: expected %v, got %v", toCompare, hasMap)
+	}
+
+	return nil
 }

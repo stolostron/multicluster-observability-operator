@@ -88,7 +88,7 @@ type proxyConfig struct {
 	noProxy    string
 }
 
-type DeploymentParams struct {
+type deploymentParams struct {
 	allowlist    *operatorconfig.MetricsAllowlist
 	forceRestart bool
 	nodeSelector map[string]string
@@ -97,6 +97,7 @@ type DeploymentParams struct {
 	uwlList      *operatorconfig.MetricsAllowlist
 }
 
+// Update updates the metrics collector resources and the addon status when needed.
 func (m *MetricsCollector) Update(ctx context.Context, req ctrl.Request) error {
 	deployParams, err := m.generateDeployParams(ctx, req)
 	if err != nil {
@@ -126,7 +127,19 @@ func (m *MetricsCollector) Update(ctx context.Context, req ctrl.Request) error {
 	return nil
 }
 
-func (m *MetricsCollector) generateDeployParams(ctx context.Context, req ctrl.Request) (*DeploymentParams, error) {
+func (m *MetricsCollector) Delete(ctx context.Context) error {
+	if err := m.deleteMetricsCollector(ctx, false); err != nil {
+		return err
+	}
+
+	if err := m.deleteMetricsCollector(ctx, true); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *MetricsCollector) generateDeployParams(ctx context.Context, req ctrl.Request) (*deploymentParams, error) {
 	list, uwlList, err := m.getMetricsAllowlist(ctx)
 	if err != nil {
 		return nil, err
@@ -137,7 +150,7 @@ func (m *MetricsCollector) generateDeployParams(ctx context.Context, req ctrl.Re
 		return nil, err
 	}
 
-	deployParams := &DeploymentParams{
+	deployParams := &deploymentParams{
 		allowlist:    list,
 		forceRestart: req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == openshift.CaConfigmapName,
 		nodeSelector: endpointDeployment.Spec.Template.Spec.NodeSelector,
@@ -210,7 +223,7 @@ func (m *MetricsCollector) deleteMetricsCollector(ctx context.Context, isUWL boo
 	return nil
 }
 
-func (m *MetricsCollector) updateMetricsCollector(ctx context.Context, isUWL bool, deployParams *DeploymentParams) error {
+func (m *MetricsCollector) updateMetricsCollector(ctx context.Context, isUWL bool, deployParams *deploymentParams) error {
 	if err := m.ensureService(ctx, isUWL); err != nil {
 		return err
 	}
@@ -223,9 +236,26 @@ func (m *MetricsCollector) updateMetricsCollector(ctx context.Context, isUWL boo
 		return err
 	}
 
-	if err := m.ensureDeployment(ctx, isUWL, deployParams); err != nil {
+	// Update the deployment and the addon status accordingly
+	// reportStatus := func(condition status.StatusConditionName) {
+	// 	if err := status.ReportStatus(ctx, m.Client, condition, obsAddon.Name, m.Namespace); err != nil {
+	// 		m.Log.Error(err, "Failed to report status")
+	// 	}
+	// }
+
+	err := m.ensureDeployment(ctx, isUWL, deployParams)
+	if err != nil {
+		// reportStatus(status.DegradedStatus)
 		return err
 	}
+
+	// if !m.ClusterInfo.IsHubMetricsCollector && updated {
+	// 	if m.ObsAddonSpec.EnableMetrics {
+	// 		reportStatus(status.DeployedStatus)
+	// 	} else {
+	// 		reportStatus(status.DisabledStatus)
+	// 	}
+	// }
 
 	return nil
 }
@@ -438,7 +468,7 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 	return nil
 }
 
-func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, deployParams *DeploymentParams) error {
+func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, deployParams *deploymentParams) error {
 	secretName := metricsCollector
 	if isUWL {
 		secretName = uwlMetricsCollector
@@ -686,7 +716,7 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 	return nil
 }
 
-func (m *MetricsCollector) getCommands(isUSW bool, deployParams *DeploymentParams) []string {
+func (m *MetricsCollector) getCommands(isUSW bool, deployParams *deploymentParams) []string {
 	interval := defaultInterval
 	if m.ObsAddonSpec.Interval != 0 {
 		interval = fmt.Sprintf("%ds", m.ObsAddonSpec.Interval)

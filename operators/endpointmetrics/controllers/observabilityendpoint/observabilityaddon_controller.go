@@ -10,8 +10,6 @@ import (
 	"os"
 	"strconv"
 
-	operatorutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
-
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -35,6 +33,7 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/microshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/status"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	oav1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
@@ -55,6 +54,11 @@ const (
 	promSvcName                     = "prometheus-k8s"
 	promNamespace                   = "openshift-monitoring"
 	openShiftClusterMonitoringlabel = "openshift.io/cluster-monitoring"
+	mtlsCertName                    = "observability-controller-open-cluster-management.io-observability-signer-client-cert"
+	mtlsCaName                      = "observability-managed-cluster-certs"
+	metricsCollectorName            = "metrics-collector-deployment"
+	uwlMetricsCollectorName         = "uwl-metrics-collector-deployment"
+	uwlNamespace                    = "openshift-user-workload-monitoring"
 )
 
 var (
@@ -88,15 +92,13 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	isHypershift := true
 	if os.Getenv("UNIT_TEST") != "true" {
-		crdClient, err := operatorutil.GetOrCreateCRDClient()
+		var err error
+		isHypershift, err = hypershift.IsHypershiftCluster()
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to get/create CRD client: %w", err)
-		}
-		isHypershift, err = operatorutil.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to check if the CRD hostedclusters.hypershift.openshift.io exists: %w", err)
+			return ctrl.Result{}, fmt.Errorf("failed to check if the cluster is hypershift: %w", err)
 		}
 	}
+
 	hubObsAddon := &oav1beta1.ObservabilityAddon{}
 	obsAddon := &oav1beta1.ObservabilityAddon{}
 	deleteFlag := false
@@ -197,8 +199,8 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 				log.Error(err, "OCP prometheus service does not exist")
 				// ACM 8509: Special case for hub/local cluster metrics collection
 				// We do not report status for hub endpoint operator
-				if !isHubMetricsCollector {
-					if err := util.ReportStatus(ctx, r.Client, util.NotSupported, obsAddon.Name, obsAddon.Namespace); err != nil {
+				if !r.IsHubMetricsCollector {
+					if err := status.ReportStatus(ctx, r.Client, status.NotSupported, obsAddon.Name, obsAddon.Namespace); err != nil {
 						log.Error(err, "Failed to report status")
 					}
 				}
@@ -262,8 +264,8 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		deployer := deploying.NewDeployer(r.Client)
 
 		// Ordering resources to ensure they are applied in the correct order
-		slices.SortFunc(toDeploy, func(a, b *unstructured.Unstructured) bool {
-			return (resourcePriority(a) - resourcePriority(b)) < 0
+		slices.SortFunc(toDeploy, func(a, b *unstructured.Unstructured) int {
+			return resourcePriority(a) - resourcePriority(b)
 		})
 
 		for _, res := range toDeploy {
@@ -296,7 +298,18 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, fmt.Errorf("failed to create or update cluster monitoring config: %w", err)
 	}
 
-	// forceRestart := req.Name == mtlsCertName || req.Name == mtlsCaName || req.Name == openshift.CaConfigmapName
+	if r.IsHubMetricsCollector {
+		mcoList := &oav1beta2.MultiClusterObservabilityList{}
+		err := r.HubClient.List(ctx, mcoList, client.InNamespace(corev1.NamespaceAll))
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to get multiclusterobservability: %w", err)
+		}
+		if len(mcoList.Items) != 1 {
+			log.Error(nil, fmt.Sprintf("Expected 1 multiclusterobservability, found %d", len(mcoList.Items)))
+			return ctrl.Result{}, nil
+		}
+		obsAddon.Spec = *mcoList.Items[0].Spec.ObservabilityAddonSpec
+	}
 
 	metricsCollector := collector.MetricsCollector{
 		Client: r.Client,
@@ -313,61 +326,8 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		ServiceAccountName: serviceAccountName,
 	}
 
-	collectorResult, err := metricsCollector.Update(ctx, req)
-	if err != nil {
+	if err := metricsCollector.Update(ctx, req); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to update metrics collector: %w", err)
-	}
-
-	/*
-		if result == created {
-			if err := util.ReportStatus(ctx, r.Client, util.DeployedStatus, obsAddon.Name, obsAddon.Namespace); err != nil {
-		}
-	*/
-
-	if obsAddon.Spec.EnableMetrics || isHubMetricsCollector {
-		if isHubMetricsCollector {
-			mcoList := &oav1beta2.MultiClusterObservabilityList{}
-			err := r.HubClient.List(ctx, mcoList, client.InNamespace(corev1.NamespaceAll))
-			if err != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to get multiclusterobservability: %w", err)
-			}
-			if len(mcoList.Items) != 1 {
-				log.Error(nil, fmt.Sprintf("Expected 1 multiclusterobservability, found %d", len(mcoList.Items)))
-				return ctrl.Result{}, nil
-			}
-			obsAddon.Spec = *mcoList.Items[0].Spec.ObservabilityAddonSpec
-		}
-		created, err := updateMetricsCollectors(
-			ctx,
-			r.Client,
-			obsAddon.Spec,
-			*hubInfo, clusterID,
-			clusterType,
-			1,
-			forceRestart)
-		if err != nil {
-			if !isHubMetricsCollector {
-				if err := util.ReportStatus(ctx, r.Client, util.Degraded, obsAddon.Name, obsAddon.Namespace); err != nil {
-					log.Error(err, "Failed to report status")
-				}
-			}
-			return ctrl.Result{}, fmt.Errorf("failed to update metrics collectors: %w", err)
-		}
-		if created && !isHubMetricsCollector {
-			if err := util.ReportStatus(ctx, r.Client, util.Deployed, obsAddon.Name, obsAddon.Namespace); err != nil {
-				log.Error(err, "Failed to report status")
-			}
-		}
-	} else {
-		deleted, err := updateMetricsCollectors(ctx, r.Client, obsAddon.Spec, *hubInfo, clusterID, clusterType, 0, false)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to update metrics collectors: %w", err)
-		}
-		if deleted && !isHubMetricsCollector {
-			if err := util.ReportStatus(ctx, r.Client, util.Disabled, obsAddon.Name, obsAddon.Namespace); err != nil {
-				log.Error(err, "Failed to report status")
-			}
-		}
 	}
 
 	return ctrl.Result{}, nil
@@ -379,16 +339,18 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 ) (bool, error) {
 	if delete && slices.Contains(hubObsAddon.GetFinalizers(), obsAddonFinalizer) {
 		log.Info("To clean observability components/configurations in the cluster")
-		err := deleteMetricsCollector(ctx, r.Client, metricsCollectorName)
-		if err != nil {
-			return false, err
+
+		metricsCollector := collector.MetricsCollector{
+			Client:    r.Client,
+			Log:       log.WithName("metrics-collector"),
+			Namespace: namespace,
 		}
-		err = deleteMetricsCollector(ctx, r.Client, uwlMetricsCollectorName)
-		if err != nil {
-			return false, err
+		if err := metricsCollector.Delete(ctx); err != nil {
+			return false, fmt.Errorf("failed to delete metrics collector: %w", err)
 		}
+
 		// revert the change to cluster monitoring stack
-		err = revertClusterMonitoringConfig(ctx, r.Client)
+		err := revertClusterMonitoringConfig(ctx, r.Client)
 		if err != nil {
 			return false, err
 		}
