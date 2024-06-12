@@ -37,8 +37,10 @@ func getDefaultResourceCPU(component string, tshirtSize observabilityv1beta2.TSh
 		return ThanosReceiveCPURequest[tshirtSize]
 	case ThanosStoreShard:
 		return ThanosStoreCPURequest[tshirtSize]
-	case ThanosQueryFrontendMemcached, ThanosStoreMemcached:
-		return ThanosCachedCPURequest[tshirtSize]
+	case ThanosQueryFrontendMemcached:
+		return ThanosQueryMemcachedCPURequest[tshirtSize]
+	case ThanosStoreMemcached:
+		return ThanosStoreMemcachedCPURequest[tshirtSize]
 	case MemcachedExporter:
 		return MemcachedExporterCPURequest[tshirtSize]
 	case RBACQueryProxy:
@@ -71,8 +73,10 @@ func getDefaultResourceMemory(component string, tshirtSize observabilityv1beta2.
 		return ThanosReceiveMemoryRequest[tshirtSize]
 	case ThanosStoreShard:
 		return ThanosStoreMemoryRequest[tshirtSize]
-	case ThanosQueryFrontendMemcached, ThanosStoreMemcached:
-		return ThanosCachedMemoryRequest[tshirtSize]
+	case ThanosQueryFrontendMemcached:
+		return ThanosQueryMemcachedMemoryRequest[tshirtSize]
+	case ThanosStoreMemcached:
+		return ThanosStoreMemcachedMemoryRequest[tshirtSize]
 	case MemcachedExporter:
 		return MemcachedExporterMemoryRequest[tshirtSize]
 	case RBACQueryProxy:

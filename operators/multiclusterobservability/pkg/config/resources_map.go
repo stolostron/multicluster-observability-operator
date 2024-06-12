@@ -303,50 +303,50 @@ var (
 		EightXLarge: "25Mi",
 	}
 
-	ThanosCachedCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
-		Minimal:     "45m",
+	ThanosStoreMemcachedCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "100m",
 		Default:     "45m",
-		Small:       "45m",
-		Medium:      "45m",
-		Large:       "45m",
-		XLarge:      "45m",
-		TwoXLarge:   "45m",
-		FourXLarge:  "45m",
-		EightXLarge: "45m",
+		Small:       "250m",
+		Medium:      "250m",
+		Large:       "500m",
+		XLarge:      "1",
+		TwoXLarge:   "1",
+		FourXLarge:  "2",
+		EightXLarge: "2",
 	}
-	ThanosCachedMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
-		Minimal:     "128Mi",
+	ThanosStoreMemcachedMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "1Gi",
 		Default:     "128Mi",
-		Small:       "128Mi",
-		Medium:      "128Mi",
-		Large:       "128Mi",
-		XLarge:      "128Mi",
-		TwoXLarge:   "128Mi",
-		FourXLarge:  "128Mi",
-		EightXLarge: "128Mi",
+		Small:       "1Gi",
+		Medium:      "2Gi",
+		Large:       "2Gi",
+		XLarge:      "4Gi",
+		TwoXLarge:   "4Gi",
+		FourXLarge:  "6Gi",
+		EightXLarge: "8Gi",
 	}
 
-	ThanosCachedExporterCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
-		Minimal:     "5m",
-		Default:     "5m",
-		Small:       "5m",
-		Medium:      "5m",
-		Large:       "5m",
-		XLarge:      "5m",
-		TwoXLarge:   "5m",
-		FourXLarge:  "5m",
-		EightXLarge: "5m",
+	ThanosQueryMemcachedCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "45m",
+		Default:     "45m",
+		Small:       "100m",
+		Medium:      "250m",
+		Large:       "500m",
+		XLarge:      "1",
+		TwoXLarge:   "1",
+		FourXLarge:  "1500m",
+		EightXLarge: "2",
 	}
-	ThanosCachedExporterMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
-		Minimal:     "50Mi",
-		Default:     "50Mi",
-		Small:       "50Mi",
-		Medium:      "50Mi",
-		Large:       "50Mi",
-		XLarge:      "50Mi",
-		TwoXLarge:   "50Mi",
-		FourXLarge:  "50Mi",
-		EightXLarge: "50Mi",
+	ThanosQueryMemcachedMemoryRequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
+		Minimal:     "128Mi",
+		Default:     "128Mi",
+		Small:       "256Mi",
+		Medium:      "256Mi",
+		Large:       "512Mi",
+		XLarge:      "512Mi",
+		TwoXLarge:   "1Gi",
+		FourXLarge:  "1Gi",
+		EightXLarge: "2Gi",
 	}
 
 	ThanosStoreCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
@@ -510,9 +510,9 @@ var (
 			Medium:      intptr(3),
 			Large:       intptr(3),
 			XLarge:      intptr(3),
-			TwoXLarge:   intptr(3),
-			FourXLarge:  intptr(3),
-			EightXLarge: intptr(3),
+			TwoXLarge:   intptr(6),
+			FourXLarge:  intptr(6),
+			EightXLarge: intptr(6),
 		},
 		ThanosQueryFrontendMemcached: {
 			Minimal:     intptr(3),

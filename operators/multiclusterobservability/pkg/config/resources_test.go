@@ -242,8 +242,8 @@ func TestGetResources(t *testing.T) {
 				},
 			},
 			result: func(resources corev1.ResourceRequirements) bool {
-				return resources.Requests.Cpu().String() == ThanosCachedCPURequest[Default] &&
-					resources.Requests.Memory().String() == ThanosCachedMemoryRequest[Default] &&
+				return resources.Requests.Cpu().String() == ThanosQueryMemcachedCPURequest[Default] &&
+					resources.Requests.Memory().String() == ThanosQueryMemcachedMemoryRequest[Default] &&
 					resources.Limits.Cpu().String() == "1" &&
 					resources.Limits.Memory().String() == "1Gi"
 			},
