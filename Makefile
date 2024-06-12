@@ -17,6 +17,12 @@ export SED ?= $(shell which gsed 2>/dev/null || which sed)
 XARGS ?= $(shell which gxargs 2>/dev/null || which xargs)
 GREP ?= $(shell which ggrep 2>/dev/null || which grep)
 
+# Setting SHELL to bash allows bash commands to be executed by recipes.
+# This is a requirement for 'setup-envtest.sh' in the test target.
+# Options are set to exit when a recipe line exits non-zero or a piped command fails.
+SHELL = /usr/bin/env bash -o pipefail
+.SHELLFLAGS = -ec
+
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: 
 	@$(MAKE) -C operators/multiclusterobservability deploy
