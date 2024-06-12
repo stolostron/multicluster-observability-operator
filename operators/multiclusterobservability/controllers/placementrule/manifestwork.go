@@ -206,6 +206,20 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 	return nil
 }
 
+func shouldUpdateManifestWork(desiredManifests []workv1.Manifest, foundManifests []workv1.Manifest) bool {
+	if len(desiredManifests) != len(foundManifests) {
+		return true
+	}
+
+	for i, m := range foundManifests {
+		if !util.CompareObject(m.RawExtension, desiredManifests[i].RawExtension) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // generateGlobalManifestResources generates global resources, eg. manifestwork,
 // endpoint-metrics-operator deploy and hubInfo Secret...
 // this function is expensive and should not be called for each reconcile loop.
