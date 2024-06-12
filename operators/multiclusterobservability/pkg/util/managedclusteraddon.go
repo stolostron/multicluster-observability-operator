@@ -6,6 +6,7 @@ package util
 
 import (
 	"context"
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"os"
 	"time"
 
@@ -29,6 +30,10 @@ var (
 
 func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValue string) (
 	*addonv1alpha1.ManagedClusterAddOn, error) {
+	// local-cluster does not have a managedClusterAddon
+	if namespace == config.GetDefaultNamespace() {
+		return nil, nil
+	}
 	newManagedClusterAddon := &addonv1alpha1.ManagedClusterAddOn{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
