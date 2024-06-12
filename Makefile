@@ -24,10 +24,12 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
+.PHONY: deploy
 deploy: 
 	@$(MAKE) -C operators/multiclusterobservability deploy
 
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
+.PHONY: undeploy
 undeploy:
 	@$(MAKE) p-C operators/multiclusterobservability undeploy
 
