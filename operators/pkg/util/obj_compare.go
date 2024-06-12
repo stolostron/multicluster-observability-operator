@@ -134,7 +134,6 @@ func compareDeployments(obj1 runtime.Object, obj2 runtime.Object) bool {
 		return false
 	}
 	if !equality.Semantic.DeepEqual(dep1.Spec, dep2.Spec) {
-		log.Info("Coleen print", "dep1", dep1.Spec, "dep2", dep2.Spec)
 		log.Info("Find updated deployment", "deployment", dep1.Name)
 		return false
 	}
