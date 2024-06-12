@@ -623,7 +623,8 @@ func newReceiversSpec(
 	if *receSpec.Replicas < 3 {
 		receSpec.ReplicationFactor = receSpec.Replicas
 	} else {
-		receSpec.ReplicationFactor = &mcoconfig.Replicas3
+		var replicas3 int32 = 3
+		receSpec.ReplicationFactor = &replicas3
 	}
 
 	receSpec.ServiceMonitor = true
@@ -932,7 +933,8 @@ func newCompactSpec(mco *mcov1beta2.MultiClusterObservability, scSelected string
 	compactSpec := obsv1alpha1.CompactSpec{}
 	// Compactor, generally, does not need to be highly available.
 	// Compactions are needed from time to time, only when new blocks appear.
-	compactSpec.Replicas = &mcoconfig.Replicas1
+	var replicas1 int32 = 1
+	compactSpec.Replicas = &replicas1
 	if !mcoconfig.WithoutResourcesRequests(mco.GetAnnotations()) {
 		compactSpec.Resources = mcoconfig.GetResources(mcoconfig.ThanosCompact, mco.Spec.InstanceSize, mco.Spec.AdvancedConfig)
 	}

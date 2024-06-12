@@ -273,11 +273,11 @@ func TestGetReplicas(t *testing.T) {
 			componentName: ObservatoriumAPI,
 			raw: &mcov1beta2.AdvancedConfig{
 				ObservatoriumAPI: &mcov1beta2.CommonSpec{
-					Replicas: &Replicas1,
+					Replicas: intptr(1),
 				},
 			},
 			result: func(replicas *int32) bool {
-				return replicas == &Replicas1
+				return *replicas == 1
 			},
 		},
 		{
@@ -289,7 +289,7 @@ func TestGetReplicas(t *testing.T) {
 				},
 			},
 			result: func(replicas *int32) bool {
-				return replicas == &Replicas2
+				return *replicas == 2
 			},
 		},
 		{
@@ -297,7 +297,7 @@ func TestGetReplicas(t *testing.T) {
 			componentName: ObservatoriumAPI,
 			raw:           nil,
 			result: func(replicas *int32) bool {
-				return replicas == &Replicas2
+				return *replicas == 2
 			},
 		},
 		{
@@ -307,7 +307,7 @@ func TestGetReplicas(t *testing.T) {
 				ObservatoriumAPI: &mcov1beta2.CommonSpec{},
 			},
 			result: func(replicas *int32) bool {
-				return replicas == &Replicas2
+				return *replicas == 2
 			},
 		},
 	}
