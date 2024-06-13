@@ -17,11 +17,11 @@ GO     ?= $(shell which go)
 #	@echo "Running controller-gen"
 #	@$(CONTROLLER_GEN) <flags/args..>
 #
-CONTROLLER_GEN := $(GOBIN)/controller-gen-v0.10.0
+CONTROLLER_GEN := $(GOBIN)/controller-gen-v0.11.4
 $(CONTROLLER_GEN): $(BINGO_DIR)/controller-gen.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/controller-gen-v0.10.0"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=controller-gen.mod -o=$(GOBIN)/controller-gen-v0.10.0 "sigs.k8s.io/controller-tools/cmd/controller-gen"
+	@echo "(re)installing $(GOBIN)/controller-gen-v0.11.4"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=controller-gen.mod -o=$(GOBIN)/controller-gen-v0.11.4 "sigs.k8s.io/controller-tools/cmd/controller-gen"
 
 FAILLINT := $(GOBIN)/faillint-v1.11.0
 $(FAILLINT): $(BINGO_DIR)/faillint.mod
@@ -76,12 +76,6 @@ $(OPM): $(BINGO_DIR)/opm.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
 	@echo "(re)installing $(GOBIN)/opm-v1.40.0"
 	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=opm.mod -o=$(GOBIN)/opm-v1.40.0 "github.com/operator-framework/operator-registry/cmd/opm"
-
-SETUP_ENVTEST := $(GOBIN)/setup-envtest-v0.0.0-20240531134648-6636df17d67b
-$(SETUP_ENVTEST): $(BINGO_DIR)/setup-envtest.mod
-	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/setup-envtest-v0.0.0-20240531134648-6636df17d67b"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=setup-envtest.mod -o=$(GOBIN)/setup-envtest-v0.0.0-20240531134648-6636df17d67b "sigs.k8s.io/controller-runtime/tools/setup-envtest"
 
 SHFMT := $(GOBIN)/shfmt-v3.7.0
 $(SHFMT): $(BINGO_DIR)/shfmt.mod
