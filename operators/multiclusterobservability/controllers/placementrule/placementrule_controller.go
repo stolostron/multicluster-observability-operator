@@ -7,7 +7,6 @@ package placementrule
 import (
 	"context"
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 	"sync"
@@ -92,6 +91,26 @@ type PlacementRuleReconciler struct {
 func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling PlacementRule")
+
+	cluster := &clusterv1.ManagedCluster{}
+	err := r.Client.Get(context.TODO(), types.NamespacedName{
+		Name: req.Name,
+	}, cluster)
+	if !k8serrors.IsNotFound(err) {
+		return ctrl.Result{}, err
+	}
+	if err == nil {
+		vendor, ok := cluster.Labels["vendor"]
+		if !ok {
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
+		if vendor == "OpenShift" {
+			_, ok := cluster.Labels["openshiftVersion"]
+			if !ok {
+				return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			}
+		}
+	}
 
 	// ACM 8509: Special case for hub/local cluster metrics collection
 	// We want to ensure that the local-cluster is always in the managedClusterList
@@ -582,23 +601,6 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 		return err
 	}
 	return nil
-}
-
-func waitForLabel(obj client.Object, label string) error {
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-	timeout := time.After(5 * time.Second)
-
-	for {
-		select {
-		case <-timeout:
-			return fmt.Errorf("timed out waiting for label %v on object %v", label, obj.GetName())
-		case <-ticker.C:
-			if _, ok := obj.GetLabels()[label]; ok {
-				return nil
-			}
-		}
-	}
 }
 
 func updateManagedClusterList(obj client.Object) {
