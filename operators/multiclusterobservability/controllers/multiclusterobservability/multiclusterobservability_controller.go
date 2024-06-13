@@ -137,6 +137,11 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 		reqLogger.Info("more than one MultiClusterObservability CR exists, only one should exist")
 		return ctrl.Result{}, nil
 	}
+	if len(mcoList.Items) == 0 {
+		reqLogger.Info("no MultiClusterObservability CR exists, nothing to do")
+		return ctrl.Result{}, nil
+	}
+
 	instance := mcoList.Items[0].DeepCopy()
 	if config.GetMonitoringCRName() != instance.GetName() {
 		config.SetMonitoringCRName(instance.GetName())
