@@ -29,11 +29,12 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 
 	if ingressCtlCrdExists {
 		var err error
-		obsAPIHost, err = config.GetObsAPIExternalHost(context.TODO(), client, obsNamespace)
+		obsAPIURL, err := config.GetObsAPIExternalURL(context.TODO(), client, obsNamespace)
 		if err != nil {
 			log.Error(err, "Failed to get the host for Observatorium API host URL")
 			return nil, err
 		}
+		obsAPIHost = obsAPIURL.Hostname()
 
 		// if alerting is disabled, do not set alertmanagerEndpoint
 		if !config.IsAlertingDisabled() {

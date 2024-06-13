@@ -322,20 +322,20 @@ func TestGetObsAPIExternalHost(t *testing.T) {
 	scheme.AddKnownTypes(mcov1beta2.GroupVersion, &mcov1beta2.MultiClusterObservability{})
 	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route).Build()
 
-	host, err := GetObsAPIExternalHost(context.TODO(), client, "default")
+	obsAPIURL, err := GetObsAPIExternalURL(context.TODO(), client, "default")
 	assert.NoError(t, err)
-	if host == apiServerURL {
+	if obsAPIURL.String() == apiServerURL {
 		t.Errorf("Should not get route host in default namespace")
 	}
 
-	host, err = GetObsAPIExternalHost(context.TODO(), client, "test")
+	obsAPIURL, err = GetObsAPIExternalURL(context.TODO(), client, "test")
 	assert.NoError(t, err)
-	if host != apiServerURL {
-		t.Errorf("Observatorium api (%v) is not the expected (%v)", host, apiServerURL)
+	if obsAPIURL.String() != apiServerURL {
+		t.Errorf("Observatorium api (%v) is not the expected (%v)", obsAPIURL, apiServerURL)
 	}
 
 	customBaseURL := "https://custom.base/url"
-	expectedHost := "custom.base/url"
+	expectedURL := "https://custom.base/url"
 	mco := &mcov1beta2.MultiClusterObservability{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: GetMonitoringCRName(),
@@ -347,15 +347,15 @@ func TestGetObsAPIExternalHost(t *testing.T) {
 		},
 	}
 	client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route, mco).Build()
-	host, err = GetObsAPIExternalHost(context.TODO(), client, "test")
+	obsAPIURL, err = GetObsAPIExternalURL(context.TODO(), client, "test")
 	assert.NoError(t, err)
-	if host != expectedHost {
-		t.Errorf("Observatorium api (%v) is not the expected (%v)", host, customBaseURL)
+	if obsAPIURL.String() != expectedURL {
+		t.Errorf("Observatorium api (%v) is not the expected (%v)", obsAPIURL, expectedURL)
 	}
 
 	mco.Spec.AdvancedConfig.CustomObservabilityHubURL = "httpa://foob ar.c"
 	client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route, mco).Build()
-	_, err = GetObsAPIExternalHost(context.TODO(), client, "test")
+	_, err = GetObsAPIExternalURL(context.TODO(), client, "test")
 	if err == nil {
 		t.Errorf("expected error when parsing URL '%v', but got none", mco.Spec.AdvancedConfig.CustomObservabilityHubURL)
 	}

@@ -26,14 +26,8 @@ func (u URL) Validate() error {
 	return err
 }
 
-// HostPath returns the URL's host together with its path.
-// This also runs a validation of the underlying url.
-func (u URL) HostPath() (string, error) {
-	parsedUrl, err := url.Parse(string(u))
-	if err != nil {
-		return "", err
-	}
-	return parsedUrl.Host + parsedUrl.Path, nil
+func (u URL) URL() (*url.URL, error) {
+	return url.Parse(string(u))
 }
 
 // ObservabilityAddonSpec is the spec of observability addon.
