@@ -511,7 +511,7 @@ func GetObsAPIExternalURL(ctx context.Context, client client.Client, namespace s
 	if err != nil {
 		return nil, err
 	}
-	return url.Parse(routeHost)
+	return url.Parse("https://" + routeHost)
 }
 
 func GetRouteHost(client client.Client, name string, namespace string) (string, error) {
