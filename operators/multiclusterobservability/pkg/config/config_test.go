@@ -28,7 +28,8 @@ import (
 )
 
 var (
-	apiServerURL           = "http://example.com"
+	apiServerURL           = "https://example.com"
+	apiServerHost          = "example.com"
 	clusterID              = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 	DefaultDSImgRepository = "quay.io:443/acm-d"
 )
@@ -314,7 +315,7 @@ func TestGetObsAPIExternalHost(t *testing.T) {
 			Namespace: "test",
 		},
 		Spec: routev1.RouteSpec{
-			Host: apiServerURL,
+			Host: apiServerHost,
 		},
 	}
 	scheme := runtime.NewScheme()
