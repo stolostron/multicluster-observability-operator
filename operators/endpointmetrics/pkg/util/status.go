@@ -16,47 +16,47 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type StatusConditionName string
+type ConditionReason string
 
 const (
-	DeployedStatus           StatusConditionName = "Deployed"
-	DisabledStatus           StatusConditionName = "Disabled"
-	DegradedStatus           StatusConditionName = "Degraded"
-	NotSupportedStatus       StatusConditionName = "NotSupported"
-	MaxStatusConditionsCount                     = 10
+	Deployed                 ConditionReason = "Deployed"
+	Disabled                 ConditionReason = "Disabled"
+	Degraded                 ConditionReason = "Degraded"
+	NotSupported             ConditionReason = "NotSupported"
+	MaxStatusConditionsCount                 = 10
 )
 
 var (
-	conditions = map[StatusConditionName]*oav1beta1.StatusCondition{
-		DeployedStatus: {
+	conditions = map[ConditionReason]oav1beta1.StatusCondition{
+		Deployed: {
 			Type:    "Progressing",
-			Reason:  "Deployed",
+			Reason:  string(Deployed),
 			Message: "Metrics collector deployed",
 			Status:  metav1.ConditionTrue,
 		},
-		DisabledStatus: {
+		Disabled: {
 			Type:    "Disabled",
-			Reason:  "Disabled",
+			Reason:  string(Disabled),
 			Message: "enableMetrics is set to False",
 			Status:  metav1.ConditionTrue,
 		},
-		DegradedStatus: {
+		Degraded: {
 			Type:    "Degraded",
-			Reason:  "Degraded",
+			Reason:  string(Degraded),
 			Message: "Metrics collector deployment not successful",
 			Status:  metav1.ConditionTrue,
 		},
-		NotSupportedStatus: {
+		NotSupported: {
 			Type:    "NotSupported",
-			Reason:  "NotSupported",
+			Reason:  string(NotSupported),
 			Message: "No Prometheus service found in this cluster",
 			Status:  metav1.ConditionTrue,
 		},
 	}
 )
 
-func ReportStatus(ctx context.Context, client client.Client, condition StatusConditionName, addonName, addonNs string) error {
-	newCondition := conditions[condition].DeepCopy()
+func ReportStatus(ctx context.Context, client client.Client, conditionReason ConditionReason, addonName, addonNs string) error {
+	newCondition := conditions[conditionReason]
 	newCondition.LastTransitionTime = metav1.NewTime(time.Now())
 
 	// Fetch the ObservabilityAddon instance in local cluster, and update the status
@@ -67,11 +67,11 @@ func ReportStatus(ctx context.Context, client client.Client, condition StatusCon
 			return err
 		}
 
-		if !shouldAppendCondition(obsAddon.Status.Conditions, newCondition) {
+		if !shouldUpdateConditions(obsAddon.Status.Conditions, newCondition) {
 			return nil
 		}
 
-		obsAddon.Status.Conditions = append(obsAddon.Status.Conditions, *newCondition)
+		obsAddon.Status.Conditions = mutateOrAppend(obsAddon.Status.Conditions, newCondition)
 
 		if len(obsAddon.Status.Conditions) > MaxStatusConditionsCount {
 			obsAddon.Status.Conditions = obsAddon.Status.Conditions[len(obsAddon.Status.Conditions)-MaxStatusConditionsCount:]
@@ -86,9 +86,28 @@ func ReportStatus(ctx context.Context, client client.Client, condition StatusCon
 	return nil
 }
 
+// mutateOrAppend updates the status conditions with the new condition.
+// If the condition already exists, it updates it with the new condition.
+// If the condition does not exist, it appends the new condition to the status conditions.
+func mutateOrAppend(conditions []oav1beta1.StatusCondition, newCondition oav1beta1.StatusCondition) []oav1beta1.StatusCondition {
+	if len(conditions) == 0 {
+		return []oav1beta1.StatusCondition{newCondition}
+	}
+
+	for i, condition := range conditions {
+		if condition.Type == newCondition.Type {
+			// Update the existing condition
+			conditions[i] = newCondition
+			return conditions
+		}
+	}
+	// If the condition type does not exist, append the new condition
+	return append(conditions, newCondition)
+}
+
 // shouldAppendCondition checks if the new condition should be appended to the status conditions
 // based on the last condition in the slice.
-func shouldAppendCondition(conditions []oav1beta1.StatusCondition, newCondition *oav1beta1.StatusCondition) bool {
+func shouldUpdateConditions(conditions []oav1beta1.StatusCondition, newCondition oav1beta1.StatusCondition) bool {
 	if len(conditions) == 0 {
 		return true
 	}
