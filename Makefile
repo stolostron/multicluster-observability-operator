@@ -25,7 +25,7 @@ SHELL = /usr/bin/env bash -o pipefail
 
 ##@ General
 
-# The help target prints out all targets with their descriptions organized
+# The help target prints out all targtoolsets with their descriptions organized
 # beneath their categories. The categories are represented by '##@' and the
 # target descriptions by '##'. The awk commands is responsible for reading the
 # entire set of makefiles included in this invocation, looking for lines of the
@@ -152,7 +152,7 @@ e2e-tests-in-kind: $(KUSTOMIZE) ## Run E2E tests in a local kind cluster.
     # Set up environment specific to OpenShift CI
 	@IS_KIND_ENV=true SED=$(SED) ./cicd-scripts/run-e2e-in-kind-via-prow.sh
 else
-e2e-tests-in-kind: ## Run E2E tests in a local kind cluster.
+e2e-tests-in-kind:
 	@echo "Running e2e tests in KinD cluster..."
 	@kind get kubeconfig --name hub > /tmp/hub.yaml
 	@IS_KIND_ENV=true KUBECONFIG=/tmp/hub.yaml SED=$(SED) ./cicd-scripts/run-e2e-tests.sh
@@ -162,7 +162,7 @@ endif
 
 # Creates a KinD cluster and sets the kubeconfig context to the cluster
 .PHONY: kind-env
-kind-env: $(KIND)
+kind-env: $(KIND) ## Bootstrap Kind envinronment.
 	@echo "Setting up KinD cluster"
 	@./scripts/bootstrap-kind-env.sh
 	@echo "Cluster has been created"
@@ -172,18 +172,21 @@ kind-env: $(KIND)
 # Creates a KinD cluster with MCO deployed and sets the kubeconfig context to the cluster
 # This fully prepares the environment for running e2e tests.
 .PHONY: mco-kind-env
-mco-kind-env: kind-env $(KIND)
+mco-kind-env: kind-env ## Prepare Kind environment for E2E tests.
 	@echo "Local environment has been set up"
 	@echo "Installing MCO"
 	@$(KIND) get kubeconfig --name hub > /tmp/hub.yaml
 	KUBECONFIG=/tmp/hub.yaml IS_KIND_ENV=true ./cicd-scripts/setup-e2e-tests.sh
 
 .PHONY: tools
-tools: $(KUSTOMIZE) $(KIND) $(GOJSONTOYAML)
+tools: $(KUSTOMIZE) $(KIND) $(GOJSONTOYAML) ## Install development and e2e tools.
 	mkdir -p $(BIN_DIR)
 	./scripts/install-binaries.sh install_binaries $(BIN_DIR)
 
 .PHONY: install-envtest-deps
+install-envtest-deps: ## Install env-test.
+	@mkdir -p $(BIN_DIR)
+	@./scripts/install-binaries.sh install_envtest_deps $(BIN_DIR)
 
 ##@ Multi-Cluster-Observability Operator
 
