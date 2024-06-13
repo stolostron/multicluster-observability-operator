@@ -100,11 +100,13 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 	if err == nil {
+		log.Info("COleen cluster add event", "cluster", cluster.GetName())
 		vendor, ok := cluster.GetLabels()["vendor"]
 		if !ok {
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 		if vendor == "OpenShift" {
+			log.Info("Coleen cluster labels", "cluster", cluster.GetName(), "vendor", vendor)
 			_, ok := cluster.GetLabels()["openshiftVersion"]
 			if !ok {
 				return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
