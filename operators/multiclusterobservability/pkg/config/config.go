@@ -544,23 +544,23 @@ func GetMCONamespace() string {
 	return podNamespace
 }
 
-// GetAlertmanagerEndpoint is used to get the URL for alertmanager.
-func GetAlertmanagerEndpoint(ctx context.Context, client client.Client, namespace string) (string, error) {
+// GetAlertmanagerURL is used to get the URL for alertmanager.
+func GetAlertmanagerURL(ctx context.Context, client client.Client, namespace string) (*url.URL, error) {
 	mco := &observabilityv1beta2.MultiClusterObservability{}
 	err := client.Get(ctx,
 		types.NamespacedName{
 			Name: GetMonitoringCRName(),
 		}, mco)
 	if err != nil && !errors.IsNotFound(err) {
-		return "", err
+		return nil, err
 	}
 	advancedConfig := mco.Spec.AdvancedConfig
 	if advancedConfig != nil && advancedConfig.CustomAlertmanagerHubURL != "" {
 		err := advancedConfig.CustomAlertmanagerHubURL.Validate()
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		return string(advancedConfig.CustomAlertmanagerHubURL), nil
+		return advancedConfig.CustomAlertmanagerHubURL.URL()
 	}
 
 	found := &routev1.Route{}
@@ -573,13 +573,13 @@ func GetAlertmanagerEndpoint(ctx context.Context, client client.Client, namespac
 			OpenshiftIngressOperatorNamespace,
 		)
 		if err != nil {
-			return "", nil
+			return nil, err
 		}
-		return AlertmanagerRouteName + "-" + namespace + "." + domain, nil
+		return url.Parse("https://" + AlertmanagerRouteName + "-" + namespace + "." + domain)
 	} else if err != nil {
-		return "", err
+		return nil, err
 	}
-	return found.Spec.Host, nil
+	return url.Parse("https://" + found.Spec.Host)
 }
 
 // getDomainForIngressController get the domain for the given ingresscontroller instance.

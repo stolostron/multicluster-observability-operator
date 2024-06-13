@@ -38,15 +38,12 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 
 		// if alerting is disabled, do not set alertmanagerEndpoint
 		if !config.IsAlertingDisabled() {
-			alertmanagerEndpoint, err = config.GetAlertmanagerEndpoint(context.TODO(), client, obsNamespace)
-			if !strings.HasPrefix(alertmanagerEndpoint, "https://") {
-				alertmanagerEndpoint = "https://" + alertmanagerEndpoint
-			}
-
+			alertmanagerURL, err := config.GetAlertmanagerURL(context.TODO(), client, obsNamespace)
 			if err != nil {
 				log.Error(err, "Failed to get alertmanager endpoint")
 				return nil, err
 			}
+			alertmanagerEndpoint = alertmanagerURL.String()
 		}
 
 		alertmanagerRouterCA, err = config.GetAlertmanagerRouterCA(client)
