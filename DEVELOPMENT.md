@@ -16,24 +16,6 @@ There is a hard dependency on version `1.4.2` at the time of writing.
 > [!NOTE]
 > For macOS users on arm64 you may need to build the binary from source using the steps below.
 
-Firstly, remove any existing `operator-sdk` binary from your $PATH.
-
-To build the `operator-sdk` from source, run:
-
-```shell
-git clone https://github.com/operator-framework/operator-sdk
-cd operator-sdk
-git fetch origin --tags
-git checkout v1.4.2
-make install
-```
-
-To install the `operator-sdk` and `kustomize`, run:
-
-```shell
-make install-build-deps
-```
-
 Any dependencies that already exist will be skipped.
 
 ### Building the bundle

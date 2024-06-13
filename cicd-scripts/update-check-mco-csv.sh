@@ -3,10 +3,11 @@
 # Copyright Contributors to the Open Cluster Management project
 
 # generate csv
+make OPERATOR-SDK=
 source ./scripts/install-binaries.sh
-install_operator_sdk
+source ./.bingo/variables.env
 
-operator-sdk generate csv --crd-dir=deploy/crds --deploy-dir=deploy/ --output-dir=deploy/olm-catalog/multicluster-observability-operator --operator-name=multicluster-observability-operator --csv-version=0.1.0
+$OPERATOR_SDK generate csv --crd-dir=deploy/crds --deploy-dir=deploy/ --output-dir=deploy/olm-catalog/multicluster-observability-operator --operator-name=multicluster-observability-operator --csv-version=0.1.0
 extra_text="    - name: observatoria.core.observatorium.io
       version: v1alpha1
       kind: Observatorium

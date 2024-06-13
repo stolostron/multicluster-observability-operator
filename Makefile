@@ -17,58 +17,50 @@ export SED ?= $(shell which gsed 2>/dev/null || which sed)
 XARGS ?= $(shell which gxargs 2>/dev/null || which xargs)
 GREP ?= $(shell which ggrep 2>/dev/null || which grep)
 
-# Image URL to use all building/pushing image targets
-IMG ?= quay.io/stolostron/multicluster-observability-operator:latest
-# KUSTOMIZE_VERSION is set here to allow it to be overridden by the caller
-# as it gets passed to the registration-operator Makefile and will fail on macOS if not set.
-# See https://github.com/stolostron/registration-operator/blob/release-2.4/Makefile#L184-L193
-KUSTOMIZE_VERSION ?= v5.3.0
-
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: 
-	cd operators/multiclusterobservability && make deploy
+	@$(MAKE) -C operators/multiclusterobservability deploy
 
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
 undeploy:
-	cd operators/multiclusterobservability && make undeploy
-
+	@$(MAKE) p-C operators/multiclusterobservability undeploy
 
 # Build the operator binary
 .PHONY: build
 build:
-	cd operators/multiclusterobservability && make manager
+	@$(MAKE) -C operators/multiclusterobservability manager
 
 # Build the docker image
+.PHONY: docker-build
 docker-build:
-	cd operators/multiclusterobservability && make manager
-	docker build -t ${IMG} . -f operators/multiclusterobservability/Dockerfile
-
-
-LOCAL_IMAGE ?= hack.io/stolostron/mco:local
-IMAGE_BUILD_CMD ?= docker buildx build . -t ${LOCAL_IMAGE} -f operators/multiclusterobservability/Dockerfile.dev --load
+	@$(MAKE) -C operators/multiclusterobservability docker-build
 
 # Build the docker image using a public image registry
 .PHONY: docker-build-local
 docker-build-local:
-	cd operators/multiclusterobservability && make manager
-	$(IMAGE_BUILD_CMD)
+	@$(MAKE) -C operators/multiclusterobservability docker-build-local
 
 # Push the docker image
+.PHONY: docker-push
 docker-push:
-	docker push ${IMG}
+	@$(MAKE) -C operators/multiclusterobservability docker-push
 
 .PHONY: unit-tests
 unit-tests: unit-tests-operators unit-tests-loaders unit-tests-proxy unit-tests-collectors
 
+.PHONY: unit-tests-operators
 unit-tests-operators:
 	go test -v ${VERBOSE} `go list ./operators/... | $(GREP) -v test`
 
+.PHONY: unit-tests-loaders
 unit-tests-loaders:
 	go test -v ${VERBOSE} `go list ./loaders/... | $(GREP) -v test`
 
+.PHONY: unit-tests-proxy
 unit-tests-proxy:
 	go test -v ${VERBOSE} `go list ./proxy/... | $(GREP) -v test`
 
+.PHONY: unit-tests-collectors
 unit-tests-collectors:
 	go test ${VERBOSE} `go list ./collectors/... | $(GREP) -v test`
 
@@ -77,28 +69,30 @@ integration-test-operators:
 	go test -tags integration -run=Integration ./operators/...
 
 .PHONY: e2e-tests
-e2e-tests: install-e2e-test-deps
+e2e-tests: tools
 	@echo "Running e2e tests ..."
 	@./cicd-scripts/run-e2e-tests.sh
 
 .PHONY: e2e-tests-in-kind
-e2e-tests-in-kind: install-e2e-test-deps
-	@echo "Running e2e tests in KinD cluster..."
 ifeq ($(OPENSHIFT_CI),true)
+e2e-tests-in-kind: $(KUSTOMIZE)
+	@echo "Running e2e tests in KinD cluster..."
     # Set up environment specific to OpenShift CI
 	@IS_KIND_ENV=true SED=$(SED) ./cicd-scripts/run-e2e-in-kind-via-prow.sh
 else
+e2e-tests-in-kind:
+	@echo "Running e2e tests in KinD cluster..."
 	@kind get kubeconfig --name hub > /tmp/hub.yaml
 	@IS_KIND_ENV=true KUBECONFIG=/tmp/hub.yaml SED=$(SED) ./cicd-scripts/run-e2e-tests.sh
 endif
 
 # Creates a KinD cluster and sets the kubeconfig context to the cluster
 .PHONY: kind-env
-kind-env:
+kind-env: $(KIND)
 	@echo "Setting up KinD cluster"
 	@./scripts/bootstrap-kind-env.sh
 	@echo "Cluster has been created"
-	kind export kubeconfig --name=hub
+	$(KIND) export kubeconfig --name=hub
 	kubectl label node hub-control-plane node-role.kubernetes.io/master=''
 
 # Creates a KinD cluster with MCO deployed and sets the kubeconfig context to the cluster
@@ -107,14 +101,13 @@ kind-env:
 mco-kind-env: kind-env
 	@echo "Local environment has been set up"
 	@echo "Installing MCO"
-	@kind get kubeconfig --name hub > /tmp/hub.yaml
-	KUBECONFIG=/tmp/hub.yaml IS_KIND_ENV=true KUSTOMIZE_VERSION=${KUSTOMIZE_VERSION} ./cicd-scripts/setup-e2e-tests.sh
-
+	@$(KIND) get kubeconfig --name hub > /tmp/hub.yaml
+	KUBECONFIG=/tmp/hub.yaml IS_KIND_ENV=true ./cicd-scripts/setup-e2e-tests.sh
 
 # Generate bundle manifests and metadata, then validate generated files.
 .PHONY: bundle
-bundle: deps install-build-deps
-	cd operators/multiclusterobservability && make bundle
+bundle: deps
+	$(MAKE) -C operators/multiclusterobservability bundle
 
 .PHONY: check-git
 check-git:
@@ -192,19 +185,10 @@ io/ioutil.{Discard,NopCloser,ReadAll,ReadDir,ReadFile,TempDir,TempFile,Writefile
 	@go run ./scripts/copyright
 	$(call require_clean_work_tree,'detected files without copyright, run make lint and commit changes')
 
-.PHONY: install-build-deps
-install-build-deps:
-	@./scripts/install-binaries.sh install_build_deps
-
-.PHONY: install-integration-test-deps
-install-integration-test-deps:
-	@mkdir -p $(BIN_DIR)
-	@./scripts/install-binaries.sh install_integration_tests_deps $(BIN_DIR)
-
-.PHONY: install-e2e-test-deps
-install-e2e-test-deps:
-	@mkdir -p $(BIN_DIR)
-	@./scripts/install-binaries.sh install_e2e_tests_deps $(BIN_DIR)
+.PHONY: tools
+tools: $(KUSTOMIZE) $(KIND) $(GOJSONTOYAML)
+	mkdir -p $(BIN_DIR)
+	./scripts/install-binaries.sh install_binaries $(BIN_DIR)
 
 .PHONY: install-envtest-deps
 install-envtest-deps:
