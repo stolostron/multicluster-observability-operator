@@ -128,19 +128,23 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	}
 
 	// Fetch the MultiClusterObservability instance
-	instance := &mcov1beta2.MultiClusterObservability{}
-	err := r.Client.Get(context.TODO(), types.NamespacedName{
-		Name: config.GetMonitoringCRName(),
-	}, instance)
+	mcoList := &mcov1beta2.MultiClusterObservabilityList{}
+	err := r.Client.List(context.TODO(), mcoList)
 	if err != nil {
-		if apierrors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			return ctrl.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
+	}
+	if len(mcoList.Items) > 1 {
+		reqLogger.Info("more than one MultiClusterObservability CR exists, only one should exist")
+		return ctrl.Result{}, nil
+	}
+	if len(mcoList.Items) == 0 {
+		reqLogger.Info("no MultiClusterObservability CR exists, nothing to do")
+		return ctrl.Result{}, nil
+	}
+
+	instance := mcoList.Items[0].DeepCopy()
+	if config.GetMonitoringCRName() != instance.GetName() {
+		config.SetMonitoringCRName(instance.GetName())
 	}
 
 	// start to update mco status
