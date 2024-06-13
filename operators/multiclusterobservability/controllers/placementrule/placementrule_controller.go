@@ -100,12 +100,12 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 	if err == nil {
-		vendor, ok := cluster.Labels["vendor"]
+		vendor, ok := cluster.GetLabels()["vendor"]
 		if !ok {
 			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 		if vendor == "OpenShift" {
-			_, ok := cluster.Labels["openshiftVersion"]
+			_, ok := cluster.GetLabels()["openshiftVersion"]
 			if !ok {
 				return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 			}
