@@ -139,7 +139,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	deleteAll := false
 	// Fetch the MultiClusterObservability instance
 	mco := &mcov1beta2.MultiClusterObservability{}
-	err := r.Client.Get(context.TODO(),
+	err = r.Client.Get(context.TODO(),
 		types.NamespacedName{
 			Name: config.GetMonitoringCRName(),
 		}, mco)

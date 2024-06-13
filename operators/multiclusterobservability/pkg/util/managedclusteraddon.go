@@ -6,9 +6,10 @@ package util
 
 import (
 	"context"
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	"os"
 	"time"
+
+	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
