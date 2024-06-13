@@ -130,10 +130,13 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
-# Run tests
+ENVTEST_BIN=$(shell pwd)/../../tmp/bin/setup-envtest
+$(ENVTEST_BIN):
+	$(MAKE) -C ../../ install-envtest-deps
+
 .PHONY: test
-test: generate fmt vet manifests $(SETUP_ENVTEST) ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION)) --bin-dir $(GOBIN) -p path" go test ./... -coverprofile cover.out
+test: generate fmt vet manifests $(ENVTEST_BIN) ## Run tests.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST_BIN) use $(ENVTEST_K8S_VERSION)) --bin-dir $(GOBIN) -p path" go test ./... -coverprofile cover.out
 
 ##@ Build
 
