@@ -28,7 +28,8 @@ import (
 )
 
 var (
-	apiServerURL           = "http://example.com"
+	apiServerURL           = "https://example.com"
+	apiServerHost          = "example.com"
 	clusterID              = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 	DefaultDSImgRepository = "quay.io:443/acm-d"
 )
@@ -314,7 +315,7 @@ func TestGetObsAPIExternalHost(t *testing.T) {
 			Namespace: "test",
 		},
 		Spec: routev1.RouteSpec{
-			Host: apiServerURL,
+			Host: apiServerHost,
 		},
 	}
 	scheme := runtime.NewScheme()
@@ -322,20 +323,20 @@ func TestGetObsAPIExternalHost(t *testing.T) {
 	scheme.AddKnownTypes(mcov1beta2.GroupVersion, &mcov1beta2.MultiClusterObservability{})
 	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route).Build()
 
-	host, err := GetObsAPIExternalHost(context.TODO(), client, "default")
+	obsAPIURL, err := GetObsAPIExternalURL(context.TODO(), client, "default")
 	assert.NoError(t, err)
-	if host == apiServerURL {
+	if obsAPIURL.String() == apiServerURL {
 		t.Errorf("Should not get route host in default namespace")
 	}
 
-	host, err = GetObsAPIExternalHost(context.TODO(), client, "test")
+	obsAPIURL, err = GetObsAPIExternalURL(context.TODO(), client, "test")
 	assert.NoError(t, err)
-	if host != apiServerURL {
-		t.Errorf("Observatorium api (%v) is not the expected (%v)", host, apiServerURL)
+	if obsAPIURL.String() != apiServerURL {
+		t.Errorf("Observatorium api (%v) is not the expected (%v)", obsAPIURL, apiServerURL)
 	}
 
 	customBaseURL := "https://custom.base/url"
-	expectedHost := "custom.base/url"
+	expectedURL := "https://custom.base/url"
 	mco := &mcov1beta2.MultiClusterObservability{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: GetMonitoringCRName(),
@@ -347,29 +348,30 @@ func TestGetObsAPIExternalHost(t *testing.T) {
 		},
 	}
 	client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route, mco).Build()
-	host, err = GetObsAPIExternalHost(context.TODO(), client, "test")
+	obsAPIURL, err = GetObsAPIExternalURL(context.TODO(), client, "test")
 	assert.NoError(t, err)
-	if host != expectedHost {
-		t.Errorf("Observatorium api (%v) is not the expected (%v)", host, customBaseURL)
+	if obsAPIURL.String() != expectedURL {
+		t.Errorf("Observatorium api (%v) is not the expected (%v)", obsAPIURL, expectedURL)
 	}
 
 	mco.Spec.AdvancedConfig.CustomObservabilityHubURL = "httpa://foob ar.c"
 	client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route, mco).Build()
-	_, err = GetObsAPIExternalHost(context.TODO(), client, "test")
+	_, err = GetObsAPIExternalURL(context.TODO(), client, "test")
 	if err == nil {
 		t.Errorf("expected error when parsing URL '%v', but got none", mco.Spec.AdvancedConfig.CustomObservabilityHubURL)
 	}
 }
 
 func TestGetAlertmanagerEndpoint(t *testing.T) {
-	routeURL := "http://route.example.com"
+	routeURL := "https://route.example.com"
+	routeHost := "route.example.com"
 	route := &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      AlertmanagerRouteName,
 			Namespace: "test",
 		},
 		Spec: routev1.RouteSpec{
-			Host: routeURL,
+			Host: routeHost,
 		},
 	}
 	scheme := runtime.NewScheme()
@@ -377,14 +379,14 @@ func TestGetAlertmanagerEndpoint(t *testing.T) {
 	scheme.AddKnownTypes(mcov1beta2.GroupVersion, &mcov1beta2.MultiClusterObservability{})
 	client := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route).Build()
 
-	host, _ := GetAlertmanagerEndpoint(context.TODO(), client, "default")
-	if host == routeURL {
+	alertmanagerURL, _ := GetAlertmanagerURL(context.TODO(), client, "default")
+	if alertmanagerURL != nil {
 		t.Errorf("Should not get route host in default namespace")
 	}
 
-	host, _ = GetAlertmanagerEndpoint(context.TODO(), client, "test")
-	if host != routeURL {
-		t.Errorf("Alertmanager URL (%v) is not the expected (%v)", host, routeURL)
+	alertmanagerURL, _ = GetAlertmanagerURL(context.TODO(), client, "test")
+	if alertmanagerURL.String() != routeURL {
+		t.Errorf("Alertmanager URL (%v) is not the expected (%v)", alertmanagerURL, routeURL)
 	}
 
 	customBaseURL := "https://custom.base/url"
@@ -399,14 +401,14 @@ func TestGetAlertmanagerEndpoint(t *testing.T) {
 		},
 	}
 	client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route, mco).Build()
-	host, _ = GetAlertmanagerEndpoint(context.TODO(), client, "test")
-	if host != customBaseURL {
-		t.Errorf("Alertmanager URL (%v) is not the expected (%v)", host, customBaseURL)
+	alertmanagerURL, _ = GetAlertmanagerURL(context.TODO(), client, "test")
+	if alertmanagerURL.String() != customBaseURL {
+		t.Errorf("Alertmanager URL (%v) is not the expected (%v)", alertmanagerURL, customBaseURL)
 	}
 
 	mco.Spec.AdvancedConfig.CustomAlertmanagerHubURL = "httpa://foob ar.c"
 	client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(route, mco).Build()
-	_, err := GetAlertmanagerEndpoint(context.TODO(), client, "test")
+	_, err := GetAlertmanagerURL(context.TODO(), client, "test")
 	if err == nil {
 		t.Errorf("expected error when parsing URL '%v', but got none", mco.Spec.AdvancedConfig.CustomObservabilityHubURL)
 	}
