@@ -370,3 +370,6 @@ rules:
   - get
   - list
   - watch
+  - create
+  - patch
+  - delete
