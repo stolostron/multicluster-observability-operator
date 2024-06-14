@@ -327,7 +327,8 @@ func createManifestWorks(
 	imageRegistryClient := NewImageRegistryClient(c)
 
 	// inject the endpoint operator deployment
-	spec := dep.Spec.Template.Spec
+	endpointMetricsOperatorDeploy = dep.DeepCopy()
+	spec := endpointMetricsOperatorDeploy.Spec.Template.Spec
 	if addonConfig.Spec.NodePlacement != nil {
 		spec.NodeSelector = addonConfig.Spec.NodePlacement.NodeSelector
 		spec.Tolerations = addonConfig.Spec.NodePlacement.Tolerations
@@ -409,7 +410,7 @@ func createManifestWorks(
 	log.Info(fmt.Sprintf("Cluster: %+v, Spec.NodeSelector (after): %+v", clusterName, spec.NodeSelector))
 	log.Info(fmt.Sprintf("Cluster: %+v, Spec.Tolerations (after): %+v", clusterName, spec.Tolerations))
 
-	if clusterName != clusterNamespace {
+	if clusterName == localClusterName {
 		spec.Volumes = []corev1.Volume{}
 		spec.Containers[0].VolumeMounts = []corev1.VolumeMount{}
 		for i, env := range spec.Containers[0].Env {
@@ -423,12 +424,9 @@ func createManifestWorks(
 			Name:  "HUB_ENDPOINT_OPERATOR",
 			Value: "true",
 		})
-
-		dep.ObjectMeta.Name = config.HubEndpointOperatorName
 	}
-
-	dep.Spec.Template.Spec = spec
-	manifests = injectIntoWork(manifests, dep)
+	endpointMetricsOperatorDeploy.Spec.Template.Spec = spec
+	manifests = injectIntoWork(manifests, endpointMetricsOperatorDeploy)
 	// replace the pull secret and addon components image
 	if hasCustomRegistry {
 		log.Info("Replace the default pull secret to custom pull secret", "cluster", clusterName)
