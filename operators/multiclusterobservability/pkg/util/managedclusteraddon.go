@@ -9,8 +9,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,10 +29,6 @@ var (
 
 func CreateManagedClusterAddonCR(c client.Client, namespace, labelKey, labelValue string) (
 	*addonv1alpha1.ManagedClusterAddOn, error) {
-	// local-cluster does not have a managedClusterAddon
-	if namespace == config.GetDefaultNamespace() {
-		return nil, nil
-	}
 	newManagedClusterAddon := &addonv1alpha1.ManagedClusterAddOn{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: addonv1alpha1.SchemeGroupVersion.String(),
