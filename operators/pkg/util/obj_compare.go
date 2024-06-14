@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/equality"
+
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -131,7 +133,7 @@ func compareDeployments(obj1 runtime.Object, obj2 runtime.Object) bool {
 		log.Info("Find updated name/namespace for deployment", "deployment", dep1.Name)
 		return false
 	}
-	if !reflect.DeepEqual(dep1.Spec, dep2.Spec) {
+	if !equality.Semantic.DeepEqual(dep1.Spec, dep2.Spec) {
 		log.Info("Find updated deployment", "deployment", dep1.Name)
 		return false
 	}
@@ -145,7 +147,7 @@ func compareServiceAccounts(obj1 runtime.Object, obj2 runtime.Object) bool {
 		log.Info("Find updated name/namespace for serviceaccount", "serviceaccount", sa1.Name)
 		return false
 	}
-	if !reflect.DeepEqual(sa1.ImagePullSecrets, sa2.ImagePullSecrets) {
+	if !equality.Semantic.DeepEqual(sa1.ImagePullSecrets, sa2.ImagePullSecrets) {
 		log.Info("Find updated imagepullsecrets in serviceaccount", "serviceaccount", sa1.Name)
 		return false
 	}
@@ -159,7 +161,7 @@ func compareClusterRoles(obj1 runtime.Object, obj2 runtime.Object) bool {
 		log.Info("Find updated name for clusterrole", "clusterrole", cr1.Name)
 		return false
 	}
-	if !reflect.DeepEqual(cr1.Rules, cr2.Rules) {
+	if !equality.Semantic.DeepEqual(cr1.Rules, cr2.Rules) {
 		log.Info("Find updated rules in clusterrole", "clusterrole", cr1.Name)
 		return false
 	}
@@ -173,7 +175,7 @@ func compareClusterRoleBindings(obj1 runtime.Object, obj2 runtime.Object) bool {
 		log.Info("Find updated name/namespace for clusterrolebinding", "clusterrolebinding", crb1.Name)
 		return false
 	}
-	if !reflect.DeepEqual(crb1.Subjects, crb2.Subjects) || !reflect.DeepEqual(crb1.RoleRef, crb2.RoleRef) {
+	if !equality.Semantic.DeepEqual(crb1.Subjects, crb2.Subjects) || !reflect.DeepEqual(crb1.RoleRef, crb2.RoleRef) {
 		log.Info("Find updated subjects/rolerefs for clusterrolebinding", "clusterrolebinding", crb1.Name)
 		return false
 	}
@@ -187,7 +189,7 @@ func compareSecrets(obj1 runtime.Object, obj2 runtime.Object) bool {
 		log.Info("Find updated name/namespace for secret", "secret", s1.Name)
 		return false
 	}
-	if !reflect.DeepEqual(s1.Data, s2.Data) {
+	if !equality.Semantic.DeepEqual(s1.Data, s2.Data) {
 		log.Info("Find updated data in secret", "secret", s1.Name)
 		return false
 	}
@@ -201,7 +203,7 @@ func compareServices(obj1 runtime.Object, obj2 runtime.Object) bool {
 		log.Info("Find updated name/namespace for service", "service", s1.Name)
 		return false
 	}
-	if !reflect.DeepEqual(s1.Spec, s2.Spec) {
+	if !equality.Semantic.DeepEqual(s1.Spec, s2.Spec) {
 		log.Info("Find updated data in service", "service", s1.Name)
 		return false
 	}
@@ -215,7 +217,7 @@ func compareConfigMap(obj1 runtime.Object, obj2 runtime.Object) bool {
 		log.Info("Find updated name/namespace for configmap", "configmap", cm1.Name)
 		return false
 	}
-	if !reflect.DeepEqual(cm1.Data, cm2.Data) {
+	if !equality.Semantic.DeepEqual(cm1.Data, cm2.Data) {
 		log.Info("Find updated data in secret", "secret", cm1.Name)
 		return false
 	}
@@ -229,7 +231,7 @@ func compareCRDv1(obj1 runtime.Object, obj2 runtime.Object) bool {
 		log.Info("Find updated name for crd", "crd", crd1.Name)
 		return false
 	}
-	if !reflect.DeepEqual(crd1.Spec, crd2.Spec) {
+	if !equality.Semantic.DeepEqual(crd1.Spec, crd2.Spec) {
 		log.Info("Find updated spec for crd", "crd", crd1.Name)
 		return false
 	}
@@ -243,7 +245,7 @@ func compareCRDv1beta1(obj1 runtime.Object, obj2 runtime.Object) bool {
 		log.Info("Find updated name for crd", "crd", crd1.Name)
 		return false
 	}
-	if !reflect.DeepEqual(crd1.Spec, crd2.Spec) {
+	if !equality.Semantic.DeepEqual(crd1.Spec, crd2.Spec) {
 		log.Info("Find updated spec for crd", "crd", crd1.Name)
 		return false
 	}
@@ -251,5 +253,15 @@ func compareCRDv1beta1(obj1 runtime.Object, obj2 runtime.Object) bool {
 }
 
 func compareObsAddon(obj1 runtime.Object, obj2 runtime.Object) bool {
-	return reflect.DeepEqual(obj1, obj2)
+	addon1 := obj1.(*mcov1beta1.ObservabilityAddon)
+	addon2 := obj2.(*mcov1beta1.ObservabilityAddon)
+	if addon1.Name != addon2.Name || addon1.Namespace != addon2.Namespace {
+		log.Info("Find updated name for ObservabilityAddon", "ObservabilityAddon", addon1.Name)
+		return false
+	}
+	if !equality.Semantic.DeepEqual(addon1.Spec, addon2.Spec) {
+		log.Info("Find updated spec for ObservabilityAddon", "ObservabilityAddon", addon1.Name)
+		return false
+	}
+	return true
 }
