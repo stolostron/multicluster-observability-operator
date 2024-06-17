@@ -163,9 +163,7 @@ func TestReportStatus(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			// setup
-			client := fake.NewClientBuilder().WithStatusSubresource(
-				&oav1beta1.ObservabilityAddon{},
-			).WithScheme(s).Build()
+			client := fake.NewClientBuilder().WithScheme(s).Build()
 			baseAddon := newObservabilityAddon("observability-addon", "test-ns")
 			baseAddon.Status.Conditions = tc.currentConditions
 			if err := client.Create(context.Background(), baseAddon); err != nil {
