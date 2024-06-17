@@ -22,13 +22,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-const (
-	name          = "observability-addon"
-	testNamespace = "test-ns"
-)
-
 func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon {
 	return &oav1beta1.ObservabilityAddon{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: oav1beta1.GroupVersion.String(),
+			Kind:       "ObservabilityAddon",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
@@ -191,6 +190,8 @@ func TestReportStatus(t *testing.T) {
 
 func TestReportStatus_Conflict(t *testing.T) {
 	// Conflict on update should be retried
+	name := "observability-addon"
+	testNamespace := "test-ns"
 	oa := newObservabilityAddon(name, testNamespace)
 	s := scheme.Scheme
 	oav1beta1.AddToScheme(s)
@@ -198,7 +199,7 @@ func TestReportStatus_Conflict(t *testing.T) {
 	conflictErr := errors.NewConflict(schema.GroupResource{Group: oav1beta1.GroupVersion.Group, Resource: "resource"}, name, fmt.Errorf("conflict"))
 
 	c := newClientWithUpdateError(fakeClient, conflictErr)
-	if err := util.ReportStatus(context.Background(), c, util.DeployedStatus, name, testNamespace); err == nil {
+	if err := util.ReportStatus(context.Background(), c, util.Deployed, name, testNamespace); err == nil {
 		t.Fatalf("Conflict error should be retried and return an error if it fails")
 	}
 	if c.UpdateCallsCount() <= 1 {
