@@ -12,9 +12,9 @@ import (
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -37,78 +37,155 @@ func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon
 }
 
 func TestReportStatus(t *testing.T) {
-	oa := newObservabilityAddon(name, testNamespace)
-	objs := []runtime.Object{oa}
 	s := scheme.Scheme
-	if err := oav1beta1.AddToScheme(s); err != nil {
-		t.Fatalf("Unable to add oav1beta1 scheme: (%v)", err)
+	assert.NoError(t, oav1beta1.AddToScheme(s))
+	assert.NoError(t, addonv1alpha1.AddToScheme(s))
+	assert.NoError(t, mcov1beta2.AddToScheme(s))
+
+	testCases := map[string]struct {
+		currentConditions []oav1beta1.StatusCondition
+		newCondition      util.ConditionReason
+		expects           func(*testing.T, []oav1beta1.StatusCondition)
+	}{
+		"new status should be appended": {
+			currentConditions: []oav1beta1.StatusCondition{},
+			newCondition:      util.Deployed,
+			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
+				assert.Len(t, conditions, 1)
+				assert.EqualValues(t, util.Deployed, conditions[0].Reason)
+				assert.Equal(t, metav1.ConditionTrue, conditions[0].Status)
+				assert.Equal(t, "Progressing", conditions[0].Type)
+				assert.InEpsilon(t, time.Now().Unix(), conditions[0].LastTransitionTime.Unix(), 1)
+			},
+		},
+		"existing status should be updated": {
+			currentConditions: []oav1beta1.StatusCondition{
+				{
+					Type:    "Progressing",
+					Reason:  string(util.Deployed),
+					Message: "Metrics collector deployed",
+					Status:  metav1.ConditionTrue,
+					LastTransitionTime: metav1.Time{
+						Time: time.Now().Add(-time.Minute), // current state (most recent)
+					},
+				},
+				{
+					Type:    "Disabled",
+					Reason:  string(util.Disabled),
+					Message: "enableMetrics is set to False",
+					Status:  metav1.ConditionTrue,
+					LastTransitionTime: metav1.Time{
+						Time: time.Now().Add(-2 * time.Minute),
+					},
+				},
+			},
+			newCondition: util.Disabled,
+			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
+				assert.Len(t, conditions, 2)
+				found := false
+				for _, c := range conditions {
+					if c.Reason == string(util.Disabled) {
+						found = true
+						assert.EqualValues(t, util.Disabled, c.Reason)
+						assert.Equal(t, metav1.ConditionTrue, c.Status)
+						assert.Equal(t, "Disabled", c.Type)
+						assert.InEpsilon(t, time.Now().Unix(), c.LastTransitionTime.Unix(), 1)
+					} else {
+						// other condition should not be changed
+						assert.EqualValues(t, util.Deployed, c.Reason)
+						assert.InEpsilon(t, time.Now().Add(-time.Minute).Unix(), c.LastTransitionTime.Unix(), 1)
+					}
+				}
+				assert.True(t, found, "condition not found")
+			},
+		},
+		"existing status should not be updated if same": {
+			currentConditions: []oav1beta1.StatusCondition{
+				{
+					Type:    "Progressing",
+					Reason:  string(util.Deployed),
+					Message: "Metrics collector deployed",
+					Status:  metav1.ConditionTrue,
+					LastTransitionTime: metav1.Time{
+						Time: time.Now().Add(-time.Minute), // current state (most recent)
+					},
+				},
+				{
+					Type: "Disabled",
+					LastTransitionTime: metav1.Time{
+						Time: time.Now().Add(-2 * time.Minute),
+					},
+				},
+			},
+			newCondition: util.Deployed,
+			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
+				assert.Len(t, conditions, 2)
+				assert.EqualValues(t, util.Deployed, conditions[0].Reason)
+				assert.InEpsilon(t, time.Now().Add(-time.Minute).Unix(), conditions[0].LastTransitionTime.Unix(), 1)
+			},
+		},
+		"number of conditions should not exceed MaxStatusConditionsCount": {
+			currentConditions: []oav1beta1.StatusCondition{
+				{Type: "1"}, {Type: "2"}, {Type: "3"}, {Type: "4"}, {Type: "5"},
+				{Type: "6"}, {Type: "7"}, {Type: "8"}, {Type: "9"}, {Type: "10"},
+			},
+			newCondition: util.Deployed,
+			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
+				assert.Len(t, conditions, util.MaxStatusConditionsCount)
+				assert.EqualValues(t, util.Deployed, conditions[len(conditions)-1].Reason)
+			},
+		},
+		"duplicated conditions should be removed": {
+			currentConditions: []oav1beta1.StatusCondition{
+				{Type: "Progressing", LastTransitionTime: metav1.Time{Time: time.Now()}}, // most recent duplicated condition
+				{Type: "Degraded", LastTransitionTime: metav1.Time{Time: time.Now().Add(-time.Minute)}},
+				{Type: "Progressing", LastTransitionTime: metav1.Time{Time: time.Now().Add(-time.Minute)}},
+				{Type: "Degraded", LastTransitionTime: metav1.Time{Time: time.Now().Add(-time.Minute)}},
+			},
+			newCondition: util.Deployed,
+			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
+				assert.Len(t, conditions, 2)
+				for _, c := range conditions {
+					switch c.Type {
+					case "Progressing":
+						assert.InEpsilon(t, time.Now().Unix(), c.LastTransitionTime.Unix(), 1)
+					case "Degraded":
+						assert.InEpsilon(t, time.Now().Add(-time.Minute).Unix(), c.LastTransitionTime.Unix(), 1)
+					default:
+						t.Fatalf("unexpected condition type: %s", c.Type)
+					}
+				}
+			},
+		},
 	}
 
-	// New status should be appended
-	statusList := []util.StatusConditionName{util.NotSupportedStatus, util.DeployedStatus, util.DisabledStatus}
-	s.AddKnownTypes(oav1beta1.GroupVersion, oa)
-	c := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
-	for i := range statusList {
-		if err := util.ReportStatus(context.Background(), c, statusList[i], oa.Name, oa.Namespace); err != nil {
-			t.Fatalf("Error reporting status: %v", err)
-		}
-		runtimeAddon := &oav1beta1.ObservabilityAddon{}
-		if err := c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: testNamespace}, runtimeAddon); err != nil {
-			t.Fatalf("Error getting observabilityaddon: (%v)", err)
-		}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			// setup
+			client := fake.NewClientBuilder().WithStatusSubresource(
+				&oav1beta1.ObservabilityAddon{},
+			).WithScheme(s).Build()
+			baseAddon := newObservabilityAddon("observability-addon", "test-ns")
+			baseAddon.Status.Conditions = tc.currentConditions
+			if err := client.Create(context.Background(), baseAddon); err != nil {
+				t.Fatalf("Error creating observabilityaddon: %v", err)
+			}
 
-		if len(runtimeAddon.Status.Conditions) != i+1 {
-			t.Errorf("Status not updated. Expected: %s, Actual: %s", statusList[i], fmt.Sprintf("%+v\n", runtimeAddon.Status.Conditions))
-		}
+			// test
+			if err := util.ReportStatus(context.Background(), client, tc.newCondition, baseAddon.Name, baseAddon.Namespace); err != nil {
+				t.Fatalf("Error reporting status: %v", err)
+			}
+			newAddon := &oav1beta1.ObservabilityAddon{}
+			if err := client.Get(context.Background(), types.NamespacedName{Name: baseAddon.Name, Namespace: baseAddon.Namespace}, newAddon); err != nil {
+				t.Fatalf("Error getting observabilityaddon: (%v)", err)
+			}
+			tc.expects(t, newAddon.Status.Conditions)
 
-		if runtimeAddon.Status.Conditions[i].Reason != string(statusList[i]) {
-			t.Errorf("Status not updated. Expected: %s, Actual: %s", statusList[i], runtimeAddon.Status.Conditions[i].Type)
-		}
-
-		time.Sleep(1500 * time.Millisecond) // Sleep to ensure LastTransitionTime is different for each condition (1s resolution)
-	}
-
-	// Change ordering of conditions: Get the list, change the order and update
-	runtimeAddon := &oav1beta1.ObservabilityAddon{}
-	if err := c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: testNamespace}, runtimeAddon); err != nil {
-		t.Fatalf("Error getting observabilityaddon: %v", err)
-	}
-	conditions := runtimeAddon.Status.Conditions
-	conditions[0], conditions[len(conditions)-1] = conditions[len(conditions)-1], conditions[0]
-	runtimeAddon.Status.Conditions = conditions
-	if err := c.Status().Update(context.Background(), runtimeAddon); err != nil {
-		t.Fatalf("Error updating observabilityaddon: (%v)", err)
-	}
-
-	// Same status than current one should not be appended
-	if err := util.ReportStatus(context.Background(), c, util.DisabledStatus, oa.Name, oa.Namespace); err != nil {
-		t.Fatalf("Error reporting status: %v", err)
-	}
-	runtimeAddon = &oav1beta1.ObservabilityAddon{}
-	if err := c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: testNamespace}, runtimeAddon); err != nil {
-		t.Fatalf("Error getting observabilityaddon: %v", err)
-	}
-
-	if len(runtimeAddon.Status.Conditions) != len(statusList) {
-		t.Errorf("Status should not be appended. Expected: %d, Actual: %d", len(statusList), len(runtimeAddon.Status.Conditions))
-	}
-
-	// Number of conditions should not exceed MaxStatusConditionsCount
-	statusList = []util.StatusConditionName{util.DeployedStatus, util.DisabledStatus, util.DegradedStatus}
-	for i := 0; i < util.MaxStatusConditionsCount+3; i++ {
-		status := statusList[i%len(statusList)]
-		if err := util.ReportStatus(context.Background(), c, status, oa.Name, oa.Namespace); err != nil {
-			t.Fatalf("Error reporting status: %v", err)
-		}
-	}
-
-	runtimeAddon = &oav1beta1.ObservabilityAddon{}
-	if err := c.Get(context.Background(), types.NamespacedName{Name: name, Namespace: testNamespace}, runtimeAddon); err != nil {
-		t.Fatalf("Error getting observabilityaddon: (%v)", err)
-	}
-
-	if len(runtimeAddon.Status.Conditions) != util.MaxStatusConditionsCount {
-		t.Errorf("Number of conditions should not exceed MaxStatusConditionsCount. Expected: %d, Actual: %d", util.MaxStatusConditionsCount, len(runtimeAddon.Status.Conditions))
+			// cleanup
+			if err := client.Delete(context.Background(), newAddon); err != nil {
+				t.Fatalf("Error deleting observabilityaddon: %v", err)
+			}
+		})
 	}
 }
 

@@ -71,7 +71,9 @@ func ReportStatus(ctx context.Context, client client.Client, condition StatusCon
 			return nil
 		}
 
-		obsAddon.Status.Conditions = append(obsAddon.Status.Conditions, *newCondition)
+		obsAddon.Status.Conditions = deduplicateConditions(obsAddon.Status.Conditions)
+
+		obsAddon.Status.Conditions = mutateOrAppend(obsAddon.Status.Conditions, newCondition)
 
 		if len(obsAddon.Status.Conditions) > MaxStatusConditionsCount {
 			obsAddon.Status.Conditions = obsAddon.Status.Conditions[len(obsAddon.Status.Conditions)-MaxStatusConditionsCount:]
@@ -103,4 +105,26 @@ func shouldAppendCondition(conditions []oav1beta1.StatusCondition, newCondition 
 		lastCondition.Status != newCondition.Status ||
 		lastCondition.Reason != newCondition.Reason ||
 		lastCondition.Message != newCondition.Message
+}
+
+// deduplicateConditions removes duplicate conditions from the list of conditions.
+// It removes duplicated conditions introduced by PR #1427.
+func deduplicateConditions(conditions []oav1beta1.StatusCondition) []oav1beta1.StatusCondition {
+	conditionMap := make(map[string]oav1beta1.StatusCondition)
+	for _, condition := range conditions {
+		if v, ok := conditionMap[condition.Type]; ok {
+			if condition.LastTransitionTime.After(v.LastTransitionTime.Time) {
+				conditionMap[condition.Type] = condition
+			}
+		} else {
+			conditionMap[condition.Type] = condition
+		}
+	}
+
+	deduplicatedConditions := []oav1beta1.StatusCondition{}
+	for _, condition := range conditionMap {
+		deduplicatedConditions = append(deduplicatedConditions, condition)
+	}
+
+	return deduplicatedConditions
 }
