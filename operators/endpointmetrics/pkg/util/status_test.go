@@ -136,6 +136,28 @@ func TestReportStatus(t *testing.T) {
 				assert.EqualValues(t, util.Deployed, conditions[len(conditions)-1].Reason)
 			},
 		},
+		"duplicated conditions should be removed": {
+			currentConditions: []oav1beta1.StatusCondition{
+				{Type: "Progressing", LastTransitionTime: metav1.Time{Time: time.Now()}}, // most recent duplicated condition
+				{Type: "Degraded", LastTransitionTime: metav1.Time{Time: time.Now().Add(-time.Minute)}},
+				{Type: "Progressing", LastTransitionTime: metav1.Time{Time: time.Now().Add(-time.Minute)}},
+				{Type: "Degraded", LastTransitionTime: metav1.Time{Time: time.Now().Add(-time.Minute)}},
+			},
+			newCondition: util.Deployed,
+			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
+				assert.Len(t, conditions, 2)
+				for _, c := range conditions {
+					switch c.Type {
+					case "Progressing":
+						assert.InEpsilon(t, time.Now().Unix(), c.LastTransitionTime.Unix(), 1)
+					case "Degraded":
+						assert.InEpsilon(t, time.Now().Add(-time.Minute).Unix(), c.LastTransitionTime.Unix(), 1)
+					default:
+						t.Fatalf("unexpected condition type: %s", c.Type)
+					}
+				}
+			},
+		},
 	}
 
 	for name, tc := range testCases {
