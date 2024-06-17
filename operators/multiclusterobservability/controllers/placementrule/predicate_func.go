@@ -35,6 +35,9 @@ func getClusterPreds() predicate.Funcs {
 			return false
 		}
 
+		if !areManagedClusterLabelsReady(e.Object) {
+			return false
+		}
 		updateManagedClusterList(e.Object)
 		updateManagedClusterImageRegistry(e.Object)
 
@@ -45,6 +48,10 @@ func getClusterPreds() predicate.Funcs {
 		log.Info("UpdateFunc", "managedCluster", e.ObjectNew.GetName())
 
 		if e.ObjectNew.GetName() == "local-cluster" {
+			return false
+		}
+
+		if !areManagedClusterLabelsReady(e.ObjectNew) {
 			return false
 		}
 

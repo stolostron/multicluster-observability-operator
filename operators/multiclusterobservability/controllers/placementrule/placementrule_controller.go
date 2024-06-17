@@ -92,28 +92,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling PlacementRule")
 
-	cluster := &clusterv1.ManagedCluster{}
-	err := r.Client.Get(context.TODO(), types.NamespacedName{
-		Name: req.Name,
-	}, cluster)
-	if !k8serrors.IsNotFound(err) {
-		return ctrl.Result{}, err
-	}
-	if err == nil {
-		log.Info("COleen cluster add event", "cluster", cluster.GetName())
-		vendor, ok := cluster.GetLabels()["vendor"]
-		if !ok {
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
-		}
-		if vendor == "OpenShift" {
-			log.Info("Coleen cluster labels", "cluster", cluster.GetName(), "vendor", vendor)
-			_, ok := cluster.GetLabels()["openshiftVersion"]
-			if !ok {
-				return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
-			}
-		}
-	}
-
 	// ACM 8509: Special case for hub/local cluster metrics collection
 	// We want to ensure that the local-cluster is always in the managedClusterList
 	// In the case when hubSelfManagement is enabled, we will delete it from the list and modify the object
@@ -141,7 +119,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	deleteAll := false
 	// Fetch the MultiClusterObservability instance
 	mco := &mcov1beta2.MultiClusterObservability{}
-	err = r.Client.Get(context.TODO(),
+	err := r.Client.Get(context.TODO(),
 		types.NamespacedName{
 			Name: config.GetMonitoringCRName(),
 		}, mco)
@@ -219,6 +197,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if operatorconfig.IsMCOTerminating {
 		delete(managedClusterList, "local-cluster")
 	}
+
 	if !deleteAll {
 		if err := createAllRelatedRes(
 			r.Client,
@@ -605,6 +584,19 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 	return nil
 }
 
+func areManagedClusterLabelsReady(obj client.Object) bool {
+	vendor, vendorOk := obj.GetLabels()["vendor"]
+	openshiftVendor := vendor == "OpenShift" && vendorOk
+
+	if _, openshiftVersionPresent := obj.GetLabels()["openshiftVersion"]; openshiftVersionPresent && openshiftVendor {
+		return true
+	}
+	if !openshiftVendor {
+		return true
+	}
+	return false
+
+}
 func updateManagedClusterList(obj client.Object) {
 	managedClusterListMutex.Lock()
 	defer managedClusterListMutex.Unlock()
