@@ -93,6 +93,9 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 			"write_key": []byte(`url: http://remotewrite/endpoint`),
 		},
 	}
+	s := scheme.Scheme
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	observatoriumv1alpha1.AddToScheme(s)
 
 	objs := []runtime.Object{mco, writeStorageS}
 	// Create a fake client to mock API calls.
@@ -136,6 +139,89 @@ func TestNewDefaultObservatoriumSpec(t *testing.T) {
 	}
 	if endpointConfig[0].Name != "write_name" || endpointConfig[0].URL.String() != "http://remotewrite/endpoint" {
 		t.Errorf("Wrong endpoint config: %s, %s", endpointConfig[0].Name, endpointConfig[0].URL.String())
+	}
+}
+
+func TestNewDefaultObservatoriumSpecWithTShirtSize(t *testing.T) {
+	mco := &mcov1beta2.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test",
+			Annotations: map[string]string{
+				mcoconfig.AnnotationKeyImageRepository: "quay.io:443/acm-d",
+				mcoconfig.AnnotationKeyImageTagSuffix:  "tag",
+			},
+		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			InstanceSize: mcoconfig.FourXLarge,
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
+					Key:           "key",
+					Name:          "name",
+					TLSSecretName: "secret",
+				},
+				WriteStorage: []*mcoshared.PreConfiguredStorage{
+					{
+						Key:  "write_key",
+						Name: "write_name",
+					},
+				},
+				StorageClass:            storageClassName,
+				AlertmanagerStorageSize: "1Gi",
+				CompactStorageSize:      "1Gi",
+				RuleStorageSize:         "1Gi",
+				ReceiveStorageSize:      "1Gi",
+				StoreStorageSize:        "1Gi",
+			},
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: true,
+				Interval:      300,
+			},
+		},
+	}
+
+	writeStorageS := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "write_name",
+			Namespace: mcoconfig.GetDefaultNamespace(),
+		},
+		Type: "Opaque",
+		Data: map[string][]byte{
+			"write_key": []byte(`url: http://remotewrite/endpoint`),
+		},
+	}
+	s := scheme.Scheme
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	observatoriumv1alpha1.AddToScheme(s)
+
+	objs := []runtime.Object{mco, writeStorageS}
+	// Create a fake client to mock API calls.
+	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
+
+	obs, err := newDefaultObservatoriumSpec(cl, mco, storageClassName, "")
+	if err != nil {
+		t.Errorf("failed to create obs spec")
+	}
+
+	if obs.Thanos.Receivers.Resources.Requests.Cpu().String() != "10" ||
+		obs.Thanos.Receivers.Resources.Requests.Memory().String() != "128Gi" ||
+		*obs.Thanos.Receivers.Replicas != 12 ||
+		obs.Thanos.Query.Resources.Requests.Cpu().String() != "7" ||
+		obs.Thanos.Query.Resources.Requests.Memory().String() != "18Gi" ||
+		*obs.Thanos.Query.Replicas != 10 ||
+		obs.Thanos.QueryFrontend.Resources.Requests.Cpu().String() != "4" ||
+		obs.Thanos.QueryFrontend.Resources.Requests.Memory().String() != "12Gi" ||
+		*obs.Thanos.QueryFrontend.Replicas != 10 ||
+		obs.Thanos.Compact.Resources.Requests.Cpu().String() != "6" ||
+		obs.Thanos.Compact.Resources.Requests.Memory().String() != "18Gi" ||
+		*obs.Thanos.Compact.Replicas != 1 ||
+		obs.Thanos.Rule.Resources.Requests.Cpu().String() != "6" ||
+		obs.Thanos.Rule.Resources.Requests.Memory().String() != "15Gi" ||
+		*obs.Thanos.Rule.Replicas != 3 ||
+		obs.Thanos.Store.Resources.Requests.Cpu().String() != "6" ||
+		obs.Thanos.Store.Resources.Requests.Memory().String() != "20Gi" ||
+		*obs.Thanos.Store.Shards != 6 {
+		t.Errorf("Failed t-shirt size for Obs Spec")
 	}
 }
 
@@ -238,6 +324,82 @@ func TestUpdateObservatoriumCR(t *testing.T) {
 		t.Errorf("%v should be equal to %v", string(createdSpecBytes), string(updatedSpecBytes))
 	}
 
+}
+
+func TestTShirtSizeUpdateObservatoriumCR(t *testing.T) {
+	namespace := mcoconfig.GetDefaultNamespace()
+
+	// A MultiClusterObservability object with metadata and spec.
+	mco := &mcov1beta2.MultiClusterObservability{
+		TypeMeta: metav1.TypeMeta{Kind: "MultiClusterObservability"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: mcoconfig.GetDefaultCRName(),
+		},
+		Spec: mcov1beta2.MultiClusterObservabilitySpec{
+			InstanceSize: mcoconfig.Large,
+			StorageConfig: &mcov1beta2.StorageConfig{
+				MetricObjectStorage: &mcoshared.PreConfiguredStorage{
+					Key:  "test",
+					Name: "test",
+				},
+				StorageClass:            storageClassName,
+				AlertmanagerStorageSize: "1Gi",
+				CompactStorageSize:      "1Gi",
+				RuleStorageSize:         "1Gi",
+				ReceiveStorageSize:      "1Gi",
+				StoreStorageSize:        "1Gi",
+			},
+			ObservabilityAddonSpec: &mcoshared.ObservabilityAddonSpec{
+				EnableMetrics: true,
+				Interval:      300,
+			},
+		},
+	}
+	// Register operator types with the runtime scheme.
+	s := scheme.Scheme
+	mcov1beta2.SchemeBuilder.AddToScheme(s)
+	observatoriumv1alpha1.AddToScheme(s)
+
+	// Create a fake client to mock API calls.
+	// This should have no extra objects beyond the CMO CRD.
+	cl := fake.NewClientBuilder().WithRuntimeObjects(mco).Build()
+	mcoconfig.SetOperandNames(cl)
+
+	_, err := GenerateObservatoriumCR(cl, s, mco)
+	if err != nil {
+		t.Errorf("Failed to create observatorium due to %v", err)
+	}
+
+	// Check if this Observatorium CR already exists
+	createdObservatoriumCR := &observatoriumv1alpha1.Observatorium{}
+	cl.Get(context.TODO(), types.NamespacedName{
+		Name:      mcoconfig.GetDefaultCRName(),
+		Namespace: namespace,
+	}, createdObservatoriumCR)
+
+	if createdObservatoriumCR.Spec.Thanos.Receivers.Resources.Requests.Cpu().String() != "5" ||
+		createdObservatoriumCR.Spec.Thanos.Receivers.Resources.Requests.Memory().String() != "24Gi" ||
+		*createdObservatoriumCR.Spec.Thanos.Receivers.Replicas != 6 {
+		t.Errorf("t-shirt size values for receive not correct")
+	}
+
+	mco.Spec.InstanceSize = mcoconfig.TwoXLarge
+	_, err = GenerateObservatoriumCR(cl, s, mco)
+	if err != nil {
+		t.Errorf("Failed to update observatorium due to %v", err)
+	}
+
+	updatedObservatorium := &observatoriumv1alpha1.Observatorium{}
+	cl.Get(context.TODO(), types.NamespacedName{
+		Name:      mcoconfig.GetDefaultCRName(),
+		Namespace: namespace,
+	}, updatedObservatorium)
+
+	if updatedObservatorium.Spec.Thanos.Receivers.Resources.Requests.Cpu().String() != "6" ||
+		updatedObservatorium.Spec.Thanos.Receivers.Resources.Requests.Memory().String() != "52Gi" ||
+		*updatedObservatorium.Spec.Thanos.Receivers.Replicas != 12 {
+		t.Errorf("updated t-shirt size values for receive not correct")
+	}
 }
 
 func TestNoUpdateObservatoriumCR(t *testing.T) {

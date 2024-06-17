@@ -16,6 +16,9 @@ type MultiClusterObservabilitySpec struct {
 	// Advanced configurations for observability
 	// +optional
 	AdvancedConfig *AdvancedConfig `json:"advanced,omitempty"`
+	// Size read and write paths of your Observability instance
+	// +optional
+	InstanceSize TShirtSize `json:"instanceSize,omitempty"`
 	// Enable or disable the downsample.
 	// +optional
 	// +kubebuilder:default:=true
@@ -40,6 +43,10 @@ type MultiClusterObservabilitySpec struct {
 	// +required
 	ObservabilityAddonSpec *observabilityshared.ObservabilityAddonSpec `json:"observabilityAddonSpec"`
 }
+
+// T Shirt size class for a particular o11y resource.
+// +kubebuilder:validation:Enum:={"default","minimal","small","medium","large","xlarge","2xlarge","4xlarge"}
+type TShirtSize string
 
 type AdvancedConfig struct {
 	// CustomObservabilityHubURL overrides the endpoint used by the metrics-collector to send

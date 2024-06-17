@@ -9497,6 +9497,18 @@ spec:
               imagePullSecret:
                 description: Pull secret of the MultiClusterObservability images
                 type: string
+              instanceSize:
+                description: Size read and write paths of your Observability instance
+                enum:
+                - default
+                - minimal
+                - small
+                - medium
+                - large
+                - xlarge
+                - 2xlarge
+                - 4xlarge
+                type: string
               nodeSelector:
                 additionalProperties:
                   type: string

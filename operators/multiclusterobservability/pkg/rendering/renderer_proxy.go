@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/kustomize/api/resource"
 
-	"github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	mcoconfig "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
 	rendererutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
@@ -52,11 +51,11 @@ func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
 	dep.ObjectMeta.Labels[crLabelKey] = r.cr.Name
 	dep.Spec.Selector.MatchLabels[crLabelKey] = r.cr.Name
 	dep.Spec.Template.ObjectMeta.Labels[crLabelKey] = r.cr.Name
-	dep.Name = mcoconfig.GetOperandName(config.RBACQueryProxy)
-	dep.Spec.Replicas = config.GetReplicas(config.RBACQueryProxy, r.cr.Spec.AdvancedConfig)
+	dep.Name = mcoconfig.GetOperandName(mcoconfig.RBACQueryProxy)
+	dep.Spec.Replicas = mcoconfig.GetReplicas(mcoconfig.RBACQueryProxy, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
 
 	spec := &dep.Spec.Template.Spec
-	imagePullPolicy := config.GetImagePullPolicy(r.cr.Spec)
+	imagePullPolicy := mcoconfig.GetImagePullPolicy(r.cr.Spec)
 	spec.Containers[0].ImagePullPolicy = imagePullPolicy
 	args0 := spec.Containers[0].Args
 	for idx := range args0 {
@@ -69,7 +68,7 @@ func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
 		)
 	}
 	spec.Containers[0].Args = args0
-	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.RBACQueryProxy, r.cr.Spec.AdvancedConfig)
+	spec.Containers[0].Resources = mcoconfig.GetResources(mcoconfig.RBACQueryProxy, r.cr.Spec.InstanceSize, r.cr.Spec.AdvancedConfig)
 
 	spec.Containers[1].ImagePullPolicy = imagePullPolicy
 	args1 := spec.Containers[1].Args
@@ -83,8 +82,8 @@ func (r *MCORenderer) renderProxyDeployment(res *resource.Resource,
 		{Name: mcoconfig.GetImagePullSecret(r.cr.Spec)},
 	}
 
-	spec.Containers[0].Image = config.DefaultImgRepository + "/" + config.RBACQueryProxyImgName +
-		":" + config.DefaultImgTagSuffix
+	spec.Containers[0].Image = mcoconfig.DefaultImgRepository + "/" + mcoconfig.RBACQueryProxyImgName +
+		":" + mcoconfig.DefaultImgTagSuffix
 	//replace the proxy image
 	found, image := mcoconfig.ReplaceImage(
 		r.cr.Annotations,
