@@ -34,12 +34,11 @@ func getClusterPreds() predicate.Funcs {
 		if isAutomaticAddonInstallationDisabled(e.Object) {
 			return false
 		}
-
+		updateManagedClusterImageRegistry(e.Object)
 		if !areManagedClusterLabelsReady(e.Object) {
 			return false
 		}
 		updateManagedClusterList(e.Object)
-		updateManagedClusterImageRegistry(e.Object)
 
 		return true
 	}
@@ -48,12 +47,6 @@ func getClusterPreds() predicate.Funcs {
 		log.Info("UpdateFunc", "managedCluster", e.ObjectNew.GetName())
 
 		if e.ObjectNew.GetName() == "local-cluster" {
-			return false
-		}
-
-		if areManagedClusterLabelsReady(e.ObjectNew) {
-			updateManagedClusterList(e.ObjectNew)
-		} else {
 			return false
 		}
 
@@ -73,8 +66,11 @@ func getClusterPreds() predicate.Funcs {
 			delete(managedClusterImageRegistry, e.ObjectNew.GetName())
 			managedClusterImageRegistryMutex.Unlock()
 		} else {
-			updateManagedClusterList(e.ObjectNew)
 			updateManagedClusterImageRegistry(e.ObjectNew)
+			if !areManagedClusterLabelsReady(e.ObjectNew) {
+				return false
+			}
+			updateManagedClusterList(e.ObjectNew)
 		}
 
 		return true
