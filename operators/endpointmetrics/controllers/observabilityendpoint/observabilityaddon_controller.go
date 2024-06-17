@@ -201,7 +201,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 				// ACM 8509: Special case for hub/local cluster metrics collection
 				// We do not report status for hub endpoint operator
 				if !isHubMetricsCollector {
-					if err := util.ReportStatus(ctx, r.Client, util.NotSupportedStatus, obsAddon.Name, obsAddon.Namespace); err != nil {
+					if err := util.ReportStatus(ctx, r.Client, util.NotSupported, obsAddon.Name, obsAddon.Namespace); err != nil {
 						log.Error(err, "Failed to report status")
 					}
 				}
@@ -288,14 +288,14 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			forceRestart)
 		if err != nil {
 			if !isHubMetricsCollector {
-				if err := util.ReportStatus(ctx, r.Client, util.DegradedStatus, obsAddon.Name, obsAddon.Namespace); err != nil {
+				if err := util.ReportStatus(ctx, r.Client, util.Degraded, obsAddon.Name, obsAddon.Namespace); err != nil {
 					log.Error(err, "Failed to report status")
 				}
 			}
 			return ctrl.Result{}, fmt.Errorf("failed to update metrics collectors: %w", err)
 		}
 		if created && !isHubMetricsCollector {
-			if err := util.ReportStatus(ctx, r.Client, util.DeployedStatus, obsAddon.Name, obsAddon.Namespace); err != nil {
+			if err := util.ReportStatus(ctx, r.Client, util.Deployed, obsAddon.Name, obsAddon.Namespace); err != nil {
 				log.Error(err, "Failed to report status")
 			}
 		}
@@ -305,7 +305,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return ctrl.Result{}, err
 		}
 		if deleted && !isHubMetricsCollector {
-			if err := util.ReportStatus(ctx, r.Client, util.DisabledStatus, obsAddon.Name, obsAddon.Namespace); err != nil {
+			if err := util.ReportStatus(ctx, r.Client, util.Disabled, obsAddon.Name, obsAddon.Namespace); err != nil {
 				log.Error(err, "Failed to report status")
 			}
 		}

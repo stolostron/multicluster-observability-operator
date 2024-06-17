@@ -12,23 +12,24 @@ import (
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-const (
-	name          = "observability-addon"
-	testNamespace = "test-ns"
-)
-
 func newObservabilityAddon(name string, ns string) *oav1beta1.ObservabilityAddon {
 	return &oav1beta1.ObservabilityAddon{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: oav1beta1.GroupVersion.String(),
+			Kind:       "ObservabilityAddon",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ns,
@@ -162,9 +163,7 @@ func TestReportStatus(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			// setup
-			client := fake.NewClientBuilder().WithStatusSubresource(
-				&oav1beta1.ObservabilityAddon{},
-			).WithScheme(s).Build()
+			client := fake.NewClientBuilder().WithScheme(s).Build()
 			baseAddon := newObservabilityAddon("observability-addon", "test-ns")
 			baseAddon.Status.Conditions = tc.currentConditions
 			if err := client.Create(context.Background(), baseAddon); err != nil {
@@ -191,6 +190,8 @@ func TestReportStatus(t *testing.T) {
 
 func TestReportStatus_Conflict(t *testing.T) {
 	// Conflict on update should be retried
+	name := "observability-addon"
+	testNamespace := "test-ns"
 	oa := newObservabilityAddon(name, testNamespace)
 	s := scheme.Scheme
 	oav1beta1.AddToScheme(s)
@@ -198,7 +199,7 @@ func TestReportStatus_Conflict(t *testing.T) {
 	conflictErr := errors.NewConflict(schema.GroupResource{Group: oav1beta1.GroupVersion.Group, Resource: "resource"}, name, fmt.Errorf("conflict"))
 
 	c := newClientWithUpdateError(fakeClient, conflictErr)
-	if err := util.ReportStatus(context.Background(), c, util.DeployedStatus, name, testNamespace); err == nil {
+	if err := util.ReportStatus(context.Background(), c, util.Deployed, name, testNamespace); err == nil {
 		t.Fatalf("Conflict error should be retried and return an error if it fails")
 	}
 	if c.UpdateCallsCount() <= 1 {
