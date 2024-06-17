@@ -592,7 +592,6 @@ func areManagedClusterLabelsReady(obj client.Object) bool {
 		return true
 	}
 	if vendorOk && vendor != "auto-detect" {
-		log.Info("Cluster vendor is not OpenShift", "cluster", obj.GetName())
 		return true
 	}
 
