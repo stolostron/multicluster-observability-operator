@@ -36,8 +36,10 @@ func getClusterPreds() predicate.Funcs {
 		}
 		updateManagedClusterImageRegistry(e.Object)
 		if !areManagedClusterLabelsReady(e.Object) {
+			log.Info("Coleen labels are not ready")
 			return false
 		}
+		log.Info("Coleen labels are ready and create event")
 		updateManagedClusterList(e.Object)
 
 		return true
@@ -68,8 +70,10 @@ func getClusterPreds() predicate.Funcs {
 		} else {
 			updateManagedClusterImageRegistry(e.ObjectNew)
 			if !areManagedClusterLabelsReady(e.ObjectNew) {
+				log.Info("Coleen labels are not ready")
 				return false
 			}
+			log.Info("Coleen labels are ready and update event")
 			updateManagedClusterList(e.ObjectNew)
 		}
 
