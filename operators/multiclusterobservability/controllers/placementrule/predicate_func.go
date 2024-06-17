@@ -51,7 +51,9 @@ func getClusterPreds() predicate.Funcs {
 			return false
 		}
 
-		if !areManagedClusterLabelsReady(e.ObjectNew) {
+		if areManagedClusterLabelsReady(e.ObjectNew) {
+			updateManagedClusterList(e.ObjectNew)
+		} else {
 			return false
 		}
 
