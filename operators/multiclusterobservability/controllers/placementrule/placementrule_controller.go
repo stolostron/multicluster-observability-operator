@@ -586,14 +586,20 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 
 func areManagedClusterLabelsReady(obj client.Object) bool {
 	vendor, vendorOk := obj.GetLabels()["vendor"]
-	openshiftVendor := vendor == "OpenShift" && vendorOk
+	openshiftVendor := vendor == "OpenShift"
 
 	if _, openshiftVersionPresent := obj.GetLabels()["openshiftVersion"]; openshiftVersionPresent && openshiftVendor {
 		return true
 	}
-	if !openshiftVendor {
+	if vendorOk && vendor == "auto-detect" {
+		return false
+	}
+	if vendorOk && !openshiftVendor {
+		log.Info("The vendor is not OpenShift")
 		return true
 	}
+
+	log.Info("ManagedCluster labels are not ready", "cluster", obj.GetName())
 	return false
 
 }
