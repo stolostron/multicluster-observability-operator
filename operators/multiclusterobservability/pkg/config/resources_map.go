@@ -132,8 +132,8 @@ var (
 	}
 
 	MemcachedExporterCPURequest ResourceSizeMap = map[observabilityv1beta2.TShirtSize]string{
-		Minimal:    "20m",
-		Default:    "20m",
+		Minimal:    "5m",
+		Default:    "5m",
 		Small:      "5m",
 		Medium:     "5m",
 		Large:      "5m",
