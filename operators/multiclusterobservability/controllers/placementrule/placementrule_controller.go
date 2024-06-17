@@ -199,6 +199,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if operatorconfig.IsMCOTerminating {
 		delete(managedClusterList, "local-cluster")
 	}
+
 	if !deleteAll {
 		if err := createAllRelatedRes(
 			r.Client,
@@ -581,6 +582,21 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 	return nil
 }
 
+func areManagedClusterLabelsReady(obj client.Object) bool {
+	vendor, vendorOk := obj.GetLabels()["vendor"]
+	openshiftVendor := vendor == "OpenShift"
+
+	if _, openshiftVersionPresent := obj.GetLabels()["openshiftVersion"]; openshiftVersionPresent && openshiftVendor {
+		return true
+	}
+	if vendorOk && vendor != "auto-detect" {
+		return true
+	}
+
+	log.Info("ManagedCluster labels are not ready", "cluster", obj.GetName())
+	return false
+
+}
 func updateManagedClusterList(obj client.Object) {
 	managedClusterListMutex.Lock()
 	defer managedClusterListMutex.Unlock()
