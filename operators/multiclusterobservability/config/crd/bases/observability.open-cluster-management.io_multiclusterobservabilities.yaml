@@ -9508,7 +9508,6 @@ spec:
                 - xlarge
                 - 2xlarge
                 - 4xlarge
-                - 8xlarge
                 type: string
               nodeSelector:
                 additionalProperties:
