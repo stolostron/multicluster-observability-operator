@@ -106,7 +106,7 @@ type MultiClusterObservabilityReconciler struct {
 // PrometheusRules and ServiceMonitors in ACM.
 func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
-	reqLogger.Info("Reconciling MultiClusterObservability test")
+	reqLogger.Info("Reconciling MultiClusterObservability")
 
 	if res, ok := config.BackupResourceMap[req.Name]; ok {
 		reqLogger.Info(infoAddingBackupLabel)
