@@ -19,7 +19,8 @@ const (
 	ManagedClusterLabelAllowListConfigMapKey  = "managed_cluster.yaml"
 	ManagedClusterLabelAllowListNamespace     = "open-cluster-management-observability"
 
-	RBACProxyLabelMetricName = "acm_label_names"
+	RBACProxyLabelMetricName              = "acm_label_names"
+	ACMManagedClusterLabelNamesMetricName = "acm_managed_cluster_labels"
 )
 
 var (
@@ -59,6 +60,10 @@ func GetSyncLabelList() *ManagedClusterLabelList {
 // GetRBACProxyLabelMetricName returns the name of the rbac query proxy label metric.
 func GetRBACProxyLabelMetricName() string {
 	return RBACProxyLabelMetricName
+}
+
+func GetACMManagedClusterLabelNamesMetricName() string {
+	return ACMManagedClusterLabelNamesMetricName
 }
 
 // CreateManagedClusterLabelAllowListCM creates a managedcluster label allowlist configmap object.

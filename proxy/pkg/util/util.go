@@ -47,13 +47,19 @@ const (
 	caPath                = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 )
 
+// AccessReviewer defines an interface for the GetMetricsAccess method.
+type AccessReviewer interface {
+	GetMetricsAccess(token string, extraArgs ...string) (map[string][]string, error)
+}
+
 var (
 	allManagedClusterNames      map[string]string
 	allManagedClusterLabelNames map[string]bool
+	accessReviewer              AccessReviewer
 
-	managedLabelList = proxyconfig.GetManagedClusterLabelList()
-	syncLabelList    = proxyconfig.GetSyncLabelList()
-	accessReviewer   *rbac.AccessReviewer
+	managedLabelList   = proxyconfig.GetManagedClusterLabelList()
+	syncLabelList      = proxyconfig.GetSyncLabelList()
+	clusterMatchRegExp = regexp.MustCompile(`([{|,][ ]*)cluster(=|!=|=~|!~)([ ]*)"([^"]+)"`)
 )
 
 // resources for the gocron scheduler.
@@ -61,6 +67,11 @@ var (
 	resyncTag = "managed-cluster-label-allowlist-resync"
 	scheduler *gocron.Scheduler
 )
+
+// func GetAccessReviewer() *rbac.AccessReviewer {
+func GetAccessReviewer() AccessReviewer {
+	return accessReviewer
+}
 
 // GetAllManagedClusterNames returns all managed cluster names.
 func GetAllManagedClusterNames() map[string]string {
@@ -180,7 +191,7 @@ func updateAllManagedClusterLabelNames(managedLabelList *proxyconfig.ManagedClus
 }
 
 // ModifyMetricsQueryParams will modify request url params for query metrics.
-func ModifyMetricsQueryParams(req *http.Request, reqUrl string) {
+func ModifyMetricsQueryParams(req *http.Request, reqUrl string, accessReviewer AccessReviewer) {
 
 	userName := req.Header.Get("X-Forwarded-User")
 	klog.V(1).Infof("user is %v", userName)
@@ -192,7 +203,7 @@ func ModifyMetricsQueryParams(req *http.Request, reqUrl string) {
 		klog.Errorf("failed to get token from http header")
 	}
 
-	userMetricsAccess, err := getUserMetricsACLs(userName, token, reqUrl)
+	userMetricsAccess, err := GetUserMetricsACLs(userName, token, reqUrl, accessReviewer)
 	if err != nil {
 		klog.Errorf("Failed to determine user's metrics access: %v", err)
 		return
@@ -200,7 +211,7 @@ func ModifyMetricsQueryParams(req *http.Request, reqUrl string) {
 
 	klog.Infof("user <%v> have metrics access to : %v", userName, userMetricsAccess)
 
-	allAccess := canAccessAll(userMetricsAccess)
+	allAccess := CanAccessAll(userMetricsAccess)
 	if allAccess {
 		klog.Infof("user <%v> have access to all clusters and all namespaces", userName)
 		return
@@ -480,21 +491,6 @@ func GetUserName(token string, url string) string {
 	return user.Name
 }
 
-// canAccessAllClusters check user have permission to access all clusters.
-func canAccessAllClusters(projectList []string) bool {
-	if len(allManagedClusterNames) == 0 && len(projectList) == 0 {
-		return false
-	}
-
-	for name := range allManagedClusterNames {
-		if !slices.Contains(projectList, name) {
-			return false
-		}
-	}
-
-	return true
-}
-
 func getUserClusterList(projectList []string) []string {
 	clusterList := []string{}
 	if len(projectList) == 0 {
@@ -511,7 +507,7 @@ func getUserClusterList(projectList []string) []string {
 	return clusterList
 }
 
-func getUserMetricsACLs(userName string, token string, reqUrl string) (map[string][]string, error) {
+func GetUserMetricsACLs(userName string, token string, reqUrl string, accessReviewer AccessReviewer) (map[string][]string, error) {
 
 	klog.Infof("Getting metrics access for user : %v", userName)
 
@@ -582,8 +578,8 @@ func getUserMetricsACLs(userName string, token string, reqUrl string) (map[strin
 	return metricsAccess, nil
 }
 
-// canAccessAll check user have permission to access all clusters
-func canAccessAll(clusterNamespaces map[string][]string) bool {
+// CanAccessAll check user have permission to access all clusters
+func CanAccessAll(clusterNamespaces map[string][]string) bool {
 	if len(allManagedClusterNames) == 0 && len(clusterNamespaces) == 0 {
 		return false
 	}
@@ -674,8 +670,7 @@ func getClustersInQuery(queryValues url.Values, key string, userMetricsAccess ma
 	// stubbing to return "empty" i.e all clusters
 
 	query := queryValues.Get(key)
-	reg := regexp.MustCompile(`([{|,][ ]*)cluster(=|!=|=~|!~)([ ]*)"([^"]+)"`)
-	matches := reg.FindStringSubmatch(query)
+	matches := clusterMatchRegExp.FindStringSubmatch(query)
 	if len(matches) == 0 {
 		return []string{}
 	}
@@ -686,6 +681,8 @@ func getClustersInQuery(queryValues url.Values, key string, userMetricsAccess ma
 		clusters = append(clusters, cluster)
 	}
 	queryClusters := make([]string, 0, len(clusters))
+
+	var reg *regexp.Regexp
 	switch operator {
 	case "=":
 		return []string{expr}
@@ -717,52 +714,64 @@ func getClustersInQuery(queryValues url.Values, key string, userMetricsAccess ma
 }
 
 func rewriteQuery(queryValues url.Values, userMetricsAccess map[string][]string, key string) url.Values {
-
+	klog.Infof("REWRITE QUERY: queryValues: %v, userMetricsAccess: %v, key: %v\n", queryValues, userMetricsAccess, key)
 	originalQuery := queryValues.Get(key)
-
-	klog.Infof("REWRITE QUERY: key is: %v ,  originalQuery is: \n %v", key, originalQuery)
+	klog.Infof("REWRITE QUERY: key is: %v, originalQuery is: %v\n", key, originalQuery)
 	if len(originalQuery) == 0 {
 		return queryValues
 	}
 
-	//get clusters list for injecting cluster label
-	clusterList := make([]string, 0, len(userMetricsAccess))
-	for clusterName := range userMetricsAccess {
-		clusterList = append(clusterList, clusterName)
-	}
-
-	modifiedQuery, err := rewrite.InjectLabels(originalQuery, "cluster", clusterList)
+	clusterList := getClusterList(userMetricsAccess)
+	label := getLabel(originalQuery)
+	modifiedQuery, err := rewrite.InjectLabels(originalQuery, label, clusterList)
 	if err != nil {
 		return queryValues
 	}
 
-	klog.Infof("REWRITE QUERY Modified Query after injecting clusters: \n %v", modifiedQuery)
+	klog.Infof("REWRITE QUERY Modified Query after injecting %v: %v\n", label, modifiedQuery)
 
-	modifiedQuery2 := modifiedQuery
-
-	//get namespaces list for injecting namespaces label
-
-	queryClusters := getClustersInQuery(queryValues, key, userMetricsAccess)
-
-	commonNsAcrossQueryClusters := getCommonNamespacesAcrossClusters(queryClusters, userMetricsAccess)
-
-	//do not add namespaces filter if access is to all namespaces
-	allNamespaceAccess := len(commonNsAcrossQueryClusters) == 1 && commonNsAcrossQueryClusters[0] == "*"
-
-	klog.Infof("REWRITE QUERY Modified Query hasAccess to All namespaces: \n %v", allNamespaceAccess)
-
-	if !allNamespaceAccess {
-		modifiedQuery2, err = rewrite.InjectLabels(modifiedQuery, "namespace", commonNsAcrossQueryClusters)
+	if !strings.Contains(originalQuery, proxyconfig.GetACMManagedClusterLabelNamesMetricName()) {
+		modifiedQuery, err = injectNamespaces(queryValues, key, userMetricsAccess, modifiedQuery)
 		if err != nil {
 			return queryValues
 		}
 	}
 
-	klog.Infof("REWRITE QUERY Modified Query after injecting namespaces:  \n %v", modifiedQuery2)
-
 	queryValues.Del(key)
-	queryValues.Add(key, modifiedQuery2)
+	queryValues.Add(key, modifiedQuery)
 	return queryValues
+}
+
+func getClusterList(userMetricsAccess map[string][]string) []string {
+	clusterList := make([]string, 0, len(userMetricsAccess))
+	for clusterName := range userMetricsAccess {
+		clusterList = append(clusterList, clusterName)
+	}
+	return clusterList
+}
+
+func getLabel(originalQuery string) string {
+	if strings.Contains(originalQuery, proxyconfig.GetACMManagedClusterLabelNamesMetricName()) {
+		return "name"
+	}
+	return "cluster"
+}
+
+func injectNamespaces(queryValues url.Values, key string, userMetricsAccess map[string][]string, modifiedQuery string) (string, error) {
+	queryClusters := getClustersInQuery(queryValues, key, userMetricsAccess)
+	commonNsAcrossQueryClusters := getCommonNamespacesAcrossClusters(queryClusters, userMetricsAccess)
+	allNamespaceAccess := len(commonNsAcrossQueryClusters) == 1 && commonNsAcrossQueryClusters[0] == "*"
+
+	klog.Infof("REWRITE QUERY Modified Query hasAccess to All namespaces: \n %v", allNamespaceAccess)
+	if !allNamespaceAccess {
+		modifiedQuery2, err := rewrite.InjectLabels(modifiedQuery, "namespace", commonNsAcrossQueryClusters)
+		if err != nil {
+			return modifiedQuery, err
+		}
+		klog.Infof("REWRITE QUERY Modified Query after injecting namespaces:  \n %v", modifiedQuery2)
+		return modifiedQuery2, nil
+	}
+	return modifiedQuery, nil
 }
 
 func writeError(msg string) {
