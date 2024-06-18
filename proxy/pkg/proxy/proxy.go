@@ -44,16 +44,7 @@ func shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) b
 		if strings.Contains(string(body), proxyconfig.GetRBACProxyLabelMetricName()) {
 			managedLabelList := proxyconfig.GetManagedClusterLabelList()
 
-			query := `{"status":"success","data":[`
-			for index, label := range managedLabelList.RegexLabelList {
-				query += `{"__name__":"` + proxyconfig.GetRBACProxyLabelMetricName() + `","label_name":"` + label + `"}`
-
-				if index != len(managedLabelList.RegexLabelList)-1 {
-					query += ","
-				}
-			}
-			query += `]}`
-
+			query := createQueryResponse(managedLabelList.RegexLabelList, proxyconfig.GetRBACProxyLabelMetricName())
 			_, err = res.Write([]byte(query))
 			if err == nil {
 				return true
@@ -67,6 +58,18 @@ func shouldModifyAPISeriesResponse(res http.ResponseWriter, req *http.Request) b
 	}
 
 	return false
+}
+
+func createQueryResponse(labels []string, metricName string) string {
+	query := `{"status":"success","data":[`
+	for index, label := range labels {
+		query += `{"__name__":"` + metricName + `","label_name":"` + label + `"}`
+		if index != len(labels)-1 {
+			query += ","
+		}
+	}
+	query += `]}`
+	return query
 }
 
 // HandleRequestAndRedirect is used to init proxy handler.
@@ -104,7 +107,7 @@ func HandleRequestAndRedirect(res http.ResponseWriter, req *http.Request) {
 	req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
 	req.Host = serverURL.Host
 	req.URL.Path = path.Join(basePath, req.URL.Path)
-	util.ModifyMetricsQueryParams(req, config.GetConfigOrDie().Host+projectsAPIPath)
+	util.ModifyMetricsQueryParams(req, config.GetConfigOrDie().Host+projectsAPIPath, util.GetAccessReviewer())
 	proxy.ServeHTTP(res, req)
 }
 
@@ -129,14 +132,14 @@ func preCheckRequest(req *http.Request) error {
 		}
 	}
 
-	projectList, ok := util.GetUserProjectList(token)
+	_, ok := util.GetUserProjectList(token)
 	if !ok {
-		projectList = util.FetchUserProjectList(token, config.GetConfigOrDie().Host+projectsAPIPath)
+		projectList := util.FetchUserProjectList(token, config.GetConfigOrDie().Host+projectsAPIPath)
 		up := util.NewUserProject(userName, token, projectList)
 		util.UpdateUserProject(up)
 	}
 
-	if len(projectList) == 0 || len(util.GetAllManagedClusterNames()) == 0 {
+	if len(util.GetAllManagedClusterNames()) == 0 {
 		return errors.New("no project or cluster found")
 	}
 

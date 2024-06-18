@@ -3052,6 +3052,8 @@ github.com/stolostron/multiclusterhub-operator v0.0.0-20240507130539-00cf6ee9f65
 github.com/stolostron/multiclusterhub-operator v0.0.0-20240507130539-00cf6ee9f650/go.mod h1:fVXNVgAb4lcyAurs9qi3UG5bkpRCO2hYmEkj9s9++MY=
 github.com/stolostron/observatorium-operator v0.0.0-20240521155951-b4302d25bd18 h1:E/PNsOae69+k4zpbKfXQYrI14fEQSKPjv+yP8eSHOV4=
 github.com/stolostron/observatorium-operator v0.0.0-20240521155951-b4302d25bd18/go.mod h1:fFyJt9/dkQ1/4NxiW4CjH4lj7brxGlkA4SscxoLfzYY=
+github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256 h1:BeTUZoAkKzPKSH0sG4a9PaakKHuJ0h9Cks9joBn3Ns8=
+github.com/stolostron/rbac-api-utils v0.0.0-20240404212618-7f57fc664256/go.mod h1:zYGYkVgY+sL501na1x5RDCKMrHD+JAwb6oRFU8e9XlU=
 github.com/streadway/amqp v0.0.0-20190404075320-75d898a42a94/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1SddzLXVw=
 github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1SddzLXVw=
 github.com/streadway/amqp v1.0.0/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1SddzLXVw=
