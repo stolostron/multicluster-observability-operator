@@ -151,7 +151,6 @@ func TestClusterPred(t *testing.T) {
 }
 
 func TestManagedClusterLabelReady(t *testing.T) {
-
 	name := "test-obj"
 	caseList := []struct {
 		caseName          string
@@ -161,12 +160,35 @@ func TestManagedClusterLabelReady(t *testing.T) {
 		expectedCreate    bool
 		expectedUpdate    bool
 		expectedDelete    bool
+		labels            map[string]string
 	}{
 		{
-			caseName:       "ManagedCluster with vendor label",
+			caseName:       "ManagedCluster with vendor label autodetect",
 			namespace:      testNamespace,
 			expectedCreate: false,
+			expectedUpdate: false,
+			labels:         map[string]string{"vendor": "auto-detect"},
+		},
+		{
+			caseName:       "ManagedCluster with vendor label openshift",
+			namespace:      testNamespace,
 			expectedUpdate: true,
+			expectedCreate: true,
+			labels:         map[string]string{"vendor": "OpenShift", "openshiftVersion": "4.6.0"},
+		},
+		{
+			caseName:       "ManagedCluster with vendor label and no openshiftVersion",
+			namespace:      testNamespace,
+			expectedUpdate: false,
+			expectedCreate: false,
+			labels:         map[string]string{"vendor": "OpenShift"},
+		},
+		{
+			caseName:       "ManagedCluster with vendor label AKS",
+			namespace:      testNamespace,
+			expectedUpdate: true,
+			expectedCreate: true,
+			labels:         map[string]string{"vendor": "Azure", "azureVersion": "1.19.6"},
 		},
 	}
 
@@ -179,7 +201,7 @@ func TestManagedClusterLabelReady(t *testing.T) {
 						Name:        name,
 						Namespace:   c.namespace,
 						Annotations: c.annotations,
-						Labels:      map[string]string{"vendor": "auto-detect"},
+						Labels:      c.labels,
 					},
 					Spec: appsv1.DeploymentSpec{
 						Replicas: int32Ptr(2),
@@ -204,7 +226,7 @@ func TestManagedClusterLabelReady(t *testing.T) {
 						ResourceVersion:   "2",
 						DeletionTimestamp: c.deletionTimestamp,
 						Annotations:       c.annotations,
-						Labels:            map[string]string{"vendor": "OpenShift", "openshiftVersion": "4.6.0"},
+						Labels:            c.labels,
 					},
 				},
 				ObjectOld: &appsv1.Deployment{

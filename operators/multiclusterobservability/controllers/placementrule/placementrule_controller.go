@@ -591,7 +591,8 @@ func areManagedClusterLabelsReady(obj client.Object) bool {
 	if _, openshiftVersionPresent := obj.GetLabels()["openshiftVersion"]; openshiftVersionPresent && openshiftVendor {
 		return true
 	}
-	if vendorOk && vendor != "auto-detect" {
+
+	if vendorOk && vendor != "auto-detect" && vendor != "OpenShift" {
 		return true
 	}
 
