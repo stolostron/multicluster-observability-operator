@@ -246,7 +246,7 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	// set operand names to cover the upgrade case since we have name changed in new release
 	err = config.SetOperandNames(r.Client)
 	if err != nil {
-		return *result, err
+		return ctrl.Result{}, err
 	}
 	instance.Spec.StorageConfig.StorageClass = storageClassSelected
 	// Render the templates with a specified CR
