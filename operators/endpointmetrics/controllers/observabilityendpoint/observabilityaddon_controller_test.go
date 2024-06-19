@@ -33,16 +33,14 @@ import (
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
+	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	addonv1alpha1 "open-cluster-management.io/api/addon/v1alpha1"
 )
 
 const (
-	name            = "observability-addon"
-	testNamespace   = "test-ns"
-	testHubNamspace = "test-hub-ns"
-	testBearerToken = "test-bearer-token"
-	restartLabel    = "cert/time-restarted"
+	name         = "observability-addon"
+	restartLabel = "cert/time-restarted"
 )
 
 var (
@@ -95,14 +93,14 @@ func newHubInfoSecret(data []byte, ns string) *corev1.Secret {
 	}
 }
 
-func newAMAccessorSecret(ns string) *corev1.Secret {
+func newAMAccessorSecret(ns string, val string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      hubAmAccessorSecretName,
 			Namespace: ns,
 		},
 		Data: map[string][]byte{
-			"token": []byte(testBearerToken),
+			"token": []byte(val),
 		},
 	}
 }
@@ -143,9 +141,6 @@ func newImagesCM(ns string) *corev1.ConfigMap {
 
 func init() {
 	os.Setenv("UNIT_TEST", "true")
-
-	namespace = testNamespace
-	hubNamespace = testHubNamspace
 }
 
 func TestObservabilityAddonController(t *testing.T) {
@@ -158,10 +153,12 @@ alertmanager-router-ca: |
     -----END CERTIFICATE-----
 `)
 
+	testNamespace := "test-ns"
+	testHubNamespace := "test-hub-ns"
 	hubObjs := []runtime.Object{}
 	hubInfo := newHubInfoSecret(hubInfoData, testNamespace)
-	amAccessSrt := newAMAccessorSecret(testNamespace)
-	allowList := getAllowlistCM()
+	amAccessSrt := newAMAccessorSecret(testNamespace, "test-token")
+	allowList := getAllowlistCM(testNamespace)
 	images := newImagesCM(testNamespace)
 	objs := []runtime.Object{hubInfo, amAccessSrt, allowList, images, cv, infra,
 		&corev1.ConfigMap{
@@ -208,6 +205,9 @@ alertmanager-router-ca: |
 		HubClient:             hubClientWithReload,
 		Scheme:                s,
 		IsHubMetricsCollector: false,
+		Namespace:             testNamespace,
+		HubNamespace:          testHubNamespace,
+		ServiceAccountName:    "test-sa",
 	}
 
 	// test error in reconcile if missing obervabilityaddon
@@ -224,7 +224,7 @@ alertmanager-router-ca: |
 	}
 
 	// test reconcile w/o prometheus-k8s svc
-	err = hubClient.Create(ctx, newObservabilityAddon(name, testHubNamspace))
+	err = hubClient.Create(ctx, newObservabilityAddon(name, testHubNamespace))
 	if err != nil {
 		t.Fatalf("failed to create hub oba to install: (%v)", err)
 	}
@@ -268,19 +268,19 @@ alertmanager-router-ca: |
 	}
 	cm := &corev1.ConfigMap{}
 	err = c.Get(ctx, types.NamespacedName{Name: openshift.CaConfigmapName,
-		Namespace: namespace}, cm)
+		Namespace: testNamespace}, cm)
 	if err != nil {
 		t.Fatalf("Required configmap not created: (%v)", err)
 	}
 	deploy := &appv1.Deployment{}
 	err = c.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
-		Namespace: namespace}, deploy)
+		Namespace: testNamespace}, deploy)
 	if err != nil {
 		t.Fatalf("Metrics collector deployment not created: (%v)", err)
 	}
 	foundOba := &oav1beta1.ObservabilityAddon{}
 	err = hubClient.Get(ctx, types.NamespacedName{Name: obAddonName,
-		Namespace: hubNamespace}, foundOba)
+		Namespace: testHubNamespace}, foundOba)
 	if err != nil {
 		t.Fatalf("Failed to get observabilityAddon: (%v)", err)
 	}
@@ -291,7 +291,7 @@ alertmanager-router-ca: |
 	// test reconcile metrics collector deployment updated if cert secret updated
 	found := &appv1.Deployment{}
 	err = c.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
-		Namespace: namespace}, found)
+		Namespace: testNamespace}, found)
 	if err != nil {
 		t.Fatalf("Metrics collector deployment not found: (%v)", err)
 	}
@@ -311,7 +311,7 @@ alertmanager-router-ca: |
 		t.Fatalf("reconcile for update: (%v)", err)
 	}
 	err = c.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
-		Namespace: namespace}, deploy)
+		Namespace: testNamespace}, deploy)
 	if err != nil {
 		t.Fatalf("Metrics collector deployment not found: (%v)", err)
 	}
@@ -341,7 +341,7 @@ alertmanager-router-ca: |
 		t.Fatalf("reconcile for disable: (%v)", err)
 	}
 	err = c.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
-		Namespace: namespace}, deploy)
+		Namespace: testNamespace}, deploy)
 	if err != nil {
 		t.Fatalf("Metrics collector deployment not created: (%v)", err)
 	}
@@ -370,18 +370,18 @@ alertmanager-router-ca: |
 		t.Fatalf("Required clusterrolebinding not deleted")
 	}
 	err = c.Get(ctx, types.NamespacedName{Name: openshift.CaConfigmapName,
-		Namespace: namespace}, cm)
+		Namespace: testNamespace}, cm)
 	if !errors.IsNotFound(err) {
 		t.Fatalf("Required configmap not deleted")
 	}
 	err = c.Get(ctx, types.NamespacedName{Name: metricsCollectorName,
-		Namespace: namespace}, deploy)
+		Namespace: testNamespace}, deploy)
 	if !errors.IsNotFound(err) {
 		t.Fatalf("Metrics collector deployment not deleted")
 	}
 	foundOba1 := &oav1beta1.ObservabilityAddon{}
 	err = hubClient.Get(ctx, types.NamespacedName{Name: obAddonName,
-		Namespace: hubNamespace}, foundOba1)
+		Namespace: testHubNamespace}, foundOba1)
 	if err != nil {
 		t.Fatalf("Failed to get observabilityAddon: (%v)", err)
 	}
@@ -517,11 +517,13 @@ alertmanager-router-ca: |
 		t.Fatalf("reconcile: (%v)", err)
 	}
 	checkMetricsCollector()
-func getAllowlistCM() *corev1.ConfigMap {
+}
+
+func getAllowlistCM(ns string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      operatorconfig.AllowlistConfigMapName,
-			Namespace: namespace,
+			Namespace: ns,
 		},
 		Data: map[string]string{
 			operatorconfig.MetricsConfigMapKey: `
