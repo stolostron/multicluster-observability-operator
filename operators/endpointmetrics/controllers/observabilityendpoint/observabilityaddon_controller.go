@@ -322,11 +322,11 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		HubInfo:            hubInfo,
 		Log:                log.WithName("metrics-collector"),
 		Namespace:          namespace,
-		ObsAddonSpec:       &obsAddon.Spec,
+		ObsAddon:           obsAddon,
 		ServiceAccountName: serviceAccountName,
 	}
 
-	if err := metricsCollector.Update(ctx, req); err != nil {
+	if err := metricsCollector.Reconcile(ctx, req); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to update metrics collector: %w", err)
 	}
 

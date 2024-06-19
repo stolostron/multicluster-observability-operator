@@ -28,7 +28,8 @@ import (
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
-	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/status"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 	"github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 )
@@ -77,7 +78,7 @@ type MetricsCollector struct {
 	HubInfo            *operatorconfig.HubInfo
 	Log                logr.Logger
 	Namespace          string
-	ObsAddonSpec       *oashared.ObservabilityAddonSpec
+	ObsAddon           *oav1beta1.ObservabilityAddon
 	ServiceAccountName string
 }
 
@@ -97,31 +98,43 @@ type deploymentParams struct {
 	uwlList      *operatorconfig.MetricsAllowlist
 }
 
-// Update updates the metrics collector resources and the addon status when needed.
-func (m *MetricsCollector) Update(ctx context.Context, req ctrl.Request) error {
+// Reconcile updates the metrics collector resources and the addon status when needed.
+func (m *MetricsCollector) Reconcile(ctx context.Context, req ctrl.Request) error {
 	deployParams, err := m.generateDeployParams(ctx, req)
 	if err != nil {
+		m.reportStatus(ctx, status.Degraded)
 		return err
 	}
 
-	if err := m.updateMetricsCollector(ctx, false, deployParams); err != nil {
+	var mcResult, uwlResult ensureDeploymentResult
+	if mcResult, err = m.updateMetricsCollector(ctx, false, deployParams); err != nil {
+		m.reportStatus(ctx, status.Degraded)
 		return err
 	}
 
 	isUwl, err := m.isUWLMonitoringEnabled(ctx)
 	if err != nil {
+		m.reportStatus(ctx, status.Degraded)
 		return err
 	}
 
 	uwlMetricsLen := len(deployParams.uwlList.NameList) + len(deployParams.uwlList.MatchList)
 	if isUwl && uwlMetricsLen != 0 {
-		if err := m.updateMetricsCollector(ctx, true, deployParams); err != nil {
+		if uwlResult, err = m.updateMetricsCollector(ctx, true, deployParams); err != nil {
+			m.reportStatus(ctx, status.Degraded)
 			return err
 		}
 	} else {
 		if err := m.deleteMetricsCollector(ctx, true); err != nil {
+			m.reportStatus(ctx, status.Degraded)
 			return err
 		}
+	}
+
+	if mcResult == deploymentCreated || uwlResult == deploymentCreated {
+		m.reportStatus(ctx, status.Deployed)
+	} else if mcResult == deploymentUpdated && !m.ObsAddon.Spec.EnableMetrics {
+		m.reportStatus(ctx, status.Disabled)
 	}
 
 	return nil
@@ -137,6 +150,15 @@ func (m *MetricsCollector) Delete(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (m *MetricsCollector) reportStatus(ctx context.Context, conditionReason status.ConditionReason) {
+	if m.ClusterInfo.IsHubMetricsCollector {
+		return
+	}
+	if err := status.ReportStatus(ctx, m.Client, conditionReason, m.ObsAddon.Name, m.Namespace); err != nil {
+		m.Log.Error(err, "Failed to report status")
+	}
 }
 
 func (m *MetricsCollector) generateDeployParams(ctx context.Context, req ctrl.Request) (*deploymentParams, error) {
@@ -223,41 +245,25 @@ func (m *MetricsCollector) deleteMetricsCollector(ctx context.Context, isUWL boo
 	return nil
 }
 
-func (m *MetricsCollector) updateMetricsCollector(ctx context.Context, isUWL bool, deployParams *deploymentParams) error {
+func (m *MetricsCollector) updateMetricsCollector(ctx context.Context, isUWL bool, deployParams *deploymentParams) (ensureDeploymentResult, error) {
 	if err := m.ensureService(ctx, isUWL); err != nil {
-		return err
+		return "", err
 	}
 
 	if err := m.ensureServiceMonitor(ctx, isUWL); err != nil {
-		return err
+		return "", err
 	}
 
 	if err := m.ensureAlertingRule(ctx, isUWL); err != nil {
-		return err
+		return "", err
 	}
 
-	// Update the deployment and the addon status accordingly
-	// reportStatus := func(condition status.StatusConditionName) {
-	// 	if err := status.ReportStatus(ctx, m.Client, condition, obsAddon.Name, m.Namespace); err != nil {
-	// 		m.Log.Error(err, "Failed to report status")
-	// 	}
-	// }
-
-	err := m.ensureDeployment(ctx, isUWL, deployParams)
+	res, err := m.ensureDeployment(ctx, isUWL, deployParams)
 	if err != nil {
-		// reportStatus(status.DegradedStatus)
-		return err
+		return "", err
 	}
 
-	// if !m.ClusterInfo.IsHubMetricsCollector && updated {
-	// 	if m.ObsAddonSpec.EnableMetrics {
-	// 		reportStatus(status.DeployedStatus)
-	// 	} else {
-	// 		reportStatus(status.DisabledStatus)
-	// 	}
-	// }
-
-	return nil
+	return res, nil
 }
 
 func (m *MetricsCollector) ensureService(ctx context.Context, isUWL bool) error {
@@ -468,7 +474,15 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 	return nil
 }
 
-func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, deployParams *deploymentParams) error {
+type ensureDeploymentResult string
+
+const (
+	deploymentCreated ensureDeploymentResult = "created"
+	deploymentUpdated ensureDeploymentResult = "updated"
+	deploymentNoop    ensureDeploymentResult = "noop"
+)
+
+func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, deployParams *deploymentParams) (ensureDeploymentResult, error) {
 	secretName := metricsCollector
 	if isUWL {
 		secretName = uwlMetricsCollector
@@ -572,7 +586,7 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 	}
 
 	replicaCount := int32(0)
-	if m.ObsAddonSpec.EnableMetrics || m.ClusterInfo.IsHubMetricsCollector {
+	if m.ObsAddon.Spec.EnableMetrics || m.ClusterInfo.IsHubMetricsCollector {
 		replicaCount = 1
 	}
 
@@ -679,8 +693,8 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 		ReadOnlyRootFilesystem: &readOnlyRootFilesystem,
 	}
 
-	if m.ObsAddonSpec.Resources != nil {
-		desiredMetricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *m.ObsAddonSpec.Resources
+	if m.ObsAddon.Spec.Resources != nil {
+		desiredMetricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *m.ObsAddon.Spec.Resources
 	}
 
 	foundMetricsCollectorDep := &appsv1.Deployment{}
@@ -688,13 +702,13 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 	if err != nil && errors.IsNotFound(err) {
 		m.Log.Info("Creating Deployment", "name", name, "namespace", m.Namespace)
 		if err := m.Client.Create(ctx, desiredMetricsCollectorDep); err != nil {
-			return fmt.Errorf("failed to create Deployment %s/%s: %w", m.Namespace, name, err)
+			return deploymentNoop, fmt.Errorf("failed to create Deployment %s/%s: %w", m.Namespace, name, err)
 		}
 
-		return nil
+		return deploymentCreated, nil
 	}
 	if err != nil {
-		return fmt.Errorf("failed to get Deployment %s/%s: %w", m.Namespace, name, err)
+		return deploymentNoop, fmt.Errorf("failed to get Deployment %s/%s: %w", m.Namespace, name, err)
 	}
 
 	isDifferent := !reflect.DeepEqual(desiredMetricsCollectorDep.Spec.Template.Spec, foundMetricsCollectorDep.Spec.Template.Spec) ||
@@ -709,21 +723,23 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 		desiredMetricsCollectorDep.ResourceVersion = foundMetricsCollectorDep.ResourceVersion
 
 		if err := m.Client.Update(ctx, desiredMetricsCollectorDep); err != nil {
-			return fmt.Errorf("failed to update Deployment %s/%s: %w", m.Namespace, name, err)
+			return deploymentNoop, fmt.Errorf("failed to update Deployment %s/%s: %w", m.Namespace, name, err)
 		}
+
+		return deploymentUpdated, nil
 	}
 
-	return nil
+	return deploymentNoop, nil
 }
 
 func (m *MetricsCollector) getCommands(isUSW bool, deployParams *deploymentParams) []string {
 	interval := defaultInterval
-	if m.ObsAddonSpec.Interval != 0 {
-		interval = fmt.Sprintf("%ds", m.ObsAddonSpec.Interval)
+	if m.ObsAddon.Spec.Interval != 0 {
+		interval = fmt.Sprintf("%ds", m.ObsAddon.Spec.Interval)
 	}
 
 	evaluateInterval := "30s"
-	if m.ObsAddonSpec.Interval < 30 {
+	if m.ObsAddon.Spec.Interval < 30 {
 		evaluateInterval = interval
 	}
 
