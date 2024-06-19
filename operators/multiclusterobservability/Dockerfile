@@ -1,6 +1,6 @@
 # Copyright Contributors to the Open Cluster Management project
 
-FROM registry.ci.openshift.org/stolostron/builder:go1.20-linux AS builder
+FROM registry.ci.openshift.org/stolostron/builder:go1.21-linux AS builder
 
 
 WORKDIR /workspace
@@ -10,7 +10,7 @@ COPY ./operators/pkg ./operators/pkg
 
 RUN CGO_ENABLED=1 go build -a -installsuffix cgo -o bin/manager operators/multiclusterobservability/main.go
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
 ARG VCS_REF
 ARG VCS_URL
