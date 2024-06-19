@@ -233,7 +233,7 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 
 			metricsCollector := tc.newMetricsCollector()
 			metricsCollector.Client = c
-			if err := metricsCollector.Reconcile(context.Background(), tc.request); err != nil {
+			if err := metricsCollector.Update(context.Background(), tc.request); err != nil {
 				t.Fatalf("Failed to update metrics collector: %v", err)
 			}
 

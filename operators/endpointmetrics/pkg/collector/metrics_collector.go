@@ -7,7 +7,6 @@ package collector
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -15,14 +14,18 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -98,8 +101,8 @@ type deploymentParams struct {
 	uwlList      *operatorconfig.MetricsAllowlist
 }
 
-// Reconcile updates the metrics collector resources and the addon status when needed.
-func (m *MetricsCollector) Reconcile(ctx context.Context, req ctrl.Request) error {
+// Update updates the metrics collector resources and the addon status when needed.
+func (m *MetricsCollector) Update(ctx context.Context, req ctrl.Request) error {
 	deployParams, err := m.generateDeployParams(ctx, req)
 	if err != nil {
 		m.reportStatus(ctx, status.Degraded)
@@ -156,6 +159,7 @@ func (m *MetricsCollector) reportStatus(ctx context.Context, conditionReason sta
 	if m.ClusterInfo.IsHubMetricsCollector {
 		return
 	}
+	m.Log.Info("Reporting status", "conditionReason", conditionReason)
 	if err := status.ReportStatus(ctx, m.Client, conditionReason, m.ObsAddon.Name, m.Namespace); err != nil {
 		m.Log.Error(err, "Failed to report status")
 	}
@@ -293,32 +297,42 @@ func (m *MetricsCollector) ensureService(ctx context.Context, isUWL bool) error 
 					Name:       "metrics",
 					Port:       8080,
 					TargetPort: intstr.FromString("metrics"),
+					Protocol:   corev1.ProtocolTCP,
 				},
 			},
 			Type: corev1.ServiceTypeClusterIP,
 		},
 	}
 
-	foundService := &corev1.Service{}
-	err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundService)
-	if err != nil && errors.IsNotFound(err) {
-		m.Log.Info("Creating Service", "name", name, "namespace", m.Namespace)
-		if err := m.Client.Create(ctx, desiredService); err != nil {
-			return fmt.Errorf("failed to create service %s/%s: %w", m.Namespace, name, err)
+	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		foundService := &corev1.Service{}
+		err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundService)
+		if err != nil && errors.IsNotFound(err) {
+			m.Log.Info("Creating Service", "name", name, "namespace", m.Namespace)
+			if err := m.Client.Create(ctx, desiredService); err != nil {
+				return fmt.Errorf("failed to create service %s/%s: %w", m.Namespace, name, err)
+			}
+
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("failed to get service %s/%s: %w", m.Namespace, name, err)
+		}
+
+		if !equality.Semantic.DeepDerivative(desiredService.Spec, foundService.Spec) {
+			m.Log.Info("Updating Service", "name", name, "namespace", m.Namespace)
+
+			foundService.Spec = desiredService.Spec
+			if err := m.Client.Update(ctx, foundService); err != nil {
+				return fmt.Errorf("failed to update service %s/%s: %w", m.Namespace, name, err)
+			}
 		}
 
 		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("failed to get service %s/%s: %w", m.Namespace, name, err)
-	}
+	})
 
-	if !reflect.DeepEqual(desiredService.Spec, foundService.Spec) {
-		foundService.Spec = desiredService.Spec
-		m.Log.Info("Updating Service", "name", name, "namespace", m.Namespace)
-		if err := m.Client.Update(ctx, foundService); err != nil {
-			return fmt.Errorf("failed to update service %s/%s: %w", m.Namespace, name, err)
-		}
+	if retryErr != nil {
+		return retryErr
 	}
 
 	return nil
@@ -372,26 +386,41 @@ func (m *MetricsCollector) ensureServiceMonitor(ctx context.Context, isUWL bool)
 		},
 	}
 
-	foundSm := &monitoringv1.ServiceMonitor{}
-	err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundSm)
-	if err != nil && errors.IsNotFound(err) {
-		m.Log.Info("Creating ServiceMonitor", "name", name, "namespace", m.Namespace)
-		if err := m.Client.Create(ctx, desiredSm); err != nil {
-			return fmt.Errorf("failed to create ServiceMonitor %s/%s: %w", m.Namespace, name, err)
+	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		foundSm := &monitoringv1.ServiceMonitor{}
+		err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundSm)
+		if err != nil && errors.IsNotFound(err) {
+			m.Log.Info("Creating ServiceMonitor", "name", name, "namespace", m.Namespace)
+			if err := m.Client.Create(ctx, desiredSm); err != nil {
+				return fmt.Errorf("failed to create ServiceMonitor %s/%s: %w", m.Namespace, name, err)
+			}
+
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("failed to get ServiceMonitor %s/%s: %w", m.Namespace, name, err)
+		}
+
+		if !equality.Semantic.DeepDerivative(desiredSm.Spec, foundSm.Spec) {
+			m.Log.Info("Updating ServiceMonitor", "name", name, "namespace", m.Namespace)
+
+			// To Delete
+			diff := cmp.Diff(desiredSm.Spec, foundSm.Spec)
+			if diff != "" {
+				m.Log.Info("ServiceMonitor diff", "diff", diff)
+			}
+
+			foundSm.Spec = desiredSm.Spec
+			if err := m.Client.Update(ctx, foundSm); err != nil {
+				return fmt.Errorf("failed to update ServiceMonitor %s/%s: %w", m.Namespace, name, err)
+			}
 		}
 
 		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("failed to get ServiceMonitor %s/%s: %w", m.Namespace, name, err)
-	}
+	})
 
-	if !reflect.DeepEqual(desiredSm.Spec, foundSm.Spec) {
-		foundSm.Spec = desiredSm.Spec
-		m.Log.Info("Updating ServiceMonitor", "name", name, "namespace", m.Namespace)
-		if err := m.Client.Update(ctx, foundSm); err != nil {
-			return fmt.Errorf("failed to update ServiceMonitor %s/%s: %w", m.Namespace, name, err)
-		}
+	if retryErr != nil {
+		return retryErr
 	}
 
 	return nil
@@ -449,26 +478,41 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 		},
 	}
 
-	foundPromRule := &monitoringv1.PrometheusRule{}
-	err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundPromRule)
-	if err != nil && errors.IsNotFound(err) {
-		m.Log.Info("Creating PrometheusRule", "name", name, "namespace", m.Namespace)
-		if err := m.Client.Create(ctx, desiredPromRule); err != nil {
-			return fmt.Errorf("failed to create PrometheusRule %s/%s: %w", m.Namespace, name, err)
+	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		foundPromRule := &monitoringv1.PrometheusRule{}
+		err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundPromRule)
+		if err != nil && errors.IsNotFound(err) {
+			m.Log.Info("Creating PrometheusRule", "name", name, "namespace", m.Namespace)
+			if err := m.Client.Create(ctx, desiredPromRule); err != nil {
+				return fmt.Errorf("failed to create PrometheusRule %s/%s: %w", m.Namespace, name, err)
+			}
+
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("failed to get PrometheusRule %s/%s: %w", m.Namespace, name, err)
+		}
+
+		if !equality.Semantic.DeepDerivative(desiredPromRule.Spec, foundPromRule.Spec) {
+			m.Log.Info("Updating PrometheusRule", "name", name, "namespace", m.Namespace)
+
+			// To Delete
+			diff := cmp.Diff(desiredPromRule.Spec, foundPromRule.Spec)
+			if diff != "" {
+				m.Log.Info("PrometheusRule diff", "diff", diff)
+			}
+
+			foundPromRule.Spec = desiredPromRule.Spec
+			if err := m.Client.Update(ctx, foundPromRule); err != nil {
+				return fmt.Errorf("failed to update PrometheusRule %s/%s: %w", m.Namespace, name, err)
+			}
 		}
 
 		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("failed to get PrometheusRule %s/%s: %w", m.Namespace, name, err)
-	}
+	})
 
-	if !reflect.DeepEqual(desiredPromRule.Spec, foundPromRule.Spec) {
-		foundPromRule.Spec = desiredPromRule.Spec
-		m.Log.Info("Updating PrometheusRule", "name", name, "namespace", m.Namespace)
-		if err := m.Client.Update(ctx, foundPromRule); err != nil {
-			return fmt.Errorf("failed to update PrometheusRule %s/%s: %w", m.Namespace, name, err)
-		}
+	if retryErr != nil {
+		return retryErr
 	}
 
 	return nil
@@ -488,12 +532,14 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 		secretName = uwlMetricsCollector
 	}
 
+	defaultMode := int32(420)
 	volumes := []corev1.Volume{
 		{
 			Name: "mtlscerts",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: mtlsCertName,
+					SecretName:  mtlsCertName,
+					DefaultMode: &defaultMode,
 				},
 			},
 		},
@@ -501,7 +547,8 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 			Name: "mtlsca",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: mtlsCaName,
+					SecretName:  mtlsCaName,
+					DefaultMode: &defaultMode,
 				},
 			},
 		},
@@ -513,7 +560,8 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 				Name: "secret-kube-rbac-proxy-tls",
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
-						SecretName: secretName + "-kube-rbac-tls",
+						SecretName:  secretName + "-kube-rbac-tls",
+						DefaultMode: &defaultMode,
 					},
 				},
 			},
@@ -521,7 +569,8 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 				Name: "secret-kube-rbac-proxy-metric",
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
-						SecretName: secretName + "-kube-rbac-proxy-metric",
+						SecretName:  secretName + "-kube-rbac-proxy-metric",
+						DefaultMode: &defaultMode,
 					},
 				},
 			},
@@ -529,6 +578,7 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 				Name: "metrics-client-ca",
 				VolumeSource: corev1.VolumeSource{
 					ConfigMap: &corev1.ConfigMapVolumeSource{
+						DefaultMode: &defaultMode,
 						LocalObjectReference: corev1.LocalObjectReference{
 							Name: secretName + "-clientca-metric",
 						},
@@ -556,6 +606,7 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 			Name: caVolName,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
+					DefaultMode: &defaultMode,
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: openshift.CaConfigmapName,
 					},
@@ -590,6 +641,7 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 		replicaCount = 1
 	}
 
+	trueVal := true
 	desiredMetricsCollectorDep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -642,6 +694,15 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 								{
 									ContainerPort: 8080,
 									Name:          "metrics",
+									Protocol:      corev1.ProtocolTCP,
+								},
+							},
+							SecurityContext: &corev1.SecurityContext{
+								RunAsNonRoot:             &trueVal,
+								ReadOnlyRootFilesystem:   &trueVal,
+								AllowPrivilegeEscalation: new(bool),
+								Capabilities: &corev1.Capabilities{
+									Drop: []corev1.Capability{"ALL"},
 								},
 							},
 						},
@@ -697,39 +758,58 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 		desiredMetricsCollectorDep.Spec.Template.Spec.Containers[0].Resources = *m.ObsAddon.Spec.Resources
 	}
 
-	foundMetricsCollectorDep := &appsv1.Deployment{}
-	err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundMetricsCollectorDep)
-	if err != nil && errors.IsNotFound(err) {
-		m.Log.Info("Creating Deployment", "name", name, "namespace", m.Namespace)
-		if err := m.Client.Create(ctx, desiredMetricsCollectorDep); err != nil {
-			return deploymentNoop, fmt.Errorf("failed to create Deployment %s/%s: %w", m.Namespace, name, err)
+	result := deploymentNoop
+
+	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		foundMetricsCollectorDep := &appsv1.Deployment{}
+		err := m.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: m.Namespace}, foundMetricsCollectorDep)
+		if err != nil && errors.IsNotFound(err) {
+			m.Log.Info("Creating Deployment", "name", name, "namespace", m.Namespace)
+			if err := m.Client.Create(ctx, desiredMetricsCollectorDep); err != nil {
+				return fmt.Errorf("failed to create Deployment %s/%s: %w", m.Namespace, name, err)
+			}
+
+			result = deploymentCreated
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("failed to get Deployment %s/%s: %w", m.Namespace, name, err)
 		}
 
-		return deploymentCreated, nil
-	}
-	if err != nil {
-		return deploymentNoop, fmt.Errorf("failed to get Deployment %s/%s: %w", m.Namespace, name, err)
-	}
+		isDifferentSpec := !equality.Semantic.DeepDerivative(desiredMetricsCollectorDep.Spec.Template.Spec, foundMetricsCollectorDep.Spec.Template.Spec)
+		isDifferentReplicas := !equality.Semantic.DeepEqual(desiredMetricsCollectorDep.Spec.Replicas, foundMetricsCollectorDep.Spec.Replicas)
+		if isDifferentSpec || isDifferentReplicas || deployParams.forceRestart {
+			m.Log.Info("Updating Deployment", "name", name, "namespace", m.Namespace, "isDifferentSpec", isDifferentSpec, "isDifferentReplicas", isDifferentReplicas, "forceRestart", deployParams.forceRestart)
+			if deployParams.forceRestart && foundMetricsCollectorDep.Status.ReadyReplicas != 0 {
+				desiredMetricsCollectorDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
+			}
 
-	isDifferent := !reflect.DeepEqual(desiredMetricsCollectorDep.Spec.Template.Spec, foundMetricsCollectorDep.Spec.Template.Spec) ||
-		!reflect.DeepEqual(desiredMetricsCollectorDep.Spec.Replicas, foundMetricsCollectorDep.Spec.Replicas) ||
-		deployParams.forceRestart
-	if isDifferent {
-		m.Log.Info("Updating Deployment", "name", name, "namespace", m.Namespace)
-		if deployParams.forceRestart && foundMetricsCollectorDep.Status.ReadyReplicas != 0 {
-			desiredMetricsCollectorDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
+			// ToDelete
+			if isDifferentSpec {
+				diff := cmp.Diff(desiredMetricsCollectorDep.Spec.Template.Spec, foundMetricsCollectorDep.Spec.Template.Spec, cmpopts.IgnoreFields(corev1.PodSpec{}, "DNSPolicy", "SchedulerName", "SecurityContext", "TerminationGracePeriodSeconds"))
+				if diff != "" {
+					m.Log.Info("PodSpec diff", "diff", diff)
+				}
+			}
+
+			desiredMetricsCollectorDep.ResourceVersion = foundMetricsCollectorDep.ResourceVersion
+
+			if err := m.Client.Update(ctx, desiredMetricsCollectorDep); err != nil {
+				return fmt.Errorf("failed to update Deployment %s/%s: %w", m.Namespace, name, err)
+			}
+
+			result = deploymentUpdated
+			return nil
 		}
 
-		desiredMetricsCollectorDep.ResourceVersion = foundMetricsCollectorDep.ResourceVersion
+		return nil
+	})
 
-		if err := m.Client.Update(ctx, desiredMetricsCollectorDep); err != nil {
-			return deploymentNoop, fmt.Errorf("failed to update Deployment %s/%s: %w", m.Namespace, name, err)
-		}
-
-		return deploymentUpdated, nil
+	if retryErr != nil {
+		return deploymentNoop, retryErr
 	}
 
-	return deploymentNoop, nil
+	return result, nil
 }
 
 func (m *MetricsCollector) getCommands(isUSW bool, deployParams *deploymentParams) []string {
@@ -901,7 +981,9 @@ func (m *MetricsCollector) getMetricsAllowlist(ctx context.Context) (*operatorco
 		allowList, _, userAllowList = util.MergeAllowlist(allowList, customAllowlist, nil, userAllowList, customUwlAllowlist)
 	}
 
-	m.Log.Info("Merged allowLists from following namespaces", "namespaces", cmNamespaces)
+	if len(cmNamespaces) > 0 {
+		m.Log.Info("Merged allowLists from following namespaces", "namespaces", cmNamespaces)
+	}
 
 	return allowList, userAllowList, nil
 }

@@ -31,7 +31,6 @@ import (
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/collector"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/microshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/rendering"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/status"
@@ -62,21 +61,15 @@ const (
 	uwlNamespace                    = "openshift-user-workload-monitoring"
 )
 
-var (
-	// namespace             = os.Getenv("WATCH_NAMESPACE")
-	namespace    = "open-cluster-management-addon-observability"
-	hubNamespace = os.Getenv("HUB_NAMESPACE")
-	// r.IsHubMetricsCollector = os.Getenv("HUB_ENDPOINT_OPERATOR") == "true"
-	serviceAccountName = os.Getenv("SERVICE_ACCOUNT")
-)
-
 // ObservabilityAddonReconciler reconciles a ObservabilityAddon object.
 type ObservabilityAddonReconciler struct {
 	Client                client.Client
 	Scheme                *runtime.Scheme
 	HubClient             *util.ReloadableHubClient
-	HostIP                string
 	IsHubMetricsCollector bool
+	Namespace             string
+	HubNamespace          string
+	ServiceAccountName    string
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io.open-cluster-management.io,resources=observabilityaddons,verbs=get;list;watch;create;update;patch;delete
@@ -88,8 +81,7 @@ type ObservabilityAddonReconciler struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
-	log.Info("Reconciling")
+	log.Info("Reconciling", "Request", req.String())
 
 	isHypershift := true
 	if os.Getenv("UNIT_TEST") != "true" {
@@ -113,7 +105,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 		// Fetch the ObservabilityAddon instance in hub cluster
 		fetchAddon := func() error {
-			return r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: hubNamespace}, hubObsAddon)
+			return r.HubClient.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: r.HubNamespace}, hubObsAddon)
 		}
 		if err := fetchAddon(); err != nil {
 			if r.HubClient, err = r.HubClient.Reload(); err != nil {
@@ -127,7 +119,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 
 		// Fetch the ObservabilityAddon instance in local cluster
-		err := r.Client.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: namespace}, obsAddon)
+		err := r.Client.Get(ctx, types.NamespacedName{Name: obAddonName, Namespace: r.Namespace}, obsAddon)
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				return ctrl.Result{}, fmt.Errorf("failed to get observabilityaddon: %w", err)
@@ -152,11 +144,11 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	hubSecret := &corev1.Secret{}
 	err := r.Client.Get(
 		ctx,
-		types.NamespacedName{Name: operatorconfig.HubInfoSecretName, Namespace: namespace},
+		types.NamespacedName{Name: operatorconfig.HubInfoSecretName, Namespace: r.Namespace},
 		hubSecret,
 	)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get hub info secret %s/%s: %w", namespace, operatorconfig.HubInfoSecretName, err)
+		return ctrl.Result{}, fmt.Errorf("failed to get hub info secret %s/%s: %w", r.Namespace, operatorconfig.HubInfoSecretName, err)
 	}
 	hubInfo := &operatorconfig.HubInfo{}
 	err = yaml.Unmarshal(hubSecret.Data[operatorconfig.HubInfoSecretKey], &hubInfo)
@@ -172,7 +164,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	imagesCM := &corev1.ConfigMap{}
 	err = r.Client.Get(ctx, types.NamespacedName{
 		Name:      operatorconfig.ImageConfigMap,
-		Namespace: namespace,
+		Namespace: r.Namespace,
 	}, imagesCM)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get images configmap: %w", err)
@@ -236,35 +228,20 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			clusterType = operatorconfig.SnoClusterType
 		}
 
-		err = openshift.CreateMonitoringClusterRoleBinding(ctx, log, r.Client, namespace, serviceAccountName)
+		err = openshift.CreateMonitoringClusterRoleBinding(ctx, log, r.Client, r.Namespace, r.ServiceAccountName)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to create monitoring cluster role binding: %w", err)
 		}
-		err = openshift.CreateCAConfigmap(ctx, r.Client, namespace)
+		err = openshift.CreateCAConfigmap(ctx, r.Client, r.Namespace)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to create CA configmap: %w", err)
 		}
 	} else {
 		// Render the prometheus templates
 		renderer := rendererutil.NewRenderer()
-		toDeploy, err := rendering.Render(ctx, renderer, r.Client, hubInfo)
+		toDeploy, err := rendering.Render(ctx, renderer, r.Client, hubInfo, r.Namespace)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to render prometheus templates: %w", err)
-		}
-
-		if !r.IsHubMetricsCollector {
-			microshiftVersion, err := microshift.IsMicroshiftCluster(ctx, r.Client)
-			if err != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to check if the cluster is microshift: %w", err)
-			}
-
-			if len(microshiftVersion) > 0 {
-				mcs := microshift.NewMicroshift(namespace, r.HostIP)
-				toDeploy, err = mcs.Render(ctx, toDeploy)
-				if err != nil {
-					return ctrl.Result{}, fmt.Errorf("failed to render microshift templates: %w", err)
-				}
-			}
 		}
 
 		deployer := deploying.NewDeployer(r.Client)
@@ -275,7 +252,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		})
 
 		for _, res := range toDeploy {
-			if res.GetNamespace() != namespace {
+			if res.GetNamespace() != r.Namespace {
 				globalRes = append(globalRes, res)
 			}
 
@@ -294,13 +271,13 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			}
 
 			if err := deployer.Deploy(ctx, res); err != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to deploy %s %s/%s: %w", res.GetKind(), namespace, res.GetName(), err)
+				return ctrl.Result{}, fmt.Errorf("failed to deploy %s %s/%s: %w", res.GetKind(), r.Namespace, res.GetName(), err)
 			}
 		}
 	}
 
 	// create or update the cluster-monitoring-config configmap and relevant resources
-	if err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, clusterID, r.Client, installPrometheus); err != nil {
+	if err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, clusterID, r.Client, installPrometheus, r.Namespace); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to create or update cluster monitoring config: %w", err)
 	}
 
@@ -327,13 +304,18 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		},
 		HubInfo:            hubInfo,
 		Log:                log.WithName("metrics-collector"),
-		Namespace:          namespace,
+		Namespace:          r.Namespace,
 		ObsAddon:           obsAddon,
-		ServiceAccountName: serviceAccountName,
+		ServiceAccountName: r.ServiceAccountName,
 	}
 
-	if err := metricsCollector.Reconcile(ctx, req); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to update metrics collector: %w", err)
+	if err := metricsCollector.Update(ctx, req); err != nil {
+		wrappedErr := fmt.Errorf("failed to update metrics collector: %w", err)
+		if errors.IsConflict(err) || util.IsTransientClientErr(err) {
+			log.Info("Retrying due to conflict or transient client error")
+			return ctrl.Result{Requeue: true}, wrappedErr
+		}
+		return ctrl.Result{}, wrappedErr
 	}
 
 	return ctrl.Result{}, nil
@@ -349,7 +331,7 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		metricsCollector := collector.MetricsCollector{
 			Client:    r.Client,
 			Log:       log.WithName("metrics-collector"),
-			Namespace: namespace,
+			Namespace: r.Namespace,
 		}
 		if err := metricsCollector.Delete(ctx); err != nil {
 			return false, fmt.Errorf("failed to delete metrics collector: %w", err)
@@ -379,7 +361,7 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 				return false, err
 			}
 			log.Info("clusterrolebinding deleted")
-			err = openshift.DeleteCAConfigmap(ctx, r.Client, namespace)
+			err = openshift.DeleteCAConfigmap(ctx, r.Client, r.Namespace)
 			if err != nil {
 				log.Error(err, "Failed to delete CA configmap")
 				return false, err
@@ -417,7 +399,7 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 
 func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx context.Context) error {
 	existingNs := &corev1.Namespace{}
-	resNS := namespace
+	resNS := r.Namespace
 
 	role := rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
@@ -469,7 +451,7 @@ func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx
 		err = r.Client.Update(ctx, existingNs)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Failed to update namespace for Endpoint Operator: %s with the label: %s",
-				namespace, openShiftClusterMonitoringlabel))
+				r.Namespace, openShiftClusterMonitoringlabel))
 			return err
 		}
 	}
@@ -511,13 +493,9 @@ func (r *ObservabilityAddonReconciler) ensureOpenShiftMonitoringLabelAndRole(ctx
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if os.Getenv("NAMESPACE") != "" {
-		namespace = os.Getenv("NAMESPACE")
-	}
-
 	ctrlBuilder := ctrl.NewControllerManagedBy(mgr).For(
 		&oav1beta1.ObservabilityAddon{},
-		builder.WithPredicates(getPred(obAddonName, namespace, true, true, true)),
+		builder.WithPredicates(getPred(obAddonName, r.Namespace, true, true, true)),
 	)
 
 	if r.IsHubMetricsCollector {
@@ -531,27 +509,27 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Watches(
 			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(operatorconfig.HubInfoSecretName, namespace, true, true, false)),
+			builder.WithPredicates(getPred(operatorconfig.HubInfoSecretName, r.Namespace, true, true, false)),
 		).
 		Watches(
 			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(mtlsCertName, namespace, true, true, false)),
+			builder.WithPredicates(getPred(mtlsCertName, r.Namespace, true, true, false)),
 		).
 		Watches(
 			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(mtlsCaName, namespace, true, true, false)),
+			builder.WithPredicates(getPred(mtlsCaName, r.Namespace, true, true, false)),
 		).
 		Watches(
 			&corev1.Secret{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(hubAmAccessorSecretName, namespace, true, true, false)),
+			builder.WithPredicates(getPred(hubAmAccessorSecretName, r.Namespace, true, true, false)),
 		).
 		Watches(
 			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(operatorconfig.AllowlistConfigMapName, namespace, true, true, false)),
+			builder.WithPredicates(getPred(operatorconfig.AllowlistConfigMapName, r.Namespace, true, true, false)),
 		).
 		Watches(
 			&corev1.ConfigMap{},
@@ -561,17 +539,17 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Watches(
 			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(openshift.CaConfigmapName, namespace, false, true, true)),
+			builder.WithPredicates(getPred(openshift.CaConfigmapName, r.Namespace, false, true, true)),
 		).
 		Watches(
 			&appsv1.Deployment{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(metricsCollectorName, namespace, true, true, true)),
+			builder.WithPredicates(getPred(metricsCollectorName, r.Namespace, true, true, true)),
 		).
 		Watches(
 			&appsv1.Deployment{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(uwlMetricsCollectorName, namespace, true, true, true)),
+			builder.WithPredicates(getPred(uwlMetricsCollectorName, r.Namespace, true, true, true)),
 		).
 		Watches(
 			&rbacv1.ClusterRoleBinding{},
@@ -581,7 +559,7 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Watches(
 			&corev1.ConfigMap{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(getPred(operatorconfig.ImageConfigMap, namespace, true, true, false)),
+			builder.WithPredicates(getPred(operatorconfig.ImageConfigMap, r.Namespace, true, true, false)),
 		).
 		Watches(
 			&appsv1.StatefulSet{},
@@ -595,11 +573,11 @@ func (r *ObservabilityAddonReconciler) SetupWithManager(mgr ctrl.Manager) error 
 					return []reconcile.Request{
 						{NamespacedName: types.NamespacedName{
 							Name:      "metrics-collector-clientca-metric",
-							Namespace: namespace,
+							Namespace: r.Namespace,
 						}},
 						{NamespacedName: types.NamespacedName{
 							Name:      "uwl-metrics-collector-clientca-metric",
-							Namespace: namespace,
+							Namespace: r.Namespace,
 						}},
 					}
 				}

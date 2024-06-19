@@ -21,7 +21,6 @@ import (
 	observabilityshared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
-	"github.com/stolostron/multicluster-observability-operator/operators/pkg/rendering/templates"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -50,11 +49,8 @@ var (
 
 // TestIntegrationReconcileHypershift tests the reconcile function for hypershift CRDs.
 func TestIntegrationReconcileHypershift(t *testing.T) {
-	testNamespace := "open-cluster-management-observability"
-	namespace = testNamespace
-	hubNamespace = "local-cluster"
+	testNamespace := "test-ns"
 	installPrometheus = false
-	serviceAccountName = "endpoint-monitoring-operator"
 
 	scheme := createBaseScheme()
 	hyperv1.AddToScheme(scheme)
@@ -98,6 +94,9 @@ func TestIntegrationReconcileHypershift(t *testing.T) {
 		HubClient:             hubClientWithReload,
 		IsHubMetricsCollector: true,
 		Scheme:                scheme,
+		Namespace:             testNamespace,
+		HubNamespace:          "local-cluster",
+		ServiceAccountName:    "endpoint-monitoring-operator",
 	}
 
 	err = reconciler.SetupWithManager(mgr)
@@ -115,99 +114,6 @@ func TestIntegrationReconcileHypershift(t *testing.T) {
 	err = wait.Poll(1*time.Second, 5*time.Second, func() (bool, error) {
 		hypershiftEtcdSm := &promv1.ServiceMonitor{}
 		err := k8sClient.Get(context.Background(), types.NamespacedName{Namespace: hostedClusterNs + "-" + hostedClusterName, Name: hypershift.AcmEtcdSmName}, hypershiftEtcdSm)
-		if err != nil && errors.IsNotFound(err) {
-			return false, nil
-		}
-
-		return true, err
-	})
-	assert.NoError(t, err)
-}
-
-// TestIntegrationReconcileHypershift tests the reconcile function for hypershift CRDs.
-func TestIntegrationReconcileMicroshift(t *testing.T) {
-	testNamespace := "open-cluster-management-addon-observability"
-	namespace = testNamespace
-	hubNamespace = "microshift-cluster-a"
-	installPrometheus = true
-	serviceAccountName = "endpoint-monitoring-operator"
-
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("failed to get working dir %v", err)
-	}
-	os.Setenv(templates.TemplatesPathEnvVar, filepath.Join(filepath.Dir(filepath.Dir(wd)), "manifests"))
-
-	scheme := createBaseScheme()
-
-	k8sClientSpoke, err := client.New(restCfgSpoke, client.Options{Scheme: scheme})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	setupCommonSpokeResources(t, k8sClientSpoke)
-	defer tearDownCommonSpokeResources(t, k8sClientSpoke)
-
-	resourcesDeps := []client.Object{
-		newObservabilityAddonBis("observability-addon", testNamespace),
-		newMicroshiftVersionCM("kube-public"),
-		newMetricsAllowlistCM(testNamespace),
-	}
-	if err := createResources(k8sClientSpoke, resourcesDeps...); err != nil {
-		t.Fatalf("Failed to create resources: %v", err)
-	}
-
-	k8sHubClient, err := client.New(restCfgHub, client.Options{Scheme: scheme})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	setupCommonHubResources(t, k8sHubClient, testNamespace)
-	defer tearDownCommonHubResources(t, k8sHubClient, testNamespace)
-
-	// Create resources required for the microshift case on the hub
-	resourcesDeps = []client.Object{
-		makeNamespace(hubNamespace),
-		newObservabilityAddonBis("observability-addon", hubNamespace),
-	}
-	if err := createResources(k8sHubClient, resourcesDeps...); err != nil {
-		t.Fatalf("Failed to create resources on hub: %v", err)
-	}
-
-	mgr, err := ctrl.NewManager(testEnvSpoke.Config, ctrl.Options{
-		Scheme:  k8sClientSpoke.Scheme(),
-		Metrics: metricsserver.Options{BindAddress: "0"}, // Avoids port conflict with the default port 8080
-	})
-	assert.NoError(t, err)
-
-	hubClientWithReload, err := util.NewReloadableHubClientWithReloadFunc(func() (client.Client, error) {
-		return k8sHubClient, nil
-	})
-	assert.NoError(t, err)
-	reconciler := ObservabilityAddonReconciler{
-		Client:                k8sClientSpoke,
-		HubClient:             hubClientWithReload,
-		HostIP:                "192.168.10.10",
-		Scheme:                scheme,
-		IsHubMetricsCollector: false,
-	}
-
-	err = reconciler.SetupWithManager(mgr)
-	assert.NoError(t, err)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go func() {
-		err = mgr.Start(ctx)
-		assert.NoError(t, err)
-	}()
-
-	// Microshift resources must be created
-	// Checking the etcd service monitor that is specific to microshift
-	err = wait.Poll(1*time.Second, 5*time.Second, func() (bool, error) {
-		etcdSm := &promv1.ServiceMonitor{}
-		err := k8sClientSpoke.Get(context.Background(), types.NamespacedName{Namespace: testNamespace, Name: "etcd"}, etcdSm)
 		if err != nil && errors.IsNotFound(err) {
 			return false, nil
 		}
@@ -278,7 +184,6 @@ func TestMain(m *testing.M) {
 func createBaseScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
 	kubescheme.AddToScheme(scheme)
-	// hyperv1.AddToScheme(scheme)
 	promv1.AddToScheme(scheme)
 	oav1beta1.AddToScheme(scheme)
 	mcov1beta2.AddToScheme(scheme)
