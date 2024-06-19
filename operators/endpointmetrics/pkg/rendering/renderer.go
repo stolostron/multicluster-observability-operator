@@ -33,7 +33,6 @@ const (
 )
 
 var (
-	namespace       = "open-cluster-management-addon-observability"
 	log             = logf.Log.WithName("renderer")
 	disabledMetrics = []string{
 		"apiserver_admission_controller_admission_duration_seconds_bucket",
@@ -59,6 +58,7 @@ func Render(
 	r *rendererutil.Renderer,
 	c runtimeclient.Client,
 	hubInfo *operatorconfig.HubInfo,
+	namespace string,
 ) ([]*unstructured.Unstructured, error) {
 
 	isKindTest := false
@@ -224,7 +224,7 @@ func Render(
 			}
 
 			// replace the disabled metrics
-			disabledMetricsSt, err := getDisabledMetrics(ctx, c)
+			disabledMetricsSt, err := getDisabledMetrics(ctx, c, namespace)
 			if err != nil {
 				return nil, err
 			}
@@ -272,7 +272,7 @@ func Render(
 	return resources, nil
 }
 
-func getDisabledMetrics(ctx context.Context, c runtimeclient.Client) (string, error) {
+func getDisabledMetrics(ctx context.Context, c runtimeclient.Client, namespace string) (string, error) {
 	cm := &corev1.ConfigMap{}
 	err := c.Get(ctx, types.NamespacedName{Name: operatorconfig.AllowlistConfigMapName,
 		Namespace: namespace}, cm)

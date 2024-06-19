@@ -41,12 +41,12 @@ var (
 
 // initializes clusterMonitoringConfigReverted based on the presence of clusterMonitoringRevertedName
 // configmap in openshift-monitoring namespace.
-func initPersistedRevertState(ctx context.Context, client client.Client) error {
+func initPersistedRevertState(ctx context.Context, client client.Client, ns string) error {
 	if !persistedRevertStateRead {
 		// check if reverted configmap is present
 		found := &corev1.ConfigMap{}
 		err := client.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName,
-			Namespace: namespace}, found)
+			Namespace: ns}, found)
 		if err != nil {
 			// treat this as non-fatal error
 			if errors.IsNotFound(err) {
@@ -68,9 +68,9 @@ func initPersistedRevertState(ctx context.Context, client client.Client) error {
 	return nil
 }
 
-func isRevertedAlready(ctx context.Context, client client.Client) (bool, error) {
+func isRevertedAlready(ctx context.Context, client client.Client, ns string) (bool, error) {
 	log.Info("in isRevertedAlready")
-	err := initPersistedRevertState(ctx, client)
+	err := initPersistedRevertState(ctx, client, ns)
 	if err != nil {
 		log.Info("isRevertedAlready: error from initPersistedRevertState", "error:", err.Error())
 		return clusterMonitoringConfigReverted, err
@@ -80,8 +80,8 @@ func isRevertedAlready(ctx context.Context, client client.Client) (bool, error) 
 	}
 }
 
-func setConfigReverted(ctx context.Context, client client.Client) error {
-	err := initPersistedRevertState(ctx, client)
+func setConfigReverted(ctx context.Context, client client.Client, ns string) error {
+	err := initPersistedRevertState(ctx, client, ns)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func setConfigReverted(ctx context.Context, client client.Client) error {
 	c := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      clusterMonitoringRevertedName,
-			Namespace: namespace,
+			Namespace: ns,
 		},
 	}
 	err = client.Create(ctx, c)
@@ -107,8 +107,8 @@ func setConfigReverted(ctx context.Context, client client.Client) error {
 	return nil
 }
 
-func unsetConfigReverted(ctx context.Context, client client.Client) error {
-	err := initPersistedRevertState(ctx, client)
+func unsetConfigReverted(ctx context.Context, client client.Client, ns string) error {
+	err := initPersistedRevertState(ctx, client, ns)
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func unsetConfigReverted(ctx context.Context, client client.Client) error {
 	// delete any persistent state if present
 	c := &corev1.ConfigMap{}
 	err = client.Get(ctx, types.NamespacedName{Name: clusterMonitoringRevertedName,
-		Namespace: namespace}, c)
+		Namespace: ns}, c)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("persistent state already set. cluster-monitoring-reverted configmap does not exist")
@@ -160,39 +160,36 @@ func createHubAmRouterCASecret(
 		Namespace: targetNamespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			log.Info(fmt.Sprintf("creating %s/%s secret", targetNamespace, hubAmRouterCASecretName))
 			err = client.Create(ctx, hubAmRouterCASecret)
 			if err != nil {
-				log.Error(err, "failed to create the hub-alertmanager-router-ca secret")
-				return err
+				return fmt.Errorf("failed to create %s/%s secret: %w", targetNamespace, hubAmRouterCASecretName, err)
 			}
-			log.Info("the hub-alertmanager-router-ca secret is created")
 			return nil
 		} else {
-			log.Error(err, "failed to check the hub-alertmanager-router-ca secret")
-			return err
+			return fmt.Errorf("failed to check the %s/%s secret: %w", targetNamespace, hubAmRouterCASecretName, err)
 		}
 	}
 
-	log.Info("the hub-alertmanager-router-ca secret already exists, check if it needs to be updated")
 	if reflect.DeepEqual(found.Data, dataMap) {
-		log.Info("no change for the hub-alertmanager-router-ca secret")
 		return nil
-	} else {
-		err = client.Update(ctx, hubAmRouterCASecret)
-		if err != nil {
-			log.Error(err, "failed to update the hub-alertmanager-router-ca secret")
-			return nil
-		}
-		log.Info("the hub-alertmanager-router-ca secret is updated")
-		return err
 	}
+
+	log.Info(fmt.Sprintf("updating %s/%s secret", targetNamespace, hubAmRouterCASecretName))
+	err = client.Update(ctx, hubAmRouterCASecret)
+	if err != nil {
+		return fmt.Errorf("failed to update the %s/%s secret: %w", targetNamespace, hubAmRouterCASecretName, err)
+	}
+
+	return err
+
 }
 
 // createHubAmAccessorTokenSecret creates the secret that contains access token of the Hub's Alertmanager.
-func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, targetNamespace string) error {
-	amAccessorToken, err := getAmAccessorToken(ctx, client)
+func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, namespace, targetNamespace string) error {
+	amAccessorToken, err := getAmAccessorToken(ctx, client, namespace)
 	if err != nil {
-		return fmt.Errorf("fail to get the alertmanager accessor token: %w", err)
+		return fmt.Errorf("fail to get %s/%s secret: %w", namespace, hubAmAccessorSecretName, err)
 	}
 
 	dataMap := map[string][]byte{hubAmAccessorSecretKey: []byte(amAccessorToken)}
@@ -238,10 +235,10 @@ func createHubAmAccessorTokenSecret(ctx context.Context, client client.Client, t
 }
 
 // getAmAccessorToken retrieves the alertmanager access token from observability-alertmanager-accessor secret.
-func getAmAccessorToken(ctx context.Context, client client.Client) (string, error) {
+func getAmAccessorToken(ctx context.Context, client client.Client, ns string) (string, error) {
 	amAccessorSecret := &corev1.Secret{}
 	if err := client.Get(ctx, types.NamespacedName{Name: hubAmAccessorSecretName,
-		Namespace: namespace}, amAccessorSecret); err != nil {
+		Namespace: ns}, amAccessorSecret); err != nil {
 		return "", err
 	}
 
@@ -294,6 +291,7 @@ func createOrUpdateClusterMonitoringConfig(
 	clusterID string,
 	client client.Client,
 	installProm bool,
+	namespace string,
 ) error {
 	targetNamespace := promNamespace
 	if installProm {
@@ -305,20 +303,19 @@ func createOrUpdateClusterMonitoringConfig(
 	// create the hub-alertmanager-router-ca secret if it doesn't exist or update it if needed
 	if err := createHubAmRouterCASecret(ctx, hubInfo, client, targetNamespace); err != nil {
 		log.Error(err, "failed to create or update the hub-alertmanager-router-ca secret")
-		return err
+		return fmt.Errorf("failed to create or update the hub-alertmanager-router-ca secret: %w", err)
 	}
 
 	// create the observability-alertmanager-accessor secret if it doesn't exist or update it if needed
-	if err := createHubAmAccessorTokenSecret(ctx, client, targetNamespace); err != nil {
-		log.Error(err, "failed to create or update the observability-alertmanager-accessor secret")
-		return err
+	if err := createHubAmAccessorTokenSecret(ctx, client, namespace, targetNamespace); err != nil {
+		return fmt.Errorf("failed to create or update the alertmanager accessor token secret: %w", err)
 	}
 
 	// create or update the cluster-monitoring-config configmap and relevant resources
 	if hubInfo.AlertmanagerEndpoint == "" {
 		log.Info("request to disable alert forwarding")
 		// only revert (once) if not done already and remember state
-		revertedAlready, err := isRevertedAlready(ctx, client)
+		revertedAlready, err := isRevertedAlready(ctx, client, namespace)
 		if err != nil {
 			return err
 		}
@@ -326,7 +323,7 @@ func createOrUpdateClusterMonitoringConfig(
 			if err = revertClusterMonitoringConfig(ctx, client); err != nil {
 				return err
 			}
-			if err = setConfigReverted(ctx, client); err != nil {
+			if err = setConfigReverted(ctx, client, namespace); err != nil {
 				return err
 			}
 		} else {
@@ -337,7 +334,7 @@ func createOrUpdateClusterMonitoringConfig(
 
 	if installProm {
 		// no need to create configmap cluster-monitoring-config for *KS
-		return unset(ctx, client)
+		return unset(ctx, client, namespace)
 	}
 
 	// init the prometheus k8s config
@@ -388,7 +385,7 @@ func createOrUpdateClusterMonitoringConfig(
 				return err
 			}
 			log.Info("configmap created", "name", clusterMonitoringConfigName)
-			return unset(ctx, client)
+			return unset(ctx, client, namespace)
 		} else {
 			log.Error(err, "failed to check configmap", "name", clusterMonitoringConfigName)
 			return err
@@ -413,7 +410,7 @@ func createOrUpdateClusterMonitoringConfig(
 			return err
 		}
 		log.Info("configmap updated", "name", clusterMonitoringConfigName)
-		return unset(ctx, client)
+		return unset(ctx, client, namespace)
 	}
 
 	log.Info("configmap already exists and key config.yaml exists, check if the value needs update",
@@ -484,15 +481,15 @@ func createOrUpdateClusterMonitoringConfig(
 		return err
 	}
 	log.Info("configmap updated", "name", clusterMonitoringConfigName)
-	return unset(ctx, client)
+	return unset(ctx, client, namespace)
 }
 
 // unset config reverted flag after successfully updating cluster-monitoring-config
-func unset(ctx context.Context, client client.Client) error {
+func unset(ctx context.Context, client client.Client, ns string) error {
 	// if reverted before, reset so we can revert again
-	revertedAlready, err := isRevertedAlready(ctx, client)
+	revertedAlready, err := isRevertedAlready(ctx, client, ns)
 	if err == nil && revertedAlready {
-		err = unsetConfigReverted(ctx, client)
+		err = unsetConfigReverted(ctx, client, ns)
 	}
 	return err
 }

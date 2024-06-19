@@ -130,20 +130,24 @@ func main() {
 		os.Exit(1)
 	}
 
+	namespace := os.Getenv("NAMESPACE")
+	if namespace == "" {
+		namespace = os.Getenv("WATCH_NAMESPACE")
+	}
+
 	if err = (&obsepctl.ObservabilityAddonReconciler{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		HubClient: hubClientWithReload,
-		HostIP:    os.Getenv("HOST_IP"),
+		Client:                mgr.GetClient(),
+		Scheme:                mgr.GetScheme(),
+		HubClient:             hubClientWithReload,
+		HubNamespace:          os.Getenv("HUB_NAMESPACE"),
+		Namespace:             namespace,
+		ServiceAccountName:    os.Getenv("SERVICE_ACCOUNT"),
+		IsHubMetricsCollector: os.Getenv("HUB_ENDPOINT_OPERATOR") == "true",
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ObservabilityAddon")
 		os.Exit(1)
 	}
 
-	namespace := os.Getenv("NAMESPACE")
-	if namespace == "" {
-		namespace = os.Getenv("WATCH_NAMESPACE")
-	}
 	if err = (&statusctl.StatusReconciler{
 		Client:       mgr.GetClient(),
 		HubClient:    hubClientWithReload,

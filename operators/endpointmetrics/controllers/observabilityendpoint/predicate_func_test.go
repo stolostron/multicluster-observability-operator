@@ -15,6 +15,7 @@ import (
 
 func TestPredFunc(t *testing.T) {
 	name := "test-obj"
+	testNamespace := "test-ns"
 	caseList := []struct {
 		caseName       string
 		namespace      string
