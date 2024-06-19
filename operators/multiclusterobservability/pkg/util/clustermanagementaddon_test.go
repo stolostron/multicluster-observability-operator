@@ -93,6 +93,8 @@ func TestClusterManagmentAddon(t *testing.T) {
 		t.Fatalf("Failed to create new clustermanagementaddon: (%v)", err)
 	}
 
+	delete(clusterManagementAddon.ObjectMeta.Annotations, addonv1alpha1.AddonLifecycleAnnotationKey)
+
 	if err := c.Create(context.TODO(), clusterManagementAddon); err != nil {
 		t.Fatalf("Failed to create clustermanagementaddon: (%v)", err)
 	}
