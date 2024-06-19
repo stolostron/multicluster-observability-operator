@@ -27,6 +27,7 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/collector"
 	oashared "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
+	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	operatorconfig "github.com/stolostron/multicluster-observability-operator/operators/pkg/config"
 )
 
@@ -51,9 +52,15 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 			},
 			Log:       logr.Logger{},
 			Namespace: namespace,
-			ObsAddonSpec: &oashared.ObservabilityAddonSpec{
-				EnableMetrics: true,
-				Interval:      60,
+			ObsAddon: &oav1beta1.ObservabilityAddon{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-addon",
+					Namespace: namespace,
+				},
+				Spec: oashared.ObservabilityAddonSpec{
+					EnableMetrics: true,
+					Interval:      60,
+				},
 			},
 			ServiceAccountName: "test-sa",
 		}
@@ -102,7 +109,7 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 		"Should have 0 replicas when metrics is disabled and is not hub collector": {
 			newMetricsCollector: func() *collector.MetricsCollector {
 				ret := baseMetricsCollector()
-				ret.ObsAddonSpec.EnableMetrics = false
+				ret.ObsAddon.Spec.EnableMetrics = false
 				ret.ClusterInfo.IsHubMetricsCollector = false
 				return ret
 			},
@@ -116,7 +123,7 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 		"Hub metrics collector should have 1 replica even if metrics is disabled": {
 			newMetricsCollector: func() *collector.MetricsCollector {
 				ret := baseMetricsCollector()
-				ret.ObsAddonSpec.EnableMetrics = false
+				ret.ObsAddon.Spec.EnableMetrics = false
 				ret.ClusterInfo.IsHubMetricsCollector = true
 				return ret
 			},
@@ -226,7 +233,7 @@ func TestMetricsCollectorResourcesUpdate(t *testing.T) {
 
 			metricsCollector := tc.newMetricsCollector()
 			metricsCollector.Client = c
-			if err := metricsCollector.Update(context.Background(), tc.request); err != nil {
+			if err := metricsCollector.Reconcile(context.Background(), tc.request); err != nil {
 				t.Fatalf("Failed to update metrics collector: %v", err)
 			}
 
