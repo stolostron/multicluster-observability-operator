@@ -3,7 +3,7 @@ FROM registry.ci.openshift.org/stolostron/builder:go1.21-linux AS builder
 RUN GOBIN=/usr/local/bin go install github.com/brancz/gojsontoyaml@latest
 
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 RUN mkdir /metrics-extractor
 RUN mkdir /ocp-tools
 RUN microdnf install wget -y \

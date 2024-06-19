@@ -9,7 +9,7 @@ COPY ./tests ./tests
 RUN go install github.com/onsi/ginkgo/ginkgo@v1.14.2 && go mod vendor && ginkgo build ./tests/pkg/tests/
 
 # create new docker image to hold built artifacts
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
 # pre-create directories and set permissions
 RUN mkdir -p /resources /results /workspace/.kube && \

@@ -194,7 +194,6 @@ replace (
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring => github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.53.1
 	github.com/prometheus/common => github.com/prometheus/common v0.53.0
 	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.51.1-0.20240325140356-78c0fd2f4d75
-	golang.org/x/net => golang.org/x/net v0.17.0
 	k8s.io/api => k8s.io/api v0.29.0
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.29.0
 	k8s.io/apimachinery => k8s.io/apimachinery v0.29.2
