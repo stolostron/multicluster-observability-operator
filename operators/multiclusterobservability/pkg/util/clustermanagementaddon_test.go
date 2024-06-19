@@ -64,6 +64,14 @@ func TestClusterManagmentAddon(t *testing.T) {
 		}
 	}
 
+	if selfMgmt, found := addon.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey]; found == false {
+		t.Fatalf("no AddonLifecycle included")
+	} else {
+		if selfMgmt != addonv1alpha1.AddonLifecycleSelfManageAnnotationValue {
+			t.Fatalf("Wrong AddonLifecycle annotation: %s", selfMgmt)
+		}
+	}
+
 	err = DeleteClusterManagementAddon(c)
 	if err != nil {
 		t.Fatalf("Failed to delete clustermanagementaddon: (%v)", err)
@@ -77,4 +85,47 @@ func TestClusterManagmentAddon(t *testing.T) {
 	if err == nil || !errors.IsNotFound(err) {
 		t.Fatalf("Failed to delete clustermanagementaddon: (%v)", err)
 	}
+
+	// Create a clustermanagement addon without the requires selfmgmt annotation
+	// and then make sure it's set during updates.
+	clusterManagementAddon, err := newClusterManagementAddon(c)
+	if err != nil {
+		t.Fatalf("Failed to create new clustermanagementaddon: (%v)", err)
+	}
+
+	delete(clusterManagementAddon.ObjectMeta.Annotations, addonv1alpha1.AddonLifecycleAnnotationKey)
+
+	if err := c.Create(context.TODO(), clusterManagementAddon); err != nil {
+		t.Fatalf("Failed to create clustermanagementaddon: (%v)", err)
+	}
+
+	_, err = CreateClusterManagementAddon(c)
+	if err != nil {
+		t.Fatalf("Failed to create clustermanagementaddon: (%v)", err)
+	}
+
+	err = c.Get(context.TODO(),
+		types.NamespacedName{
+			Name: ObservabilityController,
+		},
+		addon,
+	)
+
+	if err != nil {
+		t.Fatalf("Failed to get clustermanagementaddon: (%v)", err)
+	}
+	if selfMgmt, found := addon.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey]; found == false {
+		t.Fatalf("no AddonLifecycle included")
+	} else {
+		if selfMgmt != addonv1alpha1.AddonLifecycleSelfManageAnnotationValue {
+			t.Fatalf("Wrong AddonLifecycle annotation: %s", selfMgmt)
+		}
+	}
+
+	// delete it again for good measure
+	err = DeleteClusterManagementAddon(c)
+	if err != nil {
+		t.Fatalf("Failed to delete clustermanagementaddon: (%v)", err)
+	}
+
 }
