@@ -49,14 +49,19 @@ func CreateClusterManagementAddon(c client.Client) (
 	} else if err != nil {
 		log.Error(err, "Cannot create observability-controller clustermanagementaddon")
 		return nil, err
-	} else if found.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey] != addonv1alpha1.AddonLifecycleSelfManageAnnotationValue {
+	} else if found.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey] !=
+		addonv1alpha1.AddonLifecycleSelfManageAnnotationValue {
 		// We need to set "addon.open-cluster-management.io/lifecycle: self" because
 		// we're not correctly setting supportedConfigs and desiredConfig->specHash
 		// ManagedClusterAddOn objects. This should probably be fixed correctly later.
 		// If this is not done the MCA will never get past progressing as the
 		// addon-manager-controller is otherwise looking for these properties to be set
 		// before progressing.
-		found.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey] = addonv1alpha1.AddonLifecycleSelfManageAnnotationValue
+		if found.ObjectMeta.Annotations == nil {
+			found.ObjectMeta.Annotations = map[string]string{}
+		}
+		found.ObjectMeta.Annotations[addonv1alpha1.AddonLifecycleAnnotationKey] =
+			addonv1alpha1.AddonLifecycleSelfManageAnnotationValue
 		err := c.Update(context.TODO(), found)
 		if err != nil {
 			log.Error(err, "Failed to update observability-controller clustermanagementaddon ")
