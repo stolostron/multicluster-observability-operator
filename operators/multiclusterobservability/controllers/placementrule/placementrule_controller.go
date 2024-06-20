@@ -199,6 +199,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if operatorconfig.IsMCOTerminating {
 		delete(managedClusterList, "local-cluster")
 	}
+
 	if !deleteAll {
 		if err := createAllRelatedRes(
 			r.Client,
@@ -579,6 +580,33 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 		return err
 	}
 	return nil
+}
+
+// areManagedClusterLabelsReady check if labels automatically set in the managed cluster
+// are ready to be accessed. These labels are: "vendor" and "openshiftVersion".
+// Labels are considered not ready when:
+//
+// - The "vendor" label isn't found.
+// - The "vendor" label has value "auto-detect".
+// - The "vendor" has value "openshift" but there is no "openshiftVersion".
+func areManagedClusterLabelsReady(obj client.Object) bool {
+	labels := obj.GetLabels()
+	vendor, foundVendor := labels["vendor"]
+
+	if !foundVendor || vendor == "" || vendor == "auto-detect" {
+		log.Info("ManagedCluster labels are not ready", "cluster", obj.GetName())
+		return false
+	}
+
+	if vendor == "OpenShift" {
+		_, foundOpenshiftVersion := labels["openshiftVersion"]
+		if !foundOpenshiftVersion {
+			log.Info("ManagedCluster labels are not ready", "cluster", obj.GetName())
+			return false
+		}
+	}
+
+	return true
 }
 
 func updateManagedClusterList(obj client.Object) {
