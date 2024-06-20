@@ -8,7 +8,7 @@ COPY tools/simulator/alert-forward/main.go tools/simulator/alert-forward/main.go
 
 RUN CGO_ENABLED=1 go build -a -installsuffix cgo -o bin/alert-forwarder tools/simulator/alert-forward/main.go
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
 ENV MAIN_BINARY=/usr/local/bin/alert-forwarder \
     USER_UID=1001 \

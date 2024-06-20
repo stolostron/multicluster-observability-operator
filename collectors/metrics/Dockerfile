@@ -9,7 +9,7 @@ COPY ./operators/pkg ./operators/pkg
 COPY ./operators/multiclusterobservability/api ./operators/multiclusterobservability/api
 RUN CGO_ENABLED=1 go build -a -installsuffix cgo -v -o metrics-collector ./collectors/metrics/cmd/metrics-collector/main.go
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
 ARG VCS_REF
 ARG VCS_URL

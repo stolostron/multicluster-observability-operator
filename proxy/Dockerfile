@@ -8,7 +8,7 @@ COPY ./proxy ./proxy
 
 RUN CGO_ENABLED=1 go build -a -installsuffix cgo -v -o main proxy/cmd/main.go
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
 ARG VCS_REF
 ARG VCS_URL
