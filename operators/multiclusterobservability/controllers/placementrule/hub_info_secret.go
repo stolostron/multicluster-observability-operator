@@ -34,7 +34,7 @@ func generateHubInfoSecret(client client.Client, obsNamespace string,
 			log.Error(err, "Failed to get the host for Observatorium API host URL")
 			return nil, err
 		}
-		obsAPIHost = obsAPIURL.Hostname()
+		obsAPIHost = obsAPIURL.Host
 
 		// if alerting is disabled, do not set alertmanagerEndpoint
 		if !config.IsAlertingDisabled() {

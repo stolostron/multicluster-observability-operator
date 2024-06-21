@@ -193,7 +193,10 @@ func TestNewSecret(t *testing.T) {
 		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA, clusterName+" "+"https://test-host"+" "+"test-host"+" "+routerCA)
 	}
 
-	mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{CustomObservabilityHubURL: "https://custom-obs", CustomAlertmanagerHubURL: "https://custom-am"}
+	mco.Spec.AdvancedConfig = &mcov1beta2.AdvancedConfig{
+		CustomObservabilityHubURL: "https://custom-obs:8080",
+		CustomAlertmanagerHubURL:  "https://custom-am",
+	}
 	c = fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	hubInfo, err = generateHubInfoSecret(c, mcoNamespace, namespace, true)
 	if err != nil {
@@ -204,7 +207,7 @@ func TestNewSecret(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to unmarshal data in hub info secret (%v)", err)
 	}
-	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://custom-obs") || !strings.HasPrefix(hub.AlertmanagerEndpoint, "https://custom-am") || hub.AlertmanagerRouterCA != routerCA {
+	if !strings.HasPrefix(hub.ObservatoriumAPIEndpoint, "https://custom-obs:8080") || !strings.HasPrefix(hub.AlertmanagerEndpoint, "https://custom-am") || hub.AlertmanagerRouterCA != routerCA {
 		t.Fatalf("Wrong content in hub info secret: \ngot: "+hub.ObservatoriumAPIEndpoint+" "+hub.AlertmanagerEndpoint+" "+hub.AlertmanagerRouterCA, clusterName+" "+"https://custom-obs"+" "+"custom-obs"+" "+routerCA)
 	}
 
