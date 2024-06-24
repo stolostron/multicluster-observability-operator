@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
@@ -43,9 +42,9 @@ import (
 )
 
 var (
-	log                  = ctrl.Log.WithName("controllers").WithName("ObservabilityAddon")
-	installPrometheus, _ = strconv.ParseBool(os.Getenv(operatorconfig.InstallPrometheus))
-	globalRes            = []*unstructured.Unstructured{}
+	log = ctrl.Log.WithName("controllers").WithName("ObservabilityAddon")
+	// r.InstallPrometheus, _ = strconv.ParseBool(os.Getenv(operatorconfig.InstallPrometheus))
+	globalRes = []*unstructured.Unstructured{}
 )
 
 const (
@@ -70,6 +69,7 @@ type ObservabilityAddonReconciler struct {
 	Namespace             string
 	HubNamespace          string
 	ServiceAccountName    string
+	InstallPrometheus     bool
 }
 
 // +kubebuilder:rbac:groups=observability.open-cluster-management.io.open-cluster-management.io,resources=observabilityaddons,verbs=get;list;watch;create;update;patch;delete
@@ -180,7 +180,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
-	if !installPrometheus {
+	if !r.InstallPrometheus {
 		// If no prometheus service found, set status as NotSupported
 		promSvc := &corev1.Service{}
 		err = r.Client.Get(ctx, types.NamespacedName{
@@ -277,7 +277,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	// create or update the cluster-monitoring-config configmap and relevant resources
-	if err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, clusterID, r.Client, installPrometheus, r.Namespace); err != nil {
+	if err := createOrUpdateClusterMonitoringConfig(ctx, hubInfo, clusterID, r.Client, r.InstallPrometheus, r.Namespace); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to create or update cluster monitoring config: %w", err)
 	}
 
@@ -299,7 +299,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 		ClusterInfo: collector.ClusterInfo{
 			ClusterID:             clusterID,
 			ClusterType:           clusterType,
-			InstallPrometheus:     installPrometheus,
+			InstallPrometheus:     r.InstallPrometheus,
 			IsHubMetricsCollector: r.IsHubMetricsCollector,
 		},
 		HubInfo:            hubInfo,
@@ -354,7 +354,7 @@ func (r *ObservabilityAddonReconciler) initFinalization(
 		// SHould we return true if metricscollector is not found as that means
 		// metrics collector is not present? Moved this part up as we need to clean
 		// up cm and crb before we remove the finalizer - is that the right way to do it?
-		if !installPrometheus {
+		if !r.InstallPrometheus {
 			err = openshift.DeleteMonitoringClusterRoleBinding(ctx, r.Client)
 			if err != nil {
 				log.Error(err, "Failed to delete monitoring cluster role binding")

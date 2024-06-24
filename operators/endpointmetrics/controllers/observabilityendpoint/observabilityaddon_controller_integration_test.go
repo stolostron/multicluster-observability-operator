@@ -50,7 +50,6 @@ var (
 // TestIntegrationReconcileHypershift tests the reconcile function for hypershift CRDs.
 func TestIntegrationReconcileHypershift(t *testing.T) {
 	testNamespace := "test-ns"
-	installPrometheus = false
 
 	scheme := createBaseScheme()
 	hyperv1.AddToScheme(scheme)
@@ -97,6 +96,7 @@ func TestIntegrationReconcileHypershift(t *testing.T) {
 		Namespace:             testNamespace,
 		HubNamespace:          "local-cluster",
 		ServiceAccountName:    "endpoint-monitoring-operator",
+		InstallPrometheus:     false,
 	}
 
 	err = reconciler.SetupWithManager(mgr)
