@@ -46,48 +46,49 @@ func TestUpdateStatus(t *testing.T) {
 			},
 		},
 	}
-	err = s.statusClient.Create(context.TODO(), addon)
+	ctx := context.Background()
+	err = s.statusClient.Create(ctx, addon)
 	if err != nil {
 		t.Fatalf("Failed to create observabilityAddon: (%v)", err)
 	}
 
-	err = s.UpdateStatus("Disabled", "enableMetrics is set to False")
+	err = s.UpdateStatus(ctx, "Disabled", "enableMetrics is set to False")
 	if err != nil {
 		t.Fatalf("Failed to update status: (%v)", err)
 	}
 
-	err = s.UpdateStatus("Ready", "Metrics collector deployed and functional")
+	err = s.UpdateStatus(ctx, "Ready", "Metrics collector deployed and functional")
 	if err != nil {
 		t.Fatalf("Failed to update status: (%v)", err)
 	}
 
-	err = s.UpdateStatus("Ready", "Metrics collector deployed and updated")
+	err = s.UpdateStatus(ctx, "Ready", "Metrics collector deployed and updated")
 	if err != nil {
 		t.Fatalf("Failed to update status: (%v)", err)
 	}
 
-	err = s.UpdateStatus("Available", "Cluster metrics sent successfully")
+	err = s.UpdateStatus(ctx, "Available", "Cluster metrics sent successfully")
 	if err != nil {
 		t.Fatalf("Failed to update status: (%v)", err)
 	}
 
 	os.Setenv("FROM", uwlPromURL)
-	err = s.UpdateStatus("Degraded", "Failed to retrieve metrics")
+	err = s.UpdateStatus(ctx, "Degraded", "Failed to retrieve metrics")
 	if err != nil {
 		t.Fatalf("Failed to update status: (%v)", err)
 	}
 
-	err = s.UpdateStatus("Degraded", "Failed to send metrics")
+	err = s.UpdateStatus(ctx, "Degraded", "Failed to send metrics")
 	if err != nil {
 		t.Fatalf("Failed to update status: (%v)", err)
 	}
 
-	err = s.UpdateStatus("Available", "Cluster metrics sent successfully")
+	err = s.UpdateStatus(ctx, "Available", "Cluster metrics sent successfully")
 	if err != nil {
 		t.Fatalf("Failed to update status: (%v)", err)
 	}
 	os.Setenv("FROM", "")
-	err = s.UpdateStatus("Available", "Cluster metrics sent successfully")
+	err = s.UpdateStatus(ctx, "Available", "Cluster metrics sent successfully")
 	if err != nil {
 		t.Fatalf("Failed to update status: (%v)", err)
 	}
