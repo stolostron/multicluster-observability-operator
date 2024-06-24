@@ -433,20 +433,22 @@ func (w *Worker) forward(ctx context.Context) error {
 	}
 
 	req := &http.Request{Method: "POST", URL: w.to}
-	err = w.toClient.RemoteWrite(ctx, req, families, w.interval)
-	if err != nil {
-		statusErr := w.status.UpdateStatus(ctx, "Degraded", "Failed to send metrics")
-		if statusErr != nil {
-			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
+	if err := w.toClient.RemoteWrite(ctx, req, families, w.interval); err != nil {
+		if err := w.status.UpdateStatus(ctx, "Degraded", "Failed to send metrics"); err != nil {
+			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", err)
 		}
-	} else if w.simulatedTimeseriesFile == "" {
-		statusErr := w.status.UpdateStatus(ctx, "Available", "Cluster metrics sent successfully")
-		if statusErr != nil {
-			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
-		}
+		return err
 	}
 
-	return err
+	if w.simulatedTimeseriesFile == "" {
+		if err := w.status.UpdateStatus(ctx, "Available", "Cluster metrics sent successfully"); err != nil {
+			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", err)
+		}
+	} else {
+		rlogger.Log(w.logger, rlogger.Warn, "msg", "Simulated metrics sent successfully")
+	}
+
+	return nil
 }
 
 func (w *Worker) getFederateMetrics(ctx context.Context) ([]*clientmodel.MetricFamily, error) {
