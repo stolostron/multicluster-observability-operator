@@ -14,8 +14,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -404,12 +402,6 @@ func (m *MetricsCollector) ensureServiceMonitor(ctx context.Context, isUWL bool)
 		if !equality.Semantic.DeepDerivative(desiredSm.Spec, foundSm.Spec) {
 			m.Log.Info("Updating ServiceMonitor", "name", name, "namespace", m.Namespace)
 
-			// To Delete
-			diff := cmp.Diff(desiredSm.Spec, foundSm.Spec)
-			if diff != "" {
-				m.Log.Info("ServiceMonitor diff", "diff", diff)
-			}
-
 			foundSm.Spec = desiredSm.Spec
 			if err := m.Client.Update(ctx, foundSm); err != nil {
 				return fmt.Errorf("failed to update ServiceMonitor %s/%s: %w", m.Namespace, name, err)
@@ -495,12 +487,6 @@ func (m *MetricsCollector) ensureAlertingRule(ctx context.Context, isUWL bool) e
 
 		if !equality.Semantic.DeepDerivative(desiredPromRule.Spec, foundPromRule.Spec) {
 			m.Log.Info("Updating PrometheusRule", "name", name, "namespace", m.Namespace)
-
-			// To Delete
-			diff := cmp.Diff(desiredPromRule.Spec, foundPromRule.Spec)
-			if diff != "" {
-				m.Log.Info("PrometheusRule diff", "diff", diff)
-			}
 
 			foundPromRule.Spec = desiredPromRule.Spec
 			if err := m.Client.Update(ctx, foundPromRule); err != nil {
@@ -782,14 +768,6 @@ func (m *MetricsCollector) ensureDeployment(ctx context.Context, isUWL bool, dep
 			m.Log.Info("Updating Deployment", "name", name, "namespace", m.Namespace, "isDifferentSpec", isDifferentSpec, "isDifferentReplicas", isDifferentReplicas, "forceRestart", deployParams.forceRestart)
 			if deployParams.forceRestart && foundMetricsCollectorDep.Status.ReadyReplicas != 0 {
 				desiredMetricsCollectorDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
-			}
-
-			// ToDelete
-			if isDifferentSpec {
-				diff := cmp.Diff(desiredMetricsCollectorDep.Spec.Template.Spec, foundMetricsCollectorDep.Spec.Template.Spec, cmpopts.IgnoreFields(corev1.PodSpec{}, "DNSPolicy", "SchedulerName", "SecurityContext", "TerminationGracePeriodSeconds"))
-				if diff != "" {
-					m.Log.Info("PodSpec diff", "diff", diff)
-				}
 			}
 
 			desiredMetricsCollectorDep.ResourceVersion = foundMetricsCollectorDep.ResourceVersion
