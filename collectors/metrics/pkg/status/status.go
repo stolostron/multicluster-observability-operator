@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -64,7 +65,7 @@ func New(logger log.Logger) (*StatusReport, error) {
 	}, nil
 }
 
-func (s *StatusReport) UpdateStatus(t string, m string) error {
+func (s *StatusReport) UpdateStatus(ctx context.Context, t string, m string) error {
 	if s.statusClient == nil {
 		return nil
 	}
@@ -72,27 +73,40 @@ func (s *StatusReport) UpdateStatus(t string, m string) error {
 	if strings.Contains(os.Getenv("FROM"), uwlPromURL) {
 		isUwl = true
 	}
-	addon := &oav1beta1.ObservabilityAddon{}
-	err := s.statusClient.Get(context.TODO(), types.NamespacedName{
-		Name:      name,
-		Namespace: namespace,
-	}, addon)
-	if err != nil {
-		logger.Log(s.logger, logger.Error, "err", err)
-		return err
-	}
-	update := false
-	found := false
-	conditions := []oav1beta1.StatusCondition{}
-	latestC := oav1beta1.StatusCondition{}
-	message, conditionType, reason := mergeCondtion(isUwl, m, addon.Status.Conditions[len(addon.Status.Conditions)-1])
-	for _, c := range addon.Status.Conditions {
-		if c.Status == metav1.ConditionTrue {
-			if c.Type != conditionType {
-				c.Status = metav1.ConditionFalse
+
+	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		addon := &oav1beta1.ObservabilityAddon{}
+		err := s.statusClient.Get(ctx, types.NamespacedName{
+			Name:      name,
+			Namespace: namespace,
+		}, addon)
+		if err != nil {
+			return fmt.Errorf("failed to get ObservabilityAddon %s/%s: %w", namespace, name, err)
+		}
+		update := false
+		found := false
+		conditions := []oav1beta1.StatusCondition{}
+		latestC := oav1beta1.StatusCondition{}
+		message, conditionType, reason := mergeCondtion(isUwl, m, addon.Status.Conditions[len(addon.Status.Conditions)-1])
+		for _, c := range addon.Status.Conditions {
+			if c.Status == metav1.ConditionTrue {
+				if c.Type != conditionType {
+					c.Status = metav1.ConditionFalse
+				} else {
+					found = true
+					if c.Reason != reason || c.Message != message {
+						c.Reason = reason
+						c.Message = message
+						c.LastTransitionTime = metav1.NewTime(time.Now())
+						update = true
+						latestC = c
+						continue
+					}
+				}
 			} else {
-				found = true
-				if c.Reason != reason || c.Message != message {
+				if c.Type == conditionType {
+					found = true
+					c.Status = metav1.ConditionTrue
 					c.Reason = reason
 					c.Message = message
 					c.LastTransitionTime = metav1.NewTime(time.Now())
@@ -101,40 +115,33 @@ func (s *StatusReport) UpdateStatus(t string, m string) error {
 					continue
 				}
 			}
-		} else {
-			if c.Type == conditionType {
-				found = true
-				c.Status = metav1.ConditionTrue
-				c.Reason = reason
-				c.Message = message
-				c.LastTransitionTime = metav1.NewTime(time.Now())
-				update = true
-				latestC = c
-				continue
+			conditions = append(conditions, c)
+		}
+		if update {
+			conditions = append(conditions, latestC)
+		}
+		if !found {
+			conditions = append(conditions, oav1beta1.StatusCondition{
+				Type:               conditionType,
+				Status:             metav1.ConditionTrue,
+				Reason:             reason,
+				Message:            message,
+				LastTransitionTime: metav1.NewTime(time.Now()),
+			})
+			update = true
+		}
+		if update {
+			addon.Status.Conditions = conditions
+			err = s.statusClient.Status().Update(ctx, addon)
+			if err != nil {
+				return fmt.Errorf("failed to update ObservabilityAddon %s/%s: %w", namespace, name, err)
 			}
 		}
-		conditions = append(conditions, c)
-	}
-	if update {
-		conditions = append(conditions, latestC)
-	}
-	if !found {
-		conditions = append(conditions, oav1beta1.StatusCondition{
-			Type:               conditionType,
-			Status:             metav1.ConditionTrue,
-			Reason:             reason,
-			Message:            message,
-			LastTransitionTime: metav1.NewTime(time.Now()),
-		})
-		update = true
-	}
-	if update {
-		addon.Status.Conditions = conditions
-		err = s.statusClient.Status().Update(context.TODO(), addon)
-		if err != nil {
-			logger.Log(s.logger, logger.Error, "err", err)
-		}
-		return err
+		return nil
+	})
+	if retryErr != nil {
+		logger.Log(s.logger, logger.Error, "err", retryErr)
+		return retryErr
 	}
 	return nil
 }
