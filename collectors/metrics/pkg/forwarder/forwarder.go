@@ -378,7 +378,7 @@ func (w *Worker) forward(ctx context.Context) error {
 	} else {
 		families, err = w.getFederateMetrics(ctx)
 		if err != nil {
-			statusErr := w.status.UpdateStatus("Degraded", "Failed to retrieve metrics")
+			statusErr := w.status.UpdateStatus(ctx, "Degraded", "Failed to retrieve metrics")
 			if statusErr != nil {
 				rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
 			}
@@ -387,7 +387,7 @@ func (w *Worker) forward(ctx context.Context) error {
 
 		rfamilies, err := w.getRecordingMetrics(ctx)
 		if err != nil && len(rfamilies) == 0 {
-			statusErr := w.status.UpdateStatus("Degraded", "Failed to retrieve recording metrics")
+			statusErr := w.status.UpdateStatus(ctx, "Degraded", "Failed to retrieve recording metrics")
 			if statusErr != nil {
 				rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
 			}
@@ -399,7 +399,7 @@ func (w *Worker) forward(ctx context.Context) error {
 
 	before := metricfamily.MetricsCount(families)
 	if err := metricfamily.Filter(families, w.transformer); err != nil {
-		statusErr := w.status.UpdateStatus("Degraded", "Failed to filter metrics")
+		statusErr := w.status.UpdateStatus(ctx, "Degraded", "Failed to filter metrics")
 		if statusErr != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
 		}
@@ -416,7 +416,7 @@ func (w *Worker) forward(ctx context.Context) error {
 
 	if len(families) == 0 {
 		rlogger.Log(w.logger, rlogger.Warn, "msg", "no metrics to send, doing nothing")
-		statusErr := w.status.UpdateStatus("Available", "No metrics to send")
+		statusErr := w.status.UpdateStatus(ctx, "Available", "No metrics to send")
 		if statusErr != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
 		}
@@ -425,7 +425,7 @@ func (w *Worker) forward(ctx context.Context) error {
 
 	if w.to == nil {
 		rlogger.Log(w.logger, rlogger.Warn, "msg", "to is nil, doing nothing")
-		statusErr := w.status.UpdateStatus("Available", "Metrics is not required to send")
+		statusErr := w.status.UpdateStatus(ctx, "Available", "Metrics is not required to send")
 		if statusErr != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
 		}
@@ -435,12 +435,12 @@ func (w *Worker) forward(ctx context.Context) error {
 	req := &http.Request{Method: "POST", URL: w.to}
 	err = w.toClient.RemoteWrite(ctx, req, families, w.interval)
 	if err != nil {
-		statusErr := w.status.UpdateStatus("Degraded", "Failed to send metrics")
+		statusErr := w.status.UpdateStatus(ctx, "Degraded", "Failed to send metrics")
 		if statusErr != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
 		}
 	} else if w.simulatedTimeseriesFile == "" {
-		statusErr := w.status.UpdateStatus("Available", "Cluster metrics sent successfully")
+		statusErr := w.status.UpdateStatus(ctx, "Available", "Cluster metrics sent successfully")
 		if statusErr != nil {
 			rlogger.Log(w.logger, rlogger.Warn, "msg", failedStatusReportMsg, "err", statusErr)
 		}
