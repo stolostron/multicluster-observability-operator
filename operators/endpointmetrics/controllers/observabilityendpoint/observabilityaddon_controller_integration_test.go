@@ -131,11 +131,7 @@ func TestMain(m *testing.M) {
 
 	rootPath := filepath.Join("..", "..", "..")
 	spokeCrds := readCRDFiles(
-		filepath.Join(rootPath, "multiclusterobservability", "config", "crd", "bases", "observability.open-cluster-management.io_multiclusterobservabilities.yaml"),
 		filepath.Join(rootPath, "multiclusterobservability", "config", "crd", "bases", "observability.open-cluster-management.io_observabilityaddons.yaml"),
-		filepath.Join(rootPath, "endpointmetrics", "manifests", "prometheus", "crd", "servicemonitor_crd_0_53_1.yaml"),
-		filepath.Join(rootPath, "endpointmetrics", "manifests", "prometheus", "crd", "prometheusrule_crd_0_53_1.yaml"),
-		filepath.Join(rootPath, "endpointmetrics", "manifests", "prometheus", "crd", "prometheus_crd_0_73_2.yaml"),
 	)
 	testEnvSpoke = &envtest.Environment{
 		CRDDirectoryPaths:       []string{filepath.Join("testdata", "crd"), filepath.Join("..", "..", "config", "crd", "bases")},
@@ -149,15 +145,15 @@ func TestMain(m *testing.M) {
 		panic(fmt.Sprintf("Failed to start spoke test environment: %v", err))
 	}
 
-	// spokeCrds = readCRDFiles(
-	// 	filepath.Join(rootPath, "multiclusterobservability", "config", "crd", "bases", "observability.open-cluster-management.io_multiclusterobservabilities.yaml"),
-	// 	filepath.Join(rootPath, "multiclusterobservability", "config", "crd", "bases", "observability.open-cluster-management.io_multiclusterobservabilities.yaml"),
-	// 	filepath.Join(rootPath, "endpointmetrics", "manifests", "prometheus", "crd", "servicemonitor_crd_0_53_1.yaml"),
-	// 	filepath.Join(rootPath, "endpointmetrics", "manifests", "prometheus", "crd", "prometheusrule_crd_0_53_1.yaml"),
-	// )
+	hubCRDs := readCRDFiles(
+		filepath.Join(rootPath, "multiclusterobservability", "config", "crd", "bases", "observability.open-cluster-management.io_multiclusterobservabilities.yaml"),
+		filepath.Join(rootPath, "endpointmetrics", "manifests", "prometheus", "crd", "servicemonitor_crd_0_53_1.yaml"),
+	)
+	hubCRDs = append(hubCRDs, spokeCrds...)
+
 	testEnvHub = &envtest.Environment{
 		CRDDirectoryPaths:       []string{filepath.Join("testdata", "crd"), filepath.Join("..", "..", "..", "config", "crd", "bases")},
-		CRDs:                    spokeCrds,
+		CRDs:                    hubCRDs,
 		ControlPlaneStopTimeout: 5 * time.Minute,
 	}
 

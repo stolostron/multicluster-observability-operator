@@ -163,7 +163,8 @@ rules:
   - cronjobs
   - jobs
   verbs:
-  - '*'
+  - list
+  - watch
 - apiGroups:
   - certificates.k8s.io
   resources:
