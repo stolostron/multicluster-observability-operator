@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -90,11 +91,18 @@ func (s *StatusReport) UpdateStatus(ctx context.Context, t string, m string) err
 		if err != nil {
 			return fmt.Errorf("failed to get ObservabilityAddon %s/%s: %w", namespace, name, err)
 		}
+
+		// Sort the conditions by rising LastTransitionTime
+		sort.Slice(addon.Status.Conditions, func(i, j int) bool {
+			return addon.Status.Conditions[i].LastTransitionTime.Before(&addon.Status.Conditions[j].LastTransitionTime)
+		})
+		currentCondition := addon.Status.Conditions[len(addon.Status.Conditions)-1]
+
 		update := false
 		found := false
 		conditions := []oav1beta1.StatusCondition{}
 		latestC := oav1beta1.StatusCondition{}
-		message, conditionType, reason := mergeCondtion(isUwl, m, addon.Status.Conditions[len(addon.Status.Conditions)-1])
+		message, conditionType, reason := mergeCondtion(isUwl, m, currentCondition)
 		for _, c := range addon.Status.Conditions {
 			if c.Status == metav1.ConditionTrue {
 				if c.Type != conditionType {
