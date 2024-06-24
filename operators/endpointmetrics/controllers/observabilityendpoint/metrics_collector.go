@@ -7,7 +7,6 @@ package observabilityendpoint
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -18,10 +17,12 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/openshift"
@@ -593,91 +594,137 @@ func updateMetricsCollector(ctx context.Context, c client.Client, params Collect
 		name = uwlMetricsCollectorName
 	}
 
-	log.Info("updateMetricsCollector", "name", name)
-
-	foundService := &corev1.Service{}
-	err := c.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: namespace}, foundService)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			service := createService(params)
-			err = c.Create(ctx, service)
-			if err != nil {
-				log.Error(err, "Failed to create service", "name", resourceName)
-				return false, err
+	desiredService := createService(params)
+	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		foundService := &corev1.Service{}
+		err := c.Get(ctx, types.NamespacedName{Name: metricsCollector, Namespace: namespace}, foundService)
+		if err != nil && errors.IsNotFound(err) {
+			log.Info("Creating Service", "name", metricsCollector, "namespace", namespace)
+			if err := c.Create(ctx, desiredService); err != nil {
+				return fmt.Errorf("failed to create service %s/%s: %w", namespace, metricsCollector, err)
 			}
-			log.Info("Created service ", "name", resourceName)
-		} else {
-			log.Error(err, "Failed to check the service", "name", resourceName)
-			return false, err
+
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("failed to get service %s/%s: %w", namespace, metricsCollector, err)
 		}
+
+		if !equality.Semantic.DeepDerivative(desiredService.Spec, foundService.Spec) {
+			log.Info("Updating Service", "name", metricsCollector, "namespace", namespace)
+
+			foundService.Spec = desiredService.Spec
+			if err := c.Update(ctx, foundService); err != nil {
+				return fmt.Errorf("failed to update service %s/%s: %w", namespace, metricsCollector, err)
+			}
+		}
+
+		return nil
+	})
+
+	if retryErr != nil {
+		return false, retryErr
 	}
 
-	foundSM := &monitoringv1.ServiceMonitor{}
-	err = c.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: namespace}, foundSM)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			serviceMonitor := createServiceMonitor(params)
-			err = c.Create(ctx, serviceMonitor)
-			if err != nil {
-				log.Error(err, "Failed to create service monitor", "name", resourceName)
-				return false, err
+	desiredSm := createServiceMonitor(params)
+	retryErr = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		foundSm := &monitoringv1.ServiceMonitor{}
+		err := c.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: namespace}, foundSm)
+		if err != nil && errors.IsNotFound(err) {
+			log.Info("Creating ServiceMonitor", "name", resourceName, "namespace", namespace)
+			if err := c.Create(ctx, desiredSm); err != nil {
+				return fmt.Errorf("failed to create ServiceMonitor %s/%s: %w", namespace, resourceName, err)
 			}
-			log.Info("Created servicemonitor ", "name", resourceName)
-		} else {
-			log.Error(err, "Failed to check the servicemonitor", "name", resourceName)
-			return false, err
+
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("failed to get ServiceMonitor %s/%s: %w", namespace, resourceName, err)
 		}
+
+		if !equality.Semantic.DeepDerivative(desiredSm.Spec, foundSm.Spec) {
+			log.Info("Updating ServiceMonitor", "name", resourceName, "namespace", namespace)
+
+			foundSm.Spec = desiredSm.Spec
+			if err := c.Update(ctx, foundSm); err != nil {
+				return fmt.Errorf("failed to update ServiceMonitor %s/%s: %w", namespace, resourceName, err)
+			}
+		}
+
+		return nil
+	})
+
+	if retryErr != nil {
+		return false, retryErr
 	}
 
-	foundAlert := &monitoringv1.PrometheusRule{}
-	err = c.Get(ctx, types.NamespacedName{Name: "acm-" + resourceName + "-alerting-rules", Namespace: namespace}, foundAlert)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			alertingRules := createAlertingRule(params)
-			err = c.Create(ctx, alertingRules)
-			if err != nil {
-				log.Error(err, "Failed to create alerting rules", "name", "acm-"+resourceName+"-alerting-rules")
-				return false, err
+	promRuleName := "acm-" + resourceName + "-alerting-rules"
+	desiredPromRule := createAlertingRule(params)
+	retryErr = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		foundPromRule := &monitoringv1.PrometheusRule{}
+		err := c.Get(ctx, types.NamespacedName{Name: promRuleName, Namespace: namespace}, foundPromRule)
+		if err != nil && errors.IsNotFound(err) {
+			log.Info("Creating PrometheusRule", "name", promRuleName, "namespace", namespace)
+			if err := c.Create(ctx, desiredPromRule); err != nil {
+				return fmt.Errorf("failed to create PrometheusRule %s/%s: %w", namespace, promRuleName, err)
 			}
-			log.Info("Created alerting rules ", "name", "acm-"+resourceName+"-alerting-rules")
-		} else {
-			log.Error(err, "Failed to check the alerting rules", "name", "acm-"+resourceName+"-alerting-rules")
-			return false, err
+
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("failed to get PrometheusRule %s/%s: %w", namespace, promRuleName, err)
 		}
+
+		if !equality.Semantic.DeepDerivative(desiredPromRule.Spec, foundPromRule.Spec) {
+			log.Info("Updating PrometheusRule", "name", promRuleName, "namespace", namespace)
+
+			foundPromRule.Spec = desiredPromRule.Spec
+			if err := c.Update(ctx, foundPromRule); err != nil {
+				return fmt.Errorf("failed to update PrometheusRule %s/%s: %w", namespace, promRuleName, err)
+			}
+		}
+
+		return nil
+	})
+
+	if retryErr != nil {
+		return false, retryErr
 	}
 
-	deployment := createDeployment(params)
-	found := &appsv1.Deployment{}
-	err = c.Get(ctx, types.NamespacedName{Name: name,
-		Namespace: namespace}, found)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			err = c.Create(ctx, deployment)
-			if err != nil {
-				log.Error(err, "Failed to create deployment", "name", name)
-				return false, err
+	desiredMetricsCollectorDep := createDeployment(params)
+	retryErr = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		foundMetricsCollectorDep := &appsv1.Deployment{}
+		err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, foundMetricsCollectorDep)
+		if err != nil && errors.IsNotFound(err) {
+			log.Info("Creating Deployment", "name", name, "namespace", namespace)
+			if err := c.Create(ctx, desiredMetricsCollectorDep); err != nil {
+				return fmt.Errorf("failed to create Deployment %s/%s: %w", namespace, name, err)
 			}
-			log.Info("Created deployment ", "name", name)
-		} else {
-			log.Error(err, "Failed to check the deployment", "name", name)
-			return false, err
+		} else if err != nil {
+			return fmt.Errorf("failed to get Deployment %s/%s: %w", namespace, name, err)
 		}
-	} else {
-		if !reflect.DeepEqual(deployment.Spec.Template.Spec, found.Spec.Template.Spec) ||
-			!reflect.DeepEqual(deployment.Spec.Replicas, found.Spec.Replicas) ||
-			forceRestart {
-			deployment.ObjectMeta.ResourceVersion = found.ObjectMeta.ResourceVersion
-			if forceRestart && found.Status.ReadyReplicas != 0 {
-				deployment.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
+
+		isDifferentSpec := !equality.Semantic.DeepDerivative(desiredMetricsCollectorDep.Spec.Template.Spec, foundMetricsCollectorDep.Spec.Template.Spec)
+		isDifferentReplicas := !equality.Semantic.DeepEqual(desiredMetricsCollectorDep.Spec.Replicas, foundMetricsCollectorDep.Spec.Replicas)
+		if isDifferentSpec || isDifferentReplicas || forceRestart {
+			log.Info("Updating Deployment", "name", name, "namespace", namespace, "isDifferentSpec", isDifferentSpec, "isDifferentReplicas", isDifferentReplicas, "forceRestart", forceRestart)
+			if forceRestart && foundMetricsCollectorDep.Status.ReadyReplicas != 0 {
+				desiredMetricsCollectorDep.Spec.Template.ObjectMeta.Labels[restartLabel] = time.Now().Format("2006-1-2.1504")
 			}
-			err = c.Update(ctx, deployment)
-			if err != nil {
-				log.Error(err, "Failed to update deployment", "name", name)
-				return false, err
+
+			desiredMetricsCollectorDep.ResourceVersion = foundMetricsCollectorDep.ResourceVersion
+
+			if err := c.Update(ctx, desiredMetricsCollectorDep); err != nil {
+				return fmt.Errorf("failed to update Deployment %s/%s: %w", namespace, name, err)
 			}
-			log.Info("Updated deployment ", "name", name)
+
+			return nil
 		}
+
+		return nil
+	})
+
+	if retryErr != nil {
+		return false, retryErr
 	}
+
 	return true, nil
 }
 
