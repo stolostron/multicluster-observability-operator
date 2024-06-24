@@ -42,8 +42,7 @@ import (
 )
 
 var (
-	log = ctrl.Log.WithName("controllers").WithName("ObservabilityAddon")
-	// r.InstallPrometheus, _ = strconv.ParseBool(os.Getenv(operatorconfig.InstallPrometheus))
+	log       = ctrl.Log.WithName("controllers").WithName("ObservabilityAddon")
 	globalRes = []*unstructured.Unstructured{}
 )
 

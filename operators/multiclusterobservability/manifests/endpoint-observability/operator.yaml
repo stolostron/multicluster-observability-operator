@@ -53,10 +53,6 @@ spec:
               value: "false"
             - name: PULL_SECRET
               value: "REPLACE_WITH_IMAGEPULLSECRET"
-            - name: HOST_IP # Needed for microshift
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.hostIP
           volumeMounts:
             - name: hub-kubeconfig-secret
               mountPath: "/spoke/hub-kubeconfig"
