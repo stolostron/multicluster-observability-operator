@@ -359,53 +359,6 @@ func TestManifestWork(t *testing.T) {
 		)
 	}
 
-	// Check if HTTP_PROXY, HTTPS_PROXY, and NO_PROXY are present and set correctly
-	containers := endpointMetricsOperatorDeploy.Spec.Template.Spec.Containers
-	for _, container := range containers {
-		if container.Name == "endpoint-observability-operator" {
-			env := container.Env
-			foundHTTPProxy := false
-			foundHTTPSProxy := false
-			foundNOProxy := false
-			foundCABundle := false
-			for _, e := range env {
-				if e.Name == "HTTP_PROXY" {
-					foundHTTPProxy = true
-					if e.Value != "http://foo.com" {
-						t.Fatalf("HTTP_PROXY is not set correctly: expected %s, got %s", "http://foo.com", e.Value)
-					}
-				} else if e.Name == "HTTPS_PROXY" {
-					foundHTTPSProxy = true
-					if e.Value != "https://foo.com" {
-						t.Fatalf("HTTPS_PROXY is not set correctly: expected %s, got %s", "https://foo.com", e.Value)
-					}
-				} else if e.Name == "NO_PROXY" {
-					foundNOProxy = true
-					if e.Value != "bar.com" {
-						t.Fatalf("NO_PROXY is not set correctly: expected %s, got %s", "bar.com", e.Value)
-					}
-				} else if e.Name == "HTTPS_PROXY_CA_BUNDLE" {
-					foundCABundle = true
-					if e.Value != base64.StdEncoding.EncodeToString([]byte{0x01, 0x02, 0x03, 0xAB, 0xCD, 0xEF}) {
-						t.Fatalf("HTTPS_PROXY_CA_BUNDLE is not set correctly")
-					}
-				}
-			}
-			if !foundHTTPProxy {
-				t.Fatalf("HTTP_PROXY is not present in env")
-			}
-			if !foundHTTPSProxy {
-				t.Fatalf("HTTPS_PROXY is not present in env")
-			}
-			if !foundNOProxy {
-				t.Fatalf("NO_PROXY is not present in env")
-			}
-			if !foundCABundle {
-				t.Fatalf("HTTPS_PROXY_CA_BUNDLE is not present in env")
-			}
-		}
-	}
-
 	found := &workv1.ManifestWork{}
 	workName := namespace + workNameSuffix
 	err = c.Get(context.TODO(), types.NamespacedName{Name: workName, Namespace: namespace}, found)
@@ -499,6 +452,57 @@ func TestManifestWork(t *testing.T) {
 			if !strings.Contains(string(manifest.Raw), "registry_server") {
 				t.Errorf("endpoint-observability-operator should use the custom registry image")
 			}
+
+			// Check if HTTP_PROXY, HTTPS_PROXY, and NO_PROXY are present and set correctly
+			containers := obj.Object["spec"].(map[string]interface{})["template"].(map[string]interface{})["spec"].(map[string]interface{})["containers"].([]interface{})
+			for _, container := range containers {
+				c := container.(map[string]interface{})
+				if c["name"] == "endpoint-observability-operator" {
+					foundHTTPProxy := false
+					foundHTTPSProxy := false
+					foundNOProxy := false
+					foundCABundle := false
+					//rewrite the below to check for env variables
+					env := c["env"].([]interface{})
+					for _, e := range env {
+						e := e.(map[string]interface{})
+						if e["name"] == "HTTP_PROXY" {
+							foundHTTPProxy = true
+							if e["value"] != "http://foo.com" {
+								t.Errorf("HTTP_PROXY is not set correctly: expected %s, got %s", "http://foo.com", e["value"])
+							}
+						} else if e["name"] == "HTTPS_PROXY" {
+							foundHTTPSProxy = true
+							if e["value"] != "https://foo.com" {
+								t.Errorf("HTTPS_PROXY is not set correctly: expected %s, got %s", "https://foo.com", e["value"])
+							}
+						} else if e["name"] == "NO_PROXY" {
+							foundNOProxy = true
+							if e["value"] != "bar.com" {
+								t.Errorf("NO_PROXY is not set correctly: expected %s, got %s", "bar.com", e["value"])
+							}
+						} else if e["name"] == "HTTPS_PROXY_CA_BUNDLE" {
+							foundCABundle = true
+							if e["value"] != base64.StdEncoding.EncodeToString([]byte{0x01, 0x02, 0x03, 0xAB, 0xCD, 0xEF}) {
+								t.Errorf("HTTPS_PROXY_CA_BUNDLE is not set correctly: expected %s, got %s", base64.StdEncoding.EncodeToString([]byte{0x01, 0x02, 0x03, 0xAB, 0xCD, 0xEF}), e["value"])
+							}
+						}
+					}
+					if !foundHTTPProxy {
+						t.Fatalf("HTTP_PROXY is not present in env")
+					}
+					if !foundHTTPSProxy {
+						t.Fatalf("HTTPS_PROXY is not present in env")
+					}
+					if !foundNOProxy {
+						t.Fatalf("NO_PROXY is not present in env")
+					}
+					if !foundCABundle {
+						t.Fatalf("HTTPS_PROXY_CA_BUNDLE is not present in env")
+					}
+				}
+			}
+
 		}
 	}
 }
