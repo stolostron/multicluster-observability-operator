@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -104,7 +103,7 @@ func (s *StatusReport) UpdateStatus(ctx context.Context, t string, m string) err
 
 		// Reset the status of other main conditions
 		for i := range addon.Status.Conditions {
-			if slices.Contains([]string{"Available", "Degraded", "Progressing"}, addon.Status.Conditions[i].Type) {
+			if addon.Status.Conditions[i].Type == "Available" || addon.Status.Conditions[i].Type == "Degraded" || addon.Status.Conditions[i].Type == "Progressing" {
 				addon.Status.Conditions[i].Status = metav1.ConditionFalse
 			}
 		}
