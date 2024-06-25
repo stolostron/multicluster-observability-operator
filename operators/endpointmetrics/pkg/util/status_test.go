@@ -158,6 +158,24 @@ func TestReportStatus(t *testing.T) {
 				}
 			},
 		},
+		"only one of the main conditions should be true": {
+			currentConditions: []oav1beta1.StatusCondition{
+				{Type: "Progressing", Status: metav1.ConditionTrue},
+				{Type: "Degraded", Status: metav1.ConditionTrue},
+				{Type: "Available", Status: metav1.ConditionTrue},
+			},
+			newCondition: util.Deployed,
+			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
+				assert.Len(t, conditions, 3)
+				for _, c := range conditions {
+					if c.Type == "Progressing" {
+						assert.Equal(t, metav1.ConditionTrue, c.Status)
+					} else {
+						assert.Equal(t, metav1.ConditionFalse, c.Status)
+					}
+				}
+			},
+		},
 	}
 
 	for name, tc := range testCases {

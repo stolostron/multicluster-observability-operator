@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -22,7 +23,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/stolostron/multicluster-observability-operator/collectors/metrics/pkg/logger"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 )
 
@@ -74,9 +74,11 @@ func New(logger log.Logger) (*StatusReport, error) {
 }
 
 func (s *StatusReport) UpdateStatus(ctx context.Context, t string, m string) error {
+	// statusClient is nil when running on the hub.
 	if s.statusClient == nil {
 		return nil
 	}
+
 	isUwl := false
 	if strings.Contains(os.Getenv("FROM"), uwlPromURL) {
 		isUwl = true
@@ -96,72 +98,40 @@ func (s *StatusReport) UpdateStatus(ctx context.Context, t string, m string) err
 		sort.Slice(addon.Status.Conditions, func(i, j int) bool {
 			return addon.Status.Conditions[i].LastTransitionTime.Before(&addon.Status.Conditions[j].LastTransitionTime)
 		})
-		currentCondition := addon.Status.Conditions[len(addon.Status.Conditions)-1]
 
-		update := false
-		found := false
-		conditions := []oav1beta1.StatusCondition{}
-		latestC := oav1beta1.StatusCondition{}
-		message, conditionType, reason := mergeCondtion(isUwl, m, currentCondition)
-		for _, c := range addon.Status.Conditions {
-			if c.Status == metav1.ConditionTrue {
-				if c.Type != conditionType {
-					c.Status = metav1.ConditionFalse
-				} else {
-					found = true
-					if c.Reason != reason || c.Message != message {
-						c.Reason = reason
-						c.Message = message
-						c.LastTransitionTime = metav1.NewTime(time.Now())
-						update = true
-						latestC = c
-						continue
-					}
-				}
-			} else {
-				if c.Type == conditionType {
-					found = true
-					c.Status = metav1.ConditionTrue
-					c.Reason = reason
-					c.Message = message
-					c.LastTransitionTime = metav1.NewTime(time.Now())
-					update = true
-					latestC = c
-					continue
-				}
-			}
-			conditions = append(conditions, c)
+		currentCondition := addon.Status.Conditions[len(addon.Status.Conditions)-1]
+		newCondition := mergeCondtion(isUwl, m, currentCondition)
+
+		// If the current condition is the same, do not update
+		if currentCondition.Type == newCondition.Type && currentCondition.Reason == newCondition.Reason && currentCondition.Message == newCondition.Message && currentCondition.Status == newCondition.Status {
+			return nil
 		}
-		if update {
-			conditions = append(conditions, latestC)
-		}
-		if !found {
-			conditions = append(conditions, oav1beta1.StatusCondition{
-				Type:               conditionType,
-				Status:             metav1.ConditionTrue,
-				Reason:             reason,
-				Message:            message,
-				LastTransitionTime: metav1.NewTime(time.Now()),
-			})
-			update = true
-		}
-		if update {
-			addon.Status.Conditions = conditions
-			err = s.statusClient.Status().Update(ctx, addon)
-			if err != nil {
-				return fmt.Errorf("failed to update ObservabilityAddon %s/%s: %w", namespace, name, err)
+
+		s.logger.Log("msg", fmt.Sprintf("Updating status of ObservabilityAddon %s/%s", namespace, name), "type", newCondition.Type, "status", newCondition.Status, "reason", newCondition.Reason)
+
+		// Reset the status of other main conditions
+		for i := range addon.Status.Conditions {
+			if slices.Contains([]string{"Available", "Degraded", "Progressing"}, addon.Status.Conditions[i].Type) {
+				addon.Status.Conditions[i].Status = metav1.ConditionFalse
 			}
 		}
+
+		// Set the new condition
+		addon.Status.Conditions = mutateOrAppend(addon.Status.Conditions, newCondition)
+
+		if err := s.statusClient.Status().Update(ctx, addon); err != nil {
+			return fmt.Errorf("failed to update ObservabilityAddon %s/%s: %w", namespace, name, err)
+		}
+
 		return nil
 	})
 	if retryErr != nil {
-		logger.Log(s.logger, logger.Error, "err", retryErr)
 		return retryErr
 	}
 	return nil
 }
 
-func mergeCondtion(isUwl bool, m string, condition oav1beta1.StatusCondition) (string, string, string) {
+func mergeCondtion(isUwl bool, m string, condition oav1beta1.StatusCondition) oav1beta1.StatusCondition {
 	messages := strings.Split(condition.Message, " ; ")
 	if len(messages) == 1 {
 		messages = append(messages, "")
@@ -181,5 +151,30 @@ func mergeCondtion(isUwl bool, m string, condition oav1beta1.StatusCondition) (s
 		conditionType = "Degraded"
 		reason = "Degraded"
 	}
-	return message, conditionType, reason
+	return oav1beta1.StatusCondition{
+		Type:               conditionType,
+		Status:             metav1.ConditionTrue,
+		Reason:             reason,
+		Message:            message,
+		LastTransitionTime: metav1.NewTime(time.Now()),
+	}
+}
+
+// mutateOrAppend updates the status conditions with the new condition.
+// If the condition already exists, it updates it with the new condition.
+// If the condition does not exist, it appends the new condition to the status conditions.
+func mutateOrAppend(conditions []oav1beta1.StatusCondition, newCondition oav1beta1.StatusCondition) []oav1beta1.StatusCondition {
+	if len(conditions) == 0 {
+		return []oav1beta1.StatusCondition{newCondition}
+	}
+
+	for i, condition := range conditions {
+		if condition.Type == newCondition.Type {
+			// Update the existing condition
+			conditions[i] = newCondition
+			return conditions
+		}
+	}
+	// If the condition type does not exist, append the new condition
+	return append(conditions, newCondition)
 }
