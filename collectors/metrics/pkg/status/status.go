@@ -74,6 +74,11 @@ func New(logger log.Logger) (*StatusReport, error) {
 }
 
 func (s *StatusReport) UpdateStatus(ctx context.Context, t string, m string) error {
+	// statusClient is nil when running on the hub.
+	if s.statusClient == nil {
+		return nil
+	}
+
 	isUwl := false
 	if strings.Contains(os.Getenv("FROM"), uwlPromURL) {
 		isUwl = true
