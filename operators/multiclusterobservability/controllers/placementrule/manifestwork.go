@@ -184,7 +184,7 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 	log.Info("Updating manifestwork", "namespace", namespace, "name", name)
 	for _, m := range work.Spec.Workload.Manifests {
 		if m.RawExtension.Object.GetObjectKind().GroupVersionKind().Kind == "Deployment" {
-			log.Info("Deployment", "namespace", namespace, "name", "data", m.RawExtension.String())
+			log.Info("Deployment", "namespace", namespace, "data", m.RawExtension.String())
 		}
 	}
 
