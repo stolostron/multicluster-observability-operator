@@ -6,6 +6,7 @@ package util
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
@@ -72,8 +73,10 @@ func ReportStatus(ctx context.Context, client client.Client, conditionReason Con
 		}
 
 		obsAddon.Status.Conditions = deduplicateConditions(obsAddon.Status.Conditions)
-
+		obsAddon.Status.Conditions = resetMainConditionsStatus(obsAddon.Status.Conditions)
 		obsAddon.Status.Conditions = mutateOrAppend(obsAddon.Status.Conditions, newCondition)
+
+		log.Info(fmt.Sprintf("Updating status of ObservabilityAddon %s/%s", addonNs, addonName), "type", newCondition.Type, "reason", newCondition.Reason)
 
 		if len(obsAddon.Status.Conditions) > MaxStatusConditionsCount {
 			obsAddon.Status.Conditions = obsAddon.Status.Conditions[len(obsAddon.Status.Conditions)-MaxStatusConditionsCount:]
@@ -146,4 +149,13 @@ func deduplicateConditions(conditions []oav1beta1.StatusCondition) []oav1beta1.S
 	}
 
 	return deduplicatedConditions
+}
+
+func resetMainConditionsStatus(conditions []oav1beta1.StatusCondition) []oav1beta1.StatusCondition {
+	for i := range conditions {
+		if conditions[i].Type == "Available" || conditions[i].Type == "Degraded" || conditions[i].Type == "Progressing" {
+			conditions[i].Status = metav1.ConditionFalse
+		}
+	}
+	return conditions
 }
