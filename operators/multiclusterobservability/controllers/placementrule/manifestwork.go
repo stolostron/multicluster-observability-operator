@@ -405,6 +405,7 @@ func createManifestWorks(
 			}
 		}
 		// Set HUB_ENDPOINT_OPERATOR when the endpoint operator is installed in hub cluster
+		log.Info("Set HUB_ENDPOINT_OPERATOR to true", "cluster", clusterName, "localClusterName", localClusterName)
 		spec.Containers[0].Env = append(spec.Containers[0].Env, corev1.EnvVar{
 			Name:  "HUB_ENDPOINT_OPERATOR",
 			Value: "true",
