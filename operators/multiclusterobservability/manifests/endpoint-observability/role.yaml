@@ -64,6 +64,12 @@ rules:
   - get
   - update
 - apiGroups:
+  - observability.open-cluster-management.io
+  resources:
+  - observabilityaddons/finalizers
+  verbs:
+  - update
+- apiGroups:
   - config.openshift.io
   resources:
   - clusterversions
