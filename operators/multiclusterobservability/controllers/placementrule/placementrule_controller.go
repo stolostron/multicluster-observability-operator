@@ -423,6 +423,7 @@ func createAllRelatedRes(
 					managedCluster, config.GetDefaultNamespace(),
 					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecretCopy, installProm)
 			} else {
+				log.Info("Code path AAA")
 				err = createManagedClusterRes(c, mco,
 					managedCluster, managedCluster,
 					works, metricsAllowlistConfigMap, crdv1Work, endpointMetricsOperatorDeploy, hubInfoSecret, false)

@@ -182,6 +182,12 @@ func createManifestwork(c client.Client, work *workv1.ManifestWork) error {
 	}
 
 	log.Info("Updating manifestwork", "namespace", namespace, "name", name)
+	for _, m := range work.Spec.Workload.Manifests {
+		if m.RawExtension.Object.GetObjectKind().GroupVersionKind().Kind == "Deployment" {
+			log.Info("Deployment", "namespace", namespace, "name", "data", m.RawExtension.String())
+		}
+	}
+
 	found.Spec.Workload.Manifests = work.Spec.Workload.Manifests
 	err = c.Update(context.TODO(), found)
 	if err != nil {
@@ -405,7 +411,7 @@ func createManifestWorks(
 			}
 		}
 		// Set HUB_ENDPOINT_OPERATOR when the endpoint operator is installed in hub cluster
-		log.Info("Set HUB_ENDPOINT_OPERATOR to true", "cluster", clusterName, "localClusterName", localClusterName)
+		log.Info("Set HUB_ENDPOINT_OPERATOR to true", "cluster", clusterName, "localClusterName", localClusterName, "namespace", work.ObjectMeta.Namespace)
 		spec.Containers[0].Env = append(spec.Containers[0].Env, corev1.EnvVar{
 			Name:  "HUB_ENDPOINT_OPERATOR",
 			Value: "true",
