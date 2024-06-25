@@ -312,8 +312,8 @@ func createManifestWorks(
 	imageRegistryClient := NewImageRegistryClient(c)
 
 	// inject the endpoint operator deployment
-	endpointMetricsOperatorDeploy = dep.DeepCopy()
-	spec := endpointMetricsOperatorDeploy.Spec.Template.Spec
+	endpointMetricsOperatorDeployCopy := dep.DeepCopy()
+	spec := endpointMetricsOperatorDeployCopy.Spec.Template.Spec
 	if addonConfig.Spec.NodePlacement != nil {
 		spec.NodeSelector = addonConfig.Spec.NodePlacement.NodeSelector
 		spec.Tolerations = addonConfig.Spec.NodePlacement.Tolerations
@@ -410,8 +410,8 @@ func createManifestWorks(
 			Value: "true",
 		})
 	}
-	endpointMetricsOperatorDeploy.Spec.Template.Spec = spec
-	manifests = injectIntoWork(manifests, endpointMetricsOperatorDeploy)
+	endpointMetricsOperatorDeployCopy.Spec.Template.Spec = spec
+	manifests = injectIntoWork(manifests, endpointMetricsOperatorDeployCopy)
 	// replace the pull secret and addon components image
 	if hasCustomRegistry {
 		log.Info("Replace the default pull secret to custom pull secret", "cluster", clusterName)
