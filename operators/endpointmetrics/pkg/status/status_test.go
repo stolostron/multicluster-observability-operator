@@ -164,7 +164,7 @@ func TestReportStatus(t *testing.T) {
 				{Type: "Degraded", Status: metav1.ConditionTrue},
 				{Type: "Available", Status: metav1.ConditionTrue},
 			},
-			newCondition: util.Deployed,
+			newCondition: status.Deployed,
 			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
 				assert.Len(t, conditions, 3)
 				for _, c := range conditions {

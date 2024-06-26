@@ -214,8 +214,7 @@ func (r *ObservabilityAddonReconciler) Reconcile(ctx context.Context, req ctrl.R
 			clusterType = operatorconfig.OcpThreeClusterType
 		}
 
-		isSNO, err := openshift.IsSNO(ctx, r.Client)
-		if err != nil {
+		if isSNO, err := openshift.IsSNO(ctx, r.Client); err != nil {
 			log.Error(err, "Failed to check if the cluster is SNO")
 		} else if isSNO {
 			clusterType = operatorconfig.SnoClusterType
