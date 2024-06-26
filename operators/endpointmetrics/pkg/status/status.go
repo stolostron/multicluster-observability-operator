@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -54,6 +55,7 @@ var (
 			Status:  metav1.ConditionTrue,
 		},
 	}
+	log = ctrl.Log.WithName("status")
 )
 
 func ReportStatus(ctx context.Context, client client.Client, conditionReason ConditionReason, addonName, addonNs string) error {
