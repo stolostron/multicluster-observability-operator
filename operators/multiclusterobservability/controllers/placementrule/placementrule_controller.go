@@ -97,22 +97,20 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// In the case when hubSelfManagement is enabled, we will delete it from the list and modify the object
 	// to cater to the use case of deploying in open-cluster-management-observability namespace
 	if req.Name == "local-cluster" {
-		managedClusterListMutex.Lock()
-		delete(managedClusterList, "local-cluster")
-		managedClusterListMutex.Unlock()
-		if _, ok := managedClusterList["local-cluster"]; !ok {
-			obj := &clusterv1.ManagedCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "local-cluster",
-					Namespace: config.GetDefaultNamespace(),
-					Labels: map[string]string{
-						"openshiftVersion": "mimical",
-					},
-				},
-			}
-			installMetricsWithoutAddon = true
-			updateManagedClusterList(obj)
-		}
+		//if _, ok := managedClusterList["local-cluster"]; !ok {
+		//	obj := &clusterv1.ManagedCluster{
+		//		ObjectMeta: metav1.ObjectMeta{
+		//			Name:      "local-cluster",
+		//			Namespace: config.GetDefaultNamespace(),
+		//			Labels: map[string]string{
+		//				"openshiftVersion": "mimical",
+		//			},
+		//		},
+		//	}
+		//
+		//	updateManagedClusterList(obj)
+		//}
+		installMetricsWithoutAddon = true
 	}
 
 	if config.GetMonitoringCRName() == "" {
@@ -618,6 +616,10 @@ func areManagedClusterLabelsReady(obj client.Object) bool {
 func updateManagedClusterList(obj client.Object) {
 	managedClusterListMutex.Lock()
 	defer managedClusterListMutex.Unlock()
+	if obj.GetName() == localClusterName {
+		managedClusterList[obj.GetName()] = "mimical"
+		return
+	}
 	if version, ok := obj.GetLabels()["openshiftVersion"]; ok {
 		managedClusterList[obj.GetName()] = version
 	} else {
