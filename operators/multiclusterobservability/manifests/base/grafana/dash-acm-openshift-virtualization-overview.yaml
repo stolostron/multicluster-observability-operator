@@ -57,12 +57,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "transparent",
-                    "value": null
-                  },
-                  {
                     "color": "red",
-                    "value": 1
+                    "value": null
                   }
                 ]
               }
@@ -95,7 +91,8 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "count(sum by (clusterID)(ALERTS{kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\",cluster=~\"$cluster\",operator_health_impact=\"critical\"})) or vector(0)",
+              "expr": "count(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"} == 2) or vector(0)",
+              "instant": false,
               "interval": "",
               "legendFormat": "",
               "refId": "A"
@@ -118,12 +115,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "transparent",
-                    "value": null
-                  },
-                  {
                     "color": "orange",
-                    "value": 1
+                    "value": null
                   }
                 ]
               }
@@ -156,7 +149,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "count(sum by(clusterID)(ALERTS{kubernetes_operator_part_of=\"kubevirt\", alertstate=\"firing\",cluster=~\"$cluster\",operator_health_impact=\"warning\"})) or vector(0)",
+              "expr": "count(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"} == 1) or vector(0)",
               "interval": "",
               "legendFormat": "",
               "refId": "A"
@@ -171,7 +164,7 @@ data:
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "thresholds"
+                "mode": "fixed"
               },
               "links": [],
               "mappings": [],
@@ -284,7 +277,7 @@ data:
           "targets": [
             {
               "exemplar": true,
-              "expr": "count by (version)(count by (cluster, version) (csv_succeeded{name=~\".*hyperconverged.*\",cluster=~\"$cluster\"}))",
+              "expr": "count by (version)( count by (cluster, version) (\n    csv_succeeded{name=~\".*hyperconverged.*\", cluster=~\"$cluster\"}\n    and on (cluster) (\n      max by (cluster) (csv_succeeded{name=~\".*hyperconverged.*\", cluster=~\"$cluster\"})\n    )))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -294,7 +287,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "count by (version)(count by (cluster, version) (csv_succeeded{name=~\".*hyperconverged.*\",cluster=~\"$cluster\"}))\n/\n(count by (version) (csv_succeeded{name=~\".*hyperconverged.*\"}))",
+              "expr": "count by (version)( count by (cluster, version) (\n    csv_succeeded{name=~\".*hyperconverged.*\", cluster=~\"$cluster\"}\n    and on (cluster) (\n      max by (cluster) (csv_succeeded{name=~\".*hyperconverged.*\", cluster=~\"$cluster\"})\n    )))/\n(count by (version) (\n    csv_succeeded{name=~\".*hyperconverged.*\", cluster=~\"$cluster\"}\n    and on (cluster) (\n      max by (cluster) (csv_succeeded{name=~\".*hyperconverged.*\", cluster=~\"$cluster\"})\n    )))",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -339,7 +332,7 @@ data:
               },
               "custom": {
                 "align": "auto",
-                "displayMode": "color-background"
+                "displayMode": "auto"
               },
               "mappings": [],
               "thresholds": {
@@ -373,7 +366,7 @@ data:
               {
                 "matcher": {
                   "id": "byName",
-                  "options": "Value #A"
+                  "options": "Operator Health"
                 },
                 "properties": [
                   {
@@ -400,6 +393,47 @@ data:
                         "type": "value"
                       }
                     ]
+                  },
+                  {
+                    "id": "custom.displayMode",
+                    "value": "color-background-solid"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Operator Conditions Health"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "0": {
+                            "color": "green",
+                            "index": 0,
+                            "text": "Healthy"
+                          },
+                          "1": {
+                            "color": "orange",
+                            "index": 1,
+                            "text": "Warning"
+                          },
+                          "2": {
+                            "color": "red",
+                            "index": 2,
+                            "text": "Error"
+                          }
+                        },
+                        "type": "value"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.displayMode",
+                    "value": "color-text"
                   }
                 ]
               }
@@ -456,7 +490,7 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "(sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))*0 + on (cluster) group_left() (sum by (cluster)(cnv:vmi_status_running:count{cluster=~\"$cluster\"}))",
+              "expr": "(sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))*0 + on (cluster) group_left() (sum by (cluster)(cnv:vmi_status_running:count{cluster=~\"$cluster\"})) or ((sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))*0)",
               "format": "table",
               "hide": false,
               "instant": true,
@@ -466,13 +500,23 @@ data:
             },
             {
               "exemplar": true,
-              "expr": "(sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster))*0 + on (cluster) group_left(version) (count by (cluster, version) (csv_succeeded{name=~\".*hyperconverged.*\",cluster=~\"$cluster\"}))",
+              "expr": "sum(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"}$operator_health) by (cluster) * 0 \n+ on (cluster) group_left(version) (\n  count by (cluster, version) (\n    csv_succeeded{name=~\".*hyperconverged.*\", cluster=~\"$cluster\"}\n    and on (cluster) (\n      max by (cluster) (csv_succeeded{name=~\".*hyperconverged.*\", cluster=~\"$cluster\"})\n    )\n  )\n)",
               "format": "table",
               "hide": false,
               "instant": true,
               "interval": "",
               "legendFormat": "",
               "refId": "E"
+            },
+            {
+              "exemplar": true,
+              "expr": "sum by (cluster)(kubevirt_hyperconverged_operator_health_status{cluster=~\"$cluster\"})*0 $operator_health\nor on(cluster) (kubevirt_hco_system_health_status{cluster=~\"$cluster\"})",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "F"
             }
           ],
           "title": "OpenShift Virtualization Health by Cluster",
@@ -491,15 +535,19 @@ data:
                   "Time 1": true,
                   "Time 2": true,
                   "Time 3": true,
+                  "Time 4": true,
+                  "Time 5": true,
+                  "Time 6": true,
                   "Value #E": true
                 },
                 "indexByName": {
-                  "Time": 6,
-                  "Value #A": 5,
+                  "Time": 8,
+                  "Value #A": 7,
                   "Value #B": 3,
                   "Value #C": 4,
                   "Value #D": 2,
-                  "Value #E": 7,
+                  "Value #E": 5,
+                  "Value #F": 6,
                   "cluster": 0,
                   "version": 1
                 },
@@ -510,6 +558,8 @@ data:
                   "Value #B": "Alerts with Critical Impact",
                   "Value #C": "Alerts with Warning Impact",
                   "Value #D": "Number of Running Virtual Machines",
+                  "Value #E": "",
+                  "Value #F": "Operator Conditions Health",
                   "cluster": "Cluster",
                   "version": "Version"
                 }
@@ -745,12 +795,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "transparent",
-                    "value": null
-                  },
-                  {
                     "color": "red",
-                    "value": 1
+                    "value": null
                   }
                 ]
               }
@@ -806,12 +852,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "transparent",
-                    "value": null
-                  },
-                  {
                     "color": "orange",
-                    "value": 1
+                    "value": null
                   }
                 ]
               }
@@ -867,12 +909,8 @@ data:
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "transparent",
-                    "value": null
-                  },
-                  {
                     "color": "blue",
-                    "value": 1
+                    "value": null
                   }
                 ]
               }
@@ -1016,7 +1054,7 @@ data:
             "sortBy": [
               {
                 "desc": true,
-                "displayName": "Alert Severity"
+                "displayName": "Number of Alerts"
               }
             ]
           },
