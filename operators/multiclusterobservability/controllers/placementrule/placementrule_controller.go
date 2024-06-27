@@ -240,8 +240,9 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		latestClusters = append(latestClusters, addon.Namespace)
 		staleAddons = append(staleAddons, addon.Namespace)
 	}
+
 	for _, work := range workList.Items {
-		if work.Name != work.Namespace+workNameSuffix || work.Namespace == "local-cluster" {
+		if work.Name != work.Namespace+workNameSuffix {
 			// ACM 8509: Special case for hub metrics collector
 			// In the upgrade case we want to clean up the obs add on and manifest work that was created
 			// for local-cluster before the upgrade that is why we check for the local-cluster namespace
@@ -250,16 +251,15 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			if err != nil {
 				return ctrl.Result{}, err
 			}
-		} else {
-			if !slices.Contains(latestClusters, work.Namespace) {
-				reqLogger.Info("To delete manifestwork", "namespace", work.Namespace)
-				err = deleteManagedClusterRes(r.Client, work.Namespace)
-				if err != nil {
-					return ctrl.Result{}, err
-				}
-			} else {
-				staleAddons = commonutil.Remove(staleAddons, work.Namespace)
+		}
+		if !slices.Contains(latestClusters, work.Namespace) {
+			reqLogger.Info("To delete manifestwork", "namespace", work.Namespace)
+			err = deleteManagedClusterRes(r.Client, work.Namespace)
+			if err != nil {
+				return ctrl.Result{}, err
 			}
+		} else {
+			staleAddons = commonutil.Remove(staleAddons, work.Namespace)
 		}
 	}
 
@@ -296,7 +296,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	if deleteAll {
 		// delete managedclusteraddon for local-cluster
-		err = deleteManagedClusterRes(r.Client, localClusterName)
+		err = deleteManagedClusterRes(r.Client, config.GetDefaultNamespace())
 		if err != nil {
 			return ctrl.Result{}, err
 		}
