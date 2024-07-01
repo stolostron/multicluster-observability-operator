@@ -9,12 +9,13 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	"github.com/IBM/controller-filtered-cache/filteredcache"
 	ocinfrav1 "github.com/openshift/api/config/v1"
-	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
+	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1alpha1"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"
@@ -130,19 +131,34 @@ func main() {
 		os.Exit(1)
 	}
 
+	namespace := os.Getenv("NAMESPACE")
+	if namespace == "" {
+		namespace = os.Getenv("WATCH_NAMESPACE")
+	}
+
+	var installPrometheus bool
+	if envVal := os.Getenv(operatorconfig.InstallPrometheus); envVal != "" {
+		installPrometheus, err = strconv.ParseBool(envVal)
+		if err != nil {
+			setupLog.Error(err, "Failed to parse the value of the environment variable", "variable", operatorconfig.InstallPrometheus)
+		}
+	}
+
 	if err = (&obsepctl.ObservabilityAddonReconciler{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		HubClient: hubClientWithReload,
+		Client:                mgr.GetClient(),
+		Scheme:                mgr.GetScheme(),
+		HubClient:             hubClientWithReload,
+		HubNamespace:          os.Getenv("HUB_NAMESPACE"),
+		Namespace:             namespace,
+		ServiceAccountName:    os.Getenv("SERVICE_ACCOUNT"),
+		IsHubMetricsCollector: os.Getenv("HUB_ENDPOINT_OPERATOR") == "true",
+		InstallPrometheus:     installPrometheus,
+		HostIP:                os.Getenv("HOST_IP"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ObservabilityAddon")
 		os.Exit(1)
 	}
 
-	namespace := os.Getenv("NAMESPACE")
-	if namespace == "" {
-		namespace = os.Getenv("WATCH_NAMESPACE")
-	}
 	if err = (&statusctl.StatusReconciler{
 		Client:       mgr.GetClient(),
 		HubClient:    hubClientWithReload,

@@ -79,16 +79,17 @@ func Start(c client.Client, ingressCtlCrdExists bool) {
 		config.GetDefaultNamespace(),
 		fields.OneTermEqualSelector("metadata.namespace", config.GetDefaultNamespace()),
 	)
-	_, controller := cache.NewInformer(
-		watchlist,
-		&v1.Secret{},
-		time.Minute*60,
-		cache.ResourceEventHandlerFuncs{
+	options := cache.InformerOptions{
+		ListerWatcher: watchlist,
+		ObjectType:    &v1.Secret{},
+		ResyncPeriod:  time.Minute * 60,
+		Handler: cache.ResourceEventHandlerFuncs{
 			AddFunc:    onAdd(c),
 			DeleteFunc: onDelete(c),
 			UpdateFunc: onUpdate(c, ingressCtlCrdExists),
 		},
-	)
+	}
+	_, controller := cache.NewInformerWithOptions(options)
 
 	stop := make(chan struct{})
 	go controller.Run(stop)

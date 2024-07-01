@@ -9,8 +9,9 @@ import (
 	"fmt"
 	"reflect"
 
-	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
+	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1alpha1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	operatorutil "github.com/stolostron/multicluster-observability-operator/operators/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -93,6 +94,21 @@ func HostedClusterNamespace(cluster *hyperv1.HostedCluster) string {
 	return fmt.Sprintf("%s-%s", cluster.ObjectMeta.Namespace, cluster.ObjectMeta.Name)
 }
 
+func IsHypershiftCluster() (bool, error) {
+	var isHypershift bool
+	crdClient, err := operatorutil.GetOrCreateCRDClient()
+	if err != nil {
+		return false, fmt.Errorf("failed to get/create CRD client: %w", err)
+	}
+
+	isHypershift, err = operatorutil.CheckCRDExist(crdClient, "hostedclusters.hypershift.openshift.io")
+	if err != nil {
+		return false, fmt.Errorf("failed to check if the CRD hostedclusters.hypershift.openshift.io exists: %w", err)
+	}
+
+	return isHypershift, nil
+}
+
 func createOrUpdateSM(ctx context.Context, c client.Client, smDesired *promv1.ServiceMonitor) error {
 	smCurrent := &promv1.ServiceMonitor{}
 	if err := c.Get(ctx, types.NamespacedName{Name: smDesired.GetName(), Namespace: smDesired.GetNamespace()}, smCurrent); err != nil {
@@ -142,11 +158,11 @@ func getEtcdServiceMonitor(ctx context.Context, c client.Client, namespace, clus
 					Scheme:            "https",
 					Interval:          "15s",
 					Port:              originalEndpoint.Port,
-					BearerTokenSecret: corev1.SecretKeySelector{},
+					BearerTokenSecret: &corev1.SecretKeySelector{},
 					TLSConfig:         originalEndpoint.TLSConfig,
-					MetricRelabelConfigs: []*promv1.RelabelConfig{
+					MetricRelabelConfigs: []promv1.RelabelConfig{
 						{
-							SourceLabels: []string{"__name__"},
+							SourceLabels: []promv1.LabelName{"__name__"},
 							Action:       "keep",
 							Regex: "(etcd_server_has_leader|etcd_disk_wal_fsync_duration_seconds_bucket|" +
 								"etcd_mvcc_db_total_size_in_bytes|etcd_network_peer_round_trip_time_seconds_bucket|" +
@@ -157,29 +173,29 @@ func getEtcdServiceMonitor(ctx context.Context, c client.Client, namespace, clus
 						{
 							TargetLabel: "_id",
 							Action:      "replace",
-							Replacement: clusterID,
+							Replacement: &clusterID,
 						},
 						{
 							TargetLabel: "cluster_id",
 							Action:      "replace",
-							Replacement: clusterID,
+							Replacement: &clusterID,
 						},
 						{
 							TargetLabel: "cluster",
 							Action:      "replace",
-							Replacement: clusterName,
+							Replacement: &clusterName,
 						},
 					},
-					RelabelConfigs: []*promv1.RelabelConfig{
+					RelabelConfigs: []promv1.RelabelConfig{
 						{
 							TargetLabel: "_id",
 							Action:      "replace",
-							Replacement: clusterID,
+							Replacement: &clusterID,
 						},
 						{
 							TargetLabel: "job",
 							Action:      "replace",
-							Replacement: "etcd",
+							Replacement: stringPtr("etcd"),
 						},
 					},
 				},
@@ -215,11 +231,11 @@ func getKubeServiceMonitor(ctx context.Context, c client.Client, namespace, clus
 					Scheme:            "https",
 					Interval:          "15s",
 					TargetPort:        originalEndpoint.TargetPort,
-					BearerTokenSecret: corev1.SecretKeySelector{},
+					BearerTokenSecret: &corev1.SecretKeySelector{},
 					TLSConfig:         originalEndpoint.TLSConfig,
-					MetricRelabelConfigs: []*promv1.RelabelConfig{
+					MetricRelabelConfigs: []promv1.RelabelConfig{
 						{
-							SourceLabels: []string{"__name__"},
+							SourceLabels: []promv1.LabelName{"__name__"},
 							Action:       "keep",
 							Regex: "(up|apiserver_request_duration_seconds_bucket|apiserver_storage_objects|" +
 								"apiserver_request_total|apiserver_current_inflight_requests)",
@@ -227,29 +243,29 @@ func getKubeServiceMonitor(ctx context.Context, c client.Client, namespace, clus
 						{
 							TargetLabel: "_id",
 							Action:      "replace",
-							Replacement: clusterID,
+							Replacement: &clusterID,
 						},
 						{
 							TargetLabel: "cluster_id",
 							Action:      "replace",
-							Replacement: clusterID,
+							Replacement: &clusterID,
 						},
 						{
 							TargetLabel: "cluster",
 							Action:      "replace",
-							Replacement: clusterName,
+							Replacement: &clusterName,
 						},
 					},
-					RelabelConfigs: []*promv1.RelabelConfig{
+					RelabelConfigs: []promv1.RelabelConfig{
 						{
 							TargetLabel: "_id",
 							Action:      "replace",
-							Replacement: clusterID,
+							Replacement: &clusterID,
 						},
 						{
 							TargetLabel: "job",
 							Action:      "replace",
-							Replacement: "apiserver",
+							Replacement: stringPtr("apiserver"),
 						},
 					},
 				},
@@ -274,4 +290,8 @@ func deleteServiceMonitor(ctx context.Context, c client.Client, name, namespace 
 	}
 
 	return nil
+}
+
+func stringPtr(s string) *string {
+	return &s
 }
