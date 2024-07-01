@@ -50,15 +50,16 @@ func Start() {
 		config.GetDefaultNamespace(),
 		fields.Everything(),
 	)
-	_, controller := cache.NewInformer(
-		watchlist,
-		&promv1.ServiceMonitor{},
-		time.Minute*60,
-		cache.ResourceEventHandlerFuncs{
+	options := cache.InformerOptions{
+		ListerWatcher: watchlist,
+		ObjectType:    &promv1.ServiceMonitor{},
+		ResyncPeriod:  time.Minute * 60,
+		Handler: cache.ResourceEventHandlerFuncs{
 			AddFunc:    onAdd(promClient),
 			UpdateFunc: onUpdate(promClient),
 		},
-	)
+	}
+	_, controller := cache.NewInformerWithOptions(options)
 
 	stop := make(chan struct{})
 	go controller.Run(stop)
@@ -118,15 +119,16 @@ func rewriteLabels(sm *promv1.ServiceMonitor, resourceVersion string) *promv1.Se
 			Namespace: ocpMonitoringNamespace,
 		},
 	}
+	replacement := metricsNamePrefix + "${1}"
 	endpoints := []promv1.Endpoint{}
 	for _, endpoint := range sm.Spec.Endpoints {
 		if endpoint.MetricRelabelConfigs == nil {
-			metricsRelabels := []*promv1.RelabelConfig{}
-			metricsRelabels = append(metricsRelabels, &promv1.RelabelConfig{
-				SourceLabels: []string{"__name__"},
+			metricsRelabels := []promv1.RelabelConfig{}
+			metricsRelabels = append(metricsRelabels, promv1.RelabelConfig{
+				SourceLabels: []promv1.LabelName{"__name__"},
 				Regex:        "(.+)",
 				TargetLabel:  "__name__",
-				Replacement:  metricsNamePrefix + "${1}",
+				Replacement:  &replacement,
 			})
 			endpoint.MetricRelabelConfigs = metricsRelabels
 		}
