@@ -50,15 +50,16 @@ func Start() {
 		config.GetDefaultNamespace(),
 		fields.Everything(),
 	)
-	_, controller := cache.NewInformer(
-		watchlist,
-		&promv1.ServiceMonitor{},
-		time.Minute*60,
-		cache.ResourceEventHandlerFuncs{
+	options := cache.InformerOptions{
+		ListerWatcher: watchlist,
+		ObjectType:    &promv1.ServiceMonitor{},
+		ResyncPeriod:  time.Minute * 60,
+		Handler: cache.ResourceEventHandlerFuncs{
 			AddFunc:    onAdd(promClient),
 			UpdateFunc: onUpdate(promClient),
 		},
-	)
+	}
+	_, controller := cache.NewInformerWithOptions(options)
 
 	stop := make(chan struct{})
 	go controller.Run(stop)

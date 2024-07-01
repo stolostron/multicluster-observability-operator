@@ -298,8 +298,12 @@ func WatchManagedCluster(clusterClient clusterclientset.Interface, kubeClient ku
 		fields.Everything(),
 	)
 
-	_, controller := cache.NewInformer(watchlist, &clusterv1.ManagedCluster{}, time.Second*0,
-		GetManagedClusterEventHandler())
+	options := cache.InformerOptions{
+		ListerWatcher: watchlist,
+		ObjectType:    &clusterv1.ManagedCluster{},
+		Handler:       GetManagedClusterEventHandler(),
+	}
+	_, controller := cache.NewInformerWithOptions(options)
 
 	stop := make(chan struct{})
 	go controller.Run(stop)
@@ -381,8 +385,12 @@ func WatchManagedClusterLabelAllowList(kubeClient kubernetes.Interface) {
 	watchlist := cache.NewListWatchFromClient(kubeClient.CoreV1().RESTClient(), "configmaps",
 		proxyconfig.ManagedClusterLabelAllowListNamespace, fields.Everything())
 
-	_, controller := cache.NewInformer(watchlist, &v1.ConfigMap{}, time.Second*0,
-		GetManagedClusterLabelAllowListEventHandler(kubeClient))
+	options := cache.InformerOptions{
+		ListerWatcher: watchlist,
+		ObjectType:    &v1.ConfigMap{},
+		Handler:       GetManagedClusterLabelAllowListEventHandler(kubeClient),
+	}
+	_, controller := cache.NewInformerWithOptions(options)
 
 	stop := make(chan struct{})
 	go controller.Run(stop)

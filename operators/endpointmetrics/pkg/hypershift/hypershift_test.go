@@ -145,11 +145,11 @@ func TestHypershiftServiceMonitors(t *testing.T) {
 		for _, relabelCfg := range sm.Spec.Endpoints[0].MetricRelabelConfigs {
 			switch relabelCfg.TargetLabel {
 			case "_id":
-				assert.Equal(t, "test-hosted-cluster-id", relabelCfg.Replacement)
+				assert.Equal(t, "test-hosted-cluster-id", *relabelCfg.Replacement)
 			case "cluster_id":
-				assert.Equal(t, "test-hosted-cluster-id", relabelCfg.Replacement)
+				assert.Equal(t, "test-hosted-cluster-id", *relabelCfg.Replacement)
 			case "cluster":
-				assert.Equal(t, "test-hosted-cluster", relabelCfg.Replacement)
+				assert.Equal(t, "test-hosted-cluster", *relabelCfg.Replacement)
 			case "":
 				continue
 			default:
