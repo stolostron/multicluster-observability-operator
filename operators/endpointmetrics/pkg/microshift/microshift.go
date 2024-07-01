@@ -79,6 +79,7 @@ func (m *Microshift) renderPrometheus(res []*unstructured.Unstructured) error {
 	}
 
 	prom.Spec.Secrets = append(prom.Spec.Secrets, etcdClientCertSecretName)
+	prom.Spec.HostNetwork = true
 
 	promRes.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(prom)
 	if err != nil {

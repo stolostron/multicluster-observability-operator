@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"testing"
 
-	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
+	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1alpha1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
 	"github.com/stretchr/testify/assert"
@@ -42,6 +42,7 @@ func TestHypershiftServiceMonitors(t *testing.T) {
 		Spec: promv1.ServiceMonitorSpec{},
 	}
 
+	trueVal := true
 	hypershiftEtcdSM := &promv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      hypershift.EtcdSmName,
@@ -53,7 +54,7 @@ func TestHypershiftServiceMonitors(t *testing.T) {
 					Port: "metrics",
 					TLSConfig: &promv1.TLSConfig{
 						SafeTLSConfig: promv1.SafeTLSConfig{
-							InsecureSkipVerify: true,
+							InsecureSkipVerify: &trueVal,
 						},
 					},
 				},

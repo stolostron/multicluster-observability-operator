@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
+	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1alpha1"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/hypershift"
 	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"

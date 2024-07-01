@@ -15,7 +15,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	"github.com/IBM/controller-filtered-cache/filteredcache"
 	ocinfrav1 "github.com/openshift/api/config/v1"
-	hyperv1 "github.com/openshift/hypershift/api/v1alpha1"
+	hyperv1 "github.com/openshift/hypershift/api/hypershift/v1alpha1"
 	prometheusv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"go.uber.org/zap/zapcore"
 	appsv1 "k8s.io/api/apps/v1"

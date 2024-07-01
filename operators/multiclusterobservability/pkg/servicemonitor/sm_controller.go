@@ -118,15 +118,16 @@ func rewriteLabels(sm *promv1.ServiceMonitor, resourceVersion string) *promv1.Se
 			Namespace: ocpMonitoringNamespace,
 		},
 	}
+	replacement := metricsNamePrefix + "${1}"
 	endpoints := []promv1.Endpoint{}
 	for _, endpoint := range sm.Spec.Endpoints {
 		if endpoint.MetricRelabelConfigs == nil {
-			metricsRelabels := []*promv1.RelabelConfig{}
-			metricsRelabels = append(metricsRelabels, &promv1.RelabelConfig{
-				SourceLabels: []string{"__name__"},
+			metricsRelabels := []promv1.RelabelConfig{}
+			metricsRelabels = append(metricsRelabels, promv1.RelabelConfig{
+				SourceLabels: []promv1.LabelName{"__name__"},
 				Regex:        "(.+)",
 				TargetLabel:  "__name__",
-				Replacement:  metricsNamePrefix + "${1}",
+				Replacement:  &replacement,
 			})
 			endpoint.MetricRelabelConfigs = metricsRelabels
 		}
