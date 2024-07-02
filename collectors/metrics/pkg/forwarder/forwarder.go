@@ -127,6 +127,7 @@ func CreateFromClient(cfg Config, metrics *workerMetrics, interval time.Duration
 			// #nosec G402 -- Only used if no TLS config is provided.
 			fromTransport.TLSClientConfig = &tls.Config{
 				MinVersion:         tls.VersionTLS12,
+				// #nosec G402 -- Only used if no TLS config is provided.
 				InsecureSkipVerify: true,
 			}
 		}

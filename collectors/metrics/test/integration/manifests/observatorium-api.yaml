@@ -59,7 +59,10 @@ spec:
         - containerPort: 8443
           name: public
           protocol: TCP
-        resources: {}
+        resources:
+          limits:
+            memory: 1Gi
+            ephemeral-storage: "2Gi"
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:
@@ -79,6 +82,7 @@ spec:
       schedulerName: default-scheduler
       securityContext: {}
       terminationGracePeriodSeconds: 30
+      automountServiceAccountToken: false
       volumes:
       - configMap:
           defaultMode: 420

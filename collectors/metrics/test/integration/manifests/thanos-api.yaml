@@ -125,7 +125,10 @@ spec:
           periodSeconds: 5
           successThreshold: 1
           timeoutSeconds: 1
-        resources: {}
+        resources:
+          limits:
+            memory: 1Gi
+            ephemeral-storage: "2Gi"
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
@@ -138,6 +141,7 @@ spec:
       schedulerName: default-scheduler
       securityContext: {}
       terminationGracePeriodSeconds: 900
+      automountServiceAccountToken: false
       volumes:
       - configMap:
           defaultMode: 420
