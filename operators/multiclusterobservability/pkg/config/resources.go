@@ -51,6 +51,8 @@ func getDefaultResourceCPU(component string, tshirtSize observabilityv1beta2.TSh
 		return AlertmanagerCPURequest[tshirtSize]
 	case Grafana:
 		return GrafanaCPURequest[tshirtSize]
+	case MultiClusterObservabilityAddon:
+		return MCOACPURequest[tshirtSize]
 	default:
 		return ""
 	}
@@ -87,6 +89,8 @@ func getDefaultResourceMemory(component string, tshirtSize observabilityv1beta2.
 		return AlertmanagerMemoryRequest[tshirtSize]
 	case Grafana:
 		return GrafanaMemoryRequest[tshirtSize]
+	case MultiClusterObservabilityAddon:
+		return MCOAMemoryRequest[tshirtSize]
 	default:
 		return ""
 	}
@@ -97,6 +101,8 @@ func getDefaultResourceMemoryLimit(component string) string {
 	switch component {
 	case Grafana:
 		return GrafanaMemoryLimit
+	case MultiClusterObservabilityAddon:
+		return MCOACPULimits
 	default:
 		return ""
 	}
@@ -107,6 +113,8 @@ func getDefaultResourceCPULimit(component string) string {
 	switch component {
 	case Grafana:
 		return GrafanaCPULimit
+	case MultiClusterObservabilityAddon:
+		return MCOACPULimits
 	default:
 		return ""
 	}
@@ -191,6 +199,10 @@ func getAdvancedConfigResourceOverride(component string, tshirtSize observabilit
 	case Alertmanager:
 		if advanced.Alertmanager != nil {
 			resourcesReq = advanced.Alertmanager.Resources
+		}
+	case MultiClusterObservabilityAddon:
+		if advanced.MultiClusterObservabilityAddon != nil {
+			resourcesReq = advanced.MultiClusterObservabilityAddon.Resources
 		}
 	}
 
@@ -347,6 +359,10 @@ func GetReplicas(component string, tshirtSize observabilityv1beta2.TShirtSize, a
 	case Alertmanager:
 		if advanced.Alertmanager != nil {
 			replicas = advanced.Alertmanager.Replicas
+		}
+	case MultiClusterObservabilityAddon:
+		if advanced.MultiClusterObservabilityAddon != nil {
+			replicas = advanced.MultiClusterObservabilityAddon.Replicas
 		}
 	}
 
