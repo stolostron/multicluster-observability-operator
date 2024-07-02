@@ -71,3 +71,9 @@ var ImageKeyNameMap = map[string]string{
 var (
 	IsMCOTerminating = false
 )
+
+const (
+	DefaultClusterType  = ""
+	OcpThreeClusterType = "ocp3"
+	SnoClusterType      = "SNO"
+)

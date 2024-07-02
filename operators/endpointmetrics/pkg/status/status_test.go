@@ -2,7 +2,7 @@
 // Copyright Contributors to the Open Cluster Management project
 // Licensed under the Apache License 2.0
 
-package util_test
+package status_test
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/util"
+	"github.com/stolostron/multicluster-observability-operator/operators/endpointmetrics/pkg/status"
 	oav1beta1 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/stolostron/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/stretchr/testify/assert"
@@ -45,15 +45,15 @@ func TestReportStatus(t *testing.T) {
 
 	testCases := map[string]struct {
 		currentConditions []oav1beta1.StatusCondition
-		newCondition      util.ConditionReason
+		newCondition      status.ConditionReason
 		expects           func(*testing.T, []oav1beta1.StatusCondition)
 	}{
 		"new status should be appended": {
 			currentConditions: []oav1beta1.StatusCondition{},
-			newCondition:      util.Deployed,
+			newCondition:      status.Deployed,
 			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
 				assert.Len(t, conditions, 1)
-				assert.EqualValues(t, util.Deployed, conditions[0].Reason)
+				assert.EqualValues(t, status.Deployed, conditions[0].Reason)
 				assert.Equal(t, metav1.ConditionTrue, conditions[0].Status)
 				assert.Equal(t, "Progressing", conditions[0].Type)
 				assert.InEpsilon(t, time.Now().Unix(), conditions[0].LastTransitionTime.Unix(), 1)
@@ -63,7 +63,7 @@ func TestReportStatus(t *testing.T) {
 			currentConditions: []oav1beta1.StatusCondition{
 				{
 					Type:    "Progressing",
-					Reason:  string(util.Deployed),
+					Reason:  string(status.Deployed),
 					Message: "Metrics collector deployed",
 					Status:  metav1.ConditionTrue,
 					LastTransitionTime: metav1.Time{
@@ -72,7 +72,7 @@ func TestReportStatus(t *testing.T) {
 				},
 				{
 					Type:    "Disabled",
-					Reason:  string(util.Disabled),
+					Reason:  string(status.Disabled),
 					Message: "enableMetrics is set to False",
 					Status:  metav1.ConditionTrue,
 					LastTransitionTime: metav1.Time{
@@ -80,20 +80,20 @@ func TestReportStatus(t *testing.T) {
 					},
 				},
 			},
-			newCondition: util.Disabled,
+			newCondition: status.Disabled,
 			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
 				assert.Len(t, conditions, 2)
 				found := false
 				for _, c := range conditions {
-					if c.Reason == string(util.Disabled) {
+					if c.Reason == string(status.Disabled) {
 						found = true
-						assert.EqualValues(t, util.Disabled, c.Reason)
+						assert.EqualValues(t, status.Disabled, c.Reason)
 						assert.Equal(t, metav1.ConditionTrue, c.Status)
 						assert.Equal(t, "Disabled", c.Type)
 						assert.InEpsilon(t, time.Now().Unix(), c.LastTransitionTime.Unix(), 1)
 					} else {
 						// other condition should not be changed
-						assert.EqualValues(t, util.Deployed, c.Reason)
+						assert.EqualValues(t, status.Deployed, c.Reason)
 						assert.InEpsilon(t, time.Now().Add(-time.Minute).Unix(), c.LastTransitionTime.Unix(), 1)
 					}
 				}
@@ -104,7 +104,7 @@ func TestReportStatus(t *testing.T) {
 			currentConditions: []oav1beta1.StatusCondition{
 				{
 					Type:    "Progressing",
-					Reason:  string(util.Deployed),
+					Reason:  string(status.Deployed),
 					Message: "Metrics collector deployed",
 					Status:  metav1.ConditionTrue,
 					LastTransitionTime: metav1.Time{
@@ -118,10 +118,10 @@ func TestReportStatus(t *testing.T) {
 					},
 				},
 			},
-			newCondition: util.Deployed,
+			newCondition: status.Deployed,
 			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
 				assert.Len(t, conditions, 2)
-				assert.EqualValues(t, util.Deployed, conditions[0].Reason)
+				assert.EqualValues(t, status.Deployed, conditions[0].Reason)
 				assert.InEpsilon(t, time.Now().Add(-time.Minute).Unix(), conditions[0].LastTransitionTime.Unix(), 1)
 			},
 		},
@@ -130,10 +130,10 @@ func TestReportStatus(t *testing.T) {
 				{Type: "1"}, {Type: "2"}, {Type: "3"}, {Type: "4"}, {Type: "5"},
 				{Type: "6"}, {Type: "7"}, {Type: "8"}, {Type: "9"}, {Type: "10"},
 			},
-			newCondition: util.Deployed,
+			newCondition: status.Deployed,
 			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
-				assert.Len(t, conditions, util.MaxStatusConditionsCount)
-				assert.EqualValues(t, util.Deployed, conditions[len(conditions)-1].Reason)
+				assert.Len(t, conditions, status.MaxStatusConditionsCount)
+				assert.EqualValues(t, status.Deployed, conditions[len(conditions)-1].Reason)
 			},
 		},
 		"duplicated conditions should be removed": {
@@ -143,7 +143,7 @@ func TestReportStatus(t *testing.T) {
 				{Type: "Progressing", LastTransitionTime: metav1.Time{Time: time.Now().Add(-time.Minute)}},
 				{Type: "Degraded", LastTransitionTime: metav1.Time{Time: time.Now().Add(-time.Minute)}},
 			},
-			newCondition: util.Deployed,
+			newCondition: status.Deployed,
 			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
 				assert.Len(t, conditions, 2)
 				for _, c := range conditions {
@@ -164,7 +164,7 @@ func TestReportStatus(t *testing.T) {
 				{Type: "Degraded", Status: metav1.ConditionTrue},
 				{Type: "Available", Status: metav1.ConditionTrue},
 			},
-			newCondition: util.Deployed,
+			newCondition: status.Deployed,
 			expects: func(t *testing.T, conditions []oav1beta1.StatusCondition) {
 				assert.Len(t, conditions, 3)
 				for _, c := range conditions {
@@ -191,7 +191,7 @@ func TestReportStatus(t *testing.T) {
 			}
 
 			// test
-			if err := util.ReportStatus(context.Background(), client, tc.newCondition, baseAddon.Name, baseAddon.Namespace); err != nil {
+			if err := status.ReportStatus(context.Background(), client, tc.newCondition, baseAddon.Name, baseAddon.Namespace); err != nil {
 				t.Fatalf("Error reporting status: %v", err)
 			}
 			newAddon := &oav1beta1.ObservabilityAddon{}
@@ -219,7 +219,7 @@ func TestReportStatus_Conflict(t *testing.T) {
 	conflictErr := errors.NewConflict(schema.GroupResource{Group: oav1beta1.GroupVersion.Group, Resource: "resource"}, name, fmt.Errorf("conflict"))
 
 	c := newClientWithUpdateError(fakeClient, conflictErr)
-	if err := util.ReportStatus(context.Background(), c, util.Deployed, name, testNamespace); err == nil {
+	if err := status.ReportStatus(context.Background(), c, status.Deployed, name, testNamespace); err == nil {
 		t.Fatalf("Conflict error should be retried and return an error if it fails")
 	}
 	if c.UpdateCallsCount() <= 1 {
