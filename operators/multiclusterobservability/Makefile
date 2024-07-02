@@ -36,14 +36,34 @@ BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
 endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
+# IMAGE_TAG_BASE defines the docker.io namespace and part of the image name for remote images.
+# This variable is used to construct full image tags for bundle and catalog images.
+#
+# For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
+# example.com/memcached-operator-bundle:$VERSION and example.com/memcached-operator-catalog:$VERSION.
+
+IMAGE_TAG_BASE ?= quay.io/stolostron/multicluster-observability-operator
+
 # BUNDLE_IMG defines the image:tag used for the bundle. 
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
-BUNDLE_IMG ?= controller-bundle:$(VERSION)
+BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:$(VERSION)
+
+# BUNDLE_GEN_FLAGS are the flags passed to the operator-sdk generate bundle command
+BUNDLE_GEN_FLAGS ?= -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+
+# USE_IMAGE_DIGESTS defines if images are resolved via tags or digests
+# You can enable this value if you would like to use SHA Based Digests
+# To enable set flag to true
+USE_IMAGE_DIGESTS ?= false
+ifeq ($(USE_IMAGE_DIGESTS), true)
+    BUNDLE_GEN_FLAGS += --use-image-digests
+endif
 
 # Image URL to use all building/pushing image targets
-IMG ?= quay.io/stolostron/multicluster-observability-operator:latest
-# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
+IMG ?= $(IMAGE_TAG_BASE):latest
+
+# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
+ENVTEST_K8S_VERSION = 1.28
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -62,90 +82,163 @@ ifeq ($(UNAME), Darwin)
 SED=@gsed
 endif
 
-all: manager
+# Setting SHELL to bash allows bash commands to be executed by recipes.
+# This is a requirement for 'setup-envtest.sh' in the test target.
+# Options are set to exit when a recipe line exits non-zero or a piped command fails.
+SHELL = /usr/bin/env bash -o pipefail
+.SHELLFLAGS = -ec
 
-# Run tests
-ENVTEST_ASSETS_DIR=$(shell pwd)/testbin
-test: generate fmt vet manifests
-	mkdir -p ${ENVTEST_ASSETS_DIR}
-	test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.7.0/hack/setup-envtest.sh
-	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test ./... -coverprofile cover.out
+.PHONY: all
+all: build
 
-# Build manager binary
-manager: generate fmt vet
-	go build -o bin/manager main.go
+##@ General
 
-# Run against the configured Kubernetes cluster in ~/.kube/config
-run: generate fmt vet manifests
-	go run ./main.go
+# The help target prints out all targets with their descriptions organized
+# beneath their categories. The categories are represented by '##@' and the
+# target descriptions by '##'. The awk commands is responsible for reading the
+# entire set of makefiles included in this invocation, looking for lines of the
+# file as xyz: ## something, and then pretty-format the target and help. Then,
+# if there's a line with ##@ something, that gets pretty-printed as a category.
+# More info on the usage of ANSI control characters for terminal formatting:
+# https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_parameters
+# More info on the awk command:
+# http://linuxcommand.org/lc3_adv_awk.php
+.PHONY: help
+help: ## Display this help.
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-# Install CRDs into a cluster
-install: manifests kustomize
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
-
-# Uninstall CRDs from a cluster
-uninstall: manifests kustomize
-	$(KUSTOMIZE) build config/crd | kubectl delete -f -
-
-# Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests kustomize
-	cd config/manager && $(KUSTOMIZE) edit set image quay.io/stolostron/multicluster-observability-operator=${IMG}
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
-
-# UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config
-undeploy:
-	$(KUSTOMIZE) build config/default | kubectl delete -f -
+##@ Development
 
 # Generate manifests e.g. CRD, RBAC etc.
-manifests: $(CONTROLLER_GEN)
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+.PHONY: manifests
+manifests: $(CONTROLLER_GEN) ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	# TODO(morvencao): replace the sed command with kubebuilder marker
 	$(SED) -i 's/storage: false/&\n    deprecated: true/g' config/crd/bases/observability.open-cluster-management.io_multiclusterobservabilities.yaml
 	$(SED) -i 's/storage: false/&\n    deprecationWarning: observability.open-cluster-management.io\/v1beta1 MultiClusterObservability is deprecated in v2.3+, unavailable in v2.6+; use observability.open-cluster-management.io\/v1beta2 MultiClusterObservability/g' config/crd/bases/observability.open-cluster-management.io_multiclusterobservabilities.yaml
 
-# Run go fmt against code
-fmt:
-	go fmt ./...
-
-# Run go vet against code
-vet:
-	go vet ./...
-
 # Generate code
-generate: $(CONTROLLER_GEN)
+.PHONY: generate
+generate: $(CONTROLLER_GEN) ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="$(ROOT_DIR)/hack/boilerplate.go.txt" paths="./..."
 
-.PHONY: build
-build: manager
+.PHONY: fmt
+fmt: ## Run go fmt against code.
+	go fmt ./...
 
-# Generate bundle manifests and metadata, then validate generated files.
+.PHONY: vet
+vet: ## Run go vet against code.
+	go vet ./...
+
+ENVTEST_BIN=$(shell pwd)/../../tmp/bin/setup-envtest
+$(ENVTEST_BIN):
+	$(MAKE) -C ../../ install-envtest-deps
+
+.PHONY: test
+test: generate fmt vet manifests $(ENVTEST_BIN) ## Run tests.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST_BIN) use $(ENVTEST_K8S_VERSION)) --bin-dir $(GOBIN) -p path" go test ./... -coverprofile cover.out
+
+##@ Build
+
+.PHONY: build
+build: manifests generate fmt vet ## Build manager binary.
+	go build -o bin/manager main.go
+
+# Run against the configured Kubernetes cluster in ~/.kube/config
+.PHONY: run
+run: generate fmt vet manifests ## Run a controller from your host.
+	go run ./main.go
+
+.PHONY: docker-build
+docker-build: ## Build docker image with the manager using private RHEL base images.
+	docker build -t ${IMG} -f Dockerfile ../../
+
+.PHONY: docker-build-local
+docker-build-local: test ## Build docker image with the manager using public UBI base images.
+	docker buildx build -t ${IMG} -f Dockerfile.dev --load  ../../
+
+.PHONY: docker-push
+docker-push: ## Push docker image with the manager.
+	docker push ${IMG}
+
+# PLATFORMS defines the target platforms for  the manager image be build to provide support to multiple
+# architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:
+# - able to use docker buildx . More info: https://docs.docker.com/build/buildx/
+# - have enable BuildKit, More info: https://docs.docker.com/develop/develop-images/build_enhancements/
+# - be able to push the image for your registry (i.e. if you do not inform a valid value via IMG=<myregistry/image:<tag>> then the export will fail)
+# To properly provided solutions that supports more than one platform you should use this option.
+PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
+.PHONY: docker-buildx
+docker-buildx: ## Build and push docker image for the manager for cross-platform support
+	- docker buildx create --name project-v3-builder
+	docker buildx use project-v3-builder
+	- docker buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile .
+	- docker buildx rm project-v3-builder
+
+##@ Deployment
+
+ifndef ignore-not-found
+  ignore-not-found = false
+endif
+
+.PHONY: install
+install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+
+.PHONY: uninstall
+uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+
+.PHONY: deploy
+deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	cd config/manager && $(KUSTOMIZE) edit set image quay.io/stolostron/multicluster-observability-operator=${IMG}
+	$(KUSTOMIZE) build config/default | kubectl apply -f -
+
+.PHONY: undeploy
+undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+
+##@ Build Dependencies
+
 .PHONY: bundle
-bundle: manifests $(KUSTOMIZE) $(OPERATOR_SDK)
+bundle: manifests $(KUSTOMIZE) $(OPERATOR_SDK) ## Generate bundle manifests and metadata, then validate generated files.
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image quay.io/stolostron/multicluster-observability-operator=$(IMG)
-	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
 	#TODO(morvencao): filter the rbac resource with $(OPERATOR_SDK) bundle command
 	rm -f ./bundle/manifests/multicluster-observability-operator-manager-role_rbac.authorization.k8s.io_v1_clusterrole.yaml
 	rm -f ./bundle/manifests/multicluster-observability-operator-manager-rolebinding_rbac.authorization.k8s.io_v1_clusterrolebinding.yaml
 	rm -f ./bundle/manifests/multicluster-observability-operator_v1_serviceaccount.yaml
 	$(OPERATOR_SDK) bundle validate ./bundle
 
-# Build the bundle image.
 .PHONY: bundle-build
-bundle-build:
+bundle-build: ## Build the bundle image.
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
-# Build the docker image
-.PHONY: docker-build
-docker-build:
-	docker build -t ${IMG} -f Dockerfile ../../
+.PHONY: bundle-push
+bundle-push: ## Push the bundle image.
+	$(MAKE) docker-push IMG=$(BUNDLE_IMG)
 
-# Build the docker image using a public image registry
-.PHONY: docker-build-local
-docker-build-local:
-	docker buildx build -t ${IMG} -f Dockerfile.dev --load  ../../
+# A comma-separated list of bundle images (e.g. make catalog-build BUNDLE_IMGS=example.com/operator-bundle:v0.1.0,example.com/operator-bundle:v0.2.0).
+# These images MUST exist in a registry and be pull-able.
+BUNDLE_IMGS ?= $(BUNDLE_IMG)
 
-# Push the docker image
-.PHONY: docker-push
-docker-push:
-	docker push ${IMG}
+# The image tag given to the resulting catalog image (e.g. make catalog-build CATALOG_IMG=example.com/operator-catalog:v0.2.0).
+CATALOG_IMG ?= $(IMAGE_TAG_BASE)-catalog:v$(VERSION)
+
+# Set CATALOG_BASE_IMG to an existing catalog image tag to add $BUNDLE_IMGS to that image.
+ifneq ($(origin CATALOG_BASE_IMG), undefined)
+FROM_INDEX_OPT := --from-index $(CATALOG_BASE_IMG)
+endif
+
+# Build a catalog image by adding bundle images to an empty catalog using the operator package manager tool, 'opm'.
+# This recipe invokes 'opm' in 'semver' bundle add mode. For more information on add modes, see:
+# https://github.com/operator-framework/community-operators/blob/7f1438c/docs/packaging-operator.md#updating-your-existing-operator
+.PHONY: catalog-build
+catalog-build: $(OPM) ## Build a catalog image.
+	$(OPM) index add --container-tool docker --mode semver --tag $(CATALOG_IMG) --bundles $(BUNDLE_IMGS) $(FROM_INDEX_OPT)
+
+# Push the catalog image.
+.PHONY: catalog-push
+catalog-push: ## Push a catalog image.
+	$(MAKE) docker-push IMG=$(CATALOG_IMG)
